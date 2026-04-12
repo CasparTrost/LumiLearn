@@ -166,6 +166,11 @@ export default function HomeScreen() {
         </h1>
       </div>
 
+      {/* Farm Progress */}
+      <div style={{ padding:'0 clamp(12px,3vw,24px)', paddingBottom:8 }}>
+        <FarmProgress completedCount={completedCount} totalModules={17} profile={profile} />
+      </div>
+
       {/* ── Card grid ── */}
       <div style={{
         flex:1,
