@@ -1,6 +1,66 @@
-import { useState, useCallback, useRef, useMemo } from 'react'
+import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
+
+/**
+ * EmojiSilhouette — renders emoji on canvas, extracts shape, fills with black.
+ * This is the only reliable way to get a true black silhouette from an emoji.
+ */
+function EmojiSilhouette({ emoji, colorShown, size = 200 }) {
+  const canvasRef = useRef(null)
+  const [dataUrl, setDataUrl] = useState(null)
+
+  useEffect(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width  = size
+    canvas.height = size
+    const ctx = canvas.getContext('2d')
+    ctx.clearRect(0, 0, size, size)
+    ctx.font = `${size * 0.85}px serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(emoji, size / 2, size / 2)
+    // Make every non-transparent pixel black
+    const imageData = ctx.getImageData(0, 0, size, size)
+    const data = imageData.data
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] > 10) {
+        data[i]     = 0   // R
+        data[i + 1] = 0   // G
+        data[i + 2] = 0   // B
+        data[i + 3] = 255 // A
+      }
+    }
+    ctx.putImageData(imageData, 0, 0)
+    setDataUrl(canvas.toDataURL())
+  }, [emoji, size])
+
+  const px = `${size}px`
+
+  return (
+    <div style={{ position: 'relative', width: px, height: px }}>
+      {/* Colored emoji — fades in when colorShown */}
+      <span style={{
+        position: 'absolute', inset: 0,
+        fontSize: `${size * 0.85}px`, lineHeight: 1,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        opacity: colorShown ? 1 : 0,
+        transition: colorShown ? 'opacity 0.6s ease' : 'none',
+      }}>
+        {emoji}
+      </span>
+      {/* Canvas-generated true black silhouette */}
+      {dataUrl && !colorShown && (
+        <img
+          src={dataUrl}
+          width={size} height={size}
+          style={{ display: 'block', position: 'absolute', inset: 0 }}
+          alt=""
+        />
+      )}
+    </div>
+  )
+}
 
 /**
  * Schattenrätsel — Visuelle Wahrnehmung & Kategorisierung
@@ -213,29 +273,9 @@ export default function ShadowGame({ level = 1, onComplete }) {
               : { left:`${shadowPos.leftPct}%`, top:`${shadowPos.topPct}%`, x:'-50%', y:'-50%', rotate:shadowRotate, scale:1 }
             }
             transition={{ type:'spring', stiffness:140, damping:16 }}
-            style={{ position:'absolute', pointerEvents:'none', lineHeight:1, userSelect:'none' }}
+            style={{ position:'absolute', pointerEvents:'none', userSelect:'none' }}
           >
-            {/* Colored emoji — only visible after colorShown */}
-            <span style={{
-              fontSize:'clamp(140px,25vw,220px)', display:'block', lineHeight:1,
-              opacity: colorShown ? 1 : 0,
-              transition: colorShown ? 'opacity 0.6s ease' : 'none',
-              position: colorShown ? 'relative' : 'absolute',
-            }}>
-              {ch.shadow}
-            </span>
-            {/* True black silhouette via text-shadow trick — color:transparent hides emoji colors,
-                text-shadow fills the exact shape with solid black */}
-            {!colorShown && (
-              <span style={{
-                fontSize:'clamp(140px,25vw,220px)', display:'block', lineHeight:1,
-                color: 'transparent',
-                textShadow: '0 0 0 #000000',
-                WebkitTextStroke: '0px transparent',
-              }}>
-                {ch.shadow}
-              </span>
-            )}
+            <EmojiSilhouette emoji={ch.shadow} colorShown={colorShown} />
           </motion.div>
 
           {/* Dark overlay with flashlight — only before answer */}
