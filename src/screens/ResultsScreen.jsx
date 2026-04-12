@@ -62,9 +62,9 @@ export default function ResultsScreen() {
       else if (stars >= 1) sfx.correct()
     }, 350)
     const v = setTimeout(() => {
-      if (stars >= 2)      voice.play('/audio/allgemein/das-hast-du-super-gemacht.mp3')
-      else if (stars >= 1) voice.play('/audio/allgemein/ja-super.mp3')
-      else                 voice.play('/audio/allgemein/klasse-versuch-es-direkt-noch-einmal.mp3')
+      if (stars >= 2)      voice.play('audio/allgemein/das-hast-du-super-gemacht.mp3')
+      else if (stars >= 1) voice.play('audio/allgemein/ja-super.mp3')
+      else                 voice.play('audio/allgemein/klasse-versuch-es-direkt-noch-einmal.mp3')
     }, 900)
     return () => { clearTimeout(t); clearTimeout(v); voice.stop() }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
