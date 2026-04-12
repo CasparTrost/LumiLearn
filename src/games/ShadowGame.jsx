@@ -93,8 +93,8 @@ export default function ShadowGame({ level = 1, onComplete }) {
     : level <= 5 ? (idx % 2 === 0 ? -16 : 16)
     : (idx % 3 === 0 ? -32 : idx % 3 === 1 ? 32 : -16)
   const shadowPos = useMemo(() => ({
-    dx: Math.round((Math.random() - 0.5) * 120),  // ±60px horizontal
-    dy: Math.round((Math.random() - 0.5) * 80),   // ±40px vertical
+    dx: Math.round((Math.random() - 0.5) * 260),  // ±130px horizontal
+    dy: Math.round((Math.random() - 0.5) * 160),  // ±80px vertical
   }), [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Flashlight — direct DOM mutation, zero React re-renders
@@ -286,8 +286,8 @@ export default function ShadowGame({ level = 1, onComplete }) {
                 exit={{ opacity:0, y:8 }}
                 transition={{ delay: selected === ch.shadow ? 0.5 : 0 }}
                 style={{
-                  position:'absolute', bottom:18, left:'50%', transform:'translateX(-50%)',
-                  zIndex:12, width:'90%', maxWidth:420,
+                  position:'absolute', bottom:16, left:'50%', transform:'translateX(-50%)',
+                  zIndex:12, width:'88%', maxWidth:440, textAlign:'center',
                   background: selected === ch.shadow ? 'rgba(30,70,30,0.95)' : 'rgba(80,20,20,0.95)',
                   border:`2px solid ${selected === ch.shadow ? '#6BCB77' : '#FF6B6B'}`,
                   borderRadius:16, padding:'12px 20px',
