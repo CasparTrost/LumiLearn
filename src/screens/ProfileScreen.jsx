@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useApp } from '../AppContext.jsx'
+import { useT } from '../i18n.js'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import Button from '../components/Button.jsx'
 
@@ -75,7 +76,7 @@ function NameInput({ value, onChange }) {
       <div style={{ position:'relative' }}>
         <input
           type="text"
-          placeholder="Type your name..."
+          placeholder={t('profile.namePlaceholder')}
           value={value}
           maxLength={20}
           onChange={e => onChange(e.target.value)}
@@ -152,6 +153,7 @@ function AgePicker({ value, onChange }) {
 }
 
 function CreateProfileForm({ onSave, onCancel, showCancel }) {
+  const t = useT()
   const [name, setName] = useState('')
   const [age, setAge] = useState(null)
   const [avatar, setAvatar] = useState(null)
@@ -163,13 +165,13 @@ function CreateProfileForm({ onSave, onCancel, showCancel }) {
   const steps = [
     {
       title: 'Choose your character',
-      subtitle: 'Who do you want to be?',
+      subtitle: t('profile.whoDoYouWant'),
       content: <AvatarPicker value={avatar} onChange={setAvatar} />,
       canNext: canProceed,
     },
     {
-      title: avatar ? `Hi, ${avatar}!` : 'Almost there!',
-      subtitle: 'Tell us about yourself',
+      title: avatar ? `Hi, ${avatar}!` : t('profile.almostThere'),
+      subtitle: t('profile.tellUs'),
       content: (
         <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
           <NameInput value={name} onChange={setName} />
@@ -265,7 +267,7 @@ function CreateProfileForm({ onSave, onCancel, showCancel }) {
               transition:'all 0.2s',
             }}
           >
-            {avatar && name ? `${avatar} Let's go, ${name}! 🎉` : "Let's go! 🎉"}
+            {t('profile.letsGo')}
           </motion.button>
         )}
 
@@ -313,6 +315,7 @@ function CreateProfileForm({ onSave, onCancel, showCancel }) {
 }
 
 export default function ProfileScreen() {
+  const t = useT()
   const { state, dispatch } = useApp()
   const profiles = state.profiles ?? (state.profile ? [state.profile] : [])
   const [mode, setMode] = useState(profiles.length === 0 ? 'create' : 'select')
