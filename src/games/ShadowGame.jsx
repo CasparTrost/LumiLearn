@@ -82,6 +82,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
   const [selected,   setSelected] = useState(null)
   const [correct,    setCorrect]  = useState(0)
   const [showFact,   setShowFact] = useState(false)
+  const [revealed,   setRevealed]  = useState(false)
   const [mood,       setMood]     = useState('thinking')
 
   const ch      = challenges[idx]
@@ -91,11 +92,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
   const shadowRotate = level <= 2 ? 0
     : level <= 5 ? (idx % 2 === 0 ? -16 : 16)
     : (idx % 3 === 0 ? -32 : idx % 3 === 1 ? 32 : -16)
-  // Random pixel nudge from center — emoji stays large and never clips.
-  const shadowPos = useMemo(() => ({
-    dx: Math.round((Math.random() - 0.5) * 80),  // ±40px horizontal
-    dy: Math.round((Math.random() - 0.5) * 80),  // ±40px vertical
-  }), [idx]) // eslint-disable-line react-hooks/exhaustive-deps
+  const shadowPos = { dx: 0, dy: 0 }
 
   // Flashlight — direct DOM mutation, zero React re-renders
   const cardRef    = useRef(null)
@@ -127,7 +124,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
     const nc = correct + (ok ? 1 : 0)
     setSelected(emoji)
     setMood(ok ? 'excited' : 'encouraging')
-    if (ok) setCorrect(nc)
+    if (ok) { setCorrect(nc); setRevealed(true) }
     setShowFact(true)
 
     setTimeout(() => {
@@ -139,6 +136,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
           setIdx(i => i + 1)
           setSelected(null)
           setMood('thinking')
+          setRevealed(false)
         }
       }, 200)
     }, 1800)
@@ -199,23 +197,46 @@ export default function ShadowGame({ level = 1, onComplete }) {
             touchAction:'none',
           }}
         >
-          {/* Silhouette — positioned directly in card, safe margin baked into range */}
-          <motion.span
-            animate={{ rotate: shadowRotate }}
-            transition={{ type:'spring', stiffness:200 }}
+          {/* Silhouette — centered, animates to reveal on correct answer */}
+          <motion.div
+            animate={{
+              rotate: revealed ? 0 : shadowRotate,
+              scale: revealed ? 1.15 : 1,
+            }}
+            transition={{ type:'spring', stiffness:200, damping:16 }}
             style={{
-              fontSize:'clamp(180px,30vw,260px)', lineHeight:1, display:'block', userSelect:'none',
+              fontSize:'clamp(180px,30vw,260px)', lineHeight:1, userSelect:'none',
               position:'absolute',
               left: '50%',
               top:  '50%',
-              transform:`translate(calc(-50% + ${shadowPos.dx}px), calc(-50% + ${shadowPos.dy}px))`,
+              transform: 'translate(-50%, -50%)',
               pointerEvents:'none',
+              display:'flex', alignItems:'center', justifyContent:'center',
+              flexDirection:'column', gap:8,
             }}
           >
-            <span style={{ filter:'contrast(0) brightness(0)', display:'block' }}>
+            <span style={{
+              filter: revealed ? 'none' : 'contrast(0) brightness(0) saturate(0)',
+              display:'block',
+              transition: 'filter 0.5s ease',
+            }}>
               {ch.shadow}
             </span>
-          </motion.span>
+            {revealed && (
+              <motion.div
+                initial={{ opacity:0, y:8 }}
+                animate={{ opacity:1, y:0 }}
+                style={{
+                  fontFamily:'var(--font-heading)', fontSize:'clamp(18px,4vw,28px)',
+                  color:'white', textAlign:'center',
+                  textShadow:'0 2px 8px rgba(0,0,0,0.8)',
+                  background:'rgba(0,0,0,0.5)', borderRadius:12, padding:'6px 16px',
+                }}
+              >
+                {ch.name}
+              </motion.div>
+            )}
+          </motion.div>
 
           {/* Flashlight overlay — background mutated directly via ref, no re-renders */}
           {selected === null && (
@@ -309,7 +330,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
         })}
       </div>
 
-      <p style={{ fontFamily:'var(--font-heading)', fontSize:17, color:'var(--text-muted)' }}>
+      <p style={{ fontFamily:'var(--font-heading)', fontSize:17, color:'var(--text-muted)', textAlign:'center', width:'100%' }}>
         ✅ {correct} von {Math.min(idx + (selected !== null ? 1 : 0), challenges.length)} richtig
       </p>
     </div>
