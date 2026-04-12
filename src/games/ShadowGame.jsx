@@ -92,7 +92,10 @@ export default function ShadowGame({ level = 1, onComplete }) {
   const shadowRotate = level <= 2 ? 0
     : level <= 5 ? (idx % 2 === 0 ? -16 : 16)
     : (idx % 3 === 0 ? -32 : idx % 3 === 1 ? 32 : -16)
-  const shadowPos = { dx: 0, dy: 0 }
+  const shadowPos = useMemo(() => ({
+    dx: Math.round((Math.random() - 0.5) * 120),  // ±60px horizontal
+    dy: Math.round((Math.random() - 0.5) * 80),   // ±40px vertical
+  }), [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Flashlight — direct DOM mutation, zero React re-renders
   const cardRef    = useRef(null)
@@ -197,34 +200,48 @@ export default function ShadowGame({ level = 1, onComplete }) {
             touchAction:'none',
           }}
         >
-          {/* Silhouette — true black via mix-blend-mode, reveal animation on correct */}
+          {/* Silhouette — random position, animates to center on correct answer */}
           <motion.div
             animate={revealed
-              ? { x: '-50%', y: '-50%', rotate: 0, scale: 1.2 }
-              : { x: '-50%', y: '-50%', rotate: shadowRotate, scale: 1 }
+              ? {
+                  left: '50%',
+                  top: '50%',
+                  x: '-50%',
+                  y: '-50%',
+                  rotate: 0,
+                  scale: 1.15,
+                }
+              : {
+                  left: '50%',
+                  top: '50%',
+                  x: `calc(-50% + ${shadowPos.dx}px)`,
+                  y: `calc(-50% + ${shadowPos.dy}px)`,
+                  rotate: shadowRotate,
+                  scale: 1,
+                }
             }
-            transition={{ type:'spring', stiffness:180, damping:18 }}
+            transition={{ type:'spring', stiffness:160, damping:18 }}
             style={{
-              position:'absolute', left:'50%', top:'50%',
+              position:'absolute',
               pointerEvents:'none',
-              display:'flex', flexDirection:'column', alignItems:'center', gap:12,
+              display:'flex', alignItems:'center', justifyContent:'center',
             }}
           >
-            {/* Emoji rendered, then blacked out via overlay */}
             <div style={{ position:'relative', lineHeight:1, userSelect:'none' }}>
+              {/* Colored emoji — visible only after reveal */}
               <span style={{
-                fontSize:'clamp(180px,30vw,260px)',
+                fontSize:'clamp(160px,28vw,240px)',
                 display:'block',
                 opacity: revealed ? 1 : 0,
-                transition: 'opacity 0s',
+                transition: revealed ? 'opacity 0.4s ease 0.3s' : 'none',
               }}>
                 {ch.shadow}
               </span>
-              {/* Black silhouette overlay — same emoji, grayscale+darken */}
+              {/* True black silhouette — stacked on top until revealed */}
               {!revealed && (
                 <span style={{
                   position:'absolute', inset:0,
-                  fontSize:'clamp(180px,30vw,260px)',
+                  fontSize:'clamp(160px,28vw,240px)',
                   display:'flex', alignItems:'center', justifyContent:'center',
                   filter:'grayscale(1) brightness(0)',
                   WebkitFilter:'grayscale(1) brightness(0)',
@@ -233,26 +250,6 @@ export default function ShadowGame({ level = 1, onComplete }) {
                 </span>
               )}
             </div>
-
-            {/* Name label — only after reveal animation completes */}
-            <AnimatePresence>
-              {revealed && (
-                <motion.div
-                  initial={{ opacity:0, y:12, scale:0.85 }}
-                  animate={{ opacity:1, y:0, scale:1 }}
-                  transition={{ delay:0.45, type:'spring', stiffness:260 }}
-                  style={{
-                    fontFamily:'var(--font-heading)', fontSize:'clamp(20px,4vw,30px)',
-                    color:'white', textAlign:'center',
-                    textShadow:'0 2px 12px rgba(0,0,0,0.9)',
-                    background:'rgba(0,0,0,0.55)', borderRadius:16,
-                    padding:'8px 20px', backdropFilter:'blur(4px)',
-                  }}
-                >
-                  {ch.name}
-                </motion.div>
-              )}
-            </AnimatePresence>
           </motion.div>
 
           {/* Flashlight overlay — background mutated directly via ref, no re-renders */}
@@ -280,21 +277,29 @@ export default function ShadowGame({ level = 1, onComplete }) {
             </div>
           )}
 
-          {/* Fun fact — absolute bottom center, above overlay */}
+          {/* Fun fact — bottom center, shown after reveal */}
           <AnimatePresence>
             {showFact && (
-              <motion.div initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }}
+              <motion.div
+                initial={{ opacity:0, y:16 }}
+                animate={{ opacity:1, y:0 }}
+                exit={{ opacity:0, y:8 }}
+                transition={{ delay: selected === ch.shadow ? 0.5 : 0 }}
                 style={{
                   position:'absolute', bottom:18, left:'50%', transform:'translateX(-50%)',
-                  zIndex:12,
-                  background: selected === ch.shadow ? 'rgba(40,80,40,0.92)' : 'rgba(80,20,20,0.92)',
+                  zIndex:12, width:'90%', maxWidth:420,
+                  background: selected === ch.shadow ? 'rgba(30,70,30,0.95)' : 'rgba(80,20,20,0.95)',
                   border:`2px solid ${selected === ch.shadow ? '#6BCB77' : '#FF6B6B'}`,
-                  borderRadius:14, padding:'10px 18px',
+                  borderRadius:16, padding:'12px 20px',
                   fontFamily:'var(--font-body)', fontSize:'clamp(12px,2.5vw,15px)',
-                  color:'white', textAlign:'center', maxWidth:380, whiteSpace:'nowrap',
+                  color:'white', textAlign:'center',
+                  backdropFilter:'blur(8px)',
                 }}
               >
-                {selected === ch.shadow ? `✅ Richtig! ${ch.fact}` : `❌ Es war: ${ch.shadow} ${ch.name}. ${ch.fact}`}
+                {selected === ch.shadow
+                  ? <><strong>✅ Richtig!</strong> {ch.fact}</>
+                  : <><strong>❌ Es war: {ch.shadow} {ch.name}.</strong> {ch.fact}</>
+                }
               </motion.div>
             )}
           </AnimatePresence>
