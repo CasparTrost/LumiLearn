@@ -75,7 +75,7 @@ function getLevel(n) {
   if (n<=2) return 1; if (n<=5) return 2; if (n<=8) return 3
   if (n<=12) return 4; if (n<=16) return 5; return 6
 }
-const LABELS  = ['','Kleiner Hof','Wachsender Hof','Blühender Hof','Großer Hof','Prächtiger Hof','Traumhof']
+const LABELS  = ['','Kleiner Hof','Wachsender Hof','Bluehender Hof','Grosser Hof','Pr?chtiger Hof','Traumhof']
 const NEXT_AT = [0,3,6,9,13,17,Infinity]
 const SKY_CLR = ['','#5b8dd9','#5b8dd9','#3d6abf','#2d5aaa','#1d4a95','#0d3080']
 const CLD_CLR = ['','#e8e8e8','#e8e8e8','#c8d8f0','#b8c8e8','#a8b8d8','#8898c8']
@@ -83,7 +83,7 @@ const CLD_CLR = ['','#e8e8e8','#e8e8e8','#c8d8f0','#b8c8e8','#a8b8d8','#8898c8']
 function Sparkle({ x, y }) {
   return (
     <div style={{ position:'absolute', left:x, top:y, pointerEvents:'none', zIndex:40 }}>
-      {['★','✦','·'].map((c,i) => (
+      {['*','+','.'].map((c,i) => (
         <motion.div key={i} initial={{opacity:1,x:0,y:0}} animate={{opacity:0,x:(i-1)*20,y:-35}}
           transition={{duration:.7,delay:i*.06}}
           style={{position:'absolute',color:'#FFD93D',fontSize:16,fontFamily:'monospace',fontWeight:'bold'}}>
