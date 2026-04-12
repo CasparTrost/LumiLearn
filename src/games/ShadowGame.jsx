@@ -190,14 +190,15 @@ export default function ShadowGame({ level = 1, onComplete }) {
           onPointerMove={onPointerMove}
           onPointerLeave={onPointerLeave}
           style={{
-            background:'#0a0015',
+            background: revealed ? '#fff8e8' : '#f0eeff',
+            transition: 'background 0.5s ease',
             borderRadius:32,
             padding:0,
             boxShadow:'0 12px 44px rgba(74,0,224,0.45)',
             width:'100%', maxWidth:820,
             height:'clamp(340px,52vw,560px)',
             position:'relative', overflow:'hidden',
-            cursor:'crosshair',
+            cursor: revealed ? 'default' : 'crosshair',
             touchAction:'none',
           }}
         >
@@ -216,24 +217,18 @@ export default function ShadowGame({ level = 1, onComplete }) {
           >
             {/* Emoji container */}
             <div style={{ position: 'relative', lineHeight: 1, userSelect: 'none' }}>
-              {/* Colored emoji — fades in after moving to center */}
+              {/* Single emoji — grayscale+brightness(0) when hidden, full color when revealed */}
               <motion.span
-                animate={{ opacity: revealed ? 1 : 0, filter: revealed ? 'none' : 'grayscale(1) brightness(0)' }}
-                transition={{ delay: revealed ? 0.5 : 0, duration: 0.6, ease: 'easeInOut' }}
-                style={{ fontSize: 'clamp(140px,25vw,220px)', display: 'block' }}
-              >
-                {ch.shadow}
-              </motion.span>
-              {/* Black silhouette overlay */}
-              <motion.span
-                animate={{ opacity: revealed ? 0 : 1 }}
-                transition={{ duration: 0.01, delay: revealed ? 0.45 : 0 }}
+                animate={{
+                  filter: revealed
+                    ? 'grayscale(0%) brightness(1)'
+                    : 'grayscale(100%) brightness(0%)',
+                }}
+                transition={{ delay: revealed ? 0.4 : 0, duration: 0.7, ease: 'easeInOut' }}
                 style={{
-                  position: 'absolute', inset: 0,
                   fontSize: 'clamp(140px,25vw,220px)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  filter: 'grayscale(1) brightness(0)',
-                  WebkitFilter: 'grayscale(1) brightness(0)',
+                  display: 'block',
+                  mixBlendMode: 'multiply',
                 }}
               >
                 {ch.shadow}
@@ -241,8 +236,8 @@ export default function ShadowGame({ level = 1, onComplete }) {
             </div>
           </motion.div>
 
-          {/* Flashlight overlay — background mutated directly via ref, no re-renders */}
-          {selected === null && (
+          {/* Flashlight overlay — hidden when answer revealed */}
+          {selected === null && !revealed && (
             <div
               ref={overlayRef}
               style={{
