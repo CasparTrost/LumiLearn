@@ -92,9 +92,10 @@ export default function ShadowGame({ level = 1, onComplete }) {
   const shadowRotate = level <= 2 ? 0
     : level <= 5 ? (idx % 2 === 0 ? -16 : 16)
     : (idx % 3 === 0 ? -32 : idx % 3 === 1 ? 32 : -16)
+  // Percentage-based position: 15%–85% range keeps emoji away from edges
   const shadowPos = useMemo(() => ({
-    dx: Math.round((Math.random() - 0.5) * 260),  // ±130px horizontal
-    dy: Math.round((Math.random() - 0.5) * 160),  // ±80px vertical
+    leftPct: 15 + Math.random() * 70,   // 15% to 85%
+    topPct:  15 + Math.random() * 70,   // 15% to 85%
   }), [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Flashlight — direct DOM mutation, zero React re-renders
@@ -200,55 +201,44 @@ export default function ShadowGame({ level = 1, onComplete }) {
             touchAction:'none',
           }}
         >
-          {/* Silhouette — random position, animates to center on correct answer */}
+          {/* Silhouette — random position, smooth reveal to center */}
           <motion.div
             animate={revealed
-              ? {
-                  left: '50%',
-                  top: '50%',
-                  x: '-50%',
-                  y: '-50%',
-                  rotate: 0,
-                  scale: 1.15,
-                }
-              : {
-                  left: '50%',
-                  top: '50%',
-                  x: `calc(-50% + ${shadowPos.dx}px)`,
-                  y: `calc(-50% + ${shadowPos.dy}px)`,
-                  rotate: shadowRotate,
-                  scale: 1,
-                }
+              ? { left: '50%', top: '50%', rotate: 0, scale: 1.2 }
+              : { left: `${shadowPos.leftPct}%`, top: `${shadowPos.topPct}%`, rotate: shadowRotate, scale: 1 }
             }
-            transition={{ type:'spring', stiffness:160, damping:18 }}
+            transition={{ type: 'spring', stiffness: 140, damping: 16, duration: 0.6 }}
             style={{
-              position:'absolute',
-              pointerEvents:'none',
-              display:'flex', alignItems:'center', justifyContent:'center',
+              position: 'absolute',
+              transform: 'translate(-50%, -50%)',
+              pointerEvents: 'none',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
             }}
           >
-            <div style={{ position:'relative', lineHeight:1, userSelect:'none' }}>
-              {/* Colored emoji — visible only after reveal */}
-              <span style={{
-                fontSize:'clamp(160px,28vw,240px)',
-                display:'block',
-                opacity: revealed ? 1 : 0,
-                transition: revealed ? 'opacity 0.4s ease 0.3s' : 'none',
-              }}>
+            {/* Emoji container */}
+            <div style={{ position: 'relative', lineHeight: 1, userSelect: 'none' }}>
+              {/* Colored emoji — fades in after moving to center */}
+              <motion.span
+                animate={{ opacity: revealed ? 1 : 0, filter: revealed ? 'none' : 'grayscale(1) brightness(0)' }}
+                transition={{ delay: revealed ? 0.5 : 0, duration: 0.6, ease: 'easeInOut' }}
+                style={{ fontSize: 'clamp(140px,25vw,220px)', display: 'block' }}
+              >
                 {ch.shadow}
-              </span>
-              {/* True black silhouette — stacked on top until revealed */}
-              {!revealed && (
-                <span style={{
-                  position:'absolute', inset:0,
-                  fontSize:'clamp(160px,28vw,240px)',
-                  display:'flex', alignItems:'center', justifyContent:'center',
-                  filter:'grayscale(1) brightness(0)',
-                  WebkitFilter:'grayscale(1) brightness(0)',
-                }}>
-                  {ch.shadow}
-                </span>
-              )}
+              </motion.span>
+              {/* Black silhouette overlay */}
+              <motion.span
+                animate={{ opacity: revealed ? 0 : 1 }}
+                transition={{ duration: 0.01, delay: revealed ? 0.45 : 0 }}
+                style={{
+                  position: 'absolute', inset: 0,
+                  fontSize: 'clamp(140px,25vw,220px)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  filter: 'grayscale(1) brightness(0)',
+                  WebkitFilter: 'grayscale(1) brightness(0)',
+                }}
+              >
+                {ch.shadow}
+              </motion.span>
             </div>
           </motion.div>
 
