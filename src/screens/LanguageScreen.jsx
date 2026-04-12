@@ -9,7 +9,7 @@ const LANGUAGES = [
     id: 'de',
     flag: '🇩🇪',
     name: 'Deutsch',
-    sub: 'Auf Deutsch lernen',
+    sub: 'Learn in German',
     gradient: 'linear-gradient(135deg, #FF6B6B, #EE0979)',
     shadow: 'rgba(238,9,121,0.35)',
   },
@@ -51,10 +51,10 @@ export default function LanguageScreen() {
       >
         <LumiCharacter mood="happy" size={110} />
         <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(26px, 6vw, 38px)', color: 'white', marginTop: 12 }}>
-          Wähle deine Sprache
+          Choose your language
         </h1>
         <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 16, marginTop: 6 }}>
-          Choose your language
+          Wähle deine Sprache
         </p>
       </motion.div>
 
@@ -105,7 +105,7 @@ export default function LanguageScreen() {
                     fontFamily: 'var(--font-heading)',
                   }}
                 >
-                  ✓ Ausgewählt
+                  ✓ Selected
                 </motion.div>
               )}
             </motion.button>
@@ -114,7 +114,7 @@ export default function LanguageScreen() {
       </div>
 
       <Button size="lg" variant="gold" disabled={!selected} onClick={confirm}>
-        Weiter →
+        Continue →
       </Button>
     </div>
   )
