@@ -2,6 +2,7 @@
 import { motion } from 'framer-motion'
 import { Settings } from 'lucide-react'
 import { useApp } from '../AppContext.jsx'
+import { useT } from '../i18n.js'
 import { MAX_LEVELS } from '../AppContext.jsx'
 import StarRow from '../components/StarRow.jsx'
 import LumiCharacter from '../components/LumiCharacter.jsx'
@@ -65,11 +66,41 @@ function LumiWithOrbit({ completedCount, size }) {
 }
 
 export default function HomeScreen() {
+  const t = useT()
   const { state, dispatch } = useApp()
   const profile  = state.profile  ?? { name:'Lumi', avatar:'🦊' }
   const progress = state.progress ?? {}
   const completedCount = Object.values(progress).filter(p => p?.completed).length
 
+  const getModuleTitle = (id, fallback) => t('module.' + id, fallback)
+  const getModuleSub = (id) => {
+    const subs = {
+      de: {
+        'number-intro':'Zahlen 1–10','letter-intro':'Das Alphabet erleben',
+        'emotions':'Emotionen erkennen','listen':'Hören & Erkennen',
+        'shadows':'Silhouetten erkennen','shapes':'Formen bemalen',
+        'numbers':'Zählen & Rechnen','letters':'Buchstaben tippen',
+        'words2':'Wörter zusammenbauen','bubbles':'Zahlen-Blasen poppen',
+        'words':'Paare finden','patterns':'Reihen & Logik',
+        'sort':'Alles an seinen Platz','weight':'Was ist schwerer?',
+        'clock':'Zeit lesen & stellen','maze':'Weg durchs Labyrinth',
+        'stories':'Entscheide die Story',
+      },
+      en: {
+        'number-intro':'Numbers 1–10','letter-intro':'Explore the Alphabet',
+        'emotions':'Recognize Emotions','listen':'Listen & Identify',
+        'shadows':'Identify Silhouettes','shapes':'Paint Shapes',
+        'numbers':'Count & Calculate','letters':'Type Letters',
+        'words2':'Build Words','bubbles':'Pop Number Bubbles',
+        'words':'Find Pairs','patterns':'Sequences & Logic',
+        'sort':'Sort Everything','weight':'What is heavier?',
+        'clock':'Read & Set Clocks','maze':'Find the Path',
+        'stories':'Choose the Story',
+      }
+    }
+    const lang = state.language ?? 'en'
+    return (subs[lang] ?? subs.en)[id] ?? ''
+  }
   const startModule = (mod) => {
     const p = progress[mod.id] ?? { currentLevel:1 }
     dispatch({ type:'START_GAME', payload:{ moduleId: mod.id, level: p.currentLevel ?? 1 } })
@@ -222,10 +253,10 @@ export default function HomeScreen() {
 
                 <div style={{ zIndex:1 }}>
                   <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(17px,3.8vw,24px)', color:'white', fontWeight:700, lineHeight:1.1 }}>
-                    {mod.title}
+                    {getModuleTitle(mod.id, mod.title)}
                   </div>
                   <div style={{ fontFamily:'var(--font-body)', fontSize:'clamp(12px,2.5vw,15px)', color:'rgba(255,255,255,0.85)', marginTop:3 }}>
-                    {mod.sub}
+                    {getModuleSub(mod.id) || mod.sub}
                   </div>
                 </div>
               </div>
