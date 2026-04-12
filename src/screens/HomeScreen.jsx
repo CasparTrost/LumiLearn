@@ -6,6 +6,7 @@ import { useT } from '../i18n.js'
 import { MAX_LEVELS } from '../AppContext.jsx'
 import StarRow from '../components/StarRow.jsx'
 import LumiCharacter from '../components/LumiCharacter.jsx'
+import FarmProgress from '../components/FarmProgress.jsx'
 
 // ── All modules ───────────────────────────────────────────────────────────────
 const MODULES = [
