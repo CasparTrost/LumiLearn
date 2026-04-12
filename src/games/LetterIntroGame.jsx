@@ -31,7 +31,7 @@ const LETTER_DATA = {
 const ALL_LETTERS = Object.keys(LETTER_DATA)
 
 // ─── Voice audio ─────────────────────────────────────────────────────────────
-const ABC = '/audio/abc-abenteuer/'
+const ABC = 'audio/abc-abenteuer/'
 const LETTER_INFO_AUDIO = {
   A: ABC + 'a-ist-der-1-buchstabe-des-alphabets-und-ein-vokal.mp3',
   B: ABC + 'b-ist-der-2-buchstabe-des-alphabets.mp3',
