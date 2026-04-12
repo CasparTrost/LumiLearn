@@ -213,15 +213,29 @@ export default function ShadowGame({ level = 1, onComplete }) {
               : { left:`${shadowPos.leftPct}%`, top:`${shadowPos.topPct}%`, x:'-50%', y:'-50%', rotate:shadowRotate, scale:1 }
             }
             transition={{ type:'spring', stiffness:140, damping:16 }}
-            style={{ position:'absolute', pointerEvents:'none' }}
+            style={{ position:'absolute', pointerEvents:'none', lineHeight:1, userSelect:'none' }}
           >
-            <motion.span
-              animate={{ filter: colorShown ? 'brightness(1)' : 'brightness(0)' }}
-              transition={{ duration:0.6, ease:'easeInOut' }}
-              style={{ fontSize:'clamp(140px,25vw,220px)', display:'block', lineHeight:1, userSelect:'none' }}
-            >
+            {/* Colored emoji — only visible after colorShown */}
+            <span style={{
+              fontSize:'clamp(140px,25vw,220px)', display:'block', lineHeight:1,
+              opacity: colorShown ? 1 : 0,
+              transition: colorShown ? 'opacity 0.6s ease' : 'none',
+              position: colorShown ? 'relative' : 'absolute',
+            }}>
               {ch.shadow}
-            </motion.span>
+            </span>
+            {/* True black silhouette via text-shadow trick — color:transparent hides emoji colors,
+                text-shadow fills the exact shape with solid black */}
+            {!colorShown && (
+              <span style={{
+                fontSize:'clamp(140px,25vw,220px)', display:'block', lineHeight:1,
+                color: 'transparent',
+                textShadow: '0 0 0 #000000',
+                WebkitTextStroke: '0px transparent',
+              }}>
+                {ch.shadow}
+              </span>
+            )}
           </motion.div>
 
           {/* Dark overlay with flashlight — only before answer */}
