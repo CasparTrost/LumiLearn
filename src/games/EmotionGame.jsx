@@ -67,7 +67,7 @@ const EMOTION_ICON = {
 }
 
 // ─── Voice audio ─────────────────────────────────────────────────────────────
-const GEF = '/audio/gefuehlswelt/'
+const GEF = 'audio/gefuehlswelt/'
 const EMOTION_AUDIO = {
   'Glücklich':    GEF + 'lumi-war-gluecklich.mp3',
   'Traurig':      GEF + 'lumi-war-traurig.mp3',
