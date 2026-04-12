@@ -78,27 +78,24 @@ function shuffle(a) { return [...a].sort(() => Math.random() - 0.5) }
 export default function ShadowGame({ level = 1, onComplete }) {
   const roundCount = level <= 4 ? 8 : level <= 7 ? 10 : 12
   const [challenges] = useState(() => shuffle(CHALLENGES).slice(0, roundCount))
-  const [idx,        setIdx]      = useState(0)
-  const [selected,   setSelected] = useState(null)
-  const [correct,    setCorrect]  = useState(0)
-  const [showFact,   setShowFact] = useState(false)
-  const [revealed,   setRevealed]  = useState(false)
-  const [mood,       setMood]     = useState('thinking')
+  const [idx,          setIdx]         = useState(0)
+  const [selected,     setSelected]    = useState(null)
+  const [correct,      setCorrect]     = useState(0)
+  const [showFact,     setShowFact]    = useState(false)
+  const [revealed,     setRevealed]    = useState(false)   // moves to center
+  const [colorShown,   setColorShown]  = useState(false)   // becomes colorful
+  const [mood,         setMood]        = useState('thinking')
 
   const ch      = challenges[idx]
-  // Freeze option order per question
-  const options = useMemo(() => ch ? shuffle([ch.shadow, ...ch.decoys]) : [], [idx]) // eslint-disable-line react-hooks/exhaustive-deps
-  // On higher levels the shadow rotates more aggressively
+  const options = useMemo(() => ch ? shuffle([ch.shadow, ...ch.decoys]) : [], [idx]) // eslint-disable-line
   const shadowRotate = level <= 2 ? 0
     : level <= 5 ? (idx % 2 === 0 ? -16 : 16)
     : (idx % 3 === 0 ? -32 : idx % 3 === 1 ? 32 : -16)
-  // Percentage-based: 25%–75% range so large emoji stays fully inside card
   const shadowPos = useMemo(() => ({
-    leftPct: 25 + Math.random() * 50,   // 25% to 75%
-    topPct:  20 + Math.random() * 45,   // 20% to 65% (more top space, fact text at bottom)
-  }), [idx]) // eslint-disable-line react-hooks/exhaustive-deps
+    leftPct: 22 + Math.random() * 56,  // 22%–78%
+    topPct:  18 + Math.random() * 44,  // 18%–62%
+  }), [idx]) // eslint-disable-line
 
-  // Flashlight — direct DOM mutation, zero React re-renders
   const cardRef    = useRef(null)
   const overlayRef = useRef(null)
 
@@ -109,7 +106,6 @@ export default function ShadowGame({ level = 1, onComplete }) {
     const rect = card.getBoundingClientRect()
     const x = ((e.clientX - rect.left) / rect.width  * 100).toFixed(1)
     const y = ((e.clientY - rect.top)  / rect.height * 100).toFixed(1)
-    // mask: black = overlay visible (dark), transparent = overlay hidden (emoji shows through)
     const mask = `radial-gradient(circle 90px at ${x}% ${y}%, transparent 0%, transparent 35px, black 80px, black 90px)`
     overlay.style.maskImage = mask
     overlay.style.webkitMaskImage = mask
@@ -128,7 +124,11 @@ export default function ShadowGame({ level = 1, onComplete }) {
     const nc = correct + (ok ? 1 : 0)
     setSelected(emoji)
     setMood(ok ? 'excited' : 'encouraging')
-    if (ok) { setCorrect(nc); setRevealed(true) }
+    if (ok) {
+      setCorrect(nc)
+      setRevealed(true)                          // phase 1: move to center
+      setTimeout(() => setColorShown(true), 700) // phase 2: become colorful
+    }
     setShowFact(true)
 
     setTimeout(() => {
@@ -141,6 +141,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
           setSelected(null)
           setMood('thinking')
           setRevealed(false)
+          setColorShown(false)
         }
       }, 200)
     }, 3200)
@@ -176,24 +177,27 @@ export default function ShadowGame({ level = 1, onComplete }) {
           color:'var(--text-primary)',
           boxShadow:'0 4px 20px rgba(162,155,254,0.15)',
         }}>
-          {selected === null ? 'Leuchte mit der Taschenlampe über den Schatten! 🔦' : showFact ? (selected === ch.shadow ? '✅ Richtig erkannt!' : `❌ Es war: ${ch.shadow} ${ch.name}`) : '...'}
+          {selected === null
+            ? 'Leuchte mit der Taschenlampe über den Schatten! 🔦'
+            : showFact
+              ? (selected === ch.shadow ? '✅ Richtig erkannt!' : `❌ Es war: ${ch.shadow} ${ch.name}`)
+              : '...'}
         </div>
       </div>
 
-      {/* Shadow display — dark room with flashlight */}
+      {/* Shadow card */}
       <AnimatePresence mode="wait">
         <motion.div key={idx}
           initial={{ scale:0.75, opacity:0 }} animate={{ scale:1, opacity:1 }}
           exit={{ scale:0.75, opacity:0 }}
           transition={{ type:'spring', stiffness:260, damping:20 }}
           ref={cardRef}
-          onPointerMove={onPointerMove}
-          onPointerLeave={onPointerLeave}
+          onPointerMove={!revealed ? onPointerMove : undefined}
+          onPointerLeave={!revealed ? onPointerLeave : undefined}
           style={{
-            background: revealed ? '#fff8e8' : '#f0eeff',
-            transition: 'background 0.5s ease',
+            background: '#ffffff',
+            transition: 'background 0.4s ease',
             borderRadius:32,
-            padding:0,
             boxShadow:'0 12px 44px rgba(74,0,224,0.45)',
             width:'100%', maxWidth:820,
             height:'clamp(340px,52vw,560px)',
@@ -202,42 +206,26 @@ export default function ShadowGame({ level = 1, onComplete }) {
             touchAction:'none',
           }}
         >
-          {/* Silhouette — random position, smooth reveal to center */}
+          {/* Silhouette — random pos, animates to center on correct */}
           <motion.div
             animate={revealed
-              ? { left: '50%', top: '50%', x: '-50%', y: '-50%', rotate: 0, scale: 1.2 }
-              : { left: `${shadowPos.leftPct}%`, top: `${shadowPos.topPct}%`, x: '-50%', y: '-50%', rotate: shadowRotate, scale: 1 }
+              ? { left:'50%', top:'50%', x:'-50%', y:'-50%', rotate:0, scale:1.2 }
+              : { left:`${shadowPos.leftPct}%`, top:`${shadowPos.topPct}%`, x:'-50%', y:'-50%', rotate:shadowRotate, scale:1 }
             }
-            transition={{ type: 'spring', stiffness: 140, damping: 16 }}
-            style={{
-              position: 'absolute',
-              pointerEvents: 'none',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
-            }}
+            transition={{ type:'spring', stiffness:140, damping:16 }}
+            style={{ position:'absolute', pointerEvents:'none' }}
           >
-            {/* Emoji container */}
-            <div style={{ position: 'relative', lineHeight: 1, userSelect: 'none' }}>
-              {/* Single emoji — grayscale+brightness(0) when hidden, full color when revealed */}
-              <motion.span
-                animate={{
-                  filter: revealed
-                    ? 'grayscale(0%) brightness(1)'
-                    : 'grayscale(100%) brightness(0%)',
-                }}
-                transition={{ delay: revealed ? 0.4 : 0, duration: 0.7, ease: 'easeInOut' }}
-                style={{
-                  fontSize: 'clamp(140px,25vw,220px)',
-                  display: 'block',
-                  mixBlendMode: 'multiply',
-                }}
-              >
-                {ch.shadow}
-              </motion.span>
-            </div>
+            <motion.span
+              animate={{ filter: colorShown ? 'brightness(1)' : 'brightness(0)' }}
+              transition={{ duration:0.6, ease:'easeInOut' }}
+              style={{ fontSize:'clamp(140px,25vw,220px)', display:'block', lineHeight:1, userSelect:'none' }}
+            >
+              {ch.shadow}
+            </motion.span>
           </motion.div>
 
-          {/* Flashlight overlay — hidden when answer revealed */}
-          {selected === null && !revealed && (
+          {/* Dark overlay with flashlight — only before answer */}
+          {!revealed && (
             <div
               ref={overlayRef}
               style={{
@@ -248,7 +236,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
             />
           )}
 
-          {/* Torch hint when dark */}
+          {/* Torch hint */}
           {selected === null && (
             <div style={{
               position:'absolute', bottom:18, right:22, zIndex:11,
@@ -261,23 +249,20 @@ export default function ShadowGame({ level = 1, onComplete }) {
             </div>
           )}
 
-          {/* Fun fact — bottom center, shown after reveal */}
+          {/* Fact text — direct child of card, always bottom-center */}
           <AnimatePresence>
             {showFact && (
               <motion.div
                 initial={{ opacity:0, y:16 }}
                 animate={{ opacity:1, y:0 }}
                 exit={{ opacity:0, y:8 }}
-                transition={{ delay: selected === ch.shadow ? 0.5 : 0 }}
+                transition={{ delay: selected === ch.shadow ? 0.8 : 0 }}
                 style={{
                   position:'absolute',
                   bottom:16,
-                  left:0,
-                  right:0,
-                  margin:'0 auto',
-                  zIndex:12,
+                  left:'6%',
                   width:'88%',
-                  maxWidth:460,
+                  zIndex:20,
                   background: selected === ch.shadow ? 'rgba(30,70,30,0.95)' : 'rgba(80,20,20,0.95)',
                   border:`2px solid ${selected === ch.shadow ? '#6BCB77' : '#FF6B6B'}`,
                   borderRadius:16,
@@ -287,7 +272,6 @@ export default function ShadowGame({ level = 1, onComplete }) {
                   color:'white',
                   textAlign:'center',
                   backdropFilter:'blur(8px)',
-                  boxSizing:'border-box',
                 }}
               >
                 {selected === ch.shadow
@@ -302,23 +286,18 @@ export default function ShadowGame({ level = 1, onComplete }) {
 
       {/* Options */}
       <div style={{
-        display:'grid',
-        gridTemplateColumns:'repeat(2,1fr)',
-        gap:'clamp(10px,2vw,18px)',
-        width:'100%', maxWidth:700,
+        display:'grid', gridTemplateColumns:'repeat(2,1fr)',
+        gap:'clamp(10px,2vw,18px)', width:'100%', maxWidth:700,
       }}>
         {options.map((emoji, i) => {
           const isCorrect = emoji === ch.shadow
           const isChosen  = emoji === selected
           const done      = selected !== null
-
           let bg     = 'white'
           let border = '3px solid #ECE8FF'
           let shadow = '0 4px 16px rgba(0,0,0,0.06)'
-
           if (done && isCorrect)     { bg='#E8F8EE'; border='3px solid #6BCB77'; shadow='0 8px 28px rgba(107,203,119,0.4)' }
           else if (done && isChosen) { bg='#FFE8E8'; border='3px solid #FF6B6B' }
-
           return (
             <motion.button key={`${idx}-${i}`}
               initial={{ opacity:0, y:14 }} animate={{ opacity:1, y:0 }}
