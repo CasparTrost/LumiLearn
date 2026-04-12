@@ -153,14 +153,14 @@ export default function FarmProgress({ completedCount = 0, totalModules = 17 }) 
         </motion.div>
 
         <div style={{position:'absolute',left:8,bottom:60,zIndex:5}}>
-          <Sprite src={spr('house.png')} frameW={32} frameH={32} cols={7} frames={1} fps={1} scale={4} row={0}/>
+          <Sprite src={spr('house.png')} frameW={80} frameH={112} cols={1} frames={1} fps={1} scale={2} row={0}/>
         </div>
 
         <AnimatePresence>
           {show(2) && (
             <motion.div key="tree" initial={{scale:0,opacity:0}} animate={{scale:1,opacity:1}} transition={{type:'spring',stiffness:300}}
               style={{position:'absolute',left:145,bottom:62,zIndex:4}}>
-              <Sprite src={spr('tree.png')} frameW={16} frameH={16} cols={10} frames={3} fps={2} scale={4} row={0}/>
+              <Sprite src={spr('tree.png')} frameW={16} frameH={16} cols={10} frames={1} fps={1} scale={4} row={1}/>
             </motion.div>
           )}
         </AnimatePresence>
@@ -190,7 +190,7 @@ export default function FarmProgress({ completedCount = 0, totalModules = 17 }) 
             <motion.div key="cow" initial={{scale:0,opacity:0}} animate={{scale:1,opacity:1}} transition={{type:'spring',delay:.1}}
               style={{position:'absolute',left:260,bottom:58,zIndex:7,cursor:'pointer'}}
               onClick={()=>click('cow',sfx.moo,290,120)}>
-              <Sprite src={spr('cow.png')} frameW={16} frameH={16} cols={8} frames={8} fps={5} scale={4} row={2}/>
+              <Sprite src={spr('cow.png')} frameW={16} frameH={16} cols={8} frames={8} fps={5} scale={4} row={0}/>
             </motion.div>
           )}
         </AnimatePresence>
