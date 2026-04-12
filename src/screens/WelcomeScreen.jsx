@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { useApp } from '../AppContext.jsx'
+import { useT } from '../i18n.js'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import Button from '../components/Button.jsx'
 
@@ -20,10 +21,10 @@ function Orb({ x, y, size, color, delay }) {
 
 function StarBg() {
   const stars = Array.from({ length: 28 }, (_, i) => ({
-    x: `${Math.random() * 100}%`,
-    y: `${Math.random() * 100}%`,
-    r: Math.random() * 2.5 + 1,
-    delay: Math.random() * 3,
+    x: `${(i * 37) % 100}%`,
+    y: `${(i * 53) % 100}%`,
+    r: (i % 3) + 1,
+    delay: (i % 5) * 0.6,
   }))
   return (
     <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
@@ -39,18 +40,14 @@ function StarBg() {
 
 export default function WelcomeScreen() {
   const { dispatch } = useApp()
+  const t = useT()
 
   return (
     <div style={{
       minHeight: '100dvh',
       background: 'linear-gradient(160deg, #1A0050 0%, #4A00E0 40%, #8E2DE2 75%, #C64FCC 100%)',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      position: 'relative',
-      overflow: 'hidden',
-      padding: 24,
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      position: 'relative', overflow: 'hidden', padding: 24,
     }}>
       <StarBg />
       <Orb x="5%" y="10%" size={220} color="rgba(167,139,250,0.28)" delay={0} />
@@ -62,25 +59,20 @@ export default function WelcomeScreen() {
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 1, gap: 0 }}
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 1 }}
       >
         <motion.div
           animate={{ textShadow: ['0 0 20px rgba(255,217,61,0.5)', '0 0 40px rgba(255,217,61,0.9)', '0 0 20px rgba(255,217,61,0.5)'] }}
           transition={{ duration: 2.5, repeat: Infinity }}
           style={{
-            fontFamily: 'var(--font-heading)',
-            fontSize: 'clamp(42px, 10vw, 72px)',
-            fontWeight: 700,
-            color: '#FFD93D',
-            letterSpacing: '-1px',
-            lineHeight: 1,
-            marginBottom: 6,
+            fontFamily: 'var(--font-heading)', fontSize: 'clamp(42px, 10vw, 72px)',
+            fontWeight: 700, color: '#FFD93D', letterSpacing: '-1px', lineHeight: 1, marginBottom: 6,
           }}
         >
           LumiLearn
         </motion.div>
         <div style={{ fontFamily: 'var(--font-body)', fontSize: 'clamp(14px, 3vw, 18px)', color: 'rgba(255,255,255,0.75)', marginBottom: 36, letterSpacing: 1 }}>
-          ✨ Learning is fun ✨
+          {t('welcome.tagline')}
         </div>
 
         <LumiCharacter mood="excited" size={180} />
@@ -92,7 +84,7 @@ export default function WelcomeScreen() {
           style={{ marginTop: 32, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}
         >
           <div style={{ fontFamily: 'var(--font-body)', fontSize: 'clamp(15px, 3.5vw, 20px)', color: 'rgba(255,255,255,0.88)', textAlign: 'center', maxWidth: 340 }}>
-            Your personal learning companion for kids aged 3–7
+            {t('welcome.subtitle')}
           </div>
           <motion.div
             animate={{ y: [0, 6, 0] }}
@@ -100,7 +92,7 @@ export default function WelcomeScreen() {
             style={{ marginTop: 8 }}
           >
             <Button size="lg" variant="gold" onClick={() => dispatch({ type: 'NAVIGATE', payload: 'language' })}>
-              Let's go 🚀
+              {t('welcome.cta')}
             </Button>
           </motion.div>
         </motion.div>
