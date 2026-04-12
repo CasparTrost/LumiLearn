@@ -1,626 +1,271 @@
-import React, { useState, useRef } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
-// ── Web Audio API helpers ─────────────────────────────────────────────────────
-let _actx = null
-function getCtx() {
-  if (typeof window === 'undefined') return null
-  if (!_actx) {
-    try { _actx = new (window.AudioContext || window.webkitAudioContext)() } catch { return null }
-  }
-  if (_actx.state === 'suspended') _actx.resume().catch(() => {})
-  return _actx
+const BASE = import.meta.env.BASE_URL || '/LumiLearn/'
+const sprite = (name) => BASE + 'sprites/farm/' + name
+
+// ── Web Audio ─────────────────────────────────────────────────────────────────
+let _ac = null
+function getAc() {
+  if (!_ac) _ac = new (window.AudioContext || window.webkitAudioContext)()
+  if (_ac.state === 'suspended') _ac.resume()
+  return _ac
 }
-function tone(freq, type, delay, dur, vol = 0.20, freqEnd) {
-  const ac = getCtx(); if (!ac) return
+function tone(f, type, t0, dur, vol = 0.14) {
   try {
-    const t = ac.currentTime + delay
-    const osc = ac.createOscillator()
-    const g   = ac.createGain()
-    osc.connect(g); g.connect(ac.destination)
-    osc.type = type
-    osc.frequency.setValueAtTime(freq, t)
-    if (freqEnd) osc.frequency.exponentialRampToValueAtTime(freqEnd, t + dur)
-    g.gain.setValueAtTime(vol, t)
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
-    osc.start(t); osc.stop(t + dur + 0.02)
-  } catch { /* ignore */ }
+    const o = getAc().createOscillator(), g = getAc().createGain()
+    o.connect(g); g.connect(getAc().destination)
+    o.type = type; o.frequency.setValueAtTime(f, t0)
+    g.gain.setValueAtTime(vol, t0)
+    g.gain.exponentialRampToValueAtTime(0.001, t0 + dur)
+    o.start(t0); o.stop(t0 + dur + 0.05)
+  } catch {}
 }
-function noise(delay, dur, vol = 0.12, filterFreq = 2000) {
-  const ac = getCtx(); if (!ac) return
-  try {
-    const t       = ac.currentTime + delay
-    const bufSize = Math.floor(ac.sampleRate * Math.min(dur + 0.1, 1))
-    const buf     = ac.createBuffer(1, bufSize, ac.sampleRate)
-    const data    = buf.getChannelData(0)
-    for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1
-    const src  = ac.createBufferSource()
-    src.buffer = buf
-    const flt  = ac.createBiquadFilter()
-    flt.type   = 'bandpass'
-    flt.frequency.value = filterFreq
-    flt.Q.value = 1.2
-    const g = ac.createGain()
-    src.connect(flt); flt.connect(g); g.connect(ac.destination)
-    g.gain.setValueAtTime(vol, t)
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
-    src.start(t); src.stop(t + dur + 0.05)
-  } catch { /* ignore */ }
+const sfx = {
+  moo()   { const t = getAc().currentTime; tone(130,'sine',t,.5,.2); tone(110,'sine',t+.2,.4,.1) },
+  cluck() { const t = getAc().currentTime; [0,.07,.14].forEach(d => tone(650+Math.random()*150,'square',t+d,.06,.1)) },
+  chime() { const t = getAc().currentTime; [523,659,784,1047].forEach((f,i) => tone(f,'sine',t+i*.08,.2,.13)) },
 }
 
-// ── Farm sound effects ────────────────────────────────────────────────────────
-const farmSfx = {
-  // 🐑 Sheep — low sine wobble
-  baa()    { tone(200,'sine',0,0.18,0.26,220); tone(185,'sine',0.16,0.22,0.18,170); tone(200,'sine',0.34,0.18,0.14) },
-  // 🐔 Chicken — rapid short bursts
-  cluck()  { tone(700,'square',0,0.04,0.16); tone(620,'square',0.06,0.04,0.14); tone(760,'square',0.12,0.03,0.13); tone(630,'square',0.17,0.04,0.10) },
-  // 🐄 Cow — sustained low tone
-  moo()    { tone(150,'sawtooth',0,0.55,0.22,130); tone(158,'sine',0.08,0.45,0.10) },
-  // 🦆 Duck — quick descending
-  quack()  { tone(500,'sine',0,0.06,0.22,300); tone(470,'sine',0.08,0.10,0.16,270) },
-  // ☀️ Sun — ascending chime
-  chime()  { tone(523,'sine',0,0.14,0.20); tone(659,'sine',0.09,0.16,0.18); tone(784,'sine',0.19,0.18,0.16); tone(1047,'sine',0.30,0.22,0.13) },
-  // 🔵 Pond — filtered noise splash
-  splash() { noise(0,0.10,0.18,900); noise(0.04,0.16,0.14,1300); noise(0.09,0.12,0.09,500) },
-  // 🌳 Tree — noise rustle
-  rustle() { noise(0,0.07,0.16,3200); noise(0.05,0.09,0.12,4500); noise(0.11,0.06,0.08,2600) },
-  // 🏠 House — two quick thumps
-  knock()  { tone(80,'sine',0,0.09,0.28); tone(80,'sine',0.16,0.09,0.24) },
-  // 🌸 Flowers — high tinkle
-  tinkle() { tone(1318,'sine',0,0.10,0.16); tone(1568,'sine',0.07,0.11,0.14); tone(2093,'sine',0.14,0.13,0.11) },
-  // 💨 Windmill — whoosh
-  whoosh() { noise(0,0.22,0.20,700); noise(0.08,0.20,0.15,1000); noise(0.18,0.16,0.10,450) },
-  // 🐎 Horse — neigh-ish
-  neigh()  { tone(350,'sawtooth',0,0.20,0.18,420); tone(300,'sine',0.18,0.30,0.14,250) },
-}
+// ── Sprite Animator ───────────────────────────────────────────────────────────
+function SpriteAnim({ src, frameW, frameH, cols, totalFrames, fps = 8, scale = 3, row = 0, onClick, style = {} }) {
+  const canvasRef = useRef(null)
+  const imgRef = useRef(null)
+  const frameRef = useRef(0)
+  const timerRef = useRef(null)
 
-// ── Farm stage config ─────────────────────────────────────────────────────────
-const STAGES = [
-  { min:0,  level:1, label:'Kleines Feld',      skyA:'#C8E8FF', skyB:'#E0F4FF' },
-  { min:3,  level:2, label:'Wachsender Hof',    skyA:'#90CAF9', skyB:'#C8E8FF' },
-  { min:6,  level:3, label:'Blühender Bauernhof', skyA:'#42A5F5', skyB:'#90CAF9' },
-  { min:9,  level:4, label:'Großer Hof',         skyA:'#1565C0', skyB:'#1E88E5' },
-  { min:13, level:5, label:'Prächtiger Hof',     skyA:'#0D47A1', skyB:'#1565C0' },
-  { min:17, level:6, label:'🌟 Traumfarm',       skyA:'#1A237E', skyB:'#0D47A1' },
-]
+  useEffect(() => {
+    const img = new Image()
+    img.onload = () => {
+      imgRef.current = img
+      const canvas = canvasRef.current
+      if (!canvas) return
+      const ctx = canvas.getContext('2d')
+      ctx.imageSmoothingEnabled = false
 
-function getStage(n) {
-  let s = STAGES[0]
-  for (const st of STAGES) { if (n >= st.min) s = st }
-  return s
-}
-function getNextStage(n) {
-  for (const st of STAGES) { if (n < st.min) return st }
-  return null
-}
+      const draw = () => {
+        if (!canvasRef.current) return
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+        const col = frameRef.current % cols
+        ctx.drawImage(img,
+          col * frameW, row * frameH, frameW, frameH,
+          0, 0, canvas.width, canvas.height
+        )
+        frameRef.current = (frameRef.current + 1) % totalFrames
+        timerRef.current = setTimeout(draw, 1000 / fps)
+      }
+      draw()
+    }
+    img.src = src
+    return () => clearTimeout(timerRef.current)
+  }, [src, row, fps])
 
-// ── Sub-components ────────────────────────────────────────────────────────────
-
-function WindmillBlades({ cx, cy, fast }) {
   return (
-    <motion.g
-      style={{ originX: `${cx}px`, originY: `${cy}px` }}
-      animate={{ rotate: [0, 360] }}
-      transition={{ duration: fast ? 0.7 : 3.5, repeat: Infinity, ease: 'linear' }}
-    >
-      {[0, 90, 180, 270].map((a, i) => {
-        const r   = (a * Math.PI) / 180
-        const x2  = cx + Math.cos(r) * 20
-        const y2  = cy + Math.sin(r) * 20
-        return <line key={i} x1={cx} y1={cy} x2={x2} y2={y2} stroke="#8B6914" strokeWidth={5} strokeLinecap="round" />
-      })}
-      <circle cx={cx} cy={cy} r={4.5} fill="#A0784A" />
-    </motion.g>
+    <canvas
+      ref={canvasRef}
+      width={frameW * scale}
+      height={frameH * scale}
+      onClick={onClick}
+      style={{ imageRendering: 'pixelated', cursor: onClick ? 'pointer' : 'default', ...style }}
+    />
   )
 }
 
-function PondRipples({ cx, cy }) {
+// ── Farm config ───────────────────────────────────────────────────────────────
+function getLevel(n) {
+  if (n <= 2) return 1; if (n <= 5) return 2; if (n <= 8) return 3
+  if (n <= 12) return 4; if (n <= 16) return 5; return 6
+}
+const LABELS = ['', 'Kleiner Hof', 'Wachsender Hof', 'Blühender Hof', 'Großer Hof', 'Prächtiger Hof', 'Traumhof ⭐']
+const NEXT_AT = [0, 3, 6, 9, 13, 17, Infinity]
+const SKY_COLORS = ['', '#c8e8ff', '#a8d8ff', '#7ec8f0', '#5bb0ff', '#3a9aff', '#1a7aff']
+
+// ── Sparkle feedback ──────────────────────────────────────────────────────────
+function Sparkles({ x, y }) {
   return (
-    <>
-      {[0, 1, 2].map(i => (
-        <motion.ellipse
-          key={i}
-          cx={cx} cy={cy} rx={0} ry={0}
-          fill="none" stroke="rgba(255,255,255,0.65)" strokeWidth={1.5}
-          animate={{ rx: [0, 26 + i*9], ry: [0, 9 + i*3], opacity: [0.9, 0] }}
-          transition={{ duration: 1.1, delay: i * 0.22, ease: 'easeOut' }}
-        />
+    <div style={{ position: 'absolute', left: x - 20, top: y - 50, pointerEvents: 'none', zIndex: 30 }}>
+      {['⭐', '✨', '💫'].map((p, i) => (
+        <motion.div key={i}
+          initial={{ opacity: 1, x: 0, y: 0 }}
+          animate={{ opacity: 0, x: (i - 1) * 22, y: -40 }}
+          transition={{ duration: 0.7, delay: i * 0.07 }}
+          style={{ position: 'absolute', fontSize: 14 }}
+        >{p}</motion.div>
       ))}
-    </>
+    </div>
   )
 }
 
-const popIn = {
-  hidden:  { scale: 0, opacity: 0 },
-  visible: { scale: 1, opacity: 1, transition: { type: 'spring', stiffness: 440, damping: 16 } },
+// ── Simple animated cloud ─────────────────────────────────────────────────────
+function AnimCloud({ delay = 0, y = 30, scale = 1 }) {
+  return (
+    <motion.div
+      animate={{ x: ['0%', '120%'] }}
+      transition={{ duration: 22 + delay * 3, repeat: Infinity, ease: 'linear', delay }}
+      initial={{ x: '-20%' }}
+      style={{ position: 'absolute', top: y, left: 0, opacity: 0.9, transform: `scale(${scale})` }}
+    >
+      <svg width="80" height="40" viewBox="0 0 80 40">
+        <ellipse cx="40" cy="28" rx="35" ry="16" fill="white" />
+        <ellipse cx="52" cy="20" rx="22" ry="16" fill="white" />
+        <ellipse cx="28" cy="22" rx="18" ry="13" fill="white" />
+      </svg>
+    </motion.div>
+  )
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function FarmProgress({ completedCount = 0, totalModules = 17, profile }) {
-  const [active,   setActive]   = useState(null)
-  const [windFast, setWindFast] = useState(false)
-  const timerRef = useRef(null)
+  const level = getLevel(completedCount)
+  const show = (min) => level >= min
+  const [sparkle, setSparkle] = useState(null)
 
-  const n         = completedCount
-  const stage     = getStage(n)
-  const nextStage = getNextStage(n)
-  const toNext    = nextStage ? nextStage.min - n : 0
+  const handleClick = useCallback((id, sfxFn, x, y) => {
+    try { sfxFn() } catch {}
+    setSparkle({ id, x, y })
+    setTimeout(() => setSparkle(null), 800)
+  }, [])
 
-  // visibility flags
-  const show = {
-    sun:      true,
-    clouds:   true,
-    house:    true,
-    tree:     n >= 3,
-    sheep:    n >= 3,
-    flowers:  n >= 6,
-    chicken:  n >= 6,
-    fence:    n >= 6,
-    barn:     n >= 9,
-    cow:      n >= 9,
-    pond:     n >= 9,
-    duck:     n >= 9,
-    windmill: n >= 13,
-    garden:   n >= 13,
-    horse:    n >= 17,
-    rainbow:  n >= 17,
-  }
-
-  function tap(id, sfxFn, extraFn) {
-    if (timerRef.current) clearTimeout(timerRef.current)
-    setActive(id)
-    try { sfxFn() } catch { /* audio blocked */ }
-    if (extraFn) extraFn()
-    timerRef.current = setTimeout(() => setActive(null), 1800)
-  }
-
-  const W = 480, H = 260
-  const groundY = H * 0.55
+  const nextUnlock = NEXT_AT[level] !== Infinity
+    ? `${NEXT_AT[level] - completedCount} Module bis zum nächsten Upgrade ✨`
+    : '🏆 Maximaler Hof erreicht!'
 
   return (
-    <div style={{
-      margin: 'clamp(10px,2vw,18px) clamp(16px,4vw,40px)',
-      borderRadius: 24,
-      overflow: 'hidden',
-      boxShadow: '0 8px 32px rgba(0,0,0,0.16)',
-      background: 'white',
-    }}>
-
-      {/* ── Header bar ── */}
-      <div style={{
-        background: `linear-gradient(135deg, ${stage.skyA}, ${stage.skyB})`,
-        padding: '10px 18px',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        gap: 8,
-      }}>
-        <div>
-          <div style={{
-            fontFamily: 'var(--font-heading)', fontWeight: 700, color: 'white',
-            fontSize: 'clamp(14px,3vw,19px)', lineHeight: 1.2,
-          }}>
-            🌾 Level {stage.level} — {stage.label}
-          </div>
-          <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: 'clamp(11px,2vw,13px)', marginTop: 2 }}>
-            {nextStage
-              ? `Noch ${toNext} Modul${toNext !== 1 ? 'e' : ''} bis zum nächsten Upgrade!`
-              : '🏆 Maximale Farm erreicht!'}
-          </div>
+    <div style={{ width: '100%', maxWidth: 640, margin: '0 auto', userSelect: 'none' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, padding: '0 4px' }}>
+        <div style={{ fontFamily: 'var(--font-heading)', fontSize: 18, color: 'var(--text-primary)', fontWeight: 700 }}>
+          🌾 {LABELS[level]}
         </div>
-        <div style={{
-          background: 'rgba(255,255,255,0.22)', borderRadius: 99, padding: '4px 14px',
-          fontFamily: 'var(--font-heading)', fontSize: 'clamp(12px,2.2vw,15px)',
-          color: 'white', fontWeight: 700, flexShrink: 0,
-        }}>
-          {n}/{totalModules} ✅
+        <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: 'var(--font-body)' }}>
+          {nextUnlock}
         </div>
       </div>
 
-      {/* ── SVG Farm Scene ── */}
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        style={{ width: '100%', display: 'block' }}
-        preserveAspectRatio="xMidYMid meet"
-      >
-        <defs>
-          <linearGradient id="fp-sky" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%"   stopColor={stage.skyA} />
-            <stop offset="100%" stopColor={stage.skyB} />
-          </linearGradient>
-          <radialGradient id="fp-sun" cx="50%" cy="50%" r="50%">
-            <stop offset="0%"   stopColor="#FFE566" />
-            <stop offset="100%" stopColor="#FFD700" stopOpacity="0.4" />
-          </radialGradient>
-          <radialGradient id="fp-pond" cx="50%" cy="50%" r="50%">
-            <stop offset="0%"   stopColor="#74B9FF" />
-            <stop offset="100%" stopColor="#0984E3" />
-          </radialGradient>
-        </defs>
-
-        {/* Sky */}
-        <rect x={0} y={0} width={W} height={H} fill="url(#fp-sky)" />
-
-        {/* Ground */}
-        <rect x={0} y={groundY} width={W} height={H - groundY} fill="#5D8A3C" />
-        <rect x={0} y={groundY} width={W} height={7} fill="#72B843" />
-
-        {/* ── Rainbow (level 6) ── */}
-        <AnimatePresence>
-          {show.rainbow && (
-            <motion.g key="rainbow" initial="hidden" animate="visible" variants={popIn}>
-              {['#FF6B6B','#FF9F43','#FFD93D','#6BCB77','#74B9FF','#A29BFE'].map((c, i) => (
-                <path key={i}
-                  d={`M 10 ${groundY} A ${80-i*7} ${55-i*5} 0 0 1 ${W*0.52} ${groundY}`}
-                  fill="none" stroke={c} strokeWidth={6} opacity={0.65}
-                />
-              ))}
-            </motion.g>
-          )}
-        </AnimatePresence>
-
-        {/* ── Clouds ── */}
-        <AnimatePresence>
-          {show.clouds && ['cloud1','cloud2','cloud3'].map((id, ci) => {
-            const props = [
-              { cx:75,  cy:38, rx:34, ry:15, op:0.88 },
-              { cx:345, cy:28, rx:27, ry:12, op:0.80 },
-              { cx:195, cy:20, rx:21, ry:10, op:0.70 },
-            ][ci]
-            if (ci === 2 && !show.windmill) return null
-            return (
-              <motion.g
-                key={id}
-                initial="hidden" animate="visible" variants={popIn}
-                style={{ cursor: 'pointer' }}
-                onClick={() => tap(id, () => {})}
-                animate={active === id
-                  ? { x: [0, 90, 200], opacity: [1, 1, 0], transition: { duration: 2.2, ease: 'easeInOut' } }
-                  : { x: 0, opacity: props.op }}
-              >
-                <ellipse cx={props.cx} cy={props.cy} rx={props.rx} ry={props.ry} fill="white" />
-                <ellipse cx={props.cx - props.rx*0.33} cy={props.cy+3} rx={props.rx*0.54} ry={props.ry*0.72} fill="white" />
-                <ellipse cx={props.cx + props.rx*0.33} cy={props.cy+4} rx={props.rx*0.48} ry={props.ry*0.62} fill="white" />
-              </motion.g>
-            )
-          })}
-        </AnimatePresence>
-
-        {/* ── Sun ── */}
-        <AnimatePresence>
-          {show.sun && (
-            <motion.g
-              key="sun"
-              initial="hidden" animate="visible" variants={popIn}
-              style={{ cursor: 'pointer', originX: '418px', originY: '42px' }}
-              whileHover={{ scale: 1.1 }}
-              animate={active === 'sun'
-                ? { rotate:[0,360], scale:[1,1.18,1], transition:{ duration:0.65, ease:'easeInOut' } }
-                : { rotate:0, scale:1 }}
-              onClick={() => tap('sun', farmSfx.chime)}
-            >
-              {[0,40,80,120,160,200,240,280,320].map((a, i) => {
-                const r = (a * Math.PI) / 180
-                return (
-                  <line key={i}
-                    x1={418 + Math.cos(r)*20} y1={42 + Math.sin(r)*20}
-                    x2={418 + Math.cos(r)*30} y2={42 + Math.sin(r)*30}
-                    stroke="#FFB800" strokeWidth={3} strokeLinecap="round"
-                  />
-                )
-              })}
-              <circle cx={418} cy={42} r={18} fill="url(#fp-sun)" stroke="#FFD700" strokeWidth={1.5} />
-            </motion.g>
-          )}
-        </AnimatePresence>
-
-        {/* ── Fence ── */}
-        <AnimatePresence>
-          {show.fence && (
-            <motion.g key="fence" initial="hidden" animate="visible" variants={popIn}>
-              <rect x={118} y={groundY - 6} width={160} height={4}  rx={2} fill="#B8845A" />
-              <rect x={118} y={groundY + 5} width={160} height={4}  rx={2} fill="#B8845A" />
-              {[118,137,156,175,194,213,232,251,268].map(x => (
-                <rect key={x} x={x} y={groundY - 10} width={6} height={22} rx={2} fill="#C9956A" />
-              ))}
-            </motion.g>
-          )}
-        </AnimatePresence>
-
-        {/* ── House ── */}
-        <AnimatePresence>
-          {show.house && (
-            <motion.g
-              key="house"
-              initial="hidden" animate="visible" variants={popIn}
-              style={{ cursor: 'pointer' }}
-              whileHover={{ y: -3 }}
-              animate={active === 'house'
-                ? { x:[-3,3,-3,3,0], transition:{ duration:0.38, times:[0,.25,.5,.75,1] } }
-                : { x:0 }}
-              onClick={() => tap('house', farmSfx.knock)}
-            >
-              {/* Walls */}
-              <rect x={28} y={groundY - 52} width={62} height={52} rx={3} fill="#D4956A" />
-              {/* Roof */}
-              <polygon points={`26,${groundY-52} 92,${groundY-52} 59,${groundY-72}`} fill="#C0392B" />
-              <line x1={26} y1={groundY-52} x2={59} y2={groundY-72} stroke="#A93226" strokeWidth={1.5} />
-              <line x1={92} y1={groundY-52} x2={59} y2={groundY-72} stroke="#A93226" strokeWidth={1.5} />
-              {/* Chimney */}
-              <rect x={70} y={groundY-74} width={8} height={14} rx={2} fill="#922B21" />
-              {/* Door */}
-              <rect x={50} y={groundY - 22} width={18} height={22} rx={4} fill="#7D3C1E" />
-              <circle cx={66} cy={groundY - 11} r={2.2} fill="#F0B27A" />
-              {/* Windows */}
-              <rect x={32} y={groundY - 44} width={13} height={11} rx={2.5} fill="#AED6F1" stroke="white" strokeWidth={1.5} />
-              <rect x={73} y={groundY - 44} width={13} height={11} rx={2.5} fill="#AED6F1" stroke="white" strokeWidth={1.5} />
-              {/* Chimney smoke when active */}
-              {active === 'house' && [0,1,2].map(i => (
-                <motion.circle key={i} cx={74+i*2} cy={groundY-76}
-                  r={3+i} fill="rgba(160,160,160,0.55)"
-                  animate={{ y:[-4-(i*5), -20-(i*8)], opacity:[0.7,0], scale:[1,1.8+i*0.3] }}
-                  transition={{ duration:0.9, delay:i*0.18, repeat:2 }}
-                />
-              ))}
-            </motion.g>
-          )}
-        </AnimatePresence>
-
-        {/* ── Barn ── */}
-        <AnimatePresence>
-          {show.barn && (
-            <motion.g key="barn" initial="hidden" animate="visible" variants={popIn}>
-              <rect x={318} y={groundY - 66} width={92} height={66} rx={3} fill="#C0392B" />
-              <polygon points={`316,${groundY-66} 412,${groundY-66} 364,${groundY-90}`} fill="#922B21" />
-              {/* Doors */}
-              <rect x={349} y={groundY - 30} width={28} height={30} rx={3} fill="#7D3C1E" />
-              <line x1={363} y1={groundY-30} x2={363} y2={groundY} stroke="#5D1A0B" strokeWidth={2} />
-              <line x1={349} y1={groundY-15} x2={377} y2={groundY-15} stroke="#5D1A0B" strokeWidth={1.5} />
-              {/* Windows */}
-              <rect x={325} y={groundY - 54} width={16} height={13} rx={2.5} fill="#F9E79F" stroke="white" strokeWidth={1.5} />
-              <rect x={390} y={groundY - 54} width={16} height={13} rx={2.5} fill="#F9E79F" stroke="white" strokeWidth={1.5} />
-            </motion.g>
-          )}
-        </AnimatePresence>
-
-        {/* ── Windmill ── */}
-        <AnimatePresence>
-          {show.windmill && (
-            <motion.g
-              key="windmill"
-              initial="hidden" animate="visible" variants={popIn}
-              style={{ cursor: 'pointer' }}
-              onClick={() => {
-                setWindFast(true)
-                try { farmSfx.whoosh() } catch { /* audio blocked */ }
-                setTimeout(() => setWindFast(false), 2200)
-              }}
-              whileHover={{ scale: 1.04 }}
-            >
-              {/* Tower */}
-              <polygon
-                points={`216,${groundY-2} 234,${groundY-2} 230,${groundY-70} 220,${groundY-70}`}
-                fill="#D5D8DC" stroke="#B2BEC3" strokeWidth={1}
-              />
-              {/* Door */}
-              <rect x={221} y={groundY - 20} width={8} height={18} rx={2} fill="#7D3C1E" />
-              {/* Blades */}
-              <WindmillBlades cx={225} cy={groundY - 72} fast={windFast} />
-            </motion.g>
-          )}
-        </AnimatePresence>
-
-        {/* ── Tree ── */}
-        <AnimatePresence>
-          {show.tree && (
-            <motion.g
-              key="tree"
-              initial="hidden" animate="visible" variants={popIn}
-              style={{ cursor: 'pointer', originX: '110px', originY: `${groundY}px` }}
-              animate={active === 'tree'
-                ? { rotate:[-5,5,-4,4,-2,2,0], transition:{ duration:0.75 } }
-                : { rotate:0 }}
-              whileHover={{ scale: 1.06 }}
-              onClick={() => tap('tree', farmSfx.rustle)}
-            >
-              {/* Trunk */}
-              <rect x={106} y={groundY - 26} width={9} height={26} rx={3} fill="#8B4513" />
-              {/* Foliage */}
-              <circle cx={110} cy={groundY - 52} r={24} fill="#27AE60" />
-              <circle cx={110} cy={groundY - 58} r={18} fill="#2ECC71" />
-              <circle cx={110} cy={groundY - 63} r={10} fill="#82E0AA" />
-              {/* Apples (unlocked at level 3+) */}
-              {n >= 5 && <circle cx={100} cy={groundY - 50} r={4}   fill="#E74C3C" />}
-              {n >= 5 && <circle cx={120} cy={groundY - 52} r={4}   fill="#E74C3C" />}
-              {n >= 5 && <circle cx={108} cy={groundY - 42} r={3.5} fill="#E74C3C" />}
-            </motion.g>
-          )}
-        </AnimatePresence>
-
-        {/* ── Flowers ── */}
-        <AnimatePresence>
-          {show.flowers && (
-            <motion.g
-              key="flowers"
-              initial="hidden" animate="visible" variants={popIn}
-              style={{ cursor: 'pointer' }}
-              animate={active === 'flowers'
-                ? { scale:[1,1.28,1], transition:{ duration:0.45 } }
-                : { scale:1 }}
-              onClick={() => tap('flowers', farmSfx.tinkle)}
-            >
-              {[
-                { x:148, c:'#FF6B6B' },
-                { x:160, c:'#FFD93D' },
-                { x:172, c:'#A29BFE' },
-                { x:184, c:'#FF9F43' },
-                { x:196, c:'#FD79A8' },
-                { x:208, c:'#74B9FF' },
-              ].map(({ x, c }) => (
-                <g key={x}>
-                  <line x1={x+3} y1={groundY+1} x2={x+3} y2={groundY-12} stroke="#6BCB77" strokeWidth={2} />
-                  <circle cx={x+3} cy={groundY-13} r={5}   fill={c} />
-                  <circle cx={x+3} cy={groundY-13} r={2.2} fill="rgba(255,255,255,0.7)" />
-                </g>
-              ))}
-            </motion.g>
-          )}
-        </AnimatePresence>
-
-        {/* ── Vegetable Garden ── */}
-        <AnimatePresence>
-          {show.garden && (
-            <motion.g key="garden" initial="hidden" animate="visible" variants={popIn}>
-              <rect x={258} y={groundY + 8} width={54} height={20} rx={4} fill="#7D5A44" opacity={0.85} />
-              {['🥕','🌽','🥬','🥕','🌽'].map((emoji, i) => (
-                <text key={i} x={261 + i*11} y={groundY + 7} fontSize={11} style={{ userSelect:'none' }}>
-                  {emoji}
-                </text>
-              ))}
-            </motion.g>
-          )}
-        </AnimatePresence>
-
-        {/* ── Pond ── */}
-        <AnimatePresence>
-          {show.pond && (
-            <motion.g
-              key="pond"
-              initial="hidden" animate="visible" variants={popIn}
-              style={{ cursor: 'pointer' }}
-              onClick={() => tap('pond', farmSfx.splash)}
-              whileHover={{ scale: 1.04 }}
-            >
-              <ellipse cx={268} cy={groundY + 20} rx={38} ry={14} fill="url(#fp-pond)" opacity={0.90} />
-              <ellipse cx={268} cy={groundY + 18} rx={34} ry={9}  fill="#74B9FF" opacity={0.45} />
-              {/* Lily pads */}
-              <ellipse cx={258} cy={groundY+21} rx={6} ry={4} fill="#27AE60" opacity={0.75} />
-              <ellipse cx={278} cy={groundY+22} rx={5} ry={3} fill="#27AE60" opacity={0.70} />
-              {active === 'pond' && <PondRipples cx={268} cy={groundY + 20} />}
-            </motion.g>
-          )}
-        </AnimatePresence>
-
-        {/* ── Sheep ── */}
-        <AnimatePresence>
-          {show.sheep && (
-            <motion.g
-              key="sheep"
-              initial="hidden" animate="visible" variants={popIn}
-              style={{ cursor: 'pointer' }}
-              animate={active === 'sheep'
-                ? { y:[-10,0,-6,0], transition:{ duration:0.45 } }
-                : { y:0 }}
-              whileHover={{ scale: 1.12 }}
-              onClick={() => tap('sheep', farmSfx.baa)}
-            >
-              <text x={143} y={groundY + 22} fontSize={26} style={{ userSelect:'none' }}>🐑</text>
-            </motion.g>
-          )}
-        </AnimatePresence>
-
-        {/* ── Chicken ── */}
-        <AnimatePresence>
-          {show.chicken && (
-            <motion.g
-              key="chicken"
-              initial="hidden" animate="visible" variants={popIn}
-              style={{ cursor: 'pointer' }}
-              animate={active === 'chicken'
-                ? { y:[-7,0,-9,0,-4,0], x:[0,4,-4,4,0], transition:{ duration:0.48 } }
-                : { y:0, x:0 }}
-              whileHover={{ scale: 1.12 }}
-              onClick={() => tap('chicken', farmSfx.cluck)}
-            >
-              <text x={196} y={groundY + 22} fontSize={24} style={{ userSelect:'none' }}>🐔</text>
-            </motion.g>
-          )}
-        </AnimatePresence>
-
-        {/* ── Cow ── */}
-        <AnimatePresence>
-          {show.cow && (
-            <motion.g
-              key="cow"
-              initial="hidden" animate="visible" variants={popIn}
-              style={{ cursor: 'pointer' }}
-              animate={active === 'cow'
-                ? { x:[-5,5,-4,4,0], transition:{ duration:0.85, ease:'easeInOut' } }
-                : { x:0 }}
-              whileHover={{ scale: 1.10 }}
-              onClick={() => tap('cow', farmSfx.moo)}
-            >
-              <text x={236} y={groundY + 22} fontSize={28} style={{ userSelect:'none' }}>🐄</text>
-            </motion.g>
-          )}
-        </AnimatePresence>
-
-        {/* ── Duck ── */}
-        <AnimatePresence>
-          {show.duck && (
-            <motion.g
-              key="duck"
-              initial="hidden" animate="visible" variants={popIn}
-              style={{ cursor: 'pointer', originX: '300px', originY: `${groundY+22}px` }}
-              animate={active === 'duck'
-                ? { rotate:[0,360], scale:[1,1.22,1], transition:{ duration:0.65 } }
-                : { rotate:0, scale:1 }}
-              whileHover={{ scale: 1.12 }}
-              onClick={() => tap('duck', farmSfx.quack)}
-            >
-              <text x={290} y={groundY + 28} fontSize={20} style={{ userSelect:'none' }}>🦆</text>
-            </motion.g>
-          )}
-        </AnimatePresence>
-
-        {/* ── Horse (level 6) ── */}
-        <AnimatePresence>
-          {show.horse && (
-            <motion.g
-              key="horse"
-              initial="hidden" animate="visible" variants={popIn}
-              style={{ cursor: 'pointer' }}
-              animate={active === 'horse'
-                ? { x:[0,8,0,8,0], y:[-4,0,-4,0], transition:{ duration:0.55 } }
-                : { x:0, y:0 }}
-              whileHover={{ scale: 1.10 }}
-              onClick={() => tap('horse', farmSfx.neigh)}
-            >
-              <text x={164} y={groundY + 22} fontSize={26} style={{ userSelect:'none' }}>🐎</text>
-            </motion.g>
-          )}
-        </AnimatePresence>
-
-        {/* ── Progress bar (ground strip) ── */}
-        <g>
-          <rect x={18} y={H - 14} width={W - 36} height={9} rx={4.5} fill="rgba(0,0,0,0.14)" />
-          <motion.rect
-            x={18} y={H - 14} height={9} rx={4.5}
-            fill="rgba(255,255,255,0.72)"
-            animate={{ width: Math.max(9, ((n / totalModules) * (W - 36))) }}
-            transition={{ duration: 1.1, ease: 'easeOut' }}
-          />
-          {STAGES.slice(1).map(st => {
-            const px = 18 + (st.min / totalModules) * (W - 36)
-            return (
-              <g key={st.min}>
-                <line x1={px} y1={H-17} x2={px} y2={H-5} stroke="white" strokeWidth={1.8} opacity={0.55} />
-                <text x={px} y={H-18} textAnchor="middle" fontSize={6.5} fill="white" opacity={0.75}>
-                  Lv{st.level}
-                </text>
-              </g>
-            )
-          })}
-        </g>
-      </svg>
-
-      {/* Tip footer */}
+      {/* Farm scene */}
       <div style={{
-        textAlign: 'center',
-        padding: '5px 12px 9px',
-        fontSize: 'clamp(11px,1.8vw,12px)',
-        color: '#aaa',
-        fontFamily: 'var(--font-body)',
+        borderRadius: 20, overflow: 'hidden',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+        position: 'relative', height: 220,
+        background: `linear-gradient(180deg, ${SKY_COLORS[level]} 0%, ${SKY_COLORS[level]} 60%, #66bb6a 60%, #388e3c 100%)`,
+        transition: 'background 0.8s ease',
       }}>
-        👆 Tippe auf Tiere & Gegenstände!
+        {/* Clouds */}
+        <AnimCloud delay={0} y={15} scale={1} />
+        <AnimCloud delay={6} y={35} scale={0.65} />
+
+        {/* Sun */}
+        <motion.div animate={{ rotate: 360 }} transition={{ duration: 25, repeat: Infinity, ease: 'linear' }}
+          style={{ position: 'absolute', top: 8, right: 20, fontSize: 36 }}>
+          ☀️
+        </motion.div>
+
+        {/* House (always) */}
+        <div style={{ position: 'absolute', left: 10, bottom: 40 }}>
+          <SpriteAnim src={sprite('house.png')} frameW={16} frameH={16} cols={14} totalFrames={1} fps={1} scale={4} row={0} />
+        </div>
+
+        {/* Tree (level 2+) */}
+        <AnimatePresence>
+          {show(2) && (
+            <motion.div key="tree" initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 200 }}
+              style={{ position: 'absolute', left: 130, bottom: 40 }}>
+              <SpriteAnim src={sprite('tree.png')} frameW={16} frameH={16} cols={10} totalFrames={3} fps={2} scale={3} row={0} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Farmer (level 2+) */}
+        <AnimatePresence>
+          {show(2) && (
+            <motion.div key="farmer" initial={{ x: -50, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
+              style={{ position: 'absolute', left: 85, bottom: 42, cursor: 'pointer', zIndex: 10 }}
+              onClick={() => handleClick('farmer', sfx.chime, 100, 130)}>
+              <SpriteAnim src={sprite('farmer_idle.png')} frameW={16} frameH={16} cols={8} totalFrames={8} fps={6} scale={3} row={0} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Cow (level 3+) */}
+        <AnimatePresence>
+          {show(3) && (
+            <motion.div key="cow" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', delay: 0.1 }}
+              style={{ position: 'absolute', left: 200, bottom: 40, cursor: 'pointer', zIndex: 10 }}
+              onClick={() => handleClick('cow', sfx.moo, 230, 130)}>
+              <SpriteAnim src={sprite('cow.png')} frameW={16} frameH={16} cols={8} totalFrames={8} fps={5} scale={3} row={2} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Chicken (level 2+) */}
+        <AnimatePresence>
+          {show(2) && (
+            <motion.div key="chicken" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', delay: 0.15 }}
+              style={{ position: 'absolute', left: 310, bottom: 44, cursor: 'pointer', zIndex: 10 }}
+              onClick={() => handleClick('chicken', sfx.cluck, 325, 135)}>
+              <SpriteAnim src={sprite('chicken.png')} frameW={16} frameH={16} cols={4} totalFrames={4} fps={6} scale={3} row={0} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* More animals at higher levels */}
+        <AnimatePresence>
+          {show(4) && (
+            <motion.div key="cow2" initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
+              style={{ position: 'absolute', left: 370, bottom: 40, cursor: 'pointer', zIndex: 10 }}
+              onClick={() => handleClick('cow2', sfx.moo, 390, 130)}>
+              <SpriteAnim src={sprite('cow.png')} frameW={16} frameH={16} cols={8} totalFrames={8} fps={4} scale={2.5} row={0} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Windmill emoji (level 5+) */}
+        <AnimatePresence>
+          {show(5) && (
+            <motion.div key="windmill" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+              style={{ position: 'absolute', right: 20, bottom: 44, fontSize: 40 }}>
+              <motion.span animate={{ rotate: 360 }} transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+                style={{ display: 'block' }}>🎡</motion.span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Max level stars */}
+        {level === 6 && ['⭐', '✨', '🌟'].map((s, i) => (
+          <motion.div key={i} style={{ position: 'absolute', top: 8, left: 30 + i * 40, fontSize: 18 }}
+            animate={{ opacity: [0.3, 1, 0.3], y: [0, -5, 0] }}
+            transition={{ duration: 2, repeat: Infinity, delay: i * 0.4 }}>
+            {s}
+          </motion.div>
+        ))}
+
+        {/* Hint text */}
+        {show(2) && (
+          <motion.div animate={{ opacity: [0.4, 0.8, 0.4] }} transition={{ duration: 3, repeat: Infinity }}
+            style={{ position: 'absolute', bottom: 4, left: 0, right: 0, textAlign: 'center', fontSize: 10, color: 'rgba(255,255,255,0.85)', fontFamily: 'var(--font-body)' }}>
+            Tippe auf die Tiere! 🐄🐔
+          </motion.div>
+        )}
+
+        {/* Sparkle feedback */}
+        <AnimatePresence>
+          {sparkle && <Sparkles key={sparkle.id} x={sparkle.x} y={sparkle.y} />}
+        </AnimatePresence>
+      </div>
+
+      {/* Progress bar */}
+      <div style={{ marginTop: 10, background: 'rgba(0,0,0,0.06)', borderRadius: 99, height: 8, overflow: 'hidden' }}>
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${(completedCount / totalModules) * 100}%` }}
+          transition={{ duration: 1, ease: 'easeOut' }}
+          style={{ height: '100%', background: 'linear-gradient(90deg,#66bb6a,#43a047)', borderRadius: 99 }}
+        />
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 12, color: 'var(--text-secondary)', fontFamily: 'var(--font-body)' }}>
+        <span>{completedCount} / {totalModules} Module abgeschlossen</span>
+        <span>Level {level} / 6</span>
       </div>
     </div>
   )
