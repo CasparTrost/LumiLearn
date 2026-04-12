@@ -18,7 +18,7 @@ export default function MusicControls() {
 
   // Create audio element once
   useEffect(() => {
-    const audio = new Audio('/music/background.mp3')
+    const audio = new Audio('music/background.mp3')
     audio.loop   = true
     audio.volume = volume
     audioRef.current = audio
