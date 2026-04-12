@@ -204,13 +204,12 @@ export default function ShadowGame({ level = 1, onComplete }) {
           {/* Silhouette — random position, smooth reveal to center */}
           <motion.div
             animate={revealed
-              ? { left: '50%', top: '50%', rotate: 0, scale: 1.2 }
-              : { left: `${shadowPos.leftPct}%`, top: `${shadowPos.topPct}%`, rotate: shadowRotate, scale: 1 }
+              ? { left: '50%', top: '50%', x: '-50%', y: '-50%', rotate: 0, scale: 1.2 }
+              : { left: `${shadowPos.leftPct}%`, top: `${shadowPos.topPct}%`, x: '-50%', y: '-50%', rotate: shadowRotate, scale: 1 }
             }
-            transition={{ type: 'spring', stiffness: 140, damping: 16, duration: 0.6 }}
+            transition={{ type: 'spring', stiffness: 140, damping: 16 }}
             style={{
               position: 'absolute',
-              transform: 'translate(-50%, -50%)',
               pointerEvents: 'none',
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
             }}
