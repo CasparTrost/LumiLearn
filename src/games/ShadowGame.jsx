@@ -92,10 +92,10 @@ export default function ShadowGame({ level = 1, onComplete }) {
   const shadowRotate = level <= 2 ? 0
     : level <= 5 ? (idx % 2 === 0 ? -16 : 16)
     : (idx % 3 === 0 ? -32 : idx % 3 === 1 ? 32 : -16)
-  // Percentage-based position: 15%–85% range keeps emoji away from edges
+  // Percentage-based: 25%–75% range so large emoji stays fully inside card
   const shadowPos = useMemo(() => ({
-    leftPct: 15 + Math.random() * 70,   // 15% to 85%
-    topPct:  15 + Math.random() * 70,   // 15% to 85%
+    leftPct: 25 + Math.random() * 50,   // 25% to 75%
+    topPct:  20 + Math.random() * 45,   // 20% to 65% (more top space, fact text at bottom)
   }), [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Flashlight — direct DOM mutation, zero React re-renders
@@ -190,7 +190,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
           onPointerMove={onPointerMove}
           onPointerLeave={onPointerLeave}
           style={{
-            background:'#f0eeff',
+            background:'#0a0015',
             borderRadius:32,
             padding:0,
             boxShadow:'0 12px 44px rgba(74,0,224,0.45)',
@@ -277,8 +277,9 @@ export default function ShadowGame({ level = 1, onComplete }) {
                 style={{
                   position:'absolute',
                   bottom:16,
-                  left:'50%',
-                  transform:'translateX(-50%)',
+                  left:0,
+                  right:0,
+                  margin:'0 auto',
                   zIndex:12,
                   width:'88%',
                   maxWidth:460,
