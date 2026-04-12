@@ -109,7 +109,8 @@ function Animal({ src, x, y, w, h, sfxFn, onSpark, delay=0, flip=false, label })
   )
 }
 
-export default function FarmProgress({ completedCount=0, totalModules=17 }) {
+export default function FarmProgress({ completedCount:rawCount=0, totalModules=17 }) {
+  const completedCount = rawCount  // set to 17 to preview max level
   const level = getLevel(completedCount)
   const show  = (min) => level >= min
   const [spark, setSpark] = useState(null)
@@ -169,23 +170,11 @@ export default function FarmProgress({ completedCount=0, totalModules=17 }) {
           <path d="M0,90 Q100,50 200,75 Q300,95 400,60 Q500,30 640,70 L640,100 L0,100 Z" fill="#6ab828"/>
         </svg>
 
-        {/* Ground */}
-        <div style={{position:'absolute',bottom:0,left:0,right:0,height:100,zIndex:4,
-          background:'linear-gradient(180deg,#7ec850 0%,#6ab828 25%,#5aa020 100%)'}}/>
-
-        {/* Ground texture dots */}
-        {Array.from({length:18},(_,i)=>(
-          <motion.div key={i} style={{position:'absolute',bottom:8+Math.random()*30,
-            left:`${5+i*5.5}%`,zIndex:5,pointerEvents:'none',
-            width:3,height:5,background:'rgba(0,0,0,0.12)',borderRadius:2}}
-            animate={{scaleY:[1,1.4,1]}}
-            transition={{duration:1.5+i*.1,repeat:Infinity,ease:'easeInOut',delay:i*.08}}/>
-        ))}
-
-        {/* Path */}
-        <div style={{position:'absolute',bottom:0,left:'38%',width:'24%',height:70,zIndex:5,
-          background:'linear-gradient(180deg,rgba(194,158,100,.6),rgba(180,140,80,.8))',
-          clipPath:'polygon(10% 0%,90% 0%,100% 100%,0% 100%)'}}/>
+        {/* Tile-based ground */}
+        <img src={spr('f_scene_bg.png')} alt=
+          style={{position:'absolute',bottom:0,left:0,width:'100%',height:192,
+            objectFit:'cover',objectPosition:'bottom',zIndex:4,imageRendering:'pixelated',
+            pointerEvents:'none'}}/>
 
         {/* ── HOUSE ── */}
         <motion.div initial={{y:40,opacity:0}} animate={{y:0,opacity:1}} transition={{type:'spring',stiffness:150,delay:.05}}
