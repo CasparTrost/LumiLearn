@@ -6,7 +6,6 @@ import { useT } from '../i18n.js'
 import { MAX_LEVELS } from '../AppContext.jsx'
 import StarRow from '../components/StarRow.jsx'
 import FarmProgress from '../components/FarmProgress.jsx'
-import FarmProgress from '../components/FarmProgress.jsx'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 
 // ── All modules ───────────────────────────────────────────────────────────────
@@ -169,7 +168,6 @@ export default function HomeScreen() {
 
       {/* Farm Progress */}
       <div style={{ padding:'0 clamp(12px,3vw,24px)', paddingBottom:8 }}>
-        <FarmProgress completedCount={completedCount} totalModules={17} profile={profile} />
       </div>
 
       {/* ── Farm Progress ── */}
