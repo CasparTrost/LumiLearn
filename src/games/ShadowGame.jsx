@@ -197,45 +197,62 @@ export default function ShadowGame({ level = 1, onComplete }) {
             touchAction:'none',
           }}
         >
-          {/* Silhouette — centered, animates to reveal on correct answer */}
+          {/* Silhouette — true black via mix-blend-mode, reveal animation on correct */}
           <motion.div
-            animate={{
-              rotate: revealed ? 0 : shadowRotate,
-              scale: revealed ? 1.15 : 1,
-            }}
-            transition={{ type:'spring', stiffness:200, damping:16 }}
+            animate={revealed
+              ? { x: '-50%', y: '-50%', rotate: 0, scale: 1.2 }
+              : { x: '-50%', y: '-50%', rotate: shadowRotate, scale: 1 }
+            }
+            transition={{ type:'spring', stiffness:180, damping:18 }}
             style={{
-              fontSize:'clamp(180px,30vw,260px)', lineHeight:1, userSelect:'none',
-              position:'absolute',
-              left: '50%',
-              top:  '50%',
-              transform: 'translate(-50%, -50%)',
+              position:'absolute', left:'50%', top:'50%',
               pointerEvents:'none',
-              display:'flex', alignItems:'center', justifyContent:'center',
-              flexDirection:'column', gap:8,
+              display:'flex', flexDirection:'column', alignItems:'center', gap:12,
             }}
           >
-            <span style={{
-              filter: revealed ? 'none' : 'contrast(0) brightness(0) saturate(0)',
-              display:'block',
-              transition: 'filter 0.5s ease',
-            }}>
-              {ch.shadow}
-            </span>
-            {revealed && (
-              <motion.div
-                initial={{ opacity:0, y:8 }}
-                animate={{ opacity:1, y:0 }}
-                style={{
-                  fontFamily:'var(--font-heading)', fontSize:'clamp(18px,4vw,28px)',
-                  color:'white', textAlign:'center',
-                  textShadow:'0 2px 8px rgba(0,0,0,0.8)',
-                  background:'rgba(0,0,0,0.5)', borderRadius:12, padding:'6px 16px',
-                }}
-              >
-                {ch.name}
-              </motion.div>
-            )}
+            {/* Emoji rendered, then blacked out via overlay */}
+            <div style={{ position:'relative', lineHeight:1, userSelect:'none' }}>
+              <span style={{
+                fontSize:'clamp(180px,30vw,260px)',
+                display:'block',
+                opacity: revealed ? 1 : 0,
+                transition: 'opacity 0s',
+              }}>
+                {ch.shadow}
+              </span>
+              {/* Black silhouette overlay — same emoji, grayscale+darken */}
+              {!revealed && (
+                <span style={{
+                  position:'absolute', inset:0,
+                  fontSize:'clamp(180px,30vw,260px)',
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  filter:'grayscale(1) brightness(0)',
+                  WebkitFilter:'grayscale(1) brightness(0)',
+                }}>
+                  {ch.shadow}
+                </span>
+              )}
+            </div>
+
+            {/* Name label — only after reveal animation completes */}
+            <AnimatePresence>
+              {revealed && (
+                <motion.div
+                  initial={{ opacity:0, y:12, scale:0.85 }}
+                  animate={{ opacity:1, y:0, scale:1 }}
+                  transition={{ delay:0.45, type:'spring', stiffness:260 }}
+                  style={{
+                    fontFamily:'var(--font-heading)', fontSize:'clamp(20px,4vw,30px)',
+                    color:'white', textAlign:'center',
+                    textShadow:'0 2px 12px rgba(0,0,0,0.9)',
+                    background:'rgba(0,0,0,0.55)', borderRadius:16,
+                    padding:'8px 20px', backdropFilter:'blur(4px)',
+                  }}
+                >
+                  {ch.name}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
 
           {/* Flashlight overlay — background mutated directly via ref, no re-renders */}
