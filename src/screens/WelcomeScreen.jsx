@@ -1,5 +1,4 @@
 import { motion } from 'framer-motion'
-import { useEffect, useRef } from 'react'
 import { useApp } from '../AppContext.jsx'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import Button from '../components/Button.jsx'
@@ -59,14 +58,12 @@ export default function WelcomeScreen() {
       <Orb x="70%" y="60%" size={280} color="rgba(108,99,255,0.22)" delay={0.8} />
       <Orb x="-5%" y="65%" size={200} color="rgba(78,205,196,0.18)" delay={2} />
 
-      {/* Main content */}
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 1, gap: 0 }}
       >
-        {/* Logo text */}
         <motion.div
           animate={{ textShadow: ['0 0 20px rgba(255,217,61,0.5)', '0 0 40px rgba(255,217,61,0.9)', '0 0 20px rgba(255,217,61,0.5)'] }}
           transition={{ duration: 2.5, repeat: Infinity }}
@@ -83,7 +80,7 @@ export default function WelcomeScreen() {
           LumiLearn
         </motion.div>
         <div style={{ fontFamily: 'var(--font-body)', fontSize: 'clamp(14px, 3vw, 18px)', color: 'rgba(255,255,255,0.75)', marginBottom: 36, letterSpacing: 1 }}>
-          ✨ Lernen macht Spaß ✨
+          ✨ Learning is fun ✨
         </div>
 
         <LumiCharacter mood="excited" size={180} />
@@ -95,7 +92,7 @@ export default function WelcomeScreen() {
           style={{ marginTop: 32, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}
         >
           <div style={{ fontFamily: 'var(--font-body)', fontSize: 'clamp(15px, 3.5vw, 20px)', color: 'rgba(255,255,255,0.88)', textAlign: 'center', maxWidth: 340 }}>
-            Dein persönlicher Lernbegleiter für Kinder von 3–7 Jahren
+            Your personal learning companion for kids aged 3–7
           </div>
           <motion.div
             animate={{ y: [0, 6, 0] }}
@@ -103,13 +100,12 @@ export default function WelcomeScreen() {
             style={{ marginTop: 8 }}
           >
             <Button size="lg" variant="gold" onClick={() => dispatch({ type: 'NAVIGATE', payload: 'language' })}>
-              Jetzt starten 🚀
+              Let's go 🚀
             </Button>
           </motion.div>
         </motion.div>
       </motion.div>
 
-      {/* Bottom wave */}
       <svg viewBox="0 0 1440 80" preserveAspectRatio="none"
         style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: 80 }}>
         <path d="M0,40 C360,80 1080,0 1440,40 L1440,80 L0,80 Z" fill="rgba(240,244,255,0.12)" />
