@@ -1,0 +1,192 @@
+=== Allgemein ===
+Klasse! Versuch es direkt noch einmal.
+Ja, super!
+Das hast du super gemacht!
+Hallo du! Willkommen zurück zu Lumi. Mach direkt da weiter, wo wir aufgehört haben, oder versuche etwas Neues!
+
+=== Zahlen entdecken ===
+Zahlen entdecken. Wie geht das?
+Du siehst Objekte auf dem Bildschirm – tippe sie nacheinander an und zähle laut mit! So lernst du die Zahlen 1 bis 10 kennen.
+eins
+zwei
+drei
+vier
+fünf
+sechs
+sieben
+acht
+neun
+zehn
+
+=== ABC-Abenteuer ===
+ABC-Abenteuer
+Wie geht das?
+Ein Buchstabe erscheint groß auf dem Bildschirm – lerne etwas über ihn! Tippe dann auf das Bild, dessen Wort mit diesem Buchstaben beginnt.
+Welches Wort beginnt mit A?
+Welches Wort beginnt mit B?
+Welches Wort beginnt mit D?
+Welches Wort beginnt mit E?
+Welches Wort beginnt mit F?
+Welches Wort beginnt mit G?
+Welches Wort beginnt mit H?
+Welches Wort beginnt mit I?
+Welches Wort beginnt mit J?
+Welches Wort beginnt mit K?
+Welches Wort beginnt mit L?
+Welches Wort beginnt mit M?
+Welches Wort beginnt mit N?
+Welches Wort beginnt mit O?
+Welches Wort beginnt mit P?
+Welches Wort beginnt mit R?
+Welches Wort beginnt mit S?
+Welches Wort beginnt mit T?
+Welches Wort beginnt mit U?
+Welches Wort beginnt mit V?
+Welches Wort beginnt mit W?
+Welches Wort beginnt mit Z?
+A ist der 1. Buchstabe des Alphabets – und ein Vokal.
+B ist der 2. Buchstabe des Alphabets.
+C ist der 3. Buchstabe des Alphabets.
+D ist der 4. Buchstabe – nach C kommt D.
+E ist der 5. Buchstabe des Alphabets – und ein Vokal.
+F ist der 6. Buchstabe.
+G ist der 7. Buchstabe des Alphabets.
+H ist der 8. Buchstabe. H haucht ganz leise.
+I ist der 9. Buchstabe des Alphabets – und ein Vokal.
+J ist der 10. Buchstabe des Alphabets.
+K ist der 11. Buchstabe des Alphabets.
+L ist der 12. Buchstabe.
+M ist der 13. Buchstabe. M klingt wie ein Summen.
+N ist der 14. Buchstabe des Alphabets.
+O ist der 15. Buchstabe des Alphabets – und ein Vokal.
+P ist der 16. Buchstabe des Alphabets.
+Q ist der 17. Buchstabe des Alphabets.
+R ist der 18. Buchstabe. R kann man rollen lassen.
+S ist der 19. Buchstabe. S zischt wie eine Schlange.
+T ist der 20. Buchstabe des Alphabets.
+U ist der 21. Buchstabe des Alphabets – und ein Vokal.
+V ist der 22. Buchstabe. V klingt ähnlich wie F.
+W ist der 23. Buchstabe des Alphabets.
+Z ist der 26. und letzte Buchstabe des Alphabets.
+Apfel
+Affe
+Auto
+Blume
+Biene
+Ballon
+Dino
+Drache
+Dose
+Ei
+Elefant
+Ente
+Fisch
+Frosch
+Fuchs
+Giraffe
+Geist
+Geschenk
+Hund
+Hase
+Haus
+Igel
+Insel
+Insekt
+Jaguar
+Jacke
+Joghurt
+Katze
+König
+Koala
+Löwe
+Lampe
+Lama
+Maus
+Mond
+Musik
+Nase
+Nuss
+Nest
+Ohr
+Orange
+Oktopus
+Pinguin
+Pilz
+Pferd
+Rakete
+Roboter
+Rose
+Sonne
+Stern
+Schnecke
+Tiger
+Traktor
+Trommel
+Uhr
+Uhu
+Ufo
+Vogel
+Vulkan
+Vase
+Wolf
+Wolke
+Wal
+Zebra
+Zahn
+Zug
+
+=== Gefühlswelt ===
+Gefühlswelt
+Wie geht das?
+Lumi erlebt etwas! Lies die Situation und denke nach: Wie fühlt sich Lumi dabei wohl? Tippe auf das passende Gefühl!
+Wie fühlt sich Lumi wohl?
+Genau richtig!
+Lumi war: Glücklich!
+Lumi war: Traurig!
+Lumi war: Wütend!
+Lumi war: Ängstlich!
+Lumi war: Aufgeregt!
+Lumi war: Müde!
+Lumi war: Verlegen!
+Lumi war: Dankbar!
+Lumi war: Überrascht!
+Lumi war: Stolz!
+Lumi war: Gelangweilt!
+Lumi war: Eifersüchtig!
+Lumi war: Neugierig!
+Lumi bekommt ein riesiges Geschenk!
+Wenn wir etwas toll finden, fühlen wir uns glücklich!
+Lumi gewinnt beim Wettrennen gegen alle anderen!
+Wenn wir etwas Tolles schaffen, werden wir ganz glücklich!
+Lumi trifft nach langer Zeit den besten Freund wieder!
+Freunde wiederzusehen macht uns glücklich!
+Lumi darf heute so lange aufbleiben wie er möchte!
+Unerwartete Freuden machen uns glücklich!
+Lumis Lieblings-Eis fällt auf den Boden.
+Wenn etwas schiefgeht, das uns wichtig ist, fühlen wir uns traurig.
+Lumis bester Freund zieht in eine andere Stadt.
+Menschen zu vermissen macht uns traurig.
+Das Lieblingsspielzeug von Lumi ist kaputt gegangen.
+Wenn wir etwas Liebgewonnenes verlieren, werden wir traurig.
+Es regnet und Lumi kann draußen nicht spielen.
+Enttäuschungen können uns traurig machen.
+Ein Kind nimmt Lumi einfach das Spielzeug weg!
+Wenn wir uns ungerecht behandelt fühlen, werden wir wütend.
+Jemand hat die Zeichnung von Lumi zerrissen!
+Wenn etwas Wichtiges kaputt gemacht wird, macht uns das wütend.
+Lumi steht in der Reihe und jemand drängelt sich vor!
+Unfairheit macht uns wütend.
+Lumi hört mitten in der Nacht ein lautes Geräusch!
+Wenn wir etwas nicht kennen und es unerwartet kommt, werden wir ängstlich.
+Lumi soll alleine auf der großen Bühne auftreten.
+Vor einem großen Auftritt haben viele Menschen Angst.
+Lumi sieht eine riesige Spinne im Zimmer!
+Dinge die uns erschrecken machen uns ängstlich.
+Morgen ist Lumis mega Geburtstagsparty!
+Wenn wir uns auf etwas Tolles freuen, sind wir aufgeregt!
+Lumi fährt heute zum ersten Mal in den Freizeitpark!
+Etwas zum ersten Mal erleben macht uns ganz aufgeregt!
+Lumi darf mit Papa zusammen ein Modell bauen!
+Mit jemandem etwas Tolles tun dürfen macht uns aufgeregt!
+Es ist 21 Uhr und Lumi hatte einen langen spielreichen Tag.
+Nach einem langen Tag braucht unser Körper Erholung – dann sind wir müde.

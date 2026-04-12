@@ -1,0 +1,2 @@
+[0.00]  [abc-abenteuer]  C ist der 3. Buchstabe des Alphabets.
+[0.00]  [abc-abenteuer]  Q ist der 17. Buchstabe des Alphabets.

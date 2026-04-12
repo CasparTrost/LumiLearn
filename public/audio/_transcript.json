@@ -1,0 +1,5018 @@
+[
+  {
+    "word": "Klasse!",
+    "norm": "klasse",
+    "start": 0.0,
+    "end": 0.8
+  },
+  {
+    "word": "Versuche",
+    "norm": "versuche",
+    "start": 1.18,
+    "end": 1.64
+  },
+  {
+    "word": "es",
+    "norm": "es",
+    "start": 1.64,
+    "end": 1.82
+  },
+  {
+    "word": "direkt",
+    "norm": "direkt",
+    "start": 1.82,
+    "end": 2.26
+  },
+  {
+    "word": "noch",
+    "norm": "noch",
+    "start": 2.26,
+    "end": 2.6
+  },
+  {
+    "word": "einmal!",
+    "norm": "einmal",
+    "start": 2.6,
+    "end": 3.06
+  },
+  {
+    "word": "Ja,",
+    "norm": "ja",
+    "start": 3.38,
+    "end": 3.74
+  },
+  {
+    "word": "super!",
+    "norm": "super",
+    "start": 3.82,
+    "end": 4.26
+  },
+  {
+    "word": "Das",
+    "norm": "das",
+    "start": 4.58,
+    "end": 4.86
+  },
+  {
+    "word": "hast",
+    "norm": "hast",
+    "start": 4.86,
+    "end": 5.14
+  },
+  {
+    "word": "du",
+    "norm": "du",
+    "start": 5.14,
+    "end": 5.32
+  },
+  {
+    "word": "super",
+    "norm": "super",
+    "start": 5.32,
+    "end": 5.68
+  },
+  {
+    "word": "gemacht!",
+    "norm": "gemacht",
+    "start": 5.68,
+    "end": 6.2
+  },
+  {
+    "word": "Hallo",
+    "norm": "hallo",
+    "start": 7.04,
+    "end": 7.32
+  },
+  {
+    "word": "du!",
+    "norm": "du",
+    "start": 7.32,
+    "end": 7.84
+  },
+  {
+    "word": "Willkommen",
+    "norm": "willkommen",
+    "start": 8.14,
+    "end": 8.76
+  },
+  {
+    "word": "zurück",
+    "norm": "zurueck",
+    "start": 8.76,
+    "end": 9.2
+  },
+  {
+    "word": "zu",
+    "norm": "zu",
+    "start": 9.2,
+    "end": 9.48
+  },
+  {
+    "word": "Lumi!",
+    "norm": "lumi",
+    "start": 9.48,
+    "end": 9.96
+  },
+  {
+    "word": "Mach",
+    "norm": "mach",
+    "start": 10.54,
+    "end": 10.7
+  },
+  {
+    "word": "direkt",
+    "norm": "direkt",
+    "start": 10.7,
+    "end": 11.14
+  },
+  {
+    "word": "da",
+    "norm": "da",
+    "start": 11.14,
+    "end": 11.38
+  },
+  {
+    "word": "weiter,",
+    "norm": "weiter",
+    "start": 11.38,
+    "end": 11.66
+  },
+  {
+    "word": "wo",
+    "norm": "wo",
+    "start": 11.7,
+    "end": 11.84
+  },
+  {
+    "word": "wir",
+    "norm": "wir",
+    "start": 11.84,
+    "end": 12.12
+  },
+  {
+    "word": "aufgehört",
+    "norm": "aufgehoert",
+    "start": 12.12,
+    "end": 12.64
+  },
+  {
+    "word": "haben,",
+    "norm": "haben",
+    "start": 12.64,
+    "end": 13.02
+  },
+  {
+    "word": "oder",
+    "norm": "oder",
+    "start": 13.32,
+    "end": 13.68
+  },
+  {
+    "word": "versuche",
+    "norm": "versuche",
+    "start": 13.68,
+    "end": 14.24
+  },
+  {
+    "word": "etwas",
+    "norm": "etwas",
+    "start": 14.24,
+    "end": 14.64
+  },
+  {
+    "word": "Neues.",
+    "norm": "neues",
+    "start": 14.64,
+    "end": 15.3
+  },
+  {
+    "word": "Zahlen",
+    "norm": "zahlen",
+    "start": 16.31,
+    "end": 16.61
+  },
+  {
+    "word": "entdecken",
+    "norm": "entdecken",
+    "start": 16.61,
+    "end": 17.41
+  },
+  {
+    "word": "Wie",
+    "norm": "wie",
+    "start": 17.41,
+    "end": 18.17
+  },
+  {
+    "word": "geht",
+    "norm": "geht",
+    "start": 18.17,
+    "end": 18.53
+  },
+  {
+    "word": "das?",
+    "norm": "das",
+    "start": 18.53,
+    "end": 18.91
+  },
+  {
+    "word": "Du",
+    "norm": "du",
+    "start": 19.11,
+    "end": 19.33
+  },
+  {
+    "word": "siehst",
+    "norm": "siehst",
+    "start": 19.33,
+    "end": 19.65
+  },
+  {
+    "word": "Objekte",
+    "norm": "objekte",
+    "start": 19.65,
+    "end": 20.09
+  },
+  {
+    "word": "auf",
+    "norm": "auf",
+    "start": 20.09,
+    "end": 20.29
+  },
+  {
+    "word": "dem",
+    "norm": "dem",
+    "start": 20.29,
+    "end": 20.49
+  },
+  {
+    "word": "Bildschirm,",
+    "norm": "bildschirm",
+    "start": 20.49,
+    "end": 21.13
+  },
+  {
+    "word": "tippe",
+    "norm": "tippe",
+    "start": 21.43,
+    "end": 21.61
+  },
+  {
+    "word": "sie",
+    "norm": "sie",
+    "start": 21.61,
+    "end": 21.81
+  },
+  {
+    "word": "nacheinander",
+    "norm": "nacheinander",
+    "start": 21.81,
+    "end": 22.41
+  },
+  {
+    "word": "an",
+    "norm": "an",
+    "start": 22.41,
+    "end": 22.85
+  },
+  {
+    "word": "und",
+    "norm": "und",
+    "start": 22.85,
+    "end": 23.27
+  },
+  {
+    "word": "zähle",
+    "norm": "zaehle",
+    "start": 23.27,
+    "end": 23.61
+  },
+  {
+    "word": "laut",
+    "norm": "laut",
+    "start": 23.61,
+    "end": 23.91
+  },
+  {
+    "word": "mit.",
+    "norm": "mit",
+    "start": 23.91,
+    "end": 24.35
+  },
+  {
+    "word": "So",
+    "norm": "so",
+    "start": 24.89,
+    "end": 25.09
+  },
+  {
+    "word": "lernst",
+    "norm": "lernst",
+    "start": 25.09,
+    "end": 25.41
+  },
+  {
+    "word": "du",
+    "norm": "du",
+    "start": 25.41,
+    "end": 25.53
+  },
+  {
+    "word": "die",
+    "norm": "die",
+    "start": 25.53,
+    "end": 25.81
+  },
+  {
+    "word": "Zahlen",
+    "norm": "zahlen",
+    "start": 25.81,
+    "end": 26.11
+  },
+  {
+    "word": "eins",
+    "norm": "eins",
+    "start": 26.11,
+    "end": 26.65
+  },
+  {
+    "word": "bis",
+    "norm": "bis",
+    "start": 26.65,
+    "end": 26.93
+  },
+  {
+    "word": "zehn",
+    "norm": "zehn",
+    "start": 26.93,
+    "end": 27.27
+  },
+  {
+    "word": "kennen.",
+    "norm": "kennen",
+    "start": 27.27,
+    "end": 27.75
+  },
+  {
+    "word": "eins,",
+    "norm": "eins",
+    "start": 27.75,
+    "end": 28.71
+  },
+  {
+    "word": "zwei,",
+    "norm": "zwei",
+    "start": 28.73,
+    "end": 29.23
+  },
+  {
+    "word": "drei,",
+    "norm": "drei",
+    "start": 29.39,
+    "end": 29.65
+  },
+  {
+    "word": "vier,",
+    "norm": "vier",
+    "start": 29.75,
+    "end": 30.03
+  },
+  {
+    "word": "fünf,",
+    "norm": "fuenf",
+    "start": 30.23,
+    "end": 30.49
+  },
+  {
+    "word": "sechs,",
+    "norm": "sechs",
+    "start": 30.49,
+    "end": 30.99
+  },
+  {
+    "word": "sieben,",
+    "norm": "sieben",
+    "start": 31.13,
+    "end": 31.59
+  },
+  {
+    "word": "acht,",
+    "norm": "acht",
+    "start": 31.77,
+    "end": 32.13
+  },
+  {
+    "word": "neun,",
+    "norm": "neun",
+    "start": 32.41,
+    "end": 32.75
+  },
+  {
+    "word": "zehn,",
+    "norm": "zehn",
+    "start": 32.79,
+    "end": 32.97
+  },
+  {
+    "word": "A,",
+    "norm": "a",
+    "start": 33.17,
+    "end": 33.43
+  },
+  {
+    "word": "B.",
+    "norm": "b",
+    "start": 33.57,
+    "end": 34.09
+  },
+  {
+    "word": "C.",
+    "norm": "c",
+    "start": 34.27,
+    "end": 34.59
+  },
+  {
+    "word": "Abenteuer.",
+    "norm": "abenteuer",
+    "start": 34.99,
+    "end": 35.59
+  },
+  {
+    "word": "Wie",
+    "norm": "wie",
+    "start": 35.91,
+    "end": 36.05
+  },
+  {
+    "word": "geht",
+    "norm": "geht",
+    "start": 36.05,
+    "end": 36.35
+  },
+  {
+    "word": "das?",
+    "norm": "das",
+    "start": 36.35,
+    "end": 36.79
+  },
+  {
+    "word": "Ein",
+    "norm": "ein",
+    "start": 37.19,
+    "end": 37.45
+  },
+  {
+    "word": "Buchstabe",
+    "norm": "buchstabe",
+    "start": 37.45,
+    "end": 38.09
+  },
+  {
+    "word": "erscheint",
+    "norm": "erscheint",
+    "start": 38.09,
+    "end": 38.57
+  },
+  {
+    "word": "groß",
+    "norm": "gross",
+    "start": 38.57,
+    "end": 38.87
+  },
+  {
+    "word": "auf",
+    "norm": "auf",
+    "start": 38.87,
+    "end": 39.07
+  },
+  {
+    "word": "dem",
+    "norm": "dem",
+    "start": 39.07,
+    "end": 39.25
+  },
+  {
+    "word": "Bildschirm,",
+    "norm": "bildschirm",
+    "start": 39.25,
+    "end": 39.85
+  },
+  {
+    "word": "lerne",
+    "norm": "lerne",
+    "start": 40.37,
+    "end": 40.67
+  },
+  {
+    "word": "etwas",
+    "norm": "etwas",
+    "start": 40.67,
+    "end": 41.01
+  },
+  {
+    "word": "über",
+    "norm": "ueber",
+    "start": 41.01,
+    "end": 41.39
+  },
+  {
+    "word": "ihn.",
+    "norm": "ihn",
+    "start": 41.39,
+    "end": 41.79
+  },
+  {
+    "word": "Tippe",
+    "norm": "tippe",
+    "start": 42.19,
+    "end": 42.45
+  },
+  {
+    "word": "dann",
+    "norm": "dann",
+    "start": 42.45,
+    "end": 42.63
+  },
+  {
+    "word": "auf",
+    "norm": "auf",
+    "start": 42.63,
+    "end": 42.85
+  },
+  {
+    "word": "das",
+    "norm": "das",
+    "start": 42.85,
+    "end": 43.09
+  },
+  {
+    "word": "Bild,",
+    "norm": "bild",
+    "start": 43.09,
+    "end": 43.45
+  },
+  {
+    "word": "dessen",
+    "norm": "dessen",
+    "start": 43.71,
+    "end": 44.01
+  },
+  {
+    "word": "Wort",
+    "norm": "wort",
+    "start": 44.01,
+    "end": 44.25
+  },
+  {
+    "word": "mit",
+    "norm": "mit",
+    "start": 44.25,
+    "end": 44.51
+  },
+  {
+    "word": "diesem",
+    "norm": "diesem",
+    "start": 44.51,
+    "end": 44.71
+  },
+  {
+    "word": "Buchstaben",
+    "norm": "buchstaben",
+    "start": 44.71,
+    "end": 45.37
+  },
+  {
+    "word": "beginnt.",
+    "norm": "beginnt",
+    "start": 45.37,
+    "end": 46.07
+  },
+  {
+    "word": "Welches",
+    "norm": "welches",
+    "start": 46.29,
+    "end": 46.67
+  },
+  {
+    "word": "Wort",
+    "norm": "wort",
+    "start": 46.67,
+    "end": 47.01
+  },
+  {
+    "word": "beginnt",
+    "norm": "beginnt",
+    "start": 47.01,
+    "end": 47.41
+  },
+  {
+    "word": "mit",
+    "norm": "mit",
+    "start": 47.41,
+    "end": 47.71
+  },
+  {
+    "word": "A?",
+    "norm": "a",
+    "start": 47.71,
+    "end": 48.19
+  },
+  {
+    "word": "Welches",
+    "norm": "welches",
+    "start": 48.53,
+    "end": 48.93
+  },
+  {
+    "word": "Wort",
+    "norm": "wort",
+    "start": 48.93,
+    "end": 49.29
+  },
+  {
+    "word": "beginnt",
+    "norm": "beginnt",
+    "start": 49.29,
+    "end": 49.65
+  },
+  {
+    "word": "mit",
+    "norm": "mit",
+    "start": 49.65,
+    "end": 49.89
+  },
+  {
+    "word": "B?",
+    "norm": "b",
+    "start": 49.89,
+    "end": 50.29
+  },
+  {
+    "word": "Welches",
+    "norm": "welches",
+    "start": 50.61,
+    "end": 51.07
+  },
+  {
+    "word": "Wort",
+    "norm": "wort",
+    "start": 51.07,
+    "end": 51.41
+  },
+  {
+    "word": "beginnt",
+    "norm": "beginnt",
+    "start": 51.41,
+    "end": 51.79
+  },
+  {
+    "word": "mit",
+    "norm": "mit",
+    "start": 51.79,
+    "end": 52.03
+  },
+  {
+    "word": "D?",
+    "norm": "d",
+    "start": 52.03,
+    "end": 52.43
+  },
+  {
+    "word": "Welches",
+    "norm": "welches",
+    "start": 52.71,
+    "end": 53.15
+  },
+  {
+    "word": "Wort",
+    "norm": "wort",
+    "start": 53.15,
+    "end": 53.45
+  },
+  {
+    "word": "beginnt",
+    "norm": "beginnt",
+    "start": 53.45,
+    "end": 53.79
+  },
+  {
+    "word": "mit",
+    "norm": "mit",
+    "start": 53.79,
+    "end": 54.07
+  },
+  {
+    "word": "E?",
+    "norm": "e",
+    "start": 54.07,
+    "end": 54.59
+  },
+  {
+    "word": "Welches",
+    "norm": "welches",
+    "start": 54.59,
+    "end": 55.33
+  },
+  {
+    "word": "Wort",
+    "norm": "wort",
+    "start": 55.33,
+    "end": 55.69
+  },
+  {
+    "word": "beginnt",
+    "norm": "beginnt",
+    "start": 55.69,
+    "end": 56.07
+  },
+  {
+    "word": "mit",
+    "norm": "mit",
+    "start": 56.07,
+    "end": 56.41
+  },
+  {
+    "word": "F?",
+    "norm": "f",
+    "start": 56.41,
+    "end": 56.75
+  },
+  {
+    "word": "Welches",
+    "norm": "welches",
+    "start": 57.21,
+    "end": 57.63
+  },
+  {
+    "word": "Wort",
+    "norm": "wort",
+    "start": 57.63,
+    "end": 57.99
+  },
+  {
+    "word": "beginnt",
+    "norm": "beginnt",
+    "start": 57.99,
+    "end": 58.39
+  },
+  {
+    "word": "mit",
+    "norm": "mit",
+    "start": 58.39,
+    "end": 58.69
+  },
+  {
+    "word": "G?",
+    "norm": "g",
+    "start": 58.69,
+    "end": 59.21
+  },
+  {
+    "word": "Welches",
+    "norm": "welches",
+    "start": 59.51,
+    "end": 59.95
+  },
+  {
+    "word": "Wort",
+    "norm": "wort",
+    "start": 59.95,
+    "end": 60.21
+  },
+  {
+    "word": "beginnt",
+    "norm": "beginnt",
+    "start": 60.21,
+    "end": 60.57
+  },
+  {
+    "word": "mit",
+    "norm": "mit",
+    "start": 60.57,
+    "end": 60.87
+  },
+  {
+    "word": "H?",
+    "norm": "h",
+    "start": 60.87,
+    "end": 61.33
+  },
+  {
+    "word": "Welches",
+    "norm": "welches",
+    "start": 61.61,
+    "end": 62.03
+  },
+  {
+    "word": "Wort",
+    "norm": "wort",
+    "start": 62.03,
+    "end": 62.35
+  },
+  {
+    "word": "beginnt",
+    "norm": "beginnt",
+    "start": 62.35,
+    "end": 62.79
+  },
+  {
+    "word": "mit",
+    "norm": "mit",
+    "start": 62.79,
+    "end": 63.03
+  },
+  {
+    "word": "I?",
+    "norm": "i",
+    "start": 63.03,
+    "end": 63.47
+  },
+  {
+    "word": "Welches",
+    "norm": "welches",
+    "start": 63.79,
+    "end": 64.25
+  },
+  {
+    "word": "Wort",
+    "norm": "wort",
+    "start": 64.25,
+    "end": 64.59
+  },
+  {
+    "word": "beginnt",
+    "norm": "beginnt",
+    "start": 64.59,
+    "end": 64.95
+  },
+  {
+    "word": "mit",
+    "norm": "mit",
+    "start": 64.95,
+    "end": 65.25
+  },
+  {
+    "word": "J?",
+    "norm": "j",
+    "start": 65.25,
+    "end": 65.67
+  },
+  {
+    "word": "Welches",
+    "norm": "welches",
+    "start": 65.91,
+    "end": 66.33
+  },
+  {
+    "word": "Wort",
+    "norm": "wort",
+    "start": 66.33,
+    "end": 66.67
+  },
+  {
+    "word": "beginnt",
+    "norm": "beginnt",
+    "start": 66.67,
+    "end": 67.05
+  },
+  {
+    "word": "mit",
+    "norm": "mit",
+    "start": 67.05,
+    "end": 67.33
+  },
+  {
+    "word": "K?",
+    "norm": "k",
+    "start": 67.33,
+    "end": 67.83
+  },
+  {
+    "word": "Welches",
+    "norm": "welches",
+    "start": 68.01,
+    "end": 68.43
+  },
+  {
+    "word": "Wort",
+    "norm": "wort",
+    "start": 68.43,
+    "end": 68.81
+  },
+  {
+    "word": "beginnt",
+    "norm": "beginnt",
+    "start": 68.81,
+    "end": 69.19
+  },
+  {
+    "word": "mit",
+    "norm": "mit",
+    "start": 69.19,
+    "end": 69.45
+  },
+  {
+    "word": "L?",
+    "norm": "l",
+    "start": 69.45,
+    "end": 69.87
+  },
+  {
+    "word": "Welches",
+    "norm": "welches",
+    "start": 70.17,
+    "end": 70.59
+  },
+  {
+    "word": "Wort",
+    "norm": "wort",
+    "start": 70.59,
+    "end": 70.97
+  },
+  {
+    "word": "beginnt",
+    "norm": "beginnt",
+    "start": 70.97,
+    "end": 71.43
+  },
+  {
+    "word": "mit",
+    "norm": "mit",
+    "start": 71.43,
+    "end": 71.73
+  },
+  {
+    "word": "M?",
+    "norm": "m",
+    "start": 71.73,
+    "end": 72.23
+  },
+  {
+    "word": "Welches",
+    "norm": "welches",
+    "start": 72.49,
+    "end": 72.91
+  },
+  {
+    "word": "Wort",
+    "norm": "wort",
+    "start": 72.91,
+    "end": 73.29
+  },
+  {
+    "word": "beginnt",
+    "norm": "beginnt",
+    "start": 73.29,
+    "end": 73.69
+  },
+  {
+    "word": "mit",
+    "norm": "mit",
+    "start": 73.69,
+    "end": 73.99
+  },
+  {
+    "word": "N?",
+    "norm": "n",
+    "start": 73.99,
+    "end": 74.41
+  },
+  {
+    "word": "Welches",
+    "norm": "welches",
+    "start": 74.83,
+    "end": 75.29
+  },
+  {
+    "word": "Wort",
+    "norm": "wort",
+    "start": 75.29,
+    "end": 75.65
+  },
+  {
+    "word": "beginnt",
+    "norm": "beginnt",
+    "start": 75.65,
+    "end": 76.03
+  },
+  {
+    "word": "mit",
+    "norm": "mit",
+    "start": 76.03,
+    "end": 76.31
+  },
+  {
+    "word": "O?",
+    "norm": "o",
+    "start": 76.31,
+    "end": 76.75
+  },
+  {
+    "word": "Welches",
+    "norm": "welches",
+    "start": 77.07,
+    "end": 77.53
+  },
+  {
+    "word": "Wort",
+    "norm": "wort",
+    "start": 77.53,
+    "end": 77.89
+  },
+  {
+    "word": "beginnt",
+    "norm": "beginnt",
+    "start": 77.89,
+    "end": 78.31
+  },
+  {
+    "word": "mit",
+    "norm": "mit",
+    "start": 78.31,
+    "end": 78.53
+  },
+  {
+    "word": "P?",
+    "norm": "p",
+    "start": 78.53,
+    "end": 79.03
+  },
+  {
+    "word": "Welches",
+    "norm": "welches",
+    "start": 79.33,
+    "end": 79.81
+  },
+  {
+    "word": "Wort",
+    "norm": "wort",
+    "start": 79.81,
+    "end": 80.15
+  },
+  {
+    "word": "beginnt",
+    "norm": "beginnt",
+    "start": 80.15,
+    "end": 80.59
+  },
+  {
+    "word": "mit",
+    "norm": "mit",
+    "start": 80.59,
+    "end": 80.87
+  },
+  {
+    "word": "R?",
+    "norm": "r",
+    "start": 80.87,
+    "end": 81.33
+  },
+  {
+    "word": "welches",
+    "norm": "welches",
+    "start": 81.33,
+    "end": 82.05
+  },
+  {
+    "word": "Wort",
+    "norm": "wort",
+    "start": 82.05,
+    "end": 82.37
+  },
+  {
+    "word": "beginnt",
+    "norm": "beginnt",
+    "start": 82.37,
+    "end": 82.77
+  },
+  {
+    "word": "mit",
+    "norm": "mit",
+    "start": 82.77,
+    "end": 83.05
+  },
+  {
+    "word": "S?",
+    "norm": "s",
+    "start": 83.05,
+    "end": 83.55
+  },
+  {
+    "word": "welches",
+    "norm": "welches",
+    "start": 83.97,
+    "end": 84.41
+  },
+  {
+    "word": "Wort",
+    "norm": "wort",
+    "start": 84.41,
+    "end": 84.77
+  },
+  {
+    "word": "beginnt",
+    "norm": "beginnt",
+    "start": 84.77,
+    "end": 85.15
+  },
+  {
+    "word": "mit",
+    "norm": "mit",
+    "start": 85.15,
+    "end": 85.49
+  },
+  {
+    "word": "T?",
+    "norm": "t",
+    "start": 85.49,
+    "end": 85.97
+  },
+  {
+    "word": "welches",
+    "norm": "welches",
+    "start": 86.37,
+    "end": 86.83
+  },
+  {
+    "word": "Wort",
+    "norm": "wort",
+    "start": 86.83,
+    "end": 87.17
+  },
+  {
+    "word": "beginnt",
+    "norm": "beginnt",
+    "start": 87.17,
+    "end": 87.51
+  },
+  {
+    "word": "mit",
+    "norm": "mit",
+    "start": 87.51,
+    "end": 87.79
+  },
+  {
+    "word": "U?",
+    "norm": "u",
+    "start": 87.79,
+    "end": 88.25
+  },
+  {
+    "word": "welches",
+    "norm": "welches",
+    "start": 88.55,
+    "end": 88.97
+  },
+  {
+    "word": "Wort",
+    "norm": "wort",
+    "start": 88.97,
+    "end": 89.29
+  },
+  {
+    "word": "beginnt",
+    "norm": "beginnt",
+    "start": 89.29,
+    "end": 89.69
+  },
+  {
+    "word": "mit",
+    "norm": "mit",
+    "start": 89.69,
+    "end": 89.99
+  },
+  {
+    "word": "V?",
+    "norm": "v",
+    "start": 89.99,
+    "end": 90.41
+  },
+  {
+    "word": "welches",
+    "norm": "welches",
+    "start": 90.75,
+    "end": 91.13
+  },
+  {
+    "word": "Wort",
+    "norm": "wort",
+    "start": 91.13,
+    "end": 91.49
+  },
+  {
+    "word": "beginnt",
+    "norm": "beginnt",
+    "start": 91.49,
+    "end": 91.89
+  },
+  {
+    "word": "mit",
+    "norm": "mit",
+    "start": 91.89,
+    "end": 92.11
+  },
+  {
+    "word": "W?",
+    "norm": "w",
+    "start": 92.11,
+    "end": 92.43
+  },
+  {
+    "word": "welches",
+    "norm": "welches",
+    "start": 92.69,
+    "end": 93.07
+  },
+  {
+    "word": "Wort",
+    "norm": "wort",
+    "start": 93.07,
+    "end": 93.51
+  },
+  {
+    "word": "beginnt",
+    "norm": "beginnt",
+    "start": 93.51,
+    "end": 93.95
+  },
+  {
+    "word": "mit",
+    "norm": "mit",
+    "start": 93.95,
+    "end": 94.17
+  },
+  {
+    "word": "Z?",
+    "norm": "z",
+    "start": 94.17,
+    "end": 94.55
+  },
+  {
+    "word": "A",
+    "norm": "a",
+    "start": 95.09,
+    "end": 95.41
+  },
+  {
+    "word": "ist",
+    "norm": "ist",
+    "start": 95.41,
+    "end": 95.63
+  },
+  {
+    "word": "der",
+    "norm": "der",
+    "start": 95.63,
+    "end": 95.87
+  },
+  {
+    "word": "erste",
+    "norm": "erste",
+    "start": 95.87,
+    "end": 96.15
+  },
+  {
+    "word": "Buchstabe",
+    "norm": "buchstabe",
+    "start": 96.15,
+    "end": 96.75
+  },
+  {
+    "word": "des",
+    "norm": "des",
+    "start": 96.75,
+    "end": 97.01
+  },
+  {
+    "word": "Alphabets",
+    "norm": "alphabets",
+    "start": 97.01,
+    "end": 97.75
+  },
+  {
+    "word": "und",
+    "norm": "und",
+    "start": 97.75,
+    "end": 98.09
+  },
+  {
+    "word": "ein",
+    "norm": "ein",
+    "start": 98.09,
+    "end": 98.39
+  },
+  {
+    "word": "Vokal,",
+    "norm": "vokal",
+    "start": 98.39,
+    "end": 99.11
+  },
+  {
+    "word": "B",
+    "norm": "b",
+    "start": 99.17,
+    "end": 99.45
+  },
+  {
+    "word": "ist",
+    "norm": "ist",
+    "start": 99.45,
+    "end": 99.77
+  },
+  {
+    "word": "der",
+    "norm": "der",
+    "start": 99.77,
+    "end": 100.01
+  },
+  {
+    "word": "zweite",
+    "norm": "zweite",
+    "start": 100.01,
+    "end": 100.29
+  },
+  {
+    "word": "Buchstabe",
+    "norm": "buchstabe",
+    "start": 100.29,
+    "end": 100.89
+  },
+  {
+    "word": "des",
+    "norm": "des",
+    "start": 100.89,
+    "end": 101.13
+  },
+  {
+    "word": "Alphabets,",
+    "norm": "alphabets",
+    "start": 101.13,
+    "end": 101.81
+  },
+  {
+    "word": "D",
+    "norm": "d",
+    "start": 101.93,
+    "end": 102.25
+  },
+  {
+    "word": "ist",
+    "norm": "ist",
+    "start": 102.25,
+    "end": 102.57
+  },
+  {
+    "word": "der",
+    "norm": "der",
+    "start": 102.57,
+    "end": 102.77
+  },
+  {
+    "word": "vierte",
+    "norm": "vierte",
+    "start": 102.77,
+    "end": 103.11
+  },
+  {
+    "word": "Buchstabe,",
+    "norm": "buchstabe",
+    "start": 103.11,
+    "end": 103.85
+  },
+  {
+    "word": "nach",
+    "norm": "nach",
+    "start": 104.01,
+    "end": 104.25
+  },
+  {
+    "word": "C",
+    "norm": "c",
+    "start": 104.25,
+    "end": 104.67
+  },
+  {
+    "word": "kommt",
+    "norm": "kommt",
+    "start": 104.67,
+    "end": 105.01
+  },
+  {
+    "word": "D.",
+    "norm": "d",
+    "start": 105.01,
+    "end": 105.43
+  },
+  {
+    "word": "E",
+    "norm": "e",
+    "start": 105.43,
+    "end": 106.03
+  },
+  {
+    "word": "ist",
+    "norm": "ist",
+    "start": 106.03,
+    "end": 106.43
+  },
+  {
+    "word": "der",
+    "norm": "der",
+    "start": 106.43,
+    "end": 106.67
+  },
+  {
+    "word": "fünfte",
+    "norm": "fuenfte",
+    "start": 106.67,
+    "end": 107.09
+  },
+  {
+    "word": "Buchstabe",
+    "norm": "buchstabe",
+    "start": 107.09,
+    "end": 107.69
+  },
+  {
+    "word": "des",
+    "norm": "des",
+    "start": 107.69,
+    "end": 107.97
+  },
+  {
+    "word": "Alphabets",
+    "norm": "alphabets",
+    "start": 107.97,
+    "end": 108.71
+  },
+  {
+    "word": "und",
+    "norm": "und",
+    "start": 108.71,
+    "end": 109.13
+  },
+  {
+    "word": "ein",
+    "norm": "ein",
+    "start": 109.13,
+    "end": 109.35
+  },
+  {
+    "word": "Vokal,",
+    "norm": "vokal",
+    "start": 109.35,
+    "end": 109.99
+  },
+  {
+    "word": "F",
+    "norm": "f",
+    "start": 110.07,
+    "end": 110.39
+  },
+  {
+    "word": "ist",
+    "norm": "ist",
+    "start": 110.39,
+    "end": 110.63
+  },
+  {
+    "word": "der",
+    "norm": "der",
+    "start": 110.63,
+    "end": 110.83
+  },
+  {
+    "word": "sechste",
+    "norm": "sechste",
+    "start": 110.83,
+    "end": 111.23
+  },
+  {
+    "word": "Buchstabe,",
+    "norm": "buchstabe",
+    "start": 111.23,
+    "end": 111.99
+  },
+  {
+    "word": "F",
+    "norm": "f",
+    "start": 112.17,
+    "end": 112.45
+  },
+  {
+    "word": "klingt",
+    "norm": "klingt",
+    "start": 112.45,
+    "end": 112.79
+  },
+  {
+    "word": "wie",
+    "norm": "wie",
+    "start": 112.79,
+    "end": 113.09
+  },
+  {
+    "word": "ein",
+    "norm": "ein",
+    "start": 113.09,
+    "end": 113.31
+  },
+  {
+    "word": "leises",
+    "norm": "leises",
+    "start": 113.31,
+    "end": 113.87
+  },
+  {
+    "word": "FF,",
+    "norm": "ff",
+    "start": 113.87,
+    "end": 114.93
+  },
+  {
+    "word": "G",
+    "norm": "g",
+    "start": 115.23,
+    "end": 115.63
+  },
+  {
+    "word": "ist",
+    "norm": "ist",
+    "start": 115.63,
+    "end": 115.93
+  },
+  {
+    "word": "der",
+    "norm": "der",
+    "start": 115.93,
+    "end": 116.15
+  },
+  {
+    "word": "siebte",
+    "norm": "siebte",
+    "start": 116.15,
+    "end": 116.55
+  },
+  {
+    "word": "Buchstabe",
+    "norm": "buchstabe",
+    "start": 116.55,
+    "end": 117.11
+  },
+  {
+    "word": "des",
+    "norm": "des",
+    "start": 117.11,
+    "end": 117.37
+  },
+  {
+    "word": "Alphabets,",
+    "norm": "alphabets",
+    "start": 117.37,
+    "end": 118.03
+  },
+  {
+    "word": "H",
+    "norm": "h",
+    "start": 118.31,
+    "end": 118.75
+  },
+  {
+    "word": "ist",
+    "norm": "ist",
+    "start": 118.75,
+    "end": 119.09
+  },
+  {
+    "word": "der",
+    "norm": "der",
+    "start": 119.09,
+    "end": 119.41
+  },
+  {
+    "word": "achte",
+    "norm": "achte",
+    "start": 119.41,
+    "end": 119.81
+  },
+  {
+    "word": "Buchstabe,",
+    "norm": "buchstabe",
+    "start": 119.81,
+    "end": 120.71
+  },
+  {
+    "word": "H",
+    "norm": "h",
+    "start": 120.93,
+    "end": 121.45
+  },
+  {
+    "word": "haucht",
+    "norm": "haucht",
+    "start": 121.45,
+    "end": 121.87
+  },
+  {
+    "word": "ganz",
+    "norm": "ganz",
+    "start": 121.87,
+    "end": 122.31
+  },
+  {
+    "word": "leise,",
+    "norm": "leise",
+    "start": 122.31,
+    "end": 122.81
+  },
+  {
+    "word": "I",
+    "norm": "i",
+    "start": 123.05,
+    "end": 123.45
+  },
+  {
+    "word": "ist",
+    "norm": "ist",
+    "start": 123.45,
+    "end": 123.83
+  },
+  {
+    "word": "der",
+    "norm": "der",
+    "start": 123.83,
+    "end": 124.07
+  },
+  {
+    "word": "neunte",
+    "norm": "neunte",
+    "start": 124.07,
+    "end": 124.41
+  },
+  {
+    "word": "Buchstabe",
+    "norm": "buchstabe",
+    "start": 124.41,
+    "end": 124.99
+  },
+  {
+    "word": "des",
+    "norm": "des",
+    "start": 124.99,
+    "end": 125.31
+  },
+  {
+    "word": "Alphabets",
+    "norm": "alphabets",
+    "start": 125.31,
+    "end": 126.03
+  },
+  {
+    "word": "und",
+    "norm": "und",
+    "start": 126.03,
+    "end": 126.49
+  },
+  {
+    "word": "ein",
+    "norm": "ein",
+    "start": 126.49,
+    "end": 126.81
+  },
+  {
+    "word": "Vokal",
+    "norm": "vokal",
+    "start": 126.81,
+    "end": 127.59
+  },
+  {
+    "word": "J",
+    "norm": "j",
+    "start": 127.59,
+    "end": 127.93
+  },
+  {
+    "word": "ist",
+    "norm": "ist",
+    "start": 127.93,
+    "end": 128.37
+  },
+  {
+    "word": "der",
+    "norm": "der",
+    "start": 128.37,
+    "end": 128.67
+  },
+  {
+    "word": "zehnte",
+    "norm": "zehnte",
+    "start": 128.67,
+    "end": 129.01
+  },
+  {
+    "word": "Buchstabe",
+    "norm": "buchstabe",
+    "start": 129.01,
+    "end": 129.59
+  },
+  {
+    "word": "des",
+    "norm": "des",
+    "start": 129.59,
+    "end": 129.87
+  },
+  {
+    "word": "Alphabets,",
+    "norm": "alphabets",
+    "start": 129.87,
+    "end": 130.53
+  },
+  {
+    "word": "K",
+    "norm": "k",
+    "start": 130.67,
+    "end": 131.09
+  },
+  {
+    "word": "ist",
+    "norm": "ist",
+    "start": 131.09,
+    "end": 131.43
+  },
+  {
+    "word": "der",
+    "norm": "der",
+    "start": 131.43,
+    "end": 131.63
+  },
+  {
+    "word": "elfte",
+    "norm": "elfte",
+    "start": 131.63,
+    "end": 132.01
+  },
+  {
+    "word": "Buchstabe",
+    "norm": "buchstabe",
+    "start": 132.01,
+    "end": 132.57
+  },
+  {
+    "word": "des",
+    "norm": "des",
+    "start": 132.57,
+    "end": 132.87
+  },
+  {
+    "word": "Alphabets,",
+    "norm": "alphabets",
+    "start": 132.87,
+    "end": 133.53
+  },
+  {
+    "word": "L",
+    "norm": "l",
+    "start": 133.73,
+    "end": 134.05
+  },
+  {
+    "word": "ist",
+    "norm": "ist",
+    "start": 134.05,
+    "end": 134.47
+  },
+  {
+    "word": "der",
+    "norm": "der",
+    "start": 134.47,
+    "end": 134.83
+  },
+  {
+    "word": "zwölfte",
+    "norm": "zwoelfte",
+    "start": 134.83,
+    "end": 135.25
+  },
+  {
+    "word": "Buchstabe,",
+    "norm": "buchstabe",
+    "start": 135.25,
+    "end": 136.11
+  },
+  {
+    "word": "L",
+    "norm": "l",
+    "start": 136.53,
+    "end": 136.71
+  },
+  {
+    "word": "klingt",
+    "norm": "klingt",
+    "start": 136.71,
+    "end": 137.05
+  },
+  {
+    "word": "wie",
+    "norm": "wie",
+    "start": 137.05,
+    "end": 137.33
+  },
+  {
+    "word": "ein",
+    "norm": "ein",
+    "start": 137.33,
+    "end": 137.59
+  },
+  {
+    "word": "weiches",
+    "norm": "weiches",
+    "start": 137.59,
+    "end": 138.23
+  },
+  {
+    "word": "LL,",
+    "norm": "ll",
+    "start": 138.23,
+    "end": 138.79
+  },
+  {
+    "word": "M",
+    "norm": "m",
+    "start": 139.13,
+    "end": 139.55
+  },
+  {
+    "word": "ist",
+    "norm": "ist",
+    "start": 139.55,
+    "end": 139.85
+  },
+  {
+    "word": "der",
+    "norm": "der",
+    "start": 139.85,
+    "end": 140.05
+  },
+  {
+    "word": "dreizehnte",
+    "norm": "dreizehnte",
+    "start": 140.05,
+    "end": 140.61
+  },
+  {
+    "word": "Buchstabe,",
+    "norm": "buchstabe",
+    "start": 140.61,
+    "end": 141.35
+  },
+  {
+    "word": "M",
+    "norm": "m",
+    "start": 141.61,
+    "end": 142.01
+  },
+  {
+    "word": "klingt",
+    "norm": "klingt",
+    "start": 142.01,
+    "end": 142.33
+  },
+  {
+    "word": "wie",
+    "norm": "wie",
+    "start": 142.33,
+    "end": 142.61
+  },
+  {
+    "word": "ein",
+    "norm": "ein",
+    "start": 142.61,
+    "end": 142.87
+  },
+  {
+    "word": "Summen,",
+    "norm": "summen",
+    "start": 142.87,
+    "end": 143.33
+  },
+  {
+    "word": "N",
+    "norm": "n",
+    "start": 143.45,
+    "end": 143.81
+  },
+  {
+    "word": "ist",
+    "norm": "ist",
+    "start": 143.81,
+    "end": 144.11
+  },
+  {
+    "word": "der",
+    "norm": "der",
+    "start": 144.11,
+    "end": 144.33
+  },
+  {
+    "word": "vierzehnte",
+    "norm": "vierzehnte",
+    "start": 144.33,
+    "end": 144.95
+  },
+  {
+    "word": "Buchstabe",
+    "norm": "buchstabe",
+    "start": 144.95,
+    "end": 145.55
+  },
+  {
+    "word": "des",
+    "norm": "des",
+    "start": 145.55,
+    "end": 145.83
+  },
+  {
+    "word": "Alphabets",
+    "norm": "alphabets",
+    "start": 145.83,
+    "end": 146.57
+  },
+  {
+    "word": "O",
+    "norm": "o",
+    "start": 146.57,
+    "end": 147.33
+  },
+  {
+    "word": "ist",
+    "norm": "ist",
+    "start": 147.33,
+    "end": 147.55
+  },
+  {
+    "word": "der",
+    "norm": "der",
+    "start": 147.55,
+    "end": 147.77
+  },
+  {
+    "word": "15.",
+    "norm": "15",
+    "start": 147.77,
+    "end": 148.17
+  },
+  {
+    "word": "Buchstabe",
+    "norm": "buchstabe",
+    "start": 148.45,
+    "end": 148.87
+  },
+  {
+    "word": "des",
+    "norm": "des",
+    "start": 148.87,
+    "end": 149.15
+  },
+  {
+    "word": "Alphabets",
+    "norm": "alphabets",
+    "start": 149.15,
+    "end": 149.81
+  },
+  {
+    "word": "und",
+    "norm": "und",
+    "start": 149.81,
+    "end": 150.21
+  },
+  {
+    "word": "ein",
+    "norm": "ein",
+    "start": 150.21,
+    "end": 150.45
+  },
+  {
+    "word": "Vokal,",
+    "norm": "vokal",
+    "start": 150.45,
+    "end": 151.23
+  },
+  {
+    "word": "P",
+    "norm": "p",
+    "start": 151.57,
+    "end": 151.97
+  },
+  {
+    "word": "ist",
+    "norm": "ist",
+    "start": 151.97,
+    "end": 152.25
+  },
+  {
+    "word": "der",
+    "norm": "der",
+    "start": 152.25,
+    "end": 152.43
+  },
+  {
+    "word": "16.",
+    "norm": "16",
+    "start": 152.43,
+    "end": 152.81
+  },
+  {
+    "word": "Buchstabe",
+    "norm": "buchstabe",
+    "start": 153.03,
+    "end": 153.49
+  },
+  {
+    "word": "des",
+    "norm": "des",
+    "start": 153.49,
+    "end": 153.73
+  },
+  {
+    "word": "Alphabets,",
+    "norm": "alphabets",
+    "start": 153.73,
+    "end": 154.45
+  },
+  {
+    "word": "R",
+    "norm": "r",
+    "start": 154.91,
+    "end": 155.33
+  },
+  {
+    "word": "ist",
+    "norm": "ist",
+    "start": 155.33,
+    "end": 155.61
+  },
+  {
+    "word": "der",
+    "norm": "der",
+    "start": 155.61,
+    "end": 155.87
+  },
+  {
+    "word": "18.",
+    "norm": "18",
+    "start": 155.87,
+    "end": 156.35
+  },
+  {
+    "word": "Buchstabe,",
+    "norm": "buchstabe",
+    "start": 156.63,
+    "end": 157.31
+  },
+  {
+    "word": "R",
+    "norm": "r",
+    "start": 157.73,
+    "end": 157.99
+  },
+  {
+    "word": "kann",
+    "norm": "kann",
+    "start": 157.99,
+    "end": 158.19
+  },
+  {
+    "word": "man",
+    "norm": "man",
+    "start": 158.19,
+    "end": 158.37
+  },
+  {
+    "word": "rollen",
+    "norm": "rollen",
+    "start": 158.37,
+    "end": 158.75
+  },
+  {
+    "word": "lassen,",
+    "norm": "lassen",
+    "start": 158.75,
+    "end": 159.05
+  },
+  {
+    "word": "S",
+    "norm": "s",
+    "start": 159.55,
+    "end": 159.93
+  },
+  {
+    "word": "ist",
+    "norm": "ist",
+    "start": 159.93,
+    "end": 160.21
+  },
+  {
+    "word": "der",
+    "norm": "der",
+    "start": 160.21,
+    "end": 160.35
+  },
+  {
+    "word": "19.",
+    "norm": "19",
+    "start": 160.35,
+    "end": 160.79
+  },
+  {
+    "word": "Buchstabe,",
+    "norm": "buchstabe",
+    "start": 161.03,
+    "end": 161.71
+  },
+  {
+    "word": "S",
+    "norm": "s",
+    "start": 162.19,
+    "end": 162.63
+  },
+  {
+    "word": "zischt",
+    "norm": "zischt",
+    "start": 162.63,
+    "end": 163.01
+  },
+  {
+    "word": "wie",
+    "norm": "wie",
+    "start": 163.01,
+    "end": 163.33
+  },
+  {
+    "word": "eine",
+    "norm": "eine",
+    "start": 163.33,
+    "end": 163.55
+  },
+  {
+    "word": "Schlange,",
+    "norm": "schlange",
+    "start": 163.55,
+    "end": 164.05
+  },
+  {
+    "word": "T",
+    "norm": "t",
+    "start": 164.33,
+    "end": 164.63
+  },
+  {
+    "word": "ist",
+    "norm": "ist",
+    "start": 164.63,
+    "end": 164.85
+  },
+  {
+    "word": "der",
+    "norm": "der",
+    "start": 164.85,
+    "end": 165.09
+  },
+  {
+    "word": "20.",
+    "norm": "20",
+    "start": 165.09,
+    "end": 165.49
+  },
+  {
+    "word": "Buchstabe",
+    "norm": "buchstabe",
+    "start": 165.69,
+    "end": 166.11
+  },
+  {
+    "word": "des",
+    "norm": "des",
+    "start": 166.11,
+    "end": 166.33
+  },
+  {
+    "word": "Alphabets,",
+    "norm": "alphabets",
+    "start": 166.33,
+    "end": 166.93
+  },
+  {
+    "word": "U",
+    "norm": "u",
+    "start": 167.27,
+    "end": 167.67
+  },
+  {
+    "word": "ist",
+    "norm": "ist",
+    "start": 167.67,
+    "end": 167.95
+  },
+  {
+    "word": "der",
+    "norm": "der",
+    "start": 167.95,
+    "end": 168.11
+  },
+  {
+    "word": "21.",
+    "norm": "21",
+    "start": 168.11,
+    "end": 168.81
+  },
+  {
+    "word": "Buchstabe",
+    "norm": "buchstabe",
+    "start": 168.99,
+    "end": 169.47
+  },
+  {
+    "word": "und",
+    "norm": "und",
+    "start": 170.37,
+    "end": 171.01
+  },
+  {
+    "word": "ein",
+    "norm": "ein",
+    "start": 171.01,
+    "end": 171.65
+  },
+  {
+    "word": "Vokal,",
+    "norm": "vokal",
+    "start": 171.65,
+    "end": 172.79
+  },
+  {
+    "word": "V",
+    "norm": "v",
+    "start": 172.81,
+    "end": 173.21
+  },
+  {
+    "word": "ist",
+    "norm": "ist",
+    "start": 173.21,
+    "end": 173.49
+  },
+  {
+    "word": "der",
+    "norm": "der",
+    "start": 173.49,
+    "end": 173.89
+  },
+  {
+    "word": "22.",
+    "norm": "22",
+    "start": 173.89,
+    "end": 174.59
+  },
+  {
+    "word": "Buchstabe,",
+    "norm": "buchstabe",
+    "start": 175.03,
+    "end": 175.67
+  },
+  {
+    "word": "V",
+    "norm": "v",
+    "start": 176.03,
+    "end": 176.53
+  },
+  {
+    "word": "klingt",
+    "norm": "klingt",
+    "start": 176.53,
+    "end": 176.91
+  },
+  {
+    "word": "ähnlich",
+    "norm": "aehnlich",
+    "start": 176.91,
+    "end": 177.41
+  },
+  {
+    "word": "wie",
+    "norm": "wie",
+    "start": 177.41,
+    "end": 177.75
+  },
+  {
+    "word": "F,",
+    "norm": "f",
+    "start": 177.75,
+    "end": 178.29
+  },
+  {
+    "word": "W",
+    "norm": "w",
+    "start": 178.91,
+    "end": 179.15
+  },
+  {
+    "word": "ist",
+    "norm": "ist",
+    "start": 179.15,
+    "end": 179.55
+  },
+  {
+    "word": "der",
+    "norm": "der",
+    "start": 179.55,
+    "end": 179.67
+  },
+  {
+    "word": "23.",
+    "norm": "23",
+    "start": 179.67,
+    "end": 180.37
+  },
+  {
+    "word": "Buchstabe",
+    "norm": "buchstabe",
+    "start": 180.59,
+    "end": 181.05
+  },
+  {
+    "word": "des",
+    "norm": "des",
+    "start": 181.05,
+    "end": 181.25
+  },
+  {
+    "word": "Alphabets,",
+    "norm": "alphabets",
+    "start": 181.25,
+    "end": 181.87
+  },
+  {
+    "word": "Z",
+    "norm": "z",
+    "start": 182.25,
+    "end": 182.55
+  },
+  {
+    "word": "ist",
+    "norm": "ist",
+    "start": 182.55,
+    "end": 182.79
+  },
+  {
+    "word": "der",
+    "norm": "der",
+    "start": 182.79,
+    "end": 182.89
+  },
+  {
+    "word": "26.",
+    "norm": "26",
+    "start": 182.89,
+    "end": 183.61
+  },
+  {
+    "word": "und",
+    "norm": "und",
+    "start": 184.03,
+    "end": 184.25
+  },
+  {
+    "word": "letzte",
+    "norm": "letzte",
+    "start": 184.25,
+    "end": 184.57
+  },
+  {
+    "word": "Buchstabe",
+    "norm": "buchstabe",
+    "start": 184.57,
+    "end": 185.07
+  },
+  {
+    "word": "des",
+    "norm": "des",
+    "start": 185.07,
+    "end": 185.29
+  },
+  {
+    "word": "Alphabets,",
+    "norm": "alphabets",
+    "start": 185.29,
+    "end": 185.95
+  },
+  {
+    "word": "Apfel,",
+    "norm": "apfel",
+    "start": 186.29,
+    "end": 186.91
+  },
+  {
+    "word": "Affe,",
+    "norm": "affe",
+    "start": 187.07,
+    "end": 187.37
+  },
+  {
+    "word": "Auto,",
+    "norm": "auto",
+    "start": 187.57,
+    "end": 187.67
+  },
+  {
+    "word": "Blume,",
+    "norm": "blume",
+    "start": 187.91,
+    "end": 188.23
+  },
+  {
+    "word": "Biene,",
+    "norm": "biene",
+    "start": 188.47,
+    "end": 188.67
+  },
+  {
+    "word": "Ballon,",
+    "norm": "ballon",
+    "start": 188.75,
+    "end": 189.09
+  },
+  {
+    "word": "Dino,",
+    "norm": "dino",
+    "start": 189.27,
+    "end": 189.55
+  },
+  {
+    "word": "Drache,",
+    "norm": "drache",
+    "start": 189.55,
+    "end": 189.91
+  },
+  {
+    "word": "Dose,",
+    "norm": "dose",
+    "start": 190.13,
+    "end": 190.37
+  },
+  {
+    "word": "Ei,",
+    "norm": "ei",
+    "start": 190.49,
+    "end": 190.69
+  },
+  {
+    "word": "Elefant,",
+    "norm": "elefant",
+    "start": 191.05,
+    "end": 191.51
+  },
+  {
+    "word": "Ente,",
+    "norm": "ente",
+    "start": 191.79,
+    "end": 192.05
+  },
+  {
+    "word": "Fisch,",
+    "norm": "fisch",
+    "start": 192.11,
+    "end": 192.37
+  },
+  {
+    "word": "Frosch,",
+    "norm": "frosch",
+    "start": 192.47,
+    "end": 192.99
+  },
+  {
+    "word": "Fuchs,",
+    "norm": "fuchs",
+    "start": 193.25,
+    "end": 193.51
+  },
+  {
+    "word": "Giraffe,",
+    "norm": "giraffe",
+    "start": 193.59,
+    "end": 193.87
+  },
+  {
+    "word": "Geist,",
+    "norm": "geist",
+    "start": 193.87,
+    "end": 194.43
+  },
+  {
+    "word": "Geschenk,",
+    "norm": "geschenk",
+    "start": 194.43,
+    "end": 195.43
+  },
+  {
+    "word": "Hund,",
+    "norm": "hund",
+    "start": 195.53,
+    "end": 195.83
+  },
+  {
+    "word": "Hase,",
+    "norm": "hase",
+    "start": 196.17,
+    "end": 196.57
+  },
+  {
+    "word": "Haus,",
+    "norm": "haus",
+    "start": 196.85,
+    "end": 197.15
+  },
+  {
+    "word": "Igel,",
+    "norm": "igel",
+    "start": 197.27,
+    "end": 197.49
+  },
+  {
+    "word": "Insel,",
+    "norm": "insel",
+    "start": 197.65,
+    "end": 197.87
+  },
+  {
+    "word": "Insekt,",
+    "norm": "insekt",
+    "start": 198.03,
+    "end": 198.37
+  },
+  {
+    "word": "Jaguar,",
+    "norm": "jaguar",
+    "start": 198.45,
+    "end": 198.83
+  },
+  {
+    "word": "Jacke,",
+    "norm": "jacke",
+    "start": 199.09,
+    "end": 199.37
+  },
+  {
+    "word": "Joghurt,",
+    "norm": "joghurt",
+    "start": 199.45,
+    "end": 199.89
+  },
+  {
+    "word": "Katze,",
+    "norm": "katze",
+    "start": 200.17,
+    "end": 200.47
+  },
+  {
+    "word": "König,",
+    "norm": "koenig",
+    "start": 200.61,
+    "end": 200.89
+  },
+  {
+    "word": "Koala,",
+    "norm": "koala",
+    "start": 200.97,
+    "end": 201.49
+  },
+  {
+    "word": "Löwe,",
+    "norm": "loewe",
+    "start": 201.69,
+    "end": 202.01
+  },
+  {
+    "word": "Lampe,",
+    "norm": "lampe",
+    "start": 202.11,
+    "end": 202.35
+  },
+  {
+    "word": "Lama,",
+    "norm": "lama",
+    "start": 202.49,
+    "end": 202.75
+  },
+  {
+    "word": "Maus,",
+    "norm": "maus",
+    "start": 202.87,
+    "end": 203.19
+  },
+  {
+    "word": "Mondmusik,",
+    "norm": "mondmusik",
+    "start": 203.37,
+    "end": 204.01
+  },
+  {
+    "word": "Nase,",
+    "norm": "nase",
+    "start": 204.11,
+    "end": 204.35
+  },
+  {
+    "word": "Nussnest,",
+    "norm": "nussnest",
+    "start": 204.49,
+    "end": 204.99
+  },
+  {
+    "word": "Ohr,",
+    "norm": "ohr",
+    "start": 205.17,
+    "end": 205.39
+  },
+  {
+    "word": "Orange,",
+    "norm": "orange",
+    "start": 205.49,
+    "end": 205.81
+  },
+  {
+    "word": "Octopus,",
+    "norm": "octopus",
+    "start": 206.03,
+    "end": 206.55
+  },
+  {
+    "word": "Pinguin,",
+    "norm": "pinguin",
+    "start": 206.83,
+    "end": 207.39
+  },
+  {
+    "word": "Pilz,",
+    "norm": "pilz",
+    "start": 207.51,
+    "end": 207.79
+  },
+  {
+    "word": "Pferd,",
+    "norm": "pferd",
+    "start": 207.85,
+    "end": 208.27
+  },
+  {
+    "word": "Rakete,",
+    "norm": "rakete",
+    "start": 208.49,
+    "end": 208.91
+  },
+  {
+    "word": "Roboter,",
+    "norm": "roboter",
+    "start": 209.07,
+    "end": 209.49
+  },
+  {
+    "word": "Rose,",
+    "norm": "rose",
+    "start": 209.69,
+    "end": 209.97
+  },
+  {
+    "word": "Sonne,",
+    "norm": "sonne",
+    "start": 210.11,
+    "end": 210.43
+  },
+  {
+    "word": "Stern,",
+    "norm": "stern",
+    "start": 210.69,
+    "end": 210.83
+  },
+  {
+    "word": "Schnecke,",
+    "norm": "schnecke",
+    "start": 211.03,
+    "end": 211.35
+  },
+  {
+    "word": "Tiger,",
+    "norm": "tiger",
+    "start": 211.35,
+    "end": 211.65
+  },
+  {
+    "word": "Traktor,",
+    "norm": "traktor",
+    "start": 211.65,
+    "end": 212.19
+  },
+  {
+    "word": "Trommel,",
+    "norm": "trommel",
+    "start": 212.43,
+    "end": 212.75
+  },
+  {
+    "word": "Uhr,",
+    "norm": "uhr",
+    "start": 212.79,
+    "end": 212.95
+  },
+  {
+    "word": "Uhu,",
+    "norm": "uhu",
+    "start": 213.21,
+    "end": 213.57
+  },
+  {
+    "word": "UFO,",
+    "norm": "ufo",
+    "start": 213.73,
+    "end": 214.01
+  },
+  {
+    "word": "Vogel,",
+    "norm": "vogel",
+    "start": 214.23,
+    "end": 214.53
+  },
+  {
+    "word": "Vulkan,",
+    "norm": "vulkan",
+    "start": 214.63,
+    "end": 215.01
+  },
+  {
+    "word": "Vase,",
+    "norm": "vase",
+    "start": 215.31,
+    "end": 215.59
+  },
+  {
+    "word": "Wolf,",
+    "norm": "wolf",
+    "start": 215.89,
+    "end": 216.11
+  },
+  {
+    "word": "Wolke,",
+    "norm": "wolke",
+    "start": 216.25,
+    "end": 216.71
+  },
+  {
+    "word": "Wal,",
+    "norm": "wal",
+    "start": 217.01,
+    "end": 217.19
+  },
+  {
+    "word": "Zebra,",
+    "norm": "zebra",
+    "start": 217.35,
+    "end": 217.69
+  },
+  {
+    "word": "Zahnzug,",
+    "norm": "zahnzug",
+    "start": 217.87,
+    "end": 218.37
+  },
+  {
+    "word": "Gefühlswelt.",
+    "norm": "gefuehlswelt",
+    "start": 218.53,
+    "end": 219.19
+  },
+  {
+    "word": "Wie",
+    "norm": "wie",
+    "start": 219.19,
+    "end": 219.81
+  },
+  {
+    "word": "geht",
+    "norm": "geht",
+    "start": 219.81,
+    "end": 220.15
+  },
+  {
+    "word": "das?",
+    "norm": "das",
+    "start": 220.15,
+    "end": 220.69
+  },
+  {
+    "word": "Lumi",
+    "norm": "lumi",
+    "start": 221.03,
+    "end": 221.25
+  },
+  {
+    "word": "erlebt",
+    "norm": "erlebt",
+    "start": 221.25,
+    "end": 221.67
+  },
+  {
+    "word": "etwas.",
+    "norm": "etwas",
+    "start": 221.67,
+    "end": 222.27
+  },
+  {
+    "word": "Lies",
+    "norm": "lies",
+    "start": 222.55,
+    "end": 222.71
+  },
+  {
+    "word": "die",
+    "norm": "die",
+    "start": 222.71,
+    "end": 222.91
+  },
+  {
+    "word": "Situation",
+    "norm": "situation",
+    "start": 222.91,
+    "end": 223.53
+  },
+  {
+    "word": "und",
+    "norm": "und",
+    "start": 223.53,
+    "end": 223.95
+  },
+  {
+    "word": "denke",
+    "norm": "denke",
+    "start": 223.95,
+    "end": 224.23
+  },
+  {
+    "word": "nach.",
+    "norm": "nach",
+    "start": 224.23,
+    "end": 224.63
+  },
+  {
+    "word": "Wie",
+    "norm": "wie",
+    "start": 224.97,
+    "end": 225.15
+  },
+  {
+    "word": "fühlt",
+    "norm": "fuehlt",
+    "start": 225.15,
+    "end": 225.45
+  },
+  {
+    "word": "sich",
+    "norm": "sich",
+    "start": 225.45,
+    "end": 225.63
+  },
+  {
+    "word": "Lumi",
+    "norm": "lumi",
+    "start": 225.63,
+    "end": 225.91
+  },
+  {
+    "word": "dabei",
+    "norm": "dabei",
+    "start": 225.91,
+    "end": 226.27
+  },
+  {
+    "word": "wohl?",
+    "norm": "wohl",
+    "start": 226.27,
+    "end": 226.61
+  },
+  {
+    "word": "Tippe",
+    "norm": "tippe",
+    "start": 227.05,
+    "end": 227.35
+  },
+  {
+    "word": "auf",
+    "norm": "auf",
+    "start": 227.35,
+    "end": 227.49
+  },
+  {
+    "word": "das",
+    "norm": "das",
+    "start": 227.49,
+    "end": 227.75
+  },
+  {
+    "word": "passende",
+    "norm": "passende",
+    "start": 227.75,
+    "end": 228.11
+  },
+  {
+    "word": "Gefühl.",
+    "norm": "gefuehl",
+    "start": 228.11,
+    "end": 228.51
+  },
+  {
+    "word": "Wie",
+    "norm": "wie",
+    "start": 228.97,
+    "end": 229.11
+  },
+  {
+    "word": "fühlt",
+    "norm": "fuehlt",
+    "start": 229.11,
+    "end": 229.37
+  },
+  {
+    "word": "sich",
+    "norm": "sich",
+    "start": 229.37,
+    "end": 229.57
+  },
+  {
+    "word": "Lumi",
+    "norm": "lumi",
+    "start": 229.57,
+    "end": 229.91
+  },
+  {
+    "word": "wohl?",
+    "norm": "wohl",
+    "start": 229.91,
+    "end": 230.27
+  },
+  {
+    "word": "Genau",
+    "norm": "genau",
+    "start": 230.45,
+    "end": 230.73
+  },
+  {
+    "word": "richtig.",
+    "norm": "richtig",
+    "start": 230.73,
+    "end": 231.23
+  },
+  {
+    "word": "Lumi",
+    "norm": "lumi",
+    "start": 231.65,
+    "end": 231.99
+  },
+  {
+    "word": "war",
+    "norm": "war",
+    "start": 231.99,
+    "end": 232.47
+  },
+  {
+    "word": "glücklich.",
+    "norm": "gluecklich",
+    "start": 232.47,
+    "end": 233.21
+  },
+  {
+    "word": "Lumi",
+    "norm": "lumi",
+    "start": 233.57,
+    "end": 233.87
+  },
+  {
+    "word": "war",
+    "norm": "war",
+    "start": 233.87,
+    "end": 234.39
+  },
+  {
+    "word": "traurig.",
+    "norm": "traurig",
+    "start": 234.39,
+    "end": 235.17
+  },
+  {
+    "word": "Lumi",
+    "norm": "lumi",
+    "start": 235.47,
+    "end": 235.73
+  },
+  {
+    "word": "war",
+    "norm": "war",
+    "start": 235.73,
+    "end": 236.19
+  },
+  {
+    "word": "wütend.",
+    "norm": "wuetend",
+    "start": 236.19,
+    "end": 236.85
+  },
+  {
+    "word": "Lumi",
+    "norm": "lumi",
+    "start": 237.05,
+    "end": 237.29
+  },
+  {
+    "word": "war",
+    "norm": "war",
+    "start": 237.29,
+    "end": 237.67
+  },
+  {
+    "word": "ängstlich.",
+    "norm": "aengstlich",
+    "start": 237.67,
+    "end": 238.35
+  },
+  {
+    "word": "Lumi",
+    "norm": "lumi",
+    "start": 238.61,
+    "end": 238.85
+  },
+  {
+    "word": "war",
+    "norm": "war",
+    "start": 238.85,
+    "end": 239.25
+  },
+  {
+    "word": "aufgeregt.",
+    "norm": "aufgeregt",
+    "start": 239.25,
+    "end": 239.93
+  },
+  {
+    "word": "Lumi",
+    "norm": "lumi",
+    "start": 240.21,
+    "end": 240.45
+  },
+  {
+    "word": "war",
+    "norm": "war",
+    "start": 240.45,
+    "end": 240.85
+  },
+  {
+    "word": "müde.",
+    "norm": "muede",
+    "start": 240.85,
+    "end": 241.35
+  },
+  {
+    "word": "Lumi",
+    "norm": "lumi",
+    "start": 241.61,
+    "end": 241.87
+  },
+  {
+    "word": "war",
+    "norm": "war",
+    "start": 241.87,
+    "end": 242.27
+  },
+  {
+    "word": "verlegen.",
+    "norm": "verlegen",
+    "start": 242.27,
+    "end": 242.79
+  },
+  {
+    "word": "Lumi",
+    "norm": "lumi",
+    "start": 243.13,
+    "end": 243.41
+  },
+  {
+    "word": "war",
+    "norm": "war",
+    "start": 243.41,
+    "end": 243.87
+  },
+  {
+    "word": "dankbar.",
+    "norm": "dankbar",
+    "start": 243.87,
+    "end": 244.47
+  },
+  {
+    "word": "Lumi",
+    "norm": "lumi",
+    "start": 244.75,
+    "end": 244.99
+  },
+  {
+    "word": "war",
+    "norm": "war",
+    "start": 244.99,
+    "end": 245.43
+  },
+  {
+    "word": "überrascht.",
+    "norm": "ueberrascht",
+    "start": 245.43,
+    "end": 246.07
+  },
+  {
+    "word": "Lumi",
+    "norm": "lumi",
+    "start": 246.37,
+    "end": 246.61
+  },
+  {
+    "word": "war",
+    "norm": "war",
+    "start": 246.61,
+    "end": 246.85
+  },
+  {
+    "word": "stolz.",
+    "norm": "stolz",
+    "start": 246.85,
+    "end": 247.83
+  },
+  {
+    "word": "Lumi",
+    "norm": "lumi",
+    "start": 248.03,
+    "end": 248.17
+  },
+  {
+    "word": "war",
+    "norm": "war",
+    "start": 248.17,
+    "end": 248.57
+  },
+  {
+    "word": "gelangweilt.",
+    "norm": "gelangweilt",
+    "start": 248.57,
+    "end": 249.43
+  },
+  {
+    "word": "Lumi",
+    "norm": "lumi",
+    "start": 249.73,
+    "end": 250.01
+  },
+  {
+    "word": "war",
+    "norm": "war",
+    "start": 250.01,
+    "end": 250.45
+  },
+  {
+    "word": "eifersüchtig.",
+    "norm": "eifersuechtig",
+    "start": 250.45,
+    "end": 251.37
+  },
+  {
+    "word": "Lumi",
+    "norm": "lumi",
+    "start": 251.51,
+    "end": 251.77
+  },
+  {
+    "word": "war",
+    "norm": "war",
+    "start": 251.77,
+    "end": 252.35
+  },
+  {
+    "word": "neugierig.",
+    "norm": "neugierig",
+    "start": 252.35,
+    "end": 253.25
+  },
+  {
+    "word": "Lumi",
+    "norm": "lumi",
+    "start": 253.53,
+    "end": 253.81
+  },
+  {
+    "word": "bekommt",
+    "norm": "bekommt",
+    "start": 253.81,
+    "end": 254.15
+  },
+  {
+    "word": "ein",
+    "norm": "ein",
+    "start": 254.15,
+    "end": 254.41
+  },
+  {
+    "word": "riesiges",
+    "norm": "riesiges",
+    "start": 254.41,
+    "end": 255.05
+  },
+  {
+    "word": "Geschenk.",
+    "norm": "geschenk",
+    "start": 255.05,
+    "end": 255.69
+  },
+  {
+    "word": "Wenn",
+    "norm": "wenn",
+    "start": 255.81,
+    "end": 255.97
+  },
+  {
+    "word": "wir",
+    "norm": "wir",
+    "start": 255.97,
+    "end": 256.21
+  },
+  {
+    "word": "etwas",
+    "norm": "etwas",
+    "start": 256.21,
+    "end": 256.53
+  },
+  {
+    "word": "toll",
+    "norm": "toll",
+    "start": 256.53,
+    "end": 256.81
+  },
+  {
+    "word": "finden,",
+    "norm": "finden",
+    "start": 256.81,
+    "end": 257.33
+  },
+  {
+    "word": "fühlen",
+    "norm": "fuehlen",
+    "start": 257.69,
+    "end": 257.99
+  },
+  {
+    "word": "wir",
+    "norm": "wir",
+    "start": 257.99,
+    "end": 258.17
+  },
+  {
+    "word": "uns",
+    "norm": "uns",
+    "start": 258.17,
+    "end": 258.41
+  },
+  {
+    "word": "glücklich.",
+    "norm": "gluecklich",
+    "start": 258.41,
+    "end": 258.85
+  },
+  {
+    "word": "Lumi",
+    "norm": "lumi",
+    "start": 259.27,
+    "end": 259.65
+  },
+  {
+    "word": "gewinnt",
+    "norm": "gewinnt",
+    "start": 259.65,
+    "end": 260.03
+  },
+  {
+    "word": "beim",
+    "norm": "beim",
+    "start": 260.03,
+    "end": 260.31
+  },
+  {
+    "word": "Wettrennen",
+    "norm": "wettrennen",
+    "start": 260.31,
+    "end": 260.99
+  },
+  {
+    "word": "gegen",
+    "norm": "gegen",
+    "start": 260.99,
+    "end": 261.31
+  },
+  {
+    "word": "alle",
+    "norm": "alle",
+    "start": 261.31,
+    "end": 261.69
+  },
+  {
+    "word": "anderen.",
+    "norm": "anderen",
+    "start": 261.69,
+    "end": 262.17
+  },
+  {
+    "word": "Wenn",
+    "norm": "wenn",
+    "start": 262.57,
+    "end": 262.83
+  },
+  {
+    "word": "wir",
+    "norm": "wir",
+    "start": 262.83,
+    "end": 263.09
+  },
+  {
+    "word": "etwas",
+    "norm": "etwas",
+    "start": 263.09,
+    "end": 263.43
+  },
+  {
+    "word": "Tolles",
+    "norm": "tolles",
+    "start": 263.43,
+    "end": 263.75
+  },
+  {
+    "word": "schaffen,",
+    "norm": "schaffen",
+    "start": 263.75,
+    "end": 264.21
+  },
+  {
+    "word": "werden",
+    "norm": "werden",
+    "start": 264.77,
+    "end": 264.89
+  },
+  {
+    "word": "wir",
+    "norm": "wir",
+    "start": 264.89,
+    "end": 265.25
+  },
+  {
+    "word": "ganz",
+    "norm": "ganz",
+    "start": 265.25,
+    "end": 265.73
+  },
+  {
+    "word": "glücklich.",
+    "norm": "gluecklich",
+    "start": 265.73,
+    "end": 266.25
+  },
+  {
+    "word": "Lumi",
+    "norm": "lumi",
+    "start": 266.59,
+    "end": 266.93
+  },
+  {
+    "word": "trifft",
+    "norm": "trifft",
+    "start": 266.93,
+    "end": 267.27
+  },
+  {
+    "word": "nach",
+    "norm": "nach",
+    "start": 267.27,
+    "end": 267.55
+  },
+  {
+    "word": "langer",
+    "norm": "langer",
+    "start": 267.55,
+    "end": 267.89
+  },
+  {
+    "word": "Zeit",
+    "norm": "zeit",
+    "start": 267.89,
+    "end": 268.17
+  },
+  {
+    "word": "den",
+    "norm": "den",
+    "start": 268.17,
+    "end": 268.39
+  },
+  {
+    "word": "besten",
+    "norm": "besten",
+    "start": 268.39,
+    "end": 268.85
+  },
+  {
+    "word": "Freund",
+    "norm": "freund",
+    "start": 268.85,
+    "end": 269.21
+  },
+  {
+    "word": "wieder.",
+    "norm": "wieder",
+    "start": 269.21,
+    "end": 269.67
+  },
+  {
+    "word": "Freunde",
+    "norm": "freunde",
+    "start": 270.15,
+    "end": 270.51
+  },
+  {
+    "word": "wiederzusehen",
+    "norm": "wiederzusehen",
+    "start": 270.51,
+    "end": 271.41
+  },
+  {
+    "word": "macht",
+    "norm": "macht",
+    "start": 271.41,
+    "end": 271.69
+  },
+  {
+    "word": "uns",
+    "norm": "uns",
+    "start": 271.69,
+    "end": 271.97
+  },
+  {
+    "word": "glücklich.",
+    "norm": "gluecklich",
+    "start": 271.97,
+    "end": 272.75
+  },
+  {
+    "word": "Lumi",
+    "norm": "lumi",
+    "start": 273.11,
+    "end": 273.33
+  },
+  {
+    "word": "darf",
+    "norm": "darf",
+    "start": 273.33,
+    "end": 273.57
+  },
+  {
+    "word": "heute",
+    "norm": "heute",
+    "start": 273.57,
+    "end": 273.95
+  },
+  {
+    "word": "so",
+    "norm": "so",
+    "start": 273.95,
+    "end": 274.25
+  },
+  {
+    "word": "lange",
+    "norm": "lange",
+    "start": 274.25,
+    "end": 274.47
+  },
+  {
+    "word": "aufbleiben,",
+    "norm": "aufbleiben",
+    "start": 274.47,
+    "end": 275.21
+  },
+  {
+    "word": "wie",
+    "norm": "wie",
+    "start": 275.33,
+    "end": 275.43
+  },
+  {
+    "word": "er",
+    "norm": "er",
+    "start": 275.43,
+    "end": 275.69
+  },
+  {
+    "word": "möchte.",
+    "norm": "moechte",
+    "start": 275.69,
+    "end": 276.11
+  },
+  {
+    "word": "Unerwartete",
+    "norm": "unerwartete",
+    "start": 276.89,
+    "end": 277.61
+  },
+  {
+    "word": "Freuden",
+    "norm": "freuden",
+    "start": 277.61,
+    "end": 278.15
+  },
+  {
+    "word": "machen",
+    "norm": "machen",
+    "start": 278.15,
+    "end": 278.45
+  },
+  {
+    "word": "uns",
+    "norm": "uns",
+    "start": 278.45,
+    "end": 278.91
+  },
+  {
+    "word": "glücklich.",
+    "norm": "gluecklich",
+    "start": 278.91,
+    "end": 279.51
+  },
+  {
+    "word": "Lumis",
+    "norm": "lumis",
+    "start": 279.95,
+    "end": 280.27
+  },
+  {
+    "word": "Lieblingseis",
+    "norm": "lieblingseis",
+    "start": 280.27,
+    "end": 281.31
+  },
+  {
+    "word": "fällt",
+    "norm": "faellt",
+    "start": 281.31,
+    "end": 281.65
+  },
+  {
+    "word": "auf",
+    "norm": "auf",
+    "start": 281.65,
+    "end": 281.97
+  },
+  {
+    "word": "den",
+    "norm": "den",
+    "start": 281.97,
+    "end": 282.21
+  },
+  {
+    "word": "Boden.",
+    "norm": "boden",
+    "start": 282.21,
+    "end": 282.61
+  },
+  {
+    "word": "Wenn",
+    "norm": "wenn",
+    "start": 283.31,
+    "end": 283.51
+  },
+  {
+    "word": "etwas",
+    "norm": "etwas",
+    "start": 283.51,
+    "end": 283.87
+  },
+  {
+    "word": "schief",
+    "norm": "schief",
+    "start": 283.87,
+    "end": 284.25
+  },
+  {
+    "word": "geht,",
+    "norm": "geht",
+    "start": 284.25,
+    "end": 284.49
+  },
+  {
+    "word": "das",
+    "norm": "das",
+    "start": 284.57,
+    "end": 284.75
+  },
+  {
+    "word": "uns",
+    "norm": "uns",
+    "start": 284.75,
+    "end": 284.99
+  },
+  {
+    "word": "wichtig",
+    "norm": "wichtig",
+    "start": 284.99,
+    "end": 285.39
+  },
+  {
+    "word": "ist,",
+    "norm": "ist",
+    "start": 285.39,
+    "end": 285.77
+  },
+  {
+    "word": "fühlen",
+    "norm": "fuehlen",
+    "start": 285.95,
+    "end": 286.23
+  },
+  {
+    "word": "wir",
+    "norm": "wir",
+    "start": 286.23,
+    "end": 286.41
+  },
+  {
+    "word": "uns",
+    "norm": "uns",
+    "start": 286.41,
+    "end": 286.71
+  },
+  {
+    "word": "traurig.",
+    "norm": "traurig",
+    "start": 286.71,
+    "end": 287.43
+  },
+  {
+    "word": "Lumis",
+    "norm": "lumis",
+    "start": 288.17,
+    "end": 288.53
+  },
+  {
+    "word": "bester",
+    "norm": "bester",
+    "start": 288.53,
+    "end": 289.03
+  },
+  {
+    "word": "Freund",
+    "norm": "freund",
+    "start": 289.03,
+    "end": 289.39
+  },
+  {
+    "word": "zieht",
+    "norm": "zieht",
+    "start": 289.39,
+    "end": 289.77
+  },
+  {
+    "word": "in",
+    "norm": "in",
+    "start": 289.77,
+    "end": 290.09
+  },
+  {
+    "word": "eine",
+    "norm": "eine",
+    "start": 290.09,
+    "end": 290.33
+  },
+  {
+    "word": "andere",
+    "norm": "andere",
+    "start": 290.33,
+    "end": 290.69
+  },
+  {
+    "word": "Stadt.",
+    "norm": "stadt",
+    "start": 290.69,
+    "end": 291.11
+  },
+  {
+    "word": "Menschen",
+    "norm": "menschen",
+    "start": 291.67,
+    "end": 291.85
+  },
+  {
+    "word": "zu",
+    "norm": "zu",
+    "start": 291.85,
+    "end": 292.17
+  },
+  {
+    "word": "vermissen",
+    "norm": "vermissen",
+    "start": 292.17,
+    "end": 292.65
+  },
+  {
+    "word": "macht",
+    "norm": "macht",
+    "start": 292.65,
+    "end": 293.07
+  },
+  {
+    "word": "uns",
+    "norm": "uns",
+    "start": 293.07,
+    "end": 293.41
+  },
+  {
+    "word": "traurig.",
+    "norm": "traurig",
+    "start": 293.41,
+    "end": 294.15
+  },
+  {
+    "word": "Das",
+    "norm": "das",
+    "start": 294.45,
+    "end": 294.77
+  },
+  {
+    "word": "Lieblingsspielzeug",
+    "norm": "lieblingsspielzeug",
+    "start": 294.77,
+    "end": 295.89
+  },
+  {
+    "word": "von",
+    "norm": "von",
+    "start": 295.89,
+    "end": 296.17
+  },
+  {
+    "word": "Lumi",
+    "norm": "lumi",
+    "start": 296.17,
+    "end": 296.51
+  },
+  {
+    "word": "ist",
+    "norm": "ist",
+    "start": 296.51,
+    "end": 296.89
+  },
+  {
+    "word": "kaputt",
+    "norm": "kaputt",
+    "start": 296.89,
+    "end": 297.51
+  },
+  {
+    "word": "gegangen.",
+    "norm": "gegangen",
+    "start": 297.51,
+    "end": 297.97
+  },
+  {
+    "word": "Wenn",
+    "norm": "wenn",
+    "start": 298.43,
+    "end": 298.71
+  },
+  {
+    "word": "wir",
+    "norm": "wir",
+    "start": 298.71,
+    "end": 299.01
+  },
+  {
+    "word": "etwas",
+    "norm": "etwas",
+    "start": 299.01,
+    "end": 299.39
+  },
+  {
+    "word": "Liebgewonnenes",
+    "norm": "liebgewonnenes",
+    "start": 299.39,
+    "end": 300.41
+  },
+  {
+    "word": "verlieren,",
+    "norm": "verlieren",
+    "start": 300.41,
+    "end": 301.09
+  },
+  {
+    "word": "werden",
+    "norm": "werden",
+    "start": 301.33,
+    "end": 301.43
+  },
+  {
+    "word": "wir",
+    "norm": "wir",
+    "start": 301.43,
+    "end": 301.75
+  },
+  {
+    "word": "traurig.",
+    "norm": "traurig",
+    "start": 301.75,
+    "end": 302.47
+  },
+  {
+    "word": "Es",
+    "norm": "es",
+    "start": 302.61,
+    "end": 302.97
+  },
+  {
+    "word": "regnet",
+    "norm": "regnet",
+    "start": 302.97,
+    "end": 303.59
+  },
+  {
+    "word": "und",
+    "norm": "und",
+    "start": 303.59,
+    "end": 304.25
+  },
+  {
+    "word": "Lumi",
+    "norm": "lumi",
+    "start": 304.25,
+    "end": 304.67
+  },
+  {
+    "word": "kann",
+    "norm": "kann",
+    "start": 304.67,
+    "end": 305.03
+  },
+  {
+    "word": "draußen",
+    "norm": "draussen",
+    "start": 305.03,
+    "end": 305.51
+  },
+  {
+    "word": "nicht",
+    "norm": "nicht",
+    "start": 305.51,
+    "end": 305.95
+  },
+  {
+    "word": "spielen.",
+    "norm": "spielen",
+    "start": 305.95,
+    "end": 306.39
+  },
+  {
+    "word": "Enttäuschungen",
+    "norm": "enttaeuschungen",
+    "start": 307.03,
+    "end": 307.79
+  },
+  {
+    "word": "können",
+    "norm": "koennen",
+    "start": 307.79,
+    "end": 308.09
+  },
+  {
+    "word": "uns",
+    "norm": "uns",
+    "start": 308.09,
+    "end": 308.49
+  },
+  {
+    "word": "traurig",
+    "norm": "traurig",
+    "start": 308.49,
+    "end": 309.01
+  },
+  {
+    "word": "machen.",
+    "norm": "machen",
+    "start": 309.01,
+    "end": 309.35
+  },
+  {
+    "word": "Ein",
+    "norm": "ein",
+    "start": 309.65,
+    "end": 309.91
+  },
+  {
+    "word": "Kind",
+    "norm": "kind",
+    "start": 309.91,
+    "end": 310.29
+  },
+  {
+    "word": "nimmt",
+    "norm": "nimmt",
+    "start": 310.29,
+    "end": 310.67
+  },
+  {
+    "word": "Lumi",
+    "norm": "lumi",
+    "start": 310.67,
+    "end": 311.23
+  },
+  {
+    "word": "einfach",
+    "norm": "einfach",
+    "start": 311.23,
+    "end": 311.85
+  },
+  {
+    "word": "das",
+    "norm": "das",
+    "start": 311.85,
+    "end": 312.19
+  },
+  {
+    "word": "Spielzeug",
+    "norm": "spielzeug",
+    "start": 312.19,
+    "end": 312.81
+  },
+  {
+    "word": "weg.",
+    "norm": "weg",
+    "start": 312.81,
+    "end": 313.11
+  },
+  {
+    "word": "Wenn",
+    "norm": "wenn",
+    "start": 313.47,
+    "end": 313.69
+  },
+  {
+    "word": "wir",
+    "norm": "wir",
+    "start": 313.69,
+    "end": 313.91
+  },
+  {
+    "word": "uns",
+    "norm": "uns",
+    "start": 313.91,
+    "end": 314.41
+  },
+  {
+    "word": "ungerecht",
+    "norm": "ungerecht",
+    "start": 314.41,
+    "end": 314.89
+  },
+  {
+    "word": "behandelt",
+    "norm": "behandelt",
+    "start": 314.89,
+    "end": 315.53
+  },
+  {
+    "word": "fühlen,",
+    "norm": "fuehlen",
+    "start": 315.53,
+    "end": 316.11
+  },
+  {
+    "word": "werden",
+    "norm": "werden",
+    "start": 316.47,
+    "end": 316.59
+  },
+  {
+    "word": "wir",
+    "norm": "wir",
+    "start": 316.59,
+    "end": 316.97
+  },
+  {
+    "word": "wütend.",
+    "norm": "wuetend",
+    "start": 316.97,
+    "end": 317.65
+  },
+  {
+    "word": "Jemand",
+    "norm": "jemand",
+    "start": 317.93,
+    "end": 318.49
+  },
+  {
+    "word": "hat",
+    "norm": "hat",
+    "start": 318.49,
+    "end": 318.73
+  },
+  {
+    "word": "die",
+    "norm": "die",
+    "start": 318.73,
+    "end": 319.07
+  },
+  {
+    "word": "Zeichnung",
+    "norm": "zeichnung",
+    "start": 319.07,
+    "end": 319.67
+  },
+  {
+    "word": "von",
+    "norm": "von",
+    "start": 319.67,
+    "end": 319.95
+  },
+  {
+    "word": "Lumi",
+    "norm": "lumi",
+    "start": 319.95,
+    "end": 320.55
+  },
+  {
+    "word": "zerrissen.",
+    "norm": "zerrissen",
+    "start": 320.55,
+    "end": 321.39
+  },
+  {
+    "word": "Wenn",
+    "norm": "wenn",
+    "start": 321.75,
+    "end": 322.07
+  },
+  {
+    "word": "etwas",
+    "norm": "etwas",
+    "start": 322.07,
+    "end": 322.51
+  },
+  {
+    "word": "Wichtiges",
+    "norm": "wichtiges",
+    "start": 322.51,
+    "end": 323.21
+  },
+  {
+    "word": "kaputt",
+    "norm": "kaputt",
+    "start": 323.21,
+    "end": 323.69
+  },
+  {
+    "word": "gemacht",
+    "norm": "gemacht",
+    "start": 323.69,
+    "end": 324.03
+  },
+  {
+    "word": "wird,",
+    "norm": "wird",
+    "start": 324.03,
+    "end": 324.39
+  },
+  {
+    "word": "macht",
+    "norm": "macht",
+    "start": 324.39,
+    "end": 324.81
+  },
+  {
+    "word": "uns",
+    "norm": "uns",
+    "start": 324.81,
+    "end": 325.09
+  },
+  {
+    "word": "das",
+    "norm": "das",
+    "start": 325.09,
+    "end": 325.39
+  },
+  {
+    "word": "wütend.",
+    "norm": "wuetend",
+    "start": 325.39,
+    "end": 326.01
+  },
+  {
+    "word": "Lumi",
+    "norm": "lumi",
+    "start": 326.45,
+    "end": 326.71
+  },
+  {
+    "word": "steht",
+    "norm": "steht",
+    "start": 326.71,
+    "end": 327.05
+  },
+  {
+    "word": "in",
+    "norm": "in",
+    "start": 327.05,
+    "end": 327.35
+  },
+  {
+    "word": "der",
+    "norm": "der",
+    "start": 327.35,
+    "end": 327.57
+  },
+  {
+    "word": "Reihe",
+    "norm": "reihe",
+    "start": 327.57,
+    "end": 327.97
+  },
+  {
+    "word": "und",
+    "norm": "und",
+    "start": 327.97,
+    "end": 328.25
+  },
+  {
+    "word": "jemand",
+    "norm": "jemand",
+    "start": 328.25,
+    "end": 328.69
+  },
+  {
+    "word": "drängelt",
+    "norm": "draengelt",
+    "start": 328.69,
+    "end": 329.15
+  },
+  {
+    "word": "sich",
+    "norm": "sich",
+    "start": 329.15,
+    "end": 329.41
+  },
+  {
+    "word": "vor.",
+    "norm": "vor",
+    "start": 329.41,
+    "end": 329.83
+  },
+  {
+    "word": "Unfairheit",
+    "norm": "unfairheit",
+    "start": 330.71,
+    "end": 331.39
+  },
+  {
+    "word": "macht",
+    "norm": "macht",
+    "start": 331.39,
+    "end": 331.67
+  },
+  {
+    "word": "uns",
+    "norm": "uns",
+    "start": 331.67,
+    "end": 332.09
+  },
+  {
+    "word": "wütend.",
+    "norm": "wuetend",
+    "start": 332.09,
+    "end": 332.79
+  },
+  {
+    "word": "Lumi",
+    "norm": "lumi",
+    "start": 333.23,
+    "end": 333.59
+  },
+  {
+    "word": "hört",
+    "norm": "hoert",
+    "start": 333.59,
+    "end": 333.87
+  },
+  {
+    "word": "mitten",
+    "norm": "mitten",
+    "start": 333.87,
+    "end": 334.29
+  },
+  {
+    "word": "in",
+    "norm": "in",
+    "start": 334.29,
+    "end": 334.49
+  },
+  {
+    "word": "der",
+    "norm": "der",
+    "start": 334.49,
+    "end": 334.69
+  },
+  {
+    "word": "Nacht",
+    "norm": "nacht",
+    "start": 334.69,
+    "end": 334.91
+  },
+  {
+    "word": "ein",
+    "norm": "ein",
+    "start": 334.91,
+    "end": 335.19
+  },
+  {
+    "word": "lautes",
+    "norm": "lautes",
+    "start": 335.19,
+    "end": 335.61
+  },
+  {
+    "word": "Geräusch.",
+    "norm": "geraeusch",
+    "start": 335.61,
+    "end": 336.47
+  },
+  {
+    "word": "Wenn",
+    "norm": "wenn",
+    "start": 336.61,
+    "end": 336.81
+  },
+  {
+    "word": "wir",
+    "norm": "wir",
+    "start": 336.81,
+    "end": 337.03
+  },
+  {
+    "word": "etwas",
+    "norm": "etwas",
+    "start": 337.03,
+    "end": 337.27
+  },
+  {
+    "word": "nicht",
+    "norm": "nicht",
+    "start": 337.27,
+    "end": 337.71
+  },
+  {
+    "word": "kennen",
+    "norm": "kennen",
+    "start": 337.71,
+    "end": 337.97
+  },
+  {
+    "word": "und",
+    "norm": "und",
+    "start": 337.97,
+    "end": 338.25
+  },
+  {
+    "word": "es",
+    "norm": "es",
+    "start": 338.25,
+    "end": 338.55
+  },
+  {
+    "word": "unerwartet",
+    "norm": "unerwartet",
+    "start": 338.55,
+    "end": 339.15
+  },
+  {
+    "word": "kommt,",
+    "norm": "kommt",
+    "start": 339.15,
+    "end": 339.47
+  },
+  {
+    "word": "werden",
+    "norm": "werden",
+    "start": 339.77,
+    "end": 339.83
+  },
+  {
+    "word": "wir",
+    "norm": "wir",
+    "start": 339.83,
+    "end": 340.05
+  },
+  {
+    "word": "ängstlich.",
+    "norm": "aengstlich",
+    "start": 340.05,
+    "end": 340.71
+  },
+  {
+    "word": "Lumi",
+    "norm": "lumi",
+    "start": 341.11,
+    "end": 341.49
+  },
+  {
+    "word": "soll",
+    "norm": "soll",
+    "start": 341.49,
+    "end": 341.75
+  },
+  {
+    "word": "alleine",
+    "norm": "alleine",
+    "start": 341.75,
+    "end": 342.27
+  },
+  {
+    "word": "auf",
+    "norm": "auf",
+    "start": 342.27,
+    "end": 342.55
+  },
+  {
+    "word": "der",
+    "norm": "der",
+    "start": 342.55,
+    "end": 342.75
+  },
+  {
+    "word": "großen",
+    "norm": "grossen",
+    "start": 342.75,
+    "end": 343.13
+  },
+  {
+    "word": "Bühne",
+    "norm": "buehne",
+    "start": 343.13,
+    "end": 343.47
+  },
+  {
+    "word": "auftreten.",
+    "norm": "auftreten",
+    "start": 343.47,
+    "end": 344.21
+  },
+  {
+    "word": "Vor",
+    "norm": "vor",
+    "start": 344.55,
+    "end": 344.75
+  },
+  {
+    "word": "einem",
+    "norm": "einem",
+    "start": 344.75,
+    "end": 345.01
+  },
+  {
+    "word": "großen",
+    "norm": "grossen",
+    "start": 345.01,
+    "end": 345.51
+  },
+  {
+    "word": "Auftritt",
+    "norm": "auftritt",
+    "start": 345.51,
+    "end": 345.99
+  },
+  {
+    "word": "haben",
+    "norm": "haben",
+    "start": 345.99,
+    "end": 346.27
+  },
+  {
+    "word": "viele",
+    "norm": "viele",
+    "start": 346.27,
+    "end": 346.63
+  },
+  {
+    "word": "Menschen",
+    "norm": "menschen",
+    "start": 346.63,
+    "end": 347.03
+  },
+  {
+    "word": "Angst.",
+    "norm": "angst",
+    "start": 347.03,
+    "end": 347.57
+  },
+  {
+    "word": "Lumi",
+    "norm": "lumi",
+    "start": 347.91,
+    "end": 348.27
+  },
+  {
+    "word": "sieht",
+    "norm": "sieht",
+    "start": 348.27,
+    "end": 348.53
+  },
+  {
+    "word": "eine",
+    "norm": "eine",
+    "start": 348.53,
+    "end": 348.99
+  },
+  {
+    "word": "riesige",
+    "norm": "riesige",
+    "start": 348.99,
+    "end": 349.43
+  },
+  {
+    "word": "Spinne",
+    "norm": "spinne",
+    "start": 349.43,
+    "end": 349.97
+  },
+  {
+    "word": "im",
+    "norm": "im",
+    "start": 349.97,
+    "end": 350.19
+  },
+  {
+    "word": "Zimmer.",
+    "norm": "zimmer",
+    "start": 350.19,
+    "end": 350.63
+  },
+  {
+    "word": "Dinge,",
+    "norm": "dinge",
+    "start": 350.89,
+    "end": 351.25
+  },
+  {
+    "word": "die",
+    "norm": "die",
+    "start": 351.33,
+    "end": 351.53
+  },
+  {
+    "word": "uns",
+    "norm": "uns",
+    "start": 351.53,
+    "end": 351.85
+  },
+  {
+    "word": "erschrecken,",
+    "norm": "erschrecken",
+    "start": 351.85,
+    "end": 352.51
+  },
+  {
+    "word": "machen",
+    "norm": "machen",
+    "start": 352.71,
+    "end": 352.85
+  },
+  {
+    "word": "uns",
+    "norm": "uns",
+    "start": 352.85,
+    "end": 353.17
+  },
+  {
+    "word": "ängstlich.",
+    "norm": "aengstlich",
+    "start": 353.17,
+    "end": 353.95
+  },
+  {
+    "word": "Morgen",
+    "norm": "morgen",
+    "start": 354.51,
+    "end": 354.99
+  },
+  {
+    "word": "ist",
+    "norm": "ist",
+    "start": 354.99,
+    "end": 355.47
+  },
+  {
+    "word": "Lumis",
+    "norm": "lumis",
+    "start": 355.47,
+    "end": 355.95
+  },
+  {
+    "word": "mega",
+    "norm": "mega",
+    "start": 355.95,
+    "end": 356.53
+  },
+  {
+    "word": "Geburtstagsparty.",
+    "norm": "geburtstagsparty",
+    "start": 356.53,
+    "end": 357.91
+  },
+  {
+    "word": "Wenn",
+    "norm": "wenn",
+    "start": 358.21,
+    "end": 358.43
+  },
+  {
+    "word": "wir",
+    "norm": "wir",
+    "start": 358.43,
+    "end": 358.61
+  },
+  {
+    "word": "uns",
+    "norm": "uns",
+    "start": 358.61,
+    "end": 358.85
+  },
+  {
+    "word": "auf",
+    "norm": "auf",
+    "start": 358.85,
+    "end": 359.05
+  },
+  {
+    "word": "etwas",
+    "norm": "etwas",
+    "start": 359.05,
+    "end": 359.45
+  },
+  {
+    "word": "Tolles",
+    "norm": "tolles",
+    "start": 359.45,
+    "end": 359.89
+  },
+  {
+    "word": "freuen,",
+    "norm": "freuen",
+    "start": 359.89,
+    "end": 360.29
+  },
+  {
+    "word": "sind",
+    "norm": "sind",
+    "start": 360.73,
+    "end": 360.87
+  },
+  {
+    "word": "wir",
+    "norm": "wir",
+    "start": 360.87,
+    "end": 361.15
+  },
+  {
+    "word": "aufgeregt.",
+    "norm": "aufgeregt",
+    "start": 361.15,
+    "end": 361.91
+  },
+  {
+    "word": "Lumi",
+    "norm": "lumi",
+    "start": 362.29,
+    "end": 362.61
+  },
+  {
+    "word": "fährt",
+    "norm": "faehrt",
+    "start": 362.61,
+    "end": 362.93
+  },
+  {
+    "word": "heute",
+    "norm": "heute",
+    "start": 362.93,
+    "end": 363.39
+  },
+  {
+    "word": "zum",
+    "norm": "zum",
+    "start": 363.39,
+    "end": 363.79
+  },
+  {
+    "word": "ersten",
+    "norm": "ersten",
+    "start": 363.79,
+    "end": 364.19
+  },
+  {
+    "word": "Mal",
+    "norm": "mal",
+    "start": 364.19,
+    "end": 364.51
+  },
+  {
+    "word": "in",
+    "norm": "in",
+    "start": 364.51,
+    "end": 364.73
+  },
+  {
+    "word": "den",
+    "norm": "den",
+    "start": 364.73,
+    "end": 364.91
+  },
+  {
+    "word": "Freizeitpark.",
+    "norm": "freizeitpark",
+    "start": 364.91,
+    "end": 365.85
+  },
+  {
+    "word": "Etwas",
+    "norm": "etwas",
+    "start": 366.31,
+    "end": 366.65
+  },
+  {
+    "word": "zum",
+    "norm": "zum",
+    "start": 366.65,
+    "end": 366.91
+  },
+  {
+    "word": "ersten",
+    "norm": "ersten",
+    "start": 366.91,
+    "end": 367.33
+  },
+  {
+    "word": "Mal",
+    "norm": "mal",
+    "start": 367.33,
+    "end": 367.73
+  },
+  {
+    "word": "erleben",
+    "norm": "erleben",
+    "start": 367.73,
+    "end": 368.25
+  },
+  {
+    "word": "macht",
+    "norm": "macht",
+    "start": 368.25,
+    "end": 368.51
+  },
+  {
+    "word": "uns",
+    "norm": "uns",
+    "start": 368.51,
+    "end": 368.89
+  },
+  {
+    "word": "ganz",
+    "norm": "ganz",
+    "start": 368.89,
+    "end": 369.35
+  },
+  {
+    "word": "aufgeregt.",
+    "norm": "aufgeregt",
+    "start": 369.35,
+    "end": 370.23
+  },
+  {
+    "word": "Lumi",
+    "norm": "lumi",
+    "start": 370.55,
+    "end": 370.95
+  },
+  {
+    "word": "darf",
+    "norm": "darf",
+    "start": 370.95,
+    "end": 371.21
+  },
+  {
+    "word": "mit",
+    "norm": "mit",
+    "start": 371.21,
+    "end": 371.41
+  },
+  {
+    "word": "Papa",
+    "norm": "papa",
+    "start": 371.41,
+    "end": 371.77
+  },
+  {
+    "word": "zusammen",
+    "norm": "zusammen",
+    "start": 371.77,
+    "end": 372.31
+  },
+  {
+    "word": "ein",
+    "norm": "ein",
+    "start": 372.31,
+    "end": 372.63
+  },
+  {
+    "word": "Modell",
+    "norm": "modell",
+    "start": 372.63,
+    "end": 373.03
+  },
+  {
+    "word": "bauen.",
+    "norm": "bauen",
+    "start": 373.03,
+    "end": 373.37
+  },
+  {
+    "word": "Mit",
+    "norm": "mit",
+    "start": 373.79,
+    "end": 374.07
+  },
+  {
+    "word": "jemandem",
+    "norm": "jemandem",
+    "start": 374.07,
+    "end": 374.67
+  },
+  {
+    "word": "etwas",
+    "norm": "etwas",
+    "start": 374.67,
+    "end": 375.03
+  },
+  {
+    "word": "Tolles",
+    "norm": "tolles",
+    "start": 375.03,
+    "end": 375.47
+  },
+  {
+    "word": "tun",
+    "norm": "tun",
+    "start": 375.47,
+    "end": 375.77
+  },
+  {
+    "word": "dürfen",
+    "norm": "duerfen",
+    "start": 375.77,
+    "end": 376.21
+  },
+  {
+    "word": "macht",
+    "norm": "macht",
+    "start": 376.21,
+    "end": 376.55
+  },
+  {
+    "word": "uns",
+    "norm": "uns",
+    "start": 376.55,
+    "end": 376.97
+  },
+  {
+    "word": "aufgeregt.",
+    "norm": "aufgeregt",
+    "start": 376.97,
+    "end": 377.85
+  },
+  {
+    "word": "Es",
+    "norm": "es",
+    "start": 378.09,
+    "end": 378.25
+  },
+  {
+    "word": "ist",
+    "norm": "ist",
+    "start": 378.25,
+    "end": 378.49
+  },
+  {
+    "word": "21",
+    "norm": "21",
+    "start": 378.49,
+    "end": 379.31
+  },
+  {
+    "word": "Uhr",
+    "norm": "uhr",
+    "start": 379.31,
+    "end": 379.83
+  },
+  {
+    "word": "und",
+    "norm": "und",
+    "start": 379.83,
+    "end": 380.17
+  },
+  {
+    "word": "Lumi",
+    "norm": "lumi",
+    "start": 380.17,
+    "end": 380.49
+  },
+  {
+    "word": "hatte",
+    "norm": "hatte",
+    "start": 380.49,
+    "end": 380.79
+  },
+  {
+    "word": "einen",
+    "norm": "einen",
+    "start": 380.79,
+    "end": 381.17
+  },
+  {
+    "word": "langen,",
+    "norm": "langen",
+    "start": 381.17,
+    "end": 381.71
+  },
+  {
+    "word": "spielreichen",
+    "norm": "spielreichen",
+    "start": 381.75,
+    "end": 382.31
+  },
+  {
+    "word": "Tag.",
+    "norm": "tag",
+    "start": 382.31,
+    "end": 382.81
+  },
+  {
+    "word": "Nach",
+    "norm": "nach",
+    "start": 383.11,
+    "end": 383.33
+  },
+  {
+    "word": "einem",
+    "norm": "einem",
+    "start": 383.33,
+    "end": 383.67
+  },
+  {
+    "word": "langen",
+    "norm": "langen",
+    "start": 383.67,
+    "end": 384.11
+  },
+  {
+    "word": "Tag",
+    "norm": "tag",
+    "start": 384.11,
+    "end": 384.37
+  },
+  {
+    "word": "braucht",
+    "norm": "braucht",
+    "start": 384.37,
+    "end": 384.75
+  },
+  {
+    "word": "unser",
+    "norm": "unser",
+    "start": 384.75,
+    "end": 385.09
+  },
+  {
+    "word": "Körper",
+    "norm": "koerper",
+    "start": 385.09,
+    "end": 385.51
+  },
+  {
+    "word": "Erholung.",
+    "norm": "erholung",
+    "start": 385.51,
+    "end": 386.25
+  },
+  {
+    "word": "Dann",
+    "norm": "dann",
+    "start": 386.51,
+    "end": 386.73
+  },
+  {
+    "word": "sind",
+    "norm": "sind",
+    "start": 386.73,
+    "end": 386.99
+  },
+  {
+    "word": "wir",
+    "norm": "wir",
+    "start": 386.99,
+    "end": 387.19
+  },
+  {
+    "word": "müde.",
+    "norm": "muede",
+    "start": 387.19,
+    "end": 387.67
+  },
+  {
+    "word": "Lumi",
+    "norm": "lumi",
+    "start": 387.91,
+    "end": 388.25
+  },
+  {
+    "word": "hat",
+    "norm": "hat",
+    "start": 388.25,
+    "end": 388.45
+  },
+  {
+    "word": "den",
+    "norm": "den",
+    "start": 388.45,
+    "end": 388.75
+  },
+  {
+    "word": "ganzen",
+    "norm": "ganzen",
+    "start": 388.75,
+    "end": 389.13
+  },
+  {
+    "word": "Tag",
+    "norm": "tag",
+    "start": 389.13,
+    "end": 389.43
+  },
+  {
+    "word": "Lesen",
+    "norm": "lesen",
+    "start": 389.43,
+    "end": 389.89
+  },
+  {
+    "word": "geübt.",
+    "norm": "geuebt",
+    "start": 389.89,
+    "end": 390.31
+  },
+  {
+    "word": "Jetzt",
+    "norm": "jetzt",
+    "start": 390.53,
+    "end": 390.85
+  },
+  {
+    "word": "fallen",
+    "norm": "fallen",
+    "start": 390.85,
+    "end": 391.19
+  },
+  {
+    "word": "die",
+    "norm": "die",
+    "start": 391.19,
+    "end": 391.49
+  },
+  {
+    "word": "Augen",
+    "norm": "augen",
+    "start": 391.49,
+    "end": 391.73
+  },
+  {
+    "word": "zu.",
+    "norm": "zu",
+    "start": 391.73,
+    "end": 392.15
+  }
+]

@@ -1,0 +1,169 @@
+/* ===== LumiLearn Global Styles ===== */
+
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@400;600;700;800&display=swap');
+
+:root {
+  --font-heading: 'Fredoka', 'Nunito', sans-serif;
+  --font-body:    'Nunito', sans-serif;
+
+  /* Brand palette */
+  --violet-deep:  #4A00E0;
+  --violet-mid:   #8E2DE2;
+  --violet-light: #C084FC;
+  --gold:         #FFD93D;
+  --green:        #6BCB77;
+  --coral:        #FF6B6B;
+  --sky:          #74B9FF;
+
+  /* Semantic */
+  --bg:           #F5F0FF;
+  --surface:      #FFFFFF;
+  --text-primary: #1A1040;
+  --text-secondary:#5A4880;
+  --text-muted:   #9B8EC0;
+  --border:       #ECE8FF;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Prevent text-size-adjust on iOS rotation */
+  -webkit-text-size-adjust: 100%;
+}
+
+#root {
+  width: 100%;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Full-width screens */
+.screen {
+  width: 100%;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Touch-friendly base */
+button {
+  font-family: inherit;
+  cursor: pointer;
+  min-height: 48px;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  border: none;
+  outline: none;
+  background: none;
+}
+
+button:focus-visible {
+  outline: 3px solid var(--violet-mid);
+  outline-offset: 2px;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar        { width: 6px; height: 6px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  { background: var(--violet-light); border-radius: 99px; }
+
+/* Utility: no scroll bounce on iOS */
+.no-bounce { overscroll-behavior: contain; }
+
+/* ─── Animation keyframes ─────────────────────────────── */
+@keyframes bg-drift {
+  0%   { background-position: 0% 0%; }
+  50%  { background-position: 100% 100%; }
+  100% { background-position: 0% 0%; }
+}
+
+@keyframes shimmer-sweep {
+  from { left: -100%; }
+  to   { left: 150%; }
+}
+
+@keyframes cta-bob {
+  0%, 100% { transform: translateY(0px) scale(1); }
+  50%       { transform: translateY(-3px) scale(1.02); }
+}
+
+@keyframes title-flow {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ─── Home screen background ─────────────────────────── */
+.home-bg {
+  background: linear-gradient(-45deg, #F2EAFF, #E5D9FF, #D8EEFF, #EEE8FF, #FFE5F8);
+  background-size: 400% 400%;
+  animation: bg-drift 22s ease infinite;
+}
+
+/* ─── Card hover shimmer ──────────────────────────────── */
+.lumi-card { position: relative; }
+
+.card-header-shine {
+  position: relative;
+  overflow: hidden;
+}
+.card-header-shine::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 55%; height: 100%;
+  background: linear-gradient(105deg, transparent, rgba(255,255,255,0.38), transparent);
+  transform: skewX(-20deg);
+  pointer-events: none;
+}
+.lumi-card:hover .card-header-shine::after {
+  animation: shimmer-sweep 0.65s ease forwards;
+}
+
+/* ─── Play CTA idle bob ───────────────────────────────── */
+.play-cta-bob {
+  animation: cta-bob 2.5s ease-in-out infinite;
+  transform-origin: center;
+}
+
+/* ─── Card emoji float (GPU / compositor thread) ─────── */
+@keyframes emoji-float {
+  0%,100% { transform: translateY(0px) rotate(0deg); }
+  38%     { transform: translateY(-8px) rotate(6deg); }
+  70%     { transform: translateY(-4px) rotate(-4deg); }
+}
+.emoji-float {
+  animation: emoji-float var(--float-dur, 2.8s) ease-in-out infinite;
+  will-change: transform;
+}
+
+/* ─── NEW badge wiggle (GPU / compositor thread) ─────── */
+@keyframes badge-wiggle {
+  0%,100% { transform: scale(1) rotate(-3deg); }
+  35%     { transform: scale(1.13) rotate(3deg); }
+  70%     { transform: scale(1.06) rotate(-2deg); }
+}
+.badge-wiggle {
+  animation: badge-wiggle 1.9s ease-in-out infinite;
+  will-change: transform;
+  transform-origin: center;
+}
+
+/* ─── Rainbow tagline ─────────────────────────────────── */
+.title-flow {
+  background: linear-gradient(90deg, #4A00E0, #8E2DE2, #FF6B6B, #FFD93D, #6BCB77, #4A00E0);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: title-flow 5s linear infinite;
+}

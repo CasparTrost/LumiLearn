@@ -1,0 +1,974 @@
+=== HÖRABENTEUER ===
+Hörabenteuer
+Wie geht das?
+Hör genau hin! Du hörst ein Wort – tippe dann auf das Bild, das dazu passt. Du kannst es dir auch zweimal anhören!
+Welches Bild passt zum Wort?
+Anhören!
+Hund
+Katze
+Vogel
+Fisch
+Pferd
+Kuh
+Schaf
+Schwein
+Löwe
+Tiger
+Bär
+Fuchs
+Elefant
+Giraffe
+Affe
+Pinguin
+Eule
+Frosch
+Schildkröte
+Biene
+Schmetterling
+Schnecke
+Krokodil
+Delfin
+Hai
+Apfel
+Banane
+Erdbeere
+Pizza
+Kuchen
+Eis
+Brot
+Keks
+Milch
+Saft
+Karotte
+Mais
+Tomate
+Ball
+Drachen
+Rakete
+Zug
+Auto
+Flugzeug
+Schiff
+Fahrrad
+Buch
+Schere
+Sonne
+Mond
+Stern
+Regenbogen
+Blume
+Baum
+Pilz
+Welle
+Vulkan
+Haus
+Schloss
+Stuhl
+Bett
+Schuhe
+Krone
+Zelt
+Lampe
+Geschenk
+Ballon
+=== SCHATTENRÄTSEL ===
+Schattenrätsel
+Wie geht das?
+Hinter einem Schatten versteckt sich ein Tier! Fahre mit der Taschenlampe über den Schatten und tippe dann auf das Tier, das du erkennst.
+Leuchte mit der Taschenlampe über den Schatten!
+Richtig erkannt!
+Es war: Löwe!
+Es war: Elefant!
+Es war: Giraffe!
+Es war: Tiger!
+Es war: Wolf!
+Es war: Fuchs!
+Es war: Bär!
+Es war: Schmetterling!
+Es war: Tintenfisch!
+Es war: Papagei!
+Es war: Dinosaurier!
+Es war: Krokodil!
+Löwe
+Elefant
+Giraffe
+Tiger
+Wolf
+Fuchs
+Bär
+Schmetterling
+Tintenfisch
+Papagei
+Dinosaurier
+Krokodil
+Der Löwe ist der König der Tiere!
+Elefanten haben das größte Gehirn aller Landtiere!
+Die Giraffe ist das größte Tier der Welt!
+Tiger sind die größten wilden Katzen der Welt!
+Wölfe leben in Rudeln und heulen den Mond an!
+Füchse sind sehr schlau und geschickt!
+Bären schlafen im Winter einen langen Schlaf!
+Schmetterlinge kommen aus einer Raupe!
+Ein Tintenfisch hat 8 Arme und ist sehr klug!
+Papageien können Wörter nachsprechen!
+Dinosaurier lebten vor über 65 Millionen Jahren!
+Krokodile zählen zu den ältesten Tieren der Erde!
+=== FARBENREICH ===
+Farbenreich
+Wie geht das?
+Wähle zuerst einen Farbtopf aus – dann tippe auf den Teil des Bildes, den du anmalen möchtest! Die Aufkleber zeigen dir, welche Farbe wohin gehört.
+Male das Haus! Wähle einen Farbeimer und male drauf los!
+Male den Apfel! Wähle einen Farbeimer und male drauf los!
+Male die Sonne! Wähle einen Farbeimer und male drauf los!
+Male den Schmetterling! Wähle einen Farbeimer und male drauf los!
+Male den Fisch! Wähle einen Farbeimer und male drauf los!
+Male den Bären! Wähle einen Farbeimer und male drauf los!
+Male die Rakete! Wähle einen Farbeimer und male drauf los!
+Male den Pinguin! Wähle einen Farbeimer und male drauf los!
+Male die Blume! Wähle einen Farbeimer und male drauf los!
+Rot gewählt – einfach über die leuchtende Fläche fahren!
+Blau gewählt – einfach über die leuchtende Fläche fahren!
+Grün gewählt – einfach über die leuchtende Fläche fahren!
+Gelb gewählt – einfach über die leuchtende Fläche fahren!
+Orange gewählt – einfach über die leuchtende Fläche fahren!
+Lila gewählt – einfach über die leuchtende Fläche fahren!
+Pink gewählt – einfach über die leuchtende Fläche fahren!
+Braun gewählt – einfach über die leuchtende Fläche fahren!
+Türkis gewählt – einfach über die leuchtende Fläche fahren!
+Grau gewählt – einfach über die leuchtende Fläche fahren!
+Hellgrün gewählt – einfach über die leuchtende Fläche fahren!
+Schwarz gewählt – einfach über die leuchtende Fläche fahren!
+Super gemalt! Weiter geht's!
+=== ZAHLENLAND ===
+Zahlenland
+Wie geht das?
+Ein Kunde kommt in den Laden und bestellt etwas! Lege genau die richtige Anzahl in den Korb – hör gut hin und zähle mit.
+Ich möchte bitte
+Gib mir bitte
+Ich brauche
+Ich hätte gerne
+einen
+zwei
+drei
+vier
+fünf
+sechs
+sieben
+acht
+neun
+zehn
+Apfel
+Äpfel
+Orange
+Orangen
+Zitrone
+Zitronen
+Traube
+Trauben
+Erdbeere
+Erdbeeren
+Donut
+Donuts
+Muffin
+Muffins
+Karotte
+Karotten
+Maiskolben
+Pizzastück
+Pizzastücke
+Fisch
+Fische
+Blume
+Blumen
+Banane
+Bananen
+Ballon
+Ballons
+Eiswaffel
+Eiswaffeln
+Antippen zum Einlegen
+Danke!
+Super!
+Toll!
+Perfekt!
+Danke schön!
+Das stimmt leider nicht!
+Da ist was falsch!
+Versuch es nochmal!
+=== BUCHSTABENWALD ===
+Buchstabenwald
+Wie geht das?
+Ein Wort wird angezeigt – tippe jeden Buchstaben in der richtigen Reihenfolge! Der goldene Buchstabe ist als nächstes dran. In höheren Leveln fallen die Buchstaben vom Himmel – tippe sie, bevor sie landen!
+Tippe das Wort! Der goldene Buchstabe ist dran.
+Tippe den fallenden Buchstaben!
+Oma
+Opa
+Eis
+Uhr
+Zug
+Bus
+Hut
+Fee
+Arm
+Elf
+Tag
+Ohr
+Gut
+Rot
+Weg
+Alt
+Neu
+Hof
+Tor
+Tau
+Tee
+Ton
+Mut
+Rat
+Axt
+Top
+Kuh
+Bad
+Tal
+Hund
+Ball
+Buch
+Mund
+Fuß
+Hand
+Kopf
+Nase
+Wolf
+Igel
+Geld
+Herz
+Holz
+Boot
+Gans
+Glas
+Haar
+Hahn
+Hase
+Keks
+Loch
+Maus
+Mond
+Netz
+Obst
+Pilz
+Rabe
+Rose
+Salz
+Sand
+Sofa
+Sohn
+Tanz
+Topf
+Turm
+Wald
+Zaun
+Zelt
+Bahn
+Bein
+Bild
+Fels
+Helm
+Feld
+Huhn
+Affe
+Esel
+Pfau
+Laub
+Burg
+Dach
+Ring
+Gras
+Korn
+Ofen
+Pfad
+Herd
+Eier
+Milch
+Brot
+Fett
+Honig
+Kalt
+Mama
+Papa
+Auto
+Haus
+Kind
+Löwe
+Tier
+Gabel
+Tisch
+Stuhl
+Lampe
+Katze
+Vogel
+Stern
+Apfel
+Schuh
+Pizza
+Feuer
+Wurst
+Nudel
+Suppe
+Tasse
+Kerze
+Kiste
+Dachs
+Amsel
+Adler
+Birne
+Sahne
+Torte
+Beere
+Stall
+Farbe
+Seife
+Nagel
+Engel
+Krone
+Ziege
+Kamel
+Pferd
+Tiger
+Fluss
+Insel
+Wiese
+Gurke
+Socke
+Teich
+Traum
+Wagen
+Zwerg
+Mütze
+Jacke
+Puppe
+Geige
+Schaf
+Falke
+Biene
+Eiche
+Birke
+Regal
+Anker
+Otter
+Luchs
+Vater
+Fisch
+Krebs
+Küche
+Pfeil
+Riese
+Lachs
+Regen
+Sturm
+Wolke
+Nebel
+Hügel
+Licht
+Stein
+Hexe
+Harfe
+Orgel
+Tinte
+Schule
+Garten
+Herbst
+Winter
+Sommer
+Traube
+Freund
+Schatz
+Ritter
+Zirkus
+Rakete
+Schloss
+Bahnhof
+Spiegel
+Ameise
+Brücke
+Fenster
+Tempel
+Roboter
+Elefant
+Möhre
+Mücke
+Natur
+Rauch
+Musik
+Bäcker
+Käfer
+Lösung
+Kugel
+Tasche
+Schere
+Brezel
+Kirche
+Hafen
+Hütte
+Flöte
+Laube
+Bühne
+Mühle
+Balkon
+Keller
+Clown
+Koffer
+Kissen
+Teller
+Pfanne
+Bagger
+Traktor
+Polizei
+Drachen
+Blumen
+Spinat
+Paprika
+Karotte
+Laterne
+Kalender
+Leiter
+Treppe
+Bürste
+Krokodil
+Flugzeug
+Seestern
+Gesicht
+Piraten
+Bäckerei
+Schulbus
+Haustier
+Schnecke
+Truthahn
+Zauberer
+Feuerwehr
+Trampolin
+Osterhase
+Spielzeug
+Erdbeeren
+Geheimnis
+Schneeball
+Schaukel
+Seehund
+Blaubeere
+Sonnenuhr
+Baumwolle
+Glühbirne
+Seifenblase
+Kinderpark
+Tischtennis
+Wackelzahn
+Schlafsack
+Sandkasten
+Fernrohr
+Ballerina
+Lernspiel
+Seepferdchen
+Sonnenblume
+Wasserfall
+Schmetterling
+Sonnenschein
+Kartoffel
+Astronaut
+Laubfrosch
+Eichhörnchen
+Fahrradhelm
+Kindergarten
+Weihnachtsmann
+Geburtstagskuchen
+Taschenlampe
+Regenbogen
+Staubsauger
+Schokoladenkuchen
+Seifenblasen
+Fussballspieler
+Schulranzen
+Meeresschildkröte
+Kühlschrank
+Autobahn
+Winterlandschaft
+Jahreszeiten
+Elefantenbaby
+Raumschiff
+Drachenflieger
+Unterwasserwelt
+Feuerspucker
+Zirkusdirektor
+Blumenstrauss
+Nikolausstiefel
+Strassenlaterne
+Spielzeugauto
+Schultasche
+Fahrradtour
+Bauernhoftier
+Mondrakete
+Schaukelpferd
+Zahnbürste
+Gärtnermeister
+=== SILBEN-SPASS ===
+Silben-Spaß
+Wie geht das?
+Schau auf das Bild – was siehst du? Tippe auf die Silben in der richtigen Reihenfolge, um das Wort zusammenzusetzen. Die Silben rücken wie Puzzleteile zusammen!
+Setze die Silben zusammen: Was zeigt das Bild?
+Tippe auf eine Silbe im Wort, um sie wieder zu entfernen.
+Bravo! Mama – richtig!
+Bravo! Papa – richtig!
+Bravo! Hund – richtig!
+Bravo! Katze – richtig!
+Bravo! Baum – richtig!
+Bravo! Auto – richtig!
+Bravo! Mond – richtig!
+Bravo! Bett – richtig!
+Bravo! Ball – richtig!
+Bravo! Buch – richtig!
+Bravo! Boot – richtig!
+Bravo! Maus – richtig!
+Bravo! Fisch – richtig!
+Bravo! Haus – richtig!
+Bravo! Rose – richtig!
+Bravo! Zelt – richtig!
+Bravo! Pilz – richtig!
+Bravo! Esel – richtig!
+Bravo! Affe – richtig!
+Bravo! Pferd – richtig!
+Bravo! Igel – richtig!
+Bravo! Ente – richtig!
+Bravo! Wolf – richtig!
+Bravo! Nase – richtig!
+Bravo! Hand – richtig!
+Bravo! Wald – richtig!
+Bravo! Biene – richtig!
+Bravo! Lampe – richtig!
+Bravo! Schaf – richtig!
+Bravo! Tiger – richtig!
+Bravo! Löwe – richtig!
+Bravo! Keks – richtig!
+Bravo! Stern – richtig!
+Bravo! Vogel – richtig!
+Bravo! Zahn – richtig!
+Bravo! Regen – richtig!
+Bravo! Kakao – richtig!
+Bravo! Salz – richtig!
+Bravo! Tisch – richtig!
+Bravo! Herz – richtig!
+Bravo! Banane – richtig!
+Bravo! Elefant – richtig!
+Bravo! Tomate – richtig!
+Bravo! Raupe – richtig!
+Bravo! Pinsel – richtig!
+Bravo! Drachen – richtig!
+Bravo! Küche – richtig!
+Bravo! Wolke – richtig!
+Bravo! Apfel – richtig!
+Bravo! Schiff – richtig!
+Bravo! Traube – richtig!
+Bravo! Kugel – richtig!
+Bravo! Spiegel – richtig!
+Bravo! Tasche – richtig!
+Bravo! Kerze – richtig!
+Bravo! Schere – richtig!
+Bravo! Butter – richtig!
+Bravo! Nudeln – richtig!
+Bravo! Suppe – richtig!
+Bravo! Bruder – richtig!
+Bravo! Schwein – richtig!
+Bravo! Kirche – richtig!
+Bravo! Dackel – richtig!
+Bravo! Hamster – richtig!
+Bravo! Ziege – richtig!
+Bravo! Kamel – richtig!
+Bravo! Teller – richtig!
+Bravo! Blume – richtig!
+Bravo! Falke – richtig!
+Bravo! Mütze – richtig!
+Bravo! Stiefel – richtig!
+Bravo! Wasser – richtig!
+Bravo! Abend – richtig!
+Bravo! Freund – richtig!
+Bravo! Koffer – richtig!
+Bravo! Tasse – richtig!
+Bravo! Birne – richtig!
+Bravo! Kissen – richtig!
+Bravo! Garten – richtig!
+Bravo! Kuchen – richtig!
+Bravo! Schmetterling – richtig!
+Bravo! Schokolade – richtig!
+Bravo! Fahrrad – richtig!
+Bravo! Erdbeere – richtig!
+Bravo! Fenster – richtig!
+Bravo! Giraffe – richtig!
+Bravo! Ananas – richtig!
+Bravo! Regenbogen – richtig!
+Bravo! Gurke – richtig!
+Bravo! Rakete – richtig!
+Bravo! Pinguin – richtig!
+Bravo! Polizei – richtig!
+Bravo! Roboter – richtig!
+Bravo! Paprika – richtig!
+Bravo! Karotte – richtig!
+Bravo! Laterne – richtig!
+Bravo! Schaukel – richtig!
+Bravo! Traktor – richtig!
+Bravo! Schildkröte – richtig!
+Bravo! Eichhörnchen – richtig!
+Bravo! Kürbis – richtig!
+Bravo! Krokodil – richtig!
+Bravo! Blaubeere – richtig!
+Bravo! Spinne – richtig!
+Bravo! Trompete – richtig!
+Bravo! Gitarre – richtig!
+Bravo! Klavier – richtig!
+Bravo! Delfin – richtig!
+Bravo! Piraten – richtig!
+Bravo! Balkon – richtig!
+Bravo! Unterwasser – richtig!
+Bravo! Nachmittag – richtig!
+Bravo! Abenteuer – richtig!
+Bravo! Geburtstag – richtig!
+Bravo! Sonnenschein – richtig!
+Bravo! Taschenlampe – richtig!
+Bravo! Zahnbürste – richtig!
+Bravo! Supermarkt – richtig!
+Bravo! Spielplatz – richtig!
+Bravo! Feuerwehr – richtig!
+Bravo! Trampolin – richtig!
+Bravo! Flugzeug – richtig!
+Bravo! Osterhase – richtig!
+Bravo! Sandkasten – richtig!
+Bravo! Schlafsack – richtig!
+Bravo! Wackelzahn – richtig!
+Bravo! Tischtennis – richtig!
+Bravo! Blumenstrauß – richtig!
+Bravo! Wasserhahn – richtig!
+Bravo! Schlafanzug – richtig!
+Bravo! Staubsauger – richtig!
+Bravo! Bücherregal – richtig!
+Bravo! Briefkasten – richtig!
+Bravo! Kühlschrank – richtig!
+Bravo! Seifenblase – richtig!
+Bravo! Winterlandschaft – richtig!
+Bravo! Kindergarten – richtig!
+Bravo! Weihnachtsmann – richtig!
+Bravo! Jahreszeiten – richtig!
+Bravo! Schwimmbecken – richtig!
+Bravo! Geburtstagsparty – richtig!
+Bravo! Seepferdchen – richtig!
+Bravo! Nikolausstiefel – richtig!
+Bravo! Fußballspieler – richtig!
+Bravo! Meeresschildkröte – richtig!
+Bravo! Raumschiff – richtig!
+Bravo! Unterwasserwelt – richtig!
+Bravo! Straßenlaterne – richtig!
+Bravo! Blumenwiese – richtig!
+Bravo! Schaukelpferd – richtig!
+Bravo! Fahrradhelm – richtig!
+Bravo! Zirkusdirektor – richtig!
+Bravo! Spielzeugauto – richtig!
+=== BLASEN-BLITZ ===
+Blasen-Blitz
+Wie geht das?
+Blasen steigen auf! Tippe schnell auf alle Blasen mit der richtigen Zahl. Lass keine entkommen – die Zeit läuft!
+Finde alle Blasen mit der Zahl 1!
+Finde alle Blasen mit der Zahl 2!
+Finde alle Blasen mit der Zahl 3!
+Finde alle Blasen mit der Zahl 4!
+Finde alle Blasen mit der Zahl 5!
+Finde alle Blasen mit der Zahl 6!
+Finde alle Blasen mit der Zahl 7!
+Finde alle Blasen mit der Zahl 8!
+Finde alle Blasen mit der Zahl 9!
+Finde alle Blasen mit der Zahl 10!
+Runde 1 geschafft! Weiter!
+Runde 2 geschafft! Weiter!
+Runde 3 geschafft! Weiter!
+Zeit! Nächste Runde…
+1 von 3 Runden gewonnen!
+2 von 3 Runden gewonnen!
+3 von 3 Runden gewonnen!
+Probier es nochmal!
+=== MEMO-WELT ===
+Memo-Welt
+Wie geht das?
+Drehe die Karten um und merke dir, was drauf war! Finde zwei Karten, die dasselbe zeigen. Wer findet alle Paare?
+Schau genau hin – gleich werden die Karten umgedreht!
+Finde alle Paare – merkst du dir wo sie sind?
+Merke dir alle Paare!
+=== MUSTERPARK ===
+Musterpark
+Wie geht das?
+Schau dir das Muster genau an – was kommt als nächstes? Tippe auf die richtige Antwort!
+Was kommt als Nächstes?
+Was kommt nach dem Lücken-Muster?
+=== SORTIER-SPASS ===
+Sortier-Spaß
+Wie geht das?
+Sortiere die Dinge in die richtige Gruppe! Tippe auf einen Gegenstand und dann auf die Gruppe, zu der er gehört. Alles muss an den richtigen Platz!
+Wohin gehört es? Tiere oder Essen?
+Wohin gehört es? Tiere oder Spielzeug?
+Wohin gehört es? Obst oder Gemüse?
+Wohin gehört es? Fahrzeuge oder Natur?
+Wohin gehört es? Im Wasser oder In der Luft?
+Wohin gehört es? Musikinstrumente oder Sportgeräte?
+Wohin gehört es? Groß oder Klein?
+Wohin gehört es? Haustiere oder Wildtiere?
+Wohin gehört es? Süß oder Salzig?
+Wohin gehört es? Tagsüber oder Nachts?
+Wohin gehört es? Gerade oder Ungerade?
+Wohin gehört es? Flüssig oder Fest?
+Wohin gehört es? Rund oder Eckig?
+Wohin gehört es? Lebt oder Lebt nicht?
+Wohin gehört es? Europa oder Nicht Europa?
+Wohin gehört es? Pflanzenfresser oder Fleischfresser?
+Wohin gehört es? Warm oder Kalt?
+Wohin gehört es? Erneuerbar oder Nicht erneuerbar?
+Wohin gehört es? Vergangen oder Gegenwart?
+Super! Alles richtig sortiert!
+=== WAAGE-WELT ===
+Waage-Welt
+Wie geht das?
+Schau dir die zwei Dinge an – welches ist wohl schwerer? Tippe auf die schwerere Seite! In höheren Leveln musst du die Gewichte ausrechnen.
+Was ist schwerer? Tippe auf die richtige Seite!
+Welche Seite wiegt mehr? Tippe drauf!
+Rechne – welche Seite ist schwerer?
+Löse die Aufgabe! Welche Seite wiegt mehr?
+Schwerer!
+Super! Hammer ist schwerer!
+Fast! Hammer ist schwerer.
+Super! Elefant ist schwerer!
+Fast! Elefant ist schwerer.
+Super! Apfel ist schwerer!
+Fast! Apfel ist schwerer.
+Super! Auto ist schwerer!
+Fast! Auto ist schwerer.
+Super! Stein ist schwerer!
+Fast! Stein ist schwerer.
+Super! Kuh ist schwerer!
+Fast! Kuh ist schwerer.
+Super! Wal ist schwerer!
+Fast! Wal ist schwerer.
+Super! Banane ist schwerer!
+Fast! Banane ist schwerer.
+Super! Zug ist schwerer!
+Fast! Zug ist schwerer.
+Super! Melone ist schwerer!
+Fast! Melone ist schwerer.
+Super! Hantel ist schwerer!
+Fast! Hantel ist schwerer.
+Super! Krokodil ist schwerer!
+Fast! Krokodil ist schwerer.
+Super! Rakete ist schwerer!
+Fast! Rakete ist schwerer.
+Super! Haus ist schwerer!
+Fast! Haus ist schwerer.
+Super! Löwe ist schwerer!
+Fast! Löwe ist schwerer.
+Super! Brot ist schwerer!
+Fast! Brot ist schwerer.
+Super! Blauwal ist schwerer!
+Fast! Blauwal ist schwerer.
+Super! Diamant ist schwerer!
+Fast! Diamant ist schwerer.
+Super! Welle ist schwerer!
+Fast! Welle ist schwerer.
+Super! Holzblock ist schwerer!
+Fast! Holzblock ist schwerer.
+Super! Frosch ist schwerer!
+Fast! Frosch ist schwerer.
+Super! Boxhandschuh ist schwerer!
+Fast! Boxhandschuh ist schwerer.
+Super! Berg ist schwerer!
+Fast! Berg ist schwerer.
+Super! Schiff ist schwerer!
+Fast! Schiff ist schwerer.
+Super! Pizza ist schwerer!
+Fast! Pizza ist schwerer.
+Super! Giraffe ist schwerer!
+Fast! Giraffe ist schwerer.
+Super! Gitarre ist schwerer!
+Fast! Gitarre ist schwerer.
+Super! Kokosnuss ist schwerer!
+Fast! Kokosnuss ist schwerer.
+Super! Traktor ist schwerer!
+Fast! Traktor ist schwerer.
+Super! Mammut ist schwerer!
+Fast! Mammut ist schwerer.
+Super! Felsbrocken ist schwerer!
+Fast! Felsbrocken ist schwerer.
+Super! Karussell ist schwerer!
+Fast! Karussell ist schwerer.
+Super! Torte ist schwerer!
+Fast! Torte ist schwerer.
+Super! Känguru ist schwerer!
+Fast! Känguru ist schwerer.
+Super! Leiter ist schwerer!
+Fast! Leiter ist schwerer.
+Super! Badewanne ist schwerer!
+Fast! Badewanne ist schwerer.
+Super! Hubschrauber ist schwerer!
+Fast! Hubschrauber ist schwerer.
+Super! Orange ist schwerer!
+Fast! Orange ist schwerer.
+Super! Gewichtheber ist schwerer!
+Fast! Gewichtheber ist schwerer.
+Super! Pfirsich ist schwerer!
+Fast! Pfirsich ist schwerer.
+Super! Laptop ist schwerer!
+Fast! Laptop ist schwerer.
+Super! Schulrucksack ist schwerer!
+Fast! Schulrucksack ist schwerer.
+Super! Tiger ist schwerer!
+Fast! Tiger ist schwerer.
+Super! Bus ist schwerer!
+Fast! Bus ist schwerer.
+Super! Croissant ist schwerer!
+Fast! Croissant ist schwerer.
+Super! Erde ist schwerer!
+Fast! Erde ist schwerer.
+Super! Kürbis ist schwerer!
+Fast! Kürbis ist schwerer.
+Super! Knochen ist schwerer!
+Fast! Knochen ist schwerer.
+Super! Schwimmer ist schwerer!
+Fast! Schwimmer ist schwerer.
+Super! Eimer ist schwerer!
+Fast! Eimer ist schwerer.
+=== UHREN-UHR ===
+Uhren-Uhr
+Wie geht das?
+Lerne die Uhr kennen! Beim Lesen: schau, wohin die Zeiger zeigen, und tippe auf die richtige Uhrzeit. Beim Stellen: ziehe die Zeiger auf die richtige Stelle!
+Welche Uhrzeit zeigt die Uhr?
+Stelle die Uhr auf diese Zeit! Ziehe die Zeiger!
+=== LUMI-LABYRINTH ===
+Lumi-Labyrinth
+Wie geht das?
+Lumi ist im Labyrinth! Sammle alle Edelsteine und finde dann den Weg zum Schloss. Nutze die Pfeiltasten oder die Buttons auf dem Bildschirm.
+Finde alle Edelsteine und dann zum Schloss! Pfeiltasten oder Buttons.
+Finde alle Edelsteine und meide den Drachen! Pfeiltasten oder Buttons.
+Zum Schloss! Du hast alle Edelsteine!
+=== LUMIS ABENTEUER ===
+Lumis Abenteuer
+Wie geht das?
+Lumi erlebt eine Geschichte! Lies mit und entscheide am Ende: Was soll Lumi tun? Deine Wahl verändert alles!
+Lumi im Wald
+Lumi spaziert durch den bunten Herbstwald. Plötzlich hört Lumi ein leises Weinen.
+Da sitzt ein kleiner Igel. Ich kann meinen Weg nach Hause nicht finden!
+Was macht Lumi?
+Lumi hilft dem Igel den Weg zu finden.
+Lumi läuft schnell weiter.
+Lumi hilft dem Igel! Gemeinsam finden sie den Weg.
+Danke Lumi! Der Igel bringt Lumi als Dankeschön Pilze mit!
+Wenn wir anderen helfen, macht das uns BEIDE glücklich!
+Lumi läuft weiter. Aber der Igel weint immer noch.
+Lumi dreht sich um und geht doch zurück – besser spät als nie!
+Manchmal erkennen wir erst danach, was das Richtige wäre.
+Der Kuchenladen
+Lumi steht vor dem Kuchenladen. Es riecht nach frischem Kuchen!
+Lumi hat nur noch 1 Münze. Für sich oder für die kleine Maus, die hungrig daneben sitzt?
+Was macht Lumi mit der Münze?
+Lumi kauft der Maus den Kuchen.
+Lumi kauft sich selbst den Kuchen.
+Die Maus freut sich riesig! Das ist so lieb von dir, Lumi!
+Der Bäcker hat alles gesehen. Er schenkt Lumi einen extra großen Kuchen!
+Großzügigkeit kommt immer zurück – doppelt so groß!
+Lumi isst alleine. Aber irgendwie schmeckt der Kuchen heute nicht so gut.
+Lumi beschließt: das nächste Mal teilt Lumi. Teilen macht glücklicher!
+Selbst wenn wir nicht teilen, können wir daraus lernen.
+Der Regentag
+Es regnet! Lumi hatte draußen spielen wollen. Das ist schade.
+Oma fragt: Lumi, magst du mir beim Backen helfen oder liest du alleine?
+Was wählt Lumi?
+Lumi hilft Oma beim Backen.
+Lumi liest alleine in der Ecke.
+Zusammen backen sie Plätzchen für die ganze Familie!
+Oma erzählt dabei alte Geschichten. Es ist der schönste Regentag ever!
+Zeit mit Familie ist wertvoller als jedes Wetter!
+Lumi taucht in ein spannendes Buch ein. Zeit vergeht wie im Flug!
+Lumi! Plätzchen sind fertig! Oma hatte trotzdem für Lumi gebacken.
+Lesen und Fantasie sind Superkräfte!
+Auf dem Spielplatz
+Lumi will die Rutsche runterrutschen. Aber da wartet schon eine lange Schlange.
+Ein Kind sagt: Komm vor! Ich kenne dich!
+Was tut Lumi?
+Lumi wartet in der Reihe.
+Lumi geht vor.
+Lumi wartet geduldig. Die anderen Kinder freuen sich!
+Du bist so fair! sagen alle. Am Ende rutschen sie ZUSAMMEN!
+Geduld und Fairness machen Freundschaften!
+Lumi geht vor. Die anderen Kinder sind traurig und sauer.
+Lumi sieht ihre Gesichter und entschuldigt sich. Es tut mir leid.
+Entschuldigen ist mutig – jeder macht Fehler!
+Das Kätzchen im Regen
+Lumi geht nach Hause, als ein leises Miauen zu hören ist. Unter einer Bank sitzt ein kleines Kätzchen, ganz nass und allein.
+Das Kätzchen schaut Lumi mit großen Augen an. Es hat kein Halsband und zittert vor Kälte.
+Was macht Lumi mit dem Kätzchen?
+Lumi nimmt das Kätzchen mit nach Hause.
+Lumi geht weiter – vielleicht hilft jemand anderes.
+Mama ist überrascht, aber sagt: Wir schauen, ob wir den Besitzer finden.
+Am nächsten Tag finden sie die Besitzerin. Sie ist so erleichtert! Als Dankeschön bekommt Lumi ein Foto vom Kätzchen.
+Ein kleines Herz für Tiere kann einen riesigen Unterschied machen!
+Lumi geht weiter. Aber das leise Miauen ist nicht zu vergessen.
+Lumi dreht um und bringt das Kätzchen doch nach Hause. Manchmal braucht das Herz einen Moment!
+Auf unser Herz zu hören ist immer eine gute Idee.
+Kein Frühstück
+In der Pause macht Lumi die Brotdose auf. Leckere Butterbrote! Aber Jonas, der Klassenkamerad, sitzt still daneben und schaut auf den Boden.
+Hast du etwas vergessen? fragt Lumi. Meine Brotdose, flüstert Jonas.
+Was macht Lumi?
+Lumi teilt sein Brot mit Jonas.
+Lumi isst alleine – es ist ja sein Brot.
+Möchtest du die Hälfte? Jonas ist sprachlos vor Freude!
+Nach der Schule fragt Jonas, ob Lumi zum Spielen kommen darf. Aus Fremden werden Freunde!
+Teilen schafft Freundschaften, die ein Leben lang halten!
+Lumi isst. Aber irgendwie schmeckt das Brot heute nicht so gut.
+Beim nächsten Mal gibt Lumi Jonas die Hälfte: Ich mache das besser! Jonas lächelt.
+Es ist nie zu spät, das Richtige zu tun.
+Die zerbrochene Vase
+Beim Spielen schubst Lumi aus Versehen Omas Lieblingsvase vom Tisch. Scherben auf dem Boden.
+Oma ist noch beim Einkaufen. Lumi könnte die Scherben verstecken – oder die Wahrheit sagen.
+Was macht Lumi?
+Lumi erzählt Oma sofort die Wahrheit.
+Lumi versteckt die Scherben unter dem Sofa.
+Oma kommt nach Hause. Oma, ich muss dir etwas sagen. Lumis Herz klopft.
+Oma ist kurz traurig, dann umarmt sie Lumi fest. Dass du ehrlich bist – darauf bin ich am stolzsten!
+Die Wahrheit zu sagen ist mutig – und macht das Herz viel leichter!
+Lumi versteckt die Scherben. Aber das Geheimnis liegt wie ein Stein im Bauch.
+Beim Abendessen kommt es raus: Oma, ich habe etwas angestellt. Oma lächelt: Gut, dass du es sagst.
+Geheimnisse, die wehtun, sollte man teilen. Ehrlichkeit befreit!
+Der mutige Kletterturm
+Im Park steht der große Kletterturm. Alle Kinder klettern drauf. Lumi bleibt unten. Das ist zu hoch. Was wenn ich falle?
+Freundin Mia reicht Lumi die Hand: Ich bin neben dir. Versuch es Schritt für Schritt!
+Was macht Lumi?
+Lumi versucht es – mutig!
+Lumi bleibt lieber unten.
+Schritt für Schritt. Lumi klettert! Oben angekommen sieht die Welt ganz anders aus.
+ICH HABE ES GESCHAFFT! Alle jubeln. Mut wächst, wenn man ihn benutzt!
+Mutsein heißt nicht, keine Angst zu haben – sondern trotzdem zu versuchen!
+Lumi bleibt unten – das ist auch mutig! Seine Grenzen zu kennen ist klug.
+Lumi klettert auf den kleinen Turm und strahlt: Nächstes Mal den großen!
+Jeden Tag ein kleiner Schritt weiter – das ist echter Mut!
+Das neue Mädchen
+In der Schule gibt es ein neues Mädchen: Emma. Sie steht alleine im Schulhof. Lumi kennt Emma nicht. Aber Emma sieht einsam aus.
+Lumis Freunde rufen: Lumi, komm spielen! Lumi schaut zu Emma, dann zu den Freunden.
+Was macht Lumi?
+Lumi geht zu Emma und stellt sich vor.
+Lumi rennt zu den alten Freunden.
+Hallo! Ich bin Lumi. Willst du mitspielen? Emmas Gesicht leuchtet auf!
+Am Ende des Tages hat Lumi eine neue Freundin. Emma: Du bist die erste, die freundlich war. Danke!
+Eine kleine Geste kann für jemand anderen die Welt bedeuten!
+Lumi spielt. Aber nach einer Weile weint Emma in einer Ecke. Das Lachen hört auf.
+Lumi geht zu Emma: Es tut mir leid – willst du jetzt mitspielen? Emma lächelt erleichtert.
+Es ist nie zu spät, freundlich zu sein. Aber früher ist besser!
+Das gefundene Portemonnaie
+Beim Spielen im Park findet Lumi ein schwarzes Portemonnaie im Gras. Darin sind Geld, ein Foto und eine Telefonnummer.
+Lumi könnte das Geld behalten – oder mit Mama zur Polizei gehen.
+Was macht Lumi?
+Lumi gibt das Portemonnaie zur Polizei.
+Lumi behält das Geld erst mal.
+Lumi geht mit Mama zur Polizei. Der Beamte lobt Lumi sehr!
+Am nächsten Tag klingelt es. Die Besitzerin umarmt Lumi: Das war mein letztes Geld für Medikamente. Danke! Sie schenkt Lumi ein Buch.
+Ehrlichkeit kann einem fremden Menschen wirklich helfen!
+Lumi gibt das Geld aus. Aber das Foto im Portemonnaie lässt Lumi nicht schlafen.
+Lumi geht doch zur Polizei. Es tut mir leid. Der Beamte sagt: Gut, dass du es überhaupt gebracht hast.
+Fehler machen ist menschlich – sie wieder gut machen ist heldenhaft!
