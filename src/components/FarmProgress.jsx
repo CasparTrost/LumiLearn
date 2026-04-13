@@ -375,7 +375,7 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
         setFarmScale(s)
         // Recompute inset zones scaled for this farm width
         // More inset on mobile (smaller farm) so sprites visually stay away from fences
-        const baseInset = 30 / s  // 30px visual inset, scaled to coord space
+        const baseInset = 25  // 25px in coordinate space (same on all screens)
         INSET_ZONES = {
           Pferdekoppel:  insetPolygon(ZONES.Pferdekoppel,  baseInset),
           Schafgehege:   insetPolygon(ZONES.Schafgehege,   baseInset),
