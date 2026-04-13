@@ -370,8 +370,8 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
   useEffect(() => {
     const updateScale = () => {
       if (farmRef.current) {
-        const w = farmRef.current.offsetWidth
-        const s = w / 750
+        const w = farmRef.current.getBoundingClientRect().width || farmRef.current.offsetWidth
+        const s = w > 0 ? w / 750 : 1
         setFarmScale(s)
         // Recompute inset zones scaled for this farm width
         // More inset on mobile (smaller farm) so sprites visually stay away from fences
@@ -386,8 +386,10 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
       }
     }
     updateScale()
+    // Also measure after a tick to ensure layout is complete
+    const t = setTimeout(updateScale, 100)
     window.addEventListener('resize', updateScale)
-    return () => window.removeEventListener('resize', updateScale)
+    return () => { clearTimeout(t); window.removeEventListener('resize', updateScale) }
   }, [])
   const [showBanner, setShowBanner] = useState(null)
   const [prevLevel, setPrevLevel] = useState(level)
