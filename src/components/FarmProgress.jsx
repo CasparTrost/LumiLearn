@@ -56,17 +56,17 @@ const sfx = {
 }
 
 const ZONES = {
-  Pferdekoppel: [{x:66,y:258},{x:219,y:257},{x:190,y:321},{x:38,y:320}],
-  Schafgehege: [{x:356,y:232},{x:466,y:232},{x:472,y:332},{x:281,y:329},{x:308,y:258}],
-  Huhnerstall: [{x:514,y:233},{x:598,y:232},{x:596,y:273},{x:514,y:272}],
-  Schweinestall: [{x:626,y:275},{x:725,y:282},{x:730,y:339},{x:625,y:338}],
-  Kuhstall: [{x:125,y:141},{x:64,y:149},{x:7,y:156},{x:62,y:172},{x:125,y:173},{x:132,y:206},{x:56,y:213},{x:56,y:225},{x:275,y:233},{x:169,y:220},{x:148,y:179},{x:169,y:141}],
+  Pferdekoppel: [{x:66,y:258},{x:219,y:257},{x:190,y:322},{x:38,y:320}],
+  Schafgehege: [{x:356,y:232},{x:466,y:232},{x:472,y:332},{x:281,y:330},{x:308,y:258}],
+  Huhnerstall: [{x:514,y:234},{x:598,y:232},{x:596,y:273},{x:514,y:272}],
+  Schweinestall: [{x:626,y:276},{x:725,y:283},{x:730,y:339},{x:625,y:338}],
+  Kuhstall: [{x:125,y:141},{x:64,y:149},{x:7,y:156},{x:62,y:173},{x:125,y:174},{x:132,y:207},{x:56,y:214},{x:56,y:225},{x:275,y:234},{x:169,y:221},{x:148,y:180},{x:169,y:141}],
   Wege: [{x:3,y:323},{x:84,y:327},{x:110,y:300},{x:114,y:324},{x:180,y:321},{x:235,y:208},{x:225,y:194},{x:157,y:200},{x:119,y:165},{x:117,y:114},{x:128,y:180},{x:174,y:200},{x:277,y:191},{x:292,y:167},{x:419,y:167},{x:275,y:191},{x:230,y:203},{x:189,y:329},{x:444,y:328},{x:469,y:255},{x:474,y:326},{x:543,y:332},{x:562,y:311},{x:610,y:334},{x:123,y:327},{x:4,y:323}],
 }
 
 
 // Farmer centerline path (drawn in positioner tool)
-const FARMER_PATH = [{x:4,y:379},{x:98,y:383},{x:129,y:352},{x:134,y:380},{x:211,y:376},{x:275,y:244},{x:264,y:227},{x:184,y:234},{x:139,y:193},{x:137,y:134},{x:150,y:211},{x:204,y:234},{x:325,y:224},{x:342,y:196},{x:491,y:196},{x:322,y:224},{x:270,y:238},{x:221,y:386},{x:520,y:384},{x:550,y:299},{x:555,y:382},{x:636,y:389},{x:659,y:364},{x:715,y:391},{x:144,y:383},{x:5,y:379}]
+const FARMER_PATH = [{x:4,y:379},{x:98,y:384},{x:129,y:352},{x:134,y:380},{x:211,y:377},{x:275,y:244},{x:264,y:228},{x:184,y:235},{x:139,y:194},{x:137,y:134},{x:150,y:211},{x:204,y:235},{x:325,y:224},{x:342,y:196},{x:491,y:196},{x:322,y:224},{x:270,y:238},{x:221,y:386},{x:520,y:385},{x:550,y:299},{x:555,y:383},{x:636,y:390},{x:659,y:365},{x:715,y:392},{x:144,y:384},{x:5,y:379}]
 
 const ANIMAL_DEFS = [
   { id:'chicken', name:'Huhn',    gif:'anim_chicken.gif', gifRight:'anim_chicken_right.gif', size:40, zone:'Huhnerstall',   sfx:sfx.cluck, unlockLevel:2, emoji:'🐔' },
@@ -173,8 +173,8 @@ function RoamingAnimal({ def }) {
       initial={{scale:0,opacity:0}} animate={{scale:1,opacity:1}} exit={{scale:0,opacity:0}}
       transition={{type:'spring',stiffness:280}}
       style={{ position:'absolute',
-        left:`calc(${(pos.x/640*100).toFixed(3)}% - ${def.size/2}px)`,
-        top:`calc(${(pos.y/357*100).toFixed(3)}% - ${def.size/2}px)`,
+        left:`calc(${(pos.x/750*100).toFixed(3)}% - ${def.size/2}px)`,
+        top:`calc(${(pos.y/419*100).toFixed(3)}% - ${def.size/2}px)`,
         width:def.size, zIndex:Math.round(pos.y), cursor:'pointer' }}
       onClick={click}
     >
@@ -268,8 +268,8 @@ function Farmer() {
 
   return (
     <div style={{ position:'absolute',
-      left:`calc(${(pos.x/640*100).toFixed(3)}% - 24px)`,
-      top:`calc(${(pos.y/357*100).toFixed(3)}% - 24px)`,
+      left:`calc(${(pos.x/750*100).toFixed(3)}% - 24px)`,
+      top:`calc(${(pos.y/419*100).toFixed(3)}% - 24px)`,
       width:48, zIndex:Math.round(pos.y)+10, pointerEvents:'none' }}>
       <img src={asset(gif)} alt="Bauer"
         style={{ width:'100%', imageRendering:'pixelated',
