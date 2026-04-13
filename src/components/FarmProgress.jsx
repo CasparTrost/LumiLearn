@@ -66,12 +66,13 @@ const ZONES = {
 
 
 
-const INSET_ZONES = {
-  Pferdekoppel:  insetPolygon(ZONES.Pferdekoppel,  16),
-  Schafgehege:   insetPolygon(ZONES.Schafgehege,   16),
-  Huhnerstall:   insetPolygon(ZONES.Huhnerstall,   10),
-  Schweinestall: insetPolygon(ZONES.Schweinestall, 14),
-  Kuhstall:      ZONES.Kuhstall,   // keep as-is per request
+// INSET_ZONES computed globally - will be updated per farmScale in component
+let INSET_ZONES = {
+  Pferdekoppel:  insetPolygon(ZONES.Pferdekoppel,  25),
+  Schafgehege:   insetPolygon(ZONES.Schafgehege,   25),
+  Huhnerstall:   insetPolygon(ZONES.Huhnerstall,   18),
+  Schweinestall: insetPolygon(ZONES.Schweinestall, 22),
+  Kuhstall:      ZONES.Kuhstall,
 }
 
 // Farmer centerline path (drawn in positioner tool)
@@ -370,7 +371,18 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
     const updateScale = () => {
       if (farmRef.current) {
         const w = farmRef.current.offsetWidth
-        setFarmScale(w / 750) // 750 = reference width
+        const s = w / 750
+        setFarmScale(s)
+        // Recompute inset zones scaled for this farm width
+        // More inset on mobile (smaller farm) so sprites visually stay away from fences
+        const baseInset = 30 / s  // 30px visual inset, scaled to coord space
+        INSET_ZONES = {
+          Pferdekoppel:  insetPolygon(ZONES.Pferdekoppel,  baseInset),
+          Schafgehege:   insetPolygon(ZONES.Schafgehege,   baseInset),
+          Huhnerstall:   insetPolygon(ZONES.Huhnerstall,   baseInset * 0.7),
+          Schweinestall: insetPolygon(ZONES.Schweinestall, baseInset * 0.85),
+          Kuhstall:      ZONES.Kuhstall,
+        }
       }
     }
     updateScale()
