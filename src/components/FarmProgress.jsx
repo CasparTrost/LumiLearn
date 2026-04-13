@@ -308,37 +308,56 @@ function UnlockBanner({ animal, onDone }) {
 }
 
 
-// ScaledOverlay: scales animal/farmer positions to match actual image width
-// Coordinates were drawn at baseWidth=640px on desktop
-// On mobile the image is smaller, so we scale proportionally
-function ScaledOverlay({ baseWidth = 640, children }) {
+// ScaledOverlay: scales animal positions to match actual farm image size
+// Coordinates were drawn at 640x357px
+// This overlay covers the image exactly and scales positions proportionally
+function ScaledOverlay({ children }) {
+  // The overlay is absolutely positioned over the farm image
+  // We use percentage-based positioning: pos / 640 * 100%
+  // But animals use pixel positions... so we use a CSS scale trick
   const wrapRef = useRef(null)
-  const [scale, setScale] = React.useState(1)
-  const aspectH = Math.round(baseWidth * 357 / 640)
+  const imgRef = useRef(null)
+  const [dims, setDims] = React.useState({ w: 640, h: 357 })
 
   useEffect(() => {
-    const update = () => {
-      if (wrapRef.current) {
-        const w = wrapRef.current.parentElement?.clientWidth || baseWidth
-        setScale(w / baseWidth)
+    // Find the farm image in the parent
+    const updateDims = () => {
+      const parent = wrapRef.current?.parentElement
+      if (parent) {
+        const img = parent.querySelector('img')
+        if (img && img.offsetWidth > 0) {
+          setDims({ w: img.offsetWidth, h: img.offsetHeight })
+        }
       }
     }
-    update()
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(update) : null
-    if (ro && wrapRef.current?.parentElement) ro.observe(wrapRef.current.parentElement)
-    window.addEventListener('resize', update)
-    return () => { ro?.disconnect(); window.removeEventListener('resize', update) }
-  }, [baseWidth])
+    updateDims()
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateDims) : null
+    const parent = wrapRef.current?.parentElement
+    if (ro && parent) ro.observe(parent)
+    window.addEventListener('resize', updateDims)
+    return () => { ro?.disconnect(); window.removeEventListener('resize', updateDims) }
+  }, [])
+
+  // Scale factor: actual image width / coordinate reference width
+  const scaleX = dims.w / 640
+  const scaleY = dims.h / 357
 
   return (
     <div ref={wrapRef} style={{
       position: 'absolute', top: 0, left: 0,
-      width: baseWidth,
-      height: aspectH,
-      transformOrigin: 'top left',
-      transform: `scale(${scale})`,
+      width: dims.w, height: dims.h,
+      pointerEvents: 'none',
     }}>
-      {children}
+      {/* Scale all children positions */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0,
+        width: 640, height: 357,
+        transformOrigin: 'top left',
+        transform: `scale(${scaleX}, ${scaleY})`,
+        pointerEvents: 'all',
+      }}>
+        {children}
+      </div>
     </div>
   )
 }
