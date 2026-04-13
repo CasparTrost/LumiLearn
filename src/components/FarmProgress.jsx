@@ -151,14 +151,14 @@ function RoamingAnimal({ def }) {
   )
 }
 
-// Farmer: walks waypoints with direction-aware animations + pauses
+// Farmer: walks waypoints with direction-aware animations + turn pauses
 function Farmer() {
   const wps = ZONES.Wege
   const posRef = useRef(wps[0])
   const wpRef = useRef(0)
   const pauseRef = useRef(false)
+  const lastDirRef = useRef({dx:1,dy:0}) // track previous direction vector
   const [pos, setPos] = useState(wps[0])
-  // direction: 'right','left','up','down','idle_front','idle_back'
   const [dir, setDir] = useState('idle_front')
 
   useEffect(() => {
@@ -170,20 +170,36 @@ function Farmer() {
       const dist=Math.sqrt(dx*dx+dy*dy)
 
       if (dist < 2) {
-        wpRef.current = (wpRef.current+1) % wps.length
-        // Occasionally pause
-        if (Math.random() < 0.1) {
+        const nextIdx = (wpRef.current+1) % wps.length
+        const nextWp = wps[nextIdx]
+        // Check if this is a turn: dot product of current and next direction
+        const curDx = t.x - posRef.current.x
+        const curDy = t.y - posRef.current.y
+        const nextDx = nextWp.x - t.x
+        const nextDy = nextWp.y - t.y
+        const curLen = Math.sqrt(curDx*curDx+curDy*curDy) || 1
+        const nextLen = Math.sqrt(nextDx*nextDx+nextDy*nextDy) || 1
+        const dot = (curDx/curLen)*(nextDx/nextLen) + (curDy/curLen)*(nextDy/nextLen)
+        // dot < 0.3 means angle > ~72 degrees = significant turn
+        const isTurn = dot < 0.3
+
+        wpRef.current = nextIdx
+
+        if (isTurn) {
           pauseRef.current = true
-          // Pick idle animation based on last direction
+          // Face camera (idle_front) or away (idle_back) based on vertical direction
+          setDir(curDy > 0 ? 'idle_front' : 'idle_back')
+          setTimeout(() => { pauseRef.current = false }, 500 + Math.random()*800)
+        } else if (Math.random() < 0.08) {
+          // Occasional random pause
+          pauseRef.current = true
           setDir(Math.random() < 0.5 ? 'idle_front' : 'idle_back')
-          setTimeout(() => { pauseRef.current = false }, 800 + Math.random()*1500)
+          setTimeout(() => { pauseRef.current = false }, 600 + Math.random()*1200)
         }
       } else {
         const spd = 0.7
         posRef.current = { x: posRef.current.x+dx/dist*spd, y: posRef.current.y+dy/dist*spd }
         setPos({...posRef.current})
-
-        // Determine direction
         const adx = Math.abs(dx), ady = Math.abs(dy)
         if (adx > ady) {
           setDir(dx > 0 ? 'right' : 'left')
