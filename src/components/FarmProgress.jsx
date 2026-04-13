@@ -73,7 +73,7 @@ const ANIMAL_DEFS = [
   { id:'sheep',   name:'Schaf',   gif:'anim_sheep.gif',   size:52, zone:'Schafgehege',   sfx:sfx.baa,   unlockLevel:3, emoji:'🐑' },
   { id:'pig',     name:'Schwein', gif:'anim_pig.gif',     size:54, zone:'Schweinestall', sfx:sfx.oink,  unlockLevel:4, emoji:'🐷' },
   { id:'cow',     name:'Kuh',     gif:'anim_cow.gif',     size:60, zone:'Kuhstall',      sfx:sfx.moo,   unlockLevel:5, emoji:'🐄' },
-  { id:'horse',   name:'Pferd',   gif:'anim_horse.gif',   size:64, zone:'Pferdekoppel',  sfx:sfx.neigh, unlockLevel:6, emoji:'🐴' },
+  { id:'horse',   name:'Pferd',   gif:'anim_horse.gif',   size:64, zone:'Pferdekoppel',  sfx:sfx.neigh, unlockLevel:6, emoji:'🐴', facesRight:true },
 ]
 
 function getLevel(n) {
@@ -113,7 +113,7 @@ function RoamingAnimal({ def }) {
   const pauseRef = useRef(false)
   const pauseTimerRef = useRef(null)
   const [pos, setPos] = useState(posRef.current)
-  const [flipped, setFlipped] = useState(false) // true = scaleX(-1) = faces right
+  const [flipped, setFlipped] = useState(def.facesRight || false)
   const [bouncing, setBouncing] = useState(false)
   // flipped state declared above
 
