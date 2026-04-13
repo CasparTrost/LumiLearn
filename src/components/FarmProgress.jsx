@@ -41,6 +41,10 @@ const ZONES = {
   Wege: [{x:3,y:323},{x:84,y:327},{x:110,y:300},{x:114,y:324},{x:180,y:321},{x:235,y:208},{x:225,y:194},{x:157,y:200},{x:119,y:165},{x:117,y:114},{x:128,y:180},{x:174,y:200},{x:277,y:191},{x:292,y:167},{x:419,y:167},{x:275,y:191},{x:230,y:203},{x:189,y:329},{x:444,y:328},{x:469,y:255},{x:474,y:326},{x:543,y:332},{x:562,y:311},{x:610,y:334},{x:123,y:327},{x:4,y:323}],
 }
 
+
+// Farmer centerline path (drawn in positioner tool)
+const FARMER_PATH = [{x:3,y:323},{x:84,y:327},{x:110,y:300},{x:114,y:324},{x:180,y:321},{x:235,y:208},{x:225,y:194},{x:157,y:200},{x:119,y:165},{x:117,y:114},{x:128,y:180},{x:174,y:200},{x:277,y:191},{x:292,y:167},{x:419,y:167},{x:275,y:191},{x:230,y:203},{x:189,y:329},{x:444,y:328},{x:469,y:255},{x:474,y:326},{x:543,y:332},{x:562,y:311},{x:610,y:334},{x:123,y:327},{x:4,y:323}]
+
 const ANIMAL_DEFS = [
   { id:'chicken', name:'Huhn',    gif:'anim_chicken.gif', size:40, zone:'Huhnerstall',   sfx:sfx.cluck, unlockLevel:2, emoji:'🐔' },
   { id:'sheep',   name:'Schaf',   gif:'anim_sheep.gif',   size:52, zone:'Schafgehege',   sfx:sfx.baa,   unlockLevel:3, emoji:'🐑' },
@@ -153,7 +157,7 @@ function RoamingAnimal({ def }) {
 
 // Farmer: walks waypoints with direction-aware animations + turn pauses
 function Farmer() {
-  const wps = ZONES.Wege
+  const wps = FARMER_PATH
   const posRef = useRef(wps[0])
   const wpRef = useRef(0)
   const pauseRef = useRef(false)
