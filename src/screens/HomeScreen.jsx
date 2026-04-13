@@ -177,9 +177,9 @@ export default function HomeScreen() {
       <div style={{
         flex:1,
         display:'grid',
-        gridTemplateColumns:'repeat(2,1fr)',
+        gridTemplateColumns:'repeat(auto-fill,minmax(clamp(240px,28vw,320px),1fr))',
         gap:'clamp(14px,2.5vw,24px)',
-        padding:'clamp(8px,2vw,16px) clamp(10px,3vw,32px) clamp(16px,3vw,32px)',
+        padding:'clamp(10px,2vw,20px) clamp(20px,4vw,40px) clamp(24px,4vw,40px)',
         alignContent:'start',
       }}>
         {MODULES.map((mod, i) => {
