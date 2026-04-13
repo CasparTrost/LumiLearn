@@ -87,7 +87,8 @@ function Animal({ gif, x, y, size=80, sfxFn, onSpark, delay=0, flip=false, label
   )
 }
 
-export default function FarmProgress({ completedCount=0, totalModules=17 }) {
+export default function FarmProgress({ completedCount:rawCount=0, totalModules=17 }) {
+  const completedCount = 17 // preview all animals {
   const level = getLevel(completedCount)
   const show  = (min) => level >= min
   const [spark, setSpark] = useState(null)
