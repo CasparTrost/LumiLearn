@@ -226,7 +226,7 @@ function Farmer() {
   else                        { gif = 'farmer_idle_front.gif'; flipX = false }
 
   return (
-    <div style={{ position:'absolute', left:pos.x-24, top:pos.y-48, width:48,
+    <div style={{ position:'absolute', left:pos.x-24, top:pos.y-24, width:48,
       zIndex:Math.round(pos.y)+10, pointerEvents:'none' }}>
       <img src={asset(gif)} alt="Bauer"
         style={{ width:'100%', imageRendering:'pixelated',
