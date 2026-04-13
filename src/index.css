@@ -218,3 +218,51 @@ img {
     transform: scale(0.97);
   }
 }
+
+/* ═══════════════════════════════════════════════════
+   MOBILE (≤ 600px) - farm responsive overrides
+   Desktop is NOT affected by any rule here
+   ═══════════════════════════════════════════════════ */
+
+@media (max-width: 600px) {
+
+  /* Farm: full width, no max-width constraint */
+  .farm-progress-wrapper {
+    max-width: 100% !important;
+  }
+
+  /* Farm+Sidebar: stack vertically */
+  .farm-flex-container {
+    flex-direction: column !important;
+  }
+
+  /* Sidebar: horizontal strip below farm */
+  .farm-sidebar {
+    width: 100% !important;
+    flex-direction: row !important;
+    gap: 6px !important;
+    padding: 8px 10px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    max-height: 110px;
+    scrollbar-width: none;
+  }
+  .farm-sidebar::-webkit-scrollbar { display: none; }
+
+  /* Farm scene: full width */
+  .farm-scene {
+    flex: none !important;
+    width: 100% !important;
+  }
+
+  /* Module grid: 2 columns on mobile */
+  .home-bg [style*="grid"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Prevent horizontal overflow */
+  body { overflow-x: hidden; }
+  
+  /* Safe area */
+  .screen { padding-bottom: env(safe-area-inset-bottom, 0); }
+}
