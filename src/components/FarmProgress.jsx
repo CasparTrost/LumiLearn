@@ -412,15 +412,22 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
   // Animals are derived from level — no manual placement
   const animals = getAnimalsForLevel(level)
 
-  // Level-up detection
-  const [prevLevel, setPrevLevel] = useState(level)
-  const [celebration, setCelebration] = useState(null) // { level, newAnimals }
+  // Level-up detection — persist prevLevel in localStorage
+  const [prevLevel, setPrevLevel] = useState(() => {
+    try { return parseInt(localStorage.getItem('lumilearn_farm_level') || '0', 10) } catch { return 0 }
+  })
+  const [celebration, setCelebration] = useState(null)
 
   useEffect(() => {
     if (level > prevLevel) {
       const newAnimals = getNewAnimals(level)
       setCelebration({ level, newAnimals })
       setPrevLevel(level)
+      try { localStorage.setItem('lumilearn_farm_level', String(level)) } catch {}
+    } else if (prevLevel === 0 && level > 0) {
+      // First ever load — just save, no celebration
+      setPrevLevel(level)
+      try { localStorage.setItem('lumilearn_farm_level', String(level)) } catch {}
     }
   }, [level])
 
