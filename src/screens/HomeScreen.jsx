@@ -108,7 +108,7 @@ export default function HomeScreen() {
   }
 
   return (
-    <div className="home-bg" style={{ minHeight:'100dvh', display:'flex', flexDirection:'column', position:'relative' }}>
+    <div className="home-bg" style={{ minHeight:'100dvh', display:'flex', flexDirection:'column', position:'relative', overflowX:'hidden' }}>
 
       {/* ── Animated background orbs ── */}
       <div style={{ position:'fixed', inset:0, zIndex:-1, overflow:'hidden', pointerEvents:'none' }}>
@@ -146,13 +146,13 @@ export default function HomeScreen() {
           <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(14px,2.8vw,20px)', color:'rgba(255,255,255,0.75)' }}>
             Hallo,
           </div>
-          <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(20px,4.5vw,30px)', color:'white', fontWeight:700, lineHeight:1.1 }}>
+          <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(16px,4vw,28px)', color:'white', fontWeight:700, lineHeight:1.1 }}>
             {profile.name}! 👋
           </div>
         </div>
-        <LumiWithOrbit completedCount={completedCount} size={64} />
+        <LumiWithOrbit completedCount={completedCount} size={typeof window!=='undefined'&&window.innerWidth<400?48:64} />
         <motion.button whileHover={{scale:1.1}} whileTap={{scale:0.9}}
-          style={{ width:44,height:44,borderRadius:'50%',background:'rgba(255,255,255,0.18)',display:'flex',alignItems:'center',justifyContent:'center' }}
+          style={{ width:48,height:48,borderRadius:'50%',background:'rgba(255,255,255,0.18)',display:'flex',alignItems:'center',justifyContent:'center' }}
           onClick={() => dispatch({ type:'NAVIGATE', payload:'welcome' })}
         >
           <Settings size={20} color="white" />
@@ -179,7 +179,7 @@ export default function HomeScreen() {
         display:'grid',
         gridTemplateColumns:'repeat(auto-fill,minmax(min(160px,calc(50% - 8px)),1fr))',
         gap:'clamp(14px,2.5vw,24px)',
-        padding:'clamp(10px,2vw,20px) clamp(20px,4vw,40px) clamp(24px,4vw,40px)',
+        padding:'clamp(8px,2vw,16px) clamp(10px,3vw,32px) clamp(16px,3vw,32px)',
         alignContent:'start',
       }}>
         {MODULES.map((mod, i) => {
