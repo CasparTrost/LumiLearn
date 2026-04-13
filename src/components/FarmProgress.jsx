@@ -69,11 +69,11 @@ const ZONES = {
 const FARMER_PATH = [{x:3,y:323},{x:84,y:327},{x:110,y:300},{x:114,y:324},{x:180,y:321},{x:235,y:208},{x:225,y:194},{x:157,y:200},{x:119,y:165},{x:117,y:114},{x:128,y:180},{x:174,y:200},{x:277,y:191},{x:292,y:167},{x:419,y:167},{x:275,y:191},{x:230,y:203},{x:189,y:329},{x:444,y:328},{x:469,y:255},{x:474,y:326},{x:543,y:332},{x:562,y:311},{x:610,y:334},{x:123,y:327},{x:4,y:323}]
 
 const ANIMAL_DEFS = [
-  { id:'chicken', name:'Huhn',    gif:'anim_chicken.gif', size:40, zone:'Huhnerstall',   sfx:sfx.cluck, unlockLevel:2, emoji:'🐔' },
-  { id:'sheep',   name:'Schaf',   gif:'anim_sheep.gif',   size:52, zone:'Schafgehege',   sfx:sfx.baa,   unlockLevel:3, emoji:'🐑' },
-  { id:'pig',     name:'Schwein', gif:'anim_pig.gif',     size:54, zone:'Schweinestall', sfx:sfx.oink,  unlockLevel:4, emoji:'🐷' },
-  { id:'cow',     name:'Kuh',     gif:'anim_cow.gif',     size:60, zone:'Kuhstall',      sfx:sfx.moo,   unlockLevel:5, emoji:'🐄' },
-  { id:'horse',   name:'Pferd',   gif:'anim_horse.gif',   size:64, zone:'Pferdekoppel',  sfx:sfx.neigh, unlockLevel:6, emoji:'🐴', facesRight:true },
+  { id:'chicken', name:'Huhn',    gif:'anim_chicken.gif', gifRight:'anim_chicken_right.gif', size:40, zone:'Huhnerstall',   sfx:sfx.cluck, unlockLevel:2, emoji:'🐔' },
+  { id:'sheep',   name:'Schaf',   gif:'anim_sheep.gif',   gifRight:'anim_sheep_right.gif', size:52, zone:'Schafgehege',   sfx:sfx.baa,   unlockLevel:3, emoji:'🐑' },
+  { id:'pig',     name:'Schwein', gif:'anim_pig.gif',     gifRight:'anim_pig_right.gif', size:54, zone:'Schweinestall', sfx:sfx.oink,  unlockLevel:4, emoji:'🐷' },
+  { id:'cow',     name:'Kuh',     gif:'anim_cow.gif',     gifRight:'anim_cow_right.gif', size:60, zone:'Kuhstall',      sfx:sfx.moo,   unlockLevel:5, emoji:'🐄' },
+  { id:'horse',   name:'Pferd',   gif:'anim_horse_v4.gif', gifRight:'anim_horse_left.gif', size:64, zone:'Pferdekoppel',  sfx:sfx.neigh, unlockLevel:6, emoji:'🐴', facesRight:true },
 ]
 
 function getLevel(n) {
@@ -108,13 +108,14 @@ function randomInZone(zone) {
 
 // Animal: roams in zone, correct facing, occasional pauses
 function RoamingAnimal({ def }) {
+  // Use two separate GIF files: def.gif (faces left) and def.gifRight (faces right)
+  // For horse: def.gif faces right, def.gifRight faces left
   const posRef = useRef(randomInZone(def.zone))
   const targetRef = useRef(randomInZone(def.zone))
   const pauseRef = useRef(false)
   const pauseTimerRef = useRef(null)
-  const mirrorRef = useRef(false) // use ref not state to avoid stale closure
-  const imgRef = useRef(null)
   const [pos, setPos] = useState(posRef.current)
+  const [movingRight, setMovingRight] = useState(false)
   const [bouncing, setBouncing] = useState(false)
 
   useEffect(() => {
@@ -133,28 +134,25 @@ function RoamingAnimal({ def }) {
         posRef.current = { x: posRef.current.x + (dx/dist)*0.4, y: posRef.current.y + (dy/dist)*0.4 }
         setPos({...posRef.current})
         if (Math.abs(dx) > Math.abs(dy) * 0.3) {
-          const movingRight = dx > 0
-          // facesLeft sprites (default): mirror when moving right
-          // facesRight sprites (horse): mirror when moving left
-          const shouldMirror = def.facesRight ? !movingRight : movingRight
-          if (shouldMirror !== mirrorRef.current) {
-            mirrorRef.current = shouldMirror
-            // Apply directly to DOM for instant update
-            if (imgRef.current) {
-              imgRef.current.style.transform = shouldMirror ? 'scaleX(-1)' : 'none'
-            }
-          }
+          setMovingRight(dx > 0)
         }
       }
     }, 50)
     return () => { clearInterval(iv); if(pauseTimerRef.current) clearTimeout(pauseTimerRef.current) }
-  }, [def.zone, def.facesRight])
+  }, [def.zone])
 
   const click = () => {
     try { def.sfx() } catch {}
     setBouncing(true)
     setTimeout(() => setBouncing(false), 600)
   }
+
+  // Pick correct GIF based on direction
+  // facesLeft animals (default): use gif when going left, gifRight when going right
+  // facesRight animals (horse): use gif when going right, gifRight when going left
+  const currentGif = def.facesRight
+    ? (movingRight ? asset(def.gif) : asset(def.gifRight || def.gif))
+    : (movingRight ? asset(def.gifRight || def.gif) : asset(def.gif))
 
   return (
     <motion.div
@@ -165,13 +163,9 @@ function RoamingAnimal({ def }) {
       onClick={click}
     >
       <motion.img
-        ref={imgRef}
-        src={asset(def.gif)} alt={def.name}
-        style={{
-          width:'100%',
-          imageRendering:'pixelated',
-          filter:'drop-shadow(1px 3px 3px rgba(0,0,0,.4))',
-        }}
+        src={currentGif}
+        alt={def.name}
+        style={{ width:'100%', imageRendering:'pixelated', filter:'drop-shadow(1px 3px 3px rgba(0,0,0,.4))' }}
         animate={bouncing ? {y:[0,-12,0,-6,0]} : {y:0}}
         transition={{duration:.5}}
       />
