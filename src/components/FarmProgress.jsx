@@ -172,7 +172,9 @@ function RoamingAnimal({ def, farmScale = 1 }) {
     <motion.div
       initial={{scale:0,opacity:0}} animate={{scale:1,opacity:1}} exit={{scale:0,opacity:0}}
       transition={{type:'spring',stiffness:280}}
-      style={{ position:'absolute', left:pos.x-def.size/2, top:pos.y-def.size/2,
+      style={{ position:'absolute',
+        left:`calc(${(pos.x/750*100).toFixed(3)}% - ${Math.round(def.size*farmScale/2)}px)`,
+        top:`calc(${(pos.y/419*100).toFixed(3)}% - ${Math.round(def.size*farmScale/2)}px)`,
         width:Math.round(def.size * farmScale), zIndex:Math.round(pos.y), cursor:'pointer' }}
       onClick={click}
     >
