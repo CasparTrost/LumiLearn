@@ -499,7 +499,13 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
         <div style={{display:'flex',justifyContent:'space-between',marginTop:5,
           fontSize:10,color:'rgba(255,255,255,.5)',fontFamily:'var(--font-body)'}}>
           <span>{completedCount} / {totalModules} Module</span>
-          <span>{pct}%</span>
+          <span style={{display:'flex',alignItems:'center',gap:8}}>
+            {pct}%
+            {/* TEST BUTTON - remove before release */}
+            <span onClick={()=>setCelebration({level, newAnimals:getNewAnimals(level)||getAnimalsForLevel(level).slice(0,2)})}
+              style={{fontSize:9,opacity:.3,cursor:'pointer',userSelect:'none'}}
+              title="Test Level-Up Animation">✨</span>
+          </span>
         </div>
       </div>
 
