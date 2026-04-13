@@ -167,3 +167,56 @@ button:focus-visible {
   background-clip: text;
   animation: title-flow 5s linear infinite;
 }
+
+
+/* ═══════════════════════════════════════════════════
+   MOBILE RESPONSIVE (≤ 600px) - does NOT affect desktop
+   ═══════════════════════════════════════════════════ */
+
+@media (max-width: 600px) {
+
+  /* ── Global ── */
+  body { overflow-x: hidden; }
+  img  { max-width: 100%; }
+
+  /* ── Home: module grid → 2 columns ── */
+  .home-bg [class=""] > div[style*="display:'grid'"],
+  .home-bg > div > div[style*="grid"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* ── Home: farm progress → full width, no overflow ── */
+  .home-bg [style*="maxWidth:860"] {
+    max-width: 100% !important;
+  }
+
+  /* ── Farm: sidebar horizontal instead of vertical ── */
+  [style*="maxWidth:860"] > div[style*="flex:1, position"] {
+    flex-basis: 100% !important;
+  }
+  /* Sidebar below farm */
+  [style*="width:110,"] {
+    width: 100% !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    max-height: 120px;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  /* ── Cards: bigger touch targets ── */
+  .lumi-card [style*="minHeight"] {
+    min-height: 70px !important;
+  }
+
+  /* ── FarmProgress: scale animals to fit ── */
+  [id="farm-scene"] > div:last-child {
+    transform-origin: top left;
+  }
+
+  /* ── Buttons: always full touch target ── */
+  button { min-height: 44px; }
+
+  /* ── Safe area bottom (iPhone home indicator) ── */
+  .screen { padding-bottom: env(safe-area-inset-bottom, 0px); }
+}
