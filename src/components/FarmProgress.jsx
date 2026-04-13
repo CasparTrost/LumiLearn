@@ -65,6 +65,15 @@ const ZONES = {
 }
 
 
+
+const INSET_ZONES = {
+  Pferdekoppel:  insetPolygon(ZONES.Pferdekoppel,  16),
+  Schafgehege:   insetPolygon(ZONES.Schafgehege,   16),
+  Huhnerstall:   insetPolygon(ZONES.Huhnerstall,   10),
+  Schweinestall: insetPolygon(ZONES.Schweinestall, 14),
+  Kuhstall:      ZONES.Kuhstall,   // keep as-is per request
+}
+
 // Farmer centerline path (drawn in positioner tool)
 const FARMER_PATH = [{x:4,y:379},{x:98,y:384},{x:129,y:352},{x:134,y:380},{x:211,y:377},{x:275,y:244},{x:264,y:228},{x:184,y:235},{x:139,y:194},{x:137,y:134},{x:150,y:211},{x:204,y:235},{x:325,y:224},{x:342,y:196},{x:491,y:196},{x:322,y:224},{x:270,y:238},{x:221,y:386},{x:520,y:385},{x:550,y:299},{x:555,y:383},{x:636,y:390},{x:659,y:365},{x:715,y:392},{x:144,y:384},{x:5,y:379}]
 
@@ -106,12 +115,29 @@ function randomInZone(zone) {
   return {x:(minX+maxX)/2, y:(minY+maxY)/2}
 }
 
+function randomInZoneFrom(points) {
+  if (!points || !points.length) return {x:300,y:200}
+  const xs=points.map(p=>p.x), ys=points.map(p=>p.y)
+  const minX=Math.min(...xs), maxX=Math.max(...xs)
+  const minY=Math.min(...ys), maxY=Math.max(...ys)
+  for (let i=0;i<40;i++) {
+    const x=minX+Math.random()*(maxX-minX)
+    const y=minY+Math.random()*(maxY-minY)
+    if (pointInPoly(x,y,points)) return {x,y}
+  }
+  return {x:(minX+maxX)/2, y:(minY+maxY)/2}
+}
+
+
+
 // Animal: roams in zone, correct facing, occasional pauses
 function RoamingAnimal({ def, scale = 1 }) {
   // Use two separate GIF files: def.gif (faces left) and def.gifRight (faces right)
   // For horse: def.gif faces right, def.gifRight faces left
-  const posRef = useRef(randomInZone(def.zone))
-  const targetRef = useRef(randomInZone(def.zone))
+  const zoneKey = def.zone
+  const activeZone = (INSET_ZONES && INSET_ZONES[zoneKey]) ? INSET_ZONES : ZONES
+  const posRef = useRef(randomInZoneFrom(activeZone[zoneKey] || ZONES[zoneKey]))
+  const targetRef = useRef(randomInZoneFrom(activeZone[zoneKey] || ZONES[zoneKey]))
   const pauseRef = useRef(false)
   const pauseTimerRef = useRef(null)
   const [pos, setPos] = useState(posRef.current)
@@ -126,7 +152,7 @@ function RoamingAnimal({ def, scale = 1 }) {
       const dy = targetRef.current.y - posRef.current.y
       const dist = Math.sqrt(dx*dx + dy*dy)
       if (dist < 3) {
-        targetRef.current = randomInZone(def.zone)
+        targetRef.current = randomInZoneFrom(activeZone[zoneKey] || ZONES[zoneKey])
         if (Math.random() < 0.3) {
           pauseRef.current = true
           setPaused(true)
@@ -139,7 +165,7 @@ function RoamingAnimal({ def, scale = 1 }) {
         const newX = posRef.current.x + (dx/dist)*0.4
         const newY = posRef.current.y + (dy/dist)*0.4
         // Only move if new position is still inside the zone polygon
-        const zonePoints = ZONES[def.zone]
+        const zonePoints = activeZone[zoneKey] || ZONES[zoneKey]
         if (!zonePoints || pointInPoly(newX, newY, zonePoints)) {
           posRef.current = { x: newX, y: newY }
           setPos({...posRef.current})
@@ -148,7 +174,7 @@ function RoamingAnimal({ def, scale = 1 }) {
           }
         } else {
           // Outside boundary — pick new target inside zone
-          targetRef.current = randomInZone(def.zone)
+          targetRef.current = randomInZoneFrom(activeZone[zoneKey] || ZONES[zoneKey])
         }
       }
     }, 50)
@@ -312,6 +338,20 @@ function UnlockBanner({ animal, onDone }) {
 }
 
 
+
+
+// Shrink polygon toward centroid by 'margin' pixels
+function insetPolygon(points, margin = 18) {
+  if (!points || points.length < 3) return points
+  const cx = points.reduce((s,p)=>s+p.x,0)/points.length
+  const cy = points.reduce((s,p)=>s+p.y,0)/points.length
+  return points.map(p => {
+    const dx = p.x - cx, dy = p.y - cy
+    const dist = Math.sqrt(dx*dx+dy*dy) || 1
+    const factor = Math.max(0, 1 - margin/dist)
+    return { x: cx + dx*factor, y: cy + dy*factor }
+  })
+}
 
 export default function FarmProgress({ completedCount: rawCount = 0, totalModules = 17 }) {
   const completedCount = 17 // PREVIEW: max level
