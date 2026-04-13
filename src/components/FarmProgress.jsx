@@ -107,11 +107,30 @@ function randomInZone(zone) {
 }
 
 // Animal: roams in zone, correct facing, occasional pauses
-function RoamingAnimal({ def, scale = 1 }) {
+function RoamingAnimal({ def, scale = 1, farmScale = 1 }) {
   // Use two separate GIF files: def.gif (faces left) and def.gifRight (faces right)
   // For horse: def.gif faces right, def.gifRight faces left
-  const posRef = useRef(randomInZone(def.zone))
-  const targetRef = useRef(randomInZone(def.zone))
+  // Scale zone coordinates to match actual farm display size
+  const scaledZone = React.useMemo(() => {
+    const pts = ZONES[def.zone] || []
+    return pts.map(p => ({ x: p.x * farmScale, y: p.y * farmScale }))
+  }, [def.zone, farmScale])
+  
+  const scaledRandomInZone = () => {
+    if (!scaledZone.length) return { x: 300 * farmScale, y: 200 * farmScale }
+    const xs = scaledZone.map(p => p.x), ys = scaledZone.map(p => p.y)
+    const minX = Math.min(...xs), maxX = Math.max(...xs)
+    const minY = Math.min(...ys), maxY = Math.max(...ys)
+    for (let i = 0; i < 40; i++) {
+      const x = minX + Math.random() * (maxX - minX)
+      const y = minY + Math.random() * (maxY - minY)
+      if (pointInPoly(x, y, scaledZone)) return { x, y }
+    }
+    return { x: (minX+maxX)/2, y: (minY+maxY)/2 }
+  }
+  
+  const posRef = useRef(scaledRandomInZone())
+  const targetRef = useRef(scaledRandomInZone())
   const pauseRef = useRef(false)
   const pauseTimerRef = useRef(null)
   const [pos, setPos] = useState(posRef.current)
@@ -126,7 +145,7 @@ function RoamingAnimal({ def, scale = 1 }) {
       const dy = targetRef.current.y - posRef.current.y
       const dist = Math.sqrt(dx*dx + dy*dy)
       if (dist < 3) {
-        targetRef.current = randomInZone(def.zone)
+        targetRef.current = scaledRandomInZone()
         if (Math.random() < 0.3) {
           pauseRef.current = true
           setPaused(true)
@@ -139,7 +158,7 @@ function RoamingAnimal({ def, scale = 1 }) {
         const newX = posRef.current.x + (dx/dist)*0.4
         const newY = posRef.current.y + (dy/dist)*0.4
         // Only move if new position is still inside the zone polygon
-        const zonePoints = ZONES[def.zone]
+        const zonePoints = scaledZone
         if (!zonePoints || pointInPoly(newX, newY, zonePoints)) {
           posRef.current = { x: newX, y: newY }
           setPos({...posRef.current})
@@ -148,7 +167,7 @@ function RoamingAnimal({ def, scale = 1 }) {
           }
         } else {
           // Outside boundary — pick new target inside zone
-          targetRef.current = randomInZone(def.zone)
+          targetRef.current = scaledRandomInZone()
         }
       }
     }, 50)
@@ -198,7 +217,7 @@ function RoamingAnimal({ def, scale = 1 }) {
 
 // Farmer: walks waypoints with direction-aware animations + turn pauses
 function Farmer({ scale = 1 }) {
-  const wps = FARMER_PATH
+  const wps = React.useMemo(() => FARMER_PATH.map(p => ({x: p.x * scale, y: p.y * scale})), [scale])
   const posRef = useRef(wps[0])
   const wpRef = useRef(0)
   const pauseRef = useRef(false)
@@ -421,7 +440,7 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
             style={{width:'100%', display:'block'}}/>
           <div style={{position:'absolute',inset:0}}>
             <AnimatePresence>
-              {placedAnimals.map(a => <RoamingAnimal key={a.instanceId} def={a} scale={farmScale}/>)}
+              {placedAnimals.map(a => <RoamingAnimal key={a.instanceId} def={a} scale={farmScale} farmScale={farmScale}/>)}
             </AnimatePresence>
             <Farmer scale={farmScale}/>
             <AnimatePresence>
