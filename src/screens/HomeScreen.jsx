@@ -177,7 +177,7 @@ export default function HomeScreen() {
       <div style={{
         flex:1,
         display:'grid',
-        gridTemplateColumns:'repeat(auto-fill,minmax(min(160px,calc(50% - 8px)),1fr))',
+        gridTemplateColumns:'repeat(2,1fr)',
         gap:'clamp(14px,2.5vw,24px)',
         padding:'clamp(8px,2vw,16px) clamp(10px,3vw,32px) clamp(16px,3vw,32px)',
         alignContent:'start',
@@ -206,7 +206,7 @@ export default function HomeScreen() {
               style={{
                 background:'white', borderRadius:28, border:'none', cursor:'pointer',
                 boxShadow:`0 8px 28px ${mod.shadow}`, overflow:'hidden',
-                display:'flex', flexDirection:'column', textAlign:'left',
+                display:'flex', flexDirection:'column', textAlign:'left', minWidth:0,
                 transition:'box-shadow 0.2s', position:'relative',
               }}
             >
@@ -242,7 +242,7 @@ export default function HomeScreen() {
                 padding:'clamp(20px,3.5vw,30px) clamp(20px,3.5vw,28px) clamp(16px,2.5vw,22px)',
                 display:'flex', alignItems:'center', gap:16,
                 position:'relative', overflow:'hidden',
-                minHeight:'clamp(90px,14vw,120px)',
+                minHeight:'clamp(70px,18vw,120px)',
               }}>
                 <div style={{ position:'absolute', top:-20, right:-20, width:90, height:90, borderRadius:'50%', background:'rgba(255,255,255,0.12)', pointerEvents:'none' }} />
                 <div style={{ position:'absolute', bottom:-30, right:40, width:70, height:70, borderRadius:'50%', background:'rgba(255,255,255,0.08)', pointerEvents:'none' }} />
@@ -250,20 +250,20 @@ export default function HomeScreen() {
 
                 <div className="emoji-float" style={{
                   '--float-dur': `${2.6 + (i % 4) * 0.55}s`,
-                  width:'clamp(56px,10vw,72px)', height:'clamp(56px,10vw,72px)',
+                  width:'clamp(44px,10vw,64px)', height:'clamp(44px,10vw,64px)',
                   background:'rgba(255,255,255,0.22)', borderRadius:'50%',
                   display:'flex', alignItems:'center', justifyContent:'center',
-                  fontSize:'clamp(28px,6vw,40px)', lineHeight:1, flexShrink:0,
+                  fontSize:'clamp(24px,6vw,38px)', lineHeight:1, flexShrink:0,
                   boxShadow:'0 4px 16px rgba(0,0,0,0.12)', backdropFilter:'blur(4px)', zIndex:1,
                 }}>
                   {mod.emoji}
                 </div>
 
                 <div style={{ zIndex:1 }}>
-                  <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(17px,3.8vw,24px)', color:'white', fontWeight:700, lineHeight:1.1 }}>
+                  <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(13px,3.5vw,22px)', color:'white', fontWeight:700, lineHeight:1.2 }}>
                     {getModuleTitle(mod.id, mod.title)}
                   </div>
-                  <div style={{ fontFamily:'var(--font-body)', fontSize:'clamp(12px,2.5vw,15px)', color:'rgba(255,255,255,0.85)', marginTop:3 }}>
+                  <div style={{ fontFamily:'var(--font-body)', fontSize:'clamp(10px,2.2vw,14px)', color:'rgba(255,255,255,0.85)', marginTop:2 }}>
                     {getModuleSub(mod.id) || mod.sub}
                   </div>
                 </div>
