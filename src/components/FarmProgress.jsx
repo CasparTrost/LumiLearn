@@ -391,38 +391,34 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
         </div>
       </div>
 
-      <div style={{ display:'flex', gap:0, alignItems:'stretch', overflowX:'hidden' }}>
-
-        {/* FARM SCENE - larger */}
-        <div style={{ flex:'1 1 300px', minWidth:0, position:'relative', overflow:'hidden',
-          boxShadow:'0 8px 32px rgba(0,0,0,.3)',
-          cursor:'url(' + BASE + 'sprites/farm/cursor_fork.png) 4 4, crosshair' }}>
-          <img src={asset('farm_final.png')} alt="Farm"
-            style={{width:'100%', display:'block'}}/>
-          <div style={{position:'absolute',inset:0}}>
-            <AnimatePresence>
-              {placedAnimals.map(a => <RoamingAnimal key={a.instanceId} def={a}/>)}
-            </AnimatePresence>
-            <Farmer/>
-            <AnimatePresence>
-              {showBanner && <UnlockBanner key={showBanner.id} animal={showBanner} onDone={()=>setShowBanner(null)}/>}
-            </AnimatePresence>
-          </div>
+      {/* FARM SCENE - full width */}
+      <div style={{ position:'relative', overflow:'hidden',
+        boxShadow:'0 4px 20px rgba(0,0,0,.25)',
+        cursor:'url(' + BASE + 'sprites/farm/cursor_fork.png) 4 4, crosshair' }}>
+        <img src={asset('farm_final.png')} alt="Farm"
+          style={{width:'100%', display:'block'}}/>
+        <div style={{position:'absolute',inset:0}}>
+          <AnimatePresence>
+            {placedAnimals.map(a => <RoamingAnimal key={a.instanceId} def={a}/>)}
+          </AnimatePresence>
+          <Farmer/>
+          <AnimatePresence>
+            {showBanner && <UnlockBanner key={showBanner.id} animal={showBanner} onDone={()=>setShowBanner(null)}/>}
+          </AnimatePresence>
         </div>
+      </div>
 
-        {/* SIDEBAR */}
-        <div style={{ width:110, flexShrink:0, maxWidth:'30vw',
-          background:'linear-gradient(180deg,#1a2e0d,#2d5a1a)',
-          borderRadius:'0 0 0 0',
-          padding:'8px 6px',
-          display:'flex', flexDirection:'column', gap:4,
-          overflowY:'auto',
+      {/* ANIMAL SIDEBAR - horizontal scroll strip on mobile */}
+      <div style={{
+        background:'linear-gradient(90deg,#1a2e0d,#2d5a1a)',
+        overflowX:'auto', overflowY:'hidden',
+        scrollbarWidth:'none', // hide scrollbar firefox
+        WebkitOverflowScrolling:'touch',
+      }}>
+        <div style={{
+          display:'flex', gap:6, padding:'8px 10px',
+          minWidth:'max-content', // allow horizontal scroll
         }}>
-          <div style={{color:'#FFE082',fontSize:8,fontFamily:'var(--font-heading)',
-            textAlign:'center',marginBottom:4,letterSpacing:1}}>
-            TIERE
-          </div>
-
           {ANIMAL_DEFS.map(def => {
             const unlocked = level >= def.unlockLevel
             const count = placedAnimals.filter(a=>a.id===def.id).length
@@ -480,8 +476,10 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
           })}
         </div>
       </div>
+        </div>
+      </div>
 
-      {/* PROGRESS BAR */}
+            {/* PROGRESS BAR */}
       <div style={{
         background:'linear-gradient(135deg,#1a2e0d,#2d5a1a)',
         borderRadius:'0 0 20px 20px',
