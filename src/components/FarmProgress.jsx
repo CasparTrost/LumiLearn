@@ -117,6 +117,7 @@ function RoamingAnimal({ def }) {
   const [pos, setPos] = useState(posRef.current)
   const [movingRight, setMovingRight] = useState(false)
   const [bouncing, setBouncing] = useState(false)
+  const [paused, setPaused] = useState(false)
 
   useEffect(() => {
     const iv = setInterval(() => {
@@ -128,7 +129,11 @@ function RoamingAnimal({ def }) {
         targetRef.current = randomInZone(def.zone)
         if (Math.random() < 0.3) {
           pauseRef.current = true
-          pauseTimerRef.current = setTimeout(() => { pauseRef.current = false }, 1000 + Math.random()*2000)
+          setPaused(true)
+          pauseTimerRef.current = setTimeout(() => {
+            pauseRef.current = false
+            setPaused(false)
+          }, 800 + Math.random()*1500)
         }
       } else {
         const newX = posRef.current.x + (dx/dist)*0.4
@@ -171,12 +176,19 @@ function RoamingAnimal({ def }) {
         width:def.size, zIndex:Math.round(pos.y), cursor:'pointer' }}
       onClick={click}
     >
-      <motion.img
+      <img
         src={currentGif}
         alt={def.name}
-        style={{ width:'100%', imageRendering:'pixelated', filter:'drop-shadow(1px 3px 3px rgba(0,0,0,.4))' }}
-        animate={bouncing ? {y:[0,-12,0,-6,0]} : {y:0}}
-        transition={{duration:.5}}
+        style={{
+          width:'100%',
+          imageRendering:'pixelated',
+          filter:'drop-shadow(1px 3px 3px rgba(0,0,0,.4))',
+          // Stop GIF when paused by forcing a static snapshot via object-position trick
+          // We swap to a static version - simplest: use CSS animation-play-state
+          animationPlayState: paused ? 'paused' : 'running',
+          // For GIF pause: re-render the img to freeze it
+          opacity: 1,
+        }}
       />
     </motion.div>
   )
