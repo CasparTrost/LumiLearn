@@ -10,23 +10,23 @@ import FarmProgress from '../components/FarmProgress.jsx'
 
 // ── All modules ───────────────────────────────────────────────────────────────
 const MODULES = [
-  { id:'number-intro', title:'Zahlen entdecken', sub:'Zahlen 1–10',          emoji:'🧮', sciTag:'🔢 Zahlenverständnis',            gradient:'linear-gradient(135deg,#FFD93D,#FF9F43)', shadow:'rgba(255,217,61,0.45)',  isNew:true  },
-  { id:'letter-intro', title:'ABC-Abenteuer',    sub:'Das Alphabet erleben', emoji:'🔡', sciTag:'✏️ Buchstabenerkennung',           gradient:'linear-gradient(135deg,#74B9FF,#6C63FF)', shadow:'rgba(116,185,255,0.45)', isNew:true  },
+  { id:'number-intro', title:'Zahlen entdecken', sub:'Zahlen 1–10',          emoji:'🧮', sciTag:'🔢 Zahlenverständnis',            gradient:'linear-gradient(135deg,#FFD93D,#FF9F43)', shadow:'rgba(255,217,61,0.45)'  },
+  { id:'letter-intro', title:'ABC-Abenteuer',    sub:'Das Alphabet erleben', emoji:'🔡', sciTag:'✏️ Buchstabenerkennung',           gradient:'linear-gradient(135deg,#74B9FF,#6C63FF)', shadow:'rgba(116,185,255,0.45)'  },
   { id:'emotions',     title:'Gefühlswelt',      sub:'Emotionen erkennen',   emoji:'😊', sciTag:'❤️ Sozial-Emotionales Lernen',    gradient:'linear-gradient(135deg,#A29BFE,#6C63FF)', shadow:'rgba(162,155,254,0.45)'             },
-  { id:'listen',       title:'Hörabenteuer',     sub:'Hören & Erkennen',     emoji:'🔊', sciTag:'👂 Phonologisches Bewusstsein',    gradient:'linear-gradient(135deg,#FF6B6B,#FF8E53)', shadow:'rgba(255,107,107,0.45)', isNew:true  },
-  { id:'shadows',      title:'Schattenrätsel',   sub:'Silhouetten erkennen', emoji:'🌑', sciTag:'👁️ Visuelle Wahrnehmung',          gradient:'linear-gradient(135deg,#1a0533,#4A00E0)', shadow:'rgba(26,5,51,0.5)',      isNew:true  },
+  { id:'listen',       title:'Hörabenteuer',     sub:'Hören & Erkennen',     emoji:'🔊', sciTag:'👂 Phonologisches Bewusstsein',    gradient:'linear-gradient(135deg,#FF6B6B,#FF8E53)', shadow:'rgba(255,107,107,0.45)'  },
+  { id:'shadows',      title:'Schattenrätsel',   sub:'Silhouetten erkennen', emoji:'🌑', sciTag:'👁️ Visuelle Wahrnehmung',          gradient:'linear-gradient(135deg,#1a0533,#4A00E0)', shadow:'rgba(26,5,51,0.5)'  },
   { id:'shapes',       title:'Farbenreich',      sub:'Formen bemalen',       emoji:'🎨', sciTag:'🎨 Dual-Coding & Kreativität',    gradient:'linear-gradient(135deg,#74B9FF,#0984E3)', shadow:'rgba(116,185,255,0.45)'             },
   { id:'numbers',      title:'Zahlenland',       sub:'Zählen & Rechnen',     emoji:'🔢', sciTag:'🧠 Logik & Mathematik',            gradient:'linear-gradient(135deg,#6BCB77,#44D498)', shadow:'rgba(107,203,119,0.45)'             },
   { id:'letters',      title:'Buchstabenwald',   sub:'Buchstaben tippen',    emoji:'⌨️', sciTag:'✏️ Schreibbereitschaft',           gradient:'linear-gradient(135deg,#6C63FF,#A78BFA)', shadow:'rgba(108,99,255,0.45)'              },
-  { id:'words2',       title:'Silben-Spaß',      sub:'Wörter zusammenbauen', emoji:'🔤', sciTag:'📖 Phonologisches Bewusstsein',    gradient:'linear-gradient(135deg,#6BCB77,#0984E3)', shadow:'rgba(107,203,119,0.45)', isNew:true  },
-  { id:'bubbles',      title:'Blasen-Blitz',     sub:'Zahlen-Blasen poppen', emoji:'🫧', sciTag:'⚡ Subitizing & Reaktion',          gradient:'linear-gradient(135deg,#FF6B6B,#FFD93D)', shadow:'rgba(255,107,107,0.45)', isNew:true  },
+  { id:'words2',       title:'Silben-Spaß',      sub:'Wörter zusammenbauen', emoji:'🔤', sciTag:'📖 Phonologisches Bewusstsein',    gradient:'linear-gradient(135deg,#6BCB77,#0984E3)', shadow:'rgba(107,203,119,0.45)'  },
+  { id:'bubbles',      title:'Blasen-Blitz',     sub:'Zahlen-Blasen poppen', emoji:'🫧', sciTag:'⚡ Subitizing & Reaktion',          gradient:'linear-gradient(135deg,#FF6B6B,#FFD93D)', shadow:'rgba(255,107,107,0.45)'  },
   { id:'words',        title:'Memo-Welt',        sub:'Paare finden',         emoji:'🃏', sciTag:'💭 Arbeitsgedächtnis',             gradient:'linear-gradient(135deg,#FD79A8,#E84393)', shadow:'rgba(253,121,168,0.45)'             },
   { id:'patterns',     title:'Musterpark',       sub:'Reihen & Logik',       emoji:'🔮', sciTag:'🔄 Mustererkennung',               gradient:'linear-gradient(135deg,#FF9F43,#EE5A24)', shadow:'rgba(255,159,67,0.45)'              },
-  { id:'sort',         title:'Sortier-Spaß',     sub:'Alles an seinen Platz',emoji:'🧺', sciTag:'🧩 Kategorisieren & Konzeptbildung',gradient:'linear-gradient(135deg,#FF9F43,#6BCB77)',shadow:'rgba(255,159,67,0.45)',  isNew:true  },
-  { id:'weight',       title:'Waage-Welt',       sub:'Was ist schwerer?',    emoji:'⚖️', sciTag:'⚖️ Größen & Messen',              gradient:'linear-gradient(135deg,#A29BFE,#FF9F43)', shadow:'rgba(162,155,254,0.45)', isNew:true  },
-  { id:'clock',        title:'Uhren-Uhr',        sub:'Zeit lesen & stellen', emoji:'🕐', sciTag:'⏰ Zeitgefühl & Sequenzierung',    gradient:'linear-gradient(135deg,#FF9F43,#FF6B6B)', shadow:'rgba(255,159,67,0.45)',  isNew:true  },
-  { id:'maze',         title:'Lumi-Labyrinth',   sub:'Weg durchs Labyrinth', emoji:'🌀', sciTag:'🧭 Räumliches Denken & Planung',   gradient:'linear-gradient(135deg,#4A00E0,#6C3FAC)', shadow:'rgba(74,0,224,0.45)',    isNew:true  },
-  { id:'stories',      title:'Lumis Abenteuer',  sub:'Entscheide die Story', emoji:'📖', sciTag:'🧡 Moralisches Denken & Empathie', gradient:'linear-gradient(135deg,#44D498,#6C63FF)', shadow:'rgba(68,212,152,0.45)',  isNew:true  },
+  { id:'sort',         title:'Sortier-Spaß',     sub:'Alles an seinen Platz',emoji:'🧺', sciTag:'🧩 Kategorisieren & Konzeptbildung',gradient:'linear-gradient(135deg,#FF9F43,#6BCB77)',shadow:'rgba(255,159,67,0.45)'  },
+  { id:'weight',       title:'Waage-Welt',       sub:'Was ist schwerer?',    emoji:'⚖️', sciTag:'⚖️ Größen & Messen',              gradient:'linear-gradient(135deg,#A29BFE,#FF9F43)', shadow:'rgba(162,155,254,0.45)'  },
+  { id:'clock',        title:'Uhren-Uhr',        sub:'Zeit lesen & stellen', emoji:'🕐', sciTag:'⏰ Zeitgefühl & Sequenzierung',    gradient:'linear-gradient(135deg,#FF9F43,#FF6B6B)', shadow:'rgba(255,159,67,0.45)'  },
+  { id:'maze',         title:'Lumi-Labyrinth',   sub:'Weg durchs Labyrinth', emoji:'🌀', sciTag:'🧭 Räumliches Denken & Planung',   gradient:'linear-gradient(135deg,#4A00E0,#6C3FAC)', shadow:'rgba(74,0,224,0.45)'  },
+  { id:'stories',      title:'Lumis Abenteuer',  sub:'Entscheide die Story', emoji:'📖', sciTag:'🧡 Moralisches Denken & Empathie', gradient:'linear-gradient(135deg,#44D498,#6C63FF)', shadow:'rgba(68,212,152,0.45)'  },
 ]
 
 const cardVariants = {
@@ -225,16 +225,7 @@ export default function HomeScreen() {
                 >🏆 Meister!</motion.div>
               )}
 
-              {/* NEW badge */}
-              {mod.isNew && !isCompleted && doneCount === 0 && (
-                <div className="badge-wiggle" style={{
-                  position:'absolute', top:14, right:14, zIndex:4,
-                  background:'linear-gradient(135deg,#FF6B6B,#FF8E53)', color:'white',
-                  fontFamily:'var(--font-heading)', fontSize:12, fontWeight:700,
-                  padding:'3px 10px', borderRadius:99, letterSpacing:0.5,
-                  boxShadow:'0 2px 12px rgba(255,107,107,0.65)',
-                }}>✨ NEU</div>
-              )}
+
 
               {/* Gradient header */}
               <div className="card-header-shine" style={{
