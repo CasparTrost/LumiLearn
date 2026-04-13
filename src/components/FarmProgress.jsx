@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 const BASE = import.meta.env.BASE_URL || '/LumiLearn/'
 const asset = (n) => BASE + 'sprites/farm/' + n
 
-// Web Audio
 let _ac = null
 function getAc() {
   if (typeof window === 'undefined') return null
@@ -33,7 +32,6 @@ const sfx = {
   chime() { const ac=getAc();if(!ac)return;const t=ac.currentTime;[523,659,784].forEach((f,i)=>tone(f,'sine',t+i*.1,.2,.13)) },
 }
 
-// Zone polygons (640x357 coordinates)
 const ZONES = {
   Pferdekoppel:  [{x:56,y:220},{x:187,y:219},{x:162,y:274},{x:32,y:273}],
   Schafgehege:   [{x:304,y:198},{x:398,y:198},{x:403,y:283},{x:240,y:281},{x:263,y:220}],
@@ -43,7 +41,6 @@ const ZONES = {
   Wege: [{x:3,y:313},{x:91,y:315},{x:96,y:301},{x:122,y:301},{x:122,y:313},{x:173,y:311},{x:215,y:217},{x:207,y:200},{x:139,y:202},{x:108,y:163},{x:109,y:115},{x:132,y:112},{x:128,y:165},{x:157,y:195},{x:252,y:183},{x:290,y:178},{x:287,y:164},{x:321,y:152},{x:428,y:157},{x:427,y:176},{x:310,y:177},{x:243,y:200},{x:200,y:316},{x:455,y:316},{x:456,y:249},{x:477,y:250},{x:475,y:316},{x:551,y:318},{x:549,y:305},{x:580,y:304},{x:580,y:314},{x:633,y:315},{x:633,y:341},{x:5,y:337}],
 }
 
-// Animal definitions
 const ANIMAL_DEFS = [
   { id:'chicken', name:'Huhn',    gif:'anim_chicken.gif', size:40, zone:'Huhnerstall',   sfx:sfx.cluck, unlockLevel:2, emoji:'🐔' },
   { id:'sheep',   name:'Schaf',   gif:'anim_sheep.gif',   size:52, zone:'Schafgehege',   sfx:sfx.baa,   unlockLevel:3, emoji:'🐑' },
@@ -74,7 +71,7 @@ function randomInZone(zone) {
   const xs=points.map(p=>p.x), ys=points.map(p=>p.y)
   const minX=Math.min(...xs), maxX=Math.max(...xs)
   const minY=Math.min(...ys), maxY=Math.max(...ys)
-  for (let i=0;i<30;i++) {
+  for (let i=0;i<40;i++) {
     const x=minX+Math.random()*(maxX-minX)
     const y=minY+Math.random()*(maxY-minY)
     if (pointInPoly(x,y,points)) return {x,y}
@@ -82,29 +79,49 @@ function randomInZone(zone) {
   return {x:(minX+maxX)/2, y:(minY+maxY)/2}
 }
 
-// Single roaming animal
-function RoamingAnimal({ def, onRemove }) {
+// Animal: roams in zone, correct facing, occasional pauses
+function RoamingAnimal({ def }) {
   const posRef = useRef(randomInZone(def.zone))
   const targetRef = useRef(randomInZone(def.zone))
+  const pauseRef = useRef(false)
+  const pauseTimerRef = useRef(null)
   const [pos, setPos] = useState(posRef.current)
   const [facingLeft, setFacingLeft] = useState(false)
   const [bouncing, setBouncing] = useState(false)
 
   useEffect(() => {
     const iv = setInterval(() => {
+      if (pauseRef.current) return
+
       const dx = targetRef.current.x - posRef.current.x
       const dy = targetRef.current.y - posRef.current.y
       const dist = Math.sqrt(dx*dx+dy*dy)
-      if (dist < 2) {
+
+      if (dist < 3) {
+        // Reached target — maybe pause, then pick new target
         targetRef.current = randomInZone(def.zone)
+        // 30% chance to pause 1-3 seconds
+        if (Math.random() < 0.3) {
+          pauseRef.current = true
+          pauseTimerRef.current = setTimeout(() => {
+            pauseRef.current = false
+          }, 1000 + Math.random() * 2000)
+        }
       } else {
-        const spd = 0.5
-        posRef.current = { x: posRef.current.x+dx/dist*spd, y: posRef.current.y+dy/dist*spd }
-        setPos({...posRef.current})
-        if (Math.abs(dx) > 0.5) setFacingLeft(dx<0)
+        const spd = 0.4
+        const newPos = {
+          x: posRef.current.x + (dx/dist)*spd,
+          y: posRef.current.y + (dy/dist)*spd,
+        }
+        posRef.current = newPos
+        setPos({...newPos})
+        // Only flip when moving significantly horizontally
+        if (Math.abs(dx) > Math.abs(dy) * 0.3) {
+          setFacingLeft(dx < 0)
+        }
       }
     }, 50)
-    return () => clearInterval(iv)
+    return () => { clearInterval(iv); if(pauseTimerRef.current) clearTimeout(pauseTimerRef.current) }
   }, [def.zone])
 
   const click = () => {
@@ -121,9 +138,11 @@ function RoamingAnimal({ def, onRemove }) {
         width:def.size, zIndex:Math.round(pos.y), cursor:'pointer' }}
       onClick={click}
     >
-      <motion.img src={asset(def.gif)} alt={def.name}
+      <motion.img
+        src={asset(def.gif)} alt={def.name}
         style={{ width:'100%', imageRendering:'pixelated',
-          transform:facingLeft?'scaleX(-1)':'none',
+          // Animals: default faces RIGHT, so flip when going LEFT = scaleX(-1)
+          transform: facingLeft ? 'scaleX(-1)' : 'none',
           filter:'drop-shadow(1px 3px 3px rgba(0,0,0,.4))' }}
         animate={bouncing?{y:[0,-12,0,-6,0]}:{}}
         transition={{duration:.5}}
@@ -132,39 +151,71 @@ function RoamingAnimal({ def, onRemove }) {
   )
 }
 
-// Farmer walks waypoints
+// Farmer: walks waypoints with direction-aware animations + pauses
 function Farmer() {
   const wps = ZONES.Wege
   const posRef = useRef(wps[0])
   const wpRef = useRef(0)
+  const pauseRef = useRef(false)
   const [pos, setPos] = useState(wps[0])
-  const [left, setLeft] = useState(false)
+  // direction: 'right','left','up','down','idle_front','idle_back'
+  const [dir, setDir] = useState('idle_front')
 
   useEffect(() => {
     const iv = setInterval(() => {
+      if (pauseRef.current) return
+
       const t = wps[wpRef.current]
       const dx=t.x-posRef.current.x, dy=t.y-posRef.current.y
       const dist=Math.sqrt(dx*dx+dy*dy)
-      if (dist<2) { wpRef.current=(wpRef.current+1)%wps.length }
-      else {
-        posRef.current={x:posRef.current.x+dx/dist*.7, y:posRef.current.y+dy/dist*.7}
+
+      if (dist < 2) {
+        wpRef.current = (wpRef.current+1) % wps.length
+        // Occasionally pause
+        if (Math.random() < 0.1) {
+          pauseRef.current = true
+          // Pick idle animation based on last direction
+          setDir(Math.random() < 0.5 ? 'idle_front' : 'idle_back')
+          setTimeout(() => { pauseRef.current = false }, 800 + Math.random()*1500)
+        }
+      } else {
+        const spd = 0.7
+        posRef.current = { x: posRef.current.x+dx/dist*spd, y: posRef.current.y+dy/dist*spd }
         setPos({...posRef.current})
-        if (Math.abs(dx)>.5) setLeft(dx<0)
+
+        // Determine direction
+        const adx = Math.abs(dx), ady = Math.abs(dy)
+        if (adx > ady) {
+          setDir(dx > 0 ? 'right' : 'left')
+        } else {
+          setDir(dy > 0 ? 'down' : 'up')
+        }
       }
     }, 50)
     return () => clearInterval(iv)
   }, [])
 
+  // Pick GIF and flip based on direction
+  let gif = 'farmer_idle_front.gif'
+  let flipX = false
+  if (dir === 'right')       { gif = 'farmer_walk_right.gif'; flipX = false }
+  else if (dir === 'left')   { gif = 'farmer_walk_right.gif'; flipX = true  }
+  else if (dir === 'up')     { gif = 'farmer_walk_up.gif';    flipX = false }
+  else if (dir === 'down')   { gif = 'farmer_walk_down.gif';  flipX = false }
+  else if (dir === 'idle_back') { gif = 'farmer_idle_back.gif'; flipX = false }
+  else                        { gif = 'farmer_idle_front.gif'; flipX = false }
+
   return (
-    <div style={{ position:'absolute', left:pos.x-24, top:pos.y-48, width:48, zIndex:Math.round(pos.y)+10, pointerEvents:'none' }}>
-      <img src={asset('anim_farmer.gif')} alt="Bauer"
-        style={{ width:'100%', imageRendering:'pixelated', transform:left?'scaleX(-1)':'none',
+    <div style={{ position:'absolute', left:pos.x-24, top:pos.y-48, width:48,
+      zIndex:Math.round(pos.y)+10, pointerEvents:'none' }}>
+      <img src={asset(gif)} alt="Bauer"
+        style={{ width:'100%', imageRendering:'pixelated',
+          transform: flipX ? 'scaleX(-1)' : 'none',
           filter:'drop-shadow(1px 3px 3px rgba(0,0,0,.5))' }}/>
     </div>
   )
 }
 
-// Unlock announcement
 function UnlockBanner({ animal, onDone }) {
   useEffect(() => {
     try { sfx.chime() } catch {}
@@ -174,38 +225,23 @@ function UnlockBanner({ animal, onDone }) {
 
   return (
     <motion.div
-      initial={{opacity:0, scale:0.8, y:20}}
-      animate={{opacity:1, scale:1, y:0}}
-      exit={{opacity:0, scale:0.8, y:-20}}
-      transition={{type:'spring', stiffness:300}}
-      style={{
-        position:'absolute', top:'50%', left:'50%',
-        transform:'translate(-50%,-50%)', zIndex:100,
-        background:'linear-gradient(135deg,rgba(30,70,15,.97),rgba(50,100,20,.97))',
-        border:'3px solid #FFD93D', borderRadius:20,
-        padding:'20px 28px', textAlign:'center',
-        boxShadow:'0 8px 40px rgba(0,0,0,.6)',
-        minWidth:260,
-      }}
+      initial={{opacity:0,scale:0.8,y:20}} animate={{opacity:1,scale:1,y:0}}
+      exit={{opacity:0,scale:0.8,y:-20}} transition={{type:'spring',stiffness:300}}
+      style={{ position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',
+        zIndex:100, background:'linear-gradient(135deg,rgba(30,70,15,.97),rgba(50,100,20,.97))',
+        border:'3px solid #FFD93D',borderRadius:20,padding:'20px 28px',textAlign:'center',
+        boxShadow:'0 8px 40px rgba(0,0,0,.6)',minWidth:260 }}
     >
       <div style={{fontSize:13,color:'rgba(255,255,200,.8)',fontFamily:'var(--font-body)',marginBottom:8}}>
         Schau, wer deinen Bauernhof besuchen kommt!
       </div>
-      <motion.div
-        animate={{scale:[1,1.2,1], rotate:[0,10,-10,0]}}
-        transition={{duration:.6,repeat:2}}
-        style={{fontSize:64,lineHeight:1,marginBottom:8}}
-      >
-        {animal.emoji}
-      </motion.div>
+      <motion.div animate={{scale:[1,1.2,1],rotate:[0,10,-10,0]}} transition={{duration:.6,repeat:2}}
+        style={{fontSize:64,lineHeight:1,marginBottom:8}}>{animal.emoji}</motion.div>
       <div style={{fontFamily:'var(--font-heading)',fontSize:20,color:'#FFD93D',fontWeight:700}}>
         {animal.name} freigeschaltet!
       </div>
-      <motion.div
-        animate={{opacity:[0.5,1,0.5]}}
-        transition={{duration:1,repeat:Infinity}}
-        style={{fontSize:11,color:'rgba(255,255,200,.6)',marginTop:8,fontFamily:'var(--font-body)'}}
-      >
+      <motion.div animate={{opacity:[0.5,1,0.5]}} transition={{duration:1,repeat:Infinity}}
+        style={{fontSize:11,color:'rgba(255,255,200,.6)',marginTop:8,fontFamily:'var(--font-body)'}}>
         Platziere es auf deinem Hof!
       </motion.div>
     </motion.div>
@@ -213,23 +249,18 @@ function UnlockBanner({ animal, onDone }) {
 }
 
 export default function FarmProgress({ completedCount: rawCount = 0, totalModules = 17 }) {
-  // PREVIEW: force max level
-  const completedCount = 17
-
+  const completedCount = 17 // PREVIEW: max level
   const level = getLevel(completedCount)
   const pct = Math.round((completedCount / totalModules) * 100)
   const nextUnlock = NEXT_AT[level] !== Infinity
     ? (NEXT_AT[level] - completedCount) + ' bis naechstes Level'
     : 'Max Level!'
 
-  // Track which animals are unlocked & placed
   const unlockedAnimals = ANIMAL_DEFS.filter(a => level >= a.unlockLevel)
   const [placedAnimals, setPlacedAnimals] = useState([])
   const [showBanner, setShowBanner] = useState(null)
   const [prevLevel, setPrevLevel] = useState(level)
-  const [draggingAnimal, setDraggingAnimal] = useState(null)
 
-  // Detect level up → show banner
   useEffect(() => {
     if (level > prevLevel) {
       const newAnimal = ANIMAL_DEFS.find(a => a.unlockLevel === level)
@@ -238,11 +269,8 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
     }
   }, [level])
 
-  // Add animal to farm when clicked in sidebar
   const addAnimal = useCallback((def) => {
-    const pt = randomInZone(def.zone)
-    const id = def.id + '_' + Date.now()
-    setPlacedAnimals(prev => [...prev, { ...def, instanceId: id, startPos: pt }])
+    setPlacedAnimals(prev => [...prev, { ...def, instanceId: def.id + '_' + Date.now() }])
     try { def.sfx() } catch {}
   }, [])
 
@@ -254,34 +282,25 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
     <div style={{ width:'100%', maxWidth:780, margin:'0 auto', userSelect:'none' }}>
       <div style={{ display:'flex', gap:12, alignItems:'flex-start' }}>
 
-        {/* FARM SCENE */}
+        {/* FARM */}
         <div style={{ flex:1, borderRadius:16, overflow:'hidden',
           boxShadow:'0 12px 40px rgba(0,0,0,.3)', position:'relative' }}>
-
           <img src={asset('farm_final.png')} alt="Farm" style={{width:'100%',display:'block'}}/>
-
           <div style={{position:'absolute',inset:0}}>
             <AnimatePresence>
-              {placedAnimals.map(a => (
-                <RoamingAnimal key={a.instanceId} def={a} onRemove={()=>removeAnimal(a.instanceId)}/>
-              ))}
+              {placedAnimals.map(a => <RoamingAnimal key={a.instanceId} def={a}/>)}
             </AnimatePresence>
             <Farmer/>
             <AnimatePresence>
-              {showBanner && (
-                <UnlockBanner key={showBanner.id} animal={showBanner} onDone={()=>setShowBanner(null)}/>
-              )}
+              {showBanner && <UnlockBanner key={showBanner.id} animal={showBanner} onDone={()=>setShowBanner(null)}/>}
             </AnimatePresence>
           </div>
         </div>
 
         {/* SIDEBAR */}
         <div style={{ width:120, flexShrink:0 }}>
-          <div style={{
-            background:'linear-gradient(180deg,#1b4a0d,#2d6e1a)',
-            borderRadius:16, padding:'10px 8px',
-            boxShadow:'0 8px 24px rgba(0,0,0,.3)',
-          }}>
+          <div style={{ background:'linear-gradient(180deg,#1b4a0d,#2d6e1a)',
+            borderRadius:16, padding:'10px 8px', boxShadow:'0 8px 24px rgba(0,0,0,.3)' }}>
             <div style={{fontFamily:'"Press Start 2P",monospace',fontSize:8,color:'#FFE082',
               textAlign:'center',marginBottom:10}}>TIERE</div>
 
@@ -290,37 +309,26 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
               const count = placedAnimals.filter(a=>a.id===def.id).length
               return (
                 <div key={def.id} style={{marginBottom:8}}>
-                  <motion.div
-                    whileHover={unlocked?{scale:1.08}:{}}
-                    whileTap={unlocked?{scale:0.95}:{}}
+                  <motion.div whileHover={unlocked?{scale:1.08}:{}} whileTap={unlocked?{scale:.95}:{}}
                     onClick={()=>unlocked&&addAnimal(def)}
-                    style={{
-                      background: unlocked?'rgba(255,255,255,.12)':'rgba(255,255,255,.04)',
+                    style={{ background:unlocked?'rgba(255,255,255,.12)':'rgba(255,255,255,.04)',
                       border:`2px solid ${unlocked?'rgba(255,217,61,.5)':'rgba(255,255,255,.1)'}`,
                       borderRadius:10, padding:'6px 4px', textAlign:'center',
-                      cursor:unlocked?'pointer':'not-allowed',
-                      opacity:unlocked?1:.4,
-                      position:'relative',
-                    }}
+                      cursor:unlocked?'pointer':'not-allowed', opacity:unlocked?1:.4, position:'relative' }}
                   >
-                    {unlocked ? (
-                      <img src={asset(def.gif)} alt={def.name}
-                        style={{width:40,imageRendering:'pixelated',display:'block',margin:'0 auto'}}/>
-                    ) : (
-                      <div style={{fontSize:24,lineHeight:1}}>🔒</div>
-                    )}
+                    {unlocked
+                      ? <img src={asset(def.gif)} alt={def.name} style={{width:40,imageRendering:'pixelated',display:'block',margin:'0 auto'}}/>
+                      : <div style={{fontSize:24,lineHeight:1}}>🔒</div>
+                    }
                     <div style={{fontSize:9,color:unlocked?'#FFE082':'#666',
                       fontFamily:'"Press Start 2P",monospace',marginTop:4}}>
                       {unlocked ? def.name : `LVL ${def.unlockLevel}`}
                     </div>
                     {unlocked && count > 0 && (
-                      <div style={{
-                        position:'absolute',top:-4,right:-4,
-                        background:'#FFD93D',color:'#1a1a2e',
-                        borderRadius:'50%',width:16,height:16,
-                        fontSize:9,fontWeight:'bold',
-                        display:'flex',alignItems:'center',justifyContent:'center',
-                      }}>{count}</div>
+                      <div style={{ position:'absolute',top:-4,right:-4,
+                        background:'#FFD93D',color:'#1a1a2e',borderRadius:'50%',
+                        width:16,height:16,fontSize:9,fontWeight:'bold',
+                        display:'flex',alignItems:'center',justifyContent:'center' }}>{count}</div>
                     )}
                   </motion.div>
                   {unlocked && count > 0 && (
@@ -333,19 +341,18 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
                 </div>
               )
             })}
-
-            <div style={{borderTop:'1px solid rgba(255,255,255,.1)',marginTop:8,paddingTop:8,
+            <div style={{borderTop:'1px solid rgba(255,255,255,.1)',marginTop:6,paddingTop:6,
               fontSize:8,color:'rgba(255,255,200,.5)',textAlign:'center',fontFamily:'var(--font-body)'}}>
-              Klick = hinzufügen
+              Klick = hinzuf.
             </div>
           </div>
         </div>
       </div>
 
-      {/* PROGRESS BAR */}
+      {/* PROGRESS */}
       <div style={{background:'linear-gradient(135deg,#1b4a0d,#2d6e1a)',
-        borderRadius:'0 0 16px 16px',padding:'10px 16px 12px',
-        boxShadow:'0 6px 20px rgba(0,0,0,.2)',marginTop:2}}>
+        borderRadius:'0 0 16px 16px',padding:'10px 16px 12px',marginTop:2,
+        boxShadow:'0 6px 20px rgba(0,0,0,.2)'}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
           <span style={{color:'#FFE082',fontSize:10,fontWeight:700,
             fontFamily:'"Press Start 2P",monospace',textShadow:'1px 1px 0 rgba(0,0,0,.5)'}}>
