@@ -121,7 +121,7 @@ function RoamingAnimal({ def }) {
         setPos({...newPos})
         // Only flip when moving significantly horizontally
         if (Math.abs(dx) > Math.abs(dy) * 0.3) {
-          setFacingLeft(dx < 0)
+          setFacingLeft(dx > 0)
         }
       }
     }, 50)
