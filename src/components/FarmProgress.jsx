@@ -364,8 +364,14 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
 
   const unlockedAnimals = ANIMAL_DEFS.filter(a => level >= a.unlockLevel)
   const [placedAnimals, setPlacedAnimals] = useState([])
-  const [farmScale, setFarmScale] = React.useState(1)
   const farmRef = React.useRef(null)
+  // Initialize farmScale synchronously from window width
+  // Farm = 100% of (windowWidth - 110px sidebar) up to 750px max
+  const [farmScale, setFarmScale] = React.useState(() => {
+    if (typeof window === 'undefined') return 1
+    const farmW = Math.min(window.innerWidth - 110, 750)
+    return farmW / 750
+  })
   
   useEffect(() => {
     const updateScale = () => {
