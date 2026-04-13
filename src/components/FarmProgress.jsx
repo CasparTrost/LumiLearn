@@ -307,14 +307,18 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
     }
   }, [level])
 
-  // Max animals per type at max level: chicken:4, sheep:5, pig:3, cow:3, horse:2
-  // Scale with level: at unlock level = 1, increases by 1 each 2 levels after
+  // Exact max per level:
+  // Lv2: chicken:1 | Lv3: +pig:1 | Lv4: +sheep:1,chicken:2 | Lv5: +sheep:2,chicken:3 | Lv6: +cow:1,chicken:4,sheep:3,horse:1
   const getMaxAnimals = (defId, currentLevel) => {
-    const maxAtMax = { chicken:4, sheep:5, pig:3, cow:3, horse:2 }
-    const unlockAt = ANIMAL_DEFS.find(a=>a.id===defId)?.unlockLevel || 2
-    const levelsAbove = Math.max(0, currentLevel - unlockAt)
-    const max = maxAtMax[defId] || 1
-    return Math.min(max, 1 + Math.floor(levelsAbove * 0.8))
+    const table = {
+      chicken: [0, 0, 1, 1, 2, 3, 4],
+      pig:     [0, 0, 0, 1, 1, 1, 1],
+      sheep:   [0, 0, 0, 0, 1, 2, 3],
+      cow:     [0, 0, 0, 0, 0, 0, 1],
+      horse:   [0, 0, 0, 0, 0, 0, 1],
+    }
+    const row = table[defId] || [0,0,0,0,0,0,0]
+    return row[Math.min(currentLevel, 6)] || 0
   }
   const addAnimal = useCallback((def) => {
     setPlacedAnimals(prev => {
