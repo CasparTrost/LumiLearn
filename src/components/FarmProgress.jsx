@@ -56,11 +56,11 @@ const sfx = {
 }
 
 const ZONES = {
-  Pferdekoppel: [{x:66,y:258},{x:219,y:257},{x:190,y:322},{x:38,y:320}],
-  Schafgehege: [{x:356,y:232},{x:466,y:232},{x:472,y:332},{x:281,y:330},{x:308,y:258}],
-  Huhnerstall: [{x:514,y:234},{x:598,y:232},{x:596,y:273},{x:514,y:272}],
-  Schweinestall: [{x:626,y:276},{x:725,y:283},{x:730,y:339},{x:625,y:338}],
-  Kuhstall: [{x:125,y:141},{x:64,y:149},{x:7,y:156},{x:62,y:173},{x:125,y:174},{x:132,y:207},{x:56,y:214},{x:56,y:225},{x:275,y:234},{x:169,y:221},{x:148,y:180},{x:169,y:141}],
+  Pferdekoppel: [{x:7.467,y:52.506},{x:24.933,y:52.267},{x:21.6,y:65.394},{x:4.267,y:65.155}],
+  Schafgehege: [{x:40.533,y:47.255},{x:53.067,y:47.255},{x:53.733,y:67.542},{x:32.0,y:67.064},{x:35.067,y:52.506}],
+  Huhnerstall: [{x:58.533,y:47.494},{x:68.0,y:47.255},{x:67.867,y:55.609},{x:58.533,y:55.37}],
+  Schweinestall: [{x:71.2,y:56.086},{x:82.533,y:57.518},{x:83.067,y:68.974},{x:71.067,y:68.735}],
+  Kuhstall: [{x:14.267,y:28.64},{x:7.333,y:30.31},{x:0.8,y:31.742},{x:7.067,y:35.084},{x:14.267,y:35.322},{x:15.067,y:42.005},{x:6.4,y:43.437},{x:6.4,y:45.823},{x:31.333,y:47.494},{x:19.2,y:44.869},{x:16.8,y:36.516},{x:19.2,y:28.64}],
   Wege: [{x:3,y:323},{x:84,y:327},{x:110,y:300},{x:114,y:324},{x:180,y:321},{x:235,y:208},{x:225,y:194},{x:157,y:200},{x:119,y:165},{x:117,y:114},{x:128,y:180},{x:174,y:200},{x:277,y:191},{x:292,y:167},{x:419,y:167},{x:275,y:191},{x:230,y:203},{x:189,y:329},{x:444,y:328},{x:469,y:255},{x:474,y:326},{x:543,y:332},{x:562,y:311},{x:610,y:334},{x:123,y:327},{x:4,y:323}],
 }
 
@@ -76,7 +76,7 @@ let INSET_ZONES = {
 }
 
 // Farmer centerline path (drawn in positioner tool)
-const FARMER_PATH = [{x:4,y:379},{x:98,y:384},{x:129,y:352},{x:134,y:380},{x:211,y:377},{x:275,y:244},{x:264,y:228},{x:184,y:235},{x:139,y:194},{x:137,y:134},{x:150,y:211},{x:204,y:235},{x:325,y:224},{x:342,y:196},{x:491,y:196},{x:322,y:224},{x:270,y:238},{x:221,y:386},{x:520,y:385},{x:550,y:299},{x:555,y:383},{x:636,y:390},{x:659,y:365},{x:715,y:392},{x:144,y:384},{x:5,y:379}]
+const FARMER_PATH = [{x:0.4,y:77.088},{x:11.2,y:78.043},{x:14.667,y:71.599},{x:15.2,y:77.327},{x:24.0,y:76.611},{x:31.333,y:49.642},{x:30.0,y:46.301},{x:20.933,y:47.733},{x:15.867,y:39.379},{x:15.6,y:27.208},{x:17.067,y:42.959},{x:23.2,y:47.733},{x:36.933,y:45.585},{x:38.933,y:39.857},{x:55.867,y:39.857},{x:36.667,y:45.585},{x:30.667,y:48.449},{x:25.2,y:78.52},{x:59.2,y:78.282},{x:62.533,y:60.859},{x:63.2,y:77.804},{x:72.4,y:79.236},{x:74.933,y:74.224},{x:81.333,y:79.714},{x:16.4,y:78.043},{x:0.533,y:77.088}]
 
 const ANIMAL_DEFS = [
   { id:'chicken', name:'Huhn',    gif:'anim_chicken.gif', gifRight:'anim_chicken_right.gif', size:40, zone:'Huhnerstall',   sfx:sfx.cluck, unlockLevel:2, emoji:'🐔' },
@@ -200,8 +200,8 @@ function RoamingAnimal({ def, scale = 1 }) {
       initial={{scale:0,opacity:0}} animate={{scale:1,opacity:1}} exit={{scale:0,opacity:0}}
       transition={{type:'spring',stiffness:280}}
       style={{ position:'absolute',
-        left:`calc(${(pos.x/750*100).toFixed(3)}% - ${def.size/2}px)`,
-        top:`calc(${(pos.y/419*100).toFixed(3)}% - ${def.size/2}px)`,
+        left:`calc(${pos.x.toFixed(3)}% - ${def.size/2}px)`,
+        top:`calc(${pos.y.toFixed(3)}% - ${def.size/2}px)`,
         width:Math.round(def.size * scale), zIndex:Math.round(pos.y), cursor:'pointer' }}
       onClick={click}
     >
@@ -225,7 +225,7 @@ function RoamingAnimal({ def, scale = 1 }) {
 
 // Farmer: walks waypoints with direction-aware animations + turn pauses
 function Farmer({ scale = 1 }) {
-  const wps = React.useMemo(() => FARMER_PATH.map(p => ({x: p.x * scale, y: p.y * scale})), [scale])
+  const wps = FARMER_PATH
   const posRef = useRef(wps[0])
   const wpRef = useRef(0)
   const pauseRef = useRef(false)
@@ -295,8 +295,8 @@ function Farmer({ scale = 1 }) {
 
   return (
     <div style={{ position:'absolute',
-      left:`calc(${(pos.x/750*100).toFixed(3)}% - 24px)`,
-      top:`calc(${(pos.y/419*100).toFixed(3)}% - 24px)`,
+      left:`calc(${pos.x.toFixed(3)}% - 24px)`,
+      top:`calc(${pos.y.toFixed(3)}% - 24px)`,
       width:Math.round(48 * scale), zIndex:Math.round(pos.y)+10, pointerEvents:'none' }}>
       <img src={asset(gif)} alt="Bauer"
         style={{ width:`${Math.round(48*scale)}px`, imageRendering:'pixelated',
