@@ -476,10 +476,8 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
           })}
         </div>
       </div>
-        </div>
-      </div>
 
-            {/* PROGRESS BAR */}
+      {/* PROGRESS BAR */}
       <div style={{
         background:'linear-gradient(135deg,#1a2e0d,#2d5a1a)',
         borderRadius:'0 0 20px 20px',
