@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 const BASE = import.meta.env.BASE_URL || '/LumiLearn/'
@@ -307,37 +307,6 @@ function UnlockBanner({ animal, onDone }) {
   )
 }
 
-
-// Scales animal overlay to match image rendered width
-function ScaledOverlay({ baseWidth, children }) {
-  const ref = useRef(null)
-  const [scale, setScale] = React.useState(1)
-  
-  useEffect(() => {
-    const update = () => {
-      if (ref.current) {
-        const w = ref.current.parentElement?.offsetWidth || baseWidth
-        setScale(w / baseWidth)
-      }
-    }
-    update()
-    window.addEventListener('resize', update)
-    return () => window.removeEventListener('resize', update)
-  }, [baseWidth])
-  
-  return (
-    <div ref={ref} style={{
-      position:'absolute', inset:0,
-      transformOrigin:'top left',
-      transform:`scale(${scale})`,
-      width: baseWidth,
-      height: baseWidth * (357/640), // maintain 640:357 ratio
-    }}>
-      {children}
-    </div>
-  )
-}
-
 export default function FarmProgress({ completedCount: rawCount = 0, totalModules = 17 }) {
   const completedCount = 17 // PREVIEW: max level
   const level = getLevel(completedCount)
@@ -387,7 +356,7 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
   }, [])
 
   return (
-    <div style={{ width:'100%', margin:'0 auto', userSelect:'none', overflow:'hidden', background:'transparent' }}>
+    <div className="farm-progress-wrapper" style={{ width:'100%', maxWidth:860, margin:'0 auto', userSelect:'none' }}>
 
       {/* Header */}
       <div style={{
@@ -422,34 +391,38 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
         </div>
       </div>
 
-      {/* FARM SCENE - full width with scaled overlay */}
-      <div id="farm-scene" style={{ position:'relative', overflow:'hidden',
-        boxShadow:'0 4px 20px rgba(0,0,0,.25)',
-        cursor:'url(' + BASE + 'sprites/farm/cursor_fork.png) 4 4, crosshair' }}>
-        <img src={asset('farm_final.png')} alt="Farm"
-          style={{width:'100%', display:'block'}}/>
-        <ScaledOverlay baseWidth={640}>
-          <AnimatePresence>
-            {placedAnimals.map(a => <RoamingAnimal key={a.instanceId} def={a}/>)}
-          </AnimatePresence>
-          <Farmer/>
-          <AnimatePresence>
-            {showBanner && <UnlockBanner key={showBanner.id} animal={showBanner} onDone={()=>setShowBanner(null)}/>}
-          </AnimatePresence>
-        </ScaledOverlay>
-      </div>
+      <div className="farm-flex-container" style={{ display:'flex', gap:0, alignItems:'stretch' }}>
 
-      {/* ANIMAL SIDEBAR - horizontal scroll strip on mobile */}
-      <div style={{
-        background:'linear-gradient(90deg,#1b4a0d,#2d6e1a)',
-        overflowX:'auto', overflowY:'hidden',
-        scrollbarWidth:'none', // hide scrollbar firefox
-        WebkitOverflowScrolling:'touch',
-      }}>
-        <div style={{
-          display:'flex', gap:6, padding:'8px 10px',
-          minWidth:'max-content', // allow horizontal scroll
+        {/* FARM SCENE - larger */}
+        <div style={{ flex:1, position:'relative', overflow:'hidden',
+          boxShadow:'0 8px 32px rgba(0,0,0,.3)',
+          cursor:'url(' + BASE + 'sprites/farm/cursor_fork.png) 4 4, crosshair' }}>
+          <img src={asset('farm_final.png')} alt="Farm"
+            style={{width:'100%', display:'block'}}/>
+          <div style={{position:'absolute',inset:0}}>
+            <AnimatePresence>
+              {placedAnimals.map(a => <RoamingAnimal key={a.instanceId} def={a}/>)}
+            </AnimatePresence>
+            <Farmer/>
+            <AnimatePresence>
+              {showBanner && <UnlockBanner key={showBanner.id} animal={showBanner} onDone={()=>setShowBanner(null)}/>}
+            </AnimatePresence>
+          </div>
+        </div>
+
+        {/* SIDEBAR */}
+        <div className="farm-sidebar" style={{ width:110, flexShrink:0,
+          background:'linear-gradient(180deg,#1a2e0d,#2d5a1a)',
+          borderRadius:'0 0 0 0',
+          padding:'8px 6px',
+          display:'flex', flexDirection:'column', gap:4,
+          overflowY:'auto',
         }}>
+          <div style={{color:'#FFE082',fontSize:8,fontFamily:'var(--font-heading)',
+            textAlign:'center',marginBottom:4,letterSpacing:1}}>
+            TIERE
+          </div>
+
           {ANIMAL_DEFS.map(def => {
             const unlocked = level >= def.unlockLevel
             const count = placedAnimals.filter(a=>a.id===def.id).length
