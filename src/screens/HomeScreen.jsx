@@ -150,7 +150,7 @@ export default function HomeScreen() {
             {profile.name}! 👋
           </div>
         </div>
-        <LumiWithOrbit completedCount={completedCount} size={typeof window!=='undefined'&&window.innerWidth<400?48:64} />
+        <LumiWithOrbit completedCount={completedCount} size={64} />
         <motion.button whileHover={{scale:1.1}} whileTap={{scale:0.9}}
           style={{ width:48,height:48,borderRadius:'50%',background:'rgba(255,255,255,0.18)',display:'flex',alignItems:'center',justifyContent:'center' }}
           onClick={() => dispatch({ type:'NAVIGATE', payload:'welcome' })}
