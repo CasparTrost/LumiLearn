@@ -167,3 +167,54 @@ button:focus-visible {
   background-clip: text;
   animation: title-flow 5s linear infinite;
 }
+
+
+/* ─── Mobile responsive fixes ────────────────────────── */
+
+/* Prevent horizontal scroll globally */
+body, #root {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Game card grid: 2 cols on small, more on larger */
+@media (max-width: 480px) {
+  /* Larger touch targets for kids on mobile */
+  button {
+    min-height: 52px;
+  }
+
+  /* Module cards: ensure 2 per row minimum */
+  .home-bg [style*="display:'grid'"],
+  .home-bg [style*='display:"grid"'] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* Farm progress: horizontal animal bar hides scrollbar */
+.animal-strip::-webkit-scrollbar {
+  display: none;
+}
+.animal-strip {
+  scrollbar-width: none;
+}
+
+/* Ensure images never overflow */
+img {
+  max-width: 100%;
+}
+
+/* Safe area padding for iPhone notch/home indicator */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .screen {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Improve tap feedback for interactive elements */
+@media (hover: none) {
+  button:active {
+    opacity: 0.85;
+    transform: scale(0.97);
+  }
+}
