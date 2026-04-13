@@ -29,6 +29,7 @@ const sfx = {
   baa()   { const ac=getAc();if(!ac)return;const t=ac.currentTime;tone(220,'sine',t,.3,.18) },
   cluck() { const ac=getAc();if(!ac)return;const t=ac.currentTime;[0,.07,.14].forEach(d=>tone(650,'square',t+d,.06,.1)) },
   oink()  { const ac=getAc();if(!ac)return;const t=ac.currentTime;tone(280,'sawtooth',t,.15,.18) },
+  neigh() { const ac=getAc();if(!ac)return;const t=ac.currentTime;tone(400,'sawtooth',t,.2,.18);tone(300,'sawtooth',t+.15,.3,.12) },
   chime() { const ac=getAc();if(!ac)return;const t=ac.currentTime;[523,659,784].forEach((f,i)=>tone(f,'sine',t+i*.1,.2,.13)) },
 }
 
@@ -50,7 +51,7 @@ const ANIMAL_DEFS = [
   { id:'sheep',   name:'Schaf',   gif:'anim_sheep.gif',   size:52, zone:'Schafgehege',   sfx:sfx.baa,   unlockLevel:3, emoji:'🐑' },
   { id:'pig',     name:'Schwein', gif:'anim_pig.gif',     size:54, zone:'Schweinestall', sfx:sfx.oink,  unlockLevel:4, emoji:'🐷' },
   { id:'cow',     name:'Kuh',     gif:'anim_cow.gif',     size:60, zone:'Kuhstall',      sfx:sfx.moo,   unlockLevel:5, emoji:'🐄' },
-  { id:'horse',   name:'Pferd',   gif:'anim_cow.gif',     size:64, zone:'Pferdekoppel',  sfx:sfx.moo,   unlockLevel:6, emoji:'🐴' },
+  { id:'horse',   name:'Pferd',   gif:'anim_horse.gif',   size:64, zone:'Pferdekoppel',  sfx:sfx.neigh, unlockLevel:6, emoji:'🐴' },
 ]
 
 function getLevel(n) {
@@ -289,16 +290,24 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
     }
   }, [level])
 
-  const MAX_PER_ANIMAL = { chicken: 2, sheep: 1, pig: 1, cow: 1, horse: 1 }
+  // Max animals per type at max level: chicken:4, sheep:5, pig:3, cow:3, horse:2
+  // Scale with level: at unlock level = 1, increases by 1 each 2 levels after
+  const getMaxAnimals = (defId, currentLevel) => {
+    const maxAtMax = { chicken:4, sheep:5, pig:3, cow:3, horse:2 }
+    const unlockAt = ANIMAL_DEFS.find(a=>a.id===defId)?.unlockLevel || 2
+    const levelsAbove = Math.max(0, currentLevel - unlockAt)
+    const max = maxAtMax[defId] || 1
+    return Math.min(max, 1 + Math.floor(levelsAbove * 0.8))
+  }
   const addAnimal = useCallback((def) => {
     setPlacedAnimals(prev => {
       const count = prev.filter(a=>a.id===def.id).length
-      const max = MAX_PER_ANIMAL[def.id] || 1
+      const max = getMaxAnimals(def.id, level)
       if (count >= max) return prev
       return [...prev, { ...def, instanceId: def.id + '_' + Date.now() }]
     })
     try { def.sfx() } catch {}
-  }, [])
+  }, [level])
 
   const removeAnimal = useCallback((instanceId) => {
     setPlacedAnimals(prev => prev.filter(a => a.instanceId !== instanceId))
@@ -349,7 +358,7 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
                     <div style={{fontSize:9,color:unlocked?'#FFE082':'#666',
                       fontFamily:'"Press Start 2P",monospace',marginTop:4}}>
                       {unlocked ? def.name : `LVL ${def.unlockLevel}`}
-                    {unlocked && <div style={{fontSize:8,color:'rgba(255,255,200,.5)'}}>{count}/{def.id==='chicken'?2:1}</div>}
+                    {unlocked && <div style={{fontSize:8,color:'rgba(255,255,200,.5)'}}>{count}/{getMaxAnimals(def.id,level)}</div>}
                     </div>
                     {unlocked && count > 0 && (
                       <div style={{ position:'absolute',top:-4,right:-4,
