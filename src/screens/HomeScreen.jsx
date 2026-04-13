@@ -108,7 +108,7 @@ export default function HomeScreen() {
   }
 
   return (
-    <div className="home-bg" style={{ minHeight:'100dvh', display:'flex', flexDirection:'column', position:'relative', overflowX:'hidden' }}>
+    <div className="home-bg" style={{ minHeight:'100dvh', display:'flex', flexDirection:'column', position:'relative' }}>
 
       {/* ── Animated background orbs ── */}
       <div style={{ position:'fixed', inset:0, zIndex:-1, overflow:'hidden', pointerEvents:'none' }}>
@@ -146,13 +146,13 @@ export default function HomeScreen() {
           <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(14px,2.8vw,20px)', color:'rgba(255,255,255,0.75)' }}>
             Hallo,
           </div>
-          <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(16px,4vw,28px)', color:'white', fontWeight:700, lineHeight:1.1 }}>
+          <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(20px,4.5vw,30px)', color:'white', fontWeight:700, lineHeight:1.1 }}>
             {profile.name}! 👋
           </div>
         </div>
         <LumiWithOrbit completedCount={completedCount} size={64} />
         <motion.button whileHover={{scale:1.1}} whileTap={{scale:0.9}}
-          style={{ width:48,height:48,borderRadius:'50%',background:'rgba(255,255,255,0.18)',display:'flex',alignItems:'center',justifyContent:'center' }}
+          style={{ width:44,height:44,borderRadius:'50%',background:'rgba(255,255,255,0.18)',display:'flex',alignItems:'center',justifyContent:'center' }}
           onClick={() => dispatch({ type:'NAVIGATE', payload:'welcome' })}
         >
           <Settings size={20} color="white" />
@@ -177,9 +177,9 @@ export default function HomeScreen() {
       <div style={{
         flex:1,
         display:'grid',
-        gridTemplateColumns:'repeat(2,1fr)',
+        gridTemplateColumns:'repeat(auto-fill,minmax(clamp(240px,28vw,320px),1fr))',
         gap:'clamp(14px,2.5vw,24px)',
-        padding:'clamp(8px,2vw,16px) clamp(10px,3vw,32px) clamp(16px,3vw,32px)',
+        padding:'clamp(10px,2vw,20px) clamp(20px,4vw,40px) clamp(24px,4vw,40px)',
         alignContent:'start',
       }}>
         {MODULES.map((mod, i) => {
@@ -206,7 +206,7 @@ export default function HomeScreen() {
               style={{
                 background:'white', borderRadius:28, border:'none', cursor:'pointer',
                 boxShadow:`0 8px 28px ${mod.shadow}`, overflow:'hidden',
-                display:'flex', flexDirection:'column', textAlign:'left', minWidth:0,
+                display:'flex', flexDirection:'column', textAlign:'left',
                 transition:'box-shadow 0.2s', position:'relative',
               }}
             >
@@ -242,7 +242,7 @@ export default function HomeScreen() {
                 padding:'clamp(20px,3.5vw,30px) clamp(20px,3.5vw,28px) clamp(16px,2.5vw,22px)',
                 display:'flex', alignItems:'center', gap:16,
                 position:'relative', overflow:'hidden',
-                minHeight:'clamp(70px,18vw,120px)',
+                minHeight:'clamp(90px,14vw,120px)',
               }}>
                 <div style={{ position:'absolute', top:-20, right:-20, width:90, height:90, borderRadius:'50%', background:'rgba(255,255,255,0.12)', pointerEvents:'none' }} />
                 <div style={{ position:'absolute', bottom:-30, right:40, width:70, height:70, borderRadius:'50%', background:'rgba(255,255,255,0.08)', pointerEvents:'none' }} />
@@ -250,20 +250,20 @@ export default function HomeScreen() {
 
                 <div className="emoji-float" style={{
                   '--float-dur': `${2.6 + (i % 4) * 0.55}s`,
-                  width:'clamp(44px,10vw,64px)', height:'clamp(44px,10vw,64px)',
+                  width:'clamp(56px,10vw,72px)', height:'clamp(56px,10vw,72px)',
                   background:'rgba(255,255,255,0.22)', borderRadius:'50%',
                   display:'flex', alignItems:'center', justifyContent:'center',
-                  fontSize:'clamp(24px,6vw,38px)', lineHeight:1, flexShrink:0,
+                  fontSize:'clamp(28px,6vw,40px)', lineHeight:1, flexShrink:0,
                   boxShadow:'0 4px 16px rgba(0,0,0,0.12)', backdropFilter:'blur(4px)', zIndex:1,
                 }}>
                   {mod.emoji}
                 </div>
 
                 <div style={{ zIndex:1 }}>
-                  <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(13px,3.5vw,22px)', color:'white', fontWeight:700, lineHeight:1.2 }}>
+                  <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(17px,3.8vw,24px)', color:'white', fontWeight:700, lineHeight:1.1 }}>
                     {getModuleTitle(mod.id, mod.title)}
                   </div>
-                  <div style={{ fontFamily:'var(--font-body)', fontSize:'clamp(10px,2.2vw,14px)', color:'rgba(255,255,255,0.85)', marginTop:2 }}>
+                  <div style={{ fontFamily:'var(--font-body)', fontSize:'clamp(12px,2.5vw,15px)', color:'rgba(255,255,255,0.85)', marginTop:3 }}>
                     {getModuleSub(mod.id) || mod.sub}
                   </div>
                 </div>
