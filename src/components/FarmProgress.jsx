@@ -356,13 +356,48 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
   }, [])
 
   return (
-    <div style={{ width:'100%', maxWidth:780, margin:'0 auto', userSelect:'none' }}>
-      <div style={{ display:'flex', gap:12, alignItems:'flex-start' }}>
+    <div style={{ width:'100%', maxWidth:860, margin:'0 auto', userSelect:'none' }}>
 
-        {/* FARM */}
-        <div style={{ flex:1, borderRadius:16, overflow:'hidden',
-          boxShadow:'0 12px 40px rgba(0,0,0,.3)', position:'relative' }}>
-          <img src={asset('farm_final.png')} alt="Farm" style={{width:'100%',display:'block'}}/>
+      {/* Header */}
+      <div style={{
+        display:'flex', justifyContent:'space-between', alignItems:'center',
+        padding:'10px 16px 8px',
+        background:'linear-gradient(135deg,#1a2e0d,#2d5a1a)',
+        borderRadius:'20px 20px 0 0',
+      }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <span style={{fontSize:22}}>🌾</span>
+          <div>
+            <div style={{color:'#FFE082',fontSize:13,fontWeight:700,fontFamily:'var(--font-heading)'}}>
+              {LABELS[level]}
+            </div>
+            <div style={{color:'rgba(255,255,200,.6)',fontSize:10,fontFamily:'var(--font-body)'}}>
+              {nextUnlock}
+            </div>
+          </div>
+        </div>
+        <div style={{textAlign:'right'}}>
+          <div style={{color:'#FFE082',fontSize:11,fontFamily:'var(--font-heading)',fontWeight:700}}>
+            Level {level} / 6
+          </div>
+          <div style={{display:'flex',gap:4,marginTop:3,justifyContent:'flex-end'}}>
+            {[1,2,3,4,5,6].map(l=>(
+              <div key={l} style={{width:10,height:10,borderRadius:'50%',
+                background:l<=level?'#FFD93D':'rgba(255,255,255,.2)',
+                boxShadow:l<=level?'0 0 6px #FFD93D':undefined,
+                transition:'all .3s'}}/>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display:'flex', gap:0, alignItems:'stretch' }}>
+
+        {/* FARM SCENE - larger */}
+        <div style={{ flex:1, position:'relative', overflow:'hidden',
+          boxShadow:'0 8px 32px rgba(0,0,0,.3)' }}>
+          <img src={asset('farm_final.png')} alt="Farm"
+            style={{width:'100%', display:'block'}}/>
           <div style={{position:'absolute',inset:0}}>
             <AnimatePresence>
               {placedAnimals.map(a => <RoamingAnimal key={a.instanceId} def={a}/>)}
@@ -375,81 +410,94 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
         </div>
 
         {/* SIDEBAR */}
-        <div style={{ width:120, flexShrink:0 }}>
-          <div style={{ background:'linear-gradient(180deg,#1b4a0d,#2d6e1a)',
-            borderRadius:16, padding:'10px 8px', boxShadow:'0 8px 24px rgba(0,0,0,.3)' }}>
-            <div style={{fontFamily:'"Press Start 2P",monospace',fontSize:8,color:'#FFE082',
-              textAlign:'center',marginBottom:10}}>TIERE</div>
-
-            {ANIMAL_DEFS.map(def => {
-              const unlocked = level >= def.unlockLevel
-              const count = placedAnimals.filter(a=>a.id===def.id).length
-              return (
-                <div key={def.id} style={{marginBottom:8}}>
-                  <motion.div whileHover={unlocked?{scale:1.08}:{}} whileTap={unlocked?{scale:.95}:{}}
-                    onClick={()=>unlocked&&addAnimal(def)}
-                    style={{ background:unlocked?'rgba(255,255,255,.12)':'rgba(255,255,255,.04)',
-                      border:`2px solid ${unlocked?'rgba(255,217,61,.5)':'rgba(255,255,255,.1)'}`,
-                      borderRadius:10, padding:'6px 4px', textAlign:'center',
-                      cursor:unlocked?'pointer':'not-allowed', opacity:unlocked?1:.4, position:'relative' }}
-                  >
-                    {unlocked
-                      ? <img src={asset(def.gif)} alt={def.name} style={{width:40,imageRendering:'pixelated',display:'block',margin:'0 auto'}}/>
-                      : <div style={{fontSize:24,lineHeight:1}}>🔒</div>
-                    }
-                    <div style={{fontSize:9,color:unlocked?'#FFE082':'#666',
-                      fontFamily:'"Press Start 2P",monospace',marginTop:4}}>
-                      {unlocked ? def.name : `LVL ${def.unlockLevel}`}
-                    {unlocked && <div style={{fontSize:8,color:'rgba(255,255,200,.5)'}}>{count}/{getMaxAnimals(def.id,level)}</div>}
-                    </div>
-                    {unlocked && count > 0 && (
-                      <div style={{ position:'absolute',top:-4,right:-4,
-                        background:'#FFD93D',color:'#1a1a2e',borderRadius:'50%',
-                        width:16,height:16,fontSize:9,fontWeight:'bold',
-                        display:'flex',alignItems:'center',justifyContent:'center' }}>{count}</div>
-                    )}
-                  </motion.div>
-                  {unlocked && count > 0 && (
-                    <motion.div whileTap={{scale:.9}}
-                      onClick={()=>{const last=placedAnimals.filter(a=>a.id===def.id).pop();if(last)removeAnimal(last.instanceId)}}
-                      style={{fontSize:9,color:'#ff6b6b',textAlign:'center',cursor:'pointer',marginTop:2}}>
-                      ↩ entf.
-                    </motion.div>
-                  )}
-                </div>
-              )
-            })}
-            <div style={{borderTop:'1px solid rgba(255,255,255,.1)',marginTop:6,paddingTop:6,
-              fontSize:8,color:'rgba(255,255,200,.5)',textAlign:'center',fontFamily:'var(--font-body)'}}>
-              Klick = hinzuf.
-            </div>
+        <div style={{ width:110, flexShrink:0,
+          background:'linear-gradient(180deg,#1a2e0d,#2d5a1a)',
+          borderRadius:'0 0 0 0',
+          padding:'8px 6px',
+          display:'flex', flexDirection:'column', gap:4,
+          overflowY:'auto',
+        }}>
+          <div style={{color:'#FFE082',fontSize:8,fontFamily:'var(--font-heading)',
+            textAlign:'center',marginBottom:4,letterSpacing:1}}>
+            TIERE
           </div>
+
+          {ANIMAL_DEFS.map(def => {
+            const unlocked = level >= def.unlockLevel
+            const count = placedAnimals.filter(a=>a.id===def.id).length
+            const maxCount = getMaxAnimals(def.id, level)
+            const isFull = count >= maxCount && maxCount > 0
+            return (
+              <motion.div key={def.id}
+                whileHover={unlocked && !isFull ? {scale:1.05} : {}}
+                whileTap={unlocked && !isFull ? {scale:.95} : {}}
+                onClick={()=>unlocked && !isFull && addAnimal(def)}
+                style={{
+                  background: unlocked
+                    ? isFull ? 'rgba(255,255,255,.05)' : 'rgba(255,255,255,.1)'
+                    : 'rgba(0,0,0,.2)',
+                  border: `1.5px solid ${unlocked ? (isFull?'rgba(255,255,200,.2)':'rgba(255,217,61,.5)') : 'rgba(255,255,255,.08)'}`,
+                  borderRadius:10, padding:'5px 4px', textAlign:'center',
+                  cursor: unlocked && !isFull ? 'pointer' : 'default',
+                  opacity: unlocked ? 1 : .4,
+                  position:'relative',
+                  transition:'all .2s',
+                }}
+              >
+                {unlocked ? (
+                  <img src={asset(def.gif)} alt={def.name}
+                    style={{width:36,imageRendering:'pixelated',display:'block',margin:'0 auto'}}/>
+                ) : (
+                  <div style={{fontSize:22,lineHeight:1,padding:'4px 0'}}>🔒</div>
+                )}
+                <div style={{fontSize:8,color:unlocked?(isFull?'rgba(255,255,200,.4)':'#FFE082'):'#555',
+                  fontFamily:'var(--font-heading)',marginTop:3,lineHeight:1.2}}>
+                  {unlocked ? def.name : `Lv${def.unlockLevel}`}
+                </div>
+                {unlocked && maxCount > 0 && (
+                  <div style={{
+                    fontSize:7,color:'rgba(255,255,200,.6)',
+                    fontFamily:'var(--font-body)',marginTop:1,
+                  }}>
+                    {count}/{maxCount}
+                  </div>
+                )}
+                {unlocked && count > 0 && (
+                  <motion.div whileTap={{scale:.8}}
+                    onClick={e=>{e.stopPropagation();const last=placedAnimals.filter(a=>a.id===def.id).pop();if(last)removeAnimal(last.instanceId)}}
+                    style={{
+                      position:'absolute',top:-4,right:-4,
+                      background:'#e74c3c',color:'white',
+                      borderRadius:'50%',width:14,height:14,
+                      fontSize:9,fontWeight:'bold',
+                      display:'flex',alignItems:'center',justifyContent:'center',
+                      cursor:'pointer',zIndex:10,
+                    }}>×</motion.div>
+                )}
+              </motion.div>
+            )
+          })}
         </div>
       </div>
 
-      {/* PROGRESS */}
-      <div style={{background:'linear-gradient(135deg,#1b4a0d,#2d6e1a)',
-        borderRadius:'0 0 16px 16px',padding:'10px 16px 12px',marginTop:2,
-        boxShadow:'0 6px 20px rgba(0,0,0,.2)'}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
-          <span style={{color:'#FFE082',fontSize:10,fontWeight:700,
-            fontFamily:'"Press Start 2P",monospace',textShadow:'1px 1px 0 rgba(0,0,0,.5)'}}>
-            {LABELS[level]}
-          </span>
-          <span style={{color:'rgba(255,255,200,.7)',fontSize:8,fontFamily:'"Press Start 2P",monospace'}}>
-            {nextUnlock}
-          </span>
-        </div>
-        <div style={{background:'rgba(0,0,0,.4)',borderRadius:8,height:14,overflow:'hidden',
-          border:'2px solid rgba(255,255,255,.15)'}}>
+      {/* PROGRESS BAR */}
+      <div style={{
+        background:'linear-gradient(135deg,#1a2e0d,#2d5a1a)',
+        borderRadius:'0 0 20px 20px',
+        padding:'8px 16px 12px',
+        boxShadow:'0 6px 20px rgba(0,0,0,.2)',
+      }}>
+        <div style={{background:'rgba(0,0,0,.35)',borderRadius:8,height:12,overflow:'hidden',
+          border:'1.5px solid rgba(255,255,255,.12)'}}>
           <motion.div initial={{width:0}} animate={{width:`${pct}%`}}
             transition={{duration:1.2,ease:'easeOut'}}
-            style={{height:'100%',background:'linear-gradient(90deg,#4caf50,#8bc34a,#cddc39)',borderRadius:6}}/>
+            style={{height:'100%',background:'linear-gradient(90deg,#4caf50,#8bc34a,#cddc39)',
+              borderRadius:6,boxShadow:'0 0 8px rgba(100,200,50,.4)'}}/>
         </div>
         <div style={{display:'flex',justifyContent:'space-between',marginTop:5,
-          fontSize:8,color:'rgba(255,255,255,.55)',fontFamily:'"Press Start 2P",monospace'}}>
-          <span>LVL {level} / 6</span>
-          <span>{completedCount} / {totalModules} ({pct}%)</span>
+          fontSize:10,color:'rgba(255,255,255,.5)',fontFamily:'var(--font-body)'}}>
+          <span>{completedCount} / {totalModules} Module</span>
+          <span>{pct}%</span>
         </div>
       </div>
     </div>
