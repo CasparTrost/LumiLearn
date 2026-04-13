@@ -29,7 +29,29 @@ const sfx = {
   baa()   { const ac=getAc();if(!ac)return;const t=ac.currentTime;tone(220,'sine',t,.3,.18) },
   cluck() { const ac=getAc();if(!ac)return;const t=ac.currentTime;[0,.07,.14].forEach(d=>tone(650,'square',t+d,.06,.1)) },
   oink()  { const ac=getAc();if(!ac)return;const t=ac.currentTime;tone(280,'sawtooth',t,.15,.18) },
-  neigh() { const ac=getAc();if(!ac)return;const t=ac.currentTime;tone(400,'sawtooth',t,.2,.18);tone(300,'sawtooth',t+.15,.3,.12) },
+  neigh() {
+    const ac=getAc(); if(!ac) return; const t=ac.currentTime
+    // Realistic horse neigh: rising then falling pitch with vibrato
+    try {
+      const o=ac.createOscillator(), g=ac.createGain(), vib=ac.createOscillator(), vibGain=ac.createGain()
+      o.type='sawtooth'
+      o.frequency.setValueAtTime(400,t)
+      o.frequency.linearRampToValueAtTime(900,t+0.15)
+      o.frequency.linearRampToValueAtTime(600,t+0.35)
+      o.frequency.linearRampToValueAtTime(400,t+0.6)
+      g.gain.setValueAtTime(0,t)
+      g.gain.linearRampToValueAtTime(0.22,t+0.05)
+      g.gain.setValueAtTime(0.18,t+0.4)
+      g.gain.linearRampToValueAtTime(0.001,t+0.7)
+      // Vibrato
+      vib.type='sine'; vib.frequency.value=8
+      vibGain.gain.value=15
+      vib.connect(vibGain); vibGain.connect(o.frequency)
+      o.connect(g); g.connect(ac.destination)
+      vib.start(t+0.1); vib.stop(t+0.7)
+      o.start(t); o.stop(t+0.7)
+    } catch {}
+  },
   chime() { const ac=getAc();if(!ac)return;const t=ac.currentTime;[523,659,784].forEach((f,i)=>tone(f,'sine',t+i*.1,.2,.13)) },
 }
 
