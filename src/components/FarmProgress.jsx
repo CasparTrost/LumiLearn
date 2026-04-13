@@ -287,11 +287,11 @@ function LevelUpCelebration({ level, newAnimals, onDone }) {
   useEffect(() => {
     try { sfx.levelUp() } catch {}
     // Phase 1: show level card for 2s, then show new animals for 2.5s, then done
-    const t1 = setTimeout(() => setPhase('animals'), 2200)
+    const t1 = setTimeout(() => setPhase('animals'), 3500)
     const t2 = setTimeout(() => {
       setPhase('exit')
       setTimeout(onDone, 600)
-    }, 2200 + (newAnimals.length * 400) + 1800)
+    }, 3500 + (newAnimals.length * 400) + 3000)
     return () => { clearTimeout(t1); clearTimeout(t2) }
   }, [])
 
