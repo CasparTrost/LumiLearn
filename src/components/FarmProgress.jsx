@@ -145,7 +145,7 @@ function RoamingAnimal({ def }) {
       <motion.img
         src={asset(def.gif)} alt={def.name}
         style={{ width:'100%', imageRendering:'pixelated',
-          // Animals: default faces RIGHT, so flip when going LEFT = scaleX(-1)
+          // Animals: default faces LEFT, flip when going RIGHT
           transform: facingLeft ? 'scaleX(-1)' : 'none',
           filter:'drop-shadow(1px 3px 3px rgba(0,0,0,.4))' }}
         animate={bouncing?{y:[0,-12,0,-6,0]}:{}}
