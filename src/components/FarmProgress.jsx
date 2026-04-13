@@ -321,9 +321,14 @@ function LevelUpCelebration({ level, newAnimals, onDone }) {
             }}
           >
             <motion.div
-              animate={{scale:[1,1.15,1], rotate:[0,5,-5,0]}}
+              animate={{scale:[1,1.15,1]}}
               transition={{duration:0.7, repeat:2}}
-              style={{fontSize:64, lineHeight:1, marginBottom:8}}>🌾</motion.div>
+              style={{width:80, margin:'0 auto 8px'}}
+            >
+              <img src={asset('farmer_idle_front.gif')} alt="Bauer"
+                style={{width:'100%', imageRendering:'pixelated',
+                  filter:'drop-shadow(0 4px 12px rgba(255,217,61,.6))'}}/>
+            </motion.div>
             <div style={{fontFamily:'var(--font-heading)', fontSize:13, color:'rgba(255,255,200,.7)', letterSpacing:2, marginBottom:8}}>
               NEUES LEVEL ERREICHT!
             </div>
@@ -361,10 +366,14 @@ function LevelUpCelebration({ level, newAnimals, onDone }) {
                   style={{textAlign:'center'}}
                 >
                   <motion.div
-                    animate={{y:[0,-8,0], rotate:[0,8,-8,0]}}
-                    transition={{duration:0.8, delay: i*0.35+0.3, repeat:3}}
-                    style={{fontSize:52, lineHeight:1}}
-                  >{a.emoji}</motion.div>
+                    animate={{y:[0,-10,0]}}
+                    transition={{duration:0.7, delay: i*0.35+0.3, repeat:Infinity, ease:'easeInOut'}}
+                    style={{width:80, margin:'0 auto'}}
+                  >
+                    <img src={asset(a.gif)} alt={a.name}
+                      style={{width:'100%', imageRendering:'pixelated',
+                        filter:'drop-shadow(0 4px 8px rgba(0,0,0,.5))'}}/>
+                  </motion.div>
                   <div style={{fontFamily:'var(--font-heading)', fontSize:14, color:'#FFD93D', marginTop:6, fontWeight:700}}>
                     {a.name}
                   </div>
