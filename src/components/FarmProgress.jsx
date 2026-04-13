@@ -173,7 +173,8 @@ function RoamingAnimal({ def }) {
       initial={{scale:0,opacity:0}} animate={{scale:1,opacity:1}} exit={{scale:0,opacity:0}}
       transition={{type:'spring',stiffness:280}}
       style={{ position:'absolute',
-        left:pos.x-def.size/2, top:pos.y-def.size/2,
+        left:`calc(${(pos.x/640*100).toFixed(3)}% - ${def.size/2}px)`,
+        top:`calc(${(pos.y/357*100).toFixed(3)}% - ${def.size/2}px)`,
         width:def.size, zIndex:Math.round(pos.y), cursor:'pointer' }}
       onClick={click}
     >
@@ -267,7 +268,8 @@ function Farmer() {
 
   return (
     <div style={{ position:'absolute',
-      left:pos.x-24, top:pos.y-24,
+      left:`calc(${(pos.x/640*100).toFixed(3)}% - 24px)`,
+      top:`calc(${(pos.y/357*100).toFixed(3)}% - 24px)`,
       width:48, zIndex:Math.round(pos.y)+10, pointerEvents:'none' }}>
       <img src={asset(gif)} alt="Bauer"
         style={{ width:'100%', imageRendering:'pixelated',
@@ -398,9 +400,9 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
       <div className="farm-flex-container" style={{ display:'flex', gap:0, alignItems:'stretch' }}>
 
         {/* FARM SCENE - larger */}
-        <div className="farm-scene" style={{ width:'min(640px,100%)', position:'relative', overflow:'hidden',
+        <div className="farm-scene" style={{ flex:1, position:'relative', overflow:'hidden',
           boxShadow:'0 8px 32px rgba(0,0,0,.3)',
-          cursor:'url(' + BASE + 'sprites/farm/cursor_fork.png) 4 4, crosshair', flexShrink:0 }}>
+          cursor:'url(' + BASE + 'sprites/farm/cursor_fork.png) 4 4, crosshair' }}>
           <img src={asset('farm_final.png')} alt="Farm"
             style={{width:'100%', display:'block'}}/>
           <div style={{position:'absolute',inset:0}}>
