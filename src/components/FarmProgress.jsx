@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 const BASE = import.meta.env.BASE_URL || '/LumiLearn/'
@@ -107,7 +107,7 @@ function randomInZone(zone) {
 }
 
 // Animal: roams in zone, correct facing, occasional pauses
-function RoamingAnimal({ def }) {
+function RoamingAnimal({ def, scale = 1 }) {
   // Use two separate GIF files: def.gif (faces left) and def.gifRight (faces right)
   // For horse: def.gif faces right, def.gifRight faces left
   const posRef = useRef(randomInZone(def.zone))
@@ -175,7 +175,7 @@ function RoamingAnimal({ def }) {
       style={{ position:'absolute',
         left:`calc(${(pos.x/750*100).toFixed(3)}% - ${def.size/2}px)`,
         top:`calc(${(pos.y/419*100).toFixed(3)}% - ${def.size/2}px)`,
-        width:def.size, zIndex:Math.round(pos.y), cursor:'pointer' }}
+        width:Math.round(def.size * scale), zIndex:Math.round(pos.y), cursor:'pointer' }}
       onClick={click}
     >
       <img
@@ -197,7 +197,7 @@ function RoamingAnimal({ def }) {
 }
 
 // Farmer: walks waypoints with direction-aware animations + turn pauses
-function Farmer() {
+function Farmer({ scale = 1 }) {
   const wps = FARMER_PATH
   const posRef = useRef(wps[0])
   const wpRef = useRef(0)
@@ -270,9 +270,9 @@ function Farmer() {
     <div style={{ position:'absolute',
       left:`calc(${(pos.x/750*100).toFixed(3)}% - 24px)`,
       top:`calc(${(pos.y/419*100).toFixed(3)}% - 24px)`,
-      width:48, zIndex:Math.round(pos.y)+10, pointerEvents:'none' }}>
+      width:Math.round(48 * scale), zIndex:Math.round(pos.y)+10, pointerEvents:'none' }}>
       <img src={asset(gif)} alt="Bauer"
-        style={{ width:'100%', imageRendering:'pixelated',
+        style={{ width:`${Math.round(48*scale)}px`, imageRendering:'pixelated',
           transform: flipX ? 'scaleX(-1)' : 'none',
           filter:'drop-shadow(1px 3px 3px rgba(0,0,0,.5))' }}/>
     </div>
@@ -323,6 +323,20 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
 
   const unlockedAnimals = ANIMAL_DEFS.filter(a => level >= a.unlockLevel)
   const [placedAnimals, setPlacedAnimals] = useState([])
+  const [farmScale, setFarmScale] = React.useState(1)
+  const farmRef = React.useRef(null)
+  
+  useEffect(() => {
+    const updateScale = () => {
+      if (farmRef.current) {
+        const w = farmRef.current.offsetWidth
+        setFarmScale(w / 750) // 750 = reference width
+      }
+    }
+    updateScale()
+    window.addEventListener('resize', updateScale)
+    return () => window.removeEventListener('resize', updateScale)
+  }, [])
   const [showBanner, setShowBanner] = useState(null)
   const [prevLevel, setPrevLevel] = useState(level)
 
@@ -400,16 +414,16 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
       <div className="farm-flex-container" style={{ display:'flex', gap:0, alignItems:'stretch' }}>
 
         {/* FARM SCENE - larger */}
-        <div className="farm-scene" style={{ flex:1, position:'relative', overflow:'hidden',
+        <div ref={farmRef} className="farm-scene" style={{ flex:1, position:'relative', overflow:'hidden',
           boxShadow:'0 8px 32px rgba(0,0,0,.3)',
           cursor:'url(' + BASE + 'sprites/farm/cursor_fork.png) 4 4, crosshair' }}>
           <img src={asset('farm_final.png')} alt="Farm"
             style={{width:'100%', display:'block'}}/>
           <div style={{position:'absolute',inset:0}}>
             <AnimatePresence>
-              {placedAnimals.map(a => <RoamingAnimal key={a.instanceId} def={a}/>)}
+              {placedAnimals.map(a => <RoamingAnimal key={a.instanceId} def={a} scale={farmScale}/>)}
             </AnimatePresence>
-            <Farmer/>
+            <Farmer scale={farmScale}/>
             <AnimatePresence>
               {showBanner && <UnlockBanner key={showBanner.id} animal={showBanner} onDone={()=>setShowBanner(null)}/>}
             </AnimatePresence>
