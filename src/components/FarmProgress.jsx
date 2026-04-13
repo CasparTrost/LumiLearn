@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 const BASE = import.meta.env.BASE_URL || '/LumiLearn/'
@@ -172,8 +172,10 @@ function RoamingAnimal({ def }) {
     <motion.div
       initial={{scale:0,opacity:0}} animate={{scale:1,opacity:1}} exit={{scale:0,opacity:0}}
       transition={{type:'spring',stiffness:280}}
-      style={{ position:'absolute', left:pos.x-def.size/2, top:pos.y-def.size/2,
-        width:def.size, zIndex:Math.round(pos.y), cursor:'pointer' }}
+      style={{ position:'absolute',
+        left:`calc(${((pos.x)/640*100).toFixed(2)}% - ${def.size/2}px)`,
+        top:`calc(${((pos.y)/357*100).toFixed(2)}% - ${def.size/2}px)`,
+        width:def.size, zIndex:Math.round(pos.y/357*100), cursor:'pointer' }}
       onClick={click}
     >
       <img
@@ -265,8 +267,10 @@ function Farmer() {
   else                        { gif = 'farmer_idle_front.gif'; flipX = false }
 
   return (
-    <div style={{ position:'absolute', left:pos.x-24, top:pos.y-24, width:48,
-      zIndex:Math.round(pos.y)+10, pointerEvents:'none' }}>
+    <div style={{ position:'absolute',
+      left:`calc(${((pos.x)/640*100).toFixed(2)}% - 24px)`,
+      top:`calc(${((pos.y)/357*100).toFixed(2)}% - 24px)`,
+      width:48, zIndex:Math.round(pos.y/357*100)+10, pointerEvents:'none' }}>
       <img src={asset(gif)} alt="Bauer"
         style={{ width:'100%', imageRendering:'pixelated',
           transform: flipX ? 'scaleX(-1)' : 'none',
@@ -308,59 +312,6 @@ function UnlockBanner({ animal, onDone }) {
 }
 
 
-// ScaledOverlay: scales animal positions to match actual farm image size
-// Coordinates were drawn at 640x357px
-// This overlay covers the image exactly and scales positions proportionally
-function ScaledOverlay({ children }) {
-  // The overlay is absolutely positioned over the farm image
-  // We use percentage-based positioning: pos / 640 * 100%
-  // But animals use pixel positions... so we use a CSS scale trick
-  const wrapRef = useRef(null)
-  const imgRef = useRef(null)
-  const [dims, setDims] = React.useState({ w: 640, h: 357 })
-
-  useEffect(() => {
-    // Find the farm image in the parent
-    const updateDims = () => {
-      const parent = wrapRef.current?.parentElement
-      if (parent) {
-        const img = parent.querySelector('img')
-        if (img && img.offsetWidth > 0) {
-          setDims({ w: img.offsetWidth, h: img.offsetHeight })
-        }
-      }
-    }
-    updateDims()
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateDims) : null
-    const parent = wrapRef.current?.parentElement
-    if (ro && parent) ro.observe(parent)
-    window.addEventListener('resize', updateDims)
-    return () => { ro?.disconnect(); window.removeEventListener('resize', updateDims) }
-  }, [])
-
-  // Scale factor: actual image width / coordinate reference width
-  const scaleX = dims.w / 640
-  const scaleY = dims.h / 357
-
-  return (
-    <div ref={wrapRef} style={{
-      position: 'absolute', top: 0, left: 0,
-      width: dims.w, height: dims.h,
-      pointerEvents: 'none',
-    }}>
-      {/* Scale all children positions */}
-      <div style={{
-        position: 'absolute', top: 0, left: 0,
-        width: 640, height: 357,
-        transformOrigin: 'top left',
-        transform: `scale(${scaleX}, ${scaleY})`,
-        pointerEvents: 'all',
-      }}>
-        {children}
-      </div>
-    </div>
-  )
-}
 
 export default function FarmProgress({ completedCount: rawCount = 0, totalModules = 17 }) {
   const completedCount = 17 // PREVIEW: max level
@@ -454,7 +405,7 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
           cursor:'url(' + BASE + 'sprites/farm/cursor_fork.png) 4 4, crosshair' }}>
           <img src={asset('farm_final.png')} alt="Farm"
             style={{width:'100%', display:'block'}}/>
-          <ScaledOverlay baseWidth={640}>
+          <div style={{position:'absolute',inset:0}}>
             <AnimatePresence>
               {placedAnimals.map(a => <RoamingAnimal key={a.instanceId} def={a}/>)}
             </AnimatePresence>
@@ -462,7 +413,7 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
             <AnimatePresence>
               {showBanner && <UnlockBanner key={showBanner.id} animal={showBanner} onDone={()=>setShowBanner(null)}/>}
             </AnimatePresence>
-          </ScaledOverlay>
+          </div>
         </div>
 
         {/* SIDEBAR */}
