@@ -307,11 +307,11 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
     }
   }, [level])
 
-  // Per-level animal limits (max: chicken:3, sheep:4, pig:3, cow:2, horse:2)
+  // Per-level animal limits (max: chicken:4, sheep:4, pig:3, cow:2, horse:2)
   // Lv2:chick1 | Lv3:+pig1 | Lv4:+sheep1,chick2 | Lv5:+sheep2+pig2,chick3 | Lv6:+cow1+horse1+sheep3+pig3+sheep4+cow2+horse2
   const getMaxAnimals = (defId, currentLevel) => {
     const table = {
-      chicken: [0, 0, 1, 1, 2, 3, 3],
+      chicken: [0, 0, 1, 1, 2, 3, 4],
       pig:     [0, 0, 0, 1, 1, 2, 3],
       sheep:   [0, 0, 0, 0, 1, 2, 4],
       cow:     [0, 0, 0, 0, 0, 1, 2],
