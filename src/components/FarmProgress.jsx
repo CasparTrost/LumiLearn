@@ -131,10 +131,19 @@ function RoamingAnimal({ def }) {
           pauseTimerRef.current = setTimeout(() => { pauseRef.current = false }, 1000 + Math.random()*2000)
         }
       } else {
-        posRef.current = { x: posRef.current.x + (dx/dist)*0.4, y: posRef.current.y + (dy/dist)*0.4 }
-        setPos({...posRef.current})
-        if (Math.abs(dx) > Math.abs(dy) * 0.3) {
-          setMovingRight(dx > 0)
+        const newX = posRef.current.x + (dx/dist)*0.4
+        const newY = posRef.current.y + (dy/dist)*0.4
+        // Only move if new position is still inside the zone polygon
+        const zonePoints = ZONES[def.zone]
+        if (!zonePoints || pointInPoly(newX, newY, zonePoints)) {
+          posRef.current = { x: newX, y: newY }
+          setPos({...posRef.current})
+          if (Math.abs(dx) > Math.abs(dy) * 0.3) {
+            setMovingRight(dx > 0)
+          }
+        } else {
+          // Outside boundary — pick new target inside zone
+          targetRef.current = randomInZone(def.zone)
         }
       }
     }, 50)
