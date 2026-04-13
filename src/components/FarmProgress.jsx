@@ -108,14 +108,13 @@ function randomInZone(zone) {
 
 // Animal: roams in zone, correct facing, occasional pauses
 function RoamingAnimal({ def }) {
-  // def.facesRight = true means sprite naturally faces right (like horse)
-  // def.facesRight = false/undefined means sprite naturally faces left (cow, sheep, pig, chicken)
   const posRef = useRef(randomInZone(def.zone))
   const targetRef = useRef(randomInZone(def.zone))
   const pauseRef = useRef(false)
   const pauseTimerRef = useRef(null)
+  const mirrorRef = useRef(false) // use ref not state to avoid stale closure
+  const imgRef = useRef(null)
   const [pos, setPos] = useState(posRef.current)
-  const [mirrorX, setMirrorX] = useState(false) // true = apply scaleX(-1)
   const [bouncing, setBouncing] = useState(false)
 
   useEffect(() => {
@@ -134,11 +133,17 @@ function RoamingAnimal({ def }) {
         posRef.current = { x: posRef.current.x + (dx/dist)*0.4, y: posRef.current.y + (dy/dist)*0.4 }
         setPos({...posRef.current})
         if (Math.abs(dx) > Math.abs(dy) * 0.3) {
-          // movingRight = dx > 0
-          // facesRight sprite: mirror when moving LEFT (dx < 0)
-          // facesLeft sprite:  mirror when moving RIGHT (dx > 0)
           const movingRight = dx > 0
-          setMirrorX(def.facesRight ? !movingRight : movingRight)
+          // facesLeft sprites (default): mirror when moving right
+          // facesRight sprites (horse): mirror when moving left
+          const shouldMirror = def.facesRight ? !movingRight : movingRight
+          if (shouldMirror !== mirrorRef.current) {
+            mirrorRef.current = shouldMirror
+            // Apply directly to DOM for instant update
+            if (imgRef.current) {
+              imgRef.current.style.transform = shouldMirror ? 'scaleX(-1)' : 'none'
+            }
+          }
         }
       }
     }, 50)
@@ -160,11 +165,11 @@ function RoamingAnimal({ def }) {
       onClick={click}
     >
       <motion.img
+        ref={imgRef}
         src={asset(def.gif)} alt={def.name}
         style={{
           width:'100%',
           imageRendering:'pixelated',
-          transform: mirrorX ? 'scaleX(-1)' : 'none',
           filter:'drop-shadow(1px 3px 3px rgba(0,0,0,.4))',
         }}
         animate={bouncing ? {y:[0,-12,0,-6,0]} : {y:0}}
