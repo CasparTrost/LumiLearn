@@ -73,7 +73,7 @@ const ANIMAL_DEFS = [
   { id:'sheep',   name:'Schaf',   gif:'anim_sheep.gif',   gifRight:'anim_sheep_right.gif', size:52, zone:'Schafgehege',   sfx:sfx.baa,   unlockLevel:3, emoji:'🐑' },
   { id:'pig',     name:'Schwein', gif:'anim_pig.gif',     gifRight:'anim_pig_right.gif', size:54, zone:'Schweinestall', sfx:sfx.oink,  unlockLevel:4, emoji:'🐷' },
   { id:'cow',     name:'Kuh',     gif:'anim_cow.gif',     gifRight:'anim_cow_right.gif', size:60, zone:'Kuhstall',      sfx:sfx.moo,   unlockLevel:5, emoji:'🐄' },
-  { id:'horse',   name:'Pferd',   gif:'anim_horse.gif',    gifRight:'anim_horse_right.gif', size:64, zone:'Pferdekoppel',  sfx:sfx.neigh, unlockLevel:6, emoji:'🐴' },
+  { id:'horse', name:'Pferd', gif:'anim_horse.gif', gifRight:'anim_horse_left.gif', size:64, zone:'Pferdekoppel', sfx:sfx.neigh, unlockLevel:6, emoji:'🐴', facesRight:true },
 ]
 
 function getLevel(n) {
