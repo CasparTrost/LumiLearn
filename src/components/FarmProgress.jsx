@@ -108,54 +108,47 @@ function randomInZone(zone) {
 
 // Animal: roams in zone, correct facing, occasional pauses
 function RoamingAnimal({ def }) {
+  // def.facesRight = true means sprite naturally faces right (like horse)
+  // def.facesRight = false/undefined means sprite naturally faces left (cow, sheep, pig, chicken)
   const posRef = useRef(randomInZone(def.zone))
   const targetRef = useRef(randomInZone(def.zone))
   const pauseRef = useRef(false)
   const pauseTimerRef = useRef(null)
   const [pos, setPos] = useState(posRef.current)
-  const [flipped, setFlipped] = useState(def.facesRight || false)
+  const [mirrorX, setMirrorX] = useState(false) // true = apply scaleX(-1)
   const [bouncing, setBouncing] = useState(false)
-  // flipped state declared above
 
   useEffect(() => {
     const iv = setInterval(() => {
       if (pauseRef.current) return
-
       const dx = targetRef.current.x - posRef.current.x
       const dy = targetRef.current.y - posRef.current.y
-      const dist = Math.sqrt(dx*dx+dy*dy)
-
+      const dist = Math.sqrt(dx*dx + dy*dy)
       if (dist < 3) {
-        // Reached target — maybe pause, then pick new target
         targetRef.current = randomInZone(def.zone)
-        // 30% chance to pause 1-3 seconds
         if (Math.random() < 0.3) {
           pauseRef.current = true
-          pauseTimerRef.current = setTimeout(() => {
-            pauseRef.current = false
-          }, 1000 + Math.random() * 2000)
+          pauseTimerRef.current = setTimeout(() => { pauseRef.current = false }, 1000 + Math.random()*2000)
         }
       } else {
-        const spd = 0.4
-        const newPos = {
-          x: posRef.current.x + (dx/dist)*spd,
-          y: posRef.current.y + (dy/dist)*spd,
-        }
-        posRef.current = newPos
-        setPos({...newPos})
-        // Only flip when moving significantly horizontally
+        posRef.current = { x: posRef.current.x + (dx/dist)*0.4, y: posRef.current.y + (dy/dist)*0.4 }
+        setPos({...posRef.current})
         if (Math.abs(dx) > Math.abs(dy) * 0.3) {
-          setFlipped(dx > 0)
+          // movingRight = dx > 0
+          // facesRight sprite: mirror when moving LEFT (dx < 0)
+          // facesLeft sprite:  mirror when moving RIGHT (dx > 0)
+          const movingRight = dx > 0
+          setMirrorX(def.facesRight ? !movingRight : movingRight)
         }
       }
     }, 50)
     return () => { clearInterval(iv); if(pauseTimerRef.current) clearTimeout(pauseTimerRef.current) }
-  }, [def.zone])
+  }, [def.zone, def.facesRight])
 
   const click = () => {
     try { def.sfx() } catch {}
     setBouncing(true)
-    setTimeout(()=>setBouncing(false), 600)
+    setTimeout(() => setBouncing(false), 600)
   }
 
   return (
@@ -168,11 +161,13 @@ function RoamingAnimal({ def }) {
     >
       <motion.img
         src={asset(def.gif)} alt={def.name}
-        style={{ width:'100%', imageRendering:'pixelated',
-          // Animals: default faces LEFT, flip when going RIGHT
-          transform: flipped ? 'scaleX(-1)' : 'none',
-          filter:'drop-shadow(1px 3px 3px rgba(0,0,0,.4))' }}
-        animate={bouncing?{y:[0,-12,0,-6,0]}:{y:0}}
+        style={{
+          width:'100%',
+          imageRendering:'pixelated',
+          transform: mirrorX ? 'scaleX(-1)' : 'none',
+          filter:'drop-shadow(1px 3px 3px rgba(0,0,0,.4))',
+        }}
+        animate={bouncing ? {y:[0,-12,0,-6,0]} : {y:0}}
         transition={{duration:.5}}
       />
     </motion.div>
