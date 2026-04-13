@@ -37,14 +37,14 @@ const cardVariants = {
 // ── Lumi with orbiting completion stars ───────────────────────────────────────
 function LumiWithOrbit({ completedCount, size }) {
   const cap   = Math.min(completedCount, 10)
-  const orbit = size * 0.78
+  const orbit = size * 0.52
   return (
     <div style={{ position:'relative', width: size, height: size, flexShrink:0 }}>
       <LumiCharacter mood="happy" size={size} />
       {Array.from({ length: cap }).map((_, i) => {
         const startAngle = (i / Math.max(cap, 1)) * 360
         const dur        = 4 + (i % 3) * 0.7
-        const r          = orbit + (i % 2) * (size * 0.12)
+        const r          = orbit + (i % 2) * (size * 0.07)
         return (
           <motion.div
             key={i}
