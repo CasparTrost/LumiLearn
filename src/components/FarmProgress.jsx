@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 const BASE = import.meta.env.BASE_URL || '/LumiLearn/'
@@ -307,6 +307,42 @@ function UnlockBanner({ animal, onDone }) {
   )
 }
 
+
+// Scales the animal overlay to match actual image display width
+// Coordinates were drawn at baseWidth=640px
+function ScaledOverlay({ baseWidth = 640, children }) {
+  const wrapRef = useRef(null)
+  const [scale, setScale] = React.useState(1)
+  const imgH = Math.round(baseWidth * 357 / 640)
+
+  useEffect(() => {
+    const update = () => {
+      if (wrapRef.current) {
+        const w = wrapRef.current.parentElement?.clientWidth || baseWidth
+        setScale(w / baseWidth)
+      }
+    }
+    update()
+    const ro = new ResizeObserver(update)
+    if (wrapRef.current?.parentElement) ro.observe(wrapRef.current.parentElement)
+    return () => ro.disconnect()
+  }, [baseWidth])
+
+  return (
+    <div ref={wrapRef} style={{
+      position: 'absolute', top: 0, left: 0,
+      width: baseWidth, height: imgH,
+      transformOrigin: 'top left',
+      transform: `scale(${scale})`,
+      pointerEvents: 'none',  // clicks go through to animals below
+    }}>
+      <div style={{ position: 'relative', width: baseWidth, height: imgH, pointerEvents: 'all' }}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
 export default function FarmProgress({ completedCount: rawCount = 0, totalModules = 17 }) {
   const completedCount = 17 // PREVIEW: max level
   const level = getLevel(completedCount)
@@ -399,7 +435,7 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
           cursor:'url(' + BASE + 'sprites/farm/cursor_fork.png) 4 4, crosshair' }}>
           <img src={asset('farm_final.png')} alt="Farm"
             style={{width:'100%', display:'block'}}/>
-          <div style={{position:'absolute',inset:0}}>
+          <ScaledOverlay baseWidth={640}>
             <AnimatePresence>
               {placedAnimals.map(a => <RoamingAnimal key={a.instanceId} def={a}/>)}
             </AnimatePresence>
@@ -407,7 +443,7 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
             <AnimatePresence>
               {showBanner && <UnlockBanner key={showBanner.id} animal={showBanner} onDone={()=>setShowBanner(null)}/>}
             </AnimatePresence>
-          </div>
+          </ScaledOverlay>
         </div>
 
         {/* SIDEBAR */}
