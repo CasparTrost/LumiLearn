@@ -395,7 +395,8 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
 
         {/* FARM SCENE - larger */}
         <div style={{ flex:1, position:'relative', overflow:'hidden',
-          boxShadow:'0 8px 32px rgba(0,0,0,.3)' }}>
+          boxShadow:'0 8px 32px rgba(0,0,0,.3)',
+          cursor:'url(' + BASE + 'sprites/farm/cursor_fork.png) 4 4, crosshair' }}>
           <img src={asset('farm_final.png')} alt="Farm"
             style={{width:'100%', display:'block'}}/>
           <div style={{position:'absolute',inset:0}}>
