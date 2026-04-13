@@ -262,14 +262,6 @@ img {
 
   /* Prevent horizontal overflow */
   body { overflow-x: hidden; }
-  
-
-  /* Scale animal overlay on mobile to match farm image size */
-  .farm-scene { width: 100% !important; max-width: 640px !important; }
-  .farm-scene > div[style] { 
-    transform-origin: top left;
-    transform: scale(calc(min(100%, 640px) / 640));
-  }
 
   /* Safe area */
   .screen { padding-bottom: env(safe-area-inset-bottom, 0); }
