@@ -379,7 +379,7 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
   }, [])
 
   return (
-    <div style={{ width:'100%', maxWidth:860, margin:'0 auto', userSelect:'none' }}>
+    <div className="farm-progress-wrapper" style={{ width:'100%', maxWidth:860, margin:'0 auto', userSelect:'none' }}>
 
       {/* Header */}
       <div style={{
@@ -414,10 +414,10 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
         </div>
       </div>
 
-      <div style={{ display:'flex', gap:0, alignItems:'stretch' }}>
+      <div className="farm-flex-container" style={{ display:'flex', gap:0, alignItems:'flex-start' }}>
 
         {/* FARM SCENE - larger */}
-        <div ref={farmRef} style={{ flex:1, position:'relative', overflow:'hidden', alignSelf:'flex-start',
+        <div ref={farmRef} className="farm-scene" style={{ flex:1, position:'relative', overflow:'hidden',
           boxShadow:'0 8px 32px rgba(0,0,0,.3)',
           cursor:'url(' + BASE + 'sprites/farm/cursor_fork.png) 4 4, crosshair' }}>
           <img src={asset('farm_final.png')} alt="Farm"
@@ -434,7 +434,7 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
         </div>
 
         {/* SIDEBAR */}
-        <div style={{ width:110, flexShrink:0,
+        <div className="farm-sidebar" style={{ width:110, flexShrink:0,
           background:'linear-gradient(180deg,#1a2e0d,#2d5a1a)',
           borderRadius:'0 0 0 0',
           padding:'8px 6px',
