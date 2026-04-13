@@ -289,8 +289,14 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
     }
   }, [level])
 
+  const MAX_PER_ANIMAL = { chicken: 2, sheep: 1, pig: 1, cow: 1, horse: 1 }
   const addAnimal = useCallback((def) => {
-    setPlacedAnimals(prev => [...prev, { ...def, instanceId: def.id + '_' + Date.now() }])
+    setPlacedAnimals(prev => {
+      const count = prev.filter(a=>a.id===def.id).length
+      const max = MAX_PER_ANIMAL[def.id] || 1
+      if (count >= max) return prev
+      return [...prev, { ...def, instanceId: def.id + '_' + Date.now() }]
+    })
     try { def.sfx() } catch {}
   }, [])
 
@@ -343,6 +349,7 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
                     <div style={{fontSize:9,color:unlocked?'#FFE082':'#666',
                       fontFamily:'"Press Start 2P",monospace',marginTop:4}}>
                       {unlocked ? def.name : `LVL ${def.unlockLevel}`}
+                    {unlocked && <div style={{fontSize:8,color:'rgba(255,255,200,.5)'}}>{count}/{def.id==='chicken'?2:1}</div>}
                     </div>
                     {unlocked && count > 0 && (
                       <div style={{ position:'absolute',top:-4,right:-4,
