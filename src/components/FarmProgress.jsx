@@ -153,7 +153,7 @@ function RoamingAnimal({ def, scale = 1 }) {
       const dy = targetRef.current.y - posRef.current.y
       const dist = Math.sqrt(dx*dx + dy*dy)
       if (dist < 3) {
-        targetRef.current = randomInZoneFrom(activeZone[zoneKey] || ZONES[zoneKey])
+        targetRef.current = scaledRandom()
         if (Math.random() < 0.3) {
           pauseRef.current = true
           setPaused(true)
@@ -166,7 +166,7 @@ function RoamingAnimal({ def, scale = 1 }) {
         const newX = posRef.current.x + (dx/dist)*0.4
         const newY = posRef.current.y + (dy/dist)*0.4
         // Only move if new position is still inside the zone polygon
-        const zonePoints = activeZone[zoneKey] || ZONES[zoneKey]
+        const zonePoints = scaledZone
         if (!zonePoints || pointInPoly(newX, newY, zonePoints)) {
           posRef.current = { x: newX, y: newY }
           setPos({...posRef.current})
@@ -175,7 +175,7 @@ function RoamingAnimal({ def, scale = 1 }) {
           }
         } else {
           // Outside boundary — pick new target inside zone
-          targetRef.current = randomInZoneFrom(activeZone[zoneKey] || ZONES[zoneKey])
+          targetRef.current = scaledRandom()
         }
       }
     }, 50)
@@ -200,8 +200,8 @@ function RoamingAnimal({ def, scale = 1 }) {
       initial={{scale:0,opacity:0}} animate={{scale:1,opacity:1}} exit={{scale:0,opacity:0}}
       transition={{type:'spring',stiffness:280}}
       style={{ position:'absolute',
-        left:`calc(${(pos.x/750*100).toFixed(3)}% - ${def.size/2}px)`,
-        top:`calc(${(pos.y/419*100).toFixed(3)}% - ${def.size/2}px)`,
+        left:`calc(${(pos.x/(750*scale)*100).toFixed(3)}% - ${def.size/2}px)`,
+        top:`calc(${(pos.y/(419*scale)*100).toFixed(3)}% - ${def.size/2}px)`,
         width:Math.round(def.size * scale), zIndex:Math.round(pos.y), cursor:'pointer' }}
       onClick={click}
     >
@@ -295,8 +295,8 @@ function Farmer({ scale = 1 }) {
 
   return (
     <div style={{ position:'absolute',
-      left:`calc(${(pos.x/750*100).toFixed(3)}% - 24px)`,
-      top:`calc(${(pos.y/419*100).toFixed(3)}% - 24px)`,
+      left:`calc(${(pos.x/(750*scale)*100).toFixed(3)}% - 24px)`,
+      top:`calc(${(pos.y/(419*scale)*100).toFixed(3)}% - 24px)`,
       width:Math.round(48 * scale), zIndex:Math.round(pos.y)+10, pointerEvents:'none' }}>
       <img src={asset(gif)} alt="Bauer"
         style={{ width:`${Math.round(48*scale)}px`, imageRendering:'pixelated',
