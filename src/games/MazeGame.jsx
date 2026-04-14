@@ -277,7 +277,7 @@ export default function MazeGame({ level = 1, onComplete }) {
       setWon(true)
       setMood('excited')
       setTimeout(() => {
-        onComplete({ score: neededStars, total: neededStars })
+        onComplete({ score: Math.max(neededStars, 1), total: Math.max(neededStars, 1) })
       }, 1800)
     }
   }, [playerPos]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -316,6 +316,38 @@ export default function MazeGame({ level = 1, onComplete }) {
       gap:'clamp(10px,1.8vw,18px)',
       outline:'none',
     }}>
+
+      {/* WIN overlay */}
+      <AnimatePresence>
+        {won && (
+          <motion.div
+            initial={{ opacity:0, scale:0.7 }}
+            animate={{ opacity:1, scale:1 }}
+            style={{
+              position:'fixed', inset:0, zIndex:500,
+              display:'flex', alignItems:'center', justifyContent:'center',
+              background:'rgba(0,0,0,0.55)', flexDirection:'column', gap:16,
+            }}
+          >
+            {['🌟','✨','⭐','🎉','🌟','✨'].map((e,i) => (
+              <motion.span key={i}
+                initial={{y:0,x:0,scale:0,opacity:1}}
+                animate={{y:-(100+i*40),x:(i%2===0?1:-1)*(60+i*30),scale:[0,1.4,0],opacity:[1,1,0]}}
+                transition={{duration:0.9,delay:i*0.08}}
+                style={{position:'absolute',fontSize:36}}>{e}</motion.span>
+            ))}
+            <motion.div
+              animate={{scale:[1,1.1,1],rotate:[0,5,-5,0]}}
+              transition={{duration:0.6,repeat:3}}
+              style={{fontSize:80}}>🏆</motion.div>
+            <div style={{fontFamily:'var(--font-heading)',fontSize:28,fontWeight:900,color:'#FFD93D',
+              textShadow:'0 0 20px rgba(255,217,61,0.8)'}}>Super gemacht!</div>
+            <div style={{fontFamily:'var(--font-body)',fontSize:16,color:'rgba(255,255,255,0.8)'}}>
+              Du hast das Labyrinth gelöst! 🎉
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Status bar */}
       <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap', justifyContent:'center' }}>
