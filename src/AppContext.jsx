@@ -44,6 +44,17 @@ function reducer(state, action) {
     case 'RESET_ALL':
       return { ...initialState, language: state.language }
 
+    case 'RESET_MODULE': {
+      const id = action.payload
+      return { ...state, progress: { ...state.progress, [id]: freshProgress() } }
+    }
+
+    case 'SET_MODULE_LEVEL': {
+      const { id, level } = action.payload
+      const prev = state.progress[id] ?? freshProgress()
+      return { ...state, progress: { ...state.progress, [id]: { ...prev, currentLevel: level, completed: false } } }
+    }
+
     case 'SET_LANGUAGE':
       return { ...state, language: action.payload }
 
