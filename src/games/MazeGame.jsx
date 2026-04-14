@@ -99,6 +99,15 @@ function bfsPath(grid, rows, cols, from, to) {
   return [] // no path found
 }
 
+// Theme per level group
+const LEVEL_THEMES = [
+  { wall:'#1d3a1a,#2a5225', floor1:'#c8e6a0', floor2:'#bfdc98', name:'Wald' },        // L1-2
+  { wall:'#1a2a3a,#253545', floor1:'#a0c4e6', floor2:'#8fb8da', name:'Ozean' },       // L3-4
+  { wall:'#3a1a1a,#5a2525', floor1:'#e6b0a0', floor2:'#daa090', name:'Vulkan' },      // L5-6
+  { wall:'#2a1a3a,#3a2550', floor1:'#c4a0e6', floor2:'#b890da', name:'Kristall' },    // L7-8
+  { wall:'#101020,#1a1a35', floor1:'#9090c8', floor2:'#8080b8', name:'Weltraum' },    // L9-10
+]
+
 const LEVEL_CONFIG = [
   { cols: 5,  rows: 5,  stars: 0, label: 'Winzig' },
   { cols: 7,  rows: 7,  stars: 1, label: 'Klein' },
@@ -127,8 +136,29 @@ export default function MazeGame({ level = 1, onComplete }) {
       const s = placeStar(grid, rows, cols, avoidPos)
       if (s) { starsPos.push(s); avoidPos = s }
     }
-    // Dragon waypoints: pick 3 cells in the inner area, far from both player start and exit
-    const waypoints = pickOpenCells(grid, rows, cols, 3, Math.max(3, Math.floor(Math.min(cols, rows) / 3)))
+    // Dragon waypoints: pick cells that are guaranteed to be connected via BFS
+    // Start from a random open cell and build a chain of reachable waypoints
+    const allOpen = []
+    for (let wy = 2; wy < rows - 2; wy++) {
+      for (let wx = 2; wx < cols - 2; wx++) {
+        if (grid[wy][wx] === 0) {
+          const dStart = Math.abs(wx - 1) + Math.abs(wy - 1)
+          const dExit  = Math.abs(wx - (cols - 2)) + Math.abs(wy - (rows - 2))
+          if (dStart >= 3 && dExit >= 3) allOpen.push({ x: wx, y: wy })
+        }
+      }
+    }
+    allOpen.sort(() => Math.random() - 0.5)
+    const waypoints = []
+    for (const candidate of allOpen) {
+      if (waypoints.length === 0) { waypoints.push(candidate); continue }
+      const prev = waypoints[waypoints.length - 1]
+      const path = bfsPath(grid, rows, cols, prev, candidate)
+      if (path.length > 2) { waypoints.push(candidate) }
+      if (waypoints.length >= 4) break
+    }
+    // Fallback: if we couldn't find 4, use what we have
+    if (waypoints.length < 2 && allOpen.length >= 2) waypoints.push(allOpen[1])
     return { grid, start, exit, starsPos, waypoints }
   }, [cols, rows, cfg.stars])
 
@@ -206,7 +236,15 @@ export default function MazeGame({ level = 1, onComplete }) {
         ghostWpIdx.current = (ghostWpIdx.current + 1) % wps.length
         const to = wps[ghostWpIdx.current]
         const newPath = bfsPath(maze.grid, cols, rows, from, to)
-        ghostPathRef.current = newPath.length > 1 ? newPath : [from]
+        if (newPath.length > 1) {
+          ghostPathRef.current = newPath
+        } else {
+          // No path found — skip to next waypoint
+          ghostWpIdx.current = (ghostWpIdx.current + 1) % wps.length
+          const to2 = wps[ghostWpIdx.current]
+          const newPath2 = bfsPath(maze.grid, cols, rows, from, to2)
+          ghostPathRef.current = newPath2.length > 1 ? newPath2 : [from]
+        }
         ghostPathStep.current = 0
         setGhostPos({ ...ghostPathRef.current[0] })
       } else {
@@ -332,7 +370,7 @@ export default function MazeGame({ level = 1, onComplete }) {
 
       {/* Maze canvas */}
       <div style={{
-        background:'#1a2e1a', borderRadius:20, padding:6,
+        background: (['#1a2e1a','#1a2535','#2e1a1a','#251a2e','#101020'])[Math.min(Math.floor((level-1)/2), 4)], borderRadius:20, padding:6,
         boxShadow:'0 8px 36px rgba(10,40,10,0.45)',
         overflow:'hidden',
         position:'relative',
@@ -347,16 +385,15 @@ export default function MazeGame({ level = 1, onComplete }) {
             const isStar   = maze.starsPos.some(s => s.x === x && s.y === y && !collectedStars.some(c => c.x === x && c.y === y))
             const isStart  = x === 1 && y === 1
 
-            // FOREST THEME
-            // Wall: dark tree/stone look with subtle inner gradient
-            // Floor: warm earthy path, slightly checkered
+            const themeIdx = Math.min(Math.floor((level - 1) / 2), LEVEL_THEMES.length - 1)
+            const theme = LEVEL_THEMES[themeIdx]
             const isEven = (x + y) % 2 === 0
             let bg = cell === 1
-              ? `linear-gradient(135deg,#1d3a1a,#2a5225)`
+              ? `linear-gradient(135deg,${theme.wall})`
               : isExit
               ? (allStarsHeld ? 'radial-gradient(circle,#ffe066,#ffa500)' : 'radial-gradient(circle,#8b7a4a,#6b5c33)')
-              : isStart ? '#d4edaa'
-              : isEven ? '#c8e6a0' : '#bfdc98'
+              : isStart ? theme.floor1
+              : isEven ? theme.floor1 : theme.floor2
 
             return (
               <div key={`${x}-${y}`} style={{
