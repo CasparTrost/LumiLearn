@@ -333,19 +333,20 @@ export default function MazeGame({ level=1, onComplete }) {
           const hasVase=maze.vases.has(`${x},${y}`)&&!potion&&!isExit
           const wallInfo = cell===1 ? wallTile(x,y,maze.g,rows,cols) : null
           const isVert = wallInfo === 'vert'
-          const [tc,tr] = isVert ? TW.wallFill : (cell===1 ? wallInfo : floorTile(x,y))
+          const wSprite = cell===1 ? wallSprite(x,y,maze.g,rows,cols) : null
+          const [tc,tr] = cell===1 ? (isVert ? TW.wallFill : (wallInfo||TW.wallFill)) : floorTile(x,y)
 
           return (
             <div key={`${x}-${y}`} style={{position:'absolute',left:x*cellSize,top:y*cellSize,
               width:cellSize,height:cellSize,overflow:'hidden'}}>
               {/* Base tile */}
-              {isVert ? (
+              {wSprite ? (
                 <div style={{position:'absolute',inset:0,
-                  backgroundImage:`url(${spr('maze_wall_vert.png')})`,
+                  backgroundImage:`url(${spr(wSprite)})`,
                   backgroundSize:`${cellSize}px ${cellSize}px`,
                   backgroundRepeat:'no-repeat',backgroundPosition:'center',
                   imageRendering:'pixelated',
-                  filter:'brightness(0.75) saturate(0.85)'}}/>
+                  filter:'brightness(0.7) saturate(0.85)'}}/>
               ) : (
                 <div style={{position:'absolute',inset:0,...tbg(tc,tr,ts),
                   filter:cell===1?'brightness(0.65) saturate(0.85)':'brightness(0.55) saturate(0.7)'}}/>
