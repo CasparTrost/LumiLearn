@@ -1,6 +1,6 @@
 import { useState, useContext, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { AppContext, MAX_LEVELS } from '../AppContext.jsx'
+import { useApp, MAX_LEVELS } from '../AppContext.jsx'
 
 const PIN = '1234'
 
@@ -77,7 +77,7 @@ function PinPad({ onSuccess, onCancel }) {
 }
 
 export default function ParentScreen({ onClose }) {
-  const { state, dispatch } = useContext(AppContext)
+  const { state, dispatch } = useApp()
   const [unlocked, setUnlocked] = useState(false)
   const [toast, setToast] = useState(null)
 
