@@ -136,29 +136,31 @@ export default function MazeGame({ level = 1, onComplete }) {
       const s = placeStar(grid, rows, cols, avoidPos)
       if (s) { starsPos.push(s); avoidPos = s }
     }
-    // Dragon waypoints: pick cells that are guaranteed to be connected via BFS
-    // Start from a random open cell and build a chain of reachable waypoints
-    const allOpen = []
+    // Compute main path start→exit — dragon must NEVER patrol these cells
+    const mainPath = bfsPath(grid, rows, cols, start, exit)
+    const mainPathSet = new Set(mainPath.map(p => `${p.x},${p.y}`))
+
+    // Dragon waypoints: only cells NOT on the main path
+    const safeOpen = []
     for (let wy = 2; wy < rows - 2; wy++) {
       for (let wx = 2; wx < cols - 2; wx++) {
-        if (grid[wy][wx] === 0) {
-          const dStart = Math.abs(wx - 1) + Math.abs(wy - 1)
-          const dExit  = Math.abs(wx - (cols - 2)) + Math.abs(wy - (rows - 2))
-          if (dStart >= 3 && dExit >= 3) allOpen.push({ x: wx, y: wy })
+        if (grid[wy][wx] === 0 && !mainPathSet.has(`${wx},${wy}`)) {
+          safeOpen.push({ x: wx, y: wy })
         }
       }
     }
-    allOpen.sort(() => Math.random() - 0.5)
+    safeOpen.sort(() => Math.random() - 0.5)
     const waypoints = []
-    for (const candidate of allOpen) {
+    for (const candidate of safeOpen) {
       if (waypoints.length === 0) { waypoints.push(candidate); continue }
       const prev = waypoints[waypoints.length - 1]
       const path = bfsPath(grid, rows, cols, prev, candidate)
-      if (path.length > 2) { waypoints.push(candidate) }
-      if (waypoints.length >= 4) break
+      // Only add if the path between waypoints also stays off the main route
+      const pathOffMain = path.every(p => !mainPathSet.has(`${p.x},${p.y}`))
+      if (path.length > 1 && pathOffMain) { waypoints.push(candidate) }
+      if (waypoints.length >= 3) break
     }
-    // Fallback: if we couldn't find 4, use what we have
-    if (waypoints.length < 2 && allOpen.length >= 2) waypoints.push(allOpen[1])
+    if (waypoints.length < 2 && safeOpen.length >= 2) waypoints.push(safeOpen[1])
     return { grid, start, exit, starsPos, waypoints }
   }, [cols, rows, cfg.stars])
 
