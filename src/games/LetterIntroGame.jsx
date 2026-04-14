@@ -1,13 +1,13 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { voice } from '../voice.js'
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 const LETTER_DATA = {
-  A: { color:'#FF6B6B', info:'A ist der 1. Buchstabe des Alphabets – und ein Vokal.',         opts:[{ e:'🍎', w:'Apfel' },   { e:'🐒', w:'Affe' },      { e:'🚗', w:'Auto' }]},
+  A: { color:'#FF6B6B', info:'A ist der 1. Buchstabe des Alphabets – und ein Vokal.',         opts:[{ e:'🍎', w:'Apfel' },   { e:'🐒', w:'Affe' },      { e:'🚗', w:'Auto' },    { e:'🐊', w:'Alligator' }, { e:'🍆', w:'Aubergine' }, { e:'🦅', w:'Adler' }]},
   B: { color:'#FF9F43', info:'B ist der 2. Buchstabe des Alphabets.',                          opts:[{ e:'🌸', w:'Blume' },   { e:'🐝', w:'Biene' },     { e:'🎈', w:'Ballon' }]},
   D: { color:'#c8a500', info:'D ist der 4. Buchstabe – nach C kommt D.',                       opts:[{ e:'🦖', w:'Dino' },    { e:'🐉', w:'Drache' },    { e:'🥫', w:'Dose' }]},
-  E: { color:'#5DB85D', info:'E ist der 5. Buchstabe des Alphabets – und ein Vokal.',          opts:[{ e:'🥚', w:'Ei' },      { e:'🐘', w:'Elefant' },   { e:'🦆', w:'Ente' }]},
+  E: { color:'#5DB85D', info:'E ist der 5. Buchstabe des Alphabets – und ein Vokal.',          opts:[{ e:'🥚', w:'Ei' },      { e:'🐘', w:'Elefant' },   { e:'🦆', w:'Ente' },    { e:'🦔', w:'Eichhörnchen' }, { e:'🍓', w:'Erdbeere' }, { e:'🦅', w:'Eule' }]},
   F: { color:'#74B9FF', info:'F ist der 6. Buchstabe. F klingt wie ein leises „fff".',         opts:[{ e:'🐟', w:'Fisch' },   { e:'🐸', w:'Frosch' },    { e:'🦊', w:'Fuchs' }]},
   G: { color:'#A29BFE', info:'G ist der 7. Buchstabe des Alphabets.',                          opts:[{ e:'🦒', w:'Giraffe' }, { e:'👻', w:'Geist' },     { e:'🎁', w:'Geschenk' }]},
   H: { color:'#E84393', info:'H ist der 8. Buchstabe. H haucht ganz leise.',                   opts:[{ e:'🐶', w:'Hund' },    { e:'🐰', w:'Hase' },      { e:'🏠', w:'Haus' }]},
@@ -20,15 +20,20 @@ const LETTER_DATA = {
   O: { color:'#74B9FF', info:'O ist der 15. Buchstabe des Alphabets – und ein Vokal.',         opts:[{ e:'👂', w:'Ohr' },     { e:'🍊', w:'Orange' },    { e:'🐙', w:'Oktopus' }]},
   P: { color:'#A29BFE', info:'P ist der 16. Buchstabe des Alphabets.',                         opts:[{ e:'🐧', w:'Pinguin' }, { e:'🍄', w:'Pilz' },      { e:'🐴', w:'Pferd' }]},
   R: { color:'#E84393', info:'R ist der 18. Buchstabe. R kann man rollen lassen.',             opts:[{ e:'🚀', w:'Rakete' },  { e:'🤖', w:'Roboter' },   { e:'🌹', w:'Rose' }]},
-  S: { color:'#44D498', info:'S ist der 19. Buchstabe. S zischt wie eine Schlange.',           opts:[{ e:'☀️', w:'Sonne' },   { e:'⭐', w:'Stern' },     { e:'🐌', w:'Schnecke' }]},
+  S: { color:'#44D498', info:'S ist der 19. Buchstabe. S zischt wie eine Schlange.',           opts:[{ e:'☀️', w:'Sonne' },   { e:'⭐', w:'Stern' },     { e:'🐌', w:'Schnecke' }, { e:'🦋', w:'Schmetterling' }, { e:'🐍', w:'Schlange' }, { e:'🧸', w:'Spielzeug' }]},
   T: { color:'#FF6B9A', info:'T ist der 20. Buchstabe des Alphabets.',                         opts:[{ e:'🐯', w:'Tiger' },   { e:'🚜', w:'Traktor' },   { e:'🥁', w:'Trommel' }]},
   U: { color:'#6C63FF', info:'U ist der 21. Buchstabe des Alphabets – und ein Vokal.',         opts:[{ e:'⏰', w:'Uhr' },     { e:'🦉', w:'Uhu' },       { e:'🛸', w:'Ufo' }]},
   V: { color:'#FF6B6B', info:'V ist der 22. Buchstabe. V klingt ähnlich wie F.',              opts:[{ e:'🐦', w:'Vogel' },   { e:'🌋', w:'Vulkan' },    { e:'🏺', w:'Vase' }]},
   W: { color:'#FF9F43', info:'W ist der 23. Buchstabe des Alphabets.',                         opts:[{ e:'🐺', w:'Wolf' },    { e:'☁️', w:'Wolke' },     { e:'🐋', w:'Wal' }]},
-  Z: { color:'#5DB85D', info:'Z ist der 26. und letzte Buchstabe des Alphabets.',              opts:[{ e:'🦓', w:'Zebra' },   { e:'🦷', w:'Zahn' },      { e:'🚂', w:'Zug' }]},
+  Z: { color:'#5DB85D', info:'Z ist der 26. und letzte Buchstabe des Alphabets.',              opts:[{ e:'🦓', w:'Zebra' },   { e:'🦷', w:'Zahn' },      { e:'🚂', w:'Zug' },     { e:'🎯', w:'Ziel' },    { e:'🧱', w:'Ziegel' }]},
+  C: { color:'#E17055', info:'C ist der 3. Buchstabe. C klingt oft wie K oder Z.',                opts:[{ e:'🤡', w:'Clown' },   { e:'💻', w:'Computer' },  { e:'🍪', w:'Cookie' }]},
+  Q: { color:'#6C5CE7', info:'Q ist der 17. Buchstabe. Q kommt fast immer mit U zusammen.',       opts:[{ e:'🐊', w:'Qualle' },  { e:'💨', w:'Qualm' },     { e:'🎵', w:'Quetsche' }]},
+  X: { color:'#00B894', info:'X ist der 24. Buchstabe. X macht ein „ks" Geräusch.',               opts:[{ e:'🎸', w:'Xylofon' }, { e:'✖️', w:'Kreuz' },    { e:'📐', w:'X-Form' }]},
+  Y: { color:'#FDCB6E', info:'Y ist der 25. Buchstabe. Y klingt wie ein „Ü" oder „J".',           opts:[{ e:'🧘', w:'Yoga' },    { e:'🛥️', w:'Yacht' },    { e:'🧶', w:'Yarn' }]},
 }
 
 const ALL_LETTERS = Object.keys(LETTER_DATA)
+const VOWELS = new Set(['A','E','I','O','U'])
 
 // ─── Voice audio ─────────────────────────────────────────────────────────────
 const ABC = 'audio/abc-abenteuer/'
@@ -55,6 +60,7 @@ const LETTER_INFO_AUDIO = {
   V: ABC + 'v-ist-der-22-buchstabe-v-klingt-aehnlich-wie-f.mp3',
   W: ABC + 'w-ist-der-23-buchstabe-des-alphabets.mp3',
   Z: ABC + 'z-ist-der-26-und-letzte-buchstabe-des-alphabets.mp3',
+  C: null, Q: null, X: null, Y: null,
 }
 
 function wordAudio(word) {
@@ -66,8 +72,8 @@ function wordAudio(word) {
 const LEVEL_LETTERS = [
   ['A','E','I','O','U','M','B','S'],                            // L1 – Vokale + häufige
   ['H','D','F','K','L','N','R','T'],                            // L2
-  ['G','J','P','W','Z','V','A','E'],                            // L3 – Schwerer + Wiederholung
-  ['A','B','D','E','F','G','H','I','J','K','L','M'],            // L4
+  ['G','J','P','W','Z','V','C','Q'],                            // L3 – inkl. C und Q
+  ['A','B','D','E','F','G','H','I','J','K','L','M','X','Y'],    // L4 – inkl. X und Y
   ALL_LETTERS,                                                   // L5 – alle
 ]
 
@@ -104,6 +110,7 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
   const [selected, setSelected] = useState(null)
   const [score,    setScore]    = useState(0)
   const [shakeOpt, setShakeOpt] = useState(null)
+  const [showWeiter, setShowWeiter] = useState(false)
 
   // Stop narration when game unmounts
   useEffect(() => () => voice.stop(), [])
@@ -112,11 +119,20 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
   useEffect(() => {
     const letter = questions[idx]?.letter
     if (!letter) return
-    voice.chain([
-      LETTER_INFO_AUDIO[letter],
-      ABC + `welches-wort-beginnt-mit-${letter.toLowerCase()}.mp3`,
-    ])
+    const infoAudio = LETTER_INFO_AUDIO[letter]
+    if (infoAudio) voice.chain([infoAudio, ABC + `welches-wort-beginnt-mit-${letter.toLowerCase()}.mp3`])
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const weiterClick = useCallback(() => {
+    setShowWeiter(false)
+    const next = idx + 1
+    if (next >= questions.length) {
+      onComplete({ score, total: questions.length })
+    } else {
+      setIdx(next)
+      setSelected(null)
+    }
+  }, [idx, questions.length, score, onComplete])
 
   const q = questions[idx]
   if (!q) return null
@@ -128,15 +144,7 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
       setSelected(opt)
       const nextScore = score + 1
       setScore(nextScore)
-      setTimeout(() => {
-        const next = idx + 1
-        if (next >= questions.length) {
-          onComplete({ score: nextScore, total: questions.length })
-        } else {
-          setIdx(next)
-          setSelected(null)
-        }
-      }, 1200)
+      setShowWeiter(true)
     } else {
       setShakeOpt(opt)
       setTimeout(() => setShakeOpt(null), 600)
@@ -163,7 +171,7 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
           animate={{ scale:1, rotate:0, opacity:1 }}
           exit={{ scale:0.4, rotate:15, opacity:0 }}
           transition={{ type:'spring', stiffness:360, damping:20 }}
-          style={{ textAlign:'center', display:'flex', flexDirection:'row', alignItems:'center', justifyContent:'center', gap:'clamp(12px,3vw,28px)' }}
+          style={{ textAlign:'center', display:'flex', flexDirection:'row', alignItems:'center', justifyContent:'center', gap:'clamp(12px,3vw,28px)', position:'relative' }}
         >
           {/* Uppercase */}
           <div style={{
@@ -183,6 +191,15 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
           }}>
             {q.letter.toLowerCase()}
           </div>
+          {VOWELS.has(q.letter) && (
+            <div style={{
+              position:'absolute', top:-8, right:-8,
+              background:'#FFD93D', color:'#333',
+              borderRadius:99, padding:'2px 10px',
+              fontFamily:'var(--font-heading)', fontSize:12, fontWeight:700,
+              boxShadow:'0 2px 8px rgba(0,0,0,0.15)',
+            }}>Vokal</div>
+          )}
         </motion.div>
       </AnimatePresence>
 
@@ -286,6 +303,23 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
           )
         })}
       </div>
+
+      {/* Weiter button */}
+      {showWeiter && (
+        <motion.button
+          initial={{ scale:0 }} animate={{ scale:1 }}
+          transition={{ type:'spring', stiffness:300, delay:0.2 }}
+          whileHover={{ scale:1.06 }} whileTap={{ scale:0.94 }}
+          onClick={weiterClick}
+          style={{
+            background:`linear-gradient(135deg,${q.color},${q.color}cc)`,
+            color:'white', border:'none', borderRadius:20,
+            padding:'14px 40px',
+            fontFamily:'var(--font-heading)', fontSize:20, fontWeight:700,
+            cursor:'pointer', boxShadow:`0 5px 20px ${q.color}66`,
+          }}
+        >Weiter! →</motion.button>
+      )}
 
       {/* Score */}
       <p style={{ fontFamily:'var(--font-heading)', fontSize:15, color:'var(--text-muted)', margin:0 }}>
