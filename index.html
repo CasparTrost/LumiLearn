@@ -12,5 +12,10 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
-  </body>
+    <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/LumiLearn/sw.js')
+    }
+  </script>
+</body>
 </html>
