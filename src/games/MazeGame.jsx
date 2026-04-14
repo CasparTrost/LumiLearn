@@ -122,6 +122,26 @@ function Torch({ size }) {
   )
 }
 
+
+// Wang-tile wall sprite selection
+function wallSprite(x, y, g, rows, cols) {
+  const U = y > 0      && g[y-1] && g[y-1][x] === 1
+  const D = y < rows-1 && g[y+1] && g[y+1][x] === 1
+  const L = x > 0      && g[y][x-1] === 1
+  const R = x < cols-1 && g[y][x+1] === 1
+  if (U && D && L && R) return 'maze_w_wall_solid.png'
+  if (!U && !L && D && R) return 'maze_w_corner_sw.png'
+  if (!U && !R && D && L) return 'maze_w_corner_se.png'
+  if (!D && !L && U && R) return 'maze_w_corner_nw.png'
+  if (!D && !R && U && L) return 'maze_w_corner_ne.png'
+  if (!D) return 'maze_w_wall_front.png'
+  if (!U) return 'maze_w_wall_back.png'
+  if (!L) return 'maze_w_wall_left.png'
+  if (!R) return 'maze_w_wall_right.png'
+  if (!L && !R) return 'maze_w_wall_right.png'
+  return 'maze_w_wall_front.png'
+}
+
 export default function MazeGame({ level=1, onComplete }) {
   const cfg = LEVELS[Math.min(level-1,LEVELS.length-1)]
   const {cols,rows} = cfg
@@ -333,7 +353,7 @@ export default function MazeGame({ level=1, onComplete }) {
           const hasVase=maze.vases.has(`${x},${y}`)&&!potion&&!isExit
           const wallInfo = cell===1 ? wallTile(x,y,maze.g,rows,cols) : null
           const isVert = wallInfo === 'vert'
-          const wSprite = cell===1 ? wallSprite(x,y,maze.g,rows,cols) : null
+          const wSprite = cell===1 ? wallSprite(x,y,maze.g,rows,cols) : null  // eslint-disable-line
           const [tc,tr] = cell===1 ? (isVert ? TW.wallFill : (wallInfo||TW.wallFill)) : floorTile(x,y)
 
           return (
