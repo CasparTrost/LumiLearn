@@ -136,31 +136,33 @@ export default function MazeGame({ level = 1, onComplete }) {
       const s = placeStar(grid, rows, cols, avoidPos)
       if (s) { starsPos.push(s); avoidPos = s }
     }
-    // Compute main path start→exit — dragon must NEVER patrol these cells
-    const mainPath = bfsPath(grid, rows, cols, start, exit)
-    const mainPathSet = new Set(mainPath.map(p => `${p.x},${p.y}`))
-
-    // Dragon waypoints: only cells NOT on the main path
-    const safeOpen = []
-    for (let wy = 2; wy < rows - 2; wy++) {
-      for (let wx = 2; wx < cols - 2; wx++) {
-        if (grid[wy][wx] === 0 && !mainPathSet.has(`${wx},${wy}`)) {
-          safeOpen.push({ x: wx, y: wy })
+    // Dragon waypoints: anywhere except very close to start/exit
+    // This means dragon CAN cross player paths but player can always dodge
+    const noGoZone = new Set()
+    // Protect a small bubble around start and exit
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+      noGoZone.add(`${start.x+dx},${start.y+dy}`)
+      noGoZone.add(`${exit.x+dx},${exit.y+dy}`)
+    }
+    const allOpen = []
+    for (let wy = 1; wy < rows - 1; wy++) {
+      for (let wx = 1; wx < cols - 1; wx++) {
+        if (grid[wy][wx] === 0 && !noGoZone.has(`${wx},${wy}`)) {
+          allOpen.push({ x: wx, y: wy })
         }
       }
     }
-    safeOpen.sort(() => Math.random() - 0.5)
+    allOpen.sort(() => Math.random() - 0.5)
+    // Pick waypoints that are reachable from each other
     const waypoints = []
-    for (const candidate of safeOpen) {
+    for (const candidate of allOpen) {
       if (waypoints.length === 0) { waypoints.push(candidate); continue }
       const prev = waypoints[waypoints.length - 1]
       const path = bfsPath(grid, rows, cols, prev, candidate)
-      // Only add if the path between waypoints also stays off the main route
-      const pathOffMain = path.every(p => !mainPathSet.has(`${p.x},${p.y}`))
-      if (path.length > 1 && pathOffMain) { waypoints.push(candidate) }
+      if (path.length > 3) waypoints.push(candidate)
       if (waypoints.length >= 3) break
     }
-    if (waypoints.length < 2 && safeOpen.length >= 2) waypoints.push(safeOpen[1])
+    if (waypoints.length < 2 && allOpen.length >= 2) waypoints.push(allOpen[1])
     return { grid, start, exit, starsPos, waypoints }
   }, [cols, rows, cfg.stars])
 
@@ -209,6 +211,7 @@ export default function MazeGame({ level = 1, onComplete }) {
 
   // Keyboard
   useEffect(() => {
+    const preventScroll = (e) => { if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault() }
     const onKey = (e) => {
       const map = { ArrowUp:'U', ArrowDown:'D', ArrowLeft:'L', ArrowRight:'R',
                     w:'U', s:'D', a:'L', d:'R', W:'U', S:'D', A:'L', D:'R' }
@@ -221,7 +224,8 @@ export default function MazeGame({ level = 1, onComplete }) {
       if (dir === 'R') tryMove( 1, 0)
     }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    window.addEventListener('keydown', preventScroll)
+    return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('keydown', preventScroll) }
   }, [tryMove])
 
   // Dragon patrol — follows BFS paths between waypoints in a cycle
@@ -315,6 +319,8 @@ export default function MazeGame({ level = 1, onComplete }) {
       padding:'clamp(12px,2vw,24px) 12px',
       gap:'clamp(10px,1.8vw,18px)',
       outline:'none',
+      touchAction:'none',
+      overscrollBehavior:'none',
     }}>
 
       {/* WIN overlay */}
@@ -510,7 +516,7 @@ export default function MazeGame({ level = 1, onComplete }) {
       </div>
 
       {/* D-Pad */}
-      <div style={{ display:'grid', gridTemplateColumns:'48px 48px 48px', gridTemplateRows:'48px 48px 48px', gap:4 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'72px 72px 72px', gridTemplateRows:'72px 72px 72px', gap:6 }}>
         {[
           { label:'▲', dx:0, dy:-1, col:2, row:1 },
           { label:'◀', dx:-1, dy:0, col:1, row:2 },
@@ -531,7 +537,7 @@ export default function MazeGame({ level = 1, onComplete }) {
               cursor: btn.dx === 0 && btn.dy === 0 ? 'default' : 'pointer',
               boxShadow: btn.dx !== 0 || btn.dy !== 0 ? '0 4px 14px rgba(74,0,224,0.35)' : 'none',
               display:'flex', alignItems:'center', justifyContent:'center',
-              width:48, height:48,
+              width:72, height:72, fontSize:28,
             }}
           >
             {btn.label !== '◉' ? btn.label : ''}
