@@ -118,6 +118,13 @@ const SCENARIO_AUDIO = [
   [null, null], // Neugierig: geheimnisvolle Box
 ]
 
+const EMOTION_PASTEL = {
+  'Glücklich':'#FFFBEA','Traurig':'#EFF6FF','Wütend':'#FFF0F0','Ängstlich':'#F3F0FF',
+  'Aufgeregt':'#FFF0F8','Müde':'#F5F5F5','Verlegen':'#FFF4EE','Dankbar':'#F0FAF2',
+  'Überrascht':'#FFF8EE','Stolz':'#EDFAF3','Gelangweilt':'#F7F7F7',
+  'Eifersüchtig':'#FFF9EE','Neugierig':'#EFF8FF',
+}
+
 function shuffle(a) { return [...a].sort(() => Math.random() - 0.5) }
 
 export default function EmotionGame({ level = 1, onComplete }) {
@@ -138,6 +145,7 @@ export default function EmotionGame({ level = 1, onComplete }) {
   const [selected,   setSelected] = useState(null)
   const [correct,    setCorrect]  = useState(0)
   const [showInfo,   setShowInfo] = useState(false)
+  const [showWeiter, setShowWeiter] = useState(false)
 
   // Stop narration when game unmounts
   useEffect(() => () => voice.stop(), [])
@@ -161,22 +169,22 @@ export default function EmotionGame({ level = 1, onComplete }) {
 
     if (ok) {
       voice.chain([EMOTION_AUDIO[ch.emotion], ch.ea])
-      // Correct: show explanation 8 s, then advance
-      setTimeout(() => {
-        setShowInfo(false)
-        setTimeout(() => {
-          if (idx + 1 >= challenges.length) { onComplete({ score: nc, total: challenges.length }) }
-          else { setIdx(i => i + 1); setSelected(null) }
-        }, 200)
-      }, 8000)
+      setShowWeiter(true)
     } else {
-      // Wrong: show explanation + face 8 s, then let them try again
+      // Wrong: show explanation 5s, then let them try again
       setTimeout(() => {
         setShowInfo(false)
-        setSelected(null)  // re-enable buttons for another attempt
-      }, 8000)
+        setSelected(null)
+      }, 5000)
     }
   }, [selected, ch, correct, idx, challenges, onComplete])
+
+  const weiterClick = useCallback(() => {
+    setShowInfo(false)
+    setShowWeiter(false)
+    if (idx + 1 >= challenges.length) { onComplete({ score: correct, total: challenges.length }) }
+    else { setIdx(i => i + 1); setSelected(null) }
+  }, [idx, challenges.length, correct, onComplete])
 
   if (!ch) return null
 
@@ -185,6 +193,9 @@ export default function EmotionGame({ level = 1, onComplete }) {
       flex:1, display:'flex', flexDirection:'column', alignItems:'center',
       padding:'clamp(14px,2.5vw,28px) clamp(16px,4vw,40px)',
       gap:'clamp(12px,2vw,22px)',
+      background: selected ? (EMOTION_PASTEL[ch.emotion] || 'transparent') : 'transparent',
+      transition:'background 0.6s ease',
+      borderRadius:20,
     }}>
 
       {/* Progress dots */}
@@ -326,6 +337,23 @@ export default function EmotionGame({ level = 1, onComplete }) {
           )
         })}
       </div>
+
+      {/* Weiter button */}
+      {showWeiter && (
+        <motion.button
+          initial={{ scale:0, opacity:0 }} animate={{ scale:1, opacity:1 }}
+          transition={{ type:'spring', stiffness:300, delay:0.3 }}
+          whileHover={{ scale:1.06 }} whileTap={{ scale:0.94 }}
+          onClick={weiterClick}
+          style={{
+            background:'linear-gradient(135deg,#FD79A8,#e84393)',
+            color:'white', border:'none', borderRadius:20,
+            padding:'14px 40px',
+            fontFamily:'var(--font-heading)', fontSize:20, fontWeight:700,
+            cursor:'pointer', boxShadow:'0 5px 20px rgba(253,121,168,0.45)',
+          }}
+        >Weiter! →</motion.button>
+      )}
 
       <p style={{ fontFamily:'var(--font-heading)', fontSize:17, color:'var(--text-muted)' }}>
         ✅ {correct} von {Math.min(idx + (selected !== null ? 1 : 0), challenges.length)} richtig
