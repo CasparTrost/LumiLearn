@@ -123,24 +123,24 @@ function Torch({ size }) {
 }
 
 
-// Wang-tile wall sprite — rules from Caspar's editor
+// Wang-tile wall sprite — rules from Caspar v2
 const WALL_RULES = {
   'U0D0L0R0': 'maze_w_6_7_orig.png',
-  'U0D0L0R1': 'maze_w_6_7_orig.png',
-  'U0D0L1R0': 'maze_w_6_7_orig.png',
-  'U0D0L1R1': 'maze_w_6_7_V.png',
+  'U0D0L0R1': 'maze_w_6_7_R180.png',
+  'U0D0L1R0': 'maze_w_6_7_V.png',
+  'U0D0L1R1': 'maze_w_6_7_R180.png',
   'U0D1L0R0': 'maze_w_6_7_R270.png',
   'U0D1L0R1': 'maze_w_5_7_orig.png',
   'U0D1L1R0': 'maze_w_7_7_orig.png',
   'U0D1L1R1': 'maze_w_6_7_orig.png',
-  'U1D0L0R0': 'maze_w_9_7_R270.png',
-  'U1D0L0R1': 'maze_w_14_7_orig.png',
-  'U1D0L1R0': 'maze_w_13_7_orig.png',
+  'U1D0L0R0': 'maze_w_4_7_R180.png',
+  'U1D0L0R1': 'maze_w_9_8_H.png',
+  'U1D0L1R0': 'maze_w_9_8_orig.png',
   'U1D0L1R1': 'maze_w_9_7_orig.png',
   'U1D1L0R0': 'maze_w_9_7_R90.png',
   'U1D1L0R1': 'maze_w_9_7_R90.png',
   'U1D1L1R0': 'maze_w_9_7_R270.png',
-  'U1D1L1R1': 'maze_w_6_10_orig.png'
+  'U1D1L1R1': 'maze_w_6_7_orig.png'
 }
 
 function wallSprite(x, y, g, rows, cols) {
@@ -148,9 +148,9 @@ function wallSprite(x, y, g, rows, cols) {
   const D = y < rows-1 && g[y+1] && g[y+1][x] === 1 ? 1 : 0
   const L = x > 0      && g[y][x-1] === 1 ? 1 : 0
   const R = x < cols-1 && g[y][x+1] === 1 ? 1 : 0
-  const pattern = `U${U}D${D}L${L}R${R}`
-  return WALL_RULES[pattern] || 'maze_wall_solid_v2.png'
+  return WALL_RULES[`U${U}D${D}L${L}R${R}`] || 'maze_w_6_7_orig.png'
 }
+
 
 export default function MazeGame({ level=1, onComplete }) {
   const cfg = LEVELS[Math.min(level-1,LEVELS.length-1)]
