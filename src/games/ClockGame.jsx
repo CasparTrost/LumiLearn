@@ -318,7 +318,7 @@ export default function ClockGame({ level = 1, onComplete }) {
       if (!seen.has(s) && !(wh === t.h && wm === t.m)) { seen.add(s); wrongs.push(s) }
     }
     return shuffle([correct, ...wrongs])
-  })()
+  }, [idx, level])
 
   const advance = useCallback((ok) => {
     const ns = score + (ok ? 1 : 0)
