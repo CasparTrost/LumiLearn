@@ -9,25 +9,19 @@ const spr = (n) => BASE + 'sprites/maze/' + n
 // Wall tiles: context-aware (Wang tile system)
 // W = wall tile when surrounded, WT = wall-top (floor below), FLOOR = walkable
 const TW = {
-  // Wall variants based on neighbors
-  solid:   [9, 0],  // surrounded by walls
-  topEdge: [9, 4],  // has floor below → shows top face
-  horiz:   [5, 2],  // horizontal corridor wall
-  vert:    [4, 1],  // vertical corridor wall
-  // Corners
-  cornerTL:[8, 2],
-  cornerTR:[10,3],
-  cornerBL:[13,5],
-  cornerBR:[12,5],
-  // Floor tiles (verified no arrows)
-  floor:   [1, 0],
-  floor2:  [3, 0],
-  floor3:  [4, 0],
-  floor4:  [4, 3],
-  // Exit door
-  door:    [11,11],
-  // Decoration
-  vase:    [2, 12],
+  wallTop:  [4, 10],
+  wallFill: [6, 10],
+  wallH:    [5, 10],
+  wallL:    [4,  8],
+  wallR:    [12, 8],
+  cornerTL: [12,11],
+  cornerTR: [13,11],
+  floor:    [9, 12],
+  floor2:   [9, 12],
+  floor3:   [9, 12],
+  floor4:   [9, 12],
+  door:     [11,11],
+  vase:     [2, 12],
 }
 
 // CSS for tileset background
@@ -127,22 +121,12 @@ const TORCH_CSS = `
 `
 
 function Torch({ size }) {
-  const s = size / 16
-  const fw = 16 * s
   return (
-    <>
-      <style>{TORCH_CSS}</style>
-      <div style={{position:'absolute',bottom:0,left:'50%',marginLeft:`-${size/2}px`,
-        width:size,height:size,overflow:'hidden',imageRendering:'pixelated',pointerEvents:'none',zIndex:3}}>
-        <img src={spr('maze_torch.png')} alt=""
-          style={{
-            width:128*s, height:16*s,
-            imageRendering:'pixelated', display:'block',
-            '--fw': `${fw}px`,
-            animation:'torch-anim 1.2s steps(1) infinite',
-          }}/>
-      </div>
-    </>
+    <div style={{position:'absolute',bottom:2,left:'50%',marginLeft:`-${size/2}px`,
+      width:size,height:size,pointerEvents:'none',zIndex:3}}>
+      <img src={spr('maze_torch.gif')} alt=""
+        style={{width:size,height:size,imageRendering:'pixelated',display:'block'}}/>
+    </div>
   )
 }
 
