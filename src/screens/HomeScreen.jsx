@@ -65,7 +65,7 @@ function LumiWithOrbit({ completedCount, size }) {
       {/* ⚙️ Settings button — fixed bottom-right, small and unobtrusive */}
       <motion.button
         whileHover={{ scale:1.12 }} whileTap={{ scale:0.92 }}
-        onClick={() => setResetStep(1)}
+        onClick={() => setShowParent(true)}
         style={{
           position:'fixed', bottom:20, right:20, zIndex:900,
           width:42, height:42, borderRadius:'50%',
@@ -80,140 +80,9 @@ function LumiWithOrbit({ completedCount, size }) {
         title="Einstellungen"
       >⚙️</motion.button>
 
-      {/* Reset dialog */}
-      <AnimatePresence>
-        {resetStep > 0 && (
-          <motion.div
-            initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
-            style={{
-              position:'fixed', inset:0, zIndex:1000,
-              background:'rgba(0,0,0,0.6)',
-              display:'flex', alignItems:'center', justifyContent:'center',
-              padding:24,
-            }}
-            onClick={() => { setResetStep(0); setPinInput('') }}
-          >
-            <motion.div
-              initial={{ scale:0.85, y:20 }} animate={{ scale:1, y:0 }} exit={{ scale:0.85 }}
-              onClick={e => e.stopPropagation()}
-              style={{
-                background:'white', borderRadius:28,
-                padding:'32px 28px', maxWidth:360, width:'100%',
-                textAlign:'center', boxShadow:'0 20px 60px rgba(0,0,0,0.3)',
-              }}
-            >
-              {resetStep === 1 && (<>
-                <div style={{ fontSize:48, marginBottom:12 }}>⚙️</div>
-                <div style={{ fontFamily:'var(--font-heading)', fontSize:22, fontWeight:700, color:'#333', marginBottom:8 }}>
-                  Einstellungen
-                </div>
-                <div style={{ fontFamily:'var(--font-body)', fontSize:15, color:'#666', marginBottom:24 }}>
-                  Möchtest du den Fortschritt zurücksetzen? Gib die Eltern-PIN ein um fortzufahren.
-                </div>
-                <motion.button
-                  whileHover={{ scale:1.04 }} whileTap={{ scale:0.96 }}
-                  onClick={() => setResetStep(2)}
-                  style={{
-                    background:'linear-gradient(135deg,#6C63FF,#4A00E0)',
-                    color:'white', border:'none', borderRadius:16,
-                    padding:'12px 32px', width:'100%',
-                    fontFamily:'var(--font-heading)', fontSize:17, fontWeight:700,
-                    cursor:'pointer', marginBottom:10,
-                  }}
-                >Eltern-Bereich öffnen 🔐</motion.button>
-                <button onClick={() => { setResetStep(0); setPinInput('') }}
-                  style={{ background:'none', border:'none', color:'#999', fontFamily:'var(--font-body)', fontSize:14, cursor:'pointer' }}>
-                  Abbrechen
-                </button>
-              </>)}
+      {showParent && <ParentScreen onClose={() => setShowParent(false)} />}
 
-              {resetStep === 2 && (<>
-                <div style={{ fontSize:48, marginBottom:12 }}>🔐</div>
-                <div style={{ fontFamily:'var(--font-heading)', fontSize:20, fontWeight:700, color:'#333', marginBottom:8 }}>
-                  Eltern-PIN
-                </div>
-                <div style={{ fontFamily:'var(--font-body)', fontSize:14, color:'#888', marginBottom:20 }}>
-                  Standard-PIN: 1234
-                </div>
-                {/* PIN buttons */}
-                <div style={{ display:'flex', justifyContent:'center', gap:10, marginBottom:20 }}>
-                  {[1,2,3,4].map(i => (
-                    <div key={i} style={{
-                      width:44, height:44, borderRadius:12,
-                      background: pinInput.length >= i ? '#6C63FF' : '#ECE8FF',
-                      border:'2px solid #A29BFE',
-                      display:'flex', alignItems:'center', justifyContent:'center',
-                      fontSize:20, color:'white',
-                    }}>{pinInput.length >= i ? '●' : ''}</div>
-                  ))}
-                </div>
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10, maxWidth:240, margin:'0 auto 16px' }}>
-                  {[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map((n, i) => (
-                    <motion.button key={i}
-                      whileTap={{ scale:0.88 }}
-                      onClick={() => {
-                        if (n === '⌫') { setPinInput(p => p.slice(0,-1)); return }
-                        if (n === '') return
-                        const next = pinInput + n
-                        setPinInput(next)
-                        if (next.length === 4) {
-                          if (next === RESET_PIN) {
-                            setResetStep(3)
-                          } else {
-                            setPinInput('')
-                          }
-                        }
-                      }}
-                      style={{
-                        padding:'14px 0', borderRadius:12,
-                        background: n === '' ? 'transparent' : '#F0EEFF',
-                        border: n === '' ? 'none' : '2px solid #E0D5FF',
-                        fontFamily:'var(--font-heading)', fontSize:20, fontWeight:700,
-                        color:'#4A00E0', cursor: n === '' ? 'default' : 'pointer',
-                      }}
-                    >{n}</motion.button>
-                  ))}
-                </div>
-                <button onClick={() => { setResetStep(0); setPinInput('') }}
-                  style={{ background:'none', border:'none', color:'#999', fontFamily:'var(--font-body)', fontSize:14, cursor:'pointer' }}>
-                  Abbrechen
-                </button>
-              </>)}
-
-              {resetStep === 3 && (<>
-                <div style={{ fontSize:48, marginBottom:12 }}>🗑️</div>
-                <div style={{ fontFamily:'var(--font-heading)', fontSize:20, fontWeight:700, color:'#333', marginBottom:8 }}>
-                  Fortschritt zurücksetzen?
-                </div>
-                <div style={{ fontFamily:'var(--font-body)', fontSize:14, color:'#888', marginBottom:24 }}>
-                  Alle Spielstände, Sterne und der Hof werden gelöscht. Das kann nicht rückgängig gemacht werden.
-                </div>
-                <motion.button
-                  whileHover={{ scale:1.04 }} whileTap={{ scale:0.96 }}
-                  onClick={() => {
-                    dispatch({ type:'RESET_ALL' })
-                    try { localStorage.removeItem('lumilearn_farm_level') } catch {}
-                    setResetStep(0); setPinInput('')
-                  }}
-                  style={{
-                    background:'linear-gradient(135deg,#FF6B6B,#e74c3c)',
-                    color:'white', border:'none', borderRadius:16,
-                    padding:'12px 32px', width:'100%',
-                    fontFamily:'var(--font-heading)', fontSize:17, fontWeight:700,
-                    cursor:'pointer', marginBottom:10,
-                  }}
-                >Ja, alles zurücksetzen ⚠️</motion.button>
-                <button onClick={() => { setResetStep(0); setPinInput('') }}
-                  style={{ background:'none', border:'none', color:'#999', fontFamily:'var(--font-body)', fontSize:14, cursor:'pointer' }}>
-                  Abbrechen
-                </button>
-              </>)}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-    </div>
+</div>
   )
 }
 
@@ -222,10 +91,7 @@ export default function HomeScreen() {
   const { state, dispatch } = useApp()
   const profile  = state.profile  ?? { name:'Lumi', avatar:'🦊' }
   const progress = state.progress ?? {}
-  const [showSettings, setShowSettings] = useState(false)
-  const [resetStep, setResetStep]       = useState(0) // 0=closed, 1=confirm, 2=pin
-  const [pinInput, setPinInput]         = useState('')
-  const RESET_PIN = '1234' // simple PIN — change if needed
+  const [showParent, setShowParent] = useState(false)
   const completedCount = Object.values(progress).filter(p => p?.completed).length
 
   const getModuleTitle = (id, fallback) => t('module.' + id, fallback)
@@ -481,7 +347,7 @@ export default function HomeScreen() {
       {/* ⚙️ Settings button — fixed bottom-right, small and unobtrusive */}
       <motion.button
         whileHover={{ scale:1.12 }} whileTap={{ scale:0.92 }}
-        onClick={() => setResetStep(1)}
+        onClick={() => setShowParent(true)}
         style={{
           position:'fixed', bottom:20, right:20, zIndex:900,
           width:42, height:42, borderRadius:'50%',
@@ -496,139 +362,8 @@ export default function HomeScreen() {
         title="Einstellungen"
       >⚙️</motion.button>
 
-      {/* Reset dialog */}
-      <AnimatePresence>
-        {resetStep > 0 && (
-          <motion.div
-            initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
-            style={{
-              position:'fixed', inset:0, zIndex:1000,
-              background:'rgba(0,0,0,0.6)',
-              display:'flex', alignItems:'center', justifyContent:'center',
-              padding:24,
-            }}
-            onClick={() => { setResetStep(0); setPinInput('') }}
-          >
-            <motion.div
-              initial={{ scale:0.85, y:20 }} animate={{ scale:1, y:0 }} exit={{ scale:0.85 }}
-              onClick={e => e.stopPropagation()}
-              style={{
-                background:'white', borderRadius:28,
-                padding:'32px 28px', maxWidth:360, width:'100%',
-                textAlign:'center', boxShadow:'0 20px 60px rgba(0,0,0,0.3)',
-              }}
-            >
-              {resetStep === 1 && (<>
-                <div style={{ fontSize:48, marginBottom:12 }}>⚙️</div>
-                <div style={{ fontFamily:'var(--font-heading)', fontSize:22, fontWeight:700, color:'#333', marginBottom:8 }}>
-                  Einstellungen
-                </div>
-                <div style={{ fontFamily:'var(--font-body)', fontSize:15, color:'#666', marginBottom:24 }}>
-                  Möchtest du den Fortschritt zurücksetzen? Gib die Eltern-PIN ein um fortzufahren.
-                </div>
-                <motion.button
-                  whileHover={{ scale:1.04 }} whileTap={{ scale:0.96 }}
-                  onClick={() => setResetStep(2)}
-                  style={{
-                    background:'linear-gradient(135deg,#6C63FF,#4A00E0)',
-                    color:'white', border:'none', borderRadius:16,
-                    padding:'12px 32px', width:'100%',
-                    fontFamily:'var(--font-heading)', fontSize:17, fontWeight:700,
-                    cursor:'pointer', marginBottom:10,
-                  }}
-                >Eltern-Bereich öffnen 🔐</motion.button>
-                <button onClick={() => { setResetStep(0); setPinInput('') }}
-                  style={{ background:'none', border:'none', color:'#999', fontFamily:'var(--font-body)', fontSize:14, cursor:'pointer' }}>
-                  Abbrechen
-                </button>
-              </>)}
+      {showParent && <ParentScreen onClose={() => setShowParent(false)} />}
 
-              {resetStep === 2 && (<>
-                <div style={{ fontSize:48, marginBottom:12 }}>🔐</div>
-                <div style={{ fontFamily:'var(--font-heading)', fontSize:20, fontWeight:700, color:'#333', marginBottom:8 }}>
-                  Eltern-PIN
-                </div>
-                <div style={{ fontFamily:'var(--font-body)', fontSize:14, color:'#888', marginBottom:20 }}>
-                  Standard-PIN: 1234
-                </div>
-                {/* PIN buttons */}
-                <div style={{ display:'flex', justifyContent:'center', gap:10, marginBottom:20 }}>
-                  {[1,2,3,4].map(i => (
-                    <div key={i} style={{
-                      width:44, height:44, borderRadius:12,
-                      background: pinInput.length >= i ? '#6C63FF' : '#ECE8FF',
-                      border:'2px solid #A29BFE',
-                      display:'flex', alignItems:'center', justifyContent:'center',
-                      fontSize:20, color:'white',
-                    }}>{pinInput.length >= i ? '●' : ''}</div>
-                  ))}
-                </div>
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10, maxWidth:240, margin:'0 auto 16px' }}>
-                  {[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map((n, i) => (
-                    <motion.button key={i}
-                      whileTap={{ scale:0.88 }}
-                      onClick={() => {
-                        if (n === '⌫') { setPinInput(p => p.slice(0,-1)); return }
-                        if (n === '') return
-                        const next = pinInput + n
-                        setPinInput(next)
-                        if (next.length === 4) {
-                          if (next === RESET_PIN) {
-                            setResetStep(3)
-                          } else {
-                            setPinInput('')
-                          }
-                        }
-                      }}
-                      style={{
-                        padding:'14px 0', borderRadius:12,
-                        background: n === '' ? 'transparent' : '#F0EEFF',
-                        border: n === '' ? 'none' : '2px solid #E0D5FF',
-                        fontFamily:'var(--font-heading)', fontSize:20, fontWeight:700,
-                        color:'#4A00E0', cursor: n === '' ? 'default' : 'pointer',
-                      }}
-                    >{n}</motion.button>
-                  ))}
-                </div>
-                <button onClick={() => { setResetStep(0); setPinInput('') }}
-                  style={{ background:'none', border:'none', color:'#999', fontFamily:'var(--font-body)', fontSize:14, cursor:'pointer' }}>
-                  Abbrechen
-                </button>
-              </>)}
-
-              {resetStep === 3 && (<>
-                <div style={{ fontSize:48, marginBottom:12 }}>🗑️</div>
-                <div style={{ fontFamily:'var(--font-heading)', fontSize:20, fontWeight:700, color:'#333', marginBottom:8 }}>
-                  Fortschritt zurücksetzen?
-                </div>
-                <div style={{ fontFamily:'var(--font-body)', fontSize:14, color:'#888', marginBottom:24 }}>
-                  Alle Spielstände, Sterne und der Hof werden gelöscht. Das kann nicht rückgängig gemacht werden.
-                </div>
-                <motion.button
-                  whileHover={{ scale:1.04 }} whileTap={{ scale:0.96 }}
-                  onClick={() => {
-                    dispatch({ type:'RESET_ALL' })
-                    try { localStorage.removeItem('lumilearn_farm_level') } catch {}
-                    setResetStep(0); setPinInput('')
-                  }}
-                  style={{
-                    background:'linear-gradient(135deg,#FF6B6B,#e74c3c)',
-                    color:'white', border:'none', borderRadius:16,
-                    padding:'12px 32px', width:'100%',
-                    fontFamily:'var(--font-heading)', fontSize:17, fontWeight:700,
-                    cursor:'pointer', marginBottom:10,
-                  }}
-                >Ja, alles zurücksetzen ⚠️</motion.button>
-                <button onClick={() => { setResetStep(0); setPinInput('') }}
-                  style={{ background:'none', border:'none', color:'#999', fontFamily:'var(--font-body)', fontSize:14, cursor:'pointer' }}>
-                  Abbrechen
-                </button>
-              </>)}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-    </div>
+</div>
   )
 }
