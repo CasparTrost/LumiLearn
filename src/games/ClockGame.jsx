@@ -63,7 +63,7 @@ function timeDiffMin(h1, m1, h2, m2) {
 // ── Analog Clock SVG ─────────────────────────────────────────────────────────
 const CX = 120, CY = 120, R = 108
 
-function ClockFace({ targetH, targetM, interactive, onAnswer }) {
+function ClockFace({ targetH, targetM, interactive, onAnswer, level = 1 }) {
   // Current hand positions (for interactive mode)
   const [hours,   setHours]   = useState(12)
   const [minutes, setMinutes] = useState(0)
@@ -189,6 +189,7 @@ function ClockFace({ targetH, targetM, interactive, onAnswer }) {
               fontWeight={i % 3 === 0 ? '700' : '500'}
               fill={i % 3 === 0 ? '#4A00E0' : '#9B8FCC'}
               fontFamily="var(--font-heading, system-ui)"
+              opacity={level <= 3 ? 1 : level <= 5 ? 0.7 : 0.4}
             >{n}</text>
           )
         })}
@@ -219,7 +220,7 @@ function ClockFace({ targetH, targetM, interactive, onAnswer }) {
         {interactive && (<>
           {/* Hour tip: blue circle */}
           <circle
-            cx={hourEnd.x} cy={hourEnd.y} r={18}
+            cx={hourEnd.x} cy={hourEnd.y} r={26}
             fill="#4A00E0" opacity={dragging === 'hour' ? 1 : 0.82}
             stroke="white" strokeWidth={3}
             style={{ cursor: dragging === 'hour' ? 'grabbing' : 'grab', filter: 'drop-shadow(0 2px 6px rgba(74,0,224,0.5))' }}
@@ -231,7 +232,7 @@ function ClockFace({ targetH, targetM, interactive, onAnswer }) {
 
           {/* Minute tip: red circle */}
           <circle
-            cx={minuteEnd.x} cy={minuteEnd.y} r={16}
+            cx={minuteEnd.x} cy={minuteEnd.y} r={24}
             fill="#FF6B6B" opacity={dragging === 'minute' ? 1 : 0.82}
             stroke="white" strokeWidth={3}
             style={{ cursor: dragging === 'minute' ? 'grabbing' : 'grab', filter: 'drop-shadow(0 2px 6px rgba(255,107,107,0.5))' }}
@@ -363,6 +364,23 @@ export default function ClockGame({ level = 1, onComplete }) {
       gap: 'clamp(12px,2vw,20px)',
     }}>
 
+      {/* Confetti on correct */}
+      <AnimatePresence>
+        {feedback === 'ok' && (
+          <motion.div key={'confetti-'+flashKey}
+            initial={{opacity:1}} animate={{opacity:0}} transition={{delay:0.8,duration:0.3}}
+            style={{position:'fixed',inset:0,zIndex:160,pointerEvents:'none',
+              display:'flex',alignItems:'center',justifyContent:'center',fontSize:60}}>
+            {['🌟','✨','⭐','🎉','🌟','✨'].map((e,i) => (
+              <motion.span key={i}
+                initial={{y:0,x:0,scale:0,opacity:1}}
+                animate={{y:-(80+i*25),x:(i%2===0?1:-1)*(40+i*30),scale:[0,1.3,0],opacity:[1,1,0]}}
+                transition={{duration:0.7,delay:i*0.06}}
+                style={{position:'absolute'}}>{e}</motion.span>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Flash overlay */}
       <AnimatePresence>
         {feedback && (
@@ -444,6 +462,7 @@ export default function ClockGame({ level = 1, onComplete }) {
               targetH={t.h} targetM={t.m}
               interactive={mode === 'set'}
               onAnswer={submitAnalog}
+              level={level}
             />
           </motion.div>
         </AnimatePresence>
@@ -488,7 +507,14 @@ export default function ClockGame({ level = 1, onComplete }) {
         )}
 
         {/* SET MODE feedback badge */}
-        {mode === 'set' && feedback && (
+        {mode === 'set' && feedback === 'ok' && (
+          <motion.div
+            initial={{ scale: 0, rotate: -180 }} animate={{ scale: 1, rotate: 0 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 14 }}
+            style={{ fontSize: 80, lineHeight: 1, filter: 'drop-shadow(0 4px 14px rgba(107,203,119,0.5))' }}
+          >🎉</motion.div>
+        )}
+        {mode === 'set' && feedback === 'wrong' && (
           <motion.div
             initial={{ scale: 0 }} animate={{ scale: 1 }}
             style={{
@@ -496,7 +522,7 @@ export default function ClockGame({ level = 1, onComplete }) {
               filter: 'drop-shadow(0 4px 14px rgba(0,0,0,0.2))',
             }}
           >
-            {feedback === 'ok' ? '✅' : '❌'}
+            ❌
           </motion.div>
         )}
       </div>
