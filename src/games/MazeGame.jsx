@@ -5,22 +5,28 @@ import LumiCharacter from '../components/LumiCharacter.jsx'
 const BASE = import.meta.env.BASE_URL || '/LumiLearn/'
 const spr = (n) => BASE + 'sprites/maze/' + n
 
-// ── Tile coords: GPT-4o verified ─────────────────────────────────────────────
-// WALL: c0,r0 (dark solid)  FLOOR: c5,r4 (clean stone)  ALT: c1,r0
+// ── Tileset: Set 1.png (448x320, 16x16 tiles, 28 cols x 20 rows) ─────────────
+// Wall tiles: context-aware (Wang tile system)
+// W = wall tile when surrounded, WT = wall-top (floor below), FLOOR = walkable
 const TW = {
-  solid:   [0, 0],  // dark solid wall - all cases
-  topEdge: [0, 0],  // same - keep walls uniform
-  horiz:   [0, 0],
-  vert:    [0, 0],
-  cornerTL:[0, 0],
-  cornerTR:[0, 0],
-  cornerBL:[0, 0],
-  cornerBR:[0, 0],
-  floor:   [5, 4],  // clean stone floor
-  floor2:  [1, 0],  // minimal alt floor
-  floor3:  [5, 4],  // same as main
-  floor4:  [5, 4],  // same as main
+  // Wall variants based on neighbors
+  solid:   [9, 0],  // surrounded by walls
+  topEdge: [9, 4],  // has floor below → shows top face
+  horiz:   [5, 2],  // horizontal corridor wall
+  vert:    [4, 1],  // vertical corridor wall
+  // Corners
+  cornerTL:[8, 2],
+  cornerTR:[10,3],
+  cornerBL:[13,5],
+  cornerBR:[12,5],
+  // Floor tiles (verified no arrows)
+  floor:   [1, 0],
+  floor2:  [3, 0],
+  floor3:  [4, 0],
+  floor4:  [4, 3],
+  // Exit door
   door:    [11,11],
+  // Decoration
   vase:    [2, 12],
 }
 
@@ -34,32 +40,33 @@ function tbg(col, row, ts) {
   }
 }
 
-// Smart wall tile selection based on neighbors
+// Smart wall tile: based on neighbors
 function wallTile(x, y, g, rows, cols) {
-  const U = y>0 && g[y-1][x]===1
-  const D = y<rows-1 && g[y+1][x]===1
-  const L = x>0 && g[y][x-1]===1
-  const R = x<cols-1 && g[y][x+1]===1
-  // Top edge: wall with floor below
-  if (!D) return TW.topEdge
-  // Horizontal wall strip
-  if (!U && D && !L && !R) return TW.topEdge
-  if (L && R && !U && !D) return TW.horiz
-  if (L && R && !D) return TW.topEdge
-  // Corners
+  const U = y > 0       && g[y-1] && g[y-1][x] === 1
+  const D = y < rows-1  && g[y+1] && g[y+1][x] === 1
+  const L = x > 0       && g[y][x-1] === 1
+  const R = x < cols-1  && g[y][x+1] === 1
+
+  // Top face: wall with open floor below (most visible wall)
+  if (!D) return TW.wallTop
+  // Left edge only
+  if (!L && R && !D) return TW.wallL
+  if (!L && R && D)  return TW.wallL
+  // Right edge only
+  if (L && !R && D)  return TW.wallR
+  // Corner top-left (open left, open above)
   if (!L && !U && R && D) return TW.cornerTL
-  if (!R && !U && L && D) return TW.cornerTR
-  // Default solid
-  return TW.solid
+  // Corner top-right (open right, open above)
+  if (L && !U && !R && D) return TW.cornerTR
+  // Horizontal wall (open above and below → horizontal stripe)
+  if (!U && !D) return TW.wallH
+  // Interior fill
+  return TW.wallFill
 }
 
-// Floor tile variant (deterministic, no arrows)
+// Floor tile: always the same clean tile
 function floorTile(x, y) {
-  const h = (x*7 + y*13 + x*y) % 8
-  if (h < 4) return TW.floor
-  if (h < 6) return TW.floor2
-  if (h < 7) return TW.floor3
-  return TW.floor4
+  return TW.floor
 }
 
 // ── DFS Maze Generator ────────────────────────────────────────────────────────
@@ -104,14 +111,38 @@ const LEVELS = [
 ]
 const POTS = ['maze_potion1.png','maze_potion2.png','maze_potion3.png']
 
-// Torch: animated GIF — zero flicker, no JS
+// CSS keyframe for torch — NO React state, pure CSS animation
+const TORCH_CSS = `
+@keyframes torch-anim {
+  0%   {transform:translateX(0)}
+  12%  {transform:translateX(calc(-1 * var(--fw)))}
+  25%  {transform:translateX(calc(-2 * var(--fw)))}
+  37%  {transform:translateX(calc(-3 * var(--fw)))}
+  50%  {transform:translateX(calc(-4 * var(--fw)))}
+  62%  {transform:translateX(calc(-5 * var(--fw)))}
+  75%  {transform:translateX(calc(-6 * var(--fw)))}
+  87%  {transform:translateX(calc(-7 * var(--fw)))}
+  100% {transform:translateX(0)}
+}
+`
+
 function Torch({ size }) {
+  const s = size / 16
+  const fw = 16 * s
   return (
-    <div style={{position:'absolute',bottom:2,left:'50%',marginLeft:`-${size/2}px`,
-      width:size,height:size,imageRendering:'pixelated',pointerEvents:'none',zIndex:3}}>
-      <img src={spr('maze_torch.gif')} alt=""
-        style={{width:size,height:size,imageRendering:'pixelated',display:'block'}}/>
-    </div>
+    <>
+      <style>{TORCH_CSS}</style>
+      <div style={{position:'absolute',bottom:0,left:'50%',marginLeft:`-${size/2}px`,
+        width:size,height:size,overflow:'hidden',imageRendering:'pixelated',pointerEvents:'none',zIndex:3}}>
+        <img src={spr('maze_torch.png')} alt=""
+          style={{
+            width:128*s, height:16*s,
+            imageRendering:'pixelated', display:'block',
+            '--fw': `${fw}px`,
+            animation:'torch-anim 1.2s steps(1) infinite',
+          }}/>
+      </div>
+    </>
   )
 }
 
