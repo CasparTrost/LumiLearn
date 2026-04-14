@@ -127,6 +127,19 @@ const EMOTION_PASTEL = {
 
 function shuffle(a) { return [...a].sort(() => Math.random() - 0.5) }
 
+// Shuffle but never put same emotion twice in a row
+function shuffleNoRepeat(arr) {
+  const s = shuffle(arr)
+  for (let i = 1; i < s.length; i++) {
+    if (s[i].emotion === s[i-1].emotion) {
+      // find next different
+      const j = s.findIndex((x, k) => k > i && x.emotion !== s[i-1].emotion)
+      if (j > -1) { const tmp = s[i]; s[i] = s[j]; s[j] = tmp }
+    }
+  }
+  return s
+}
+
 export default function EmotionGame({ level = 1, onComplete }) {
   const BASIC = ['Glücklich','Traurig','Wütend','Ängstlich','Aufgeregt']
   const MID   = [...BASIC,'Müde','Verlegen','Dankbar']
@@ -134,13 +147,19 @@ export default function EmotionGame({ level = 1, onComplete }) {
               : level <= 6 ? SCENARIOS.filter(s => MID.includes(s.emotion))
               : SCENARIOS
   const qCount = level <= 3 ? 6 : level <= 6 ? 8 : level <= 8 ? 10 : 12
-  const [challenges] = useState(() =>
-    shuffle(pool).slice(0, qCount).map(s => {
+  const [challenges] = useState(() => {
+    // Pick max 1 scenario per emotion per session, spread across emotions
+    const byEmotion = {}
+    pool.forEach(s => { if (!byEmotion[s.emotion]) byEmotion[s.emotion] = []; byEmotion[s.emotion].push(s) })
+    // Pick one random scenario per emotion, then shuffle the emotion groups
+    const picked = Object.values(byEmotion).map(group => shuffle(group)[0])
+    const selected = shuffleNoRepeat(shuffle(picked)).slice(0, qCount)
+    return selected.map(s => {
       const ai = SCENARIOS.indexOf(s)
       const [sa, ea] = ai >= 0 ? SCENARIO_AUDIO[ai] : [null, null]
       return { ...s, sa, ea }
     })
-  )
+  })
   const [idx,        setIdx]      = useState(0)
   const [selected,   setSelected] = useState(null)
   const [correct,    setCorrect]  = useState(0)
