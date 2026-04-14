@@ -372,19 +372,10 @@ export default function MazeGame({ level=1, onComplete }) {
             <div key={`${x}-${y}`} style={{position:'absolute',left:x*cellSize,top:y*cellSize,
               width:cellSize,height:cellSize,overflow:'hidden'}}>
               {/* Base tile */}
-              {/* Always render grass base first */}
-              <div style={{position:'absolute',inset:0,
-                backgroundImage:`url(${spr('forest_floor_grass.png')})`,
-                backgroundSize:'cover',backgroundPosition:'center',
-                imageRendering:'pixelated'}}/>
-              {/* Wall tile on top (transparent PNG over grass) */}
-              {wSprite !== 'forest_floor_grass.png' && (
-                <div style={{position:'absolute',inset:0,
-                  backgroundImage:`url(${spr(wSprite)})`,
-                  backgroundSize:'cover',
-                  backgroundPosition:'center',
-                  imageRendering:'pixelated'}}/>
-              )}
+              {/* Single img - pixel perfect no gaps */}
+              <img src={spr(wSprite)} alt=""
+                style={{position:'absolute',top:0,left:0,width:cellSize,height:cellSize,
+                  display:'block',imageRendering:'pixelated',objectFit:'fill'}}/>
               {/* Wall atmosphere */}
               {cell===1&&(
                 <div style={{position:'absolute',inset:0,background:'rgba(67,20,120,0.3)'}}/>
