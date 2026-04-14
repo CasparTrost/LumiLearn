@@ -8,6 +8,9 @@ const spr = (n) => BASE + 'sprites/maze/' + n
 // ── Tileset: Set 1.png (448x320, 16x16 tiles, 28 cols x 20 rows) ─────────────
 // Wall tiles: context-aware (Wang tile system)
 // W = wall tile when surrounded, WT = wall-top (floor below), FLOOR = walkable
+// Horizontal wall tile mix (row 10, cols 4-13)
+const HWALL_TILES = [[4,10],[5,10],[6,10],[7,10],[8,10],[9,10],[10,10],[11,10],[12,10],[13,10]]
+
 const TW = {
   wallTop:  [4, 10],
   wallFill: [6, 10],
@@ -36,27 +39,16 @@ function tbg(col, row, ts) {
 
 // Smart wall tile: based on neighbors
 function wallTile(x, y, g, rows, cols) {
-  const U = y > 0       && g[y-1] && g[y-1][x] === 1
-  const D = y < rows-1  && g[y+1] && g[y+1][x] === 1
-  const L = x > 0       && g[y][x-1] === 1
-  const R = x < cols-1  && g[y][x+1] === 1
-
-  // Top face: wall with open floor below (most visible wall)
-  if (!D) return TW.wallTop
-  // Left edge only
-  if (!L && R && !D) return TW.wallL
-  if (!L && R && D)  return TW.wallL
-  // Right edge only
-  if (L && !R && D)  return TW.wallR
-  // Corner top-left (open left, open above)
-  if (!L && !U && R && D) return TW.cornerTL
-  // Corner top-right (open right, open above)
-  if (L && !U && !R && D) return TW.cornerTR
-  // Horizontal wall (open above and below → horizontal stripe)
-  if (!U && !D) return TW.wallH
-  // Interior fill
-  return TW.wallFill
+  const U = y > 0      && g[y-1] && g[y-1][x] === 1
+  const D = y < rows-1 && g[y+1] && g[y+1][x] === 1
+  const L = x > 0      && g[y][x-1] === 1
+  const R = x < cols-1 && g[y][x+1] === 1
+  // Vertical corridor: open left+right, wall above+below → vert sprite
+  if (!L && !R && U && D) return 'vert'
+  // All other walls: mix from horizontal tile set
+  return HWALL_TILES[(x * 3 + y * 7) % HWALL_TILES.length]
 }
+
 
 // Floor tile: always the same clean tile
 function floorTile(x, y) {
@@ -405,7 +397,7 @@ export default function MazeGame({ level=1, onComplete }) {
             src={spr(moving?'maze_knight_walk.gif':'maze_knight_idle.gif')}
             alt="Ritter"
             style={{
-              width:Math.round(cellSize*2), height:undefined,
+              width:Math.round(cellSize*2), height:'auto',
               transform:`scaleX(${facing})`,
               imageRendering:'pixelated',
               filter:'drop-shadow(0 3px 8px rgba(192,132,252,0.9))',
