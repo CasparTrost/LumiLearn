@@ -123,7 +123,7 @@ function Torch({ size }) {
 }
 
 
-// Wang-tile wall sprite selection
+// Wang-tile wall sprite selection (transforms confirmed by Caspar)
 function wallSprite(x, y, g, rows, cols) {
   const U = y > 0      && g[y-1] && g[y-1][x] === 1
   const D = y < rows-1 && g[y+1] && g[y+1][x] === 1
@@ -134,12 +134,11 @@ function wallSprite(x, y, g, rows, cols) {
   if (!U && !R && D && L) return 'maze_corner_se_v2.png'
   if (!D && !L && U && R) return 'maze_corner_nw_v2.png'
   if (!D && !R && U && L) return 'maze_corner_ne_v2.png'
-  if (!D) return 'maze_wall_front_v2.png'
-  if (!U) return 'maze_wall_back_v2.png'
-  if (!L) return 'maze_wall_left_v2.png'
-  if (!R) return 'maze_wall_right_v2.png'
-  if (!L && !R) return 'maze_wall_right_v2.png'
-  return 'maze_wall_front_v2.png'
+  if (!U) return 'maze_wall_front_v2.png'   // open top = original
+  if (!D) return 'maze_wall_back_v2.png'    // open bottom = flip V
+  if (!L) return 'maze_wall_left_v2.png'    // open left = R270
+  if (!R) return 'maze_wall_right_v2.png'   // open right = R90
+  return 'maze_wall_solid_v2.png'
 }
 
 export default function MazeGame({ level=1, onComplete }) {
