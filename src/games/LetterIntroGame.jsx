@@ -82,18 +82,18 @@ function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5) }
 function makeQuestions(letters) {
   return letters.filter(l => LETTER_DATA[l]).map(l => {
     const { color, info, opts } = LETTER_DATA[l]
-    const [correct] = shuffle(opts)
-    // Distractors from other letters
-    const otherPool = shuffle(ALL_LETTERS.filter(k => k !== l))
-      .slice(0, 6)
-      .flatMap(k => LETTER_DATA[k].opts)
-    const [d1, d2] = shuffle(otherPool)
+    // Pick random correct answer from all opts for this letter
+    const correct = shuffle(opts)[0]
+    // Distractors: pick from other letters, ensure they start with different letter
+    const otherLetters = shuffle(ALL_LETTERS.filter(k => k !== l))
+    const distractorPool = otherLetters.flatMap(k => LETTER_DATA[k].opts)
+    const [d1, d2] = shuffle(distractorPool).filter(o => !o.w.startsWith(l)).slice(0, 2)
     return {
       letter: l,
       color,
       info,
       correct,
-      options: shuffle([correct, d1, d2]),
+      options: shuffle([correct, d1 || distractorPool[0], d2 || distractorPool[1]]),
     }
   })
 }
