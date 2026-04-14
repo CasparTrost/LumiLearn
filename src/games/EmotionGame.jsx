@@ -57,6 +57,61 @@ const SCENARIOS = [
   { face:'😒', situation:'Das Geschwister bekommt mehr Spielzeit als Lumi. 📱',      emotion:'Eifersüchtig', lumiMood:'thinking', faceColor:'#F39C12', decoys:['Wütend','Traurig','Verlegen'],    explain:'Wenn andere etwas haben, das wir auch wollen, können wir eifersüchtig werden.' },
   // Neugierig
   { face:'🤔', situation:'Lumi sieht eine geheimnisvolle Box — was ist da wohl drin? 📦', emotion:'Neugierig', lumiMood:'thinking', faceColor:'#3498DB', decoys:['Aufgeregt','Ängstlich','Glücklich'], explain:'Wenn wir etwas herausfinden wollen, sind wir neugierig!' },
+  // Glücklich (extra)
+  { face:'😄', situation:'Lumi findet beim Spaziergang einen schönen bunten Stein! 🪨✨',     emotion:'Glücklich',  lumiMood:'happy',    faceColor:'#FFD93D', decoys:['Traurig','Ängstlich','Müde'],      explain:'Kleine überraschende Entdeckungen machen uns glücklich!' },
+  { face:'😄', situation:'Lumi darf heute zum ersten Mal alleine einkaufen gehen! 🛍️',        emotion:'Glücklich',  lumiMood:'excited',  faceColor:'#FFD93D', decoys:['Ängstlich','Verlegen','Traurig'],  explain:'Vertrauen geschenkt zu bekommen macht uns glücklich!' },
+  { face:'😄', situation:'Lumi schafft das schwierige Puzzle auf Anhieb! 🧩',                 emotion:'Glücklich',  lumiMood:'excited',  faceColor:'#FFD93D', decoys:['Stolz','Überrascht','Aufgeregt'],   explain:'Etwas Schwieriges zu lösen macht uns glücklich!' },
+  { face:'😄', situation:'Es schneit und Schule fällt aus! ❄️🎉',                             emotion:'Glücklich',  lumiMood:'excited',  faceColor:'#FFD93D', decoys:['Überrascht','Aufgeregt','Müde'],    explain:'Unerwartete freie Zeit macht uns glücklich!' },
+  // Traurig (extra)
+  { face:'😢', situation:'Lumis Goldfish schwimmt nicht mehr... 🐟',                          emotion:'Traurig',    lumiMood:'sleepy',   faceColor:'#74B9FF', decoys:['Wütend','Ängstlich','Verlegen'],   explain:'Den Verlust von einem Lebewesen zu erleben macht uns traurig.' },
+  { face:'😢', situation:'Lumi wird nicht zum Geburtstag eingeladen. 💌',                     emotion:'Traurig',    lumiMood:'sleepy',   faceColor:'#74B9FF', decoys:['Wütend','Eifersüchtig','Verlegen'], explain:'Ausgeschlossen zu sein macht uns traurig.' },
+  { face:'😢', situation:'Lumis Sandburg wird von einer Welle weggespült. 🌊',                emotion:'Traurig',    lumiMood:'sleepy',   faceColor:'#74B9FF', decoys:['Wütend','Überrascht','Ängstlich'],  explain:'Wenn etwas das wir gemacht haben zerstört wird, macht uns das traurig.' },
+  { face:'😢', situation:'Lumi muss den besten Urlaub aller Zeiten früher abbrechen. 🏖️',    emotion:'Traurig',    lumiMood:'sleepy',   faceColor:'#74B9FF', decoys:['Wütend','Verlegen','Müde'],         explain:'Schöne Dinge zu früh zu beenden macht uns traurig.' },
+  // Wütend (extra)
+  { face:'😡', situation:'Lumi hat stundenlang gemalt und jemand schmiert es kaputt! 🎨',     emotion:'Wütend',     lumiMood:'thinking', faceColor:'#FF6B6B', decoys:['Traurig','Verlegen','Überrascht'],  explain:'Wenn jemand unsere Arbeit absichtlich ruiniert, macht uns das wütend.' },
+  { face:'😡', situation:'Lumi wird beim Spielen immer beschummelt! 🎲',                      emotion:'Wütend',     lumiMood:'thinking', faceColor:'#FF6B6B', decoys:['Traurig','Überrascht','Ängstlich'], explain:'Betrug macht uns wütend.' },
+  { face:'😡', situation:'Lumi wird nicht zugehört obwohl Lumi etwas Wichtiges sagt. 🗣️',   emotion:'Wütend',     lumiMood:'thinking', faceColor:'#FF6B6B', decoys:['Traurig','Verlegen','Müde'],         explain:'Nicht ernst genommen zu werden macht uns wütend.' },
+  { face:'😡', situation:'Das Eis der Schwester ist viel größer als Lumis! 🍦',               emotion:'Wütend',     lumiMood:'thinking', faceColor:'#FF6B6B', decoys:['Eifersüchtig','Traurig','Verlegen'], explain:'Ungleiche Behandlung macht uns wütend.' },
+  // Ängstlich (extra)
+  { face:'😨', situation:'Lumi muss morgen zum Zahnarzt. 🦷',                                 emotion:'Ängstlich',  lumiMood:'thinking', faceColor:'#A29BFE', decoys:['Traurig','Müde','Aufgeregt'],       explain:'Vor unbekannten oder schmerzhaften Dingen haben wir Angst.' },
+  { face:'😨', situation:'Das Licht geht aus und alles ist stockdunkel! 🌑',                  emotion:'Ängstlich',  lumiMood:'thinking', faceColor:'#A29BFE', decoys:['Überrascht','Wütend','Traurig'],    explain:'Dunkelheit kann uns ängstlich machen.' },
+  { face:'😨', situation:'Lumi hört draußen ein seltsames Kratzen an der Fensterscheibe. 👻', emotion:'Ängstlich',  lumiMood:'thinking', faceColor:'#A29BFE', decoys:['Neugierig','Überrascht','Wütend'],  explain:'Unbekannte Geräusche machen uns ängstlich.' },
+  { face:'😨', situation:'Lumi soll im Schulschwimmbad ins tiefe Becken springen! 🏊',        emotion:'Ängstlich',  lumiMood:'thinking', faceColor:'#A29BFE', decoys:['Aufgeregt','Traurig','Verlegen'],   explain:'Angst vor dem Unbekannten ist ganz normal!' },
+  // Aufgeregt (extra)
+  { face:'🤩', situation:'Lumi reist heute zum ersten Mal mit dem Flugzeug! ✈️',              emotion:'Aufgeregt',  lumiMood:'excited',  faceColor:'#FD79A8', decoys:['Ängstlich','Glücklich','Überrascht'], explain:'Neue Abenteuer machen uns aufgeregt!' },
+  { face:'🤩', situation:'Lumi darf heute Abend mit Freunden zelten! ⛺',                     emotion:'Aufgeregt',  lumiMood:'excited',  faceColor:'#FD79A8', decoys:['Glücklich','Traurig','Müde'],        explain:'Besondere gemeinsame Erlebnisse machen uns aufgeregt!' },
+  { face:'🤩', situation:'Das neue Computerspiel wird heute endlich geliefert! 🎮',            emotion:'Aufgeregt',  lumiMood:'excited',  faceColor:'#FD79A8', decoys:['Glücklich','Ungeduldig','Neugierig'], explain:'Auf etwas Lang-Ersehntes warten macht uns aufgeregt!' },
+  { face:'🤩', situation:'Lumi darf beim großen Schulkonzert mitspielen! 🎵',                 emotion:'Aufgeregt',  lumiMood:'excited',  faceColor:'#FD79A8', decoys:['Ängstlich','Stolz','Glücklich'],     explain:'Bei etwas Besonderem dabei zu sein macht uns aufgeregt!' },
+  // Müde (extra)
+  { face:'😴', situation:'Lumi hat die ganze Nacht kaum geschlafen. ⭐🌙',                    emotion:'Müde',       lumiMood:'sleepy',   faceColor:'#B2BEC3', decoys:['Traurig','Gelangweilt','Ängstlich'], explain:'Schlafmangel macht uns müde.' },
+  { face:'😴', situation:'Nach dem großen Sportfest fallen Lumi die Augen zu. 🏃',            emotion:'Müde',       lumiMood:'sleepy',   faceColor:'#B2BEC3', decoys:['Glücklich','Traurig','Verlegen'],    explain:'Viel Bewegung macht unseren Körper müde.' },
+  { face:'😴', situation:'Lumi hat stundenlang im Auto gesessen. 🚗',                          emotion:'Müde',       lumiMood:'sleepy',   faceColor:'#B2BEC3', decoys:['Gelangweilt','Traurig','Ängstlich'], explain:'Langes Sitzen und Nichtstun macht uns müde.' },
+  // Verlegen (extra)
+  { face:'😳', situation:'Lumi singt laut mit — aber falsch! Alle lachen. 🎤',                emotion:'Verlegen',   lumiMood:'thinking', faceColor:'#FFA07A', decoys:['Traurig','Wütend','Aufgeregt'],      explain:'Wenn wir uns blamieren, fühlen wir uns verlegen.' },
+  { face:'😳', situation:'Lumi nennt die Lehrerin aus Versehen "Mama"! 😬',                   emotion:'Verlegen',   lumiMood:'thinking', faceColor:'#FFA07A', decoys:['Glücklich','Traurig','Überrascht'],  explain:'Versehentliche Fehler vor anderen machen uns verlegen.' },
+  { face:'😳', situation:'Lumi hat Spinat in den Zähnen — und hat es erst nach dem Essen gemerkt! 🥬', emotion:'Verlegen', lumiMood:'thinking', faceColor:'#FFA07A', decoys:['Glücklich','Wütend','Traurig'], explain:'Peinliche Momente machen uns verlegen.' },
+  // Dankbar (extra)
+  { face:'🥰', situation:'Jemand hilft Lumi den schweren Schulranzen zu tragen! 🎒',           emotion:'Dankbar',    lumiMood:'happy',    faceColor:'#6BCB77', decoys:['Glücklich','Überrascht','Verlegen'], explain:'Wenn uns jemand hilft, fühlen wir uns dankbar.' },
+  { face:'🥰', situation:'Die Freundin tröstet Lumi als Lumi weint. 🤗',                      emotion:'Dankbar',    lumiMood:'happy',    faceColor:'#6BCB77', decoys:['Traurig','Glücklich','Überrascht'],  explain:'Fürsorge der anderen macht uns dankbar.' },
+  { face:'🥰', situation:'Papa liest Lumi eine extra lange Geschichte vor! 📖',                emotion:'Dankbar',    lumiMood:'happy',    faceColor:'#6BCB77', decoys:['Glücklich','Aufgeregt','Stolz'],     explain:'Zeit die jemand für uns nimmt macht uns dankbar.' },
+  // Überrascht (extra)
+  { face:'😮', situation:'Lumi öffnet das Paket — ein Hoverboard! 🛹',                        emotion:'Überrascht', lumiMood:'excited',  faceColor:'#FFB347', decoys:['Aufgeregt','Glücklich','Dankbar'],   explain:'Unerwartete tolle Dinge überraschen uns!' },
+  { face:'😮', situation:'Der Lehrer sagt: Heute kein Unterricht, wir gehen in den Zoo! 🦁',  emotion:'Überrascht', lumiMood:'excited',  faceColor:'#FFB347', decoys:['Aufgeregt','Glücklich','Neugierig'], explain:'Unerwartete gute Nachrichten überraschen uns!' },
+  { face:'😮', situation:'Lumi findet unter dem Kissen einen Brief vom Zahnfee! 🧚',           emotion:'Überrascht', lumiMood:'excited',  faceColor:'#FFB347', decoys:['Glücklich','Neugierig','Dankbar'],   explain:'Geheimnisvolle Entdeckungen überraschen uns!' },
+  // Stolz (extra)
+  { face:'😊', situation:'Lumi gewinnt beim Schulwettbewerb den 1. Platz! 🏆',                emotion:'Stolz',      lumiMood:'happy',    faceColor:'#44D498', decoys:['Glücklich','Aufgeregt','Überrascht'], explain:'Etwas zu gewinnen macht uns stolz!' },
+  { face:'😊', situation:'Lumi hat das Zimmer ganz alleine aufgeräumt! 🧹',                   emotion:'Stolz',      lumiMood:'happy',    faceColor:'#44D498', decoys:['Glücklich','Dankbar','Verlegen'],     explain:'Aufgaben selbstständig erledigen macht uns stolz!' },
+  { face:'😊', situation:'Lumi liest zum ersten Mal ein ganzes Buch alleine! 📚',             emotion:'Stolz',      lumiMood:'happy',    faceColor:'#44D498', decoys:['Glücklich','Aufgeregt','Überrascht'], explain:'Neue Fähigkeiten zu erreichen macht uns stolz!' },
+  // Gelangweilt (extra)
+  { face:'😑', situation:'Es regnet den ganzen Tag und Lumi hat nichts zu tun. 🌧️',           emotion:'Gelangweilt', lumiMood:'sleepy',  faceColor:'#95A5A6', decoys:['Traurig','Müde','Ängstlich'],         explain:'Wenn es nichts Spannendes gibt, werden wir gelangweilt.' },
+  { face:'😑', situation:'Der Film im Kino ist viel zu lang und langweilig. 🎬',              emotion:'Gelangweilt', lumiMood:'sleepy',  faceColor:'#95A5A6', decoys:['Müde','Traurig','Verlegen'],           explain:'Dinge die uns nicht interessieren lassen uns sich langweilen.' },
+  // Eifersüchtig (extra)
+  { face:'😒', situation:'Alle spielen mit Mia — aber niemand mit Lumi. 👥',                  emotion:'Eifersüchtig', lumiMood:'thinking', faceColor:'#F39C12', decoys:['Traurig','Wütend','Verlegen'],     explain:'Ausgeschlossen zu werden und andere bevorzugt zu sehen kann Eifersucht wecken.' },
+  { face:'😒', situation:'Das neue Kind bekommt mehr Lob vom Lehrer als Lumi. 🌟',            emotion:'Eifersüchtig', lumiMood:'thinking', faceColor:'#F39C12', decoys:['Wütend','Traurig','Verlegen'],      explain:'Wenn andere mehr Anerkennung bekommen, können wir eifersüchtig werden.' },
+  // Neugierig (extra)
+  { face:'🤔', situation:'Lumi findet einen Tunnel im Park — wo führt er hin? 🕳️',            emotion:'Neugierig',  lumiMood:'thinking', faceColor:'#3498DB', decoys:['Aufgeregt','Ängstlich','Überrascht'], explain:'Unbekannte Orte wecken unsere Neugier!' },
+  { face:'🤔', situation:'Im Bücherregal steht ein Buch mit einem geheimen Titel. 🔍',        emotion:'Neugierig',  lumiMood:'thinking', faceColor:'#3498DB', decoys:['Aufgeregt','Überrascht','Glücklich'], explain:'Geheimnisse und Rätsel machen uns neugierig!' },
+  { face:'🤔', situation:'Lumi hört Mama und Papa tuscheln und schnell aufhören wenn Lumi reinkommt. 🤫', emotion:'Neugierig', lumiMood:'thinking', faceColor:'#3498DB', decoys:['Ängstlich','Überrascht','Verlegen'], explain:'Geheimnisse um uns herum machen uns neugierig!' },
 ]
 
 const EMOTION_ICON = {
