@@ -44,6 +44,23 @@ function generateMaze(cols, rows) {
   }
 
   carve(1, 1)
+
+  // Add extra openings to create loops — gives player alternative routes around the dragon
+  // Break ~15% of internal walls to create shortcuts
+  const extraOpenings = Math.floor(cols * rows * 0.07)
+  for (let i = 0; i < extraOpenings * 10 && i < 2000; i++) {
+    const wx = 1 + Math.floor(Math.random() * (cols - 2))
+    const wy = 1 + Math.floor(Math.random() * (rows - 2))
+    if (grid[wy][wx] === 1) {
+      // Only break walls that have open cells on both sides (horizontal or vertical)
+      const hasH = wx > 0 && wx < cols-1 && grid[wy][wx-1] === 0 && grid[wy][wx+1] === 0
+      const hasV = wy > 0 && wy < rows-1 && grid[wy-1][wx] === 0 && grid[wy+1][wx] === 0
+      if (hasH || hasV) {
+        grid[wy][wx] = 0
+      }
+    }
+  }
+
   return grid
 }
 
@@ -136,31 +153,22 @@ export default function MazeGame({ level = 1, onComplete }) {
       const s = placeStar(grid, rows, cols, avoidPos)
       if (s) { starsPos.push(s); avoidPos = s }
     }
-    // Dragon waypoints: anywhere except very close to start/exit
-    // This means dragon CAN cross player paths but player can always dodge
-    const noGoZone = new Set()
-    // Protect a small bubble around start and exit
-    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
-      noGoZone.add(`${start.x+dx},${start.y+dy}`)
-      noGoZone.add(`${exit.x+dx},${exit.y+dy}`)
-    }
+    // Dragon waypoints: anywhere in the maze — can cross all paths
+    // Extra wall openings above ensure player always has alternative routes
     const allOpen = []
     for (let wy = 1; wy < rows - 1; wy++) {
       for (let wx = 1; wx < cols - 1; wx++) {
-        if (grid[wy][wx] === 0 && !noGoZone.has(`${wx},${wy}`)) {
-          allOpen.push({ x: wx, y: wy })
-        }
+        if (grid[wy][wx] === 0) allOpen.push({ x: wx, y: wy })
       }
     }
     allOpen.sort(() => Math.random() - 0.5)
-    // Pick waypoints that are reachable from each other
     const waypoints = []
     for (const candidate of allOpen) {
       if (waypoints.length === 0) { waypoints.push(candidate); continue }
       const prev = waypoints[waypoints.length - 1]
       const path = bfsPath(grid, rows, cols, prev, candidate)
       if (path.length > 3) waypoints.push(candidate)
-      if (waypoints.length >= 3) break
+      if (waypoints.length >= 4) break
     }
     if (waypoints.length < 2 && allOpen.length >= 2) waypoints.push(allOpen[1])
     return { grid, start, exit, starsPos, waypoints }
