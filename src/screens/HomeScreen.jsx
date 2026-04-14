@@ -1,5 +1,6 @@
 ﻿import React from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
+import ParentScreen from './ParentScreen.jsx'
 import { Settings } from 'lucide-react'
 import { useApp } from '../AppContext.jsx'
 import { useT } from '../i18n.js'
