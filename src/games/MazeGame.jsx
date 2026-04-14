@@ -133,7 +133,7 @@ const WALL_RULES = {
   'U0D1L0R1': 'maze_w_5_7_orig.png',
   'U0D1L1R0': 'maze_w_7_7_orig.png',
   'U0D1L1R1': 'maze_w_6_7_orig.png',
-  'U1D0L0R0': 'maze_w_4_7_R180.png',
+  'U1D0L0R0': 'maze_w_12_8_left_center.png',
   'U1D0L0R1': 'maze_w_9_8_H.png',
   'U1D0L1R0': 'maze_w_9_8_orig.png',
   'U1D0L1R1': 'maze_w_9_7_orig.png',
