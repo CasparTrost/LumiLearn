@@ -5,16 +5,18 @@ import LumiCharacter from '../components/LumiCharacter.jsx'
 const BASE = import.meta.env.BASE_URL || '/LumiLearn/'
 const spr = (n) => BASE + 'sprites/maze/' + n
 
-// ── Verified tile coords (Set 1.png, 16x16 tiles) ──────────────────────────
-// Wall: col=4,row=5  Floor variants: (5,11),(6,11),(0,1),(10,12)  Door: (7,11)
+// ── Tile coords - verified by GPT-4o vision ─────────────────────────────────
+// WALL: c6,r8 (dark textured wall)   FLOOR: c10,r12 (maze-pattern floor)
+// WALL_TOP: c6,r14 (brick top edge)  DOOR: c11,r11 (arch door)
 const T = {
-  wall:   [4, 5],
-  floor:  [5, 11],
-  floor2: [6, 11],
-  floor3: [0, 1],
-  floor4: [10, 12],
-  door:   [7, 11],
-  vase:   [2, 12],
+  wall:    [6, 8],
+  wallTop: [6, 14],
+  floor:   [10, 12],
+  floor2:  [5, 11],
+  floor3:  [0, 1],
+  floor4:  [6, 11],
+  door:    [11, 11],
+  vase:    [2, 12],
 }
 function tileBg(col, row, ts) {
   return {
@@ -26,10 +28,9 @@ function tileBg(col, row, ts) {
 }
 function floorTile(x, y) {
   const h = (x * 7 + y * 13) % 10
-  if (h < 5) return T.floor
-  if (h < 7) return T.floor2
-  if (h < 9) return T.floor3
-  return T.floor4
+  if (h < 6) return T.floor
+  if (h < 8) return T.floor2
+  return T.floor3
 }
 
 // ── DFS Maze ────────────────────────────────────────────────────────────────
@@ -300,7 +301,9 @@ export default function MazeGame({ level=1, onComplete }) {
           const potion  = maze.potions.find(p=>p.x===x&&p.y===y&&!coll.includes(p.id))
           const hasTorch = maze.torches.has(`${x},${y}`)
           const hasVase  = maze.vases.has(`${x},${y}`) && !potion && !isExit
-          const [tc, tr] = cell===1 ? T.wall : floorTile(x,y)
+          // Use wall-top tile when wall has floor directly below (visible top face)
+          const hasFloorBelow = cell===1 && y+1<rows && maze.g[y+1]&&maze.g[y+1][x]===0
+          const [tc, tr] = cell===1 ? (hasFloorBelow ? T.wallTop : T.wall) : floorTile(x,y)
 
           return (
             <div key={`${x}-${y}`} style={{position:'absolute',left:x*cellSize,top:y*cellSize,width:cellSize,height:cellSize,overflow:'hidden'}}>
@@ -333,8 +336,8 @@ export default function MazeGame({ level=1, onComplete }) {
                     :{opacity:0.4}}
                   transition={{duration:1.4,repeat:Infinity}}>
                   {/* Door tile from tileset */}
-                  <div style={{width:cellSize,height:cellSize,...tileBg(T.door[0],T.door[1],ts),
-                    filter:allDone?'brightness(1.4) drop-shadow(0 0 8px #e879f9)':'brightness(0.6) saturate(0.5)'}}/>
+                  <div style={{width:'100%',height:'100%',...tileBg(T.door[0],T.door[1],ts),
+                    filter:allDone?'brightness(1.8) drop-shadow(0 0 12px #e879f9) saturate(1.5)':'brightness(0.7) saturate(0.6)'}}/>
                 </motion.div>
               )}
               {/* Potion */}
