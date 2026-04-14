@@ -137,13 +137,23 @@ export default function MazeGame({ level = 1, onComplete }) {
       if (s) { starsPos.push(s); avoidPos = s }
     }
     // Dragon patrol: pick a short segment of the main path (middle section)
-    // Dragon bounces back and forth — player must time when to pass
     const mainPath = bfsPath(grid, rows, cols, start, exit)
-    // Pick a segment in the middle 40-60% of the main path
-    const segLen = Math.min(6, Math.max(3, Math.floor(mainPath.length * 0.15)))
+    const segLen = Math.min(5, Math.max(3, Math.floor(mainPath.length * 0.12)))
     const segStart = Math.floor(mainPath.length * 0.35 + Math.random() * mainPath.length * 0.2)
     const segment = mainPath.slice(segStart, segStart + segLen)
-    // Waypoints: just the two ends of the segment — dragon bounces between them
+
+    // Create escape niches: for each cell in segment, open a side cell if walled
+    segment.forEach(({ x, y }) => {
+      const sides = [[x+1,y],[x-1,y],[x,y+1],[x,y-1]]
+      for (const [nx, ny] of sides) {
+        if (nx > 0 && nx < cols-1 && ny > 0 && ny < rows-1 && grid[ny][nx] === 1) {
+          // Check the cell beyond this wall is also walled (so we open into a dead-end niche, not through)
+          grid[ny][nx] = 0
+          break // one niche per patrol cell is enough
+        }
+      }
+    })
+
     const waypoints = segment.length >= 2
       ? [segment[0], segment[segment.length - 1]]
       : mainPath.length >= 2
@@ -217,7 +227,7 @@ export default function MazeGame({ level = 1, onComplete }) {
   // Dragon patrol — follows BFS paths between waypoints in a cycle
   useEffect(() => {
     if (level < 2 || won || !maze.waypoints || maze.waypoints.length < 2) return
-    const speed = Math.max(160, 440 - (level - 2) * 70) // faster at higher levels
+    const speed = Math.max(300, 900 - (level - 2) * 80) // slower on low levels, max speed 300ms
     const wps = maze.waypoints
     const iv = setInterval(() => {
       ghostPathStep.current += 1
