@@ -109,16 +109,16 @@ const LEVEL_THEMES = [
 ]
 
 const LEVEL_CONFIG = [
-  { cols: 5,  rows: 5,  stars: 0, label: 'Winzig' },
-  { cols: 7,  rows: 7,  stars: 1, label: 'Klein' },
-  { cols: 7,  rows: 9,  stars: 1, label: 'Klein-L' },
-  { cols: 9,  rows: 9,  stars: 2, label: 'Mittel' },
-  { cols: 9,  rows: 11, stars: 2, label: 'Mittel-L' },
-  { cols: 11, rows: 11, stars: 3, label: 'Groß' },
-  { cols: 11, rows: 13, stars: 3, label: 'Groß-L' },
-  { cols: 13, rows: 13, stars: 3, label: 'Riesig' },
-  { cols: 13, rows: 15, stars: 4, label: 'Riesig-L' },
-  { cols: 15, rows: 15, stars: 4, label: 'Gigantisch' },
+  { cols: 11, rows: 11, stars: 0, label: 'Einfach' },
+  { cols: 13, rows: 13, stars: 1, label: 'Klein' },
+  { cols: 15, rows: 13, stars: 1, label: 'Mittel' },
+  { cols: 15, rows: 15, stars: 2, label: 'Mittel+' },
+  { cols: 17, rows: 15, stars: 2, label: 'Groß' },
+  { cols: 19, rows: 17, stars: 3, label: 'Groß+' },
+  { cols: 21, rows: 19, stars: 3, label: 'Riesig' },
+  { cols: 23, rows: 21, stars: 3, label: 'Riesig+' },
+  { cols: 25, rows: 23, stars: 4, label: 'Gigantisch' },
+  { cols: 27, rows: 25, stars: 4, label: 'Meister' },
 ]
 
 export default function MazeGame({ level = 1, onComplete }) {
@@ -141,18 +141,6 @@ export default function MazeGame({ level = 1, onComplete }) {
     const segLen = Math.min(5, Math.max(3, Math.floor(mainPath.length * 0.12)))
     const segStart = Math.floor(mainPath.length * 0.35 + Math.random() * mainPath.length * 0.2)
     const segment = mainPath.slice(segStart, segStart + segLen)
-
-    // Create escape niches: for each cell in segment, open a side cell if walled
-    segment.forEach(({ x, y }) => {
-      const sides = [[x+1,y],[x-1,y],[x,y+1],[x,y-1]]
-      for (const [nx, ny] of sides) {
-        if (nx > 0 && nx < cols-1 && ny > 0 && ny < rows-1 && grid[ny][nx] === 1) {
-          // Check the cell beyond this wall is also walled (so we open into a dead-end niche, not through)
-          grid[ny][nx] = 0
-          break // one niche per patrol cell is enough
-        }
-      }
-    })
 
     const waypoints = segment.length >= 2
       ? [segment[0], segment[segment.length - 1]]
@@ -299,9 +287,9 @@ export default function MazeGame({ level = 1, onComplete }) {
 
   // Cell size responsive
   const cellSize = Math.min(
-    Math.floor((typeof window !== 'undefined' ? Math.min(window.innerWidth * 0.92, 640) : 400) / cols),
-    Math.floor(480 / rows),
-    52
+    Math.floor((typeof window !== 'undefined' ? Math.min(window.innerWidth * 0.94, 700) : 400) / cols),
+    Math.floor(520 / rows),
+    36
   )
 
   const totalW = cols * cellSize
