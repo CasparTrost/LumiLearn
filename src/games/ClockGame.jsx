@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
@@ -299,8 +299,8 @@ export default function ClockGame({ level = 1, onComplete }) {
   // Alternate between 'read' and 'set' modes
   useEffect(() => { setMode(idx % 2 === 0 ? 'read' : 'set') }, [idx])
 
-  // Wrong-answer options (digital times)
-  const options = (() => {
+  // Wrong-answer options — useMemo so order NEVER changes on re-render
+  const options = useMemo(() => {
     if (!t) return []
     const correct = fmt(t.h, t.m)
     const wrongs  = []
