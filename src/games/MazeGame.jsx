@@ -334,14 +334,22 @@ export default function MazeGame({ level=1, onComplete }) {
           const potion=maze.potions.find(p=>p.x===x&&p.y===y&&!coll.includes(p.id))
           const hasTorch=maze.torches.has(`${x},${y}`)
           const hasVase=maze.vases.has(`${x},${y}`)&&!potion&&!isExit
-          const [tc,tr] = cell===1 ? wallTile(x,y,maze.g,rows,cols) : floorTile(x,y)
+          const wallInfo = cell===1 ? wallTile(x,y,maze.g,rows,cols) : null
+          const isVert = wallInfo === 'vert'
+          const [tc,tr] = isVert ? TW.wallFill : (cell===1 ? wallInfo : floorTile(x,y))
 
           return (
             <div key={`${x}-${y}`} style={{position:'absolute',left:x*cellSize,top:y*cellSize,
               width:cellSize,height:cellSize,overflow:'hidden'}}>
               {/* Base tile */}
-              <div style={{position:'absolute',inset:0,...tbg(tc,tr,ts),
-                filter:cell===1?'brightness(0.65) saturate(0.85)':'brightness(0.55) saturate(0.7)'}}/>
+              {isVert ? (
+                <img src={spr('maze_wall_vert.png')} alt=""
+                  style={{position:'absolute',inset:0,width:'100%',height:'100%',
+                    imageRendering:'pixelated',filter:'brightness(0.75) saturate(0.85)'}}/>
+              ) : (
+                <div style={{position:'absolute',inset:0,...tbg(tc,tr,ts),
+                  filter:cell===1?'brightness(0.65) saturate(0.85)':'brightness(0.55) saturate(0.7)'}}/>
+              )}
               {/* Wall atmosphere */}
               {cell===1&&(
                 <div style={{position:'absolute',inset:0,background:'rgba(67,20,120,0.3)'}}/>
