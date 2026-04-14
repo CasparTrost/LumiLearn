@@ -44,23 +44,6 @@ function generateMaze(cols, rows) {
   }
 
   carve(1, 1)
-
-  // Add extra openings to create loops — gives player alternative routes around the dragon
-  // Break ~15% of internal walls to create shortcuts
-  const extraOpenings = Math.floor(cols * rows * 0.07)
-  for (let i = 0; i < extraOpenings * 10 && i < 2000; i++) {
-    const wx = 1 + Math.floor(Math.random() * (cols - 2))
-    const wy = 1 + Math.floor(Math.random() * (rows - 2))
-    if (grid[wy][wx] === 1) {
-      // Only break walls that have open cells on both sides (horizontal or vertical)
-      const hasH = wx > 0 && wx < cols-1 && grid[wy][wx-1] === 0 && grid[wy][wx+1] === 0
-      const hasV = wy > 0 && wy < rows-1 && grid[wy-1][wx] === 0 && grid[wy+1][wx] === 0
-      if (hasH || hasV) {
-        grid[wy][wx] = 0
-      }
-    }
-  }
-
   return grid
 }
 
@@ -153,24 +136,19 @@ export default function MazeGame({ level = 1, onComplete }) {
       const s = placeStar(grid, rows, cols, avoidPos)
       if (s) { starsPos.push(s); avoidPos = s }
     }
-    // Dragon waypoints: anywhere in the maze — can cross all paths
-    // Extra wall openings above ensure player always has alternative routes
-    const allOpen = []
-    for (let wy = 1; wy < rows - 1; wy++) {
-      for (let wx = 1; wx < cols - 1; wx++) {
-        if (grid[wy][wx] === 0) allOpen.push({ x: wx, y: wy })
-      }
-    }
-    allOpen.sort(() => Math.random() - 0.5)
-    const waypoints = []
-    for (const candidate of allOpen) {
-      if (waypoints.length === 0) { waypoints.push(candidate); continue }
-      const prev = waypoints[waypoints.length - 1]
-      const path = bfsPath(grid, rows, cols, prev, candidate)
-      if (path.length > 3) waypoints.push(candidate)
-      if (waypoints.length >= 4) break
-    }
-    if (waypoints.length < 2 && allOpen.length >= 2) waypoints.push(allOpen[1])
+    // Dragon patrol: pick a short segment of the main path (middle section)
+    // Dragon bounces back and forth — player must time when to pass
+    const mainPath = bfsPath(grid, rows, cols, start, exit)
+    // Pick a segment in the middle 40-60% of the main path
+    const segLen = Math.min(6, Math.max(3, Math.floor(mainPath.length * 0.15)))
+    const segStart = Math.floor(mainPath.length * 0.35 + Math.random() * mainPath.length * 0.2)
+    const segment = mainPath.slice(segStart, segStart + segLen)
+    // Waypoints: just the two ends of the segment — dragon bounces between them
+    const waypoints = segment.length >= 2
+      ? [segment[0], segment[segment.length - 1]]
+      : mainPath.length >= 2
+      ? [mainPath[Math.floor(mainPath.length * 0.4)], mainPath[Math.floor(mainPath.length * 0.6)]]
+      : []
     return { grid, start, exit, starsPos, waypoints }
   }, [cols, rows, cfg.stars])
 
