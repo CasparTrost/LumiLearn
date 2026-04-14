@@ -123,26 +123,26 @@ function Torch({ size }) {
 }
 
 
-// Wang-tile wall sprite — GPT-4o designed system v3
+// Forest maze Wang-tile rules
 const WALL_RULES = {
-  'U0D0L0R0': 'maze_w_9_12_orig.png',
-  'U0D0L0R1': 'maze_w_12_8_orig.png',
-  'U0D0L1R0': 'maze_w_15_8_orig.png',
-  'U0D0L1R1': 'maze_w_13_8_orig.png',
-  'U0D1L0R0': 'maze_w_10_11_orig.png',
-  'U0D1L0R1': 'maze_w_11_11_orig.png',
-  'U0D1L1R0': 'maze_w_14_11_orig.png',
-  'U0D1L1R1': 'maze_w_13_7_orig.png',
-  'U1D0L0R0': 'maze_w_9_7_orig.png',
-  'U1D0L0R1': 'maze_w_11_7_orig.png',
-  'U1D0L1R0': 'maze_w_14_7_orig.png',
-  'U1D0L1R1': 'maze_w_9_9_orig.png',
-  'U1D1L0R0': 'maze_w_9_8_orig.png',
-  'U1D1L0R1': 'maze_w_12_12_orig.png',
-  'U1D1L1R0': 'maze_w_15_12_orig.png',
-  'U1D1L1R1': 'maze_w_12_7_orig.png'
+  'U0D0L0R0': 'forest_wall_inner.png',
+  'U0D0L0R1': 'forest_wall_top.png',
+  'U0D0L1R0': 'forest_wall_top.png',
+  'U0D0L1R1': 'forest_wall_top.png',
+  'U0D1L0R0': 'forest_wall_side.png',
+  'U0D1L0R1': 'forest_corner_tl.png',
+  'U0D1L1R0': 'forest_corner_tr.png',
+  'U0D1L1R1': 'forest_wall_top.png',
+  'U1D0L0R0': 'forest_wall_side.png',
+  'U1D0L0R1': 'forest_corner_bl.png',
+  'U1D0L1R0': 'forest_corner_br.png',
+  'U1D0L1R1': 'forest_wall_top.png',
+  'U1D1L0R0': 'forest_wall_side.png',
+  'U1D1L0R1': 'forest_wall_side.png',
+  'U1D1L1R0': 'forest_wall_side.png',
+  'U1D1L1R1': 'forest_wall_inner.png',
 }
-const FLOOR_SPRITE = 'maze_w_10_12_orig.png'
+const FLOOR_SPRITE = 'forest_floor_grass.png'
 
 function wallSprite(x, y, g, rows, cols) {
   const U = y > 0      && g[y-1] && g[y-1][x] === 1 ? 1 : 0
@@ -284,7 +284,7 @@ export default function MazeGame({ level=1, onComplete }) {
       flex:1,display:'flex',flexDirection:'column',alignItems:'center',
       gap:'clamp(6px,1.5vw,10px)',padding:'8px',
       outline:'none',touchAction:'none',overscrollBehavior:'none',
-      background:'radial-gradient(ellipse at 50% 20%,#1e0a3c 0%,#080412 100%)',
+      background:'radial-gradient(ellipse at 50% 20%,#1a3a0a 0%,#0a1e04 100%)',
       minHeight:'100%',userSelect:'none',
     }}>
 
@@ -301,7 +301,7 @@ export default function MazeGame({ level=1, onComplete }) {
             ))}
             <motion.div animate={{scale:[1,1.1,1]}} transition={{duration:0.7,repeat:Infinity}}
               style={{fontSize:76}}>🏆</motion.div>
-            <div style={{fontFamily:'var(--font-heading)',fontSize:28,fontWeight:900,color:'#d8b4fe',
+            <div style={{fontFamily:'var(--font-heading)',fontSize:28,fontWeight:900,color:'#b5e853',
               textShadow:'0 0 30px #9333ea'}}>Geschafft!</div>
           </motion.div>
         )}
@@ -310,7 +310,7 @@ export default function MazeGame({ level=1, onComplete }) {
       {/* HUD */}
       <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',justifyContent:'center',width:'100%',maxWidth:W+16}}>
         {maze.potions.length>0&&(
-          <div style={{background:'rgba(88,28,135,0.3)',borderRadius:12,padding:'5px 10px',
+          <div style={{background:'rgba(20,80,20,0.4)',borderRadius:12,padding:'5px 10px',
             display:'flex',gap:5,border:'1px solid rgba(168,85,247,0.4)'}}>
             {maze.potions.map(p=>(
               <motion.div key={p.id} animate={coll.includes(p.id)?{scale:[1,1.6,1]}:{}} transition={{duration:0.3}}
@@ -321,13 +321,13 @@ export default function MazeGame({ level=1, onComplete }) {
           </div>
         )}
         {cfg.dragon&&(
-          <div style={{background:'rgba(88,28,135,0.3)',borderRadius:12,padding:'5px 10px',
+          <div style={{background:'rgba(20,80,20,0.4)',borderRadius:12,padding:'5px 10px',
             display:'flex',gap:3,border:'1px solid rgba(168,85,247,0.4)'}}>
             {[0,1,2].map(i=><span key={i} style={{fontSize:15,opacity:i<lives?1:0.12}}>❤️</span>)}
           </div>
         )}
-        <div style={{background:'rgba(88,28,135,0.3)',borderRadius:12,padding:'5px 10px',
-          fontFamily:'var(--font-heading)',fontSize:13,color:'#d8b4fe',
+        <div style={{background:'rgba(20,80,20,0.4)',borderRadius:12,padding:'5px 10px',
+          fontFamily:'var(--font-heading)',fontSize:13,color:'#b5e853',
           border:'1px solid rgba(168,85,247,0.4)'}}>👣 {moves}</div>
         {!allDone&&maze.potions.length>0&&(
           <div style={{background:'rgba(161,98,7,0.2)',borderRadius:12,padding:'5px 10px',
@@ -344,7 +344,7 @@ export default function MazeGame({ level=1, onComplete }) {
           border:'1px solid rgba(168,85,247,0.3)'}}>
           {won?'🎉 Du hast das Dungeon bezwungen!'
             :allDone?'🚪 Zur Tür! Du hast alle Tränke!'
-            :cfg.dragon?'Sammle 🧪 und meide den 🐲!'
+            :cfg.dragon?'Sammle 🧪 und meide den 🐲! Finde den Ausgang! 🌟'
             :'Finde den Ausgang! 🚪'}
         </div>
       </div>
@@ -352,8 +352,8 @@ export default function MazeGame({ level=1, onComplete }) {
       {/* Maze */}
       <div style={{
         position:'relative',width:W,height:H,flexShrink:0,
-        border:'3px solid #6b21a8',borderRadius:10,overflow:'hidden',
-        boxShadow:'0 0 0 1px #9333ea55,0 0 50px rgba(147,51,234,0.3),0 12px 50px rgba(0,0,0,0.7)',
+        border:'3px solid #2d7a0a',borderRadius:10,overflow:'hidden',
+        boxShadow:'0 0 0 1px #4CAF5066,0 0 50px rgba(76,175,80,0.3),0 12px 50px rgba(0,0,0,0.5)',
       }}>
         <div style={{position:'absolute',inset:0,zIndex:30,pointerEvents:'none',
           background:'radial-gradient(ellipse at 50% 50%,transparent 30%,rgba(0,0,0,0.5) 100%)'}}/>
@@ -365,24 +365,18 @@ export default function MazeGame({ level=1, onComplete }) {
           const hasVase=maze.vases.has(`${x},${y}`)&&!potion&&!isExit
           const wallInfo = cell===1 ? wallTile(x,y,maze.g,rows,cols) : null
           const isVert = wallInfo === 'vert'
-          const wSprite = cell===1 ? wallSprite(x,y,maze.g,rows,cols) : null  // eslint-disable-line
+          const wSprite = cell===1 ? wallSprite(x,y,maze.g,rows,cols) : FLOOR_SPRITE  // eslint-disable-line
           const [tc,tr] = cell===1 ? (isVert ? TW.wallFill : (wallInfo||TW.wallFill)) : floorTile(x,y)
 
           return (
             <div key={`${x}-${y}`} style={{position:'absolute',left:x*cellSize,top:y*cellSize,
               width:cellSize,height:cellSize,overflow:'hidden'}}>
               {/* Base tile */}
-              {wSprite ? (
-                <div style={{position:'absolute',inset:0,
-                  backgroundImage:`url(${spr(wSprite)})`,
-                  backgroundSize:`${cellSize}px ${cellSize}px`,
-                  backgroundRepeat:'no-repeat',backgroundPosition:'center',
-                  imageRendering:'pixelated',
-                  filter:'brightness(0.7) saturate(0.85)'}}/>
-              ) : (
-                <div style={{position:'absolute',inset:0,...tbg(tc,tr,ts),
-                  filter:cell===1?'brightness(0.65) saturate(0.85)':'brightness(0.55) saturate(0.7)'}}/>
-              )}
+              <div style={{position:'absolute',inset:0,
+                backgroundImage:`url(${spr(wSprite)})`,
+                backgroundSize:'cover',
+                backgroundPosition:'center',
+                imageRendering:'pixelated'}}/>
               {/* Wall atmosphere */}
               {cell===1&&(
                 <div style={{position:'absolute',inset:0,background:'rgba(67,20,120,0.3)'}}/>
@@ -393,7 +387,7 @@ export default function MazeGame({ level=1, onComplete }) {
                   background:'radial-gradient(ellipse at 50% 0%,rgba(255,150,30,0.22) 0%,transparent 80%)'}}/>
               )}
               {/* Exit */}
-              {isExit&&(
+              {isExit&&(wSprite!='forest_exit.png')&&(
                 <motion.div style={{position:'absolute',inset:0,zIndex:5}}
                   animate={allDone?{opacity:[0.8,1,0.8]}:{opacity:0.4}}
                   transition={{duration:1.5,repeat:Infinity}}>
