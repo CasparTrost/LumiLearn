@@ -81,8 +81,6 @@ function LumiWithOrbit({ completedCount, size }) {
         title="Einstellungen"
       >⚙️</motion.button>
 
-      {showParent && <ParentScreen onClose={() => setShowParent(false)} />}
-
 </div>
   )
 }
