@@ -299,7 +299,7 @@ export default function ClockGame({ level = 1, onComplete }) {
   // Alternate between 'read' and 'set' modes
   useEffect(() => { setMode(idx % 2 === 0 ? 'read' : 'set') }, [idx])
 
-  // Wrong-answer options — useMemo so order NEVER changes on re-render
+  // Wrong-answer options — stable via useMemo
   const options = useMemo(() => {
     if (!t) return []
     const correct = fmt(t.h, t.m)
