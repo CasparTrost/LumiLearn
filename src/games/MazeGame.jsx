@@ -126,9 +126,9 @@ function Torch({ size }) {
 // Wang-tile wall sprite — rules from Caspar v2
 const WALL_RULES = {
   'U0D0L0R0': 'maze_w_6_7_orig.png',
-  'U0D0L0R1': 'maze_w_6_7_R180.png',
+  'U0D0L0R1': 'maze_w_6_7_orig.png',
   'U0D0L1R0': 'maze_w_6_7_V.png',
-  'U0D0L1R1': 'maze_w_6_7_R180.png',
+  'U0D0L1R1': 'maze_w_6_7_orig.png',
   'U0D1L0R0': 'maze_w_6_7_R270.png',
   'U0D1L0R1': 'maze_w_5_7_orig.png',
   'U0D1L1R0': 'maze_w_7_7_orig.png',
@@ -136,7 +136,7 @@ const WALL_RULES = {
   'U1D0L0R0': 'maze_w_12_8_left_center.png',
   'U1D0L0R1': 'maze_w_9_8_H.png',
   'U1D0L1R0': 'maze_w_9_8_orig.png',
-  'U1D0L1R1': 'maze_w_9_7_orig.png',
+  'U1D0L1R1': 'maze_w_6_7_R180.png',
   'U1D1L0R0': 'maze_w_9_7_R90.png',
   'U1D1L0R1': 'maze_w_9_7_R90.png',
   'U1D1L1R0': 'maze_w_9_7_R270.png',
