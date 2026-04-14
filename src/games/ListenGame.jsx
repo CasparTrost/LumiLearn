@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 
@@ -110,6 +110,7 @@ export default function ListenGame({ level = 1, onComplete }) {
   const [correct,  setCorrect]  = useState(0)
   const [mood,     setMood]     = useState('happy')
   const [played,   setPlayed]   = useState(false)
+  const [showWeiter, setShowWeiter] = useState(false)
 
   const current = words[idx]
 
@@ -135,12 +136,20 @@ export default function ListenGame({ level = 1, onComplete }) {
     const nc = correct + (ok ? 1 : 0)
     setSelected(emoji)
     setMood(ok ? 'excited' : 'encouraging')
-    if (ok) setCorrect(nc)
-    setTimeout(() => {
-      if (idx + 1 >= words.length) { onComplete({ score: nc, total: words.length }) }
-      else { setIdx(i => i + 1) }
-    }, 1100)
+    if (ok) { setCorrect(nc); setShowWeiter(true) }
+    else {
+      setTimeout(() => {
+        if (idx + 1 >= words.length) { onComplete({ score: nc, total: words.length }) }
+        else { setIdx(i => i + 1) }
+      }, 1400)
+    }
   }, [selected, current, correct, idx, words, onComplete])
+
+  const weiterClick = useCallback(() => {
+    setShowWeiter(false)
+    if (idx + 1 >= words.length) { onComplete({ score: correct, total: words.length }) }
+    else { setIdx(i => i + 1) }
+  }, [idx, words.length, correct, onComplete])
 
   if (!current) return null
 
@@ -246,6 +255,22 @@ export default function ListenGame({ level = 1, onComplete }) {
           )
         })}
       </div>
+
+      {showWeiter && (
+        <motion.button
+          initial={{ scale:0, opacity:0 }} animate={{ scale:1, opacity:1 }}
+          transition={{ type:'spring', stiffness:300, delay:0.2 }}
+          whileHover={{ scale:1.06 }} whileTap={{ scale:0.94 }}
+          onClick={weiterClick}
+          style={{
+            background:'linear-gradient(135deg,#FF6B6B,#FF8E53)',
+            color:'white', border:'none', borderRadius:20,
+            padding:'14px 40px',
+            fontFamily:'var(--font-heading)', fontSize:20, fontWeight:700,
+            cursor:'pointer', boxShadow:'0 5px 20px rgba(255,107,107,0.45)',
+          }}
+        >Weiter! →</motion.button>
+      )}
 
       <p style={{ fontFamily:'var(--font-heading)', fontSize:17, color:'var(--text-muted)' }}>
         ✅ {correct} von {Math.min(idx + (selected !== null ? 1 : 0), words.length)} richtig
