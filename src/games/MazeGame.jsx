@@ -5,16 +5,15 @@ import LumiCharacter from '../components/LumiCharacter.jsx'
 const BASE = import.meta.env.BASE_URL || '/LumiLearn/'
 const spr = (n) => BASE + 'sprites/maze/' + n
 
-// ── Tile coords - verified by GPT-4o vision ─────────────────────────────────
-// WALL: c6,r8 (dark textured wall)   FLOOR: c10,r12 (maze-pattern floor)
-// WALL_TOP: c6,r14 (brick top edge)  DOOR: c11,r11 (arch door)
+// ── Tile coords - verified by GPT-4o vision (no arrows!) ────────────────────
+// WALL: c6,r8  WALL_TOP: c6,r14  FLOOR: c1,r0 / c3,r0 / c4,r0  DOOR: c11,r11
 const T = {
   wall:    [6, 8],
   wallTop: [6, 14],
-  floor:   [10, 12],
-  floor2:  [5, 11],
-  floor3:  [0, 1],
-  floor4:  [6, 11],
+  floor:   [1, 0],   // clean stone floor
+  floor2:  [3, 0],   // clean stone floor variant
+  floor3:  [4, 0],   // clean stone floor variant
+  floor4:  [0, 2],   // clean stone floor variant
   door:    [11, 11],
   vase:    [2, 12],
 }
@@ -74,16 +73,18 @@ const LEVELS = [
   {cols:23,rows:21,potions:6, dragon:true},
 ]
 
-// Torch sprite (128x16, 8 frames horizontal, each 16x16)
+// Torch sprite - smooth, no flicker (150ms per frame)
 function Torch({ size }) {
   const [f, setF] = useState(0)
-  useEffect(() => { const iv = setInterval(() => setF(p => (p+1)%8), 110); return () => clearInterval(iv) }, [])
+  useEffect(() => { const iv = setInterval(() => setF(p => (p+1)%8), 150); return () => clearInterval(iv) }, [])
   const s = size / 16
   return (
     <div style={{position:'absolute',bottom:0,left:'50%',transform:'translateX(-50%)',
-      width:size,height:size,overflow:'hidden',imageRendering:'pixelated',pointerEvents:'none',zIndex:3}}>
+      width:size,height:size,overflow:'hidden',imageRendering:'pixelated',pointerEvents:'none',zIndex:3,
+      transition:'opacity 0.1s'}}>
       <img src={spr('maze_torch.png')} alt=""
-        style={{width:128*s,height:16*s,transform:`translateX(${-f*16*s}px)`,imageRendering:'pixelated',display:'block'}}/>
+        style={{width:128*s,height:16*s,transform:`translateX(${-f*16*s}px)`,imageRendering:'pixelated',
+          display:'block', transition:'transform 0.05s'}}/>
     </div>
   )
 }
@@ -323,10 +324,14 @@ export default function MazeGame({ level=1, onComplete }) {
               {cell===0 && !hasTorch && (
                 <div style={{position:'absolute',inset:0,background:'rgba(88,28,135,0.06)'}}/>
               )}
-              {/* Torch glow on floor below torch */}
+              {/* Torch glow on floor below torch - smooth pulse */}
               {cell===0 && y>0 && maze.torches.has(`${x},${y-1}`) && (
-                <div style={{position:'absolute',inset:0,
-                  background:'radial-gradient(ellipse at 50% 0%,rgba(255,160,50,0.3) 0%,transparent 75%)'}}/>
+                <motion.div style={{position:'absolute',inset:0}}
+                  animate={{opacity:[0.6,1,0.7,1,0.6]}}
+                  transition={{duration:2.5,repeat:Infinity,ease:'easeInOut'}}>
+                  <div style={{width:'100%',height:'100%',
+                    background:'radial-gradient(ellipse at 50% 0%,rgba(255,160,50,0.28) 0%,transparent 80%)'}}/>
+                </motion.div>
               )}
               {/* Exit door */}
               {isExit && (
