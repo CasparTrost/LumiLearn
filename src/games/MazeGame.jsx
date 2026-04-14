@@ -185,6 +185,8 @@ export default function MazeGame({ level=1, onComplete }) {
   const [won,setWon]=useState(false)
   const [mood,setMood]=useState('happy')
   const [facing,setFacing]=useState(1)
+  const [moving,setMoving]=useState(false)
+  const moveTimerRef=useRef(null)
   const [dragon,setDragon]=useState(null)
   const [lives,setLives]=useState(3)
   const [moves,setMoves]=useState(0)
@@ -207,6 +209,9 @@ export default function MazeGame({ level=1, onComplete }) {
     if(nx<0||ny<0||nx>=cols||ny>=rows||maze.g[ny][nx]===1) return
     if(dx>0)setFacing(1);else if(dx<0)setFacing(-1)
     setPos({x:nx,y:ny});setMoves(m=>m+1)
+    setMoving(true)
+    if(moveTimerRef.current) clearTimeout(moveTimerRef.current)
+    moveTimerRef.current=setTimeout(()=>setMoving(false),300)
   },[won,pos,cols,rows,maze.g])
 
   useEffect(()=>{
@@ -388,17 +393,22 @@ export default function MazeGame({ level=1, onComplete }) {
           )
         }))}
 
-        {/* Player */}
+        {/* Player - Knight */}
         <motion.div style={{position:'absolute',width:cellSize,height:cellSize,
           display:'flex',alignItems:'center',justifyContent:'center',zIndex:20,pointerEvents:'none'}}
           animate={{left:pos.x*cellSize,top:pos.y*cellSize}}
           transition={{type:'spring',stiffness:500,damping:32}}>
-          <motion.span animate={{y:[0,-2,0]}} transition={{duration:1.1,repeat:Infinity}}
-            style={{fontSize:cellSize*0.72,lineHeight:1,display:'block',
+          <img
+            key={moving?'walk':'idle'}
+            src={spr(moving?'maze_knight_walk.gif':'maze_knight_idle.gif')}
+            alt="Ritter"
+            style={{
+              width:cellSize*0.9, height:cellSize*0.9,
               transform:`scaleX(${facing})`,
-              filter:'drop-shadow(0 3px 8px rgba(192,132,252,0.9))'}}>
-            🧙‍♂️
-          </motion.span>
+              imageRendering:'pixelated',
+              filter:'drop-shadow(0 3px 8px rgba(192,132,252,0.9))',
+            }}
+          />
         </motion.div>
 
         {/* Dragon */}
