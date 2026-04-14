@@ -342,7 +342,8 @@ export default function MazeGame({ level=1, onComplete }) {
               {isVert ? (
                 <div style={{position:'absolute',inset:0,
                   backgroundImage:`url(${spr('maze_wall_vert.png')})`,
-                  backgroundSize:'cover',backgroundPosition:'center',
+                  backgroundSize:`${cellSize}px ${cellSize}px`,
+                  backgroundRepeat:'no-repeat',backgroundPosition:'center',
                   imageRendering:'pixelated',
                   filter:'brightness(0.75) saturate(0.85)'}}/>
               ) : (
@@ -397,7 +398,7 @@ export default function MazeGame({ level=1, onComplete }) {
             src={spr(moving?'maze_knight_walk.gif':'maze_knight_idle.gif')}
             alt="Ritter"
             style={{
-              width:Math.round(cellSize*2), height:'auto',
+              width:Math.round(cellSize*2.6), height:'auto',
               transform:`scaleX(${facing})`,
               imageRendering:'pixelated',
               filter:'drop-shadow(0 3px 8px rgba(192,132,252,0.9))',
