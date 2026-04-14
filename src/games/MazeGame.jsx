@@ -123,24 +123,24 @@ function Torch({ size }) {
 }
 
 
-// Forest maze Wang-tile rules
+// Forest maze Wang-tile rules (from generated tileset)
 const WALL_RULES = {
-  'U0D0L0R0': 'forest_wall_inner.png',
+  'U0D0L0R0': 'forest_wall_solid.png',
   'U0D0L0R1': 'forest_wall_top.png',
   'U0D0L1R0': 'forest_wall_top.png',
   'U0D0L1R1': 'forest_wall_top.png',
-  'U0D1L0R0': 'forest_wall_side.png',
+  'U0D1L0R0': 'forest_wall_vert.png',
   'U0D1L0R1': 'forest_corner_tl.png',
   'U0D1L1R0': 'forest_corner_tr.png',
-  'U0D1L1R1': 'forest_wall_top.png',
-  'U1D0L0R0': 'forest_wall_side.png',
+  'U0D1L1R1': 'forest_wall_horiz.png',
+  'U1D0L0R0': 'forest_wall_vert.png',
   'U1D0L0R1': 'forest_corner_bl.png',
   'U1D0L1R0': 'forest_corner_br.png',
-  'U1D0L1R1': 'forest_wall_top.png',
-  'U1D1L0R0': 'forest_wall_side.png',
-  'U1D1L0R1': 'forest_wall_side.png',
-  'U1D1L1R0': 'forest_wall_side.png',
-  'U1D1L1R1': 'forest_wall_inner.png',
+  'U1D0L1R1': 'forest_wall_horiz.png',
+  'U1D1L0R0': 'forest_wall_vert.png',
+  'U1D1L0R1': 'forest_wall_vert.png',
+  'U1D1L1R0': 'forest_wall_vert.png',
+  'U1D1L1R1': 'forest_wall_solid.png',
 }
 const FLOOR_SPRITE = 'forest_floor_grass.png'
 
@@ -365,7 +365,8 @@ export default function MazeGame({ level=1, onComplete }) {
           const hasVase=maze.vases.has(`${x},${y}`)&&!potion&&!isExit
           const wallInfo = cell===1 ? wallTile(x,y,maze.g,rows,cols) : null
           const isVert = wallInfo === 'vert'
-          const wSprite = cell===1 ? wallSprite(x,y,maze.g,rows,cols) : FLOOR_SPRITE  // eslint-disable-line
+          const isExitCell = maze.exit && x===maze.exit.x && y===maze.exit.y
+          const wSprite = cell===1 ? wallSprite(x,y,maze.g,rows,cols) : (isExitCell ? 'forest_exit.png' : FLOOR_SPRITE)  // eslint-disable-line
           const [tc,tr] = cell===1 ? (isVert ? TW.wallFill : (wallInfo||TW.wallFill)) : floorTile(x,y)
 
           return (
@@ -387,7 +388,7 @@ export default function MazeGame({ level=1, onComplete }) {
                   background:'radial-gradient(ellipse at 50% 0%,rgba(255,150,30,0.22) 0%,transparent 80%)'}}/>
               )}
               {/* Exit */}
-              {isExit&&(wSprite!='forest_exit.png')&&(
+              {isExit&&(
                 <motion.div style={{position:'absolute',inset:0,zIndex:5}}
                   animate={allDone?{opacity:[0.8,1,0.8]}:{opacity:0.4}}
                   transition={{duration:1.5,repeat:Infinity}}>
