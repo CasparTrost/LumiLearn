@@ -284,7 +284,7 @@ export default function MazeGame({ level=1, onComplete }) {
       flex:1,display:'flex',flexDirection:'column',alignItems:'center',
       gap:'clamp(6px,1.5vw,10px)',padding:'8px',
       outline:'none',touchAction:'none',overscrollBehavior:'none',
-      background:'radial-gradient(ellipse at 50% 20%,#1a3a0a 0%,#0a1e04 100%)',
+      background:'#5a9e3a',
       minHeight:'100%',userSelect:'none',
     }}>
 
@@ -355,8 +355,7 @@ export default function MazeGame({ level=1, onComplete }) {
         border:'3px solid #2d7a0a',borderRadius:10,overflow:'hidden',
         boxShadow:'0 0 0 1px #4CAF5066,0 0 50px rgba(76,175,80,0.3),0 12px 50px rgba(0,0,0,0.5)',
       }}>
-        <div style={{position:'absolute',inset:0,zIndex:30,pointerEvents:'none',
-          background:'radial-gradient(ellipse at 50% 50%,transparent 30%,rgba(0,0,0,0.5) 100%)'}}/>
+
 
         {maze.g.map((row,y)=>row.map((cell,x)=>{
           const isExit=maze.exit.x===x&&maze.exit.y===y
@@ -373,11 +372,19 @@ export default function MazeGame({ level=1, onComplete }) {
             <div key={`${x}-${y}`} style={{position:'absolute',left:x*cellSize,top:y*cellSize,
               width:cellSize,height:cellSize,overflow:'hidden'}}>
               {/* Base tile */}
+              {/* Always render grass base first */}
               <div style={{position:'absolute',inset:0,
-                backgroundImage:`url(${spr(wSprite)})`,
-                backgroundSize:'cover',
-                backgroundPosition:'center',
+                backgroundImage:`url(${spr('forest_floor_grass.png')})`,
+                backgroundSize:'cover',backgroundPosition:'center',
                 imageRendering:'pixelated'}}/>
+              {/* Wall tile on top (transparent PNG over grass) */}
+              {wSprite !== 'forest_floor_grass.png' && (
+                <div style={{position:'absolute',inset:0,
+                  backgroundImage:`url(${spr(wSprite)})`,
+                  backgroundSize:'cover',
+                  backgroundPosition:'center',
+                  imageRendering:'pixelated'}}/>
+              )}
               {/* Wall atmosphere */}
               {cell===1&&(
                 <div style={{position:'absolute',inset:0,background:'rgba(67,20,120,0.3)'}}/>
