@@ -41,6 +41,9 @@ const initialState = {
 function reducer(state, action) {
   switch (action.type) {
 
+    case 'RESET_ALL':
+      return { ...initialState, language: state.language }
+
     case 'SET_LANGUAGE':
       return { ...state, language: action.payload }
 
