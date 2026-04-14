@@ -348,9 +348,11 @@ export default function MazeGame({ level=1, onComplete }) {
               width:cellSize,height:cellSize,overflow:'hidden'}}>
               {/* Base tile */}
               {isVert ? (
-                <img src={spr('maze_wall_vert.png')} alt=""
-                  style={{position:'absolute',inset:0,width:'100%',height:'100%',
-                    imageRendering:'pixelated',filter:'brightness(0.75) saturate(0.85)'}}/>
+                <div style={{position:'absolute',inset:0,
+                  backgroundImage:`url(${spr('maze_wall_vert.png')})`,
+                  backgroundSize:'cover',backgroundPosition:'center',
+                  imageRendering:'pixelated',
+                  filter:'brightness(0.75) saturate(0.85)'}}/>
               ) : (
                 <div style={{position:'absolute',inset:0,...tbg(tc,tr,ts),
                   filter:cell===1?'brightness(0.65) saturate(0.85)':'brightness(0.55) saturate(0.7)'}}/>
@@ -403,7 +405,7 @@ export default function MazeGame({ level=1, onComplete }) {
             src={spr(moving?'maze_knight_walk.gif':'maze_knight_idle.gif')}
             alt="Ritter"
             style={{
-              width:cellSize*1.8, height:'auto',
+              width:Math.round(cellSize*2), height:Math.round(cellSize*2),
               transform:`scaleX(${facing})`,
               imageRendering:'pixelated',
               filter:'drop-shadow(0 3px 8px rgba(192,132,252,0.9))',
