@@ -403,7 +403,7 @@ export default function MazeGame({ level=1, onComplete }) {
             src={spr(moving?'maze_knight_walk.gif':'maze_knight_idle.gif')}
             alt="Ritter"
             style={{
-              width:cellSize*1.8, height:cellSize*1.8,
+              width:cellSize*1.8, height:'auto',
               transform:`scaleX(${facing})`,
               imageRendering:'pixelated',
               filter:'drop-shadow(0 3px 8px rgba(192,132,252,0.9))',
