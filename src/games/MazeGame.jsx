@@ -325,7 +325,7 @@ export default function MazeGame({ level=1, onComplete }) {
 
       {/* Lumi */}
       <div style={{display:'flex',alignItems:'center',gap:8,width:'100%',maxWidth:W+16}}>
-        <LumiCharacter mood={mood} size={44}/>
+        <LumiCharacter mood={mood} size={36}/>
         <div style={{flex:1,background:'rgba(88,28,135,0.2)',borderRadius:12,padding:'7px 12px',
           fontFamily:'var(--font-heading)',fontSize:'clamp(11px,2vw,14px)',color:'#e9d5ff',
           border:'1px solid rgba(168,85,247,0.3)'}}>
@@ -442,7 +442,7 @@ export default function MazeGame({ level=1, onComplete }) {
       </div>
 
       {/* D-Pad */}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(3,68px)',gridTemplateRows:'repeat(3,68px)',gap:5,flexShrink:0}}>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(3,58px)',gridTemplateRows:'repeat(3,58px)',gap:4,flexShrink:0}}>
         {[
           {l:'▲',dx:0,dy:-1,c:2,r:1},{l:'◀',dx:-1,dy:0,c:1,r:2},
           {l:'',dx:0,dy:0,c:2,r:2},  {l:'▶',dx:1,dy:0,c:3,r:2},
@@ -457,7 +457,7 @@ export default function MazeGame({ level=1, onComplete }) {
               fontSize:24,fontWeight:900,cursor:b.l?'pointer':'default',
               boxShadow:b.l?'0 4px 16px rgba(147,51,234,0.5),inset 0 1px 0 rgba(255,255,255,0.1)':'none',
               display:'flex',alignItems:'center',justifyContent:'center',
-              width:68,height:68,
+              width:58,height:58,
             }}>{b.l}</motion.button>
         ))}
       </div>
