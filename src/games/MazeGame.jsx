@@ -202,7 +202,7 @@ export default function MazeGame({ level=1, onComplete }) {
             </motion.div>
           )}
           <motion.div style={{position:'absolute',zIndex:5,
-            width:`${CELL*sc*3.5}px`}}
+            width:`${CELL*sc*1.8}px`}}
             animate={{left:`${(pos.x*CELL-CELL*0.5)*sc}px`,top:`${(pos.y*CELL-CELL*0.8)*sc}px`}}
             transition={{type:'spring',stiffness:500,damping:32}}>
             <img src={spr('maze_knight_idle.gif')} alt="" style={{width:'100%',height:'auto',imageRendering:'pixelated'}}/>
