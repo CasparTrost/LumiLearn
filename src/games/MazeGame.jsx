@@ -123,29 +123,26 @@ function Torch({ size }) {
 }
 
 
-// FINAL CONFIRMED wall mapping:
-// !D (floor below) = top tile = orig
-// !U (floor above) = bot tile = flipV
-// !L (floor left)  = left border = R90
-// !R (floor right) = right border = R90+H
+// FINAL CONFIRMED wall mapping (cache-busted sprites):
 const WALL_RULES = {
-  'U0D0L0R0': 'maze_w_6_10_orig.png',
-  'U0D0L0R1': 'maze_w_6_7_orig.png',
-  'U0D0L1R0': 'maze_w_6_7_V.png',
-  'U0D0L1R1': 'maze_w_6_7_V.png',
-  'U0D1L0R0': 'maze_w_9_7_R90_H.png',
-  'U0D1L0R1': 'maze_w_5_7_orig.png',
-  'U0D1L1R0': 'maze_w_7_7_orig.png',
-  'U0D1L1R1': 'maze_w_6_7_orig.png',
-  'U1D0L0R0': 'maze_w_9_7_R90.png',
-  'U1D0L0R1': 'maze_w_9_8_R270.png',
-  'U1D0L1R0': 'maze_w_10_8_R270.png',
-  'U1D0L1R1': 'maze_w_6_7_V.png',
-  'U1D1L0R0': 'maze_w_9_7_R90_H.png',
-  'U1D1L0R1': 'maze_w_9_7_R90_H.png',
-  'U1D1L1R0': 'maze_w_9_7_R90.png',
-  'U1D1L1R1': 'maze_w_6_10_orig.png',
+  'U0D0L0R0': 'maze_wf_solid.png',
+  'U0D0L0R1': 'maze_wf_top.png',
+  'U0D0L1R0': 'maze_wf_bot.png',
+  'U0D0L1R1': 'maze_wf_bot.png',
+  'U0D1L0R0': 'maze_wf_right.png',
+  'U0D1L0R1': 'maze_wf_corner_tl.png',
+  'U0D1L1R0': 'maze_wf_corner_tr.png',
+  'U0D1L1R1': 'maze_wf_top.png',
+  'U1D0L0R0': 'maze_wf_left.png',
+  'U1D0L0R1': 'maze_wf_extra1.png',
+  'U1D0L1R0': 'maze_wf_extra2.png',
+  'U1D0L1R1': 'maze_wf_bot.png',
+  'U1D1L0R0': 'maze_wf_right.png',
+  'U1D1L0R1': 'maze_wf_right.png',
+  'U1D1L1R0': 'maze_wf_left.png',
+  'U1D1L1R1': 'maze_wf_solid.png',
 }
+
 
 
 
