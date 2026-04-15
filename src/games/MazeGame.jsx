@@ -123,7 +123,7 @@ function Torch({ size }) {
 }
 
 
-// Wang: top=orig, bot=flipH, left=R90, right=R90+flipV
+// Wang: !U=top, !D=bot, !L=RIGHT border, !R=LEFT border
 const WALL_RULES = {
   'U0D0L0R0': 'maze_w_6_10_orig.png',
   'U0D0L0R1': 'maze_w_6_7_orig.png',
@@ -142,6 +142,7 @@ const WALL_RULES = {
   'U1D1L1R0': 'maze_w_9_7_R90.png',
   'U1D1L1R1': 'maze_w_6_10_orig.png',
 }
+
 
 
 
