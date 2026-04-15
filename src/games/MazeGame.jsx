@@ -146,8 +146,8 @@ export default function MazeGame({ level=1, onComplete }) {
   const {cols,rows} = cfg
 
   const cellSize = Math.min(
-    Math.floor((typeof window!=='undefined'?Math.min(window.innerWidth-16,640):400)/cols),
-    Math.floor(460/rows), 44
+    Math.floor((typeof window!=='undefined'?Math.min(window.innerWidth-8,900):600)/cols),
+    Math.floor((typeof window!=='undefined'?window.innerHeight-160:600)/rows), 52
   )
   const ts = cellSize/16
   const W=cols*cellSize, H=rows*cellSize
