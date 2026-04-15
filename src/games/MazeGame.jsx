@@ -123,44 +123,32 @@ function Torch({ size }) {
 }
 
 
-// FINAL CONFIRMED wall mapping (cache-busted sprites):
-const WALL_RULES = {
-  'U0D0L0R0': 'maze_wf_solid.png',
-  'U0D0L0R1': 'maze_wf_top.png',
-  'U0D0L1R0': 'maze_wf_bot.png',
-  'U0D0L1R1': 'maze_wf_bot.png',
-  'U0D0L0R0': 'maze_wf_solid.png',
-  'U0D0L0R1': 'maze_wf_top.png',
-  'U0D0L1R0': 'maze_wf_bot.png',
-  'U0D0L1R1': 'maze_wf_bot.png',
-  'U0D1L0R0': 'maze_wf_left.png',
-  'U0D1L0R1': 'maze_wf_corner_tl.png',
-  'U0D1L1R0': 'maze_wf_corner_tr.png',
-  'U0D1L1R1': 'maze_wf_top.png',
-  'U1D0L0R0': 'maze_wf_left.png',
-  'U1D0L0R1': 'maze_wf_extra1.png',
-  'U1D0L1R0': 'maze_wf_extra2.png',
-  'U1D0L1R1': 'maze_wf_bot.png',
-  'U1D1L0R0': 'maze_wf_left.png',
-  'U1D1L0R1': 'maze_wf_left.png',
-  'U1D1L1R0': 'maze_wf_right.png',
-  'U1D1L1R1': 'maze_wf_solid.png',
-}
-
-
-
-
-
-
-const FLOOR_SPRITE = 'maze_w_9_12_orig.png'
-
+// Simple wall sprite: pick tile based on which neighbors are walls
 function wallSprite(x, y, g, rows, cols) {
-  const U = y > 0      && g[y-1] && g[y-1][x] === 1 ? 1 : 0
-  const D = y < rows-1 && g[y+1] && g[y+1][x] === 1 ? 1 : 0
-  const L = x > 0      && g[y][x-1] === 1 ? 1 : 0
-  const R = x < cols-1 && g[y][x+1] === 1 ? 1 : 0
-  return WALL_RULES[`U${U}D${D}L${L}R${R}`] || 'maze_w_6_10_orig.png'
+  const hasU = y > 0       && g[y-1] && g[y-1][x] === 1
+  const hasD = y < rows-1  && g[y+1] && g[y+1][x] === 1
+  const hasL = x > 0       && g[y][x-1] === 1
+  const hasR = x < cols-1  && g[y][x+1] === 1
+
+  // Corners first
+  if (!hasU && !hasL && hasD && hasR) return 'mw_tl.png'
+  if (!hasU && !hasR && hasD && hasL) return 'mw_tr.png'
+  if (!hasD && !hasL && hasU && hasR) return 'mw_bl.png'
+  if (!hasD && !hasR && hasU && hasL) return 'mw_br.png'
+
+  // Solid (all 4 neighbors are walls)
+  if (hasU && hasD && hasL && hasR) return 'mw_solid.png'
+
+  // Single face exposed:
+  if (!hasD) return 'mw_top.png'   // floor below = top face visible
+  if (!hasU) return 'mw_bot.png'   // floor above = bottom face visible
+  if (!hasL) return 'mw_left.png'  // floor left = left face visible
+  if (!hasR) return 'mw_right.png' // floor right = right face visible
+
+  return 'mw_solid.png'
 }
+const FLOOR_SPRITE = 'mw_floor.png'
+
 
 export default function MazeGame({ level=1, onComplete }) {
   const cfg = LEVELS[Math.min(level-1,LEVELS.length-1)]
