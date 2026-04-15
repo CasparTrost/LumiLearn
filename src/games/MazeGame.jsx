@@ -123,22 +123,22 @@ function Torch({ size }) {
 }
 
 
-// Wang-tile wall sprite selection (verified by Caspar)
+// Wang-tile wall sprite (Caspar verified: !U=orig, !D=R180, !L=R270, !R=R90)
 function wallSprite(x, y, g, rows, cols) {
   const U = y > 0      && g[y-1] && g[y-1][x] === 1
   const D = y < rows-1 && g[y+1] && g[y+1][x] === 1
   const L = x > 0      && g[y][x-1] === 1
   const R = x < cols-1 && g[y][x+1] === 1
-  if (U && D && L && R) return 'maze_wall_solid_v2.png'
-  if (!U && !L && D && R) return 'maze_corner_sw_v2.png'
-  if (!U && !R && D && L) return 'maze_corner_se_v2.png'
-  if (!D && !L && U && R) return 'maze_corner_nw_v2.png'
-  if (!D && !R && U && L) return 'maze_corner_ne_v2.png'
-  if (!U) return 'maze_wall_front_v2.png'   // top: col6,row7 original
-  if (!D) return 'maze_wall_back_v2.png'    // bottom: col9,row7 R180
-  if (!L) return 'maze_wall_left_v2.png'    // left: col9,row7 R270
-  if (!R) return 'maze_wall_right_v2.png'   // right: col9,row7 R90
-  return 'maze_wall_solid_v2.png'
+  if (U && D && L && R) return 'maze_wall_solid_v3.png'
+  if (!U && !L && D && R) return 'maze_corner_sw_v3.png'
+  if (!U && !R && D && L) return 'maze_corner_se_v3.png'
+  if (!D && !L && U && R) return 'maze_corner_nw_v3.png'
+  if (!D && !R && U && L) return 'maze_corner_ne_v3.png'
+  if (!U) return 'maze_wall_front_v3.png'   // top
+  if (!D) return 'maze_wall_back_v3.png'    // bottom = R180
+  if (!L) return 'maze_wall_left_v3.png'    // left = R270
+  if (!R) return 'maze_wall_right_v3.png'   // right = R90
+  return 'maze_wall_solid_v3.png'
 }
 
 export default function MazeGame({ level=1, onComplete }) {
