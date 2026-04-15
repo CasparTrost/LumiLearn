@@ -123,36 +123,23 @@ function Torch({ size }) {
 }
 
 
-// Wang-tile wall sprite — GPT-4o designed system v3
-const WALL_RULES = {
-  'U0D0L0R0': 'maze_w_9_12_orig.png',
-  'U0D0L0R1': 'maze_w_12_8_orig.png',
-  'U0D0L1R0': 'maze_w_15_8_orig.png',
-  'U0D0L1R1': 'maze_w_13_8_orig.png',
-  'U0D1L0R0': 'maze_w_10_11_orig.png',
-  'U0D1L0R1': 'maze_w_11_11_orig.png',
-  'U0D1L1R0': 'maze_w_14_11_orig.png',
-  'U0D1L1R1': 'maze_w_13_7_orig.png',
-  'U1D0L0R0': 'maze_w_9_7_orig.png',
-  'U1D0L0R1': 'maze_w_11_7_orig.png',
-  'U1D0L1R0': 'maze_w_14_7_orig.png',
-  'U1D0L1R1': 'maze_w_9_9_orig.png',
-  'U1D1L0R0': 'maze_w_9_8_orig.png',
-  'U1D1L0R1': 'maze_w_12_12_orig.png',
-  'U1D1L1R0': 'maze_w_15_12_orig.png',
-  'U1D1L1R1': 'maze_w_12_7_orig.png'
-}
-const FLOOR_SPRITE = 'maze_w_10_12_orig.png'
-
+// Wang-tile wall sprite selection (verified by Caspar)
 function wallSprite(x, y, g, rows, cols) {
-  const U = y > 0      && g[y-1] && g[y-1][x] === 1 ? 1 : 0
-  const D = y < rows-1 && g[y+1] && g[y+1][x] === 1 ? 1 : 0
-  const L = x > 0      && g[y][x-1] === 1 ? 1 : 0
-  const R = x < cols-1 && g[y][x+1] === 1 ? 1 : 0
-  return WALL_RULES[`U${U}D${D}L${L}R${R}`] || 'maze_w_6_7_orig.png'
+  const U = y > 0      && g[y-1] && g[y-1][x] === 1
+  const D = y < rows-1 && g[y+1] && g[y+1][x] === 1
+  const L = x > 0      && g[y][x-1] === 1
+  const R = x < cols-1 && g[y][x+1] === 1
+  if (U && D && L && R) return 'maze_wall_solid_v2.png'
+  if (!U && !L && D && R) return 'maze_corner_sw_v2.png'
+  if (!U && !R && D && L) return 'maze_corner_se_v2.png'
+  if (!D && !L && U && R) return 'maze_corner_nw_v2.png'
+  if (!D && !R && U && L) return 'maze_corner_ne_v2.png'
+  if (!U) return 'maze_wall_front_v2.png'   // top: col6,row7 original
+  if (!D) return 'maze_wall_back_v2.png'    // bottom: col9,row7 R180
+  if (!L) return 'maze_wall_left_v2.png'    // left: col9,row7 R270
+  if (!R) return 'maze_wall_right_v2.png'   // right: col9,row7 R90
+  return 'maze_wall_solid_v2.png'
 }
-
-
 
 export default function MazeGame({ level=1, onComplete }) {
   const cfg = LEVELS[Math.min(level-1,LEVELS.length-1)]
