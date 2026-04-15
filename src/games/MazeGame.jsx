@@ -8,26 +8,23 @@ const spr = (n) => BASE + 'sprites/maze/' + n
 // ── Tileset: Set 1.png (448x320, 16x16 tiles, 28 cols x 20 rows) ─────────────
 // Wall tiles: context-aware (Wang tile system)
 // W = wall tile when surrounded, WT = wall-top (floor below), FLOOR = walkable
+// Horizontal wall tile mix (row 10, cols 4-13)
+const HWALL_TILES = [[4,10],[5,10],[6,10],[7,10],[8,10],[9,10],[10,10],[11,10],[12,10],[13,10]]
+
 const TW = {
-  // Wall variants based on neighbors
-  solid:   [9, 0],  // surrounded by walls
-  topEdge: [9, 4],  // has floor below → shows top face
-  horiz:   [5, 2],  // horizontal corridor wall
-  vert:    [4, 1],  // vertical corridor wall
-  // Corners
-  cornerTL:[8, 2],
-  cornerTR:[10,3],
-  cornerBL:[13,5],
-  cornerBR:[12,5],
-  // Floor tiles (verified no arrows)
-  floor:   [1, 0],
-  floor2:  [3, 0],
-  floor3:  [4, 0],
-  floor4:  [4, 3],
-  // Exit door
-  door:    [11,11],
-  // Decoration
-  vase:    [2, 12],
+  wallTop:  [4, 10],
+  wallFill: [6, 10],
+  wallH:    [5, 10],
+  wallL:    [4,  8],
+  wallR:    [12, 8],
+  cornerTL: [12,11],
+  cornerTR: [13,11],
+  floor:    [9, 12],
+  floor2:   [9, 12],
+  floor3:   [9, 12],
+  floor4:   [9, 12],
+  door:     [11,11],
+  vase:     [2, 12],
 }
 
 // CSS for tileset background
@@ -42,27 +39,16 @@ function tbg(col, row, ts) {
 
 // Smart wall tile: based on neighbors
 function wallTile(x, y, g, rows, cols) {
-  const U = y > 0       && g[y-1] && g[y-1][x] === 1
-  const D = y < rows-1  && g[y+1] && g[y+1][x] === 1
-  const L = x > 0       && g[y][x-1] === 1
-  const R = x < cols-1  && g[y][x+1] === 1
-
-  // Top face: wall with open floor below (most visible wall)
-  if (!D) return TW.wallTop
-  // Left edge only
-  if (!L && R && !D) return TW.wallL
-  if (!L && R && D)  return TW.wallL
-  // Right edge only
-  if (L && !R && D)  return TW.wallR
-  // Corner top-left (open left, open above)
-  if (!L && !U && R && D) return TW.cornerTL
-  // Corner top-right (open right, open above)
-  if (L && !U && !R && D) return TW.cornerTR
-  // Horizontal wall (open above and below → horizontal stripe)
-  if (!U && !D) return TW.wallH
-  // Interior fill
-  return TW.wallFill
+  const U = y > 0      && g[y-1] && g[y-1][x] === 1
+  const D = y < rows-1 && g[y+1] && g[y+1][x] === 1
+  const L = x > 0      && g[y][x-1] === 1
+  const R = x < cols-1 && g[y][x+1] === 1
+  // Vertical corridor: open left+right, wall above+below → vert sprite
+  if (!L && !R && U && D) return 'vert'
+  // All other walls: mix from horizontal tile set
+  return HWALL_TILES[(x * 3 + y * 7) % HWALL_TILES.length]
 }
+
 
 // Floor tile: always the same clean tile
 function floorTile(x, y) {
@@ -127,24 +113,46 @@ const TORCH_CSS = `
 `
 
 function Torch({ size }) {
-  const s = size / 16
-  const fw = 16 * s
   return (
-    <>
-      <style>{TORCH_CSS}</style>
-      <div style={{position:'absolute',bottom:0,left:'50%',marginLeft:`-${size/2}px`,
-        width:size,height:size,overflow:'hidden',imageRendering:'pixelated',pointerEvents:'none',zIndex:3}}>
-        <img src={spr('maze_torch.png')} alt=""
-          style={{
-            width:128*s, height:16*s,
-            imageRendering:'pixelated', display:'block',
-            '--fw': `${fw}px`,
-            animation:'torch-anim 1.2s steps(1) infinite',
-          }}/>
-      </div>
-    </>
+    <div style={{position:'absolute',bottom:2,left:'50%',marginLeft:`-${size/2}px`,
+      width:size,height:size,pointerEvents:'none',zIndex:3}}>
+      <img src={spr('maze_torch.gif')} alt=""
+        style={{width:size,height:size,imageRendering:'pixelated',display:'block'}}/>
+    </div>
   )
 }
+
+
+// Wang-tile wall sprite — GPT-4o designed system v3
+const WALL_RULES = {
+  'U0D0L0R0': 'maze_w_9_12_orig.png',
+  'U0D0L0R1': 'maze_w_12_8_orig.png',
+  'U0D0L1R0': 'maze_w_15_8_orig.png',
+  'U0D0L1R1': 'maze_w_13_8_orig.png',
+  'U0D1L0R0': 'maze_w_10_11_orig.png',
+  'U0D1L0R1': 'maze_w_11_11_orig.png',
+  'U0D1L1R0': 'maze_w_14_11_orig.png',
+  'U0D1L1R1': 'maze_w_13_7_orig.png',
+  'U1D0L0R0': 'maze_w_9_7_orig.png',
+  'U1D0L0R1': 'maze_w_11_7_orig.png',
+  'U1D0L1R0': 'maze_w_14_7_orig.png',
+  'U1D0L1R1': 'maze_w_9_9_orig.png',
+  'U1D1L0R0': 'maze_w_9_8_orig.png',
+  'U1D1L0R1': 'maze_w_12_12_orig.png',
+  'U1D1L1R0': 'maze_w_15_12_orig.png',
+  'U1D1L1R1': 'maze_w_12_7_orig.png'
+}
+const FLOOR_SPRITE = 'maze_w_10_12_orig.png'
+
+function wallSprite(x, y, g, rows, cols) {
+  const U = y > 0      && g[y-1] && g[y-1][x] === 1 ? 1 : 0
+  const D = y < rows-1 && g[y+1] && g[y+1][x] === 1 ? 1 : 0
+  const L = x > 0      && g[y][x-1] === 1 ? 1 : 0
+  const R = x < cols-1 && g[y][x+1] === 1 ? 1 : 0
+  return WALL_RULES[`U${U}D${D}L${L}R${R}`] || 'maze_w_6_7_orig.png'
+}
+
+
 
 export default function MazeGame({ level=1, onComplete }) {
   const cfg = LEVELS[Math.min(level-1,LEVELS.length-1)]
@@ -201,6 +209,8 @@ export default function MazeGame({ level=1, onComplete }) {
   const [won,setWon]=useState(false)
   const [mood,setMood]=useState('happy')
   const [facing,setFacing]=useState(1)
+  const [moving,setMoving]=useState(false)
+  const moveTimerRef=useRef(null)
   const [dragon,setDragon]=useState(null)
   const [lives,setLives]=useState(3)
   const [moves,setMoves]=useState(0)
@@ -223,6 +233,9 @@ export default function MazeGame({ level=1, onComplete }) {
     if(nx<0||ny<0||nx>=cols||ny>=rows||maze.g[ny][nx]===1) return
     if(dx>0)setFacing(1);else if(dx<0)setFacing(-1)
     setPos({x:nx,y:ny});setMoves(m=>m+1)
+    setMoving(true)
+    if(moveTimerRef.current) clearTimeout(moveTimerRef.current)
+    moveTimerRef.current=setTimeout(()=>setMoving(false),300)
   },[won,pos,cols,rows,maze.g])
 
   useEffect(()=>{
@@ -350,14 +363,26 @@ export default function MazeGame({ level=1, onComplete }) {
           const potion=maze.potions.find(p=>p.x===x&&p.y===y&&!coll.includes(p.id))
           const hasTorch=maze.torches.has(`${x},${y}`)
           const hasVase=maze.vases.has(`${x},${y}`)&&!potion&&!isExit
-          const [tc,tr] = cell===1 ? wallTile(x,y,maze.g,rows,cols) : floorTile(x,y)
+          const wallInfo = cell===1 ? wallTile(x,y,maze.g,rows,cols) : null
+          const isVert = wallInfo === 'vert'
+          const wSprite = cell===1 ? wallSprite(x,y,maze.g,rows,cols) : null  // eslint-disable-line
+          const [tc,tr] = cell===1 ? (isVert ? TW.wallFill : (wallInfo||TW.wallFill)) : floorTile(x,y)
 
           return (
             <div key={`${x}-${y}`} style={{position:'absolute',left:x*cellSize,top:y*cellSize,
               width:cellSize,height:cellSize,overflow:'hidden'}}>
               {/* Base tile */}
-              <div style={{position:'absolute',inset:0,...tbg(tc,tr,ts),
-                filter:cell===1?'brightness(0.65) saturate(0.85)':'brightness(0.55) saturate(0.7)'}}/>
+              {wSprite ? (
+                <div style={{position:'absolute',inset:0,
+                  backgroundImage:`url(${spr(wSprite)})`,
+                  backgroundSize:`${cellSize}px ${cellSize}px`,
+                  backgroundRepeat:'no-repeat',backgroundPosition:'center',
+                  imageRendering:'pixelated',
+                  filter:'brightness(0.7) saturate(0.85)'}}/>
+              ) : (
+                <div style={{position:'absolute',inset:0,...tbg(tc,tr,ts),
+                  filter:cell===1?'brightness(0.65) saturate(0.85)':'brightness(0.55) saturate(0.7)'}}/>
+              )}
               {/* Wall atmosphere */}
               {cell===1&&(
                 <div style={{position:'absolute',inset:0,background:'rgba(67,20,120,0.3)'}}/>
@@ -396,17 +421,22 @@ export default function MazeGame({ level=1, onComplete }) {
           )
         }))}
 
-        {/* Player */}
+        {/* Player - Knight */}
         <motion.div style={{position:'absolute',width:cellSize,height:cellSize,
           display:'flex',alignItems:'center',justifyContent:'center',zIndex:20,pointerEvents:'none'}}
           animate={{left:pos.x*cellSize,top:pos.y*cellSize}}
           transition={{type:'spring',stiffness:500,damping:32}}>
-          <motion.span animate={{y:[0,-2,0]}} transition={{duration:1.1,repeat:Infinity}}
-            style={{fontSize:cellSize*0.72,lineHeight:1,display:'block',
+          <img
+            key={moving?'walk':'idle'}
+            src={spr(moving?'maze_knight_walk.gif':'maze_knight_idle.gif')}
+            alt="Ritter"
+            style={{
+              width:Math.round(cellSize*2.6), height:'auto',
               transform:`scaleX(${facing})`,
-              filter:'drop-shadow(0 3px 8px rgba(192,132,252,0.9))'}}>
-            🧙‍♂️
-          </motion.span>
+              imageRendering:'pixelated',
+              filter:'drop-shadow(0 3px 8px rgba(192,132,252,0.9))',
+            }}
+          />
         </motion.div>
 
         {/* Dragon */}
