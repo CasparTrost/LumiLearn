@@ -392,9 +392,10 @@ function LevelUpCelebration({ level, newAnimals, onDone }) {
   )
 }
 
-export default function FarmProgress({ completedCount: rawCount = 0, totalModules = 17 }) {
+export default function FarmProgress({ completedCount: rawCount = 0, totalModules = 17, farmLevel: farmLevelProp = null }) {
   const completedCount = rawCount  // use real count
-  const level = getLevel(completedCount)
+  // Use explicit farmLevel prop if provided (coin-based), else derive from completedCount
+  const level = farmLevelProp !== null ? Math.min(farmLevelProp - 1, 6) : getLevel(completedCount)
   const pct = Math.round((completedCount / totalModules) * 100)
   const nextUnlock = NEXT_AT[level] !== Infinity
     ? `${NEXT_AT[level] - completedCount} bis nächstes Level`
