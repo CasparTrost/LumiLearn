@@ -221,7 +221,6 @@ export default function NumbersGame({ level = 1, onComplete }) {
       setBubble(q.thanks)
       setPhase('correct')
       setScore(s => s + 1)
-        setShowWeiter(true)
       timerRef.current = setTimeout(advance, 1600)
     } else {
       setBubble(WRONG[rnd(0, WRONG.length - 1)])
