@@ -322,6 +322,7 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
         setMood('excited')
         setPlaced(newPlaced)
         sfx.correct()
+        setShowWeiter(true)
         feedbackTimeout.current = setTimeout(() => {
           const ns = score + 1
           setScore(ns)
@@ -361,6 +362,11 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
   }, [feedback, placed])
 
   const isDone = feedback === 'ok'
+
+  const weiterClick = () => {
+    setShowWeiter(false)
+    setWrongCount(0)
+  }
 
   return (
     <div style={{
