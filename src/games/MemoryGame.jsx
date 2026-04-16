@@ -82,6 +82,7 @@ export default function MemoryGame({ level = 1, onComplete }) {
   const [mood,     setMood]     = useState('happy')
   const [trophies,       setTrophies]       = useState([])
   const [sparkKey,       setSparkKey]       = useState(null)
+  const [endStars,       setEndStars]       = useState(0)
   const [justMatched,    setJustMatched]    = useState(() => new Set())
   const [justMismatched, setJustMismatched] = useState(() => new Set())
   const [matchPopup,     setMatchPopup]     = useState({ visible: false, text: '' })
@@ -128,7 +129,10 @@ export default function MemoryGame({ level = 1, onComplete }) {
 
         if (newMatches >= pairCount) {
           sfx.complete()
-          setTimeout(() => onComplete({ score: pairCount, total: pairCount, bonus: moves }), 400)
+          // Stars: 3 if moves <= pairCount+2, 2 if <=pairCount*1.7, else 1
+          const starCount = moves <= pairCount + 2 ? 3 : moves <= Math.round(pairCount * 1.7) ? 2 : 1
+          setEndStars(starCount)
+          setTimeout(() => onComplete({ score: pairCount, total: pairCount, bonus: moves, stars: starCount }), 400)
         } else {
           setTimeout(() => setMood('happy'), 800)
         }
@@ -204,6 +208,37 @@ export default function MemoryGame({ level = 1, onComplete }) {
       {/* Sparkle burst on match */}
       <AnimatePresence>{sparkKey && <SparkBurst key={sparkKey} id={sparkKey} />}</AnimatePresence>
 
+      {/* End stars overlay */}
+      <AnimatePresence>
+        {endStars > 0 && (
+          <motion.div
+            initial={{opacity:0,scale:0.5}} animate={{opacity:1,scale:1}} exit={{opacity:0}}
+            transition={{type:'spring',stiffness:300,delay:0.1}}
+            style={{
+              position:'fixed',top:'50%',left:'50%',transform:'translate(-50%,-50%)',
+              zIndex:500,background:'rgba(255,255,255,0.97)',
+              borderRadius:32,padding:'32px 48px',textAlign:'center',
+              boxShadow:'0 8px 48px rgba(0,0,0,0.18)',
+              display:'flex',flexDirection:'column',alignItems:'center',gap:12,
+            }}
+          >
+            <div style={{fontFamily:'var(--font-heading)',fontSize:'clamp(20px,4vw,28px)',color:'var(--text-primary)',fontWeight:700}}>
+              {endStars === 3 ? '🏆 Perfekt!' : endStars === 2 ? '🥈 Super!' : '🥉 Gut gemacht!'}
+            </div>
+            <div style={{display:'flex',gap:8}}>
+              {[1,2,3].map(s => (
+                <motion.span key={s}
+                  initial={{scale:0,rotate:-30}} animate={{scale:1,rotate:0}}
+                  transition={{type:'spring',stiffness:400,delay:s*0.15}}
+                  style={{fontSize:48,filter:s<=endStars?'none':'grayscale(1) opacity(0.25)'}}>⭐</motion.span>
+              ))}
+            </div>
+            <div style={{fontFamily:'var(--font-heading)',fontSize:16,color:'var(--text-muted)'}}>
+              {moves} Versuche · {endStars === 3 ? 'Unschlagbar! 🎉' : endStars === 2 ? 'Toll gespielt!' : 'Weiter üben!'}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Trophy shelf */}
       <div style={{
         width:'100%', maxWidth:780,
