@@ -64,24 +64,34 @@ function LumiWithOrbit({ completedCount, size }) {
         )
       })}
       {/* ⚙️ Settings button — fixed bottom-right, small and unobtrusive */}
-    </div>
+      <motion.button
+        whileHover={{ scale:1.12 }} whileTap={{ scale:0.92 }}
+        onClick={() => setShowParent(true)}
+        style={{
+          position:'fixed', bottom:20, right:20, zIndex:900,
+          width:42, height:42, borderRadius:'50%',
+          background:'rgba(255,255,255,0.15)',
+          backdropFilter:'blur(8px)',
+          border:'1.5px solid rgba(255,255,255,0.25)',
+          color:'rgba(255,255,255,0.6)',
+          fontSize:20, cursor:'pointer',
+          display:'flex', alignItems:'center', justifyContent:'center',
+          boxShadow:'0 2px 12px rgba(0,0,0,0.15)',
+        }}
+        title="Einstellungen"
+      >⚙️</motion.button>
+
+</div>
   )
 }
 
 export default function HomeScreen() {
   const t = useT()
   const { state, dispatch } = useApp()
-  const profile      = state.profile      ?? { name:'Lumi', avatar:'🦊' }
-  const progress     = state.progress     ?? {}
-  const coins        = state.coins        ?? 0
-  const farmLevel    = state.farmLevel    ?? 1
-  const streak       = state.streak       ?? { count: 0, lastDate: null }
-  const dailyMission = state.dailyMission ?? { date: null, missions: [], completedIds: [] }
+  const profile  = state.profile  ?? { name:'Lumi', avatar:'🦊' }
+  const progress = state.progress ?? {}
   const [showParent, setShowParent] = useState(false)
   const completedCount = Object.values(progress).filter(p => p?.completed).length
-  const FARM_UPGRADE_COSTS = [0, 50, 100, 175, 275, 400, 550]
-  const farmUpgradeCost    = FARM_UPGRADE_COSTS[farmLevel] ?? null
-  const canUpgradeFarm     = farmUpgradeCost !== null && coins >= farmUpgradeCost
 
   const getModuleTitle = (id, fallback) => t('module.' + id, fallback)
   const getModuleSub = (id) => {
@@ -181,7 +191,7 @@ export default function HomeScreen() {
       </div>
 
       {/* ── Farm Progress ── */}
-      <FarmProgress completedCount={completedCount} totalModules={MODULES.length} profile={profile} farmLevel={farmLevel} />
+      <FarmProgress completedCount={completedCount} totalModules={MODULES.length} profile={profile} />
 
       {/* ── Card grid ── */}
       <div style={{
