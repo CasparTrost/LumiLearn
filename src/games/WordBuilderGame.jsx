@@ -2,6 +2,14 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
+
+function speakDE(text) {
+  if (!window.speechSynthesis) return
+  window.speechSynthesis.cancel()
+  const u = new SpeechSynthesisUtterance(text)
+  u.lang = 'de-DE'; u.rate = 0.7; u.pitch = 1.1
+  window.speechSynthesis.speak(u)
+}
 import { voice } from '../voice.js'
 
 /**
@@ -328,6 +336,7 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
           setScore(ns)
           if (idx + 1 >= TOTAL) {
             sfx.complete()
+        setTimeout(() => speakDE(current.word.toLowerCase()), 300)
             setTimeout(() => onComplete({ score: ns, total: TOTAL }), 700)
           } else {
             setIdx(i => i + 1)
