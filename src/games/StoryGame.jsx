@@ -484,11 +484,11 @@ export default function StoryGame({ level = 1, onComplete }) {
                 fontFamily:'var(--font-heading)', fontSize:'clamp(16px,3.5vw,22px)',
                 color:'var(--violet-deep)', textAlign:'center',
               }}>
-                {outcome.lesson}
+                {story?.lesson || outcome?.lesson || '💡 Gut gemacht!'}
               </div>
               <div style={{ display:'flex', gap:4 }}>
                 {Array.from({length:3}).map((_,i) => (
-                  <span key={i} style={{ fontSize:28, filter: i < (outcome.stars ?? 2) ? 'none' : 'grayscale(1) opacity(0.3)' }}>⭐</span>
+                  <span key={i} style={{ fontSize:28, filter: i < (outcome?.stars ?? 3) ? 'none' : 'grayscale(1) opacity(0.3)' }}>⭐</span>
                 ))}
               </div>
             </div>
