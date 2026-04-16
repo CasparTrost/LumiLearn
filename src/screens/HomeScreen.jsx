@@ -88,8 +88,11 @@ function LumiWithOrbit({ completedCount, size }) {
 export default function HomeScreen() {
   const t = useT()
   const { state, dispatch } = useApp()
-  const profile  = state.profile  ?? { name:'Lumi', avatar:'🦊' }
-  const progress = state.progress ?? {}
+  const profile      = state.profile      ?? { name:'Lumi', avatar:'🦊' }
+  const progress     = state.progress     ?? {}
+  const coins        = state.coins        ?? 0
+  const streak       = state.streak       ?? { count: 0, lastDate: null }
+  const dailyMission = state.dailyMission ?? { date: null, missions: [], completedIds: [] }
   const [showParent, setShowParent] = useState(false)
   const completedCount = Object.values(progress).filter(p => p?.completed).length
 
