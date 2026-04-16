@@ -15,24 +15,6 @@ import { sfx } from '../sfx.js'
  */
 
 // Each outer array = one difficulty tier. Game picks a random set within the tier.
-// Item tooltip lookup
-const ITEM_NAMES = {'🐕':'Hund','🍕':'Pizza','🐱':'Katze','🍎':'Apfel','🦁':'Löwe',
-  '🌮':'Taco','🐸':'Frosch','🍩':'Donut','🦊':'Fuchs','🍗':'Hähnchen','🐬':'Delfin',
-  '🍓':'Erdbeere','🐘':'Elefant','🍔':'Burger','🐧':'Pinguin','🍌':'Banane','🐯':'Tiger',
-  '🎂':'Kuchen','🦋':'Schmetterling','🍦':'Eis','🐢':'Schildkröte','🥕':'Karotte',
-  '🐙':'Tintenfisch','🍉':'Wassermelone','🚗':'Auto','🌿':'Pflanze','🚂':'Zug',
-  '🌸':'Blume','✈️':'Flugzeug','🌲':'Baum','🚀':'Rakete','🍄':'Pilz',
-  '🚁':'Hubschrauber','🌊':'Welle','🛸':'UFO','⛰️':'Berg','🧸':'Teddy','🪀':'Jojo',
-  '🎮':'Konsole','🪁':'Schleuder','🎲':'Würfel','🎪':'Zirkus','🍋':'Zitrone',
-  '🥦':'Brokkoli','🍊':'Orange','🥒':'Gurke','🍇':'Trauben','🍅':'Tomate',
-  '🐶':'Hund','🐰':'Hase','🦔':'Igel','🐦':'Vogel','🐝':'Biene','🦆':'Ente',
-  '🐋':'Wal','🦈':'Hai','🐊':'Krokodil','🐆':'Gepard','🦒':'Giraffe',
-  '🏀':'Basketball','⚽':'Fußball','🎾':'Tennis','📚':'Bücher','💡':'Glühbirne',
-  '☁️':'Wolke','⭐':'Stern','🌙':'Mond','🌤️':'Sonne','🌞':'Sonne','🌟':'Stern',
-  '🐠':'Tropenfisch','🐡':'Kugelfisch','🦞':'Hummer','🐺':'Wolf','🦌':'Hirsch',
-  '🍄':'Pilz','🐿️':'Eichhörnchen','🐊':'Krokodil','🦉':'Eule',
-}
-
 const LEVEL_SETS = [
   // ── Tier 1 ─────────────────────────────────────────────────────────────────
   [
@@ -393,7 +375,6 @@ export default function SortGame({ level = 1, onComplete }) {
 
   const catA = cfg.categoryA
   const catB = cfg.categoryB
-  const catC = cfg.categoryC || null
 
   return (
     <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', padding:'clamp(10px,2vw,20px) clamp(12px,3vw,28px)', gap:'clamp(10px,1.8vw,16px)', userSelect:'none' }}>
@@ -416,7 +397,7 @@ export default function SortGame({ level = 1, onComplete }) {
         <div style={{ flex:1, background:'white', borderRadius:'24px 24px 24px 6px', padding:'10px 16px', boxShadow:'0 4px 16px rgba(107,203,119,0.12)', fontFamily:'var(--font-heading)', fontSize:'clamp(14px,3vw,19px)', color:'var(--text-primary)' }}>
           {phase === 'done'
             ? '🎉 Super! Alles richtig sortiert!'
-            : catC ? ('Wohin gehört es? ← ' + catA.label + '  · ↑ ' + catB.label + '  · → ' + catC.label) : ('Wohin gehört es? Pfeiltaste ← ' + catA.label + '  oder  ' + catB.label + ' →')}
+            : 'Wohin gehört es? Pfeiltaste ← ' + catA.label + '  oder  ' + catB.label + ' →'}
         </div>
       </div>
 
@@ -575,26 +556,3 @@ export default function SortGame({ level = 1, onComplete }) {
     </div>
   )
 }
-        {/* Basket C (bottom-right) — only shown when catC exists */}
-        {catC && (
-          <motion.div
-            animate={flyDir === 'C' ? { scale: [1, 1.04, 1] } : {}}
-            transition={{ duration: 0.25 }}
-            style={{
-              position: 'absolute', right: 0, bottom: '-clamp(80px,16vw,130px)',
-              width: '45%',
-              minHeight: 'clamp(80px,14vw,120px)',
-              background: catC.bg, border: '3px dashed ' + catC.border,
-              borderRadius: 22, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-              padding: 'clamp(6px,1.2vw,12px)',
-              boxShadow: flyDir === 'C' ? '0 0 0 5px ' + catC.border + '66, 0 4px 20px rgba(0,0,0,0.08)' : '0 3px 14px rgba(0,0,0,0.07)',
-              zIndex: 5,
-            }}
-          >
-            <span style={{ fontSize: 'clamp(26px,5.5vw,40px)', lineHeight: 1 }}>{catC.emoji}</span>
-            <span style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(12px,2.5vw,17px)', color: catC.color, fontWeight: 700, textAlign: 'center' }}>{catC.label}</span>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, justifyContent: 'center', marginTop: 2 }}>
-              {droppedC.map((em, i) => <span key={i} style={{ fontSize: 'clamp(18px,4vw,28px)' }}>{em}</span>)}
-            </div>
-          </motion.div>
-        )}
