@@ -139,119 +139,122 @@ function buildQuestions(level) {
   return makeMultiplyQuestions(n)
 }
 
-// ── Animated balance beam ─────────────────────────────────────────────────────
-function Beam({ tiltDeg }) {
-  const CX = 160, CY = 22, ARM = 130
+// ── Balance Scale — realistic SVG with beam, chains and pans ────────────────
+function BalanceScale({ tiltDeg, leftEmoji, rightEmoji, leftLabel, rightLabel,
+                        answered, leftHeavier, onPickLeft, onPickRight }) {
+  const W = 400, CX = 200, PIVOT_Y = 70, ARM = 150, CHAIN = 90, PAN_W = 88
 
   return (
-    <svg width={320} height={52} viewBox="0 0 320 52" style={{ overflow: 'visible', display: 'block' }}>
-      {/* Stand pole */}
-      <rect x={CX - 6} y={CY} width={12} height={34} rx={6} fill="#9B8FCC" />
-      <rect x={CX - 22} y={CY + 32} width={44} height={10} rx={5} fill="#7C6FAF" />
+    <svg width="100%" viewBox={`0 0 ${W} 280`}
+      style={{ maxWidth: 440, display:'block', overflow:'visible' }}>
+      <defs>
+        <linearGradient id="bBase" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#7C6FAF"/><stop offset="100%" stopColor="#4A00E0"/>
+        </linearGradient>
+        <linearGradient id="bPole" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#A29BFE"/><stop offset="50%" stopColor="#E8E4FF"/>
+          <stop offset="100%" stopColor="#A29BFE"/>
+        </linearGradient>
+        <linearGradient id="bBeam" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#EDE8FF"/><stop offset="100%" stopColor="#A29BFE"/>
+        </linearGradient>
+        <filter id="bShadow"><feDropShadow dx="0" dy="3" stdDeviation="5" floodOpacity="0.2"/></filter>
+      </defs>
 
-      {/* Rotating beam */}
+      {/* Base */}
+      <rect x={CX-60} y={254} width={120} height={18} rx={9} fill="url(#bBase)" filter="url(#bShadow)"/>
+      <rect x={CX-45} y={244} width={90}  height={14} rx={7} fill="#9B8FCC"/>
+
+      {/* Pole with rings */}
+      <rect x={CX-7} y={PIVOT_Y+14} width={14} height={178} rx={7} fill="url(#bPole)"/>
+      {[0.25,0.5,0.75].map((f,i)=>(
+        <rect key={i} x={CX-10} y={PIVOT_Y+14+(178)*f} width={20} height={7} rx={3.5} fill="#7C6FAF"/>
+      ))}
+
+      {/* Beam + chains + pans (all rotate together) */}
       <motion.g
         animate={{ rotate: tiltDeg }}
-        transition={{ type: 'spring', stiffness: 70, damping: 14 }}
-        style={{ transformOrigin: `${CX}px ${CY}px` }}
+        transition={{ type:'spring', stiffness:50, damping:11 }}
+        style={{ transformOrigin:`${CX}px ${PIVOT_Y}px` }}
       >
-        <rect x={CX - ARM - 6} y={CY - 6} width={ARM * 2 + 12} height={12} rx={6} fill="#A29BFE" />
-        <circle cx={CX - ARM} cy={CY} r={8} fill="#6C63FF" />
-        <circle cx={CX + ARM} cy={CY} r={8} fill="#6C63FF" />
+        {/* Beam bar */}
+        <rect x={CX-ARM-8} y={PIVOT_Y-7} width={ARM*2+16} height={14} rx={7}
+          fill="url(#bBeam)" filter="url(#bShadow)"/>
+        <circle cx={CX-ARM} cy={PIVOT_Y} r={9} fill="#6C63FF"/>
+        <circle cx={CX+ARM} cy={PIVOT_Y} r={9} fill="#6C63FF"/>
+
+        {/* Left chain */}
+        {Array.from({length:5},(_,i)=>(
+          <line key={"lc"+i} x1={CX-ARM} y1={PIVOT_Y+9+i*16} x2={CX-ARM} y2={PIVOT_Y+9+(i+1)*16}
+            stroke="#9B8FCC" strokeWidth={3} strokeLinecap="round"/>
+        ))}
+        {/* Right chain */}
+        {Array.from({length:5},(_,i)=>(
+          <line key={"rc"+i} x1={CX+ARM} y1={PIVOT_Y+9+i*16} x2={CX+ARM} y2={PIVOT_Y+9+(i+1)*16}
+            stroke="#9B8FCC" strokeWidth={3} strokeLinecap="round"/>
+        ))}
+
+        {/* Left pan bowl */}
+        <ellipse cx={CX-ARM} cy={PIVOT_Y+CHAIN}   rx={PAN_W/2} ry={10} fill="#D4CCFF" stroke="#9B8FCC" strokeWidth={2}/>
+        <path d={`M${CX-ARM-PAN_W/2} ${PIVOT_Y+CHAIN} Q${CX-ARM} ${PIVOT_Y+CHAIN+28} ${CX-ARM+PAN_W/2} ${PIVOT_Y+CHAIN}`}
+          fill="#C4BAFF" stroke="#9B8FCC" strokeWidth={2}/>
+        {/* Right pan bowl */}
+        <ellipse cx={CX+ARM} cy={PIVOT_Y+CHAIN}   rx={PAN_W/2} ry={10} fill="#D4CCFF" stroke="#9B8FCC" strokeWidth={2}/>
+        <path d={`M${CX+ARM-PAN_W/2} ${PIVOT_Y+CHAIN} Q${CX+ARM} ${PIVOT_Y+CHAIN+28} ${CX+ARM+PAN_W/2} ${PIVOT_Y+CHAIN}`}
+          fill="#C4BAFF" stroke="#9B8FCC" strokeWidth={2}/>
+
+        {/* Left item — clickable */}
+        <g style={{ cursor: answered?'default':'pointer' }}
+           onClick={!answered ? onPickLeft : undefined}>
+          {answered && leftHeavier && (
+            <circle cx={CX-ARM} cy={PIVOT_Y+CHAIN-22} r={38} fill="#FFD93D" opacity={0.22}/>
+          )}
+          <text x={CX-ARM} y={PIVOT_Y+CHAIN-8} textAnchor="middle" fontSize={40}
+            dominantBaseline="middle" style={{userSelect:'none',
+              filter: answered&&leftHeavier?'drop-shadow(0 0 8px #FFD93D)':'none'}}>
+            {leftEmoji}
+          </text>
+          <text x={CX-ARM} y={PIVOT_Y+CHAIN+32} textAnchor="middle" fontSize={13}
+            fontWeight="700" fill={answered&&leftHeavier?"#4A00E0":"#6C5CE7"}
+            fontFamily="var(--font-heading,system-ui)">
+            {leftLabel}
+          </text>
+          {answered && leftHeavier && (
+            <text x={CX-ARM} y={PIVOT_Y+CHAIN+50} textAnchor="middle" fontSize={20}>🏆</text>
+          )}
+        </g>
+
+        {/* Right item — clickable */}
+        <g style={{ cursor: answered?'default':'pointer' }}
+           onClick={!answered ? onPickRight : undefined}>
+          {answered && !leftHeavier && (
+            <circle cx={CX+ARM} cy={PIVOT_Y+CHAIN-22} r={38} fill="#FFD93D" opacity={0.22}/>
+          )}
+          <text x={CX+ARM} y={PIVOT_Y+CHAIN-8} textAnchor="middle" fontSize={40}
+            dominantBaseline="middle" style={{userSelect:'none',
+              filter: answered&&!leftHeavier?'drop-shadow(0 0 8px #FFD93D)':'none'}}>
+            {rightEmoji}
+          </text>
+          <text x={CX+ARM} y={PIVOT_Y+CHAIN+32} textAnchor="middle" fontSize={13}
+            fontWeight="700" fill={answered&&!leftHeavier?"#4A00E0":"#6C5CE7"}
+            fontFamily="var(--font-heading,system-ui)">
+            {rightLabel}
+          </text>
+          {answered && !leftHeavier && (
+            <text x={CX+ARM} y={PIVOT_Y+CHAIN+50} textAnchor="middle" fontSize={20}>🏆</text>
+          )}
+        </g>
       </motion.g>
 
       {/* Pivot cap */}
-      <circle cx={CX} cy={CY} r={10} fill="#4A00E0" />
-      <circle cx={CX} cy={CY} r={5} fill="white" />
+      <circle cx={CX} cy={PIVOT_Y} r={14} fill="#4A00E0" filter="url(#bShadow)"/>
+      <circle cx={CX} cy={PIVOT_Y} r={6}  fill="white"/>
+      <circle cx={CX} cy={PIVOT_Y} r={2}  fill="#4A00E0"/>
     </svg>
   )
 }
 
-// ── Clickable weight card ─────────────────────────────────────────────────────
-function WeightCard({ emoji, label, heavier, lighter, answered, onClick, side }) {
-  return (
-    <motion.button
-      onClick={!answered ? onClick : undefined}
-      whileHover={!answered ? { scale: 1.04 } : {}}
-      whileTap={!answered ? { scale: 0.96 } : {}}
-      style={{
-        flex: 1,
-        minWidth: 130,
-        maxWidth: 210,
-        padding: 'clamp(16px,3vw,26px) clamp(10px,2vw,18px)',
-        borderRadius: 28,
-        background: answered && heavier
-          ? 'linear-gradient(160deg,#FFFDE7,#FFF6A0)'
-          : answered && lighter
-          ? 'linear-gradient(160deg,#F5F5F5,#EEEEEE)'
-          : 'white',
-        border: `3px solid ${
-          answered && heavier ? '#FFD93D'
-          : answered && lighter ? '#DDD'
-          : '#ECE8FF'
-        }`,
-        boxShadow: answered && heavier
-          ? '0 0 0 4px #FFD93D55, 0 8px 36px rgba(255,217,61,0.45)'
-          : answered && lighter
-          ? '0 4px 16px rgba(0,0,0,0.07)'
-          : '0 6px 28px rgba(108,99,255,0.16)',
-        cursor: answered ? 'default' : 'pointer',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-        transition: 'background 0.3s, border 0.3s, box-shadow 0.3s',
-        outline: 'none',
-        position: 'relative',
-      }}
-    >
-      {/* Keyboard hint pill */}
-      {!answered && (
-        <div style={{
-          position: 'absolute', top: 8,
-          [side === 'left' ? 'left' : 'right']: 10,
-          background: '#ECE8FF', borderRadius: 99,
-          padding: '2px 8px',
-          fontFamily: 'var(--font-heading)', fontSize: 11, fontWeight: 700,
-          color: '#6C63FF',
-        }}>
-          {side === 'left' ? '←' : '→'}
-        </div>
-      )}
 
-      {/* Emoji */}
-      <div style={{ fontSize: 'clamp(50px,11vw,76px)', lineHeight: 1 }}>{emoji}</div>
-
-      {/* Label */}
-      <div style={{
-        fontFamily: 'var(--font-heading)',
-        fontSize: 'clamp(16px,3.5vw,22px)',
-        fontWeight: 800,
-        color: answered && lighter ? '#AAA' : '#222',
-        textAlign: 'center', lineHeight: 1.2,
-      }}>
-        {label}
-      </div>
-
-      {/* Result badge */}
-      <div style={{ height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {answered && heavier && (
-          <motion.div
-            initial={{ scale: 0 }} animate={{ scale: 1 }}
-            transition={{ type: 'spring', stiffness: 380, damping: 16 }}
-            style={{
-              background: 'linear-gradient(135deg,#FFD93D,#F7A428)',
-              borderRadius: 99, padding: '4px 12px',
-              fontFamily: 'var(--font-heading)', fontSize: 13, fontWeight: 800,
-              color: 'white', boxShadow: '0 3px 12px rgba(255,164,40,0.45)',
-            }}
-          >
-            {'⬇️ Schwerer!'}
-          </motion.div>
-        )}
-      </div>
-    </motion.button>
-  )
-}
-
-// ── Main Game ─────────────────────────────────────────────────────────────────
 export default function WeightGame({ level = 1, onComplete }) {
   const [questions] = useState(() => buildQuestions(level))
   const [idx,       setIdx]      = useState(0)
