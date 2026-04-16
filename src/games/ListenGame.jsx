@@ -88,12 +88,12 @@ const WORD_BANK = [
 
 function shuffle(a) { return [...a].sort(() => Math.random() - 0.5) }
 
-function speak(text) {
+function speak(text, slow = false) {
   if (!window.speechSynthesis) return
   window.speechSynthesis.cancel()
   const u = new SpeechSynthesisUtterance(text)
   u.lang  = 'de-DE'
-  u.rate  = 0.72
+  u.rate  = slow ? 0.45 : 0.72
   u.pitch = 1.1
   window.speechSynthesis.speak(u)
 }
@@ -136,12 +136,14 @@ export default function ListenGame({ level = 1, onComplete }) {
     const nc = correct + (ok ? 1 : 0)
     setSelected(emoji)
     setMood(ok ? 'excited' : 'encouraging')
-    if (ok) { setCorrect(nc); setShowWeiter(true) }
+    if (ok) { setCorrect(nc); setShowWeiter(true); setTimeout(() => speak(current.word), 300) }
     else {
+      // Repeat word slowly on wrong answer
+      setTimeout(() => speak(current.word, true), 600)
       setTimeout(() => {
         if (idx + 1 >= words.length) { onComplete({ score: nc, total: words.length }) }
         else { setIdx(i => i + 1) }
-      }, 1400)
+      }, 2200)
     }
   }, [selected, current, correct, idx, words, onComplete])
 
@@ -245,12 +247,24 @@ export default function ListenGame({ level = 1, onComplete }) {
                 transition:'all 0.22s', lineHeight:1,
               }}
             >
-              <motion.span
-                animate={done && isAns ? { scale:[1,1.35,1], rotate:[0,12,-12,0] } : {}}
-                transition={{ duration:0.55 }}
-              >
-                {emoji}
-              </motion.span>
+              <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:4 }}>
+                <motion.span
+                  animate={done && isAns ? { scale:[1,1.35,1], rotate:[0,12,-12,0] } : {}}
+                  transition={{ duration:0.55 }}
+                >
+                  {emoji}
+                </motion.span>
+                {done && isAns && (
+                  <motion.span
+                    initial={{opacity:0,y:4}} animate={{opacity:1,y:0}}
+                    style={{
+                      fontFamily:'var(--font-heading)',
+                      fontSize:'clamp(13px,2.8vw,17px)',
+                      fontWeight:700, color:'#2d7a3a',
+                    }}
+                  >{current.word}</motion.span>
+                )}
+              </div>
             </motion.button>
           )
         })}
