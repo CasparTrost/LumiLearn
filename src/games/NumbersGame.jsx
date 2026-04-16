@@ -126,6 +126,7 @@ export default function NumbersGame({ level = 1, onComplete }) {
   const [bubble,     setBubble]    = useState('')
   const [cartBounce, setCartBounce] = useState(0)
   const [score,      setScore]     = useState(0)
+  const [sold,       setSold]       = useState([]) // receipt
   const cartControls = useAnimation()
 
   useEffect(() => {
@@ -235,7 +236,8 @@ export default function NumbersGame({ level = 1, onComplete }) {
     }
   }, [phase, flying.length, hasBagged, bagged, q, advance])
 
-  if (!q) return null
+  const [showReceipt, setShowReceipt] = useState(false)
+  if (!q && !showReceipt) return null
   const { parts, customer, greeting } = q
   const accentColor = parts[0].item.color
   const productSize = parts.length === 1
