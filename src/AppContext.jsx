@@ -75,6 +75,7 @@ const initialState = {
   gameResult:  null,
   // ── Gamification ──
   coins:       0,
+  farmLevel:   1,
   streak:      { count: 0, lastDate: null },
   dailyMission: { date: null, missions: [], completedIds: [] },
   // ── Session tracking (not persisted) ──
@@ -245,6 +246,13 @@ function reducer(state, action) {
       return { ...state, coins: state.coins - amount }
     }
 
+    case 'UPGRADE_FARM': {
+      const farmLevel  = state.farmLevel ?? 1
+      const cost = [0, 50, 100, 175, 275, 400, 550][farmLevel] ?? 999
+      if ((state.coins ?? 0) < cost) return state
+      return { ...state, coins: state.coins - cost, farmLevel: farmLevel + 1 }
+    }
+
     case 'LOAD_SAVE':
       return { ...state, ...action.payload }
 
@@ -303,6 +311,7 @@ export function AppProvider({ children }) {
       profiles:     state.profiles,
       progress:     state.progress,
       coins:        state.coins,
+      farmLevel:    state.farmLevel,
       streak:       state.streak,
       dailyMission: {
         date:         state.dailyMission?.date,
