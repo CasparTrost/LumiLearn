@@ -220,9 +220,8 @@ function reducer(state, action) {
         ...state,
         coins:  (state.coins ?? 0) + bonusCoins,
         streak: { count: newCount, lastDate: today },
-        gameResult: state.gameResult
-          ? { ...state.gameResult, streakBonus: bonusCoins, streakCount: newCount }
-          : state.gameResult,
+        // streakBonus stored separately, not in gameResult to avoid crash
+      streakLastBonus: bonusCoins,
       }
     }
 
@@ -281,7 +280,15 @@ function migrate(saved) {
     if (!migrated[id]) migrated[id] = freshProgress()
   }
   const profiles = saved.profiles ?? (saved.profile ? [saved.profile] : [])
-  return { ...saved, progress: migrated, profiles }
+  return {
+    ...saved,
+    progress:     migrated,
+    profiles,
+    coins:        typeof saved.coins     === 'number' ? saved.coins     : 0,
+    farmLevel:    typeof saved.farmLevel === 'number' ? saved.farmLevel : 1,
+    streak:       saved.streak       ?? { count: 0, lastDate: null },
+    dailyMission: saved.dailyMission ?? { date: null, missions: [], completedIds: [] },
+  }
 }
 
 export function AppProvider({ children }) {
