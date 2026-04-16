@@ -64,24 +64,7 @@ function LumiWithOrbit({ completedCount, size }) {
         )
       })}
       {/* ⚙️ Settings button — fixed bottom-right, small and unobtrusive */}
-      <motion.button
-        whileHover={{ scale:1.12 }} whileTap={{ scale:0.92 }}
-        onClick={() => setShowParent(true)}
-        style={{
-          position:'fixed', bottom:20, right:20, zIndex:900,
-          width:42, height:42, borderRadius:'50%',
-          background:'rgba(255,255,255,0.15)',
-          backdropFilter:'blur(8px)',
-          border:'1.5px solid rgba(255,255,255,0.25)',
-          color:'rgba(255,255,255,0.6)',
-          fontSize:20, cursor:'pointer',
-          display:'flex', alignItems:'center', justifyContent:'center',
-          boxShadow:'0 2px 12px rgba(0,0,0,0.15)',
-        }}
-        title="Einstellungen"
-      >⚙️</motion.button>
-
-</div>
+    </div>
   )
 }
 
