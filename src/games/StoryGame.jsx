@@ -2,6 +2,15 @@ import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 
+function speakDE(text) {
+  if (!window.speechSynthesis) return
+  window.speechSynthesis.cancel()
+  const clean = text.replace(/[🌟✨🎉💛🍭🎁🌸🐾🌈❤️🌙⭐🦋🎵💎🪄🔮🌊🏔️🗺️🎭🃏🌿🦄🐲🔑🏆🌺💫🌻🌹🎀🎊🎈🎂🍀🍃🌾🌵🌴]/gu,'')
+  const u = new SpeechSynthesisUtterance(clean)
+  u.lang = 'de-DE'; u.rate = 0.78; u.pitch = 1.05
+  window.speechSynthesis.speak(u)
+}
+
 /**
  * Lumis Abenteuer — Narratives Lernen & Kausaldenken
  * Scientific basis:
@@ -485,6 +494,8 @@ export default function StoryGame({ level = 1, onComplete }) {
                 color:'var(--violet-deep)', textAlign:'center',
               }}>
                 {story?.lesson || outcome?.lesson || '💡 Gut gemacht!'}
+                {/* Auto-speak lesson */}
+                {phase === 'lesson' && (() => { const txt = story?.lesson || outcome?.lesson; if(txt) setTimeout(()=>speakDE(txt.replace(/💡/g,'')),300); return null })()}
               </div>
               <div style={{ display:'flex', gap:4 }}>
                 {Array.from({length:3}).map((_,i) => (
