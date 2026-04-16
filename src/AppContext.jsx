@@ -169,8 +169,10 @@ function reducer(state, action) {
       }
       const newlyCompletedMissions = (dm.missions ?? []).filter(m => {
         if ((dm.completedIds ?? []).includes(m.id)) return false
-        const fn = ALL_MISSIONS.find(x => x.id === m.id)?.check
-        return fn ? fn(sessionSnap) : false
+        // Look up check function from ALL_MISSIONS by id (not stored in state)
+        const missionDef = ALL_MISSIONS.find(x => x.id === m.id)
+        if (!missionDef?.check) return false
+        try { return missionDef.check(sessionSnap) } catch { return false }
       })
       const missionCoins = newlyCompletedMissions.length * MISSION_COIN_REWARD
       const finalCoins   = newCoins + missionCoins
@@ -233,7 +235,8 @@ function reducer(state, action) {
         ...state,
         dailyMission: {
           date:         today,
-          missions:     pickDailyMissions(today),
+          // Store only serializable fields (no check functions)
+          missions:     pickDailyMissions(today).map(m => ({ id: m.id, text: m.text, icon: m.icon })),
           completedIds: [],
         },
       }
