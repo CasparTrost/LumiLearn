@@ -48,6 +48,21 @@ function generateTimes(level, count = level <= 4 ? 8 : level <= 7 ? 10 : 12) {
   return times
 }
 
+function toGermanTime(h, m) {
+  // Return the colloquial German expression for common times
+  const map = {
+    '0':   'genau',
+    '30':  'halb ' + (h % 12 === 0 ? 12 : (h % 12) + 1),
+    '15':  'viertel nach ' + h,
+    '45':  'viertel vor ' + (h % 12 === 0 ? 12 : (h % 12) + 1),
+  }
+  if (m === 0) return `${h} Uhr`
+  if (m === 30) return `halb ${h % 12 === 0 ? 12 : (h % 12) + 1}`
+  if (m === 15) return `viertel nach ${h}`
+  if (m === 45) return `viertel vor ${h % 12 === 0 ? 12 : (h % 12) + 1}`
+  return `${h}:${String(m).padStart(2,'0')} Uhr`
+}
+
 function fmt(h, m) {
   return `${h}:${String(m).padStart(2, '0')} Uhr`
 }
@@ -194,6 +209,23 @@ function ClockFace({ targetH, targetM, interactive, onAnswer, level = 1 }) {
           )
         })}
 
+        {/* 5-minute labels — only at level >= 4 */}
+        {level >= 4 && Array.from({ length: 12 }, (_, i) => {
+          const min = i * 5
+          if (min === 0) return null // 12 already shown as hour number
+          const ang = (i / 12) * Math.PI * 2 - Math.PI / 2
+          const r3 = R - 52
+          return (
+            <text key={'m'+i}
+              x={CX + r3 * Math.cos(ang)}
+              y={CY + r3 * Math.sin(ang) + 4}
+              textAnchor="middle"
+              fontSize={9} fontWeight="600"
+              fill="#A29BFE" opacity={0.85}
+              fontFamily="var(--font-heading, system-ui)"
+            >{min}</text>
+          )
+        })}
         {/* Hour hand */}
         <line
           x1={CX} y1={CY}
@@ -293,6 +325,8 @@ export default function ClockGame({ level = 1, onComplete }) {
   const [score,     setScore]     = useState(0)
   const [mood,      setMood]      = useState('happy')
   const [flashKey,  setFlashKey]  = useState(0)
+  const [streak,    setStreak]    = useState(0)
+  const [showWeiter, setShowWeiter] = useState(false)
 
   const t = times[idx]
 
@@ -326,8 +360,8 @@ export default function ClockGame({ level = 1, onComplete }) {
     setFeedback(ok ? 'ok' : 'wrong')
     setMood(ok ? 'excited' : 'encouraging')
     setFlashKey(k => k + 1)
-    if (ok) sfx.correct(); else sfx.wrong()
-    setTimeout(() => {
+    if (ok) { sfx.correct(); setShowWeiter(true); setStreak(s => s + 1) } else { sfx.wrong(); setStreak(0) }
+    if (!ok) setTimeout(() => {
       setFeedback(null)
       setMood('happy')
       if (idx + 1 >= times.length) {
@@ -336,7 +370,7 @@ export default function ClockGame({ level = 1, onComplete }) {
       } else {
         setIdx(i => i + 1)
       }
-    }, 1100)
+    }, 1100) // end if(!ok)
   }, [score, idx, times.length, onComplete])
 
   const pickDigital = useCallback((opt) => {
@@ -351,6 +385,18 @@ export default function ClockGame({ level = 1, onComplete }) {
     const tolerance = level <= 2 ? 0 : level <= 3 ? 14 : 4
     advance(diff <= tolerance)
   }, [feedback, t, level, advance])
+
+  const weiterClick = () => {
+    setShowWeiter(false)
+    setFeedback(null)
+    setMood('happy')
+    if (idx + 1 >= times.length) {
+      sfx.complete()
+      setTimeout(() => onComplete({ score, total: times.length }), 500)
+    } else {
+      setIdx(i => i + 1)
+    }
+  }
 
   if (!t) return null
 
@@ -430,9 +476,11 @@ export default function ClockGame({ level = 1, onComplete }) {
             color: 'var(--text-primary)',
           }}
         >
-          {mode === 'read'
-            ? (<>Welche Uhrzeit zeigt die Uhr? 🕐</>)
-            : (<>Stelle die Uhr auf <strong style={{ color: '#4A00E0' }}>{fmt(t.h, t.m)}</strong>! Ziehe die Zeiger! 🖐️</>)
+          {feedback === 'ok'
+            ? (<>⭐ Richtig! Es war <strong style={{ color:'#4A00E0' }}>{toGermanTime(t.h, t.m)}</strong>!</>)
+            : mode === 'read'
+              ? (<>Welche Uhrzeit zeigt die Uhr? 🕐</>)
+              : (<>Stelle die Uhr auf <strong style={{ color: '#4A00E0' }}>{fmt(t.h, t.m)}</strong>! Ziehe die Zeiger! 🖐️</>)
           }
         </motion.div>
       </div>
@@ -506,6 +554,30 @@ export default function ClockGame({ level = 1, onComplete }) {
           </div>
         )}
 
+        {/* SET MODE: show target time prominently */}
+        {mode === 'set' && !feedback && (
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+          }}>
+            <div style={{
+              background: '#F0EEFF', borderRadius: 16, padding: '10px 22px',
+              fontFamily: 'var(--font-heading)', fontSize: 'clamp(14px,3vw,18px)',
+              color: '#9B8FCC',
+            }}>Ziel-Zeit:</div>
+            <div style={{
+              background: 'white', borderRadius: 16, padding: '12px 28px',
+              fontFamily: 'var(--font-heading)',
+              fontSize: 'clamp(28px,6vw,42px)', fontWeight: 800,
+              color: '#4A00E0',
+              boxShadow: '0 4px 20px rgba(74,0,224,0.15)',
+              letterSpacing: 2,
+            }}>{fmt(t.h, t.m)}</div>
+            <div style={{
+              fontFamily: 'var(--font-heading)', fontSize: 'clamp(14px,2.8vw,18px)',
+              color: '#9B8FCC', textAlign: 'center',
+            }}>{toGermanTime(t.h, t.m)}</div>
+          </div>
+        )}
         {/* SET MODE feedback badge */}
         {mode === 'set' && feedback === 'ok' && (
           <motion.div
@@ -526,6 +598,25 @@ export default function ClockGame({ level = 1, onComplete }) {
           </motion.div>
         )}
       </div>
+
+      {/* Weiter button */}
+      {showWeiter && (
+        <motion.button
+          initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', stiffness: 300, delay: 0.3 }}
+          whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
+          onClick={weiterClick}
+          style={{
+            background: 'linear-gradient(135deg,#6C63FF,#4A00E0)',
+            color: 'white', border: 'none', borderRadius: 20,
+            padding: 'clamp(12px,2vw,16px) clamp(28px,6vw,52px)',
+            fontFamily: 'var(--font-heading)',
+            fontSize: 'clamp(17px,3.5vw,22px)', fontWeight: 700,
+            cursor: 'pointer',
+            boxShadow: '0 5px 20px rgba(74,0,224,0.38)',
+          }}
+        >Weiter! →</motion.button>
+      )}
     </div>
   )
 }
