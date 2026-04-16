@@ -180,6 +180,14 @@ const EMOTION_PASTEL = {
   'Eifersüchtig':'#FFF9EE','Neugierig':'#EFF8FF',
 }
 
+function speakDE(text) {
+  if (!window.speechSynthesis) return
+  window.speechSynthesis.cancel()
+  const u = new SpeechSynthesisUtterance(text)
+  u.lang = 'de-DE'; u.rate = 0.82; u.pitch = 1.05
+  window.speechSynthesis.speak(u)
+}
+
 function shuffle(a) { return [...a].sort(() => Math.random() - 0.5) }
 
 // Shuffle but never put same emotion twice in a row
@@ -220,14 +228,21 @@ export default function EmotionGame({ level = 1, onComplete }) {
   const [correct,    setCorrect]  = useState(0)
   const [showInfo,   setShowInfo] = useState(false)
   const [showWeiter, setShowWeiter] = useState(false)
+  const [seenCorrect, setSeenCorrect] = useState([])
 
   // Stop narration when game unmounts
   useEffect(() => () => voice.stop(), [])
 
-  // Speak the situation when a new scenario appears
+  // Speak the situation when a new scenario appears — use TTS fallback if no audio
   useEffect(() => {
-    if (challenges[idx]?.sa) voice.play(challenges[idx].sa)
-  }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
+    const ch = challenges[idx]
+    if (!ch) return
+    if (ch.sa) {
+      voice.play(ch.sa)
+    } else {
+      setTimeout(() => speakDE(ch.situation.replace(/[🎁🤗🌙🏆😿📦💔☔😤😠😨🎭🕷️🎉🎡🏗️⏳📱📦🔍🕳️📖🤫]/gu, '')), 400)
+    }
+  }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps // eslint-disable-line react-hooks/exhaustive-deps
 
   const ch      = challenges[idx]
   // Freeze option order per question — useMemo keyed on idx so it only shuffles when the question changes
@@ -238,7 +253,7 @@ export default function EmotionGame({ level = 1, onComplete }) {
     const ok = emotion === ch.emotion
     const nc = correct + (ok ? 1 : 0)
     setSelected(emotion)
-    if (ok) setCorrect(nc)
+    if (ok) { setCorrect(nc); setSeenCorrect(prev => prev.includes(ch.emotion) ? prev : [...prev, ch.emotion]) }
     setShowInfo(true)
 
     if (ok) {
@@ -253,12 +268,23 @@ export default function EmotionGame({ level = 1, onComplete }) {
     }
   }, [selected, ch, correct, idx, challenges, onComplete])
 
+  const [showSummary, setShowSummary] = useState(false)
+  const [intensity, setIntensity] = useState(1)
+  const INTENSITY_MAP = {"Glücklich": ["ein bisschen glücklich 😊", "glücklich 😄", "sehr glücklich 🤩"], "Traurig": ["ein bisschen traurig 🙁", "traurig 😢", "sehr traurig 😭"], "Wütend": ["ein bisschen genervt 😒", "wütend 😡", "sehr wütend 🤬"], "Ängstlich": ["ein bisschen mulmig 😬", "ängstlich 😨", "sehr ängstlich 😱"], "Aufgeregt": ["ein bisschen aufgeregt 🙂", "aufgeregt 🤩", "sehr aufgeregt 🥳"], "Müde": ["ein bisschen müde 😑", "müde 😴", "sehr müde 🥱"], "Verlegen": ["ein bisschen verlegen 😳", "verlegen 🫣", "sehr verlegen 🙈"], "Dankbar": ["ein bisschen dankbar 🙂", "dankbar 🥰", "sehr dankbar 🫶"], "Überrascht": ["ein bisschen überrascht 😮", "überrascht 😲", "sehr überrascht 🤯"], "Stolz": ["ein bisschen stolz 😊", "stolz 🦁", "sehr stolz 🏆"], "Gelangweilt": ["ein bisschen gelangweilt 😑", "gelangweilt 😶", "sehr gelangweilt 🥱"], "Eifersüchtig": ["ein bisschen eifersüchtig 😒", "eifersüchtig 😤", "sehr eifersüchtig 😾"], "Neugierig": ["ein bisschen neugierig 🤔", "neugierig 🧐", "sehr neugierig 🔍"]}
+
   const weiterClick = useCallback(() => {
     setShowInfo(false)
     setShowWeiter(false)
-    if (idx + 1 >= challenges.length) { onComplete({ score: correct, total: challenges.length }) }
-    else { setIdx(i => i + 1); setSelected(null) }
-  }, [idx, challenges.length, correct, onComplete])
+    if (idx + 1 >= challenges.length) {
+      setShowSummary(true) // show emotion card before completing
+    } else {
+      setIdx(i => i + 1); setSelected(null)
+    }
+  }, [idx, challenges.length, correct, seenCorrect, onComplete])
+
+  const finishGame = useCallback(() => {
+    onComplete({ score: correct, total: challenges.length, seenEmotions: seenCorrect })
+  }, [correct, challenges.length, seenCorrect, onComplete])
 
   if (!ch) return null
 
@@ -412,6 +438,37 @@ export default function EmotionGame({ level = 1, onComplete }) {
         })}
       </div>
 
+      {/* Intensity slider — shown after correct answer */}
+      {showWeiter && selected === ch.emotion && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          style={{
+            background: 'white', borderRadius: 20, padding: '14px 20px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.09)',
+            width: '100%', maxWidth: 480,
+            display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center',
+          }}
+        >
+          <div style={{ fontFamily: 'var(--font-heading)', fontSize: 15,
+            color: 'var(--text-muted)' }}>Wie stark war das Gefühl?</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+            {[0,1,2].map(i => (
+              <motion.button key={i}
+                whileTap={{ scale: 0.94 }}
+                onClick={() => setIntensity(i)}
+                style={{
+                  background: intensity === i ? (EMOTION_PASTEL[ch.emotion]||'#EEE') : 'white',
+                  border: `2px solid ${intensity === i ? ch.faceColor : '#ECE8FF'}`,
+                  borderRadius: 14, padding: '8px 14px',
+                  fontFamily: 'var(--font-heading)', fontSize: 'clamp(12px,2.5vw,15px)',
+                  cursor: 'pointer', color: 'var(--text-primary)',
+                  transition: 'all 0.18s',
+                }}
+              >{(INTENSITY_MAP[ch.emotion]||['gering','mittel','stark'])[i]}</motion.button>
+            ))}
+          </div>
+        </motion.div>
+      )}
       {/* Weiter button */}
       {showWeiter && (
         <motion.button
@@ -432,6 +489,64 @@ export default function EmotionGame({ level = 1, onComplete }) {
       <p style={{ fontFamily:'var(--font-heading)', fontSize:17, color:'var(--text-muted)' }}>
         ✅ {correct} von {Math.min(idx + (selected !== null ? 1 : 0), challenges.length)} richtig
       </p>
+
+      {/* Emotion summary overlay */}
+      <AnimatePresence>
+        {showSummary && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 400,
+              background: 'rgba(255,255,255,0.97)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              justifyContent: 'center', gap: 18, padding: 'clamp(20px,4vw,40px)',
+              overflowY: 'auto',
+            }}
+          >
+            <div style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(22px,5vw,32px)',
+              fontWeight: 800, color: 'var(--text-primary)', textAlign: 'center' }}>
+              🎉 Das hast du gelernt!
+            </div>
+            <div style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(14px,3vw,18px)',
+              color: 'var(--text-muted)', textAlign: 'center' }}>
+              Du hast {correct} von {challenges.length} Gefühle richtig erkannt
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center',
+              maxWidth: 560 }}>
+              {seenCorrect.map(emotion => (
+                <motion.div key={emotion}
+                  initial={{ scale: 0 }} animate={{ scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 380 }}
+                  style={{
+                    background: EMOTION_PASTEL[emotion] || '#F5F5F5',
+                    borderRadius: 18, padding: '12px 20px',
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    boxShadow: '0 3px 12px rgba(0,0,0,0.08)',
+                    border: '2px solid rgba(0,0,0,0.07)',
+                  }}
+                >
+                  <span style={{ fontSize: 32 }}>{EMOTION_ICON[emotion]}</span>
+                  <span style={{ fontFamily: 'var(--font-heading)', fontSize: 16,
+                    fontWeight: 700, color: 'var(--text-primary)' }}>{emotion}</span>
+                </motion.div>
+              ))}
+            </div>
+            <motion.button
+              whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
+              onClick={finishGame}
+              style={{
+                background: 'linear-gradient(135deg,#FD79A8,#e84393)',
+                color: 'white', border: 'none', borderRadius: 20,
+                padding: 'clamp(12px,2vw,16px) clamp(32px,6vw,56px)',
+                fontFamily: 'var(--font-heading)',
+                fontSize: 'clamp(17px,3.5vw,22px)', fontWeight: 700,
+                cursor: 'pointer', boxShadow: '0 5px 20px rgba(253,121,168,0.45)',
+                marginTop: 8,
+              }}
+            >Fertig! 🌟</motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
