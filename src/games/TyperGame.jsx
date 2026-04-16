@@ -175,7 +175,6 @@ function FallingLettersGame({ level, onComplete }) {
     if (doneRef.current || completingRef.current) return
     if (char !== targetChar) {
       sfx.wrong()
-        setErrors(e => { const ne = e+1; if(ne >= 3){ setShowHint(true); setTimeout(()=>setShowHint(false),2000) } return ne })
       setMood('encouraging')
       setTimeout(() => setMood('happy'), 400)
       return
