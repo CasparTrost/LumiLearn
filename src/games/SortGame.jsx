@@ -319,6 +319,7 @@ export default function SortGame({ level = 1, onComplete }) {
   const [flyDir,   setFlyDir]   = useState(null)   // 'A' | 'B' | null
   const [feedback, setFeedback] = useState(null)   // 'ok' | 'wrong'
   const [score,    setScore]    = useState(0)
+  const [lastCorrect, setLastCorrect] = useState(null)
   const [mood,     setMood]     = useState('happy')
   const [phase,    setPhase]    = useState('playing')
   const total = items.length
