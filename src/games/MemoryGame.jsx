@@ -85,6 +85,7 @@ export default function MemoryGame({ level = 1, onComplete }) {
   const [endStars,       setEndStars]       = useState(0)
   const [justMatched,    setJustMatched]    = useState(() => new Set())
   const [justMismatched, setJustMismatched] = useState(() => new Set())
+  const [mismatchCount,  setMismatchCount]  = useState(0)
   const [matchPopup,     setMatchPopup]     = useState({ visible: false, text: '' })
   const [cursor,         setCursor]         = useState(0)
   // Preview phase: show all cards briefly at start
@@ -115,6 +116,7 @@ export default function MemoryGame({ level = 1, onComplete }) {
     setTimeout(() => {
       if (match) {
         sfx.match()
+        setMismatchCount(0)
         const newMatches = matches + 1
         setMatches(newMatches)
         setMood('excited')
@@ -138,6 +140,7 @@ export default function MemoryGame({ level = 1, onComplete }) {
         }
       } else {
         sfx.mismatch()
+        setMismatchCount(c => c + 1)
         setMood('encouraging')
         setCards(prev => prev.map(c => (c.id === a || c.id === b) ? { ...c, flipped: false } : c))
         setJustMismatched(new Set([a, b]))
@@ -297,7 +300,11 @@ export default function MemoryGame({ level = 1, onComplete }) {
         }}>
           {phase === 'preview'
             ? 'Schau genau hin — gleich werden die Karten umgedreht! 👀'
-            : 'Finde alle Paare — merkst du dir wo sie sind? 🧠'}
+            : mismatchCount >= 5
+              ? 'Kein Stress! Schau genau hin — du schaffst das! 💪'
+              : mismatchCount >= 3
+                ? 'Fast! Versuch es nochmal! 🔍'
+                : 'Finde alle Paare — merkst du dir wo sie sind? 🧠'}
         </div>
       </div>
 
@@ -338,6 +345,7 @@ export default function MemoryGame({ level = 1, onComplete }) {
         {cards.map((card) => (
           <motion.div key={card.id}
             onClick={() => flip(card.id)}
+            whileHover={!card.matched && !card.flipped && phase === 'playing' ? {scale:1.06} : {}}
             animate={
               justMatched.has(card.id)    ? { scale:[1,1.28,0.92,1.10,1] } :
               justMismatched.has(card.id) ? { x:[0,-11,11,-8,8,-4,4,0], rotate:[0,-3,3,-2,2,0] } :
