@@ -117,6 +117,24 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
           }}>
             {NUMBER_WORDS[round.n]}
           </div>
+          {/* Dice pattern for n <= 6 */}
+          {round.n <= 6 && (
+            <svg width={80} height={80} viewBox="0 0 100 100" style={{marginTop:4}}>
+              <rect x={2} y={2} width={96} height={96} rx={18}
+                fill="white" stroke={round.color} strokeWidth={3}/>
+              {[
+                [],
+                [[50,50]],
+                [[25,25],[75,75]],
+                [[25,25],[50,50],[75,75]],
+                [[25,25],[75,25],[25,75],[75,75]],
+                [[25,25],[75,25],[50,50],[25,75],[75,75]],
+                [[25,25],[75,25],[25,50],[75,50],[25,75],[75,75]],
+              ][round.n].map(([cx,cy],i) => (
+                <circle key={i} cx={cx} cy={cy} r={8} fill={round.color}/>
+              ))}
+            </svg>
+          )}
         </motion.div>
       </AnimatePresence>
 
@@ -176,8 +194,17 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
                     whileHover={!isTapped ? { scale:1.25, rotate:[0,8,-8,0] } : {}}
                     whileTap={!isTapped ? { scale:0.75 } : {}}
                     onClick={() => {
-                      if (!isTapped)
-                        setTapped(p => { const m = new Map(p); m.set(i, p.size + 1); return m })
+                      if (!isTapped) {
+                        const newOrder = tapped.size + 1
+                        setTapped(p => { const m = new Map(p); m.set(i, newOrder); return m })
+                        // Speak the count number
+                        if (window.speechSynthesis) {
+                          window.speechSynthesis.cancel()
+                          const u = new SpeechSynthesisUtterance(String(newOrder))
+                          u.lang = 'de-DE'; u.rate = 0.8; u.pitch = 1.2
+                          window.speechSynthesis.speak(u)
+                        }
+                      }
                     }}
                     style={{
                       background:'none', border:'none',
