@@ -101,18 +101,25 @@ function speak(text, slow = false) {
 export default function ListenGame({ level = 1, onComplete }) {
   const wordCount   = level <= 2 ? 7 : level <= 5 ? 9 : level <= 8 ? 11 : 13
   const optionCount = level <= 3 ? 3 : 4
-  // Easy levels: simpler/more common words from start of bank
   const poolEnd     = level <= 2 ? 28 : level <= 5 ? 55 : WORD_BANK.length
-  const [words]    = useState(() => shuffle(WORD_BANK.slice(0, poolEnd)).slice(0, wordCount))
-  const [idx,      setIdx]      = useState(0)
-  const [options,  setOptions]  = useState([])
-  const [selected, setSelected] = useState(null)
-  const [correct,  setCorrect]  = useState(0)
-  const [mood,     setMood]     = useState('happy')
-  const [played,   setPlayed]   = useState(false)
+  const isReverse   = level >= 6
+
+  const [words]      = useState(() => shuffle(WORD_BANK.slice(0, poolEnd)).slice(0, wordCount))
+  const [idx,        setIdx]      = useState(0)
+  const [options,    setOptions]  = useState([])
+  const [selected,   setSelected] = useState(null)  // emoji for normal mode, word string for reverse
+  const [correct,    setCorrect]  = useState(0)
+  const [mood,       setMood]     = useState('happy')
+  const [played,     setPlayed]   = useState(false)
   const [showWeiter, setShowWeiter] = useState(false)
 
   const current = words[idx]
+
+  // Word options for reverse mode — shuffled list of 4 word labels
+  const wordOptions = (current && isReverse) ? (() => {
+    const pool = WORD_BANK.filter(w => w.word !== current.word)
+    return shuffle([current.word, ...shuffle(pool).slice(0, 3).map(w => w.word)])
+  })() : []
 
   useEffect(() => {
     if (!current) return
@@ -130,15 +137,38 @@ export default function ListenGame({ level = 1, onComplete }) {
     setPlayed(true)
   }, [current])
 
+  // Normal mode: pick emoji
   const pick = useCallback((emoji) => {
     if (selected !== null || !current) return
     const ok = emoji === current.emoji
     const nc = correct + (ok ? 1 : 0)
     setSelected(emoji)
     setMood(ok ? 'excited' : 'encouraging')
-    if (ok) { setCorrect(nc); setShowWeiter(true); setTimeout(() => speak(current.word), 300) }
-    else {
-      // Repeat word slowly on wrong answer
+    if (ok) {
+      setCorrect(nc)
+      setShowWeiter(true)
+      setTimeout(() => speak(current.word), 300)
+    } else {
+      setTimeout(() => speak(current.word, true), 600)
+      setTimeout(() => {
+        if (idx + 1 >= words.length) { onComplete({ score: nc, total: words.length }) }
+        else { setIdx(i => i + 1) }
+      }, 2200)
+    }
+  }, [selected, current, correct, idx, words, onComplete])
+
+  // Reverse mode: pick word label
+  const pickWord = useCallback((word) => {
+    if (selected !== null || !current) return
+    const ok = word === current.word
+    const nc = correct + (ok ? 1 : 0)
+    setSelected(word)
+    setMood(ok ? 'excited' : 'encouraging')
+    if (ok) {
+      setCorrect(nc)
+      setShowWeiter(true)
+      setTimeout(() => speak(current.word), 300)
+    } else {
       setTimeout(() => speak(current.word, true), 600)
       setTimeout(() => {
         if (idx + 1 >= words.length) { onComplete({ score: nc, total: words.length }) }
@@ -184,7 +214,7 @@ export default function ListenGame({ level = 1, onComplete }) {
           fontSize:'clamp(18px,3.8vw,26px)',
           color:'var(--text-primary)',
         }}>
-          Welches Bild passt zum Wort? 🖼️
+          {isReverse ? 'Welches Wort passt zum Bild? 📝' : 'Welches Bild passt zum Wort? 🖼️'}
         </div>
       </div>
 
@@ -205,70 +235,112 @@ export default function ListenGame({ level = 1, onComplete }) {
           fontWeight:600,
           boxShadow:'0 8px 28px rgba(255,107,107,0.4)',
           display:'flex', alignItems:'center', gap:14,
+          border: 'none', cursor: 'pointer',
         }}
       >
         🔊 Anhören!
       </motion.button>
 
-      {/* 2×2 picture grid */}
-      <div style={{
-        display:'grid', gridTemplateColumns:'repeat(2,1fr)',
-        gap:'clamp(12px,2.5vw,22px)',
-        width:'100%', maxWidth:760,
-      }}>
-        {options.map((emoji, i) => {
-          const isAns  = emoji === current.emoji
-          const isChos = emoji === selected
-          const done   = selected !== null
+      {/* REVERSE MODE: show big emoji + word buttons */}
+      {isReverse && (
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:16, width:'100%', maxWidth:520 }}>
+          <motion.div
+            key={idx}
+            initial={{ scale:0.8, opacity:0 }} animate={{ scale:1, opacity:1 }}
+            style={{
+              fontSize:'clamp(80px,18vw,130px)', lineHeight:1,
+              background:'white', borderRadius:28, padding:'24px 40px',
+              boxShadow:'0 6px 28px rgba(0,0,0,0.09)',
+            }}
+          >{current.emoji}</motion.div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:12, width:'100%' }}>
+            {wordOptions.map((word) => {
+              const isAns  = word === current.word
+              const isChos = selected === word
+              const done   = selected !== null
+              return (
+                <motion.button
+                  key={word}
+                  whileHover={!done ? { scale:1.05 } : {}}
+                  whileTap={!done ? { scale:0.95 } : {}}
+                  onClick={() => pickWord(word)}
+                  style={{
+                    padding:'14px 10px', borderRadius:18,
+                    fontFamily:'var(--font-heading)', fontSize:'clamp(15px,3.2vw,20px)',
+                    fontWeight:700, cursor:done?'default':'pointer', color:'var(--text-primary)',
+                    background: done&&isAns?'#E8F8EE':done&&isChos?'#FFE8E8':'white',
+                    border:`3px solid ${done&&isAns?'#6BCB77':done&&isChos?'#FF6B6B':'#ECE8FF'}`,
+                    boxShadow: done&&isAns?'0 6px 22px rgba(107,203,119,0.35)':'0 3px 12px rgba(0,0,0,0.07)',
+                    transition:'all 0.2s',
+                  }}
+                >{word}{done&&isAns?' ✅':''}</motion.button>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
-          let bg     = 'white'
-          let border = '3px solid #F0EEF8'
-          let shadow = '0 4px 18px rgba(0,0,0,0.06)'
+      {/* NORMAL MODE: 2×2 picture grid */}
+      {!isReverse && (
+        <div style={{
+          display:'grid', gridTemplateColumns:'repeat(2,1fr)',
+          gap:'clamp(12px,2.5vw,22px)',
+          width:'100%', maxWidth:760,
+        }}>
+          {options.map((emoji, i) => {
+            const isAns  = emoji === current.emoji
+            const isChos = emoji === selected
+            const done   = selected !== null
 
-          if (done) {
-            if (isAns)        { bg='#E8F8EE'; border='3px solid #6BCB77'; shadow='0 8px 28px rgba(107,203,119,0.4)' }
-            else if (isChos)  { bg='#FFE8E8'; border='3px solid #FF6B6B' }
-          }
+            let bg     = 'white'
+            let border = '3px solid #F0EEF8'
+            let shadow = '0 4px 18px rgba(0,0,0,0.06)'
 
-          return (
-            <motion.button key={`${idx}-${i}`}
-              initial={{ opacity:0, y:18 }}
-              animate={{ opacity:1, y:0 }}
-              transition={{ delay:i*0.07, type:'spring', stiffness:320 }}
-              whileHover={!done ? { scale:1.05 } : {}}
-              whileTap={!done ? { scale:0.95 } : {}}
-              onClick={() => pick(emoji)}
-              style={{
-                padding:'clamp(20px,5vw,40px) 16px',
-                borderRadius:26, background:bg, border, boxShadow:shadow,
-                fontSize:'clamp(56px,14vw,92px)',
-                display:'flex', alignItems:'center', justifyContent:'center',
-                cursor:done ? 'default' : 'pointer',
-                transition:'all 0.22s', lineHeight:1,
-              }}
-            >
-              <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:4 }}>
-                <motion.span
-                  animate={done && isAns ? { scale:[1,1.35,1], rotate:[0,12,-12,0] } : {}}
-                  transition={{ duration:0.55 }}
-                >
-                  {emoji}
-                </motion.span>
-                {done && isAns && (
+            if (done) {
+              if (isAns)        { bg='#E8F8EE'; border='3px solid #6BCB77'; shadow='0 8px 28px rgba(107,203,119,0.4)' }
+              else if (isChos)  { bg='#FFE8E8'; border='3px solid #FF6B6B' }
+            }
+
+            return (
+              <motion.button key={`${idx}-${i}`}
+                initial={{ opacity:0, y:18 }}
+                animate={{ opacity:1, y:0 }}
+                transition={{ delay:i*0.07, type:'spring', stiffness:320 }}
+                whileHover={!done ? { scale:1.05 } : {}}
+                whileTap={!done ? { scale:0.95 } : {}}
+                onClick={() => pick(emoji)}
+                style={{
+                  padding:'clamp(20px,5vw,40px) 16px',
+                  borderRadius:26, background:bg, border, boxShadow:shadow,
+                  fontSize:'clamp(56px,14vw,92px)',
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  cursor:done ? 'default' : 'pointer',
+                  transition:'all 0.22s', lineHeight:1,
+                }}
+              >
+                <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:4 }}>
                   <motion.span
-                    initial={{opacity:0,y:4}} animate={{opacity:1,y:0}}
-                    style={{
-                      fontFamily:'var(--font-heading)',
-                      fontSize:'clamp(13px,2.8vw,17px)',
-                      fontWeight:700, color:'#2d7a3a',
-                    }}
-                  >{current.word}</motion.span>
-                )}
-              </div>
-            </motion.button>
-          )
-        })}
-      </div>
+                    animate={done && isAns ? { scale:[1,1.35,1], rotate:[0,12,-12,0] } : {}}
+                    transition={{ duration:0.55 }}
+                  >
+                    {emoji}
+                  </motion.span>
+                  {done && isAns && (
+                    <motion.span
+                      initial={{opacity:0,y:4}} animate={{opacity:1,y:0}}
+                      style={{
+                        fontFamily:'var(--font-heading)',
+                        fontSize:'clamp(13px,2.8vw,17px)',
+                        fontWeight:700, color:'#2d7a3a',
+                      }}
+                    >{current.word}</motion.span>
+                  )}
+                </div>
+              </motion.button>
+            )
+          })}
+        </div>
+      )}
 
       {showWeiter && (
         <motion.button
