@@ -367,6 +367,24 @@ export default function WeightGame({ level = 1, onComplete }) {
       </div>
 
       {/* Beam */}
+      {/* Weiter button */}
+      {showWeiter && (
+        <motion.button
+          initial={{ scale:0, opacity:0 }} animate={{ scale:1, opacity:1 }}
+          transition={{ type:'spring', stiffness:300, delay:0.2 }}
+          whileHover={{ scale:1.06 }} whileTap={{ scale:0.94 }}
+          onClick={weiterClick}
+          style={{
+            background:'linear-gradient(135deg,#FFD93D,#FF9F43)',
+            color:'white', border:'none', borderRadius:20,
+            padding:'clamp(12px,2vw,16px) clamp(28px,6vw,52px)',
+            fontFamily:'var(--font-heading)',
+            fontSize:'clamp(17px,3.5vw,22px)', fontWeight:700,
+            cursor:'pointer', boxShadow:'0 5px 20px rgba(255,159,67,0.45)',
+          }}
+        >Weiter! →</motion.button>
+      )}
+
       <AnimatePresence mode="wait">
         <motion.div key={idx}
           initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
@@ -378,6 +396,24 @@ export default function WeightGame({ level = 1, onComplete }) {
       </AnimatePresence>
 
       {/* Weight cards */}
+      {/* Weiter button */}
+      {showWeiter && (
+        <motion.button
+          initial={{ scale:0, opacity:0 }} animate={{ scale:1, opacity:1 }}
+          transition={{ type:'spring', stiffness:300, delay:0.2 }}
+          whileHover={{ scale:1.06 }} whileTap={{ scale:0.94 }}
+          onClick={weiterClick}
+          style={{
+            background:'linear-gradient(135deg,#FFD93D,#FF9F43)',
+            color:'white', border:'none', borderRadius:20,
+            padding:'clamp(12px,2vw,16px) clamp(28px,6vw,52px)',
+            fontFamily:'var(--font-heading)',
+            fontSize:'clamp(17px,3.5vw,22px)', fontWeight:700,
+            cursor:'pointer', boxShadow:'0 5px 20px rgba(255,159,67,0.45)',
+          }}
+        >Weiter! →</motion.button>
+      )}
+
       <AnimatePresence mode="wait">
         <motion.div key={idx}
           initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}
