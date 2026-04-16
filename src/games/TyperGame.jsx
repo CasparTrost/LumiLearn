@@ -38,7 +38,7 @@ const WORD_SETS = {
     'TRAUM','WAGEN','ZWERG','MÜTZE','JACKE','PUPPE','GEIGE','SCHAF','FALKE','BIENE',
     'EICHE','BIRKE','REGAL','ANKER','OTTER','LUCHS','VATER','FISCH','KREBS','KÜCHE',
     'PFEIL','RIESE','LACHS','REGEN','STURM','WOLKE','NEBEL','HÜGEL','LICHT','STEIN',
-    'HEXE','ZWERG','DRÜSE','MÄHNE','EIMER','PINKE','SPULE','HARFE','ORGEL','TINTE',
+    'HEXE','ZWERG','DRÜSE','MÄHNE','EIMER','PINSEL','SPINNE','HARFE','ORGEL','TINTE',
   ],
   // Level 3: 5–7 letter words
   level3: [
@@ -57,11 +57,11 @@ const WORD_SETS = {
     'BÄCKEREI','SCHULBUS','HAUSTIER','SCHULHOF','SCHNECKE','TRUTHAHN','ZAUBERER',
     'FEUERWEHR','TRAMPOLIN','OSTERHASE','SPIELZEUG','ERDBEEREN','GEHEIMNIS',
     'SCHNEEBALL','SCHAUKEL','FAHRSTUHL','BAUMSTAMM','WALDBRAND','TIERGARTEN',
-    'MÜLLWAGEN','SEEHUND','BLAUBEERE','ZITRONENL','SONNENUHR','SCHÜLEREK',
+    'MÜLLWAGEN','SEEHUND','BLAUBEERE','ZITRONE','SONNENUHR','SCHÜLER',
     'BAUMWOLLE','STERNSCHNUPPE','GLÜHBIRNE','SEIFENBLASE','KINDERPARK',
     'TISCHTENNIS','WACKELZAHN','SCHLAFSACK','SANDKASTEN','FERNROHR',
-    'KASPERLTHEATER','BALLERINA','LERNSPIEL','SEEPFERDCHEN','TISCHLAMP',
-    'SCHOKOLADEN','SONNENBLUME','WASSERFALL','KINDERFILM','KRISTALLKUGEL',
+    'KASPERL','BALLERINA','LERNSPIEL','SEEPFERDCHEN','TISCHLAMPE',
+    'SCHOKOLADE','SONNENBLUME','WASSERFALL','KINDERFILM','KRISTALL',
   ],
   // Level 5: long compound German words
   level5: [
@@ -77,10 +77,24 @@ const WORD_SETS = {
   ],
 }
 
+
+const WORD_EMOJI = {
+  OMA:'👵',OPA:'👴',EIS:'🍦',UHR:'⏰',ZUG:'🚂',BUS:'🚌',HUT:'🎩',FEE:'🧚',ARM:'💪',
+  TAG:'🌞',HUND:'🐕',BALL:'⚽',BUCH:'📚',MUND:'👄',HAND:'✋',KOPF:'🧠',NASE:'👃',WOLF:'🐺',
+  IGEL:'🦔',HERZ:'❤️',BOOT:'⛵',GANS:'🪿',MAUS:'🐭',MOND:'🌙',RABE:'🐦‍⬛',ROSE:'🌹',
+  MAMA:'👩',PAPA:'👨',AUTO:'🚗',HAUS:'🏠',BROT:'🍞',BAUM:'🌳',KATZE:'🐱',VOGEL:'🐦',
+  STERN:'⭐',APFEL:'🍎',SCHUH:'👟',PIZZA:'🍕',FEUER:'🔥',NUDEL:'🍝',TASSE:'☕',
+  ZIEGE:'🐐',KAMEL:'🐪',PFERD:'🐴',TIGER:'🐯',FLUSS:'🏞️',WIESE:'🌿',GURKE:'🥒',
+  SCHULE:'🏫',GARTEN:'🌻',HERBST:'🍂',WINTER:'❄️',SOMMER:'☀️',FREUND:'🤝',RITTER:'⚔️',
+  ZIRKUS:'🎪',RAKETE:'🚀',AMEISE:'🐜',ROBOTER:'🤖',ELEFANT:'🐘',TRAUBE:'🍇',
+  KROKODIL:'🐊',FLUGZEUG:'✈️',SEESTERN:'⭐',SCHNECKE:'🐌',FEUERWEHR:'🚒',
+  SCHMETTERLING:'🦋',SONNENSCHEIN:'🌞',ASTRONAUT:'👨‍🚀',REGENBOGEN:'🌈',RAUMSCHIFF:'🚀',
+}
+
 const ROWS = [
-  ['Q','W','E','R','T','Z','U','I','O','P'],
-  ['A','S','D','F','G','H','J','K','L'],
-  ['Y','X','C','V','B','N','M','⌫'],
+  ['Q','W','E','R','T','Z','U','I','O','P','Ü'],
+  ['A','S','D','F','G','H','J','K','L','Ö'],
+  ['Y','X','C','V','B','N','M','Ä','⌫'],
 ]
 
 function speak(text, slow = false) {
