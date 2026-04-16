@@ -39,6 +39,7 @@ function Confetti({ count = 32 }) {
 export default function ResultsScreen() {
   const { state, dispatch } = useApp()
   const { gameResult, currentGame } = state
+  const stateStreak = state.streak ?? { count: 0, lastDate: null }
   const stars       = gameResult?.stars        ?? 0
   const score       = gameResult?.score        ?? 0
   const total       = gameResult?.total        ?? 0
@@ -49,7 +50,7 @@ export default function ResultsScreen() {
   const missionCoins           = gameResult?.missionCoins            ?? 0
   const newlyCompletedMissions = gameResult?.newlyCompletedMissions   ?? []
   const streakBonus            = gameResult?.streakBonus             ?? 0
-  const streakCount            = gameResult?.streakCount             ?? 0
+  const streakCount            = stateStreak.count ?? 0
   const totalCoinsThisRound    = coinsEarned + missionCoins + streakBonus
   const justCompleted  = gameResult?.justCompleted  ?? false  // all levels done for first time
   const isFirstPass    = gameResult?.isFirstPass    ?? false  // first time passing this level
