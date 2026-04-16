@@ -39,19 +39,12 @@ function Confetti({ count = 32 }) {
 export default function ResultsScreen() {
   const { state, dispatch } = useApp()
   const { gameResult, currentGame } = state
-  const stateStreak = state.streak ?? { count: 0, lastDate: null }
   const stars       = gameResult?.stars        ?? 0
   const score       = gameResult?.score        ?? 0
   const total       = gameResult?.total        ?? 0
   const moduleId    = gameResult?.moduleId     ?? 'numbers'
   const level       = gameResult?.level        ?? 1
-  const nextLevelNum           = gameResult?.nextLevelNum            ?? null
-  const coinsEarned            = gameResult?.coinsEarned             ?? 0
-  const missionCoins           = gameResult?.missionCoins            ?? 0
-  const newlyCompletedMissions = gameResult?.newlyCompletedMissions   ?? []
-  const streakBonus            = gameResult?.streakBonus             ?? 0
-  const streakCount            = stateStreak.count ?? 0
-  const totalCoinsThisRound    = coinsEarned + missionCoins + streakBonus
+  const nextLevelNum   = gameResult?.nextLevelNum   ?? null   // null = no more levels
   const justCompleted  = gameResult?.justCompleted  ?? false  // all levels done for first time
   const isFirstPass    = gameResult?.isFirstPass    ?? false  // first time passing this level
   const maxLevel       = gameResult?.maxLevel       ?? 5
@@ -167,96 +160,6 @@ export default function ResultsScreen() {
             </div>
           )}
         </motion.div>
-
-          {/* Coins earned this round */}
-          {totalCoinsThisRound > 0 && (
-            <motion.div
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.8, type: 'spring', stiffness: 320 }}
-              style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-                background: 'rgba(255,255,255,0.1)',
-                borderRadius: 20, padding: '14px 28px',
-                border: '1.5px solid rgba(255,217,61,0.4)',
-                width: '100%',
-              }}
-            >
-              <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(13px,3vw,17px)',
-                color:'rgba(255,255,255,0.7)' }}>Verdiente Münzen</div>
-              <motion.div
-                animate={{ scale: [1,1.15,1] }}
-                transition={{ delay: 1.1, duration: 0.5 }}
-                style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(28px,7vw,42px)',
-                  fontWeight: 800, color: '#FFD93D',
-                  textShadow: '0 0 20px rgba(255,217,61,0.6)',
-                  display: 'flex', alignItems: 'center', gap: 8 }}
-              >
-                <span>🌟</span>
-                <span>+{totalCoinsThisRound}</span>
-              </motion.div>
-              {(missionCoins > 0 || streakBonus > 0) && (
-                <div style={{ display:'flex', gap:8, flexWrap:'wrap', justifyContent:'center' }}>
-                  {missionCoins > 0 && (
-                    <span style={{ fontFamily:'var(--font-heading)', fontSize:13,
-                      background:'rgba(107,203,119,0.25)', borderRadius:99,
-                      padding:'4px 12px', color:'#6BCB77' }}>
-                      +{missionCoins} Mission 🎯
-                    </span>
-                  )}
-                  {streakBonus > 0 && (
-                    <span style={{ fontFamily:'var(--font-heading)', fontSize:13,
-                      background:'rgba(255,159,67,0.25)', borderRadius:99,
-                      padding:'4px 12px', color:'#FF9F43' }}>
-                      +{streakBonus} Streak 🔥
-                    </span>
-                  )}
-                </div>
-              )}
-            </motion.div>
-          )}
-
-          {/* Completed missions */}
-          {newlyCompletedMissions.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.0 }}
-              style={{ width: '100%', display:'flex', flexDirection:'column', gap:6 }}
-            >
-              {newlyCompletedMissions.map((m, i) => (
-                <motion.div key={m.id}
-                  initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: 1.0 + i * 0.15 }}
-                  style={{
-                    background: 'rgba(107,203,119,0.2)',
-                    border: '1.5px solid rgba(107,203,119,0.5)',
-                    borderRadius: 14, padding: '10px 16px',
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    fontFamily: 'var(--font-heading)', fontSize: 15, color: 'white',
-                  }}
-                >
-                  <span style={{fontSize:22}}>{m.icon}</span>
-                  <span style={{flex:1}}>{m.text}</span>
-                  <span style={{color:'#FFD93D', fontWeight:700}}>+{20}🌟</span>
-                </motion.div>
-              ))}
-            </motion.div>
-          )}
-
-          {/* Streak badge */}
-          {streakCount >= 2 && (
-            <motion.div
-              initial={{ scale: 0 }} animate={{ scale: 1 }}
-              transition={{ delay: 1.2, type: 'spring', stiffness: 380 }}
-              style={{
-                background: 'linear-gradient(135deg,#FF9F43,#e67e22)',
-                borderRadius: 99, padding: '8px 20px',
-                fontFamily: 'var(--font-heading)', fontSize: 'clamp(14px,3vw,18px)',
-                color: 'white', fontWeight: 700,
-                boxShadow: '0 4px 16px rgba(255,159,67,0.5)',
-              }}
-            >🔥 {streakCount} Tage in Folge!</motion.div>
-          )}
 
           {justCompleted && (
             <motion.div
