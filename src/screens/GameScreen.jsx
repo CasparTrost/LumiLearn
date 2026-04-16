@@ -63,6 +63,7 @@ const GAME_MAP = {
 export default function GameScreen() {
   const { state, dispatch } = useApp()
   const { moduleId, level } = state.currentGame ?? { moduleId: 'numbers', level: 1 }
+  const coins = state.coins ?? 0
 
   const meta          = MODULE_META[moduleId] ?? MODULE_META.numbers
   const GameComponent = GAME_MAP[moduleId]    ?? ChoiceGame
@@ -100,6 +101,12 @@ export default function GameScreen() {
         </span>
         <span style={{ fontFamily:'var(--font-heading)', fontSize:16, color:'rgba(255,255,255,0.75)' }}>
           Level {level} / {MAX_LEVELS[moduleId] ?? 5}
+          <span style={{
+            marginLeft:8,
+            background:'rgba(255,217,61,0.15)',
+            borderRadius:99, padding:'2px 10px',
+            fontSize:13, color:'#FFD93D', fontWeight:700,
+          }}>🌟 {coins}</span>
         </span>
         <InfoButton moduleId={moduleId} />
       </div>
