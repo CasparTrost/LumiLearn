@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
+import { voice } from '../voice.js'
 
 /**
  * Silben-Spaß — Wörter aus Silben zusammenbauen
