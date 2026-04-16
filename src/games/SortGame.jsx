@@ -15,6 +15,24 @@ import { sfx } from '../sfx.js'
  */
 
 // Each outer array = one difficulty tier. Game picks a random set within the tier.
+// Item tooltip lookup
+const ITEM_NAMES = {'🐕':'Hund','🍕':'Pizza','🐱':'Katze','🍎':'Apfel','🦁':'Löwe',
+  '🌮':'Taco','🐸':'Frosch','🍩':'Donut','🦊':'Fuchs','🍗':'Hähnchen','🐬':'Delfin',
+  '🍓':'Erdbeere','🐘':'Elefant','🍔':'Burger','🐧':'Pinguin','🍌':'Banane','🐯':'Tiger',
+  '🎂':'Kuchen','🦋':'Schmetterling','🍦':'Eis','🐢':'Schildkröte','🥕':'Karotte',
+  '🐙':'Tintenfisch','🍉':'Wassermelone','🚗':'Auto','🌿':'Pflanze','🚂':'Zug',
+  '🌸':'Blume','✈️':'Flugzeug','🌲':'Baum','🚀':'Rakete','🍄':'Pilz',
+  '🚁':'Hubschrauber','🌊':'Welle','🛸':'UFO','⛰️':'Berg','🧸':'Teddy','🪀':'Jojo',
+  '🎮':'Konsole','🪁':'Schleuder','🎲':'Würfel','🎪':'Zirkus','🍋':'Zitrone',
+  '🥦':'Brokkoli','🍊':'Orange','🥒':'Gurke','🍇':'Trauben','🍅':'Tomate',
+  '🐶':'Hund','🐰':'Hase','🦔':'Igel','🐦':'Vogel','🐝':'Biene','🦆':'Ente',
+  '🐋':'Wal','🦈':'Hai','🐊':'Krokodil','🐆':'Gepard','🦒':'Giraffe',
+  '🏀':'Basketball','⚽':'Fußball','🎾':'Tennis','📚':'Bücher','💡':'Glühbirne',
+  '☁️':'Wolke','⭐':'Stern','🌙':'Mond','🌤️':'Sonne','🌞':'Sonne','🌟':'Stern',
+  '🐠':'Tropenfisch','🐡':'Kugelfisch','🦞':'Hummer','🐺':'Wolf','🦌':'Hirsch',
+  '🍄':'Pilz','🐿️':'Eichhörnchen','🐊':'Krokodil','🦉':'Eule',
+}
+
 const LEVEL_SETS = [
   // ── Tier 1 ─────────────────────────────────────────────────────────────────
   [
