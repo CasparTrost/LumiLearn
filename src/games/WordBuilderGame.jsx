@@ -301,6 +301,7 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
   const [score,    setScore]    = useState(0)
   const [mood,     setMood]     = useState('happy')
   const [showHint, setShowHint] = useState(true)
+  const [showWeiter, setShowWeiter] = useState(false)
   const feedbackTimeout         = useRef(null)
 
   // Reset on new round
@@ -330,17 +331,8 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
         setMood('excited')
         setPlaced(newPlaced)
         sfx.correct()
-        feedbackTimeout.current = setTimeout(() => {
-          const ns = score + 1
-          setScore(ns)
-          if (idx + 1 >= TOTAL) {
-            sfx.complete()
         setTimeout(() => speakDE(current.word.toLowerCase()), 300)
-            setTimeout(() => onComplete({ score: ns, total: TOTAL }), 700)
-          } else {
-            setIdx(i => i + 1)
-          }
-        }, 2400)
+        feedbackTimeout.current = setTimeout(() => setShowWeiter(true), 800)
       } else {
         setFeedback('wrong')
         setMood('encouraging')
@@ -372,6 +364,20 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
   const isDone = feedback === 'ok'
 
   const weiterClick = () => {
+    setShowWeiter(false)
+    const ns = score + 1
+    setScore(ns)
+    setFeedback(null)
+    setPlaced([])
+    setUsedIds(new Set())
+    setShake(false)
+    setMood('happy')
+    if (idx + 1 >= TOTAL) {
+      sfx.complete()
+      setTimeout(() => onComplete({ score: ns, total: TOTAL }), 300)
+    } else {
+      setIdx(i => i + 1)
+    }
   }
 
   return (
@@ -491,6 +497,22 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
           />
         ))}
       </div>
+
+      {/* Weiter button */}
+      {showWeiter && (
+        <motion.button
+          initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }}
+          onClick={weiterClick}
+          style={{
+            padding:'13px 44px', borderRadius:50,
+            background:'linear-gradient(135deg,#6BCB77,#44D498)',
+            color:'white', fontFamily:'var(--font-heading)', fontSize:20, fontWeight:700,
+            border:'none', cursor:'pointer', boxShadow:'0 4px 18px rgba(107,203,119,0.5)',
+          }}
+        >
+          {idx + 1 >= TOTAL ? '🏁 Fertig!' : 'Weiter! →'}
+        </motion.button>
+      )}
 
       {/* Tip */}
       <div style={{

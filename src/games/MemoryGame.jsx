@@ -3,6 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
 
+function speakDE(text) {
+  if (!window.speechSynthesis) return
+  window.speechSynthesis.cancel()
+  const u = new SpeechSynthesisUtterance((text||'').replace(/[^\w\säöüÄÖÜß.,!?]/g,''))
+  u.lang = 'de-DE'; u.rate = 0.85; u.pitch = 1.1
+  window.speechSynthesis.speak(u)
+}
+
 // Sparkle burst that fires when a pair is found
 function SparkBurst({ id }) {
   const sparks = Array.from({ length: 10 }, (_, i) => ({
@@ -128,6 +136,7 @@ export default function MemoryGame({ level = 1, onComplete }) {
         setTimeout(() => setMatchPopup({ visible: false, text: '' }), 950)
         setTrophies(prev => [...prev, foundEmoji])
         setSparkKey(k => (k ?? 0) + 1)
+        speakDE('Super! Paar gefunden!')
 
         if (newMatches >= pairCount) {
           sfx.complete()
