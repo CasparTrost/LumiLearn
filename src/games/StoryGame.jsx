@@ -364,6 +364,70 @@ const STORIES = [
       },
     },
   },
+  {
+    title: 'Das einsame Kind',
+    panels: [
+      { text: 'Beim Mittagessen sitzt ein neues Kind ganz allein am Rand. Es schaut traurig auf seinen Teller. 👦😢', emoji:'😢', mood:'thinking' },
+      { text: 'Lumis Freunde sagen: "Lass ihn, der ist komisch!" Aber Lumi ist unsicher. 🤔', emoji:'🤔', mood:'thinking' },
+    ],
+    choice: {
+      question: 'Was macht Lumi?',
+      options: [
+        { text: '👋 Lumi geht hin und sagt Hallo', value:'hello', good:true },
+        { text: '🙅 Lumi bleibt bei den Freunden', value:'ignore', good:false },
+      ],
+    },
+    outcomes: {
+      hello: {
+        panels: [
+          { text: 'Lumi setzt sich dazu. "Ich bin Lumi!" Das Kind lächelt zum ersten Mal. 😊', emoji:'😊', mood:'happy' },
+          { text: 'Nach dem Essen spielen sie zusammen. Die anderen kommen auch dazu. Ein neuer Freund! 👫✨', emoji:'👫', mood:'excited' },
+        ],
+        lesson: '💡 Ein einfaches "Hallo" kann jemandes Tag komplett verändern!',
+        stars: 3,
+      },
+      ignore: {
+        panels: [
+          { text: 'Lumi bleibt bei den Freunden, aber kann das traurige Kind nicht vergessen. 😔', emoji:'😔', mood:'encouraging' },
+          { text: 'Am nächsten Tag läuft Lumi dem Kind nach: "Darf ich mich vorstellen?" Das Kind nickt erleichtert. 🌟', emoji:'🌟', mood:'happy' },
+        ],
+        lesson: '💡 Es ist nie zu spät, nett zu sein!',
+        stars: 2,
+      },
+    },
+  },
+  {
+    title: 'Das Versprechen',
+    panels: [
+      { text: 'Lumi hat Oma versprochen, nach der Schule sofort nach Hause zu kommen. Aber die Freunde wollen noch auf dem Spielplatz bleiben. 🤔', emoji:'🤔', mood:'thinking' },
+      { text: 'Oma wartet zu Hause. Aber der Spielplatz macht so viel Spaß! 🛖🙏', emoji:'🙏', mood:'thinking' },
+    ],
+    choice: {
+      question: 'Was macht Lumi?',
+      options: [
+        { text: '🏠 Lumi geht zu Oma wie versprochen', value:'promise', good:true },
+        { text: '🛖 Lumi bleibt noch auf dem Spielplatz', value:'stay', good:false },
+      ],
+    },
+    outcomes: {
+      promise: {
+        panels: [
+          { text: 'Lumi sagt "Tschüss!" und geht nach Hause. Oma freut sich riesig! 💜', emoji:'💜', mood:'happy' },
+          { text: 'Oma hat Kuchen gebacken. "Ich wusste, dass du kommst!" Sie backen zusammen noch mehr. 🍰✨', emoji:'🍰', mood:'excited' },
+        ],
+        lesson: '💡 Versprechen halten zeigt, dass wir jemanden wirklich lieben!',
+        stars: 3,
+      },
+      stay: {
+        panels: [
+          { text: 'Lumi spielt... aber dann klingelt das Telefon. Oma macht sich Sorgen. 😞', emoji:'😞', mood:'sleepy' },
+          { text: 'Lumi rennt nach Hause. "Es tut mir leid, Oma." Sie umarmen sich. Oma sagt: "Ich bin froh, dass du sicher bist." 💛', emoji:'💛', mood:'encouraging' },
+        ],
+        lesson: '💡 Versprechen sind wichtig — besonders für Menschen die uns lieben!',
+        stars: 2,
+      },
+    },
+  },
 ]
 
 function shuffle(a) { return [...a].sort(() => Math.random() - 0.5) }
