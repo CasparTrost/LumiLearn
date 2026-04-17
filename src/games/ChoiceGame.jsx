@@ -303,6 +303,14 @@ function DinoScene({ chomping, shaking, dinoScale, streak, eaten, total, project
   )
 }
 
+function speakDE(text) {
+  if (!window.speechSynthesis) return
+  window.speechSynthesis.cancel()
+  const u = new SpeechSynthesisUtterance((text||'').replace(/[^\w\säöüÄÖÜß.,!?]/g,''))
+  u.lang = 'de-DE'; u.rate = 0.8; u.pitch = 1.05
+  window.speechSynthesis.speak(u)
+}
+
 export default function ChoiceGame({ moduleId, level, onComplete }) {
   const [questions]   = useState(() => generateQuestions(moduleId, level))
   const [idx,         setIdx]         = useState(0)
@@ -369,6 +377,10 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
   }, [selected, q, correct, streak, idx, questions, onComplete])
 
   useEffect(() => { setHighlighted(null) }, [idx])
+
+  useEffect(() => {
+    if (q?.prompt) speakDE(q.prompt)
+  }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const onKey = (e) => {

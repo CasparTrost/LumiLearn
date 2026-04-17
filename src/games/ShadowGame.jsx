@@ -75,6 +75,14 @@ const CHALLENGES = [
 
 function shuffle(a) { return [...a].sort(() => Math.random() - 0.5) }
 
+function speakDE(text) {
+  if (!window.speechSynthesis) return
+  window.speechSynthesis.cancel()
+  const u = new SpeechSynthesisUtterance((text||'').replace(/[^\w\säöüÄÖÜß.,!?]/g,''))
+  u.lang = 'de-DE'; u.rate = 0.8; u.pitch = 1.05
+  window.speechSynthesis.speak(u)
+}
+
 export default function ShadowGame({ level = 1, onComplete }) {
   const roundCount = level <= 4 ? 8 : level <= 7 ? 10 : 12
   const [challenges] = useState(() => shuffle(CHALLENGES).slice(0, roundCount))
@@ -83,6 +91,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
   const [correct,      setCorrect]     = useState(0)
   const [showFact,     setShowFact]    = useState(false)
   const [revealed,     setRevealed]    = useState(false)
+  const [showWeiter,   setShowWeiter]  = useState(false)
   // FIX 2: two-phase reveal — revealed moves silhouette, colorRevealed makes it colorful
   const [colorRevealed, setColorRevealed] = useState(false)
   const [mood,         setMood]        = useState('thinking')
@@ -124,6 +133,20 @@ export default function ShadowGame({ level = 1, onComplete }) {
     overlay.style.webkitMaskImage = ''
   }, [])
 
+  const weiterClick = useCallback(() => {
+    setShowFact(false)
+    setShowWeiter(false)
+    if (idx + 1 >= challenges.length) {
+      onComplete({ score: correct, total: challenges.length })
+    } else {
+      setIdx(i => i + 1)
+      setSelected(null)
+      setMood('thinking')
+      setRevealed(false)
+      setColorRevealed(false)
+    }
+  }, [idx, correct, challenges, onComplete])
+
   const pick = useCallback((emoji) => {
     if (selected !== null || !ch) return
     const ok = emoji === ch.shadow
@@ -132,27 +155,14 @@ export default function ShadowGame({ level = 1, onComplete }) {
     setMood(ok ? 'excited' : 'encouraging')
     if (ok) {
       setCorrect(nc)
-      // FIX 2: set revealed immediately, colorRevealed after 700ms
       setRevealed(true)
       setTimeout(() => setColorRevealed(true), 700)
+      speakDE(ch.name + '! ' + ch.fact)
+    } else {
+      speakDE('Nicht ganz. Das ist ' + ch.name + '.')
     }
     setShowFact(true)
-
-    setTimeout(() => {
-      setShowFact(false)
-      setTimeout(() => {
-        if (idx + 1 >= challenges.length) {
-          onComplete({ score: nc, total: challenges.length })
-        } else {
-          setIdx(i => i + 1)
-          setSelected(null)
-          setMood('thinking')
-          // FIX 2: reset both reveal states on next question
-          setRevealed(false)
-          setColorRevealed(false)
-        }
-      }, 200)
-    }, 3200)
+    setTimeout(() => setShowWeiter(true), 800)
   }, [selected, ch, correct, idx, challenges, onComplete])
 
   if (!ch) return null
@@ -356,6 +366,21 @@ export default function ShadowGame({ level = 1, onComplete }) {
       <p style={{ fontFamily:'var(--font-heading)', fontSize:17, color:'var(--text-muted)', textAlign:'center', width:'100%' }}>
         ✅ {correct} von {Math.min(idx + (selected !== null ? 1 : 0), challenges.length)} richtig
       </p>
+
+      {showWeiter && (
+        <motion.button
+          initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }}
+          onClick={weiterClick}
+          style={{
+            marginTop:8, padding:'14px 44px', borderRadius:50,
+            background:'linear-gradient(135deg,#6BCB77,#44D498)',
+            color:'white', fontFamily:'var(--font-heading)', fontSize:20, fontWeight:700,
+            border:'none', cursor:'pointer', boxShadow:'0 4px 18px rgba(107,203,119,0.5)',
+          }}
+        >
+          {idx + 1 >= challenges.length ? '🏁 Fertig!' : 'Weiter! →'}
+        </motion.button>
+      )}
     </div>
   )
 }
