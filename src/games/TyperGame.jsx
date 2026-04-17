@@ -119,6 +119,8 @@ function FallingLettersGame({ level, onComplete }) {
   const [wIdx,         setWIdx]       = useState(0)
   const [typed,        setTyped]      = useState(0) // # of letters correctly typed for current word
   const [score,        setScore]      = useState(0)
+  const [errors,       setErrors]     = useState(0)
+  const [showHint,     setShowHint]   = useState(false)
   const [lives,        setLives]      = useState(3)
   const [letterY,      setLetterY]    = useState(-10)
   const [mood,         setMood]       = useState('happy')
