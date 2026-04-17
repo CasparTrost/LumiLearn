@@ -255,6 +255,14 @@ function BalanceScale({ tiltDeg, leftEmoji, rightEmoji, leftLabel, rightLabel,
 }
 
 
+function speakDE(text) {
+  if (!window.speechSynthesis) return
+  window.speechSynthesis.cancel()
+  const u = new SpeechSynthesisUtterance((text||'').replace(/[^\w\säöüÄÖÜß.,!?]/g,''))
+  u.lang = 'de-DE'; u.rate = 0.8; u.pitch = 1.05
+  window.speechSynthesis.speak(u)
+}
+
 export default function WeightGame({ level = 1, onComplete }) {
   const [questions] = useState(() => buildQuestions(level))
   const [idx,       setIdx]      = useState(0)
@@ -264,6 +272,13 @@ export default function WeightGame({ level = 1, onComplete }) {
   const [mood,      setMood]     = useState('happy')
 
   const q = questions[idx]
+
+  // Speak item labels when question changes
+  useEffect(() => {
+    if (q && q.leftLabel && q.rightLabel && level <= 2) {
+      setTimeout(() => speakDE(q.leftLabel + ' oder ' + q.rightLabel), 300)
+    }
+  }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
   const correctSide   = q.leftW >= q.rightW ? 'left' : 'right'
   const heavierLabel  = q.leftW >= q.rightW ? q.leftLabel : q.rightLabel
   const tiltDeg       = answered ? (q.leftW > q.rightW ? -18 : q.rightW > q.leftW ? 18 : 0) : 0

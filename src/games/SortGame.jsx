@@ -311,6 +311,14 @@ function pickLevelSet(level) {
 
 function shuffleArr(a) { return [...a].sort(() => Math.random() - 0.5) }
 
+function speakDE(text) {
+  if (!window.speechSynthesis) return
+  window.speechSynthesis.cancel()
+  const u = new SpeechSynthesisUtterance((text||'').replace(/[^\w\säöüÄÖÜß.,!?]/g,''))
+  u.lang = 'de-DE'; u.rate = 0.8; u.pitch = 1.05
+  window.speechSynthesis.speak(u)
+}
+
 export default function SortGame({ level = 1, onComplete }) {
   const [cfg]      = useState(() => pickLevelSet(level))
   const [items]    = useState(() => shuffleArr(cfg.items))
@@ -372,6 +380,11 @@ export default function SortGame({ level = 1, onComplete }) {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [sortItem])
+
+  // Speak category names when game starts
+  useEffect(() => {
+    setTimeout(() => speakDE('Sortiere! ' + cfg.categoryA.label + ' oder ' + cfg.categoryB.label), 400)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const catA = cfg.categoryA
   const catB = cfg.categoryB
