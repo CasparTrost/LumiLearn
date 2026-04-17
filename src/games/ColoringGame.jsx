@@ -143,31 +143,11 @@ export default function ColoringGame({ onComplete }) {
       return
     }
 
-    // Brush: pixel-level, respects dark lines
-    const bd = basePixels.current?.data
-    if (!bd) return
-    const pd = ctx.getImageData(0, 0, W, H)
-    const d  = pd.data
-    const { r, g, b } = hexToRgb(color)
-
-    const dist  = Math.hypot(to.x-from.x, to.y-from.y)
-    const steps = Math.max(1, Math.ceil(dist / (brushR * 0.4)))
-    for (let s = 0; s <= steps; s++) {
-      const t2 = s / steps
-      const cx = from.x + (to.x-from.x)*t2
-      const cy = from.y + (to.y-from.y)*t2
-      for (let dy = -brushR; dy <= brushR; dy++) {
-        for (let dx = -brushR; dx <= brushR; dx++) {
-          if (dx*dx + dy*dy > brushR*brushR) continue
-          const px = Math.round(cx+dx), py = Math.round(cy+dy)
-          if (px < 0 || py < 0 || px >= W || py >= H) continue
-          const bi = (py*W + px)*4
-          if ((bd[bi]+bd[bi+1]+bd[bi+2]) < 180) continue // skip dark pixels
-          d[bi]=r; d[bi+1]=g; d[bi+2]=b; d[bi+3]=220
-        }
-      }
-    }
-    ctx.putImageData(pd, 0, 0)
+    // Brush: simple fast drawing
+    ctx.strokeStyle = color; ctx.fillStyle = color
+    ctx.lineWidth = brushR * 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+    ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke()
+    ctx.beginPath(); ctx.arc(to.x, to.y, brushR, 0, Math.PI*2); ctx.fill()
   }, [tool, color, brushR])
 
   const handlePointerDown = useCallback((e) => {
