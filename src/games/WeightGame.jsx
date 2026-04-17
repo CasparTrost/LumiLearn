@@ -461,39 +461,7 @@ export default function WeightGame({ level = 1, onComplete }) {
         >Weiter! →</motion.button>
       )}
 
-      <AnimatePresence mode="wait">
-        <motion.div key={idx}
-          initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0 }}
-          style={{
-            display: 'flex', gap: 'clamp(10px,3vw,22px)',
-            width: '100%', maxWidth: 520,
-            justifyContent: 'center', alignItems: 'stretch',
-          }}
-        >
-          <WeightCard
-            emoji={q.leftEmoji} label={q.leftLabel}
-            heavier={answered && q.leftW >= q.rightW}
-            lighter={answered && q.leftW < q.rightW}
-            answered={answered}
-            onClick={() => answer('left')}
-            side="left"
-          />
-          <div style={{
-            alignSelf: 'center', flexShrink: 0,
-            fontFamily: 'var(--font-heading)', fontSize: 'clamp(18px,4vw,26px)',
-            fontWeight: 900, color: '#A29BFE',
-          }}>VS</div>
-          <WeightCard
-            emoji={q.rightEmoji} label={q.rightLabel}
-            heavier={answered && q.rightW > q.leftW}
-            lighter={answered && q.rightW <= q.leftW}
-            answered={answered}
-            onClick={() => answer('right')}
-            side="right"
-          />
-        </motion.div>
-      </AnimatePresence>
+
 
     </div>
   )
