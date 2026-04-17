@@ -98,6 +98,14 @@ export default function GameScreen() {
         <span style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(18px,3.5vw,26px)', color:'white', fontWeight:600, flex:1 }}>
           {meta.label}
         </span>
+        <span style={{
+          display:'flex', alignItems:'center', gap:4,
+          background:'rgba(255,217,61,0.2)', borderRadius:10, padding:'4px 10px',
+          border:'1px solid rgba(255,217,61,0.4)',
+        }}>
+          <span style={{ fontSize:16 }}>🪙</span>
+          <span style={{ fontFamily:'var(--font-heading)', color:'#FFD93D', fontWeight:700, fontSize:15 }}>{state.coins ?? 0}</span>
+        </span>
         <span style={{ fontFamily:'var(--font-heading)', fontSize:16, color:'rgba(255,255,255,0.75)' }}>
           Level {level} / {MAX_LEVELS[moduleId] ?? 5}
         </span>

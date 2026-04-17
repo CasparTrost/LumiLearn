@@ -4,7 +4,7 @@ import ParentScreen from './ParentScreen.jsx'
 import { Settings } from 'lucide-react'
 import { useApp } from '../AppContext.jsx'
 import { useT } from '../i18n.js'
-import { MAX_LEVELS } from '../AppContext.jsx'
+import { MAX_LEVELS, ALL_MISSIONS, FARM_COSTS } from '../AppContext.jsx'
 import StarRow from '../components/StarRow.jsx'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import FarmProgress from '../components/FarmProgress.jsx'
@@ -88,10 +88,17 @@ function LumiWithOrbit({ completedCount, size }) {
 export default function HomeScreen() {
   const t = useT()
   const { state, dispatch } = useApp()
-  const profile  = state.profile  ?? { name:'Lumi', avatar:'🦊' }
-  const progress = state.progress ?? {}
+  const profile      = state.profile  ?? { name:'Lumi', avatar:'🦊' }
+  const progress     = state.progress ?? {}
+  const coins        = state.coins    ?? 0
+  const farmLevel    = state.farmLevel ?? 1
+  const streak       = state.streak   ?? { count: 0 }
+  const dailyMission = state.dailyMission ?? { missionIds: [], completed: [], stats: {} }
   const [showParent, setShowParent] = useState(false)
   const completedCount = Object.values(progress).filter(p => p?.completed).length
+
+  const upgradeCost = farmLevel < MAX_FARM_LEVEL ? (FARM_UPGRADE_COSTS[farmLevel - 1] ?? null) : null
+  const canUpgradeFarm = upgradeCost !== null && coins >= upgradeCost
 
   const getModuleTitle = (id, fallback) => t('module.' + id, fallback)
   const getModuleSub = (id) => {
@@ -186,8 +193,75 @@ export default function HomeScreen() {
         </h1>
       </div>
 
-      {/* Farm Progress */}
-      <div style={{ padding:'0 clamp(12px,3vw,24px)', paddingBottom:8 }}>
+      {/* ── Gamification Bar ── */}
+      <div style={{
+        margin:'0 clamp(12px,3vw,24px)',
+        marginBottom: 8,
+        background:'rgba(255,255,255,0.08)',
+        borderRadius: 20,
+        padding:'12px 20px',
+        backdropFilter:'blur(12px)',
+        border:'1px solid rgba(255,255,255,0.15)',
+        display:'flex', flexWrap:'wrap', gap:12, alignItems:'flex-start',
+      }}>
+        {/* Coins + Farm */}
+        <div style={{ display:'flex', gap:10, alignItems:'center', flex:'0 0 auto' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:6,
+            background:'rgba(255,217,61,0.18)', borderRadius:12, padding:'6px 14px',
+            border:'1.5px solid rgba(255,217,61,0.4)',
+          }}>
+            <span style={{ fontSize:20 }}>🪙</span>
+            <span style={{ fontFamily:'var(--font-heading)', color:'#FFD93D', fontWeight:700, fontSize:18 }}>{coins}</span>
+          </div>
+          {streak.count >= 1 && (
+            <div style={{ display:'flex', alignItems:'center', gap:5,
+              background:'rgba(255,107,107,0.18)', borderRadius:12, padding:'6px 12px',
+              border:'1.5px solid rgba(255,107,107,0.4)',
+            }}>
+              <span style={{ fontSize:18 }}>🔥</span>
+              <span style={{ fontFamily:'var(--font-heading)', color:'#FF6B6B', fontWeight:700, fontSize:16 }}>{streak.count}d</span>
+            </div>
+          )}
+          {canUpgradeFarm && (
+            <motion.button
+              whileTap={{ scale:0.92 }}
+              onClick={() => dispatch({ type:'UPGRADE_FARM' })}
+              style={{
+                background:'linear-gradient(135deg,#6BCB77,#44D498)',
+                border:'none', borderRadius:12, padding:'6px 14px',
+                fontFamily:'var(--font-heading)', color:'white', fontWeight:700, fontSize:14,
+                cursor:'pointer', display:'flex', alignItems:'center', gap:5,
+              }}
+            >
+              🌱 Farm Upgrade ({upgradeCost}🪙)
+            </motion.button>
+          )}
+        </div>
+        {/* Daily Missions */}
+        {dailyMission.missionIds.length > 0 && (
+          <div style={{ display:'flex', flexDirection:'column', gap:4, flex:1, minWidth:180 }}>
+            <div style={{ fontFamily:'var(--font-heading)', color:'rgba(255,255,255,0.6)', fontSize:11, letterSpacing:1, textTransform:'uppercase' }}>Tagesaufgaben</div>
+            <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+              {dailyMission.missionIds.map(id => {
+                const m = ALL_MISSIONS.find(x => x.id === id)
+                if (!m) return null
+                const done = dailyMission.completed.includes(id)
+                return (
+                  <div key={id} style={{
+                    display:'flex', alignItems:'center', gap:4,
+                    background: done ? 'rgba(107,203,119,0.25)' : 'rgba(255,255,255,0.08)',
+                    borderRadius:10, padding:'4px 10px',
+                    border: done ? '1px solid rgba(107,203,119,0.5)' : '1px solid rgba(255,255,255,0.12)',
+                    opacity: done ? 1 : 0.8,
+                  }}>
+                    <span style={{ fontSize:14 }}>{done ? '✅' : m.icon}</span>
+                    <span style={{ fontFamily:'var(--font-body)', color:'white', fontSize:12 }}>{m.text}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Farm Progress ── */}

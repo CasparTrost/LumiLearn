@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useApp } from '../AppContext.jsx'
+import { ALL_MISSIONS } from '../AppContext.jsx'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import StarRow from '../components/StarRow.jsx'
 import Button from '../components/Button.jsx'
@@ -44,10 +45,14 @@ export default function ResultsScreen() {
   const total       = gameResult?.total        ?? 0
   const moduleId    = gameResult?.moduleId     ?? 'numbers'
   const level       = gameResult?.level        ?? 1
-  const nextLevelNum   = gameResult?.nextLevelNum   ?? null   // null = no more levels
-  const justCompleted  = gameResult?.justCompleted  ?? false  // all levels done for first time
-  const isFirstPass    = gameResult?.isFirstPass    ?? false  // first time passing this level
+  const nextLevelNum   = gameResult?.nextLevelNum   ?? null
+  const justCompleted  = gameResult?.justCompleted  ?? false
+  const isFirstPass    = gameResult?.isFirstPass    ?? false
   const maxLevel       = gameResult?.maxLevel       ?? 5
+  const coinsEarned    = gameResult?.coinsEarned    ?? 0
+  const streakBonusCoins = gameResult?.streakBonusCoins ?? 0
+  const newMissionsCompleted = gameResult?.newMissionsCompleted ?? []
+  const streakCount    = state.streak?.count ?? 0
 
   // Modules where a fraction counter makes sense
   const SCORE_MODULES = ['numbers','letters','listen','words','patterns','shapes','emotions','shadows','bubbles']
@@ -160,6 +165,66 @@ export default function ResultsScreen() {
             </div>
           )}
         </motion.div>
+
+        {/* Coins earned & streak */}
+          {coinsEarned > 0 && (
+            <motion.div
+              initial={{ scale:0, y:10 }}
+              animate={{ scale:1, y:0 }}
+              transition={{ delay:0.8, type:'spring', stiffness:350 }}
+              style={{
+                display:'flex', gap:10, flexWrap:'wrap', justifyContent:'center',
+                marginTop:4,
+              }}
+            >
+              <div style={{
+                display:'flex', alignItems:'center', gap:6,
+                background:'rgba(255,217,61,0.18)', borderRadius:14, padding:'8px 18px',
+                border:'1.5px solid rgba(255,217,61,0.45)',
+              }}>
+                <span style={{ fontSize:22 }}>🪙</span>
+                <span style={{ fontFamily:'var(--font-heading)', color:'#FFD93D', fontWeight:700, fontSize:20 }}>+{coinsEarned}</span>
+                {streakBonusCoins > 0 && (
+                  <span style={{ fontFamily:'var(--font-body)', color:'rgba(255,255,255,0.7)', fontSize:12 }}>(🔥+{streakBonusCoins})</span>
+                )}
+              </div>
+              {streakCount >= 2 && (
+                <div style={{
+                  display:'flex', alignItems:'center', gap:5,
+                  background:'rgba(255,107,107,0.2)', borderRadius:14, padding:'8px 16px',
+                  border:'1.5px solid rgba(255,107,107,0.4)',
+                }}>
+                  <span style={{ fontSize:20 }}>🔥</span>
+                  <span style={{ fontFamily:'var(--font-heading)', color:'#FF6B6B', fontWeight:700, fontSize:16 }}>{streakCount} Tage!</span>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* Mission completions */}
+          {newMissionsCompleted.length > 0 && (
+            <motion.div
+              initial={{ opacity:0, y:10 }}
+              animate={{ opacity:1, y:0 }}
+              transition={{ delay:1.0 }}
+              style={{ display:'flex', flexDirection:'column', gap:6, width:'100%', alignItems:'center' }}
+            >
+              {newMissionsCompleted.map(id => {
+                const m = ALL_MISSIONS.find(x => x.id === id)
+                if (!m) return null
+                return (
+                  <div key={id} style={{
+                    display:'flex', alignItems:'center', gap:8,
+                    background:'rgba(107,203,119,0.2)', borderRadius:14, padding:'8px 18px',
+                    border:'1.5px solid rgba(107,203,119,0.5)',
+                  }}>
+                    <span style={{ fontSize:20 }}>✅</span>
+                    <span style={{ fontFamily:'var(--font-body)', color:'white', fontSize:15 }}>Aufgabe erledigt: {m.text}</span>
+                  </div>
+                )
+              })}
+            </motion.div>
+          )}
 
           {justCompleted && (
             <motion.div
