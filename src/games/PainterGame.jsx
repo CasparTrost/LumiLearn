@@ -26,6 +26,7 @@ const ALL_COLORS = [
   { name: 'Grau',     value: '#90A4AE' },
   { name: 'Hellgrün', value: '#7CB342' },
   { name: 'Schwarz',  value: '#37474F' },
+  { name: 'Weiß',    value: '#FAFAFA' },
 ]
 
 function getColor(name) {
@@ -251,7 +252,36 @@ const SCENES = [
       { id: 'leaf',   target: 'Grün', label: '🌿 Blatt', element: 'ellipse', cx: 128, cy: 165, rx: 28, ry: 13, transform: 'rotate(-30,128,165)' },
     ],
   },
-]
+  {
+    id: 'balloon', hint: 'Male den Ballon! 🎈', level: 1,
+    viewBox: '0 0 200 200',
+    regions: [
+      { id: 'ball', target: 'Rot', label: '🎈 Ballon', element: 'ellipse', cx: 100, cy: 80, rx: 55, ry: 65 },
+      { id: 'knot', target: 'Gelb', label: '🔵 Knoten', element: 'circle',  cx: 100, cy: 145, r: 7 },
+      { id: 'string', target: 'Grau', label: '〰️ Faden', element: 'rect',   x: 98, y: 152, width: 4, height: 44, rx: 2 },
+    ],
+  },
+  {
+    id: 'star', hint: 'Male den Stern! ⭐', level: 1,
+    viewBox: '0 0 200 200',
+    regions: [
+      { id: 'body', target: 'Gelb', label: '⭐ Stern', element: 'polygon',
+        points: '100,18 121,70 176,70 132,103 148,158 100,125 52,158 68,103 24,70 79,70' },
+    ],
+  },
+  {
+    id: 'frog', hint: 'Male den Frosch! 🐸', level: 2,
+    viewBox: '0 0 200 200',
+    regions: [
+      { id: 'body',    target: 'Grün',  label: '🐸 Körper', element: 'ellipse', cx: 100, cy: 125, rx: 55, ry: 45 },
+      { id: 'eye-l',   target: 'Weiß',  label: '👁️ Auge l',  element: 'circle',  cx: 75,  cy: 80,  r: 18 },
+      { id: 'eye-r',   target: 'Weiß',  label: '👁️ Auge r',  element: 'circle',  cx: 125, cy: 80,  r: 18 },
+      { id: 'pupil-l', target: 'Schwarz',label: '● Pupille', element: 'circle',  cx: 75,  cy: 83,  r: 8 },
+      { id: 'pupil-r', target: 'Schwarz',label: '● Pupille', element: 'circle',  cx: 125, cy: 83,  r: 8 },
+      { id: 'mouth',   target: 'Rot',   label: '👅 Mund',    element: 'ellipse', cx: 100, cy: 145, rx: 22, ry: 10 },
+    ],
+  },
+] 
 
 function buildScenes(level) {
   const maxSceneLevel = level <= 2 ? 1 : level <= 6 ? 2 : 3
