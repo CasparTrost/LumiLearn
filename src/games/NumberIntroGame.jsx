@@ -109,14 +109,17 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
           }}>
             {round.n}
           </div>
-          <div style={{
-            fontFamily:'var(--font-heading)',
-            fontSize:'clamp(42px,9vw,62px)',
-            color:'var(--text-secondary)',
-            marginTop:-4, letterSpacing:1,
-          }}>
+          <div style={{fontFamily:'var(--font-heading)',fontSize:'clamp(42px,9vw,62px)',color:'var(--text-secondary)',marginTop:-4,letterSpacing:1}}>
             {NUMBER_WORDS[round.n]}
           </div>
+          {round.n <= 6 && (
+            <svg width={70} height={70} viewBox="0 0 100 100" style={{marginTop:4}}>
+              <rect x={2} y={2} width={96} height={96} rx={18} fill="white" stroke={round.color} strokeWidth={3}/>
+              {[null,[[50,50]],[[25,25],[75,75]],[[25,25],[50,50],[75,75]],[[25,25],[75,25],[25,75],[75,75]],[[25,25],[75,25],[50,50],[25,75],[75,75]],[[25,25],[75,25],[25,50],[75,50],[25,75],[75,75]]][round.n].map(([cx,cy],i) => (
+                <circle key={i} cx={cx} cy={cy} r={8} fill={round.color}/>
+              ))}
+            </svg>
+          )}
           {/* Dice pattern for n <= 6 */}
           {round.n <= 6 && (
             <svg width={80} height={80} viewBox="0 0 100 100" style={{marginTop:4}}>
