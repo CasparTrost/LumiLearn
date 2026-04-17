@@ -79,12 +79,19 @@ const ANIMAL_COUNT = {
   horse:   [0, 0, 0, 0, 0, 0, 2],
 }
 
-function getLevel(n) {
-  if (n<=2) return 1; if (n<=5) return 2; if (n<=8) return 3
-  if (n<=12) return 4; if (n<=16) return 5; return 6
+// Sterne → Farm-Level (wieviele Tiere auf dem Hof)
+// Stars accumulate from all games played
+function getLevel(stars) {
+  if (stars < 5)   return 0  // Leerer Hof
+  if (stars < 15)  return 1  // 1 Huhn
+  if (stars < 30)  return 2  // 2 Hühner
+  if (stars < 50)  return 3  // Schwein
+  if (stars < 75)  return 4  // 2 Schweine + Schaf
+  if (stars < 120) return 5  // Kuh + mehr
+  return 6                   // Traumhof: alles
 }
-const LABELS  = ['','Kleiner Hof','Wachsender Hof','Blühender Hof','Großer Hof','Prächtiger Hof','Traumhof!']
-const NEXT_AT = [0,3,6,9,13,17,Infinity]
+const LABELS  = ['Leerer Hof','Kleiner Hof','Gemütlicher Hof','Lebhafter Hof','Großer Hof','Prächtiger Hof','Traumhof! 🏆']
+const NEXT_AT = [5, 15, 30, 50, 75, 120, Infinity]
 
 // Compute which animals should be on farm for a given level
 function getAnimalsForLevel(lvl) {

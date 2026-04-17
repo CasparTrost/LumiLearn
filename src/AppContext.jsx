@@ -142,16 +142,8 @@ function reducer(state, action) {
         ...state,
         dailyMission: { date: today, missions: pickMissionsForDate(today), completedIds: [] },
         // reset session tracking for new day
-        _sessionPlays: 0, _sessionLevels: 0, _got3Stars: false, _played: [], _sessionCoins: 0,
+        _sessionPlays: 0, _sessionLevels: 0, _got3Stars: false, _played: [], 
       }
-    }
-
-    case 'UPGRADE_FARM': {
-      const curLevel = state.farmLevel ?? 1
-      if (curLevel >= 6) return state
-      const cost = FARM_COSTS[curLevel] ?? 999
-      if ((state.coins ?? 0) < cost) return state
-      return { ...state, farmLevel: curLevel + 1, coins: (state.coins ?? 0) - cost }
     }
 
     case 'FINISH_GAME': {
@@ -232,6 +224,7 @@ function reducer(state, action) {
         ...state,
         ...sessionState,
         screen: 'results',
+        totalStars: newTotalStars,
         streakLastBonus: newStreakLastBonus,
         coins: (state.coins ?? 0) + totalCoins,
         dailyMission: { ...dm, completedIds: newCompletedIds },

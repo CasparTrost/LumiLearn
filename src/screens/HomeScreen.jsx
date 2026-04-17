@@ -90,15 +90,13 @@ export default function HomeScreen() {
   const { state, dispatch } = useApp()
   const profile      = state.profile  ?? { name:'Lumi', avatar:'🦊' }
   const progress     = state.progress ?? {}
-  const coins        = state.coins    ?? 0
-  const farmLevel    = state.farmLevel ?? 1
+  const totalStars   = state.totalStars   ?? 0
   const streak       = state.streak   ?? { count: 0 }
   const dailyMission = state.dailyMission ?? { date: null, missions: [], completedIds: [] }
   const [showParent, setShowParent] = useState(false)
   const completedCount = Object.values(progress).filter(p => p?.completed).length
 
   const upgradeCost = farmLevel < 6 ? (FARM_COSTS[farmLevel] ?? null) : null
-  const canUpgradeFarm = upgradeCost !== null && coins >= upgradeCost
 
   const getModuleTitle = (id, fallback) => t('module.' + id, fallback)
   const getModuleSub = (id) => {
