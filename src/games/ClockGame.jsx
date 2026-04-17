@@ -330,6 +330,21 @@ export default function ClockGame({ level = 1, onComplete }) {
 
   const t = times[idx]
 
+  // TTS: read the task
+  useEffect(() => {
+    if (!t) return
+    const task = idx % 2 === 0
+      ? `Wie viel Uhr ist es? ${t.h} Uhr ${t.m > 0 ? t.m : ''}`
+      : `Stelle die Uhr auf ${t.h} Uhr ${t.m > 0 ? t.m : ''}`
+    setTimeout(() => {
+      if (!window.speechSynthesis) return
+      window.speechSynthesis.cancel()
+      const u = new SpeechSynthesisUtterance(task)
+      u.lang = 'de-DE'; u.rate = 0.8; u.pitch = 1.05
+      window.speechSynthesis.speak(u)
+    }, 500)
+  }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Alternate between 'read' and 'set' modes
   useEffect(() => { setMode(idx % 2 === 0 ? 'read' : 'set') }, [idx])
 
