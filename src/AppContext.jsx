@@ -20,6 +20,7 @@ export const MAX_LEVELS = {
   clock:          10,
   words2:         10,
   weight:         10,
+  coloring:        10,
 }
 
 function freshProgress() {

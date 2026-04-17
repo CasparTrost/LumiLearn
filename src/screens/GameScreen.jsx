@@ -19,6 +19,7 @@ import WeightGame        from '../games/WeightGame.jsx'
 import NumberIntroGame   from '../games/NumberIntroGame.jsx'
 import LetterIntroGame   from '../games/LetterIntroGame.jsx'
 import NumbersGame       from '../games/NumbersGame.jsx'
+import ColoringGame      from '../games/ColoringGame.jsx'
 
 const MODULE_META = {
   numbers:  { label: 'Zahlenland 🔢',         gradient: 'linear-gradient(135deg, #6BCB77, #44D498)' },
@@ -38,6 +39,7 @@ const MODULE_META = {
   weight:        { label: 'Waage-Welt ⚖️',          gradient: 'linear-gradient(135deg, #A29BFE, #FF9F43)' },
   'number-intro': { label: 'Zahlen entdecken 🧮',    gradient: 'linear-gradient(135deg, #FFD93D, #FF9F43)' },
   'letter-intro': { label: 'ABC-Abenteuer 🔡',       gradient: 'linear-gradient(135deg, #74B9FF, #6C63FF)' },
+  coloring:       { label: 'Mal-Atelier 🖍️',           gradient: 'linear-gradient(135deg, #FD79A8, #E84393)' },
 }
 
 const GAME_MAP = {
@@ -58,6 +60,7 @@ const GAME_MAP = {
   weight:        WeightGame,
   'number-intro': NumberIntroGame,
   'letter-intro': LetterIntroGame,
+  coloring:       ColoringGame,
 }
 
 export default function GameScreen() {
