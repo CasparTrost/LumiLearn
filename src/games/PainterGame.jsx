@@ -485,7 +485,16 @@ export default function PainterGame({ level = 1, onComplete }) {
     completedRef.current = {}
     paintedCellsRef.current = {}
     lastPtRef.current = null
-  }, [sceneIdx])
+    // TTS: announce scene task
+    const s = scenes[sceneIdx]
+    if (s?.hint) setTimeout(() => {
+      if (!window.speechSynthesis) return
+      window.speechSynthesis.cancel()
+      const u = new SpeechSynthesisUtterance(s.hint.replace(/[^\w\säöüÄÖÜß.,!?]/g,''))
+      u.lang = 'de-DE'; u.rate = 0.8; u.pitch = 1.05
+      window.speechSynthesis.speak(u)
+    }, 500)
+  }, [sceneIdx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Pre-compute which grid cells are inside each region whenever scene changes.
   // Each cell is assigned to the SMALLEST region that contains it — matching the

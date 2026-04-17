@@ -152,7 +152,19 @@ export default function NumbersGame({ level = 1, onComplete }) {
     setPhase('shopping')
     setBubble('')
     clearTimeout(timerRef.current)
-  }, [idx])
+    // TTS: read the customer request
+    const q2 = questions[idx]
+    if (q2) {
+      const txt = q2.parts.map(p => `${p.n} ${p.n === 1 ? p.item.singular : p.item.name}`).join(' und ')
+      setTimeout(() => {
+        if (!window.speechSynthesis) return
+        window.speechSynthesis.cancel()
+        const u = new SpeechSynthesisUtterance(`${q2.greeting} ${txt}.`)
+        u.lang = 'de-DE'; u.rate = 0.8; u.pitch = 1.0
+        window.speechSynthesis.speak(u)
+      }, 600)
+    }
+  }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const advance = useCallback(() => {
     const next = idx + 1
