@@ -79,7 +79,7 @@ export default function GameScreen() {
   const quit = () => dispatch({ type: 'NAVIGATE', payload: 'home' })
 
   return (
-    <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ height: '100dvh', background: 'var(--bg)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Header */}
       <div style={{
         background: meta.gradient,

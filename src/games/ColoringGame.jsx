@@ -123,7 +123,7 @@ export default function ColoringGame({ level = 1, onComplete }) {
 
   return (
     <div style={{
-      display: 'flex', flexDirection: 'column', height: '100%',
+      display: 'flex', flexDirection: 'column', flex: 1,
       background: '#f8f4ff', overflow: 'hidden', userSelect: 'none',
     }}>
 
