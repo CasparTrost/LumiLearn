@@ -1,68 +1,84 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import LumiCharacter from '../components/LumiCharacter.jsx'
-import { sfx } from '../sfx.js'
+import { useState, useRef, useCallback } from 'react'
+
+// ─── Ausmalbild-Liste ──────────────────────────────────────────────────────────
 const BASE = import.meta.env.BASE_URL || '/LumiLearn/'
 
-// ─── Coloring images ──────────────────────────────────────────────────────────
 const IMAGES = [
-  { id: 'mcqueen1',  src: BASE + 'images/coloring/mcqueen1.jpg',  label: 'Lightning McQueen', emoji: '🚗' },
-  { id: 'mcqueen2',  src: BASE + 'images/coloring/mcqueen2.jpg',  label: 'Lightning McQueen 2', emoji: '🏎️' },
-  { id: 'ninja',     src: BASE + 'images/coloring/ninja.jpg',     label: 'Grüner Ninja', emoji: '🥷' },
-  { id: 'nintendo',  src: BASE + 'images/coloring/nintendo.jpg',  label: 'Nintendo', emoji: '🎮' },
-  { id: 'princess',  src: BASE + 'images/coloring/princess.jpg',  label: 'Prinzessin', emoji: '👸' },
-  { id: 'page2',     src: BASE + 'images/coloring/page2.jpg',     label: 'Ausmalbild', emoji: '🖍️' },
-  { id: 'page3',     src: BASE + 'images/coloring/page3.jpg',     label: 'Ausmalbild', emoji: '🎨' },
-  { id: 'page4',     src: BASE + 'images/coloring/page4.jpg',     label: 'Ausmalbild', emoji: '🌟' },
-  { id: 'page5',     src: BASE + 'images/coloring/page5.jpg',     label: 'Ausmalbild', emoji: '🦋' },
-  { id: 'page6',     src: BASE + 'images/coloring/page6.jpg',     label: 'Ausmalbild', emoji: '🌈' },
+  { id: 'mcqueen1',  src: `${BASE}images/coloring/mcqueen1.jpg`,  label: 'Lightning McQueen',   emoji: '🚗' },
+  { id: 'mcqueen2',  src: `${BASE}images/coloring/mcqueen2.jpg`,  label: 'Lightning McQueen 2', emoji: '🏎️' },
+  { id: 'ninja',     src: `${BASE}images/coloring/ninja.jpg`,     label: 'Grüner Ninja',        emoji: '🥷' },
+  { id: 'nintendo',  src: `${BASE}images/coloring/nintendo.jpg`,  label: 'Nintendo',            emoji: '🎮' },
+  { id: 'princess',  src: `${BASE}images/coloring/princess.jpg`,  label: 'Prinzessin',          emoji: '👸' },
+  { id: 'page2',     src: `${BASE}images/coloring/page2.jpg`,     label: 'Ausmalbild 2',        emoji: '🌸' },
+  { id: 'page3',     src: `${BASE}images/coloring/page3.jpg`,     label: 'Ausmalbild 3',        emoji: '🌟' },
+  { id: 'page4',     src: `${BASE}images/coloring/page4.jpg`,     label: 'Ausmalbild 4',        emoji: '🦋' },
+  { id: 'page5',     src: `${BASE}images/coloring/page5.jpg`,     label: 'Ausmalbild 5',        emoji: '🐉' },
+  { id: 'page6',     src: `${BASE}images/coloring/page6.jpg`,     label: 'Ausmalbild 6',        emoji: '🌈' },
 ]
 
 const COLORS = [
-  '#E53935', '#FB8C00', '#FDD835', '#43A047',
-  '#00ACC1', '#1E88E5', '#8E24AA', '#E91E63',
-  '#6D4C41', '#37474F', '#FAFAFA', '#000000',
+  // Warm
+  '#FF0000', '#FF4444', '#FF7700', '#FFAA00',
+  '#FFDD00', '#EEEE00', '#CCEE00', '#88DD00',
+  // Grün-Blau
+  '#44CC00', '#00AA44', '#00CC88', '#00BBFF',
+  '#0088FF', '#0044EE', '#0022AA', '#4422FF',
+  // Lila-Pink
+  '#8800FF', '#AA00DD', '#CC00AA', '#EE0077',
+  '#FF0099', '#FF44BB', '#FF88DD', '#FFBBEE',
+  // Braun-Grau
+  '#CC8800', '#996633', '#774422', '#552211',
+  '#AAAAAA', '#777777', '#444444', '#000000',
+  // Pastell & Weiß
+  '#FFCCCC', '#FFEECC', '#FFFFCC', '#CCFFCC',
+  '#CCFFFF', '#CCCCFF', '#FFCCFF', '#FFFFFF',
 ]
 
-const BRUSH_SIZES = [8, 16, 28]
+const BRUSH_SIZES = [4, 8, 14, 22, 34]
 
-function shuffle(a) { return [...a].sort(() => Math.random() - 0.5) }
-
-export default function ColoringGame({ level = 1, onComplete }) {
-  const count = level <= 3 ? 2 : level <= 6 ? 3 : 4
-  const [images]        = useState(() => shuffle(IMAGES).slice(0, Math.min(count, IMAGES.length)))
-  const [imgIdx, setImgIdx]     = useState(0)
-  const [color, setColor]       = useState('#E53935')
-  const [brushSize, setBrushSize] = useState(1) // index into BRUSH_SIZES
-  const [isEraser, setIsEraser] = useState(false)
-  const [drawing, setDrawing]   = useState(false)
-  const [painted, setPainted]   = useState(0) // % painted estimate
-  const [showWeiter, setShowWeiter] = useState(false)
-  const [done, setDone]         = useState(false)
-  const [score, setScore]       = useState(0)
+export default function ColoringGame({ onComplete }) {
+  const [imgIdx, setImgIdx]       = useState(0)
+  const [color, setColor]         = useState('#FF0000')
+  const [brushIdx, setBrushIdx]   = useState(1)
+  const [isEraser, setIsEraser]   = useState(false)
+  const [drawing, setDrawing]     = useState(false)
+  const [canvasKey, setCanvasKey] = useState(0)
+  const [imgLoaded, setImgLoaded] = useState(false)
 
   const canvasRef = useRef(null)
   const lastPos   = useRef(null)
-  const imgRef    = useRef(null)
+  const brushR    = BRUSH_SIZES[brushIdx]
 
-  const currentImage = images[imgIdx]
+  const goToImage = useCallback((idx) => {
+    setImgIdx(idx)
+    setImgLoaded(false)
+    setCanvasKey(k => k + 1)
+  }, [])
 
-  // Draw on canvas
   const getPos = useCallback((e, canvas) => {
     const rect = canvas.getBoundingClientRect()
-    const scaleX = canvas.width / rect.width
-    const scaleY = canvas.height / rect.height
-    if (e.touches) {
-      return {
-        x: (e.touches[0].clientX - rect.left) * scaleX,
-        y: (e.touches[0].clientY - rect.top) * scaleY,
-      }
-    }
-    return {
-      x: (e.clientX - rect.left) * scaleX,
-      y: (e.clientY - rect.top) * scaleY,
-    }
+    const sx = canvas.width / rect.width
+    const sy = canvas.height / rect.height
+    const src = e.touches ? e.touches[0] : e
+    return { x: (src.clientX - rect.left) * sx, y: (src.clientY - rect.top) * sy }
   }, [])
+
+  const paint = useCallback((ctx, from, to) => {
+    ctx.globalCompositeOperation = isEraser ? 'destination-out' : 'source-over'
+    ctx.strokeStyle = isEraser ? 'rgba(0,0,0,1)' : color
+    ctx.lineWidth   = brushR * 2
+    ctx.lineCap     = 'round'
+    ctx.lineJoin    = 'round'
+    ctx.beginPath()
+    ctx.moveTo(from.x, from.y)
+    ctx.lineTo(to.x, to.y)
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.arc(to.x, to.y, brushR, 0, Math.PI * 2)
+    ctx.fillStyle = isEraser ? 'rgba(0,0,0,1)' : color
+    ctx.fill()
+    ctx.globalCompositeOperation = 'source-over'
+  }, [color, brushR, isEraser])
 
   const startDraw = useCallback((e) => {
     e.preventDefault()
@@ -71,232 +87,148 @@ export default function ColoringGame({ level = 1, onComplete }) {
     setDrawing(true)
     const pos = getPos(e, canvas)
     lastPos.current = pos
-    // Draw a dot
-    const ctx = canvas.getContext('2d')
-    ctx.beginPath()
-    ctx.arc(pos.x, pos.y, BRUSH_SIZES[brushSize], 0, Math.PI * 2)
-    ctx.fillStyle = isEraser ? 'rgba(0,0,0,0)' : color
-    if (isEraser) {
-      ctx.globalCompositeOperation = 'destination-out'
-    } else {
-      ctx.globalCompositeOperation = 'source-over'
-    }
-    ctx.fill()
-    ctx.globalCompositeOperation = 'source-over'
-  }, [color, brushSize, isEraser, getPos])
+    paint(canvas.getContext('2d'), pos, pos)
+  }, [getPos, paint])
 
-  const draw = useCallback((e) => {
+  const moveDraw = useCallback((e) => {
     e.preventDefault()
-    if (!drawing) return
+    if (!drawing || !lastPos.current) return
     const canvas = canvasRef.current
     if (!canvas) return
-    const ctx = canvas.getContext('2d')
     const pos = getPos(e, canvas)
-    const last = lastPos.current
-
-    ctx.beginPath()
-    ctx.moveTo(last.x, last.y)
-    ctx.lineTo(pos.x, pos.y)
-    ctx.lineWidth = BRUSH_SIZES[brushSize] * 2
-    ctx.lineCap = 'round'
-    ctx.lineJoin = 'round'
-    if (isEraser) {
-      ctx.globalCompositeOperation = 'destination-out'
-      ctx.strokeStyle = 'rgba(0,0,0,1)'
-    } else {
-      ctx.globalCompositeOperation = 'source-over'
-      ctx.strokeStyle = color
-    }
-    ctx.stroke()
-    ctx.globalCompositeOperation = 'source-over'
+    paint(canvas.getContext('2d'), lastPos.current, pos)
     lastPos.current = pos
-
-    // Estimate painted coverage (sample pixels)
-    const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data
-    let filled = 0
-    const step = 40
-    const total = Math.floor(canvas.width / step) * Math.floor(canvas.height / step)
-    for (let y = 0; y < canvas.height; y += step) {
-      for (let x = 0; x < canvas.width; x += step) {
-        const idx = (y * canvas.width + x) * 4
-        if (data[idx + 3] > 10) filled++
-      }
-    }
-    const pct = Math.round((filled / total) * 100)
-    setPainted(pct)
-    if (pct >= 20 && !showWeiter) setShowWeiter(true)
-  }, [drawing, color, brushSize, isEraser, showWeiter, getPos])
+  }, [drawing, getPos, paint])
 
   const stopDraw = useCallback(() => {
     setDrawing(false)
     lastPos.current = null
   }, [])
 
-  const handleWeiter = useCallback(() => {
-    sfx.correct()
-    setScore(s => s + 1)
-    if (imgIdx + 1 >= images.length) {
-      setDone(true)
-      setTimeout(() => onComplete({ score: score + 1, total: images.length }), 1200)
-    } else {
-      setImgIdx(i => i + 1)
-      setShowWeiter(false)
-      setPainted(0)
-      // Clear canvas
-      const canvas = canvasRef.current
-      if (canvas) {
-        const ctx = canvas.getContext('2d')
-        ctx.clearRect(0, 0, canvas.width, canvas.height)
-      }
-    }
-  }, [imgIdx, images.length, score, onComplete])
-
   const clearCanvas = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
-    setPainted(0)
-    setShowWeiter(false)
+    canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height)
   }, [])
+
+  const currentImage = IMAGES[imgIdx]
 
   return (
     <div style={{
-      flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-      padding: 'clamp(8px,2vw,20px)',
-      gap: 8,
-      background: 'var(--bg-gradient)',
-      overflow: 'hidden',
+      display: 'flex', flexDirection: 'column', height: '100%',
+      background: '#f8f4ff', overflow: 'hidden', userSelect: 'none',
     }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', maxWidth: 700 }}>
-        <LumiCharacter mood="happy" size={44} />
-        <div style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(14px,3vw,18px)', color: 'var(--text-primary)' }}>
-          {currentImage.emoji} Male {currentImage.label}!
-        </div>
-        <div style={{ marginLeft: 'auto', fontSize: 13, color: 'var(--text-muted)' }}>
-          {imgIdx + 1} / {images.length}
-        </div>
+
+      {/* ── Bild-Auswahl ── */}
+      <div style={{
+        display: 'flex', gap: 6, padding: '8px 10px', overflowX: 'auto',
+        background: 'rgba(255,255,255,0.95)', boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+        flexShrink: 0,
+      }}>
+        {IMAGES.map((img, i) => (
+          <button key={img.id} onClick={() => goToImage(i)} style={{
+            flexShrink: 0, padding: '5px 12px', borderRadius: 20,
+            border: i === imgIdx ? '2px solid #8B5CF6' : '2px solid transparent',
+            background: i === imgIdx ? '#EDE9FE' : '#f0f0f0',
+            cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13,
+            fontWeight: i === imgIdx ? 700 : 400,
+            color: i === imgIdx ? '#6D28D9' : '#555',
+            whiteSpace: 'nowrap',
+          }}>
+            {img.emoji} {img.label}
+          </button>
+        ))}
       </div>
 
-      {/* Canvas area */}
+      {/* ── Zeichenfläche ── */}
       <div style={{
-        position: 'relative',
-        width: '100%',
-        maxWidth: 700,
-        flex: 1,
-        minHeight: 0,
-        borderRadius: 16,
-        overflow: 'hidden',
-        boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
-        background: '#fff',
-        touchAction: 'none',
+        flex: 1, position: 'relative', overflow: 'hidden', minHeight: 0,
+        background: '#fff', touchAction: 'none',
       }}>
-        {/* Background image */}
         <img
-          ref={imgRef}
+          key={currentImage.id}
           src={currentImage.src}
           alt={currentImage.label}
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none', userSelect: 'none' }}
+          onLoad={() => setImgLoaded(true)}
+          onError={(e) => { console.warn('Image failed:', currentImage.src); setImgLoaded(true) }}
+          style={{
+            position: 'absolute', inset: 0,
+            width: '100%', height: '100%',
+            objectFit: 'contain',
+            pointerEvents: 'none',
+          }}
         />
-        {/* Drawing canvas */}
         <canvas
+          key={canvasKey}
           ref={canvasRef}
           width={1200}
           height={900}
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', cursor: isEraser ? 'cell' : 'crosshair' }}
+          style={{
+            position: 'absolute', inset: 0,
+            width: '100%', height: '100%',
+            cursor: isEraser ? 'cell' : 'crosshair',
+            touchAction: 'none',
+          }}
           onMouseDown={startDraw}
-          onMouseMove={draw}
+          onMouseMove={moveDraw}
           onMouseUp={stopDraw}
           onMouseLeave={stopDraw}
           onTouchStart={startDraw}
-          onTouchMove={draw}
+          onTouchMove={moveDraw}
           onTouchEnd={stopDraw}
         />
+        {!imgLoaded && (
+          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', fontSize: 32 }}>⏳</div>
+        )}
       </div>
 
-      {/* Controls */}
+      {/* ── Toolbar ── */}
       <div style={{
-        display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap',
-        justifyContent: 'center', width: '100%', maxWidth: 700,
+        background: 'rgba(255,255,255,0.97)', boxShadow: '0 -2px 12px rgba(0,0,0,0.1)',
+        padding: '8px 10px', flexShrink: 0,
+        display: 'flex', flexDirection: 'column', gap: 8,
       }}>
-        {/* Colors */}
+        {/* Farben */}
         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', justifyContent: 'center' }}>
           {COLORS.map(c => (
-            <button
-              key={c}
-              onClick={() => { setColor(c); setIsEraser(false) }}
-              style={{
-                width: 28, height: 28, borderRadius: '50%',
-                background: c,
-                border: color === c && !isEraser ? '3px solid #333' : '2px solid rgba(0,0,0,0.2)',
+            <button key={c} onClick={() => { setColor(c); setIsEraser(false) }} style={{
+              width: 28, height: 28, borderRadius: '50%', padding: 0,
+              background: c,
+              border: c === '#FFFFFF' ? '1.5px solid #ccc' : '1.5px solid rgba(0,0,0,0.12)',
+              outline: color === c && !isEraser ? '3px solid #6D28D9' : 'none',
+              outlineOffset: 2,
+              cursor: 'pointer', flexShrink: 0,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+            }} />
+          ))}
+        </div>
+
+        {/* Pinsel + Tools */}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', background: '#f0f0f0', borderRadius: 20, padding: '4px 12px' }}>
+            {BRUSH_SIZES.map((r, i) => (
+              <button key={i} onClick={() => { setBrushIdx(i); setIsEraser(false) }} style={{
+                width: r * 1.6 + 6, height: r * 1.6 + 6, borderRadius: '50%', padding: 0,
+                background: brushIdx === i && !isEraser ? color : '#bbb',
+                border: brushIdx === i && !isEraser ? '2px solid #6D28D9' : '2px solid transparent',
                 cursor: 'pointer', flexShrink: 0,
-                boxShadow: color === c && !isEraser ? '0 0 0 2px white, 0 0 0 4px #333' : 'none',
-              }}
-            />
-          ))}
+              }} />
+            ))}
+          </div>
+          <button onClick={() => setIsEraser(e => !e)} style={{
+            padding: '6px 16px', borderRadius: 20, border: 'none',
+            background: isEraser ? '#6D28D9' : '#e8e8e8',
+            color: isEraser ? '#fff' : '#555',
+            fontFamily: 'var(--font-body)', fontSize: 14, cursor: 'pointer', fontWeight: 600,
+          }}>🩹 Radierer</button>
+          <button onClick={clearCanvas} style={{
+            padding: '6px 16px', borderRadius: 20, border: 'none',
+            background: '#FFE4E4', color: '#CC0000',
+            fontFamily: 'var(--font-body)', fontSize: 14, cursor: 'pointer', fontWeight: 600,
+          }}>🗑️ Neu</button>
         </div>
-
-        {/* Brush sizes */}
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          {BRUSH_SIZES.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setBrushSize(i)}
-              style={{
-                width: 12 + i * 10, height: 12 + i * 10,
-                borderRadius: '50%',
-                background: brushSize === i ? '#333' : '#aaa',
-                border: 'none', cursor: 'pointer', flexShrink: 0,
-              }}
-            />
-          ))}
-        </div>
-
-        {/* Eraser + Clear */}
-        <button
-          onClick={() => setIsEraser(e => !e)}
-          style={{
-            padding: '6px 14px', borderRadius: 20, border: 'none',
-            background: isEraser ? '#555' : '#ddd',
-            color: isEraser ? '#fff' : '#333',
-            fontFamily: 'var(--font-body)', fontSize: 14, cursor: 'pointer',
-          }}
-        >🩹 Radierer</button>
-        <button
-          onClick={clearCanvas}
-          style={{
-            padding: '6px 14px', borderRadius: 20, border: 'none',
-            background: '#fee', color: '#c00',
-            fontFamily: 'var(--font-body)', fontSize: 14, cursor: 'pointer',
-          }}
-        >🗑️ Neu</button>
       </div>
 
-      {/* Weiter button */}
-      <AnimatePresence>
-        {showWeiter && !done && (
-          <motion.button
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            onClick={handleWeiter}
-            style={{
-              padding: '12px 36px',
-              borderRadius: 30,
-              border: 'none',
-              background: 'var(--color-primary)',
-              color: '#fff',
-              fontFamily: 'var(--font-heading)',
-              fontSize: 18,
-              cursor: 'pointer',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
-            }}
-          >
-            {imgIdx + 1 >= images.length ? '🌟 Fertig!' : 'Weiter →'}
-          </motion.button>
-        )}
-      </AnimatePresence>
     </div>
   )
 }

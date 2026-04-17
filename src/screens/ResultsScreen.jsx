@@ -71,7 +71,18 @@ export default function ResultsScreen() {
       else if (stars >= 1) voice.play('audio/allgemein/ja-super.mp3')
       else                 voice.play('audio/allgemein/klasse-versuch-es-direkt-noch-einmal.mp3')
     }, 900)
-    return () => { clearTimeout(t); clearTimeout(v); voice.stop() }
+    // TTS: announce coins if earned
+    const c = coinsEarned > 0 ? setTimeout(() => {
+      if (!window.speechSynthesis) return
+      window.speechSynthesis.cancel()
+      const txt = newMissionsCompleted.length > 0
+        ? `Plus ${coinsEarned} Coins und ${newMissionsCompleted.length} Aufgabe erledigt!`
+        : `Plus ${coinsEarned} Coins!`
+      const u = new SpeechSynthesisUtterance(txt)
+      u.lang = 'de-DE'; u.rate = 0.9; u.pitch = 1.1
+      window.speechSynthesis.speak(u)
+    }, 2200) : null
+    return () => { clearTimeout(t); clearTimeout(v); if (c) clearTimeout(c); voice.stop() }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const messages = {
