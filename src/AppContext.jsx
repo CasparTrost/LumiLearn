@@ -213,12 +213,14 @@ function reducer(state, action) {
 
       let missionCoinBonus = 0
       const newCompletedIds = [...(dm.completedIds ?? [])]
+      const newlyCompletedMissionIds = []
       if (dm.date === todayStr()) {
         for (const m of (dm.missions ?? [])) {
           if (newCompletedIds.includes(m.id)) continue
           const def = ALL_MISSIONS.find(x => x.id === m.id)
           if (def && def.check({ ...sessionState })) {
             newCompletedIds.push(m.id)
+            newlyCompletedMissionIds.push(m.id)
             missionCoinBonus += 20
           }
         }
@@ -244,6 +246,7 @@ function reducer(state, action) {
           coinsEarned: totalCoins,
           streakBonus,
           missionBonus: missionCoinBonus,
+          newMissionsCompleted: newlyCompletedMissionIds,
           streakCount,
         },
         progress: {
