@@ -4,7 +4,7 @@ import ParentScreen from './ParentScreen.jsx'
 import { Settings } from 'lucide-react'
 import { useApp } from '../AppContext.jsx'
 import { useT } from '../i18n.js'
-import { MAX_LEVELS, FARM_COSTS } from '../AppContext.jsx'
+import { MAX_LEVELS } from '../AppContext.jsx'
 import StarRow from '../components/StarRow.jsx'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import FarmProgress from '../components/FarmProgress.jsx'
@@ -96,8 +96,7 @@ export default function HomeScreen() {
   const [showParent, setShowParent] = useState(false)
   const completedCount = Object.values(progress).filter(p => p?.completed).length
 
-  const upgradeCost = farmLevel < 6 ? (FARM_COSTS[farmLevel] ?? null) : null
-  const canUpgradeFarm = upgradeCost !== null && coins >= upgradeCost
+
 
   const getModuleTitle = (id, fallback) => t('module.' + id, fallback)
   const getModuleSub = (id) => {
@@ -192,74 +191,48 @@ export default function HomeScreen() {
         </h1>
       </div>
 
-      {/* ── Gamification Bar ── */}
-      <div style={{
-        margin:'0 clamp(12px,3vw,24px)',
-        marginBottom: 8,
-        background:'rgba(255,255,255,0.08)',
-        borderRadius: 20,
-        padding:'12px 20px',
-        backdropFilter:'blur(12px)',
-        border:'1px solid rgba(255,255,255,0.15)',
-        display:'flex', flexWrap:'wrap', gap:12, alignItems:'flex-start',
-      }}>
-        {/* Coins + Farm */}
-        <div style={{ display:'flex', gap:10, alignItems:'center', flex:'0 0 auto' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:6,
-            background:'rgba(255,217,61,0.18)', borderRadius:12, padding:'6px 14px',
-            border:'1.5px solid rgba(255,217,61,0.4)',
-          }}>
-            <span style={{ fontSize:20 }}>🪙</span>
-            <span style={{ fontFamily:'var(--font-heading)', color:'#FFD93D', fontWeight:700, fontSize:18 }}>{coins}</span>
-          </div>
+      {/* ── Streak + Missions als kompakte Pills ── */}
+      {(streak.count >= 1 || (dailyMission.missions ?? []).length > 0) && (
+        <div style={{
+          display:'flex', gap:8, alignItems:'center', flexWrap:'wrap',
+          padding:'0 clamp(12px,3vw,24px)', marginBottom:6,
+        }}>
           {streak.count >= 1 && (
-            <div style={{ display:'flex', alignItems:'center', gap:5,
-              background:'rgba(255,107,107,0.18)', borderRadius:12, padding:'6px 12px',
-              border:'1.5px solid rgba(255,107,107,0.4)',
+            <div style={{
+              display:'flex', alignItems:'center', gap:5,
+              background:'rgba(255,107,107,0.15)', borderRadius:20, padding:'5px 12px',
+              border:'1.5px solid rgba(255,107,107,0.3)',
             }}>
-              <span style={{ fontSize:18 }}>🔥</span>
-              <span style={{ fontFamily:'var(--font-heading)', color:'#FF6B6B', fontWeight:700, fontSize:16 }}>{streak.count}d</span>
+              <span style={{fontSize:15}}>🔥</span>
+              <span style={{fontFamily:'var(--font-heading)',color:'#FF6B6B',fontWeight:700,fontSize:13}}>
+                {streak.count} {streak.count === 1 ? 'Tag' : 'Tage'}
+              </span>
             </div>
           )}
-          {canUpgradeFarm && (
-            <motion.button
-              whileTap={{ scale:0.92 }}
-              onClick={() => dispatch({ type:'UPGRADE_FARM' })}
-              style={{
-                background:'linear-gradient(135deg,#6BCB77,#44D498)',
-                border:'none', borderRadius:12, padding:'6px 14px',
-                fontFamily:'var(--font-heading)', color:'white', fontWeight:700, fontSize:14,
-                cursor:'pointer', display:'flex', alignItems:'center', gap:5,
-              }}
-            >
-              🌱 Farm Upgrade ({upgradeCost}🪙)
-            </motion.button>
-          )}
+          {(dailyMission.missions ?? []).map(m => {
+            if (!m) return null
+            const done = (dailyMission.completedIds ?? []).includes(m.id)
+            return (
+              <div key={m.id} style={{
+                display:'flex', alignItems:'center', gap:5,
+                background: done ? 'rgba(107,203,119,0.15)' : 'rgba(255,255,255,0.12)',
+                borderRadius:20, padding:'5px 12px',
+                border: done ? '1.5px solid rgba(107,203,119,0.4)' : '1.5px solid rgba(255,255,255,0.2)',
+              }}>
+                <span style={{fontSize:13}}>{done ? '✅' : m.icon}</span>
+                <span style={{
+                  fontFamily:'var(--font-heading)',
+                  color: done ? '#6BCB77' : 'rgba(255,255,255,0.9)',
+                  fontSize:'clamp(11px,2.5vw,13px)',
+                  fontWeight:600,
+                  textDecoration: done ? 'line-through' : 'none',
+                  whiteSpace:'nowrap',
+                }}>{m.text}</span>
+              </div>
+            )
+          })}
         </div>
-        {/* Daily Missions */}
-        {(dailyMission.missions ?? []).length > 0 && (
-          <div style={{ display:'flex', flexDirection:'column', gap:4, flex:1, minWidth:180 }}>
-            <div style={{ fontFamily:'var(--font-heading)', color:'#444', fontSize:12, fontWeight:700, letterSpacing:0.5, textTransform:'uppercase' }}>Tagesaufgaben</div>
-            <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-              {(dailyMission.missions ?? []).map(m => {
-                if (!m) return null
-                const done = (dailyMission.completedIds ?? []).includes(m.id)
-                return (
-                  <div key={m.id} style={{
-                    display:'flex', alignItems:'center', gap:8,
-                    background: done ? '#e8f8ee' : 'white',
-                    borderRadius:12, padding:'8px 14px',
-                    border: done ? '1.5px solid #6BCB77' : '1.5px solid #e0e0e0',
-                  }}>
-                    <span style={{ fontSize:18, flexShrink:0 }}>{done ? '✅' : m.icon}</span>
-                    <span style={{ fontFamily:'var(--font-heading)', color: done ? '#1a6b3a' : '#1a1a2e', fontSize:'clamp(13px,3vw,15px)', fontWeight: done ? 600 : 500, lineHeight:1.3, textDecoration: done ? 'line-through' : 'none' }}>{m.text}</span>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-      </div>
+      )}
 
       {/* ── Farm Progress ── */}
       <FarmProgress completedCount={completedCount} totalModules={MODULES.length} profile={profile} />
