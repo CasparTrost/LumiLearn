@@ -245,7 +245,8 @@ export default function ColoringGame({ onComplete }) {
             style={{
               position:'absolute', inset:0,
               width:'100%', height:'100%',
-              objectFit:'fill', pointerEvents:'none',
+              objectFit:'contain', pointerEvents:'none',
+              width:'100%', height:'100%',
               display: imgLoaded ? 'block' : 'none',
             }}
           />
