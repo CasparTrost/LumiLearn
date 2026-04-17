@@ -1,3 +1,4 @@
+import React, { useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { AppProvider, useApp } from './AppContext.jsx'
 import MusicControls from './components/MusicControls.jsx'
