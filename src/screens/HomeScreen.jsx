@@ -73,7 +73,7 @@ function LumiWithOrbit({ completedCount, size }) {
           background:'rgba(255,255,255,0.15)',
           backdropFilter:'blur(8px)',
           border:'1.5px solid rgba(255,255,255,0.25)',
-          color:'rgba(255,255,255,0.6)',
+          color:'#555',
           fontSize:20, cursor:'pointer',
           display:'flex', alignItems:'center', justifyContent:'center',
           boxShadow:'0 2px 12px rgba(0,0,0,0.15)',
@@ -240,7 +240,7 @@ export default function HomeScreen() {
         {/* Daily Missions */}
         {(dailyMission.missions ?? []).length > 0 && (
           <div style={{ display:'flex', flexDirection:'column', gap:4, flex:1, minWidth:180 }}>
-            <div style={{ fontFamily:'var(--font-heading)', color:'rgba(255,255,255,0.6)', fontSize:11, letterSpacing:1, textTransform:'uppercase' }}>Tagesaufgaben</div>
+            <div style={{ fontFamily:'var(--font-heading)', color:'#444', fontSize:12, fontWeight:700, letterSpacing:0.5, textTransform:'uppercase' }}>Tagesaufgaben</div>
             <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
               {(dailyMission.missions ?? []).map(m => {
                 if (!m) return null
@@ -425,7 +425,7 @@ export default function HomeScreen() {
           background:'rgba(255,255,255,0.15)',
           backdropFilter:'blur(8px)',
           border:'1.5px solid rgba(255,255,255,0.25)',
-          color:'rgba(255,255,255,0.6)',
+          color:'#555',
           fontSize:20, cursor:'pointer',
           display:'flex', alignItems:'center', justifyContent:'center',
           boxShadow:'0 2px 12px rgba(0,0,0,0.15)',
