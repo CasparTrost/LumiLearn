@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react'
+﻿import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import ParentScreen from './ParentScreen.jsx'
 import { Settings } from 'lucide-react'
@@ -78,6 +78,19 @@ export default function HomeScreen() {
   const dailyMission = state.dailyMission ?? { date: null, missions: [], completedIds: [] }
   const [showParent, setShowParent] = useState(false)
   const completedCount = Object.values(progress).filter(p => p?.completed).length
+
+  // Greeting TTS on first visit
+  useEffect(() => {
+    const hour = new Date().getHours()
+    const greeting = hour < 12 ? 'Guten Morgen' : hour < 17 ? 'Hallo' : 'Guten Abend'
+    setTimeout(() => {
+      if (!window.speechSynthesis) return
+      window.speechSynthesis.cancel()
+      const u = new SpeechSynthesisUtterance(`${greeting}, ${profile.name}! Was möchtest du heute lernen?`)
+      u.lang = 'de-DE'; u.rate = 0.85; u.pitch = 1.1
+      window.speechSynthesis.speak(u)
+    }, 800)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
 
 
