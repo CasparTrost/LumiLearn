@@ -225,6 +225,8 @@ function reducer(state, action) {
         ...sessionState,
         screen: 'results',
         totalStars: newTotalStars,
+        _farmLevel: clampedFarmLevel,
+        prevFarmLevel: state._farmLevel ?? 0,
         streakLastBonus: newStreakLastBonus,
         coins: (state.coins ?? 0) + totalCoins,
         dailyMission: { ...dm, completedIds: newCompletedIds },

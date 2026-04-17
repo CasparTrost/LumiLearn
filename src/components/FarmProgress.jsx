@@ -486,6 +486,13 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
   })
   const [celebration, setCelebration] = useState(null)
 
+  // Show celebration when triggered from parent (HomeScreen)
+  useEffect(() => {
+    if (pendingCelebration && !celebration) {
+      setCelebration(pendingCelebration)
+    }
+  }, [pendingCelebration])
+
   useEffect(() => {
     if (level > prevLevel) {
       const newAnimals = getNewAnimals(level)
@@ -584,7 +591,7 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
             key={celebration.level}
             level={celebration.level}
             newAnimals={celebration.newAnimals}
-            onDone={() => setCelebration(null)}
+            onDone={() => { setCelebration(null); if(onCelebrationDone) onCelebrationDone() }}
           />
         )}
       </AnimatePresence>

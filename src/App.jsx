@@ -15,7 +15,22 @@ const slideVariants = {
 }
 
 function Router() {
-  const { state } = useApp()
+  const { state, dispatch } = useApp()
+
+  // Android back button — navigate to home instead of leaving app
+  useEffect(() => {
+    // Push a state entry so back button has something to pop
+    window.history.pushState({ screen: state.screen }, '')
+    const onPop = (e) => {
+      // Re-push so back always works
+      window.history.pushState({ screen: 'home' }, '')
+      if (state.screen === 'game' || state.screen === 'results') {
+        dispatch({ type: 'NAVIGATE', payload: 'home' })
+      }
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [state.screen])
 
   const screens = {
     welcome:  <WelcomeScreen />,

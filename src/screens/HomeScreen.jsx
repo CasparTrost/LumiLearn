@@ -90,11 +90,40 @@ export default function HomeScreen() {
   const { state, dispatch } = useApp()
   const profile      = state.profile  ?? { name:'Lumi', avatar:'🦊' }
   const progress     = state.progress ?? {}
-  const totalStars   = state.totalStars   ?? 0
+  const totalStars    = state.totalStars   ?? 0
+  const farmLevel     = state._farmLevel    ?? 0
+  const prevFarmLevel = state.prevFarmLevel ?? 0
   const streak       = state.streak   ?? { count: 0 }
   const dailyMission = state.dailyMission ?? { date: null, missions: [], completedIds: [] }
-  const [showParent, setShowParent] = useState(false)
+  const [showParent,     setShowParent]     = useState(false)
+  const [farmCelebration, setFarmCelebration] = useState(null) // { level, newAnimals }
+  const prevFarmRef = useRef(prevFarmLevel)
   const completedCount = Object.values(progress).filter(p => p?.completed).length
+
+  // Detect farm level-up when arriving at HomeScreen
+  useEffect(() => {
+    if (farmLevel > prevFarmRef.current) {
+      // Compute new animals at this level
+      const getAnimalsForLevel = (lvl) => {
+        const counts = {
+          chicken:[0,1,1,2,2,3,4], sheep:[0,0,0,0,1,2,4],
+          pig:[0,0,1,1,1,2,3], cow:[0,0,0,0,0,1,2], horse:[0,0,0,0,0,0,2]
+        }
+        const defs = [
+          {id:'chicken',name:'Huhn',emoji:'🐔'},
+          {id:'sheep',name:'Schaf',emoji:'🐑'},
+          {id:'pig',name:'Schwein',emoji:'🐷'},
+          {id:'cow',name:'Kuh',emoji:'🐄'},
+          {id:'horse',name:'Pferd',emoji:'🐴'},
+        ]
+        return defs.flatMap(d => Array.from({length:(counts[d.id]??[])[Math.min(lvl,6)]??0},(_,i)=>({...d,instanceId:`${d.id}_${i}`})))
+      }
+      const prevAnimals = getAnimalsForLevel(prevFarmRef.current)
+      const newAnimals  = getAnimalsForLevel(farmLevel).filter(a => !prevAnimals.find(p=>p.instanceId===a.instanceId))
+      setFarmCelebration({ level: farmLevel, newAnimals })
+      prevFarmRef.current = farmLevel
+    }
+  }, [farmLevel])
 
   const upgradeCost = farmLevel < 6 ? (FARM_COSTS[farmLevel] ?? null) : null
 
@@ -259,6 +288,13 @@ export default function HomeScreen() {
           </div>
         )}
       </div>
+
+      {/* Farm level-up celebration overlay */}
+      {farmCelebration && (
+        <div style={{position:'fixed',inset:0,zIndex:500}}>
+          {/* reuse FarmProgress LevelUpCelebration via inline trigger */}
+        </div>
+      )}
 
       {/* ── Farm Progress ── */}
       <FarmProgress completedCount={completedCount} totalModules={MODULES.length} profile={profile} />
