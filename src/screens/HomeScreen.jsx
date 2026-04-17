@@ -90,7 +90,6 @@ export default function HomeScreen() {
   const { state, dispatch } = useApp()
   const profile      = state.profile  ?? { name:'Lumi', avatar:'🦊' }
   const progress     = state.progress ?? {}
-  const coins        = state.coins    ?? 0
   const farmLevel    = state.farmLevel ?? 1
   const streak       = state.streak   ?? { count: 0 }
   const dailyMission = state.dailyMission ?? { date: null, missions: [], completedIds: [] }

@@ -42,7 +42,6 @@ export const ALL_MISSIONS = [
   { id:'stars3',   text:'3 Sterne holen',            icon:'⭐', check: (s) => s._got3Stars ?? false },
   { id:'play2diff',text:'2 verschiedene Spiele',     icon:'🎲', check: (s) => (s._played ?? []).length >= 2 },
   { id:'level3',   text:'3 Level schaffen',          icon:'🎯', check: (s) => (s._sessionLevels ?? 0) >= 3 },
-  { id:'coins50',  text:'50 Coins sammeln',          icon:'🪙', check: (s) => (s._sessionCoins ?? 0) >= 50 },
 ]
 
 function todayStr() {
@@ -72,7 +71,6 @@ const initialState = {
   currentGame: null,
   gameResult:  null,
   // Gamification
-  coins:       0,
   farmLevel:   1,
   streak:      { count: 0, lastDate: null },
   dailyMission: { date: null, missions: [], completedIds: [] },
@@ -81,7 +79,6 @@ const initialState = {
   _sessionLevels: 0,
   _got3Stars:     false,
   _played:        [],
-  _sessionCoins:  0,
 }
 
 function reducer(state, action) {
@@ -208,7 +205,6 @@ function reducer(state, action) {
         _sessionLevels: (state._sessionLevels ?? 0) + (stars >= 1 ? 1 : 0),
         _got3Stars:     (state._got3Stars ?? false) || stars === 3,
         _played:        newPlayed,
-        _sessionCoins:  newSessionCoins,
       }
 
       let missionCoinBonus = 0
@@ -271,7 +267,6 @@ function reducer(state, action) {
 function migrate(saved) {
   // Ensure gamification fields exist with safe defaults
   const withDefaults = {
-    coins:       0,
     farmLevel:   1,
     streak:      { count: 0, lastDate: null },
     dailyMission: { date: null, missions: [], completedIds: [] },
@@ -328,7 +323,6 @@ export function AppProvider({ children }) {
           _sessionLevels: dm.sessionLevels ?? 0,
           _got3Stars:     dm.got3Stars     ?? false,
           _played:        dm.played        ?? [],
-          _sessionCoins:  dm.sessionCoins  ?? 0,
         } : {}
         return { ...init, ...parsed, screen, ...sessionRestored }
       }
