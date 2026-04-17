@@ -428,6 +428,70 @@ const STORIES = [
       },
     },
   },
+  {
+    title: 'Die gefälschte Note',
+    panels: [
+      { text: 'Lumi hat eine schlechte Note bekommen. 😟 Die Eltern werden das sehen wenn Lumi das Heft mitbringt.', emoji:'📓', mood:'thinking' },
+      { text: 'Lumi denkt: Ich könnte die Note heimlich ändern... oder einfach ehrlich sein. 🤔', emoji:'🤔', mood:'thinking' },
+    ],
+    choice: {
+      question: 'Was macht Lumi?',
+      options: [
+        { text: '🗣️ Lumi zeigt die Note und erklärt es', value:'honest', good:true },
+        { text: '✏️ Lumi ändert die Note heimlich', value:'cheat', good:false },
+      ],
+    },
+    outcomes: {
+      honest: {
+        panels: [
+          { text: '"Mama, ich hab eine schlechte Note." Mama ist überrascht, aber sagt: "Danke, dass du ehrlich bist. Dann üben wir zusammen!" 💛', emoji:'💛', mood:'happy' },
+          { text: 'Sie üben eine Woche. Die nächste Note: viel besser! Lumi fühlt sich richtig stark. 💪⭐', emoji:'⭐', mood:'excited' },
+        ],
+        lesson: '💡 Fehler zuzugeben braucht Mut — aber ehrliche Kinder wachsen am schnellsten!',
+        stars: 3,
+      },
+      cheat: {
+        panels: [
+          { text: 'Die Lehrerin merkt es. "Das war nicht Lumi\'s Schrift." Jetzt ist alles schlimmer. 😳', emoji:'😳', mood:'sleepy' },
+          { text: 'Lumi entschuldigt sich. Die Lehrerin sagt: "Ein Fehler ist ok. Ihn verstecken macht alles schwerer." 💛', emoji:'💛', mood:'encouraging' },
+        ],
+        lesson: '💡 Fehler passieren jedem — Ehrlichkeit ist immer der bessere Weg!',
+        stars: 2,
+      },
+    },
+  },
+  {
+    title: 'Zu viel Bildschirm',
+    panels: [
+      { text: 'Lumi spielt schon 2 Stunden auf dem Tablet. Mama sagt: "Noch 10 Minuten, dann Pause." 📱', emoji:'📱', mood:'thinking' },
+      { text: 'Die Zeit ist um, aber Lumi ist an der spannendsten Stelle. 🎮', emoji:'🎮', mood:'thinking' },
+    ],
+    choice: {
+      question: 'Was macht Lumi?',
+      options: [
+        { text: '✅ Lumi macht das Tablet aus', value:'stop', good:true },
+        { text: '🤫 Lumi spielt heimlich weiter', value:'sneak', good:false },
+      ],
+    },
+    outcomes: {
+      stop: {
+        panels: [
+          { text: 'Lumi stellt das Tablet weg. "Ich hab aufgehört!" Mama lächelt: "Super! Wollen wir was zusammen machen?" 🎲', emoji:'🎲', mood:'happy' },
+          { text: 'Sie spielen Karten. Das macht auch Spaß! Und Lumi darf morgen wieder spielen. 🌟', emoji:'🌟', mood:'excited' },
+        ],
+        lesson: '💡 Grenzen einhalten ist Stärke — und bringt Vertrauen!',
+        stars: 3,
+      },
+      sneak: {
+        panels: [
+          { text: 'Mama kommt rein. "Lumi! Das war nicht abgemacht." Lumi muss 3 Tage Pause machen. 😔', emoji:'😔', mood:'sleepy' },
+          { text: '"Es tut mir leid, Mama." Mama umarmt Lumi: "Danke. Morgen sprechen wir über neue Regeln." 💛', emoji:'💛', mood:'encouraging' },
+        ],
+        lesson: '💡 Vereinbarungen halten macht das Leben für alle besser!',
+        stars: 2,
+      },
+    },
+  },
 ]
 
 function shuffle(a) { return [...a].sort(() => Math.random() - 0.5) }
