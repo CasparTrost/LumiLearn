@@ -228,7 +228,7 @@ export default function ColoringGame({ onComplete }) {
           key={currentImage.id}
           src={currentImage.src}
           alt={currentImage.label}
-          style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'contain', pointerEvents:'none' }}
+          style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'contain', pointerEvents:'none', zIndex:2, mixBlendMode:'multiply' }}
         />
         <canvas
           key={canvasKey}
@@ -239,7 +239,7 @@ export default function ColoringGame({ onComplete }) {
             width:'100%', height:'100%',
             cursor: tool==='fill' ? 'cell' : tool==='eraser' ? 'cell' : 'crosshair',
             touchAction:'none',
-            opacity: 0.85, // slightly transparent so image lines show through color
+            zIndex:1,
           }}
           onMouseDown={handlePointerDown}
           onMouseMove={handlePointerMove}
