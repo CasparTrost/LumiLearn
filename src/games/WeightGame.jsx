@@ -430,7 +430,15 @@ export default function WeightGame({ level = 1, onComplete }) {
           exit={{ opacity: 0 }}
           style={{ display: 'flex', justifyContent: 'center', width: '100%', maxWidth: 480 }}
         >
-          <Beam tiltDeg={tiltDeg} />
+          <BalanceScale
+            tiltDeg={tiltDeg}
+            leftEmoji={q.leftEmoji}  leftLabel={q.leftLabel}
+            rightEmoji={q.rightEmoji} rightLabel={q.rightLabel}
+            answered={answered}
+            leftHeavier={q.leftW >= q.rightW}
+            onPickLeft={() => handlePick('left')}
+            onPickRight={() => handlePick('right')}
+          />
         </motion.div>
       </AnimatePresence>
 
