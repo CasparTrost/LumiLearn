@@ -320,7 +320,17 @@ export function AppProvider({ children }) {
       if (saved) {
         const parsed = migrate(JSON.parse(saved))
         const screen = parsed.profile ? 'home' : 'welcome'
-        return { ...init, ...parsed, screen }
+        // Restore session stats from dailyMission if it's today
+        const dm = parsed.dailyMission
+        const today = new Date().toISOString().slice(0, 10)
+        const sessionRestored = dm?.date === today ? {
+          _sessionPlays:  dm.sessionPlays  ?? 0,
+          _sessionLevels: dm.sessionLevels ?? 0,
+          _got3Stars:     dm.got3Stars     ?? false,
+          _played:        dm.played        ?? [],
+          _sessionCoins:  dm.sessionCoins  ?? 0,
+        } : {}
+        return { ...init, ...parsed, screen, ...sessionRestored }
       }
     } catch { /* ignore corrupt saves */ }
     return init
@@ -346,10 +356,16 @@ export function AppProvider({ children }) {
         date:         state.dailyMission?.date,
         missions:     (state.dailyMission?.missions ?? []).map(m => ({ id: m.id, text: m.text, icon: m.icon })),
         completedIds: state.dailyMission?.completedIds ?? [],
+        // persist session stats per day (no functions, just numbers)
+        sessionPlays:  state._sessionPlays ?? 0,
+        sessionLevels: state._sessionLevels ?? 0,
+        got3Stars:     state._got3Stars ?? false,
+        played:        state._played ?? [],
+        sessionCoins:  state._sessionCoins ?? 0,
       },
     }
     localStorage.setItem('lumilearn_save', JSON.stringify(toSave))
-  }, [state.language, state.profile, state.profiles, state.progress, state.coins, state.farmLevel, state.streak, state.dailyMission, state.streakLastBonus])
+  }, [state.language, state.profile, state.profiles, state.progress, state.coins, state.farmLevel, state.streak, state.dailyMission, state.streakLastBonus, state._sessionPlays, state._sessionLevels, state._got3Stars, state._played, state._sessionCoins])
 
   return (
     <AppContext.Provider value={{ state, dispatch }}>
