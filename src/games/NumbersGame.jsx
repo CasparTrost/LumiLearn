@@ -127,6 +127,7 @@ export default function NumbersGame({ level = 1, onComplete }) {
   const [cartBounce, setCartBounce] = useState(0)
   const [score,      setScore]     = useState(0)
   const [sold,       setSold]       = useState([]) // receipt
+  const [showWeiter, setShowWeiter] = useState(false)
   const cartControls = useAnimation()
 
   useEffect(() => {
@@ -151,6 +152,7 @@ export default function NumbersGame({ level = 1, onComplete }) {
     setReturning([])
     setPhase('shopping')
     setBubble('')
+    setShowWeiter(false)
     clearTimeout(timerRef.current)
     // TTS: read the customer request
     const q2 = questions[idx]
@@ -174,6 +176,13 @@ export default function NumbersGame({ level = 1, onComplete }) {
       setIdx(next)
     }
   }, [idx, score, questions.length, onComplete])
+
+  const weiterClick = useCallback(() => {
+    setShowWeiter(false)
+    setPhase('shopping')
+    setBubble('')
+    advance()
+  }, [advance])
 
   const onItemLand = useCallback((id, partIdx) => {
     setFlying(f => f.filter(x => x.id !== id))
@@ -234,7 +243,7 @@ export default function NumbersGame({ level = 1, onComplete }) {
       setBubble(q.thanks)
       setPhase('correct')
       setScore(s => s + 1)
-      timerRef.current = setTimeout(advance, 1600)
+      timerRef.current = setTimeout(() => setShowWeiter(true), 900)
     } else {
       setBubble(WRONG[rnd(0, WRONG.length - 1)])
       setPhase('wrong')
@@ -528,6 +537,21 @@ export default function NumbersGame({ level = 1, onComplete }) {
       <p style={{ fontFamily: 'var(--font-heading)', fontSize: 15, color: 'var(--text-muted)', margin: 0 }}>
         {score} von {Math.min(idx + (phase === 'correct' ? 1 : 0), questions.length)} richtig
       </p>
+
+      {showWeiter && (
+        <motion.button
+          initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }}
+          onClick={weiterClick}
+          style={{
+            marginTop:4, padding:'13px 40px', borderRadius:50,
+            background:'linear-gradient(135deg,#6BCB77,#44D498)',
+            color:'white', fontFamily:'var(--font-heading)', fontSize:19, fontWeight:700,
+            border:'none', cursor:'pointer', boxShadow:'0 4px 18px rgba(107,203,119,0.5)',
+          }}
+        >
+          {idx + 1 >= questions.length ? '🏁 Fertig!' : 'Nächster Kunde! →'}
+        </motion.button>
+      )}
     </div>
   )
 }
