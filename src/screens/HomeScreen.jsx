@@ -376,10 +376,10 @@ export default function HomeScreen() {
         style={{
           position:'fixed', bottom:20, right:20, zIndex:900,
           width:42, height:42, borderRadius:'50%',
-          background:'rgba(255,255,255,0.15)',
+          background:'rgba(255,255,255,0.25)',
           backdropFilter:'blur(8px)',
-          border:'1.5px solid rgba(255,255,255,0.25)',
-          color:'#555',
+          border:'1.5px solid rgba(255,255,255,0.4)',
+          color:'white',
           fontSize:20, cursor:'pointer',
           display:'flex', alignItems:'center', justifyContent:'center',
           boxShadow:'0 2px 12px rgba(0,0,0,0.15)',
