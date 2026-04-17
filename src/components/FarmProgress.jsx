@@ -283,35 +283,80 @@ function Confetti({ count = 30 }) {
 // Epic level-up overlay
 function LevelUpCelebration({ level, newAnimals, onDone }) {
   const [phase, setPhase] = useState('enter') // enter → animals → done
+  const [barFill, setBarFill] = useState(0)
 
   useEffect(() => {
     try { sfx.levelUp() } catch {}
-    // Keine neuen Tiere (z.B. kleiner Hof) → sofort nach 2s fertig
+    // Animate progress bar filling up
+    setTimeout(() => setBarFill(100), 100)
+    // Keine neuen Tiere → sofort nach 2s fertig
     if (!newAnimals || newAnimals.length === 0) {
       const t = setTimeout(() => { setPhase('exit'); setTimeout(onDone, 400) }, 2000)
       return () => clearTimeout(t)
     }
-    // Phase 1: Level-Karte 2s
     const t1 = setTimeout(() => setPhase('animals'), 2000)
-    // Phase 2: Tiere + 2s
-    const t2 = setTimeout(() => {
-      setPhase('exit')
-      setTimeout(onDone, 400)
-    }, 2000 + 2000)
+    const t2 = setTimeout(() => { setPhase('exit'); setTimeout(onDone, 400) }, 4000)
     return () => { clearTimeout(t1); clearTimeout(t2) }
   }, [])
+
+  // Confetti pieces
+  const pieces = Array.from({length:60}, (_,i) => ({
+    x: Math.random()*100,
+    color: ['#FFD93D','#FF6B6B','#6C63FF','#6BCB77','#FD79A8','#FF9F43','#74B9FF'][i%7],
+    size: 6 + Math.random()*10,
+    delay: Math.random()*0.6,
+    dur: 1.2 + Math.random()*1,
+    rotate: Math.random()*720,
+    shape: i%3,
+  }))
+
+  const LABELS = ['','Kleiner Hof','Gemütlicher Hof','Wachsender Hof','Lebhafter Hof','Großer Hof','Traumhof']
 
   return (
     <motion.div
       initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
       style={{
         position:'fixed', inset:0, zIndex:1000,
-        background:'rgba(0,0,0,.75)',
+        background:'rgba(10,5,30,.82)',
         display:'flex', alignItems:'center', justifyContent:'center',
-        flexDirection:'column',
+        flexDirection:'column', overflow:'hidden',
       }}
     >
-      <Confetti count={40}/>
+      {/* Confetti rain */}
+      <div style={{position:'fixed',inset:0,pointerEvents:'none',overflow:'hidden'}}>
+        {pieces.map((p,i) => (
+          <motion.div key={i}
+            initial={{x:`${p.x}vw`, y:'-8vh', rotate:0, opacity:1}}
+            animate={{y:'108vh', rotate:p.rotate, opacity:[1,1,0]}}
+            transition={{duration:p.dur, delay:p.delay, ease:'easeIn'}}
+            style={{
+              position:'absolute',
+              width:p.size, height:p.size,
+              background:p.color,
+              borderRadius: p.shape===0?'50%': p.shape===1?3:'50% 0',
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Star burst */}
+      <div style={{position:'fixed',top:'50%',left:'50%',pointerEvents:'none',zIndex:1001}}>
+        {Array.from({length:12},(_,i)=>{
+          const angle=(i/12)*360
+          return (
+            <motion.span key={i}
+              initial={{x:0,y:0,scale:0,opacity:1}}
+              animate={{
+                x:Math.cos(angle*Math.PI/180)*120,
+                y:Math.sin(angle*Math.PI/180)*120,
+                scale:[0,1.4,0], opacity:[1,1,0]
+              }}
+              transition={{duration:0.8,delay:0.1+i*0.04,ease:'easeOut'}}
+              style={{position:'absolute',fontSize:22,marginLeft:-11,marginTop:-11}}
+            >⭐</motion.span>
+          )
+        })}
+      </div>
 
       <AnimatePresence mode="wait">
         {phase === 'enter' && (
@@ -323,7 +368,8 @@ function LevelUpCelebration({ level, newAnimals, onDone }) {
               background:'linear-gradient(135deg,#1a2e0d,#2d5a1a)',
               border:'4px solid #FFD93D',
               borderRadius:28, padding:'32px 48px', textAlign:'center',
-              boxShadow:'0 0 60px rgba(255,217,61,.4), 0 20px 60px rgba(0,0,0,.6)',
+              boxShadow:'0 0 80px rgba(255,217,61,.6), 0 20px 60px rgba(0,0,0,.6)',
+              minWidth:280,
             }}
           >
             <motion.div
