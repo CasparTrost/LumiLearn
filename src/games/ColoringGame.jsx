@@ -39,7 +39,7 @@ function floodFill(paintCtx, baseImageData, startX, startY, fillR, fillG, fillB,
   function isWall(x, y) {
     if (x < 0 || y < 0 || x >= W || y >= H) return true
     const i = (y * W + x) * 4
-    return (bd[i] + bd[i+1] + bd[i+2]) < 180 // dark = wall
+    return (bd[i] + bd[i+1] + bd[i+2]) < 180
   }
 
   const si = (startY * W + startX) * 4
@@ -55,7 +55,6 @@ function floodFill(paintCtx, baseImageData, startX, startY, fillR, fillG, fillB,
     const [x, y] = stack.pop()
     const idx = (y * W + x) * 4
     pd[idx] = fillR; pd[idx+1] = fillG; pd[idx+2] = fillB; pd[idx+3] = 220
-
     for (const [nx, ny] of [[x+1,y],[x-1,y],[x,y+1],[x,y-1]]) {
       if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue
       const ni = ny * W + nx
@@ -72,153 +71,116 @@ function hexToRgb(hex) {
 }
 
 export default function ColoringGame({ onComplete }) {
-  const [imgIdx, setImgIdx]       = useState(0)
-  const [color, setColor]         = useState('#FF0000')
-  const [brushIdx, setBrushIdx]   = useState(1)
-  const [tool, setTool]           = useState('fill') // default: fill tool
-  const [drawing, setDrawing]     = useState(false)
+  const [imgIdx, setImgIdx]     = useState(0)
+  const [color, setColor]       = useState('#FF0000')
+  const [brushIdx, setBrushIdx] = useState(1)
+  const [tool, setTool]         = useState('fill')
+  const [drawing, setDrawing]   = useState(false)
   const [canvasKey, setCanvasKey] = useState(0)
-  const [filling, setFilling]     = useState(false)
-  const [imgSize, setImgSize]     = useState({ w: 800, h: 600 }) // natural image size
+  const [filling, setFilling]   = useState(false)
+  const [imgLoaded, setImgLoaded] = useState(false)
 
-  // Single canvas: base image + paint layer merged
-  const displayCanvasRef = useRef(null)  // shown to user (base + paint)
-  const paintCanvasRef   = useRef(null)  // offscreen paint layer
-  const baseImageData    = useRef(null)  // pixel data of base image for edge detection
-  const baseImg          = useRef(null)  // Image element
-  const lastPos          = useRef(null)
-  const brushR           = BRUSH_SIZES[brushIdx]
-  const currentImage     = IMAGES[imgIdx]
+  // paint canvas = transparent overlay with color strokes
+  const paintRef      = useRef(null)
+  // pixel data of base image for edge detection
+  const basePixels    = useRef(null)
+  // natural dimensions of current image
+  const imgNatural    = useRef({ w: 1200, h: 900 })
+  const lastPos       = useRef(null)
+  const brushR        = BRUSH_SIZES[brushIdx]
+  const currentImage  = IMAGES[imgIdx]
 
-  // Load image, store pixel data, set canvas size
+  // Load image pixel data for edge detection (without showing it ourselves)
   useEffect(() => {
+    setImgLoaded(false)
+    basePixels.current = null
     const img = new Image()
     img.crossOrigin = 'anonymous'
     img.src = currentImage.src
     img.onload = () => {
-      baseImg.current = img
-      setImgSize({ w: img.naturalWidth, h: img.naturalHeight })
-
-      // Store pixel data for flood fill / edge detection
+      imgNatural.current = { w: img.naturalWidth, h: img.naturalHeight }
+      // Store pixel data
       const tmp = document.createElement('canvas')
       tmp.width = img.naturalWidth; tmp.height = img.naturalHeight
-      const ctx = tmp.getContext('2d')
-      ctx.drawImage(img, 0, 0)
-      baseImageData.current = ctx.getImageData(0, 0, img.naturalWidth, img.naturalHeight)
-
-      // Init paint canvas at same size
-      const pc = paintCanvasRef.current
-      if (pc) {
-        pc.width = img.naturalWidth
-        pc.height = img.naturalHeight
-        pc.getContext('2d').clearRect(0, 0, pc.width, pc.height)
+      tmp.getContext('2d').drawImage(img, 0, 0)
+      basePixels.current = tmp.getContext('2d').getImageData(0, 0, tmp.width, tmp.height)
+      // Resize paint canvas
+      if (paintRef.current) {
+        paintRef.current.width  = img.naturalWidth
+        paintRef.current.height = img.naturalHeight
       }
-
-      // Draw base image on display canvas
-      renderDisplay()
+      setImgLoaded(true)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentImage.src])
-
-  const renderDisplay = useCallback(() => {
-    const dc = displayCanvasRef.current
-    const pc = paintCanvasRef.current
-    if (!dc || !pc || !baseImg.current) return
-    const ctx = dc.getContext('2d')
-    // 1. Draw base image
-    ctx.clearRect(0, 0, dc.width, dc.height)
-    ctx.drawImage(baseImg.current, 0, 0)
-    // 2. Draw paint layer with multiply blend (lines stay visible)
-    ctx.globalCompositeOperation = 'multiply'
-    ctx.drawImage(pc, 0, 0)
-    ctx.globalCompositeOperation = 'source-over'
-  }, [])
 
   const goToImage = useCallback((idx) => {
     setImgIdx(idx)
     setCanvasKey(k => k + 1)
   }, [])
 
-  // Map screen coordinates to image coordinates
+  // Map screen coords → image pixel coords (paint canvas = same size as image)
   const getPos = useCallback((e) => {
-    const dc = displayCanvasRef.current
-    if (!dc) return { x: 0, y: 0 }
-    const rect = dc.getBoundingClientRect()
-    const sx = dc.width / rect.width
-    const sy = dc.height / rect.height
+    const pc = paintRef.current; if (!pc) return { x: 0, y: 0 }
+    const rect = pc.getBoundingClientRect()
+    const sx = pc.width  / rect.width
+    const sy = pc.height / rect.height
     const src = e.touches ? e.touches[0] : e
     return { x: Math.round((src.clientX - rect.left) * sx), y: Math.round((src.clientY - rect.top) * sy) }
   }, [])
 
   const doPaint = useCallback((from, to) => {
-    const pc = paintCanvasRef.current
-    if (!pc) return
+    const pc = paintRef.current; if (!pc) return
     const ctx = pc.getContext('2d')
+    const W = pc.width, H = pc.height
 
     if (tool === 'eraser') {
       ctx.globalCompositeOperation = 'destination-out'
-      ctx.lineWidth = brushR * 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+      ctx.lineWidth = brushR*2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
       ctx.strokeStyle = 'rgba(0,0,0,1)'; ctx.fillStyle = 'rgba(0,0,0,1)'
       ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke()
       ctx.beginPath(); ctx.arc(to.x, to.y, brushR, 0, Math.PI*2); ctx.fill()
       ctx.globalCompositeOperation = 'source-over'
-    } else {
-      // Brush: paint but respect dark lines
-      const W = pc.width, H = pc.height
-      const bd = baseImageData.current?.data
+      return
+    }
 
-      if (!bd) {
-        // Fallback: just paint
-        ctx.strokeStyle = color; ctx.fillStyle = color
-        ctx.lineWidth = brushR * 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
-        ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke()
-        ctx.beginPath(); ctx.arc(to.x, to.y, brushR, 0, Math.PI*2); ctx.fill()
-      } else {
-        // Paint pixel-by-pixel within brush radius, skip dark pixels
-        const pd = ctx.getImageData(0, 0, W, H)
-        const d = pd.data
-        const {r, g, b} = hexToRgb(color)
+    // Brush: pixel-level, respects dark lines
+    const bd = basePixels.current?.data
+    if (!bd) return
+    const pd = ctx.getImageData(0, 0, W, H)
+    const d  = pd.data
+    const { r, g, b } = hexToRgb(color)
 
-        // Interpolate line between from and to
-        const dist = Math.hypot(to.x-from.x, to.y-from.y)
-        const steps = Math.max(1, Math.ceil(dist / (brushR * 0.5)))
-        for (let s = 0; s <= steps; s++) {
-          const t2 = s / steps
-          const cx = from.x + (to.x - from.x) * t2
-          const cy = from.y + (to.y - from.y) * t2
-          // Paint circle of radius brushR around cx,cy
-          const r2 = brushR
-          for (let dy = -r2; dy <= r2; dy++) {
-            for (let dx = -r2; dx <= r2; dx++) {
-              if (dx*dx + dy*dy > r2*r2) continue
-              const px = Math.round(cx + dx)
-              const py = Math.round(cy + dy)
-              if (px < 0 || py < 0 || px >= W || py >= H) continue
-              const bi = (py * W + px) * 4
-              // Skip dark pixels (lines)
-              if ((bd[bi] + bd[bi+1] + bd[bi+2]) < 180) continue
-              d[bi] = r; d[bi+1] = g; d[bi+2] = b; d[bi+3] = 220
-            }
-          }
+    const dist  = Math.hypot(to.x-from.x, to.y-from.y)
+    const steps = Math.max(1, Math.ceil(dist / (brushR * 0.4)))
+    for (let s = 0; s <= steps; s++) {
+      const t2 = s / steps
+      const cx = from.x + (to.x-from.x)*t2
+      const cy = from.y + (to.y-from.y)*t2
+      for (let dy = -brushR; dy <= brushR; dy++) {
+        for (let dx = -brushR; dx <= brushR; dx++) {
+          if (dx*dx + dy*dy > brushR*brushR) continue
+          const px = Math.round(cx+dx), py = Math.round(cy+dy)
+          if (px < 0 || py < 0 || px >= W || py >= H) continue
+          const bi = (py*W + px)*4
+          if ((bd[bi]+bd[bi+1]+bd[bi+2]) < 180) continue // skip dark pixels
+          d[bi]=r; d[bi+1]=g; d[bi+2]=b; d[bi+3]=220
         }
-        ctx.putImageData(pd, 0, 0)
       }
     }
-    renderDisplay()
-  }, [tool, color, brushR, renderDisplay])
+    ctx.putImageData(pd, 0, 0)
+  }, [tool, color, brushR])
 
   const handlePointerDown = useCallback((e) => {
     e.preventDefault()
     const pos = getPos(e)
 
     if (tool === 'fill') {
-      if (!baseImageData.current) return
+      if (!basePixels.current || !paintRef.current) return
       setFilling(true)
       setTimeout(() => {
-        const pc = paintCanvasRef.current; if (!pc) return
-        const {r, g, b} = hexToRgb(color)
-        floodFill(pc.getContext('2d'), baseImageData.current, pos.x, pos.y, r, g, b, pc.width, pc.height)
-        renderDisplay()
+        const pc = paintRef.current; if (!pc) return
+        const { r, g, b } = hexToRgb(color)
+        floodFill(pc.getContext('2d'), basePixels.current, pos.x, pos.y, r, g, b, pc.width, pc.height)
         setFilling(false)
       }, 10)
       return
@@ -227,7 +189,7 @@ export default function ColoringGame({ onComplete }) {
     setDrawing(true)
     lastPos.current = pos
     doPaint(pos, pos)
-  }, [tool, color, getPos, doPaint, renderDisplay])
+  }, [tool, color, getPos, doPaint])
 
   const handlePointerMove = useCallback((e) => {
     e.preventDefault()
@@ -237,18 +199,12 @@ export default function ColoringGame({ onComplete }) {
     lastPos.current = pos
   }, [drawing, tool, getPos, doPaint])
 
-  const handlePointerUp = useCallback(() => {
-    setDrawing(false); lastPos.current = null
-  }, [])
+  const handlePointerUp = useCallback(() => { setDrawing(false); lastPos.current = null }, [])
 
   const clearCanvas = useCallback(() => {
-    const pc = paintCanvasRef.current; if (!pc) return
+    const pc = paintRef.current; if (!pc) return
     pc.getContext('2d').clearRect(0, 0, pc.width, pc.height)
-    renderDisplay()
-  }, [renderDisplay])
-
-  // Re-render when canvasKey changes (new image selected)
-  useEffect(() => { renderDisplay() }, [canvasKey, renderDisplay])
+  }, [])
 
   return (
     <div style={{ display:'flex', flexDirection:'column', flex:1, background:'#f0eeff', overflow:'hidden', userSelect:'none' }}>
@@ -268,37 +224,45 @@ export default function ColoringGame({ onComplete }) {
         ))}
       </div>
 
-      {/* Zeichenfläche — ein einziger Canvas */}
+      {/* Zeichenfläche */}
       <div style={{ flex:1, minHeight:0, overflow:'hidden', background:'#e8e8e8', display:'flex', alignItems:'center', justifyContent:'center', position:'relative', touchAction:'none' }}>
-        {/* Hidden paint canvas (offscreen) */}
-        <canvas ref={paintCanvasRef} key={`paint-${canvasKey}`}
-          width={imgSize.w} height={imgSize.h}
-          style={{ display:'none' }}
-        />
-        {/* Display canvas (shown) */}
-        <canvas
-          ref={displayCanvasRef}
-          key={`display-${canvasKey}`}
-          width={imgSize.w} height={imgSize.h}
+        {/* Layer 1: Originalbild (immer sichtbar) */}
+        <img
+          key={currentImage.id}
+          src={currentImage.src}
+          alt={currentImage.label}
+          onLoad={() => setImgLoaded(true)}
           style={{
-            maxWidth:'100%', maxHeight:'100%',
-            objectFit:'contain',
-            cursor: tool==='fill' ? 'crosshair' : tool==='eraser' ? 'cell' : 'crosshair',
-            touchAction:'none',
-            background:'#fff',
-            boxShadow:'0 2px 16px rgba(0,0,0,0.15)',
+            position:'absolute', maxWidth:'100%', maxHeight:'100%',
+            objectFit:'contain', pointerEvents:'none',
+            display: imgLoaded ? 'block' : 'none',
           }}
-          onMouseDown={handlePointerDown}
-          onMouseMove={handlePointerMove}
-          onMouseUp={handlePointerUp}
-          onMouseLeave={handlePointerUp}
-          onTouchStart={handlePointerDown}
-          onTouchMove={handlePointerMove}
-          onTouchEnd={handlePointerUp}
         />
-        {filling && (
-          <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', fontSize:40, pointerEvents:'none' }}>🎨</div>
+        {/* Layer 2: Paint canvas (transparent, exakt über Bild, mix-blend-mode:multiply) */}
+        {imgLoaded && (
+          <canvas
+            key={`paint-${canvasKey}`}
+            ref={paintRef}
+            width={imgNatural.current.w}
+            height={imgNatural.current.h}
+            style={{
+              position:'absolute', maxWidth:'100%', maxHeight:'100%',
+              objectFit:'contain',
+              mixBlendMode:'multiply',
+              cursor: tool==='fill' ? 'crosshair' : tool==='eraser' ? 'cell' : 'crosshair',
+              touchAction:'none',
+            }}
+            onMouseDown={handlePointerDown}
+            onMouseMove={handlePointerMove}
+            onMouseUp={handlePointerUp}
+            onMouseLeave={handlePointerUp}
+            onTouchStart={handlePointerDown}
+            onTouchMove={handlePointerMove}
+            onTouchEnd={handlePointerUp}
+          />
         )}
+        {!imgLoaded && <div style={{ fontSize:32 }}>⏳</div>}
+        {filling && <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', fontSize:40, pointerEvents:'none' }}>🎨</div>}
       </div>
 
       {/* Toolbar */}
@@ -307,8 +271,7 @@ export default function ColoringGame({ onComplete }) {
         <div style={{ display:'flex', gap:5, flexWrap:'wrap', justifyContent:'center' }}>
           {COLORS.map(c => (
             <button key={c} onClick={() => { setColor(c); if (tool==='eraser') setTool('brush') }} style={{
-              width:28, height:28, borderRadius:'50%', padding:0,
-              background:c,
+              width:28, height:28, borderRadius:'50%', padding:0, background:c,
               border: c==='#FFFFFF' ? '1.5px solid #ccc' : '1.5px solid rgba(0,0,0,0.12)',
               outline: color===c && tool!=='eraser' ? '3px solid #6D28D9' : 'none',
               outlineOffset:2, cursor:'pointer', flexShrink:0,
@@ -318,11 +281,7 @@ export default function ColoringGame({ onComplete }) {
         </div>
         {/* Werkzeuge */}
         <div style={{ display:'flex', gap:8, alignItems:'center', justifyContent:'center', flexWrap:'wrap' }}>
-          {[
-            { id:'brush', label:'✏️ Pinsel' },
-            { id:'fill',  label:'🪣 Füllen' },
-            { id:'eraser',label:'🩹 Radierer' },
-          ].map(t => (
+          {[{id:'brush',label:'✏️ Pinsel'},{id:'fill',label:'🪣 Füllen'},{id:'eraser',label:'🩹 Radierer'}].map(t => (
             <button key={t.id} onClick={() => setTool(t.id)} style={{
               padding:'6px 14px', borderRadius:20, border:'none',
               background: tool===t.id ? '#6D28D9' : '#e8e8e8',
@@ -334,7 +293,7 @@ export default function ColoringGame({ onComplete }) {
             <div style={{ display:'flex', gap:6, alignItems:'center', background:'#f0f0f0', borderRadius:20, padding:'4px 12px' }}>
               {BRUSH_SIZES.map((r, i) => (
                 <button key={i} onClick={() => setBrushIdx(i)} style={{
-                  width: r*1.6+6, height: r*1.6+6, borderRadius:'50%', padding:0,
+                  width:r*1.6+6, height:r*1.6+6, borderRadius:'50%', padding:0,
                   background: brushIdx===i ? (tool==='eraser'?'#888':color) : '#bbb',
                   border: brushIdx===i ? '2px solid #6D28D9' : '2px solid transparent',
                   cursor:'pointer', flexShrink:0,
