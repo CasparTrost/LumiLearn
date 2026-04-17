@@ -297,7 +297,7 @@ function LevelUpCelebration({ level, newAnimals, onDone }) {
     const t2 = setTimeout(() => {
       setPhase('exit')
       setTimeout(onDone, 400)
-    }, 2000 + (newAnimals.length * 300) + 2000)
+    }, 2000 + 2000)
     return () => { clearTimeout(t1); clearTimeout(t2) }
   }, [])
 
