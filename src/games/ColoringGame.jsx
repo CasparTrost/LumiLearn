@@ -36,7 +36,7 @@ const COLORS = [
 
 const BRUSH_SIZES = [4, 8, 14, 22, 34]
 
-export default function ColoringGame({ onComplete }) {
+export default function ColoringGame({ level = 1, onComplete }) {
   const [imgIdx, setImgIdx]       = useState(0)
   const [color, setColor]         = useState('#FF0000')
   const [brushIdx, setBrushIdx]   = useState(1)
@@ -53,6 +53,14 @@ export default function ColoringGame({ onComplete }) {
     setImgIdx(idx)
     setImgLoaded(false)
     setCanvasKey(k => k + 1)
+    // TTS: announce image name
+    setTimeout(() => {
+      if (!window.speechSynthesis) return
+      window.speechSynthesis.cancel()
+      const u = new SpeechSynthesisUtterance(`Male jetzt: ${IMAGES[idx].label}`)
+      u.lang = 'de-DE'; u.rate = 0.9; u.pitch = 1.1
+      window.speechSynthesis.speak(u)
+    }, 300)
   }, [])
 
   const getPos = useCallback((e, canvas) => {
@@ -226,6 +234,12 @@ export default function ColoringGame({ onComplete }) {
             background: '#FFE4E4', color: '#CC0000',
             fontFamily: 'var(--font-body)', fontSize: 14, cursor: 'pointer', fontWeight: 600,
           }}>🗑️ Neu</button>
+          <button onClick={() => onComplete({ score: IMAGES.length, total: IMAGES.length })} style={{
+            padding: '6px 16px', borderRadius: 20, border: 'none',
+            background: 'linear-gradient(135deg,#6BCB77,#44D498)', color: 'white',
+            fontFamily: 'var(--font-body)', fontSize: 14, cursor: 'pointer', fontWeight: 700,
+            boxShadow: '0 2px 8px rgba(107,203,119,0.4)',
+          }}>✅ Fertig gemalt!</button>
         </div>
       </div>
 
