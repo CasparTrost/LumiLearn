@@ -279,6 +279,17 @@ export default function WeightGame({ level = 1, onComplete }) {
   const [isCorrect, setIsCorrect]= useState(false)
   const [showWeiter, setShowWeiter] = useState(false)
   const [score,     setScore]    = useState(0)
+
+  const weiterClick = () => {
+    setShowWeiter(false)
+    setAnswered(false)
+    setIsCorrect(false)
+    if (idx + 1 >= questions.length) {
+      onComplete({ score, total: questions.length })
+    } else {
+      setIdx(i => i + 1)
+    }
+  }
   const [mood,      setMood]     = useState('happy')
 
   const q = questions[idx]
