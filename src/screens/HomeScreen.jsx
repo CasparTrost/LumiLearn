@@ -241,20 +241,19 @@ export default function HomeScreen() {
         {(dailyMission.missions ?? []).length > 0 && (
           <div style={{ display:'flex', flexDirection:'column', gap:4, flex:1, minWidth:180 }}>
             <div style={{ fontFamily:'var(--font-heading)', color:'rgba(255,255,255,0.6)', fontSize:11, letterSpacing:1, textTransform:'uppercase' }}>Tagesaufgaben</div>
-            <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+            <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
               {(dailyMission.missions ?? []).map(m => {
                 if (!m) return null
                 const done = (dailyMission.completedIds ?? []).includes(m.id)
                 return (
                   <div key={m.id} style={{
-                    display:'flex', alignItems:'center', gap:4,
-                    background: done ? 'rgba(107,203,119,0.25)' : 'rgba(255,255,255,0.08)',
-                    borderRadius:10, padding:'4px 10px',
-                    border: done ? '1px solid rgba(107,203,119,0.5)' : '1px solid rgba(255,255,255,0.12)',
-                    opacity: done ? 1 : 0.8,
+                    display:'flex', alignItems:'center', gap:8,
+                    background: done ? 'rgba(107,203,119,0.2)' : 'rgba(255,255,255,0.12)',
+                    borderRadius:12, padding:'8px 14px',
+                    border: done ? '1.5px solid rgba(107,203,119,0.6)' : '1.5px solid rgba(255,255,255,0.2)',
                   }}>
-                    <span style={{ fontSize:14 }}>{done ? '✅' : m.icon}</span>
-                    <span style={{ fontFamily:'var(--font-body)', color:'white', fontSize:12 }}>{m.text}</span>
+                    <span style={{ fontSize:18, flexShrink:0 }}>{done ? '✅' : m.icon}</span>
+                    <span style={{ fontFamily:'var(--font-heading)', color: done ? 'rgba(107,203,119,1)' : 'rgba(255,255,255,0.95)', fontSize:'clamp(13px,3vw,15px)', fontWeight: done ? 600 : 500, lineHeight:1.3, textDecoration: done ? 'line-through' : 'none' }}>{m.text}</span>
                   </div>
                 )
               })}
