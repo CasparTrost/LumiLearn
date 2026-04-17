@@ -451,12 +451,12 @@ function LevelUpCelebration({ level, newAnimals, onDone }) {
   )
 }
 
-export default function FarmProgress({ completedCount: rawCount = 0, totalModules = 17 }) {
-  const completedCount = rawCount  // use real count
-  const level = getLevel(completedCount)
-  const pct = Math.round((completedCount / totalModules) * 100)
+export default function FarmProgress({ totalStars: rawStars = 0, completedCount = 0, totalModules = 17 }) {
+  const starsCount = rawStars  // total stars earned across all games
+  const level = getLevel(starsCount)
+  const pct = Math.min(100, Math.round((starsCount / Math.max(NEXT_AT[level] ?? 120, 1)) * 100))
   const nextUnlock = NEXT_AT[level] !== Infinity
-    ? `${NEXT_AT[level] - completedCount} bis nächstes Level`
+    ? `${NEXT_AT[level] - starsCount} ⭐ bis nächstes Level`
     : 'Max Level! 🏆'
 
   const farmRef = useRef(null)

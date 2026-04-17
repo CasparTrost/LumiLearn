@@ -35,6 +35,17 @@ export function starsToCoins(stars) {
 
 export const FARM_COSTS = [0, 50, 100, 175, 275, 400] // cost to reach level 2,3,4,5,6
 
+// ── Farm level from completed module count (mirrors FarmProgress.jsx getLevel) ──
+export function farmLevelFromCount(count) {
+  if (count < 5)   return 0
+  if (count < 15)  return 1
+  if (count < 30)  return 2
+  if (count < 50)  return 3
+  if (count < 75)  return 4
+  if (count < 120) return 5
+  return 6
+}
+
 // ── Daily Missions definition (functions NOT stored in localStorage) ──────────
 export const ALL_MISSIONS = [
   { id:'play3',    text:'3 Spiele spielen',          icon:'🎮', check: (s) => (s._sessionPlays ?? 0) >= 3 },
@@ -74,6 +85,8 @@ const initialState = {
   // Gamification
   coins:       0,
   farmLevel:   1,
+  totalStars:  0,
+  _farmLevel:  0,
   streak:      { count: 0, lastDate: null },
   dailyMission: { date: null, missions: [], completedIds: [] },
   // Session tracking (not persisted to localStorage)
@@ -162,6 +175,17 @@ function reducer(state, action) {
       if (stars >= 1 && level >= newCurrentLevel) {
         newCurrentLevel = Math.min(level + 1, maxLevel)
       }
+
+      // ── Compute total stars & farm level ──
+      const newProgress = {
+        ...state.progress,
+        [moduleId]: { currentLevel: newCurrentLevel, levelStars: newLevelStars, completed: false },
+      }
+      let newTotalStars = 0
+      for (const mod of Object.values(newProgress)) {
+        for (const s of Object.values(mod.levelStars ?? {})) newTotalStars += (s ?? 0)
+      }
+      const clampedFarmLevel = farmLevelFromCount(newTotalStars)
 
       const completed = Array.from({ length: maxLevel }, (_, i) => i + 1)
         .every(l => (newLevelStars[l] ?? 0) >= 1)
@@ -268,6 +292,8 @@ function migrate(saved) {
   const withDefaults = {
     coins:       0,
     farmLevel:   1,
+    totalStars:  0,
+    _farmLevel:  0,
     streak:      { count: 0, lastDate: null },
     dailyMission: { date: null, missions: [], completedIds: [] },
     streakLastBonus: null,

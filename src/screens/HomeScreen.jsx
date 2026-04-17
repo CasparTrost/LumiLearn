@@ -297,7 +297,7 @@ export default function HomeScreen() {
       )}
 
       {/* ── Farm Progress ── */}
-      <FarmProgress completedCount={completedCount} totalModules={MODULES.length} profile={profile} />
+      <FarmProgress totalStars={totalStars} completedCount={completedCount} totalModules={MODULES.length} profile={profile} />
 
       {/* ── Card grid ── */}
       <div style={{
