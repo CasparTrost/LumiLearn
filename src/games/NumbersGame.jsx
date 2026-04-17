@@ -243,6 +243,14 @@ export default function NumbersGame({ level = 1, onComplete }) {
       setBubble(q.thanks)
       setPhase('correct')
       setScore(s => s + 1)
+      // TTS thanks
+      setTimeout(() => {
+        if (!window.speechSynthesis) return
+        window.speechSynthesis.cancel()
+        const u = new SpeechSynthesisUtterance(q.thanks.replace(/[^\w\säöüÄÖÜß.,!?]/g,''))
+        u.lang = 'de-DE'; u.rate = 0.9; u.pitch = 1.1
+        window.speechSynthesis.speak(u)
+      }, 200)
       timerRef.current = setTimeout(() => setShowWeiter(true), 900)
     } else {
       setBubble(WRONG[rnd(0, WRONG.length - 1)])

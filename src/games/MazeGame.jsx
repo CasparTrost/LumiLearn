@@ -221,7 +221,15 @@ export default function MazeGame({ level=1, onComplete }) {
   const dpRef=useRef([]),dsRef=useRef(0),ddRef=useRef(1)
   const ref=useRef(null)
 
-  useEffect(()=>{ref.current?.focus()},[])
+  useEffect(()=>{
+    ref.current?.focus()
+    const potions = cfg.potions ?? 0
+    const dragon = cfg.dragon
+    const intro = potions > 0
+      ? `Finde ${potions} Zaubertränke und erreiche den Ausgang${dragon ? ' — pass auf den Drachen auf!' : '!'}`
+      : `Finde den Weg durch das Labyrinth!`
+    setTimeout(() => speakDE(intro), 600)
+  },[])
 
   useEffect(()=>{
     if(cfg.dragon&&maze.dragonWps.length>=2){
