@@ -486,7 +486,6 @@ export default function FarmProgress({ totalStars: rawStars = 0, completedCount 
   })
   const [celebration, setCelebration] = useState(null)
 
-  // Show celebration when triggered from parent (HomeScreen)
   useEffect(() => {
     if (pendingCelebration && !celebration) {
       setCelebration(pendingCelebration)

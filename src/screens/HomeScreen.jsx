@@ -4,7 +4,7 @@ import ParentScreen from './ParentScreen.jsx'
 import { Settings } from 'lucide-react'
 import { useApp } from '../AppContext.jsx'
 import { useT } from '../i18n.js'
-import { MAX_LEVELS, ALL_MISSIONS, FARM_COSTS } from '../AppContext.jsx'
+import { MAX_LEVELS } from '../AppContext.jsx'
 import StarRow from '../components/StarRow.jsx'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import FarmProgress from '../components/FarmProgress.jsx'
@@ -125,7 +125,6 @@ export default function HomeScreen() {
     }
   }, [farmLevel])
 
-  const upgradeCost = farmLevel < 6 ? (FARM_COSTS[farmLevel] ?? null) : null
 
   const getModuleTitle = (id, fallback) => t('module.' + id, fallback)
   const getModuleSub = (id) => {
@@ -252,7 +251,6 @@ export default function HomeScreen() {
           {canUpgradeFarm && (
             <motion.button
               whileTap={{ scale:0.92 }}
-              onClick={() => dispatch({ type:'UPGRADE_FARM' })}
               style={{
                 background:'linear-gradient(135deg,#6BCB77,#44D498)',
                 border:'none', borderRadius:12, padding:'6px 14px',
@@ -260,7 +258,6 @@ export default function HomeScreen() {
                 cursor:'pointer', display:'flex', alignItems:'center', gap:5,
               }}
             >
-              🌱 Farm Upgrade ({upgradeCost}🪙)
             </motion.button>
           )}
         </div>
