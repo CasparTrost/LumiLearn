@@ -50,7 +50,7 @@ export default function ResultsScreen() {
   const isFirstPass    = gameResult?.isFirstPass    ?? false
   const maxLevel       = gameResult?.maxLevel       ?? 5
   const coinsEarned    = gameResult?.coinsEarned    ?? 0
-  const streakBonusCoins = gameResult?.streakBonusCoins ?? 0
+  const streakBonusCoins = gameResult?.streakBonus ?? 0
   const newMissionsCompleted = gameResult?.newMissionsCompleted ?? []
   const streakCount    = state.streak?.count ?? 0
 

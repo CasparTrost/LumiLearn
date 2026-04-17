@@ -93,11 +93,11 @@ export default function HomeScreen() {
   const coins        = state.coins    ?? 0
   const farmLevel    = state.farmLevel ?? 1
   const streak       = state.streak   ?? { count: 0 }
-  const dailyMission = state.dailyMission ?? { missionIds: [], completed: [], stats: {} }
+  const dailyMission = state.dailyMission ?? { date: null, missions: [], completedIds: [] }
   const [showParent, setShowParent] = useState(false)
   const completedCount = Object.values(progress).filter(p => p?.completed).length
 
-  const upgradeCost = farmLevel < MAX_FARM_LEVEL ? (FARM_UPGRADE_COSTS[farmLevel - 1] ?? null) : null
+  const upgradeCost = farmLevel < 6 ? (FARM_COSTS[farmLevel] ?? null) : null
   const canUpgradeFarm = upgradeCost !== null && coins >= upgradeCost
 
   const getModuleTitle = (id, fallback) => t('module.' + id, fallback)
@@ -238,16 +238,15 @@ export default function HomeScreen() {
           )}
         </div>
         {/* Daily Missions */}
-        {dailyMission.missionIds.length > 0 && (
+        {(dailyMission.missions ?? []).length > 0 && (
           <div style={{ display:'flex', flexDirection:'column', gap:4, flex:1, minWidth:180 }}>
             <div style={{ fontFamily:'var(--font-heading)', color:'rgba(255,255,255,0.6)', fontSize:11, letterSpacing:1, textTransform:'uppercase' }}>Tagesaufgaben</div>
             <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-              {dailyMission.missionIds.map(id => {
-                const m = ALL_MISSIONS.find(x => x.id === id)
+              {(dailyMission.missions ?? []).map(m => {
                 if (!m) return null
-                const done = dailyMission.completed.includes(id)
+                const done = (dailyMission.completedIds ?? []).includes(m.id)
                 return (
-                  <div key={id} style={{
+                  <div key={m.id} style={{
                     display:'flex', alignItems:'center', gap:4,
                     background: done ? 'rgba(107,203,119,0.25)' : 'rgba(255,255,255,0.08)',
                     borderRadius:10, padding:'4px 10px',
