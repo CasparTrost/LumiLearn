@@ -22,6 +22,7 @@ const MODULE_NAMES = {
   clock:          'Uhren-Uhr',
   words2:         'Silben-Spaß',
   weight:         'Waage-Welt',
+  coloring:        'Mal-Atelier',
 }
 
 function PinPad({ onSuccess, onCancel }) {
@@ -78,6 +79,9 @@ function PinPad({ onSuccess, onCancel }) {
 
 export default function ParentScreen({ onClose }) {
   const { state, dispatch } = useApp()
+  const coins     = state.coins    ?? 0
+  const farmLevel = state.farmLevel ?? 1
+  const streak    = state.streak   ?? { count: 0 }
   const [unlocked, setUnlocked] = useState(false)
   const [toast, setToast] = useState(null)
 
@@ -153,6 +157,24 @@ export default function ParentScreen({ onClose }) {
               fontSize:18, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
             ✕
           </motion.button>
+        </div>
+
+        {/* Gamification stats */}
+        <div style={{ background:'white', borderRadius:20, padding:16, marginBottom:16, boxShadow:'0 2px 12px rgba(0,0,0,0.06)', display:'flex', gap:12, flexWrap:'wrap' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:6, background:'rgba(255,217,61,0.12)', borderRadius:12, padding:'8px 14px', border:'1.5px solid rgba(255,217,61,0.4)' }}>
+            <span style={{ fontSize:20 }}>🪙</span>
+            <span style={{ fontFamily:'var(--font-heading)', color:'#b8860b', fontWeight:700, fontSize:16 }}>{coins} Coins</span>
+          </div>
+          {streak.count >= 1 && (
+            <div style={{ display:'flex', alignItems:'center', gap:6, background:'rgba(255,107,107,0.1)', borderRadius:12, padding:'8px 14px', border:'1.5px solid rgba(255,107,107,0.4)' }}>
+              <span style={{ fontSize:20 }}>🔥</span>
+              <span style={{ fontFamily:'var(--font-heading)', color:'#c0392b', fontWeight:700, fontSize:16 }}>{streak.count} Tage Streak</span>
+            </div>
+          )}
+          <div style={{ display:'flex', alignItems:'center', gap:6, background:'rgba(107,203,119,0.1)', borderRadius:12, padding:'8px 14px', border:'1.5px solid rgba(107,203,119,0.4)' }}>
+            <span style={{ fontSize:20 }}>🏕️</span>
+            <span style={{ fontFamily:'var(--font-heading)', color:'#2d7a3a', fontWeight:700, fontSize:16 }}>Farm Level {farmLevel}</span>
+          </div>
         </div>
 
         {/* Farm section */}
