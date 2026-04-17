@@ -436,8 +436,8 @@ export default function WeightGame({ level = 1, onComplete }) {
             rightEmoji={q.rightEmoji} rightLabel={q.rightLabel}
             answered={answered}
             leftHeavier={q.leftW >= q.rightW}
-            onPickLeft={() => handlePick('left')}
-            onPickRight={() => handlePick('right')}
+            onPickLeft={() => answer('left')}
+            onPickRight={() => answer('right')}
           />
         </motion.div>
       </AnimatePresence>
