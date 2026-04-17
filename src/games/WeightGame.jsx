@@ -277,6 +277,7 @@ export default function WeightGame({ level = 1, onComplete }) {
   const [idx,       setIdx]      = useState(0)
   const [answered,  setAnswered] = useState(false)
   const [isCorrect, setIsCorrect]= useState(false)
+  const [showWeiter, setShowWeiter] = useState(false)
   const [score,     setScore]    = useState(0)
   const [mood,      setMood]     = useState('happy')
 
