@@ -225,44 +225,56 @@ export default function ColoringGame({ onComplete }) {
       </div>
 
       {/* Zeichenfläche */}
-      <div style={{ flex:1, minHeight:0, overflow:'hidden', background:'#e8e8e8', display:'flex', alignItems:'center', justifyContent:'center', position:'relative', touchAction:'none' }}>
-        {/* Layer 1: Originalbild (immer sichtbar) */}
-        <img
-          key={currentImage.id}
-          src={currentImage.src}
-          alt={currentImage.label}
-          onLoad={() => setImgLoaded(true)}
-          style={{
-            position:'absolute', maxWidth:'100%', maxHeight:'100%',
-            objectFit:'contain', pointerEvents:'none',
-            display: imgLoaded ? 'block' : 'none',
-          }}
-        />
-        {/* Layer 2: Paint canvas (transparent, exakt über Bild, mix-blend-mode:multiply) */}
-        {imgLoaded && (
-          <canvas
-            key={`paint-${canvasKey}`}
-            ref={paintRef}
-            width={imgNatural.current.w}
-            height={imgNatural.current.h}
+      <div style={{ flex:1, minHeight:0, overflow:'hidden', background:'#e8e8e8', display:'flex', alignItems:'center', justifyContent:'center', padding:8, touchAction:'none' }}>
+        {/* Wrapper mit exaktem Seitenverhältnis des Bildes */}
+        <div style={{
+          position:'relative',
+          width: '100%',
+          maxWidth: '100%',
+          maxHeight: '100%',
+          aspectRatio: imgLoaded ? `${imgNatural.current.w} / ${imgNatural.current.h}` : '4/3',
+          overflow:'hidden',
+          boxShadow:'0 2px 16px rgba(0,0,0,0.15)',
+        }}>
+          {/* Layer 1: Originalbild (immer sichtbar) */}
+          <img
+            key={currentImage.id}
+            src={currentImage.src}
+            alt={currentImage.label}
+            onLoad={() => setImgLoaded(true)}
             style={{
-              position:'absolute', maxWidth:'100%', maxHeight:'100%',
-              objectFit:'contain',
-              mixBlendMode:'multiply',
-              cursor: tool==='fill' ? 'crosshair' : tool==='eraser' ? 'cell' : 'crosshair',
-              touchAction:'none',
+              position:'absolute', inset:0,
+              width:'100%', height:'100%',
+              objectFit:'fill', pointerEvents:'none',
+              display: imgLoaded ? 'block' : 'none',
             }}
-            onMouseDown={handlePointerDown}
-            onMouseMove={handlePointerMove}
-            onMouseUp={handlePointerUp}
-            onMouseLeave={handlePointerUp}
-            onTouchStart={handlePointerDown}
-            onTouchMove={handlePointerMove}
-            onTouchEnd={handlePointerUp}
           />
-        )}
-        {!imgLoaded && <div style={{ fontSize:32 }}>⏳</div>}
-        {filling && <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', fontSize:40, pointerEvents:'none' }}>🎨</div>}
+          {/* Layer 2: Paint canvas */}
+          {imgLoaded && (
+            <canvas
+              key={`paint-${canvasKey}`}
+              ref={paintRef}
+              width={imgNatural.current.w}
+              height={imgNatural.current.h}
+              style={{
+                position:'absolute', inset:0,
+                width:'100%', height:'100%',
+                mixBlendMode:'multiply',
+                cursor: tool==='fill' ? 'crosshair' : tool==='eraser' ? 'cell' : 'crosshair',
+                touchAction:'none',
+              }}
+              onMouseDown={handlePointerDown}
+              onMouseMove={handlePointerMove}
+              onMouseUp={handlePointerUp}
+              onMouseLeave={handlePointerUp}
+              onTouchStart={handlePointerDown}
+              onTouchMove={handlePointerMove}
+              onTouchEnd={handlePointerUp}
+            />
+          )}
+          {!imgLoaded && <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', fontSize:32 }}>⏳</div>}
+          {filling && <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', fontSize:40, pointerEvents:'none' }}>🎨</div>}
+        </div>
       </div>
 
       {/* Toolbar */}
