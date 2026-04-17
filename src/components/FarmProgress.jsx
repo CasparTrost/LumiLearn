@@ -286,12 +286,18 @@ function LevelUpCelebration({ level, newAnimals, onDone }) {
 
   useEffect(() => {
     try { sfx.levelUp() } catch {}
-    // Phase 1: show level card for 2s, then show new animals for 2.5s, then done
-    const t1 = setTimeout(() => setPhase('animals'), 5500)
+    // Keine neuen Tiere (z.B. kleiner Hof) → sofort nach 2s fertig
+    if (!newAnimals || newAnimals.length === 0) {
+      const t = setTimeout(() => { setPhase('exit'); setTimeout(onDone, 400) }, 2000)
+      return () => clearTimeout(t)
+    }
+    // Phase 1: Level-Karte 2s
+    const t1 = setTimeout(() => setPhase('animals'), 2000)
+    // Phase 2: Tiere + 2s
     const t2 = setTimeout(() => {
       setPhase('exit')
-      setTimeout(onDone, 600)
-    }, 5500 + (newAnimals.length * 400) + 5000)
+      setTimeout(onDone, 400)
+    }, 2000 + (newAnimals.length * 300) + 2000)
     return () => { clearTimeout(t1); clearTimeout(t2) }
   }, [])
 
