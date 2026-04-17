@@ -146,16 +146,61 @@ export default function ColoringGame({ onComplete }) {
   }, [])
 
   const paintStroke = useCallback((ctx, from, to) => {
-    ctx.globalCompositeOperation = isEraser ? 'destination-out' : 'source-over'
-    ctx.lineWidth   = brushR * 2
-    ctx.lineCap     = 'round'
-    ctx.lineJoin    = 'round'
-    ctx.strokeStyle = isEraser ? 'rgba(0,0,0,1)' : color
-    ctx.fillStyle   = isEraser ? 'rgba(0,0,0,1)' : color
-    ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke()
-    ctx.beginPath(); ctx.arc(to.x, to.y, brushR, 0, Math.PI*2); ctx.fill()
-    ctx.globalCompositeOperation = 'source-over'
-  }, [color, brushR, isEraser])
+    if (tool === 'eraser') {
+      // Eraser: direct
+      ctx.globalCompositeOperation = 'destination-out'
+      ctx.lineWidth = brushR * 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+      ctx.strokeStyle = 'rgba(0,0,0,1)'; ctx.fillStyle = 'rgba(0,0,0,1)'
+      ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke()
+      ctx.beginPath(); ctx.arc(to.x, to.y, brushR, 0, Math.PI*2); ctx.fill()
+      ctx.globalCompositeOperation = 'source-over'
+      return
+    }
+
+    // Brush with line-guard: paint only on light areas of base image
+    if (!baseRef.current) {
+      // fallback if base not loaded yet
+      ctx.strokeStyle = color; ctx.fillStyle = color
+      ctx.lineWidth = brushR * 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+      ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke()
+      ctx.beginPath(); ctx.arc(to.x, to.y, brushR, 0, Math.PI*2); ctx.fill()
+      return
+    }
+
+    // 1. Draw stroke on a temporary offscreen canvas
+    const tmp = document.createElement('canvas')
+    tmp.width = ctx.canvas.width; tmp.height = ctx.canvas.height
+    const t = tmp.getContext('2d')
+    t.strokeStyle = color; t.fillStyle = color
+    t.lineWidth = brushR * 2; t.lineCap = 'round'; t.lineJoin = 'round'
+    t.beginPath(); t.moveTo(from.x, from.y); t.lineTo(to.x, to.y); t.stroke()
+    t.beginPath(); t.arc(to.x, to.y, brushR, 0, Math.PI*2); t.fill()
+
+    // 2. Mask: keep only pixels where base image is LIGHT (not a line)
+    // Draw base image in 'destination-in' → removes color where base is dark
+    // We invert: draw white where base is light → use as mask
+    const mask = document.createElement('canvas')
+    mask.width = tmp.width; mask.height = tmp.height
+    const m = mask.getContext('2d')
+    // Draw base image
+    m.drawImage(baseRef.current, 0, 0, mask.width, mask.height)
+    // Invert: dark pixels (lines) → transparent, light → white
+    const imgd = m.getImageData(0, 0, mask.width, mask.height)
+    const d = imgd.data
+    for (let i = 0; i < d.length; i += 4) {
+      const brightness = (d[i] + d[i+1] + d[i+2]) / 3
+      // If dark (line), make transparent; if light, make opaque
+      d[i+3] = brightness > 128 ? 255 : 0
+    }
+    m.putImageData(imgd, 0, 0)
+
+    // 3. Apply mask to stroke: keep stroke only where mask is opaque
+    t.globalCompositeOperation = 'destination-in'
+    t.drawImage(mask, 0, 0)
+
+    // 4. Composite masked stroke onto main canvas
+    ctx.drawImage(tmp, 0, 0)
+  }, [color, brushR, tool])
 
   const handlePointerDown = useCallback((e) => {
     e.preventDefault()
