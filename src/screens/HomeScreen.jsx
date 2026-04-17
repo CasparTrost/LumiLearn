@@ -248,12 +248,12 @@ export default function HomeScreen() {
                 return (
                   <div key={m.id} style={{
                     display:'flex', alignItems:'center', gap:8,
-                    background: done ? 'rgba(107,203,119,0.2)' : 'rgba(255,255,255,0.12)',
+                    background: done ? '#e8f8ee' : 'white',
                     borderRadius:12, padding:'8px 14px',
-                    border: done ? '1.5px solid rgba(107,203,119,0.6)' : '1.5px solid rgba(255,255,255,0.2)',
+                    border: done ? '1.5px solid #6BCB77' : '1.5px solid #e0e0e0',
                   }}>
                     <span style={{ fontSize:18, flexShrink:0 }}>{done ? '✅' : m.icon}</span>
-                    <span style={{ fontFamily:'var(--font-heading)', color: done ? 'rgba(107,203,119,1)' : 'rgba(255,255,255,0.95)', fontSize:'clamp(13px,3vw,15px)', fontWeight: done ? 600 : 500, lineHeight:1.3, textDecoration: done ? 'line-through' : 'none' }}>{m.text}</span>
+                    <span style={{ fontFamily:'var(--font-heading)', color: done ? '#1a6b3a' : '#1a1a2e', fontSize:'clamp(13px,3vw,15px)', fontWeight: done ? 600 : 500, lineHeight:1.3, textDecoration: done ? 'line-through' : 'none' }}>{m.text}</span>
                   </div>
                 )
               })}
