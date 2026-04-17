@@ -70,12 +70,21 @@ const INTUITIVE = [
 
 // ── L2: Numeric weights ──────────────────────────────────────────────────────
 const BOX_ITEMS = [
-  { emoji: '📦', label: 'Paket'    },
-  { emoji: '🎒', label: 'Rucksack' },
-  { emoji: '🧳', label: 'Koffer'   },
-  { emoji: '🏀', label: 'Ball'     },
-  { emoji: '🎱', label: 'Billard'  },
-  { emoji: '🧱', label: 'Ziegel'   },
+  { emoji: '📦', label: 'Paket'      },
+  { emoji: '🎒', label: 'Rucksack'   },
+  { emoji: '🧳', label: 'Koffer'     },
+  { emoji: '🏀', label: 'Basketball' },
+  { emoji: '🎱', label: 'Billardball'},
+  { emoji: '🧱', label: 'Ziegel'     },
+  { emoji: '🧊', label: 'Eis'        },
+  { emoji: '🍐', label: 'Wassermelone'},
+  { emoji: '🐛', label: 'Stein'      },
+  { emoji: '🚗', label: 'Auto'       },
+  { emoji: '📚', label: 'Buch'       },
+  { emoji: '🍔', label: 'Burger'     },
+  { emoji: '🐍', label: 'Schlange'   },
+  { emoji: '💻', label: 'Laptop'     },
+  { emoji: '🛹', label: 'Rakete'     },
 ]
 
 function makeNumericQuestions(n = 8, maxKg = 15) {
