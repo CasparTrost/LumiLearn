@@ -1,10 +1,10 @@
-﻿import React, { useEffect, useRef, useState } from 'react'
+﻿import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import ParentScreen from './ParentScreen.jsx'
 import { Settings } from 'lucide-react'
 import { useApp } from '../AppContext.jsx'
 import { useT } from '../i18n.js'
-import { MAX_LEVELS } from '../AppContext.jsx'
+import { MAX_LEVELS, ALL_MISSIONS, FARM_COSTS } from '../AppContext.jsx'
 import StarRow from '../components/StarRow.jsx'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import FarmProgress from '../components/FarmProgress.jsx'
@@ -90,41 +90,15 @@ export default function HomeScreen() {
   const { state, dispatch } = useApp()
   const profile      = state.profile  ?? { name:'Lumi', avatar:'🦊' }
   const progress     = state.progress ?? {}
-  const totalStars    = state.totalStars   ?? 0
-  const farmLevel     = state._farmLevel    ?? 0
-  const prevFarmLevel = state.prevFarmLevel ?? 0
+  const coins        = state.coins    ?? 0
+  const farmLevel    = state.farmLevel ?? 1
   const streak       = state.streak   ?? { count: 0 }
   const dailyMission = state.dailyMission ?? { date: null, missions: [], completedIds: [] }
-  const [showParent,     setShowParent]     = useState(false)
-  const [farmCelebration, setFarmCelebration] = useState(null) // { level, newAnimals }
-  const prevFarmRef = useRef(prevFarmLevel)
+  const [showParent, setShowParent] = useState(false)
   const completedCount = Object.values(progress).filter(p => p?.completed).length
 
-  // Detect farm level-up when arriving at HomeScreen
-  useEffect(() => {
-    if (farmLevel > prevFarmRef.current) {
-      // Compute new animals at this level
-      const getAnimalsForLevel = (lvl) => {
-        const counts = {
-          chicken:[0,1,1,2,2,3,4], sheep:[0,0,0,0,1,2,4],
-          pig:[0,0,1,1,1,2,3], cow:[0,0,0,0,0,1,2], horse:[0,0,0,0,0,0,2]
-        }
-        const defs = [
-          {id:'chicken',name:'Huhn',emoji:'🐔'},
-          {id:'sheep',name:'Schaf',emoji:'🐑'},
-          {id:'pig',name:'Schwein',emoji:'🐷'},
-          {id:'cow',name:'Kuh',emoji:'🐄'},
-          {id:'horse',name:'Pferd',emoji:'🐴'},
-        ]
-        return defs.flatMap(d => Array.from({length:(counts[d.id]??[])[Math.min(lvl,6)]??0},(_,i)=>({...d,instanceId:`${d.id}_${i}`})))
-      }
-      const prevAnimals = getAnimalsForLevel(prevFarmRef.current)
-      const newAnimals  = getAnimalsForLevel(farmLevel).filter(a => !prevAnimals.find(p=>p.instanceId===a.instanceId))
-      setFarmCelebration({ level: farmLevel, newAnimals })
-      prevFarmRef.current = farmLevel
-    }
-  }, [farmLevel])
-
+  const upgradeCost = farmLevel < 6 ? (FARM_COSTS[farmLevel] ?? null) : null
+  const canUpgradeFarm = upgradeCost !== null && coins >= upgradeCost
 
   const getModuleTitle = (id, fallback) => t('module.' + id, fallback)
   const getModuleSub = (id) => {
@@ -251,6 +225,7 @@ export default function HomeScreen() {
           {canUpgradeFarm && (
             <motion.button
               whileTap={{ scale:0.92 }}
+              onClick={() => dispatch({ type:'UPGRADE_FARM' })}
               style={{
                 background:'linear-gradient(135deg,#6BCB77,#44D498)',
                 border:'none', borderRadius:12, padding:'6px 14px',
@@ -258,6 +233,7 @@ export default function HomeScreen() {
                 cursor:'pointer', display:'flex', alignItems:'center', gap:5,
               }}
             >
+              🌱 Farm Upgrade ({upgradeCost}🪙)
             </motion.button>
           )}
         </div>
@@ -286,15 +262,8 @@ export default function HomeScreen() {
         )}
       </div>
 
-      {/* Farm level-up celebration overlay */}
-      {farmCelebration && (
-        <div style={{position:'fixed',inset:0,zIndex:500}}>
-          {/* reuse FarmProgress LevelUpCelebration via inline trigger */}
-        </div>
-      )}
-
       {/* ── Farm Progress ── */}
-      <FarmProgress totalStars={totalStars} completedCount={completedCount} totalModules={MODULES.length} profile={profile} />
+      <FarmProgress completedCount={completedCount} totalModules={MODULES.length} profile={profile} />
 
       {/* ── Card grid ── */}
       <div style={{

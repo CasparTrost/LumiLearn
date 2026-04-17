@@ -79,19 +79,12 @@ const ANIMAL_COUNT = {
   horse:   [0, 0, 0, 0, 0, 0, 2],
 }
 
-// Sterne → Farm-Level (wieviele Tiere auf dem Hof)
-// Stars accumulate from all games played
-function getLevel(stars) {
-  if (stars < 5)   return 0  // Leerer Hof
-  if (stars < 15)  return 1  // 1 Huhn
-  if (stars < 30)  return 2  // 2 Hühner
-  if (stars < 50)  return 3  // Schwein
-  if (stars < 75)  return 4  // 2 Schweine + Schaf
-  if (stars < 120) return 5  // Kuh + mehr
-  return 6                   // Traumhof: alles
+function getLevel(n) {
+  if (n<=2) return 1; if (n<=5) return 2; if (n<=8) return 3
+  if (n<=12) return 4; if (n<=16) return 5; return 6
 }
-const LABELS  = ['Leerer Hof','Kleiner Hof','Gemütlicher Hof','Lebhafter Hof','Großer Hof','Prächtiger Hof','Traumhof! 🏆']
-const NEXT_AT = [5, 15, 30, 50, 75, 120, Infinity]
+const LABELS  = ['','Kleiner Hof','Wachsender Hof','Blühender Hof','Großer Hof','Prächtiger Hof','Traumhof!']
+const NEXT_AT = [0,3,6,9,13,17,Infinity]
 
 // Compute which animals should be on farm for a given level
 function getAnimalsForLevel(lvl) {
@@ -451,12 +444,12 @@ function LevelUpCelebration({ level, newAnimals, onDone }) {
   )
 }
 
-export default function FarmProgress({ totalStars: rawStars = 0, completedCount = 0, totalModules = 17 }) {
-  const starsCount = rawStars  // total stars earned across all games
-  const level = getLevel(starsCount)
-  const pct = Math.min(100, Math.round((starsCount / Math.max(NEXT_AT[level] ?? 120, 1)) * 100))
+export default function FarmProgress({ completedCount: rawCount = 0, totalModules = 17 }) {
+  const completedCount = rawCount  // use real count
+  const level = getLevel(completedCount)
+  const pct = Math.round((completedCount / totalModules) * 100)
   const nextUnlock = NEXT_AT[level] !== Infinity
-    ? `${NEXT_AT[level] - starsCount} ⭐ bis nächstes Level`
+    ? `${NEXT_AT[level] - completedCount} bis nächstes Level`
     : 'Max Level! 🏆'
 
   const farmRef = useRef(null)
@@ -485,12 +478,6 @@ export default function FarmProgress({ totalStars: rawStars = 0, completedCount 
     try { return parseInt(localStorage.getItem('lumilearn_farm_level') || '0', 10) } catch { return 0 }
   })
   const [celebration, setCelebration] = useState(null)
-
-  useEffect(() => {
-    if (pendingCelebration && !celebration) {
-      setCelebration(pendingCelebration)
-    }
-  }, [pendingCelebration])
 
   useEffect(() => {
     if (level > prevLevel) {
@@ -590,7 +577,7 @@ export default function FarmProgress({ totalStars: rawStars = 0, completedCount 
             key={celebration.level}
             level={celebration.level}
             newAnimals={celebration.newAnimals}
-            onDone={() => { setCelebration(null); if(onCelebrationDone) onCelebrationDone() }}
+            onDone={() => setCelebration(null)}
           />
         )}
       </AnimatePresence>
