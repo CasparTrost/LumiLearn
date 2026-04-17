@@ -94,6 +94,14 @@ export default function BubblePopGame({ level = 1, onComplete }) {
     setPoppedIds([])
     setTimeLeft(cfg.timeS)
     setPhase('playing')
+    // TTS: speak the target number
+    setTimeout(() => {
+      if (!window.speechSynthesis) return
+      window.speechSynthesis.cancel()
+      const u = new SpeechSynthesisUtterance(`Finde die ${t}!`)
+      u.lang = 'de-DE'; u.rate = 0.9; u.pitch = 1.1
+      window.speechSynthesis.speak(u)
+    }, 300)
   }, [roundIdx, cfg])
 
   // Init physics state + MotionValues whenever bubbles change
