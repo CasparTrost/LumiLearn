@@ -28,6 +28,7 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
   const [idx,    setIdx]    = useState(0)
   const [tapped, setTapped] = useState(() => new Map()) // Map<index → tapOrder (1-based)>
   const [boom,   setBoom]   = useState(false)
+  const [showWeiter, setShowWeiter] = useState(false)
 
   // Stop narration when game unmounts
   useEffect(() => () => voice.stop(), [])
@@ -61,18 +62,21 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
   useEffect(() => {
     if (!done) return
     setBoom(true)
-    const t = setTimeout(() => {
-      const next = idx + 1
-      if (next >= rounds.length) {
-        onComplete({ score: rounds.length, total: rounds.length })
-      } else {
-        setIdx(next)
-        setTapped(new Map())
-        setBoom(false)
-      }
-    }, 1500)
+    const t = setTimeout(() => setShowWeiter(true), 800)
     return () => clearTimeout(t)
   }, [done]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const weiterClick = () => {
+    setShowWeiter(false)
+    setBoom(false)
+    const next = idx + 1
+    if (next >= rounds.length) {
+      onComplete({ score: rounds.length, total: rounds.length })
+    } else {
+      setIdx(next)
+      setTapped(new Map())
+    }
+  }
 
   if (!round) return null
 
@@ -291,6 +295,21 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
         >
           {round.n === 1 ? `Tippe das ${round.emoji} an! 👆` : `Tippe alle ${round.n} ${round.emoji} an! 👆`}
         </motion.p>
+      )}
+
+      {showWeiter && (
+        <motion.button
+          initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }}
+          onClick={weiterClick}
+          style={{
+            padding:'13px 44px', borderRadius:50,
+            background:`linear-gradient(135deg,${round.color},${round.color}cc)`,
+            color:'white', fontFamily:'var(--font-heading)', fontSize:20, fontWeight:700,
+            border:'none', cursor:'pointer', boxShadow:`0 4px 18px ${round.color}66`,
+          }}
+        >
+          {idx + 1 >= rounds.length ? '🏁 Fertig!' : 'Weiter! →'}
+        </motion.button>
       )}
     </div>
   )
