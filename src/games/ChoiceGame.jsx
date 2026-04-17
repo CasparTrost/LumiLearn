@@ -322,6 +322,7 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
   const [flashType,   setFlashType]   = useState(null)
   const [flashId,     setFlashId]     = useState(0)
   const [highlighted, setHighlighted] = useState(null)
+  const [showWeiter,  setShowWeiter]  = useState(false)
   const [projectiles, setProjectiles] = useState([])
   const [puffIds,     setPuffIds]     = useState([])
   const [bursts,      setBursts]      = useState([])
@@ -371,12 +372,18 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
       setTimeout(() => setFlashType(null), 400)
     }
     setTimeout(() => {
-      if (idx + 1 >= questions.length) { onComplete({ score: nc, total: questions.length }) }
-      else { setIdx(i => i + 1); setSelected(null) }
-    }, 1100)
+      setShowWeiter(true)
+    }, ok ? 800 : 1100)
   }, [selected, q, correct, streak, idx, questions, onComplete])
 
-  useEffect(() => { setHighlighted(null) }, [idx])
+  const weiterClick = useCallback(() => {
+    setShowWeiter(false)
+    setSelected(null)
+    if (idx + 1 >= questions.length) { onComplete({ score: correct, total: questions.length }) }
+    else { setIdx(i => i + 1) }
+  }, [idx, correct, questions, onComplete])
+
+  useEffect(() => { setHighlighted(null); setShowWeiter(false) }, [idx])
 
   useEffect(() => {
     if (q?.prompt) speakDE(q.prompt)
@@ -563,6 +570,21 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
       <p style={{ fontFamily:'var(--font-heading)', fontSize:15, color:'var(--text-muted)' }}>
         {correct + ' von ' + Math.min(idx + (selected !== null ? 1 : 0), questions.length) + ' richtig'}
       </p>
+
+      {showWeiter && (
+        <motion.button
+          initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }}
+          onClick={weiterClick}
+          style={{
+            marginTop:4, padding:'13px 40px', borderRadius:50,
+            background:'linear-gradient(135deg,#6BCB77,#44D498)',
+            color:'white', fontFamily:'var(--font-heading)', fontSize:19, fontWeight:700,
+            border:'none', cursor:'pointer', boxShadow:'0 4px 18px rgba(107,203,119,0.5)',
+          }}
+        >
+          {idx + 1 >= questions.length ? '🏁 Fertig!' : 'Weiter! →'}
+        </motion.button>
+      )}
     </div>
   )
 }

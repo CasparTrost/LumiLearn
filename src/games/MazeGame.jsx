@@ -3,6 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 
 const BASE = import.meta.env.BASE_URL || '/LumiLearn/'
+
+function speakDE(text) {
+  if (!window.speechSynthesis) return
+  window.speechSynthesis.cancel()
+  const u = new SpeechSynthesisUtterance((text||'').replace(/[^\w\säöüÄÖÜß.,!?]/g,''))
+  u.lang = 'de-DE'; u.rate = 0.9; u.pitch = 1.1
+  window.speechSynthesis.speak(u)
+}
 const spr = (n) => BASE + 'sprites/maze/' + n
 
 // ── Tileset: Set 1.png (448x320, 16x16 tiles, 28 cols x 20 rows) ─────────────
@@ -257,9 +265,15 @@ export default function MazeGame({ level=1, onComplete }) {
 
   useEffect(()=>{
     const nc=maze.potions.filter(p=>p.x===pos.x&&p.y===pos.y&&!coll.includes(p.id))
-    if(nc.length){setColl(prev=>[...prev,...nc.map(p=>p.id)]);setMood('excited');setTimeout(()=>setMood('happy'),700)}
+    if(nc.length){
+      setColl(prev=>[...prev,...nc.map(p=>p.id)])
+      setMood('excited')
+      setTimeout(()=>setMood('happy'),700)
+      speakDE('Zaubertrank gefunden!')
+    }
     if(pos.x===maze.exit.x&&pos.y===maze.exit.y&&coll.length+nc.length>=maze.potions.length){
       setWon(true);setMood('excited')
+      speakDE('Super! Du hast das Labyrinth gemeistert!')
       setTimeout(()=>onComplete({score:Math.max(1,maze.potions.length),total:Math.max(1,maze.potions.length)}),2000)
     }
   },[pos]) // eslint-disable-line
@@ -268,6 +282,7 @@ export default function MazeGame({ level=1, onComplete }) {
     if(!dragon||won)return
     if(dragon.x===pos.x&&dragon.y===pos.y){
       const nl=lives-1;setLives(nl);setMood('encouraging');setPos({x:1,y:1})
+      speakDE(nl > 0 ? 'Achtung! Der Drache hat dich erwischt!' : 'Oh nein!')
       setTimeout(()=>setMood('happy'),900)
       if(nl<=0)setTimeout(()=>onComplete({score:coll.length,total:maze.potions.length}),1200)
     }
