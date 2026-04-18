@@ -222,11 +222,10 @@ export default function ColoringGame({ onComplete }) {
             src={currentImage.src}
             alt={currentImage.label}
             onLoad={() => setImgLoaded(true)}
-            style={{
+                        style={{
               position:'absolute', inset:0,
               width:'100%', height:'100%',
-              objectFit:'contain', pointerEvents:'none',
-              width:'100%', height:'100%',
+              pointerEvents:'none',
               display: imgLoaded ? 'block' : 'none',
             }}
           />
