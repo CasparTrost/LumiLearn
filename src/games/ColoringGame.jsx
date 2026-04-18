@@ -70,68 +70,103 @@ function hexToRgb(hex) {
   return { r: parseInt(hex.slice(1,3),16), g: parseInt(hex.slice(3,5),16), b: parseInt(hex.slice(5,7),16) }
 }
 
+// ── Composite: draw base image + paint layer onto display canvas ──────────────
+function composite(displayCtx, baseImg, paintCanvas, W, H) {
+  displayCtx.clearRect(0, 0, W, H)
+  displayCtx.drawImage(baseImg, 0, 0, W, H)
+  // Paint layer with multiply blend so lines stay visible
+  displayCtx.globalCompositeOperation = 'multiply'
+  displayCtx.drawImage(paintCanvas, 0, 0, W, H)
+  displayCtx.globalCompositeOperation = 'source-over'
+}
+
 export default function ColoringGame({ onComplete }) {
-  const [imgIdx, setImgIdx]     = useState(0)
-  const [color, setColor]       = useState('#FF0000')
-  const [brushIdx, setBrushIdx] = useState(1)
-  const [tool, setTool]         = useState('fill')
-  const [drawing, setDrawing]   = useState(false)
+  const [imgIdx, setImgIdx]       = useState(0)
+  const [color, setColor]         = useState('#FF0000')
+  const [brushIdx, setBrushIdx]   = useState(1)
+  const [tool, setTool]           = useState('fill')
+  const [drawing, setDrawing]     = useState(false)
   const [canvasKey, setCanvasKey] = useState(0)
-  const [filling, setFilling]   = useState(false)
-  const [imgLoaded, setImgLoaded] = useState(false)
+  const [filling, setFilling]     = useState(false)
+  const [ready, setReady]         = useState(false)
 
-  // paint canvas = transparent overlay with color strokes
-  const paintRef      = useRef(null)
-  // pixel data of base image for edge detection
-  const basePixels    = useRef(null)
-  // natural dimensions of current image
-  const imgNatural    = useRef({ w: 1200, h: 900 })
-  const lastPos       = useRef(null)
-  const brushR        = BRUSH_SIZES[brushIdx]
-  const currentImage  = IMAGES[imgIdx]
+  // Single display canvas shown to user
+  const displayRef  = useRef(null)
+  // Offscreen paint canvas (transparent color strokes)
+  const paintRef    = useRef(document.createElement('canvas'))
+  // Pixel data of base image for flood fill edge detection
+  const basePixels  = useRef(null)
+  // Loaded base image element
+  const baseImg     = useRef(null)
+  // Canvas dimensions (= natural image size)
+  const canvasSize  = useRef({ w: 700, h: 900 })
 
-  // Load image pixel data for edge detection (without showing it ourselves)
+  const lastPos     = useRef(null)
+  const brushR      = BRUSH_SIZES[brushIdx]
+  const currentImage = IMAGES[imgIdx]
+
+  // Load image → set up canvases → draw
   useEffect(() => {
-    setImgLoaded(false)
-    basePixels.current = null
+    setReady(false)
     const img = new Image()
     img.crossOrigin = 'anonymous'
     img.src = currentImage.src
     img.onload = () => {
-      imgNatural.current = { w: img.naturalWidth, h: img.naturalHeight }
-      // Store pixel data
+      const W = img.naturalWidth, H = img.naturalHeight
+      canvasSize.current = { w: W, h: H }
+      baseImg.current = img
+
+      // Extract pixel data for flood fill
       const tmp = document.createElement('canvas')
-      tmp.width = img.naturalWidth; tmp.height = img.naturalHeight
+      tmp.width = W; tmp.height = H
       tmp.getContext('2d').drawImage(img, 0, 0)
-      basePixels.current = tmp.getContext('2d').getImageData(0, 0, tmp.width, tmp.height)
-      // Resize paint canvas
-      if (paintRef.current) {
-        paintRef.current.width  = img.naturalWidth
-        paintRef.current.height = img.naturalHeight
+      basePixels.current = tmp.getContext('2d').getImageData(0, 0, W, H)
+
+      // Resize offscreen paint canvas & clear it
+      const pc = paintRef.current
+      pc.width = W; pc.height = H
+      pc.getContext('2d').clearRect(0, 0, W, H)
+
+      // Resize display canvas & draw initial frame
+      const dc = displayRef.current
+      if (dc) {
+        dc.width = W; dc.height = H
+        composite(dc.getContext('2d'), img, pc, W, H)
       }
-      setImgLoaded(true)
+      setReady(true)
     }
-  }, [currentImage.src])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentImage.src, canvasKey])
+
+  const redraw = useCallback(() => {
+    const dc = displayRef.current
+    if (!dc || !baseImg.current) return
+    const { w, h } = canvasSize.current
+    composite(dc.getContext('2d'), baseImg.current, paintRef.current, w, h)
+  }, [])
 
   const goToImage = useCallback((idx) => {
     setImgIdx(idx)
     setCanvasKey(k => k + 1)
   }, [])
 
-  // Map screen coords → image pixel coords (paint canvas = same size as image)
+  // Coords: map CSS pixels on display canvas → image pixels
   const getPos = useCallback((e) => {
-    const pc = paintRef.current; if (!pc) return { x: 0, y: 0 }
-    const rect = pc.getBoundingClientRect()
-    const sx = pc.width  / rect.width
-    const sy = pc.height / rect.height
+    const dc = displayRef.current; if (!dc) return { x: 0, y: 0 }
+    const rect = dc.getBoundingClientRect()
+    const { w, h } = canvasSize.current
+    const sx = w / rect.width
+    const sy = h / rect.height
     const src = e.touches ? e.touches[0] : e
-    return { x: Math.round((src.clientX - rect.left) * sx), y: Math.round((src.clientY - rect.top) * sy) }
+    return {
+      x: Math.round((src.clientX - rect.left) * sx),
+      y: Math.round((src.clientY - rect.top)  * sy),
+    }
   }, [])
 
   const doPaint = useCallback((from, to) => {
-    const pc = paintRef.current; if (!pc) return
+    const pc = paintRef.current
     const ctx = pc.getContext('2d')
-    const W = pc.width, H = pc.height
 
     if (tool === 'eraser') {
       ctx.globalCompositeOperation = 'destination-out'
@@ -140,27 +175,27 @@ export default function ColoringGame({ onComplete }) {
       ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke()
       ctx.beginPath(); ctx.arc(to.x, to.y, brushR, 0, Math.PI*2); ctx.fill()
       ctx.globalCompositeOperation = 'source-over'
-      return
+    } else {
+      ctx.strokeStyle = color; ctx.fillStyle = color
+      ctx.lineWidth = brushR*2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+      ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke()
+      ctx.beginPath(); ctx.arc(to.x, to.y, brushR, 0, Math.PI*2); ctx.fill()
     }
+    redraw()
+  }, [tool, color, brushR, redraw])
 
-    // Brush: simple fast drawing
-    ctx.strokeStyle = color; ctx.fillStyle = color
-    ctx.lineWidth = brushR * 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
-    ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke()
-    ctx.beginPath(); ctx.arc(to.x, to.y, brushR, 0, Math.PI*2); ctx.fill()
-  }, [tool, color, brushR])
-
-  const handlePointerDown = useCallback((e) => {
+  const handleDown = useCallback((e) => {
     e.preventDefault()
     const pos = getPos(e)
 
     if (tool === 'fill') {
-      if (!basePixels.current || !paintRef.current) return
+      if (!basePixels.current) return
       setFilling(true)
       setTimeout(() => {
-        const pc = paintRef.current; if (!pc) return
+        const { w, h } = canvasSize.current
         const { r, g, b } = hexToRgb(color)
-        floodFill(pc.getContext('2d'), basePixels.current, pos.x, pos.y, r, g, b, pc.width, pc.height)
+        floodFill(paintRef.current.getContext('2d'), basePixels.current, pos.x, pos.y, r, g, b, w, h)
+        redraw()
         setFilling(false)
       }, 10)
       return
@@ -169,9 +204,9 @@ export default function ColoringGame({ onComplete }) {
     setDrawing(true)
     lastPos.current = pos
     doPaint(pos, pos)
-  }, [tool, color, getPos, doPaint])
+  }, [tool, color, getPos, doPaint, redraw])
 
-  const handlePointerMove = useCallback((e) => {
+  const handleMove = useCallback((e) => {
     e.preventDefault()
     if (!drawing || !lastPos.current || tool === 'fill') return
     const pos = getPos(e)
@@ -179,12 +214,13 @@ export default function ColoringGame({ onComplete }) {
     lastPos.current = pos
   }, [drawing, tool, getPos, doPaint])
 
-  const handlePointerUp = useCallback(() => { setDrawing(false); lastPos.current = null }, [])
+  const handleUp = useCallback(() => { setDrawing(false); lastPos.current = null }, [])
 
-  const clearCanvas = useCallback(() => {
-    const pc = paintRef.current; if (!pc) return
+  const clearPaint = useCallback(() => {
+    const pc = paintRef.current
     pc.getContext('2d').clearRect(0, 0, pc.width, pc.height)
-  }, [])
+    redraw()
+  }, [redraw])
 
   return (
     <div style={{ display:'flex', flexDirection:'column', flex:1, background:'#f0eeff', overflow:'hidden', userSelect:'none' }}>
@@ -204,57 +240,29 @@ export default function ColoringGame({ onComplete }) {
         ))}
       </div>
 
-      {/* Zeichenfläche */}
-      <div style={{ flex:1, minHeight:0, overflow:'hidden', background:'#e8e8e8', display:'flex', alignItems:'center', justifyContent:'center', padding:8, touchAction:'none' }}>
-        {/* Wrapper mit exaktem Seitenverhältnis des Bildes */}
-        <div style={{
-          position:'relative',
-          width: '100%',
-          maxWidth: '100%',
-          maxHeight: '100%',
-          aspectRatio: imgLoaded ? `${imgNatural.current.w} / ${imgNatural.current.h}` : '4/3',
-          overflow:'hidden',
-          boxShadow:'0 2px 16px rgba(0,0,0,0.15)',
-        }}>
-          {/* Layer 1: Originalbild (immer sichtbar) */}
-          <img
-            key={currentImage.id}
-            src={currentImage.src}
-            alt={currentImage.label}
-            onLoad={() => setImgLoaded(true)}
-                        style={{
-              position:'absolute', inset:0,
-              width:'100%', height:'100%',
-              pointerEvents:'none',
-              display: imgLoaded ? 'block' : 'none',
-            }}
-          />
-          {/* Layer 2: Paint canvas */}
-          {imgLoaded && (
-            <canvas
-              key={`paint-${canvasKey}`}
-              ref={paintRef}
-              width={imgNatural.current.w}
-              height={imgNatural.current.h}
-              style={{
-                position:'absolute', inset:0,
-                width:'100%', height:'100%',
-                mixBlendMode:'multiply',
-                cursor: tool==='fill' ? 'crosshair' : tool==='eraser' ? 'cell' : 'crosshair',
-                touchAction:'none',
-              }}
-              onMouseDown={handlePointerDown}
-              onMouseMove={handlePointerMove}
-              onMouseUp={handlePointerUp}
-              onMouseLeave={handlePointerUp}
-              onTouchStart={handlePointerDown}
-              onTouchMove={handlePointerMove}
-              onTouchEnd={handlePointerUp}
-            />
-          )}
-          {!imgLoaded && <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', fontSize:32 }}>⏳</div>}
-          {filling && <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', fontSize:40, pointerEvents:'none' }}>🎨</div>}
-        </div>
+      {/* Zeichenfläche — EIN Canvas, kein Mismatch möglich */}
+      <div style={{ flex:1, minHeight:0, overflow:'hidden', background:'#ccc', display:'flex', alignItems:'center', justifyContent:'center', padding:8, touchAction:'none', position:'relative' }}>
+        <canvas
+          ref={displayRef}
+          width={canvasSize.current.w}
+          height={canvasSize.current.h}
+          style={{
+            maxWidth:'100%', maxHeight:'100%',
+            boxShadow:'0 2px 16px rgba(0,0,0,0.2)',
+            cursor: tool==='eraser' ? 'cell' : 'crosshair',
+            touchAction:'none',
+            display: ready ? 'block' : 'none',
+          }}
+          onMouseDown={handleDown}
+          onMouseMove={handleMove}
+          onMouseUp={handleUp}
+          onMouseLeave={handleUp}
+          onTouchStart={handleDown}
+          onTouchMove={handleMove}
+          onTouchEnd={handleUp}
+        />
+        {!ready && <div style={{ fontSize:32 }}>⏳</div>}
+        {filling && <div style={{ position:'absolute', fontSize:40, pointerEvents:'none' }}>🎨</div>}
       </div>
 
       {/* Toolbar */}
@@ -293,7 +301,7 @@ export default function ColoringGame({ onComplete }) {
               ))}
             </div>
           )}
-          <button onClick={clearCanvas} style={{
+          <button onClick={clearPaint} style={{
             padding:'6px 14px', borderRadius:20, border:'none',
             background:'#FFE4E4', color:'#CC0000',
             fontFamily:'var(--font-body)', fontSize:14, cursor:'pointer', fontWeight:600,
