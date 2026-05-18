@@ -128,6 +128,7 @@ export default function NumbersGame({ level = 1, onComplete }) {
   const [score,      setScore]     = useState(0)
   const [sold,       setSold]       = useState([]) // receipt
   const [showWeiter, setShowWeiter] = useState(false)
+  const [wrongCount,  setWrongCount]  = useState(0)  // consecutive wrong attempts on current question
   const cartControls = useAnimation()
 
   useEffect(() => {
@@ -153,6 +154,7 @@ export default function NumbersGame({ level = 1, onComplete }) {
     setPhase('shopping')
     setBubble('')
     setShowWeiter(false)
+    setWrongCount(0)
     clearTimeout(timerRef.current)
     // TTS: read the customer request
     const q2 = questions[idx]
@@ -255,6 +257,7 @@ export default function NumbersGame({ level = 1, onComplete }) {
     } else {
       setBubble(WRONG[rnd(0, WRONG.length - 1)])
       setPhase('wrong')
+      setWrongCount(c => c + 1)
       timerRef.current = setTimeout(() => {
         setBagged({})
         setFlying([])
@@ -436,6 +439,27 @@ export default function NumbersGame({ level = 1, onComplete }) {
                   )
                 })}
               </div>
+              {/* Hint after 2 wrong attempts: show correct quantity visually */}
+              {wrongCount >= 2 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                  style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', marginTop: 4 }}
+                >
+                  {parts.map((p, i) => (
+                    <div key={i} style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      background: `${p.item.color}22`, border: `2px dashed ${p.item.color}`,
+                      borderRadius: 12, padding: '5px 12px',
+                      fontFamily: 'var(--font-heading)', fontSize: 'clamp(14px,2.8vw,18px)',
+                      color: p.item.color, fontWeight: 700,
+                    }}>
+                      <span>💡</span>
+                      <span>{Array.from({ length: p.n }, (_, k) => <span key={k}>{p.item.emoji}</span>)}</span>
+                      <span>= {p.n}</span>
+                    </div>
+                  ))}
+                </motion.div>
+              )}
             </div>
 
             {/* Arrow */}

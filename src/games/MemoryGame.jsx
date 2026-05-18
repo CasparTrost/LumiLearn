@@ -141,15 +141,24 @@ export default function MemoryGame({ level = 1, onComplete }) {
         if (newMatches >= pairCount) {
           sfx.complete()
           // Stars: 3 if moves <= pairCount+2, 2 if <=pairCount*1.7, else 1
-          const starCount = moves <= pairCount + 2 ? 3 : moves <= Math.round(pairCount * 1.7) ? 2 : 1
+          // Note: moves+1 because setMoves(m=>m+1) above hasn't flushed yet
+          const finalMoves = moves + 1
+          const starCount = finalMoves <= pairCount + 2 ? 3 : finalMoves <= Math.round(pairCount * 1.7) ? 2 : 1
           setEndStars(starCount)
-          setTimeout(() => onComplete({ score: pairCount, total: pairCount, bonus: moves, stars: starCount }), 400)
+          setTimeout(() => onComplete({ score: pairCount, total: pairCount, bonus: finalMoves, stars: starCount }), 400)
         } else {
           setTimeout(() => setMood('happy'), 800)
         }
       } else {
         sfx.mismatch()
-        setMismatchCount(c => c + 1)
+        setMismatchCount(c => {
+          const newCount = c + 1
+          if (newCount === 4) {
+            // Give child a helpful spoken hint after 4 mismatches
+            setTimeout(() => speakDE('Schau noch mal genau hin! Du schaffst das!'), 200)
+          }
+          return newCount
+        })
         setMood('encouraging')
         setCards(prev => prev.map(c => (c.id === a || c.id === b) ? { ...c, flipped: false } : c))
         setJustMismatched(new Set([a, b]))
