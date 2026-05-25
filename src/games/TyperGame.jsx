@@ -179,6 +179,14 @@ function FallingLettersGame({ level, onComplete }) {
       sfx.wrong()
       setMood('encouraging')
       setTimeout(() => setMood('happy'), 400)
+      setErrors(e => {
+        const ne = e + 1
+        if (ne === 3) {
+          setShowHint(true)
+          setTimeout(() => speak(`Der Buchstabe ist: ${targetChar}`, true), 200)
+        }
+        return ne
+      })
       return
     }
     sfx.correct()
@@ -200,6 +208,8 @@ function FallingLettersGame({ level, onComplete }) {
           } else {
             setWIdx(nextIdx)
             setTyped(0)
+            setErrors(0)
+            setShowHint(false)
             setLetterY(-10)
             setCompleting(false)
             completingRef.current = false
@@ -250,7 +260,7 @@ function FallingLettersGame({ level, onComplete }) {
       <div style={{ display:'flex', alignItems:'flex-end', gap:12, width:'100%', maxWidth:720 }}>
         <LumiCharacter mood={mood} size={72} />
         <div style={{ flex:1, background:'white', borderRadius:'24px 24px 24px 6px', padding:'12px 18px', boxShadow:'0 4px 20px rgba(108,99,255,0.12)', fontFamily:'var(--font-heading)', fontSize:'clamp(15px,3.2vw,22px)', color:'var(--text-primary)' }}>
-          {'Tippe den fallenden Buchstaben! ⌨️'}
+          {showHint ? `💡 Der Buchstabe ist: ${targetChar.toUpperCase()}` : 'Tippe den fallenden Buchstaben! ⌨️'}
         </div>
       </div>
 

@@ -69,6 +69,14 @@ const WORDS_L1 = [
   { word: 'SALZ',   syllables: ['SA','LZ'],      emoji: '🧂',  hint: 'Salz' },
   { word: 'TISCH',  syllables: ['TI','SCH'],     emoji: '🪑',  hint: 'Tisch' },
   { word: 'HERZ',   syllables: ['HER','Z'],      emoji: '❤️',  hint: 'Herz' },
+  { word: 'APFEL',  syllables: ['AP','FEL'],     emoji: '🍎',  hint: 'Apfel' },
+  { word: 'TAUBE',  syllables: ['TAU','BE'],     emoji: '🕊️', hint: 'Taube' },
+  { word: 'BLUME',  syllables: ['BLU','ME'],     emoji: '🌸',  hint: 'Blume' },
+  { word: 'GABEL',  syllables: ['GA','BEL'],     emoji: '🍴',  hint: 'Gabel' },
+  { word: 'STUHL',  syllables: ['STUH','L'],     emoji: '🪑',  hint: 'Stuhl' },
+  { word: 'FROSCH', syllables: ['FRO','SCH'],    emoji: '🐸',  hint: 'Frosch' },
+  { word: 'NEBEL',  syllables: ['NE','BEL'],     emoji: '🌫️', hint: 'Nebel' },
+  { word: 'TRAUM',  syllables: ['TRA','UM'],     emoji: '💤',  hint: 'Traum' },
 ]
 
 const WORDS_L2 = [
@@ -113,6 +121,13 @@ const WORDS_L2 = [
   { word: 'KISSEN',   syllables: ['KIS','SEN'],         emoji: '🛏️',hint: 'Kissen' },
   { word: 'GARTEN',   syllables: ['GAR','TEN'],         emoji: '🌻', hint: 'Garten' },
   { word: 'KUCHEN',   syllables: ['KU','CHEN'],         emoji: '🎂', hint: 'Kuchen' },
+  { word: 'RAKETE',   syllables: ['RA','KE','TE'],       emoji: '🚀', hint: 'Rakete' },
+  { word: 'PINGUIN',  syllables: ['PIN','GUIN'],         emoji: '🐧', hint: 'Pinguin' },
+  { word: 'KAMERA',   syllables: ['KA','ME','RA'],       emoji: '📷', hint: 'Kamera' },
+  { word: 'ZITRONE',  syllables: ['ZI','TRO','NE'],      emoji: '🍋', hint: 'Zitrone' },
+  { word: 'KAROTTE',  syllables: ['KA','ROT','TE'],      emoji: '🥕', hint: 'Karotte' },
+  { word: 'SPIEGEL',  syllables: ['SPIE','GEL'],         emoji: '🧑‍🔬', hint: 'Spiegel' },
+  { word: 'TURM',     syllables: ['TUR','M'],            emoji: '🗼', hint: 'Turm' },
 ]
 
 const WORDS_L3 = [
