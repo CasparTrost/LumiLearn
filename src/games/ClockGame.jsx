@@ -327,6 +327,8 @@ export default function ClockGame({ level = 1, onComplete }) {
   const [flashKey,  setFlashKey]  = useState(0)
   const [streak,    setStreak]    = useState(0)
   const [showWeiter, setShowWeiter] = useState(false)
+  const [wrongStreak, setWrongStreak] = useState(0)  // consecutive wrong answers on same question
+  const [showClockHint, setShowClockHint] = useState(false)
 
   const t = times[idx]
 
@@ -375,7 +377,14 @@ export default function ClockGame({ level = 1, onComplete }) {
     setFeedback(ok ? 'ok' : 'wrong')
     setMood(ok ? 'excited' : 'encouraging')
     setFlashKey(k => k + 1)
-    if (ok) { sfx.correct(); setShowWeiter(true); setStreak(s => s + 1) } else { sfx.wrong(); setStreak(0) }
+    if (ok) { sfx.correct(); setShowWeiter(true); setStreak(s => s + 1); setWrongStreak(0); setShowClockHint(false) } else {
+      sfx.wrong(); setStreak(0)
+      setWrongStreak(w => {
+        const nw = w + 1
+        if (nw >= 2) setShowClockHint(true)
+        return nw
+      })
+    }
     if (!ok) setTimeout(() => {
       setFeedback(null)
       setMood('happy')
@@ -405,6 +414,8 @@ export default function ClockGame({ level = 1, onComplete }) {
     setShowWeiter(false)
     setFeedback(null)
     setMood('happy')
+    setWrongStreak(0)
+    setShowClockHint(false)
     if (idx + 1 >= times.length) {
       sfx.complete()
       setTimeout(() => onComplete({ score, total: times.length }), 500)
@@ -493,9 +504,11 @@ export default function ClockGame({ level = 1, onComplete }) {
         >
           {feedback === 'ok'
             ? (<>⭐ Richtig! Es war <strong style={{ color:'#4A00E0' }}>{toGermanTime(t.h, t.m)}</strong>!</>)
-            : mode === 'read'
-              ? (<>Welche Uhrzeit zeigt die Uhr? 🕐</>)
-              : (<>Stelle die Uhr auf <strong style={{ color: '#4A00E0' }}>{fmt(t.h, t.m)}</strong>! Ziehe die Zeiger! 🖐️</>)
+            : showClockHint
+              ? (<>💡 Tipp: Der kurze Zeiger = Stunden, der lange = Minuten. Es ist <strong style={{ color:'#4A00E0' }}>{toGermanTime(t.h, t.m)}</strong>!</>)
+              : mode === 'read'
+                ? (<>Welche Uhrzeit zeigt die Uhr? 🕐</>)
+                : (<>Stelle die Uhr auf <strong style={{ color: '#4A00E0' }}>{fmt(t.h, t.m)}</strong>! Ziehe die Zeiger! 🖐️</>)
           }
         </motion.div>
       </div>
