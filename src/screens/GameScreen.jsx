@@ -121,6 +121,7 @@ export default function GameScreen() {
         flexShrink: 0,
       }}>
         <motion.button whileHover={{scale:1.1}} whileTap={{scale:0.92}} onClick={quit}
+          aria-label="Spiel verlassen"
           style={{
             width: 44, height: 44, borderRadius:'50%',
             background:'rgba(255,255,255,0.22)',

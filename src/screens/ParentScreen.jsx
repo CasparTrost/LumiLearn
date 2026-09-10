@@ -166,6 +166,7 @@ export default function ParentScreen({ onClose }) {
           </div>
           <motion.button whileHover={{scale:1.1}} whileTap={{scale:0.9}}
             onClick={onClose}
+            aria-label="Elternbereich schließen"
             style={{ background:'#ECE8FF', border:'none', borderRadius:12, width:40, height:40,
               fontSize:18, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
             ✕

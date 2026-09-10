@@ -127,6 +127,7 @@ export default function MusicControls() {
           }
         }}
         title={enabled ? 'Musik an – Klick zum Ausschalten' : 'Musik einschalten'}
+        aria-label={enabled ? 'Musik ausschalten' : 'Musik einschalten'}
         whileHover={{ scale: 1.12 }}
         whileTap={{ scale: 0.93 }}
         style={{

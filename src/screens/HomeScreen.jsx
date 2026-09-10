@@ -213,6 +213,7 @@ export default function HomeScreen() {
           onClick={() => setShowSwitcher(true)}
           style={{ fontSize:'clamp(36px,7vw,52px)', lineHeight:1, background:'none', border:'none', cursor:'pointer', padding:0, borderRadius:'50%' }}
           title="Profil wechseln"
+          aria-label="Profil wechseln"
         >{profile.avatar}</motion.button>
         <div style={{ flex:1 }}>
           <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(14px,2.8vw,20px)', color:'rgba(255,255,255,0.75)' }}>
@@ -227,6 +228,7 @@ export default function HomeScreen() {
           style={{ width:48,height:48,borderRadius:'50%',background:'rgba(255,255,255,0.18)',display:'flex',alignItems:'center',justifyContent:'center' }}
           onClick={() => setShowParent(true)}
           title="Einstellungen"
+          aria-label="Einstellungen (Elternbereich)"
         >
           <Settings size={20} color="white" />
         </motion.button>
