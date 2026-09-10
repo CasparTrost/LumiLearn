@@ -24,6 +24,7 @@ const NumberIntroGame   = lazy(() => import('../games/NumberIntroGame.jsx'))
 const LetterIntroGame   = lazy(() => import('../games/LetterIntroGame.jsx'))
 const NumbersGame       = lazy(() => import('../games/NumbersGame.jsx'))
 const ColoringGame      = lazy(() => import('../games/ColoringGame.jsx'))
+const ShapeLandGame = lazy(() => import('../games/ShapeLandGame.jsx'))
 const RocketMathGame = lazy(() => import('../games/RocketMathGame.jsx'))
 
 function GameLoadingFallback({ gradient }) {
@@ -66,6 +67,7 @@ const MODULE_META = {
   'number-intro': { label: 'Zahlen entdecken 🧮',    gradient: 'linear-gradient(135deg, #FFD93D, #FF9F43)' },
   'letter-intro': { label: 'ABC-Abenteuer 🔡',       gradient: 'linear-gradient(135deg, #74B9FF, #6C63FF)' },
   coloring:       { label: 'Mal-Atelier 🖍️',           gradient: 'linear-gradient(135deg, #FD79A8, #E84393)' },
+  'shapes-land': { label: 'Formen-Land 🔷', gradient: 'linear-gradient(135deg,#00B894,#74B9FF)' },
   'rocket-math': { label: 'Rechen-Rakete 🚀', gradient: 'linear-gradient(135deg,#6C63FF,#00B894)' },
 }
 
@@ -88,6 +90,7 @@ const GAME_MAP = {
   'number-intro': NumberIntroGame,
   'letter-intro': LetterIntroGame,
   coloring:       ColoringGame,
+  'shapes-land': ShapeLandGame,
   'rocket-math': RocketMathGame,
 }
 

@@ -23,6 +23,7 @@ const MODULE_NAMES = {
   words2:         'Silben-Spaß',
   weight:         'Waage-Welt',
   coloring:        'Mal-Atelier',
+  'shapes-land': 'Formen-Land',
   'rocket-math': 'Rechen-Rakete',
 }
 

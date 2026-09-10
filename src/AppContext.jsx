@@ -22,6 +22,7 @@ export const MAX_LEVELS = {
   weight:         10,
   coloring:        10,
   'rocket-math': 10,
+  'shapes-land': 10,
 }
 
 function freshProgress() {
