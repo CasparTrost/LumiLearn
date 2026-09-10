@@ -284,7 +284,7 @@ const LEVEL_SETS = [
         { id:5, emoji:'🌊', cat:'A' }, { id:6, emoji:'🚗', cat:'B' },
         { id:7, emoji:'🌱', cat:'A' }, { id:8, emoji:'🔋', cat:'B' },
         { id:9, emoji:'♻️', cat:'A' }, { id:10, emoji:'🗑️', cat:'B' },
-        { id:11, emoji:'🍃', cat:'A' }, { id:12, emoji:'💨', cat:'B' },
+        { id:11, emoji:'🍃', cat:'A' }, { id:12, emoji:'🛢️', cat:'B' },
       ],
     },
     {
@@ -453,8 +453,8 @@ export default function SortGame({ level = 1, onComplete }) {
                 key={current.id}
                 initial={{ scale:0, opacity:0, x:0, y:0 }}
                 animate={
-                  flyDir === 'A' && feedback === 'ok'    ? { x:-260, y:-40, scale:0.5, opacity:0 } :
-                  flyDir === 'B' && feedback === 'ok'    ? { x: 260, y:-40, scale:0.5, opacity:0 } :
+                  flyDir === 'A' && feedback === 'ok'    ? { x:'-45vw', y:'-8vh', scale:0.5, opacity:0 } :
+                  flyDir === 'B' && feedback === 'ok'    ? { x: '45vw', y:'-8vh', scale:0.5, opacity:0 } :
                   feedback === 'wrong' ? { x:[0,-20,20,-16,16,-10,10,-5,5,0], y:0, scale:1, opacity:1 } :
                   { scale:1, opacity:1, x:0, y:0 }
                 }

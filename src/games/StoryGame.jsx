@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 
@@ -530,10 +530,10 @@ export default function StoryGame({ level = 1, onComplete }) {
   }, [story])
 
   const nextStory = useCallback(() => {
-    const finalStars = totalStars + (chosen ? story.outcomes[chosen]?.stars ?? 2 : 0)
+    // Stars are already tallied by makeChoice; use totalStars directly
     if (storyIdx + 1 >= stories.length) {
       // Pass stars as score out of max (3 stars * number of stories)
-      onComplete({ score: finalStars, total: stories.length * 3 })
+      onComplete({ score: totalStars, total: stories.length * 3 })
     } else {
       setStoryIdx(i => i + 1)
       setPanelIdx(0)
@@ -541,11 +541,19 @@ export default function StoryGame({ level = 1, onComplete }) {
       setOutPanel(0)
       setPhase('intro')
     }
-  }, [storyIdx, stories, totalStars, chosen, story, onComplete])
+  }, [storyIdx, stories, totalStars, onComplete])
 
   const currentPanel = phase === 'intro' ? story.panels[panelIdx]
                      : phase === 'outcome' ? outcome?.panels[outPanel]
                      : null
+
+  // Auto-speak lesson text when the lesson panel is reached
+  useEffect(() => {
+    if (phase === 'lesson') {
+      const txt = story?.lesson || outcome?.lesson
+      if (txt) setTimeout(() => speakDE(txt.replace(/💡/g, '')), 300)
+    }
+  }, [phase]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div style={{
@@ -622,8 +630,6 @@ export default function StoryGame({ level = 1, onComplete }) {
                 color:'var(--violet-deep)', textAlign:'center',
               }}>
                 {story?.lesson || outcome?.lesson || '💡 Gut gemacht!'}
-                {/* Auto-speak lesson */}
-                {phase === 'lesson' && (() => { const txt = story?.lesson || outcome?.lesson; if(txt) setTimeout(()=>speakDE(txt.replace(/💡/g,'')),300); return null })()}
               </div>
               <div style={{ display:'flex', gap:4 }}>
                 {Array.from({length:3}).map((_,i) => (
@@ -668,11 +674,11 @@ export default function StoryGame({ level = 1, onComplete }) {
               whileHover={{scale:1.03, x:4}} whileTap={{scale:0.97}}
               onClick={() => makeChoice(opt.value)}
               style={{
-                background: opt.good ? 'linear-gradient(135deg,#6BCB77,#44D498)' : 'linear-gradient(135deg,#FFD93D,#FFA500)',
+                background: 'linear-gradient(135deg,#6C63FF,#4A00E0)',
                 color:'white', borderRadius:22,
                 padding:'clamp(14px,3vw,22px) clamp(16px,4vw,28px)',
                 fontFamily:'var(--font-heading)', fontSize:'clamp(16px,3.5vw,22px)', fontWeight:600,
-                boxShadow: opt.good ? '0 6px 22px rgba(107,203,119,0.4)' : '0 6px 22px rgba(255,165,0,0.35)',
+                boxShadow: '0 6px 22px rgba(108,99,255,0.35)',
                 cursor:'pointer', textAlign:'left',
               }}
             >

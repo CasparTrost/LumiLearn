@@ -41,9 +41,8 @@ function StarBurst({ x, y, onDone }) {
 }
 
 const OBSTACLES = ['🌵','🪨','🌵','🪨','🦴']
-let obstIdx = 0
 
-function DinoScene({ chomping, shaking, dinoScale, streak, eaten, total, projectiles, puffIds, bursts, obstacles, jumpTrigger, onProjDone, onPuffDone, onBurstDone, onObstacleDone }) {
+function DinoScene({ chomping, shaking, dinoScale, streak, eaten, total, projectiles, puffIds, bursts, obstacles, obstOffset, jumpTrigger, onProjDone, onPuffDone, onBurstDone, onObstacleDone }) {
   const [jumping, setJumping] = useState(false)
   const jumpingRef = useRef(false)
   const [showJumpHint, setShowJumpHint] = useState(false)
@@ -193,7 +192,7 @@ function DinoScene({ chomping, shaking, dinoScale, streak, eaten, total, project
               pointerEvents: 'none', zIndex: 8,
               filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.3))',
             }}
-          >{OBSTACLES[(obstIdx + i) % OBSTACLES.length]}</motion.div>
+          >{OBSTACLES[(obstOffset + i) % OBSTACLES.length]}</motion.div>
         ))}
       </AnimatePresence>
 
@@ -329,6 +328,7 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
   const [obstacles,   setObstacles]   = useState([])
   const [jumpTrigger, setJumpTrigger] = useState(0)
   const effectIdRef = useRef(0)
+  const obstIdxRef  = useRef(0)
 
   // dino grows by 3% per correct answer, max 1.6×
   const dinoScale = Math.min(1 + correct * 0.03, 1.6)
@@ -367,7 +367,7 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
       setPuffIds(prev => [...prev, pid])
       const oid = ++effectIdRef.current
       setObstacles(prev => [...prev, { id: oid }])
-      obstIdx++
+      obstIdxRef.current++
       setTimeout(() => setShaking(false), 700)
       setTimeout(() => setFlashType(null), 400)
     }
@@ -468,6 +468,7 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
         chomping={chomping} shaking={shaking} dinoScale={dinoScale} streak={streak}
         eaten={correct} total={questions.length}
         projectiles={projectiles} puffIds={puffIds} bursts={bursts} obstacles={obstacles}
+        obstOffset={obstIdxRef.current}
         jumpTrigger={jumpTrigger}
         onProjDone={id => setProjectiles(prev => prev.filter(p => p.id !== id))}
         onPuffDone={id => setPuffIds(prev => prev.filter(x => x !== id))}
@@ -560,7 +561,7 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
                   {q.options.indexOf(opt) + 1}
                 </span>
               )}
-              {done && isChosen && !isCorrect ? 'X ' : ''}
+              {done && isChosen && !isCorrect ? '❌' : ''}
               {String(opt)}
             </motion.button>
           )

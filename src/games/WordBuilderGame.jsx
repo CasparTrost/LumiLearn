@@ -200,11 +200,9 @@ const WORDS_L5 = [
   { word: 'GEBURTSTAGSPARTY',   syllables: ['GE','BURTS','TAGS','PAR','TY'],    emoji: '🎉', hint: 'Geburtstagsparty' },
   { word: 'SEEPFERDCHEN',       syllables: ['SEE','PFERD','CHEN'],              emoji: '🦄', hint: 'Seepferdchen' },
   { word: 'NIKOLAUSSTIEFEL',    syllables: ['NI','KO','LAUS','STIE','FEL'],     emoji: '🎁', hint: 'Nikolausstiefel' },
-  { word: 'FUSSBALLSPIELER',     syllables: ['FUß','BALL','SPIE','LER'],         emoji: '⚽', hint: 'Fußballspieler' },
   { word: 'MEERESSCHILDKRÖTE',  syllables: ['MEE','RES','SCHILD','KRÖ','TE'],   emoji: '🐢', hint: 'Meeresschildkröte' },
   { word: 'RAUMSCHIFF',         syllables: ['RAUM','SCHIFF'],                  emoji: '🛸', hint: 'Raumschiff' },
   { word: 'UNTERWASSERWELT',    syllables: ['UN','TER','WAS','SER','WELT'],     emoji: '🌊', hint: 'Unterwasserwelt' },
-  { word: 'STRASSENLATERNE',     syllables: ['STRA','ßEN','LA','TER','NE'],      emoji: '🌃', hint: 'Straßenlaterne' },
   { word: 'BLUMENWIESE',        syllables: ['BLU','MEN','WIE','SE'],            emoji: '🌷', hint: 'Blumenwiese' },
   { word: 'SCHAUKELPFERD',      syllables: ['SCHAU','KEL','PFERD'],             emoji: '🎠', hint: 'Schaukelpferd' },
   { word: 'FAHRRADHELM',        syllables: ['FAHR','RAD','HELM'],               emoji: '🚲', hint: 'Fahrradhelm' },
@@ -346,7 +344,7 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
         setMood('excited')
         setPlaced(newPlaced)
         sfx.correct()
-        setTimeout(() => speakDE(current.word.toLowerCase()), 300)
+        setTimeout(() => speakDE(round.word.toLowerCase()), 300)
         feedbackTimeout.current = setTimeout(() => setShowWeiter(true), 800)
       } else {
         setFeedback('wrong')

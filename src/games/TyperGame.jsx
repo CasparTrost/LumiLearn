@@ -384,7 +384,7 @@ function StaticTyperGame({ level, onComplete }) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }) // intentional — handleKey recreated each render is fine for this
+  }, [handleKey])
 
   // Speak word on new question
   useEffect(() => {

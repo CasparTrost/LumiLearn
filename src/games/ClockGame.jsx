@@ -79,9 +79,9 @@ function timeDiffMin(h1, m1, h2, m2) {
 const CX = 120, CY = 120, R = 108
 
 function ClockFace({ targetH, targetM, interactive, onAnswer, level = 1 }) {
-  // Current hand positions (for interactive mode)
-  const [hours,   setHours]   = useState(12)
-  const [minutes, setMinutes] = useState(0)
+  // Current hand positions (for interactive mode) — start at a random position
+  const [hours,   setHours]   = useState(() => Math.floor(Math.random() * 12) + 1)
+  const [minutes, setMinutes] = useState(() => Math.floor(Math.random() * 12) * 5)
   const [dragging, setDragging] = useState(null) // 'hour' | 'minute' | null
   const svgRef = useRef(null)
 
@@ -322,6 +322,7 @@ export default function ClockGame({ level = 1, onComplete }) {
   const [idx,       setIdx]       = useState(0)
   const [mode,      setMode]      = useState('read')   // 'read' (pick digital) | 'set' (drag hands)
   const [feedback,  setFeedback]  = useState(null)     // 'ok' | 'wrong'
+  const [picked,    setPicked]    = useState(null)     // the option the user actually selected
   const [score,     setScore]     = useState(0)
   const [mood,      setMood]      = useState('happy')
   const [flashKey,  setFlashKey]  = useState(0)
@@ -400,6 +401,7 @@ export default function ClockGame({ level = 1, onComplete }) {
   const pickDigital = useCallback((opt) => {
     if (feedback) return
     const correct = fmt(t.h, t.m)
+    setPicked(opt)
     advance(opt === correct)
   }, [feedback, t, advance])
 
@@ -413,6 +415,7 @@ export default function ClockGame({ level = 1, onComplete }) {
   const weiterClick = () => {
     setShowWeiter(false)
     setFeedback(null)
+    setPicked(null)
     setMood('happy')
     setWrongStreak(0)
     setShowClockHint(false)
@@ -563,8 +566,8 @@ export default function ClockGame({ level = 1, onComplete }) {
                     borderRadius: 20,
                     fontFamily: 'var(--font-heading)', fontSize: 'clamp(17px,3.5vw,22px)',
                     fontWeight: 700,
-                    background: done && correct ? '#E8F8EE' : done && opt === options.find(o => o !== fmt(t.h, t.m)) ? '#FFE8E8' : 'white',
-                    border: `3px solid ${done && correct ? '#6BCB77' : done && !correct ? '#FF6B6B' : '#ECE8FF'}`,
+                    background: done && correct ? '#E8F8EE' : done && opt === picked && !correct ? '#FFE8E8' : 'white',
+                    border: `3px solid ${done && correct ? '#6BCB77' : done && opt === picked && !correct ? '#FF6B6B' : '#ECE8FF'}`,
                     boxShadow: done && correct ? '0 6px 22px rgba(107,203,119,0.4)' : '0 4px 14px rgba(0,0,0,0.07)',
                     color: 'var(--text-primary)',
                     cursor: done ? 'default' : 'pointer',

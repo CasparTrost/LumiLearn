@@ -219,7 +219,7 @@ export default function EmotionGame({ level = 1, onComplete }) {
     const selected = shuffleNoRepeat(shuffle(picked)).slice(0, qCount)
     return selected.map(s => {
       const ai = SCENARIOS.indexOf(s)
-      const [sa, ea] = ai >= 0 ? SCENARIO_AUDIO[ai] : [null, null]
+      const [sa, ea] = SCENARIO_AUDIO?.[ai] ?? [null, null]
       return { ...s, sa, ea }
     })
   })
