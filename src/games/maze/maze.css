@@ -1,0 +1,37 @@
+/* Maze animations */
+
+@keyframes mz-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.25; }
+}
+
+@keyframes mz-bob {
+  0%, 100% { transform: translateY(0)   translateX(-50%); }
+  50%       { transform: translateY(-3px) translateX(-50%); }
+}
+
+@keyframes mz-danger-pulse {
+  0%, 100% { opacity: 0; }
+  50%       { opacity: 1; }
+}
+
+@keyframes mz-portal-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes mz-coin-bob {
+  0%, 100% { transform: translateY(0)   scaleY(1); }
+  50%       { transform: translateY(-4px) scaleY(0.9); }
+}
+
+@keyframes mz-dragon-hover {
+  0%, 100% { transform: translateY(0)   scaleX(var(--dragon-dir, -1)); }
+  50%       { transform: translateY(-4px) scaleX(var(--dragon-dir, -1)); }
+}
+
+.mz-blink  { animation: mz-blink  0.18s steps(2) infinite; }
+.mz-bob    { animation: mz-bob    1.6s  ease-in-out infinite; }
+.mz-portal { animation: mz-portal-spin 3s linear infinite; display: inline-block; }
+.mz-coin   { animation: mz-coin-bob 1.2s ease-in-out infinite; display: inline-block; }
+.mz-dragon { animation: mz-dragon-hover 1.4s ease-in-out infinite; }
