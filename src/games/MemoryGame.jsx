@@ -65,21 +65,53 @@ const EMOJI_PAIRS = [
   '🎁','🎈','🎊','🎠','🏰','🗼','⛺','🏄','🤿','🎡',
 ]
 
+// Pairs that belong together without looking alike. From the middle levels
+// on these replace the identical pairs, which turns the task from pure
+// visual recall into recall plus "what goes with what" — the same concept
+// forming that Sortier-Spaß trains, but held in memory.
+const ASSOCIATION_PAIRS = [
+  ['🐄','🥛'], ['🐝','🍯'], ['🌧️','☂️'], ['🐔','🥚'], ['🌰','🐿️'],
+  ['🖌️','🎨'], ['🔑','🔒'], ['🧦','👟'], ['📚','🤓'], ['🌱','🌻'],
+  ['🪥','🦷'], ['✏️','📓'], ['🍞','🧈'], ['🐟','🎣'], ['⚽','🥅'],
+  ['🕯️','🔥'], ['❄️','⛄'], ['🎻','🎵'], ['🌙','🛏️'], ['☀️','🕶️'],
+]
+
 function buildCards(count, pool) {
   const pairs   = [...pool].sort(() => Math.random() - 0.5).slice(0, count)
   const doubled = [...pairs, ...pairs].sort(() => Math.random() - 0.5)
-  return doubled.map((emoji, id) => ({ id, emoji, flipped: false, matched: false }))
+  // pairKey instead of comparing the emoji itself, so a pair can be two
+  // different pictures that belong together.
+  return doubled.map((emoji, id) => ({ id, emoji, pairKey: emoji, flipped: false, matched: false }))
+}
+
+function buildAssociationCards(count) {
+  const chosen = [...ASSOCIATION_PAIRS].sort(() => Math.random() - 0.5).slice(0, count)
+  const flat = chosen.flatMap(([a, b], i) => [
+    { emoji: a, pairKey: `p${i}` },
+    { emoji: b, pairKey: `p${i}` },
+  ]).sort(() => Math.random() - 0.5)
+  return flat.map((c, id) => ({ id, ...c, flipped: false, matched: false }))
 }
 
 export default function MemoryGame({ level = 1, onComplete }) {
   // Scale difficulty across 10 levels
   const pairCount   = level <= 2 ? 4 : level <= 4 ? 6 : level <= 6 ? 8 : level <= 8 ? 10 : 12
   const gridCols    = pairCount <= 4 ? 4 : pairCount <= 6 ? 4 : pairCount <= 8 ? 4 : pairCount <= 10 ? 5 : 6
-  const previewSecs = level <= 2 ? 6 : level <= 4 ? 5 : level <= 6 ? 3 : level <= 8 ? 2 : 1
+  // The preview used to shrink with the level while the board grew: one
+  // single second for twelve pairs, i.e. twenty-four cards. Nobody can encode
+  // that, so the phase became decorative and the game turned into pure trial
+  // and error at exactly the levels meant to train memory. It now scales with
+  // the number of cards (a constant glance per card), which keeps higher
+  // levels harder — there is simply more to hold — without being impossible.
+  const previewSecs = Math.round(Math.min(8, Math.max(3, pairCount * 2 * 0.3)))
+  // Association pairs (cow/milk) instead of identical ones from the middle
+  // levels on.
+  const useAssociations = level >= 5
   // Use deeper emoji tiers at higher levels
   const emojiPool   = EMOJI_PAIRS.slice(0, Math.min(8 + (level - 1) * 6, EMOJI_PAIRS.length))
 
-  const [cards,    setCards]    = useState(() => buildCards(pairCount, emojiPool))
+  const [cards,    setCards]    = useState(() =>
+    useAssociations ? buildAssociationCards(pairCount) : buildCards(pairCount, emojiPool))
   const [flipped,  setFlipped]  = useState([])
   const [locked,   setLocked]   = useState(false)
   const [moves,    setMoves]    = useState(0)
@@ -115,7 +147,7 @@ export default function MemoryGame({ level = 1, onComplete }) {
     setMoves(m => m + 1)
 
     const [a, b] = newFlipped
-    const match  = next[a].emoji === next[b].emoji
+    const match  = next[a].pairKey === next[b].pairKey
 
     const delay = match ? 520 : 940
     setTimeout(() => {
@@ -137,10 +169,14 @@ export default function MemoryGame({ level = 1, onComplete }) {
 
         if (newMatches >= pairCount) {
           sfx.complete()
-          // Stars: 3 if moves <= pairCount+2, 2 if <=pairCount*1.7, else 1
+          // Perfect play is exactly pairCount moves, so the slack has to grow
+          // with the board. The old fixed "+2" meant three stars at twelve
+          // pairs required fourteen moves for twenty-four cards — flawless
+          // recall — which made the rating unreachable rather than motivating.
           // Note: moves+1 because setMoves(m=>m+1) above hasn't flushed yet
           const finalMoves = moves + 1
-          const starCount = finalMoves <= pairCount + 2 ? 3 : finalMoves <= Math.round(pairCount * 1.7) ? 2 : 1
+          const starCount = finalMoves <= Math.round(pairCount * 1.5) ? 3
+                          : finalMoves <= Math.round(pairCount * 2.5) ? 2 : 1
           setEndStars(starCount)
           setTimeout(() => onComplete({ score: pairCount, total: pairCount, bonus: finalMoves, stars: starCount }), 400)
         } else {
