@@ -75,6 +75,7 @@ const initialState = {
   farmLevel:   1,
   streak:      { count: 0, lastDate: null },
   dailyMission: { date: null, missions: [], completedIds: [] },
+  settings:    { parentPin: '1234', pinIsDefault: true },
   // Session tracking (not persisted to localStorage)
   _sessionPlays:  0,
   _sessionLevels: 0,
@@ -257,6 +258,9 @@ function reducer(state, action) {
       }
     }
 
+    case 'SET_PARENT_PIN':
+      return { ...state, settings: { ...state.settings, parentPin: action.payload, pinIsDefault: false } }
+
     case 'LOAD_SAVE':
       return { ...state, ...action.payload }
 
@@ -272,7 +276,10 @@ function migrate(saved) {
     streak:      { count: 0, lastDate: null },
     dailyMission: { date: null, missions: [], completedIds: [] },
     streakLastBonus: null,
+    settings:    { parentPin: '1234', pinIsDefault: true },
     ...saved,
+    // Ensure settings is always an object with required keys
+    settings: { parentPin: '1234', pinIsDefault: true, ...(saved.settings || {}) },
   }
   // Ensure dailyMission has no check functions (safe strip)
   if (withDefaults.dailyMission?.missions) {
@@ -347,6 +354,7 @@ export function AppProvider({ children }) {
       farmLevel:      state.farmLevel,
       streak:         state.streak,
       streakLastBonus: state.streakLastBonus,
+      settings:       state.settings,
       dailyMission:   {
         date:         state.dailyMission?.date,
         missions:     (state.dailyMission?.missions ?? []).map(m => ({ id: m.id, icon: m.icon })),
@@ -360,7 +368,7 @@ export function AppProvider({ children }) {
       },
     }
     localStorage.setItem('lumilearn_save', JSON.stringify(toSave))
-  }, [state.language, state.profile, state.profiles, state.progress, state.coins, state.farmLevel, state.streak, state.dailyMission, state.streakLastBonus, state._sessionPlays, state._sessionLevels, state._got3Stars, state._played, state._sessionCoins])
+  }, [state.language, state.profile, state.profiles, state.progress, state.coins, state.farmLevel, state.streak, state.dailyMission, state.streakLastBonus, state.settings, state._sessionPlays, state._sessionLevels, state._got3Stars, state._played, state._sessionCoins])
 
   return (
     <AppContext.Provider value={{ state, dispatch }}>
