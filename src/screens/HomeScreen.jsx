@@ -40,6 +40,7 @@ const MODULES = [
   { id:'rhyme', title:'Reim-Rallye', sub:'Was reimt sich?', emoji:'🎵', sciTag:'🎶 Reimbewusstsein', gradient:'linear-gradient(135deg,#FD79A8,#FF9F43)', shadow:'rgba(253,121,168,0.45)' },
   { id:'initial-sound', title:'Anlaut-Detektiv', sub:'Welcher Buchstabe klingt so?', emoji:'🕵️', sciTag:'🔤 Laut-Buchstaben-Zuordnung', gradient:'linear-gradient(135deg,#74B9FF,#44D498)', shadow:'rgba(116,185,255,0.45)' },
   { id:'empathy', title:'Gefühlsdetektiv', sub:'Gefühle sehen & helfen', emoji:'🕵️‍♀️', sciTag:'💛 Perspektivübernahme & Empathie', gradient:'linear-gradient(135deg,#E84393,#A29BFE)', shadow:'rgba(232,67,147,0.45)' },
+  { id:'board', title:'Lumis Spielbrett', sub:'Würfeln & zählen', emoji:'🎲', sciTag:'🎲 Eins-zu-eins-Zuordnung', gradient:'linear-gradient(135deg,#FFD93D,#6BCB77)', shadow:'rgba(255,217,61,0.45)' },
   { id:'coloring',     title:'Mal-Atelier',       sub:'Ausmalen & Kreativ',   emoji:'🖍️', sciTag:'🎨 Kreativität & Feinmotorik',   gradient:'linear-gradient(135deg,#FD79A8,#E84393)', shadow:'rgba(253,121,168,0.45)' },
 ]
 
@@ -53,7 +54,7 @@ const CATEGORIES = [
 ]
 
 const CATEGORY_MAP = {
-  math:     ['shapes-land', 'rocket-math', 'numbers', 'number-intro', 'bubbles', 'weight', 'clock'],
+  math:     ['board', 'shapes-land', 'rocket-math', 'numbers', 'number-intro', 'bubbles', 'weight', 'clock'],
   language: ['initial-sound', 'rhyme', 'letters', 'letter-intro', 'words', 'words2', 'listen', 'shadows'],
   creative: ['shapes', 'coloring'],
   think:    ['patterns', 'sort', 'maze'],
