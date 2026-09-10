@@ -17,7 +17,7 @@
 //      player is forced to enter the danger zone to reach it, no matter
 //      how many alternate routes exist elsewhere.
 
-export function genMaze(cols, rows, seed = Date.now()) {
+export function genMaze(cols, rows, seed = Date.now(), patrolLen = 5) {
   // Simple seeded LCG random
   let s = seed >>> 0
   const rand = () => {
@@ -70,12 +70,20 @@ export function genMaze(cols, rows, seed = Date.now()) {
 
   const mainPath = bfs(start, exit)
 
-  // Dragon patrol: a SHORT stretch (5 cells) centred around 45% of the
+  // Dragon patrol: a SHORT stretch centred somewhere in the middle of the
   // main path. Computed BEFORE potion placement so potions can steer
   // clear of it entirely (see pickPotionCell below).
-  const mid     = Math.floor(mainPath.length * 0.45)
-  const wpStart = Math.max(Math.floor(mainPath.length * 0.20), mid - 2)
-  const wpEnd   = Math.min(Math.floor(mainPath.length * 0.75), mid + 2)
+  //
+  // Length and centre used to be fixed at five cells around exactly 45 % of
+  // the path, so the dragon posed structurally the identical problem in
+  // every single level and only ticked faster. Both now vary: longer
+  // patrols in later levels, and a centre that moves, so the gap has to be
+  // read afresh each time instead of recognised.
+  const half    = Math.floor((patrolLen - 1) / 2)
+  const centre  = 0.38 + Math.random() * 0.18
+  const mid     = Math.floor(mainPath.length * centre)
+  const wpStart = Math.max(Math.floor(mainPath.length * 0.20), mid - half)
+  const wpEnd   = Math.min(Math.floor(mainPath.length * 0.75), wpStart + patrolLen - 1)
   const dragonWps = mainPath.slice(wpStart, wpEnd + 1).filter(Boolean)
   const patrolSet = new Set(dragonWps.map(c => `${c.x},${c.y}`))
 
