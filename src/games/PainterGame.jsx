@@ -43,8 +43,12 @@ function isLight(hex) {
 
 function buildPalette(scene, level) {
   const needed = [...new Set(scene.regions.map(r => r.target))].map(getColor)
+  // Distractor-colour count used to cap at 5 from level 3 onward (level 3
+  // and level 10 had the exact same palette size) — now grows across the
+  // whole 1-10 range instead of plateauing two-thirds of the way in.
+  // slice() safely returns fewer if the (13-colour) pool runs out.
   const extra  = shuffle(ALL_COLORS.filter(c => !needed.find(n => n.name === c.name)))
-    .slice(0, Math.min(2 + level, 5))
+    .slice(0, Math.min(1 + level, 10))
   return shuffle([...needed, ...extra])
 }
 
@@ -284,9 +288,15 @@ const SCENES = [
 ] 
 
 function buildScenes(level) {
+  // Only 3 scene-difficulty tiers exist (12 scenes total), so this maxes
+  // out by level 7 — that's a real content-size limit, not a bug. What
+  // WAS a bug: `count` also plateaued (level 8, 9 and 10 all gave the
+  // exact same value of 4), making the last 3 of 10 levels identical in
+  // difficulty. Now grows across the whole range, using more of the
+  // already-available scene pool per session at higher levels.
   const maxSceneLevel = level <= 2 ? 1 : level <= 6 ? 2 : 3
   const available = SCENES.filter(s => s.level <= maxSceneLevel)
-  const count     = level <= 4 ? 2 : level <= 7 ? 3 : 4
+  const count     = level <= 3 ? 2 : level <= 5 ? 3 : level <= 7 ? 4 : level <= 9 ? 5 : 6
   return shuffle(available).slice(0, Math.min(count, available.length))
 }
 

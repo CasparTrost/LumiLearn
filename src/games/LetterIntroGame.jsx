@@ -140,7 +140,10 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
   const pick = (opt) => {
     if (selected !== null) return
     if (opt === q.correct) {
-      voice.play(wordAudio(opt.w))
+      // Some word-audio files are missing from public/audio/abc-abenteuer/
+      // (confirmed: 23 of them) — fall back to speaking the word itself
+      // rather than silently dropping the reward narration.
+      voice.play(wordAudio(opt.w), opt.w)
       setSelected(opt)
       const nextScore = score + 1
       setScore(nextScore)

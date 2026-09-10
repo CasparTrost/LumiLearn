@@ -78,7 +78,7 @@ function PinPad({ onSuccess, onCancel, correctPin = '1234' }) {
 
 export default function ParentScreen({ onClose }) {
   const { state, dispatch } = useApp()
-  const { progress, coins, farmLevel, streak } = useProfile()
+  const { profile, progress, coins, farmLevel, streak } = useProfile()
   const currentPin = state.settings?.parentPin ?? '1234'
   const pinIsDefault = state.settings?.pinIsDefault ?? true
   const [unlocked, setUnlocked] = useState(false)
@@ -101,12 +101,6 @@ export default function ParentScreen({ onClose }) {
     dispatch({ type: 'SET_MODULE_LEVEL', payload: { id, level } })
     showToast(`${MODULE_NAMES[id]} → Level ${level}`)
   }, [dispatch])
-
-  const resetFarm = useCallback((targetLevel) => {
-    showToast(targetLevel === 0 ? 'Hof komplett zurückgesetzt' : `Hof → Level ${targetLevel}`)
-  }, [])
-
-  const currentFarmLevel = farmLevel ?? 1
 
   const handlePinChange = () => {
     setPinError('')
@@ -191,27 +185,6 @@ export default function ParentScreen({ onClose }) {
           </div>
         </div>
 
-        {/* Farm section */}
-        <div style={{ background:'white', borderRadius:20, padding:20, marginBottom:16, boxShadow:'0 2px 12px rgba(0,0,0,0.06)' }}>
-          <div style={{ fontFamily:'var(--font-heading)', fontSize:17, fontWeight:700, marginBottom:12, color:'#2d5a1a' }}>
-            🌾 Bauernhof (aktuell: Level {currentFarmLevel})
-          </div>
-          <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
-            {[0,1,2,3,4,5,6].map(lv => (
-              <motion.button key={lv} whileTap={{scale:0.92}}
-                onClick={() => resetFarm(lv)}
-                style={{
-                  padding:'8px 16px', borderRadius:12,
-                  background: lv === currentFarmLevel ? '#2d5a1a' : '#f0faf0',
-                  color: lv === currentFarmLevel ? 'white' : '#2d5a1a',
-                  border:'2px solid #6BCB77',
-                  fontFamily:'var(--font-heading)', fontSize:14, fontWeight:700, cursor:'pointer',
-                }}>
-                {lv === 0 ? 'Komplett zurück' : `Level ${lv}`}
-              </motion.button>
-            ))}
-          </div>
-        </div>
 
         {/* Games section */}
         <div style={{ background:'white', borderRadius:20, padding:20, marginBottom:16, boxShadow:'0 2px 12px rgba(0,0,0,0.06)' }}>
@@ -302,18 +275,23 @@ export default function ParentScreen({ onClose }) {
           </AnimatePresence>
         </div>
 
-        {/* Full reset */}
+        {/* Full reset — scoped to the active profile only. RESET_ALL used
+            to be dispatched here, which wipes every profile in the whole
+            family (initialState.profiles = {}), not just this child — a
+            real data-loss risk with multiple kids. RESET_PROFILE resets
+            only the currently active one. */}
         <div style={{ background:'#fff5f5', borderRadius:20, padding:20, boxShadow:'0 2px 12px rgba(0,0,0,0.06)', border:'2px solid #FFE0E0' }}>
           <div style={{ fontFamily:'var(--font-heading)', fontSize:16, fontWeight:700, marginBottom:8, color:'#e74c3c' }}>
-            ⚠️ Alles zurücksetzen
+            ⚠️ {profile?.name ?? 'Dieses Profil'} zurücksetzen
           </div>
           <div style={{ fontFamily:'var(--font-body)', fontSize:13, color:'#888', marginBottom:12 }}>
-            Löscht alle Spielstände, Sterne und den Hof-Fortschritt.
+            Löscht alle Spielstände, Sterne, Münzen und den Hof-Fortschritt von {profile?.name ?? 'diesem Profil'}. Andere Profile sind nicht betroffen.
           </div>
           <motion.button whileTap={{scale:0.95}}
             onClick={() => {
-              dispatch({ type:'RESET_ALL' })
-              showToast('Alles zurückgesetzt')
+              if (!window.confirm(`${profile?.name ?? 'Dieses Profil'} wirklich komplett zurücksetzen? Das kann nicht rückgängig gemacht werden.`)) return
+              dispatch({ type:'RESET_PROFILE' })
+              showToast(`${profile?.name ?? 'Profil'} zurückgesetzt`)
               setTimeout(onClose, 1500)
             }}
             style={{
@@ -322,7 +300,7 @@ export default function ParentScreen({ onClose }) {
               padding:'12px 28px', fontFamily:'var(--font-heading)',
               fontSize:16, fontWeight:700, cursor:'pointer',
               boxShadow:'0 4px 16px rgba(231,76,60,0.35)',
-            }}>Alles zurücksetzen</motion.button>
+            }}>{profile?.name ?? 'Profil'} zurücksetzen</motion.button>
         </div>
       </motion.div>
 

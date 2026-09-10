@@ -76,8 +76,12 @@ function composite(displayCtx, baseImg, paintCanvas, W, H) {
   displayCtx.globalCompositeOperation = 'source-over'
 }
 
-export default function ColoringGame({ onComplete }) {
-  const [imgIdx, setImgIdx]       = useState(0)
+export default function ColoringGame({ level = 1, onComplete }) {
+  // Only a coloring tool, not a "correct answer" quiz — level progression
+  // here means unlocking more pictures over time rather than difficulty,
+  // so Level 1 and Level 10 aren't literally identical.
+  const unlockedCount = Math.min(level, IMAGES.length)
+  const [imgIdx, setImgIdxRaw]    = useState(0)
   const [color, setColor]         = useState('#FF0000')
   const [brushIdx, setBrushIdx]   = useState(1)
   const [tool, setTool]           = useState('fill')
@@ -142,9 +146,10 @@ export default function ColoringGame({ onComplete }) {
   }, [])
 
   const goToImage = useCallback((idx) => {
-    setImgIdx(idx)
+    if (idx >= unlockedCount) return
+    setImgIdxRaw(idx)
     setCanvasKey(k => k + 1)
-  }, [])
+  }, [unlockedCount])
 
   // Coords: map CSS pixels on display canvas → image pixels
   const getPos = useCallback((e) => {
@@ -223,17 +228,22 @@ export default function ColoringGame({ onComplete }) {
 
       {/* Bild-Auswahl */}
       <div style={{ display:'flex', gap:6, padding:'8px 10px', overflowX:'auto', flexShrink:0, background:'#fff', boxShadow:'0 2px 8px rgba(0,0,0,0.08)' }}>
-        {IMAGES.map((img, i) => (
-          <button key={img.id} onClick={() => goToImage(i)} style={{
-            flexShrink:0, padding:'5px 12px', borderRadius:20, cursor:'pointer',
-            border: i===imgIdx ? '2px solid #8B5CF6' : '2px solid transparent',
-            background: i===imgIdx ? '#EDE9FE' : '#f0f0f0',
-            fontFamily:'var(--font-body)', fontSize:13,
-            fontWeight: i===imgIdx ? 700 : 400,
-            color: i===imgIdx ? '#6D28D9' : '#555',
-            whiteSpace:'nowrap',
-          }}>{img.emoji} {img.label}</button>
-        ))}
+        {IMAGES.map((img, i) => {
+          const locked = i >= unlockedCount
+          return (
+            <button key={img.id} onClick={() => goToImage(i)} disabled={locked} style={{
+              flexShrink:0, padding:'5px 12px', borderRadius:20,
+              cursor: locked ? 'not-allowed' : 'pointer',
+              border: i===imgIdx ? '2px solid #8B5CF6' : '2px solid transparent',
+              background: i===imgIdx ? '#EDE9FE' : '#f0f0f0',
+              fontFamily:'var(--font-body)', fontSize:13,
+              fontWeight: i===imgIdx ? 700 : 400,
+              color: i===imgIdx ? '#6D28D9' : '#555',
+              whiteSpace:'nowrap',
+              opacity: locked ? 0.45 : 1,
+            }}>{locked ? '🔒' : img.emoji} {locked ? `Level ${i + 1}` : img.label}</button>
+          )
+        })}
       </div>
 
       {/* Zeichenfläche — EIN Canvas, kein Mismatch möglich */}

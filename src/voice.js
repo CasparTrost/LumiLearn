@@ -5,6 +5,7 @@
  */
 
 import { asset, BASE } from './lib/assets.js'
+import { speak } from './tts.js'
 
 function resolveAsset(src) {
   if (!src) return src
@@ -22,34 +23,49 @@ function _stop() {
 }
 
 export const voice = {
-  /** Play a single audio file. Cancels any currently playing narration. */
-  play(src) {
+  /**
+   * Play a single audio file. Cancels any currently playing narration.
+   * Pass `fallbackText` to fall back to browser speech synthesis if the
+   * file 404s or otherwise fails to play — recorded narration is nicer,
+   * but a silent failure (a missing file some content list didn't know
+   * about) is worse than a robotic voice reading the word.
+   */
+  play(src, fallbackText) {
     _stop()
-    if (!src) return
+    if (!src) { if (fallbackText) speak(fallbackText); return }
     try {
       const a = new Audio(resolveAsset(src))
       _current = a
-      a.play().catch(() => {})
-    } catch { /* ignore */ }
+      const onFail = () => { if (fallbackText) speak(fallbackText) }
+      a.addEventListener('error', onFail, { once: true })
+      a.play().catch(onFail)
+    } catch { if (fallbackText) speak(fallbackText) }
   },
 
   /**
    * Play multiple audio files in sequence, each starting after the previous ends.
-   * Null/undefined entries are silently skipped.
+   * Null/undefined entries are silently skipped. `fallbackTexts` (optional,
+   * same length as `srcs`) is spoken via TTS for any entry that fails.
    */
-  chain(srcs) {
-    const list = srcs.filter(Boolean)
-    if (!list.length) return
+  chain(srcs, fallbackTexts) {
+    const entries = srcs
+      .map((src, i) => ({ src, fallback: fallbackTexts?.[i] }))
+      .filter(e => e.src)
+    if (!entries.length) return
     _stop()
     let i = 0
     const playNext = () => {
-      if (i >= list.length) { _current = null; return }
+      if (i >= entries.length) { _current = null; return }
+      const { src, fallback } = entries[i++]
       try {
-        const a = new Audio(resolveAsset(list[i++]))
+        const a = new Audio(resolveAsset(src))
         _current = a
-        a.addEventListener('ended', playNext, { once: true })
-        a.play().catch(playNext)  // skip on error (e.g. missing file)
-      } catch { playNext() }
+        let failed = false
+        const onFail = () => { failed = true; if (fallback) speak(fallback); playNext() }
+        a.addEventListener('error', onFail, { once: true })
+        a.addEventListener('ended', () => { if (!failed) playNext() }, { once: true })
+        a.play().catch(onFail)
+      } catch { if (fallback) speak(fallback); playNext() }
     }
     playNext()
   },

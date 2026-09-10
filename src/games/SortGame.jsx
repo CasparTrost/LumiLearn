@@ -302,9 +302,13 @@ const LEVEL_SETS = [
   ],
 ]
 
-// Pick a random variant set for the given level (1-based), cycling through tiers
+// Pick a random variant set for the given level (1-based), cycling through
+// tiers. Spread evenly across MAX_LEVELS.sort (10) levels rather than a
+// flat "2 levels per tier" step — that old formula topped out at tier
+// index 4 for level 10, one short of LEVEL_SETS' last (hardest) tier,
+// which could then never be reached in normal play.
 function pickLevelSet(level) {
-  const tierIdx = Math.min(Math.floor((level - 1) / 2), LEVEL_SETS.length - 1)
+  const tierIdx = Math.min(Math.floor((level - 1) * LEVEL_SETS.length / 10), LEVEL_SETS.length - 1)
   const variants = LEVEL_SETS[tierIdx]
   return variants[Math.floor(Math.random() * variants.length)]
 }
