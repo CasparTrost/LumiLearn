@@ -1,6 +1,5 @@
-﻿import React, { useState, useEffect, useMemo } from 'react'
+﻿import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import ParentScreen from './ParentScreen.jsx'
 import { Settings } from 'lucide-react'
 import { useApp } from '../AppContext.jsx'
 import { useT } from '../i18n.js'
@@ -11,6 +10,11 @@ import FarmProgress from '../components/FarmProgress.jsx'
 import ProfileSwitcher from '../components/ProfileSwitcher.jsx'
 import { useProfile } from '../hooks/useProfile.js'
 import { speak } from '../tts.js'
+
+// Rarely opened (only via the settings gear) and pulls in its own sizeable
+// UI (PIN gate, stats, error log, profile management) — no reason to ship
+// it in the initial bundle every kid loading the home screen pays for.
+const ParentScreen = lazy(() => import('./ParentScreen.jsx'))
 
 // ── All modules ───────────────────────────────────────────────────────────────
 const MODULES = [
@@ -498,7 +502,24 @@ export default function HomeScreen() {
           )
         })}
       </div>
-      {showParent && <ParentScreen onClose={() => setShowParent(false)} />}
+      {showParent && (
+        <Suspense fallback={
+          <div style={{
+            position:'fixed', inset:0, zIndex:50,
+            background:'rgba(0,0,0,0.35)',
+            display:'flex', alignItems:'center', justifyContent:'center',
+          }}>
+            <div style={{
+              width:46, height:46, borderRadius:'50%',
+              border:'4px solid rgba(255,255,255,0.35)',
+              borderTopColor:'white',
+              animation:'spin 0.8s linear infinite',
+            }} />
+          </div>
+        }>
+          <ParentScreen onClose={() => setShowParent(false)} />
+        </Suspense>
+      )}
       {showSwitcher && <ProfileSwitcher onClose={() => setShowSwitcher(false)} />}
 
 </div>
