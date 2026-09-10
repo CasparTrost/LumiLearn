@@ -16,11 +16,9 @@ import { speak } from '../tts.js'
  */
 
 // ── Question banks per level ─────────────────────────────────────────────────
-// L1: full hours only
-// L2: full + half hours
-// L3: quarter hours
-// L4: 5-minute steps
-// L5: any minute
+// L1-2: full hours · L3-4: + half hours · L5-6: quarter hours
+// L7-8: 5-minute steps · L9-10: any minute
+// (toleranceFor and difficultyLabel below follow exactly these tiers)
 
 function rand(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a }
 function shuffle(a) { return [...a].sort(() => Math.random() - 0.5) }
@@ -48,6 +46,47 @@ function generateTimes(level, count = level <= 4 ? 8 : level <= 7 ? 10 : 12) {
   }
   return times
 }
+
+// Both of these used to drift away from generateTimes' own tiers.
+//
+// Tolerance was outright inverted: level 3 introduces half hours and accepted
+// a 14-minute error (anything from 3:16 to 3:44 passed as "half past three"),
+// while every later level — including level 4, which asks for exactly the same
+// half-hour targets — demanded 4 minutes. Now it follows the granularity the
+// level actually asks for, roughly half a step: precise enough to force the
+// right notch, forgiving enough that dragging a hand by hand isn't a pixel
+// exercise. The floor of 3 at the top exists because the tap steppers move the
+// minute hand in 5-minute jumps, so a free-minute target can sit up to 2.5
+// minutes away from anything reachable that way.
+function toleranceFor(level) {
+  if (level <= 2) return 8   // full hours
+  if (level <= 4) return 8   // half hours
+  if (level <= 6) return 5   // quarter hours
+  if (level <= 8) return 2   // 5-minute steps — reachable exactly
+  return 3                   // any minute
+}
+
+// The badge the child sees was one tier ahead of reality: level 2 announced
+// "halbe Stunden" while still only generating full hours, level 3 announced
+// "Viertelstunden" while generating half hours.
+function difficultyLabel(level) {
+  if (level <= 2) return 'ganze Stunden'
+  if (level <= 4) return 'halbe Stunden'
+  if (level <= 6) return 'Viertelstunden'
+  if (level <= 8) return '5-Minuten-Schritte'
+  return 'jede Minute'
+}
+
+// Times of day a preschooler recognises, far enough apart that the matching
+// activity is unambiguous on a 12-hour face.
+const DAILY_ACTIVITIES = [
+  { id: 'aufstehen',    icon: '\u{1F305}', label: 'Aufstehen',     h: 7,  m: 0 },
+  { id: 'kindergarten', icon: '\u{1F3EB}', label: 'Kindergarten',  h: 9,  m: 0 },
+  { id: 'mittagessen',  icon: '\u{1F37D}\uFE0F', label: 'Mittagessen', h: 12, m: 0 },
+  { id: 'spielplatz',   icon: '\u{1F6DD}', label: 'Spielplatz',    h: 3,  m: 0 },
+  { id: 'abendessen',   icon: '\u{1F372}', label: 'Abendessen',    h: 6,  m: 0 },
+  { id: 'schlafen',     icon: '\u{1F6CF}\uFE0F', label: 'Schlafengehen', h: 8, m: 0 },
+]
 
 function toGermanTime(h, m) {
   // Return the colloquial German expression for common times
@@ -135,7 +174,7 @@ function StepButton({ label, onPress, color, ariaLabel }) {
 // ── Analog Clock SVG ─────────────────────────────────────────────────────────
 const CX = 120, CY = 120, R = 108
 
-function ClockFace({ targetH, targetM, interactive, onAnswer, level = 1 }) {
+function ClockFace({ targetH, targetM, interactive, onAnswer, level = 1, highlightHands = false }) {
   // Current hand positions (for interactive mode) — start at a random position
   const [hours,   setHours]   = useState(() => Math.floor(Math.random() * 12) + 1)
   const [minutes, setMinutes] = useState(() => Math.floor(Math.random() * 12) * 5)
@@ -295,22 +334,29 @@ function ClockFace({ targetH, targetM, interactive, onAnswer, level = 1 }) {
             >{min}</text>
           )
         })}
-        {/* Hour hand */}
-        <line
+        {/* Hour hand — pulses while the "short hand = hours" tip is showing,
+            so the child's eye is sent to the thing the tip talks about. */}
+        <motion.line
           x1={CX} y1={CY}
           x2={hourEnd.x} y2={hourEnd.y}
           stroke={interactive ? '#4A00E0' : '#333'}
-          strokeWidth={interactive ? 8 : 7}
           strokeLinecap="round"
+          animate={highlightHands
+            ? { strokeWidth: [interactive ? 8 : 7, 14, interactive ? 8 : 7] }
+            : { strokeWidth: interactive ? 8 : 7 }}
+          transition={highlightHands ? { duration: 1.1, repeat: Infinity } : { duration: 0.2 }}
           style={{ cursor: 'default', pointerEvents: 'none' }}
         />
-        {/* Minute hand */}
-        <line
+        {/* Minute hand — pulses on the offbeat so the two are told apart */}
+        <motion.line
           x1={CX} y1={CY}
           x2={minuteEnd.x} y2={minuteEnd.y}
           stroke={interactive ? '#FF6B6B' : '#6C63FF'}
-          strokeWidth={interactive ? 5 : 4}
           strokeLinecap="round"
+          animate={highlightHands
+            ? { strokeWidth: [interactive ? 5 : 4, 10, interactive ? 5 : 4] }
+            : { strokeWidth: interactive ? 5 : 4 }}
+          transition={highlightHands ? { duration: 1.1, repeat: Infinity, delay: 0.55 } : { duration: 0.2 }}
           style={{ cursor: 'default', pointerEvents: 'none' }}
         />
         {/* Center cap */}
@@ -405,9 +451,16 @@ function ClockFace({ targetH, targetM, interactive, onAnswer, level = 1 }) {
 
 // ── Main Game ─────────────────────────────────────────────────────────────────
 export default function ClockGame({ level = 1, onComplete }) {
-  const [times]     = useState(() => generateTimes(level))
+  const [times]     = useState(() => generateTimes(level).map((time, i) => {
+    // Every third round asks what happens at this time instead of just
+    // reading or setting it, so the face connects to the child's own day.
+    // Those rounds need a time an activity actually happens at, so they
+    // replace the generated one.
+    if (i % 3 !== 2) return time
+    const act = DAILY_ACTIVITIES[Math.floor(i / 3) % DAILY_ACTIVITIES.length]
+    return { h: act.h, m: act.m, activity: act }
+  }))
   const [idx,       setIdx]       = useState(0)
-  const [mode,      setMode]      = useState('read')   // 'read' (pick digital) | 'set' (drag hands)
   const [feedback,  setFeedback]  = useState(null)     // 'ok' | 'wrong'
   const [picked,    setPicked]    = useState(null)     // the option the user actually selected
   const [score,     setScore]     = useState(0)
@@ -419,18 +472,26 @@ export default function ClockGame({ level = 1, onComplete }) {
   const [showClockHint, setShowClockHint] = useState(false)
 
   const t = times[idx]
+  // 'read' = pick the digital time · 'set' = put the hands there ·
+  // 'daily' = say what happens at this time of day
+  const mode = t?.activity ? 'daily' : (idx % 3 === 0 ? 'read' : 'set')
 
-  // TTS: read the task
-  useEffect(() => {
+  // The read-mode prompt used to speak the correct answer out loud
+  // ("Wie viel Uhr ist es? 3 Uhr"), which handed the child the solution to
+  // the very question being asked. Only the setting task names a time.
+  const speakTask = useCallback(() => {
     if (!t) return
-    const task = idx % 2 === 0
-      ? `Wie viel Uhr ist es? ${t.h} Uhr ${t.m > 0 ? t.m : ''}`
-      : `Stelle die Uhr auf ${t.h} Uhr ${t.m > 0 ? t.m : ''}`
-    setTimeout(() => speak(task, { rate: 0.8, pitch: 1.05, lang: 'de-DE' }), 500)
-  }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
+    const mins = t.m > 0 ? ` ${t.m}` : ''
+    const task = mode === 'read'  ? 'Schau auf die Uhr. Wie viel Uhr ist es?'
+               : mode === 'daily' ? 'Schau auf die Uhr. Was macht Lumi um diese Zeit?'
+               :                    `Stelle die Uhr auf ${t.h} Uhr${mins}`
+    speak(task, { rate: 0.8, pitch: 1.05, lang: 'de-DE' })
+  }, [t, mode])
 
-  // Alternate between 'read' and 'set' modes
-  useEffect(() => { setMode(idx % 2 === 0 ? 'read' : 'set') }, [idx])
+  useEffect(() => {
+    const id = setTimeout(speakTask, 500)
+    return () => clearTimeout(id)
+  }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Wrong-answer options — stable via useMemo
   const options = useMemo(() => {
@@ -479,6 +540,20 @@ export default function ClockGame({ level = 1, onComplete }) {
     }, 1100) // end if(!ok)
   }, [score, idx, times.length, onComplete])
 
+  // Three activity cards for a daily round: the right one plus two others
+  // far enough away on the face that the answer is decidable from the hands.
+  const dailyOptions = useMemo(() => {
+    if (!t?.activity) return []
+    const others = shuffle(DAILY_ACTIVITIES.filter(a => a.id !== t.activity.id)).slice(0, 2)
+    return shuffle([t.activity, ...others])
+  }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const pickActivity = useCallback((act) => {
+    if (feedback) return
+    setPicked(act.id)
+    advance(act.id === t.activity.id)
+  }, [feedback, t, advance])
+
   const pickDigital = useCallback((opt) => {
     if (feedback) return
     const correct = fmt(t.h, t.m)
@@ -489,7 +564,7 @@ export default function ClockGame({ level = 1, onComplete }) {
   const submitAnalog = useCallback((h, m) => {
     if (feedback) return
     const diff = timeDiffMin(h, m, t.h, t.m)
-    const tolerance = level <= 2 ? 0 : level <= 3 ? 14 : 4
+    const tolerance = toleranceFor(level)
     advance(diff <= tolerance)
   }, [feedback, t, level, advance])
 
@@ -510,8 +585,7 @@ export default function ClockGame({ level = 1, onComplete }) {
 
   if (!t) return null
 
-  // Tolerance label shown to child
-  const toleranceLabel = level <= 1 ? 'ganze Stunden' : level <= 2 ? 'halbe Stunden' : level <= 3 ? 'Viertelstunden' : '5-Minuten-Schritte'
+  const toleranceLabel = difficultyLabel(level)
 
   return (
     <div style={{
@@ -569,7 +643,20 @@ export default function ClockGame({ level = 1, onComplete }) {
           background: '#F0EEFF', borderRadius: 99, padding: '5px 14px',
           fontFamily: 'var(--font-heading)', fontSize: 13, color: '#6C63FF',
           border: '1.5px solid #A29BFE',
-        }}>{'🕐 ' + toleranceLabel}</div>
+        }}>{'\u{1F550} ' + toleranceLabel}</div>
+        {/* The task was spoken once on entry and there was no way back to it —
+            hard on a child still holding "stelle die Uhr auf 7 Uhr 30" in mind. */}
+        <motion.button
+          whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }}
+          onClick={speakTask}
+          aria-label="Aufgabe noch einmal anhören"
+          style={{
+            background: '#F0EEFF', border: '1.5px solid #A29BFE', borderRadius: 99,
+            padding: '5px 14px', cursor: 'pointer',
+            fontFamily: 'var(--font-heading)', fontSize: 13, color: '#6C63FF',
+            display: 'flex', alignItems: 'center', gap: 5,
+          }}
+        >{'\u{1F50A} Nochmal'}</motion.button>
       </div>
 
       {/* Lumi */}
@@ -592,7 +679,9 @@ export default function ClockGame({ level = 1, onComplete }) {
               ? (<>💡 Tipp: Der kurze Zeiger = Stunden, der lange = Minuten. Es ist <strong style={{ color:'#4A00E0' }}>{toGermanTime(t.h, t.m)}</strong>!</>)
               : mode === 'read'
                 ? (<>Welche Uhrzeit zeigt die Uhr? 🕐</>)
-                : (<>Stelle die Uhr auf <strong style={{ color: '#4A00E0' }}>{fmt(t.h, t.m)}</strong>! Ziehe die Zeiger oder tippe ➕➖! 🖐️</>)
+                : mode === 'daily'
+                  ? (<>Es ist <strong style={{ color:'#4A00E0' }}>{toGermanTime(t.h, t.m)}</strong>. Was macht Lumi jetzt? 🤔</>)
+                  : (<>Stelle die Uhr auf <strong style={{ color: '#4A00E0' }}>{fmt(t.h, t.m)}</strong>! Ziehe die Zeiger oder tippe ➕➖! 🖐️</>)
           }
         </motion.div>
       </div>
@@ -623,6 +712,7 @@ export default function ClockGame({ level = 1, onComplete }) {
               interactive={mode === 'set'}
               onAnswer={submitAnalog}
               level={level}
+              highlightHands={showClockHint}
             />
           </motion.div>
         </AnimatePresence>
@@ -660,6 +750,45 @@ export default function ClockGame({ level = 1, onComplete }) {
                   <span>{opt}</span>
                   {/* pre-reserved space — no reflow when ✅ appears */}
                   <span style={{ fontSize: 18, opacity: done && correct ? 1 : 0, transition: 'opacity 0.2s' }}>{'✅'}</span>
+                </motion.button>
+              )
+            })}
+          </div>
+        )}
+
+        {/* DAILY MODE: what happens at this time of day? */}
+        {mode === 'daily' && (
+          <div style={{
+            display: 'flex', flexDirection: 'column',
+            gap: 'clamp(10px,2vw,14px)', width: 240,
+          }}>
+            {dailyOptions.map(act => {
+              const correct = act.id === t.activity.id
+              const done    = feedback !== null
+              return (
+                <motion.button key={act.id}
+                  whileHover={!done ? { scale: 1.05 } : {}}
+                  whileTap={!done ? { scale: 0.95 } : {}}
+                  onClick={() => pickActivity(act)}
+                  style={{
+                    padding: '12px 16px', minHeight: 68, borderRadius: 20,
+                    fontFamily: 'var(--font-heading)', fontSize: 'clamp(15px,3vw,19px)',
+                    fontWeight: 700,
+                    background: done && correct ? '#E8F8EE'
+                              : done && act.id === picked && !correct ? '#FFE8E8' : 'white',
+                    border: `3px solid ${done && correct ? '#6BCB77'
+                              : done && act.id === picked && !correct ? '#FF6B6B' : '#ECE8FF'}`,
+                    boxShadow: done && correct ? '0 6px 22px rgba(107,203,119,0.4)'
+                                               : '0 4px 14px rgba(0,0,0,0.07)',
+                    color: 'var(--text-primary)',
+                    cursor: done ? 'default' : 'pointer',
+                    transition: 'background 0.22s, border 0.22s, box-shadow 0.22s',
+                    display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left',
+                  }}
+                >
+                  <span style={{ fontSize: 30, lineHeight: 1, flexShrink: 0 }}>{act.icon}</span>
+                  <span style={{ flex: 1 }}>{act.label}</span>
+                  <span style={{ fontSize: 18, opacity: done && correct ? 1 : 0, transition: 'opacity 0.2s' }}>{'\u2705'}</span>
                 </motion.button>
               )
             })}
