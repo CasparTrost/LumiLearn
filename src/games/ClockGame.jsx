@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
+import { speak } from '../tts.js'
 
 /**
  * Uhrzeiten-Meister — Uhrzeit lesen & stellen
@@ -339,13 +340,7 @@ export default function ClockGame({ level = 1, onComplete }) {
     const task = idx % 2 === 0
       ? `Wie viel Uhr ist es? ${t.h} Uhr ${t.m > 0 ? t.m : ''}`
       : `Stelle die Uhr auf ${t.h} Uhr ${t.m > 0 ? t.m : ''}`
-    setTimeout(() => {
-      if (!window.speechSynthesis) return
-      window.speechSynthesis.cancel()
-      const u = new SpeechSynthesisUtterance(task)
-      u.lang = 'de-DE'; u.rate = 0.8; u.pitch = 1.05
-      window.speechSynthesis.speak(u)
-    }, 500)
+    setTimeout(() => speak(task, { rate: 0.8, pitch: 1.05, lang: 'de-DE' }), 500)
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Alternate between 'read' and 'set' modes

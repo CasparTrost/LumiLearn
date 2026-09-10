@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence, useAnimationFrame, motionValue } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
+import { speak } from '../tts.js'
 
 /**
  * Blasen-Blitz — Subitizing & Inhibitorische Kontrolle
@@ -95,13 +96,7 @@ export default function BubblePopGame({ level = 1, onComplete }) {
     setTimeLeft(cfg.timeS)
     setPhase('playing')
     // TTS: speak the target number
-    setTimeout(() => {
-      if (!window.speechSynthesis) return
-      window.speechSynthesis.cancel()
-      const u = new SpeechSynthesisUtterance(`Finde die ${t}!`)
-      u.lang = 'de-DE'; u.rate = 0.9; u.pitch = 1.1
-      window.speechSynthesis.speak(u)
-    }, 300)
+    setTimeout(() => speak(`Finde die ${t}!`, { rate: 0.9, pitch: 1.1, lang: 'de-DE' }), 300)
   }, [roundIdx, cfg])
 
   // Init physics state + MotionValues whenever bubbles change

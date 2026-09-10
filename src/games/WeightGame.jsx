@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
+import { speak } from '../tts.js'
 
 /**
  * Waage-Welt — Vergleiche, was schwerer ist
@@ -265,11 +266,7 @@ function BalanceScale({ tiltDeg, leftEmoji, rightEmoji, leftLabel, rightLabel,
 
 
 function speakDE(text) {
-  if (!window.speechSynthesis) return
-  window.speechSynthesis.cancel()
-  const u = new SpeechSynthesisUtterance((text||'').replace(/[^\w\säöüÄÖÜß.,!?]/g,''))
-  u.lang = 'de-DE'; u.rate = 0.8; u.pitch = 1.05
-  window.speechSynthesis.speak(u)
+  speak(text, { rate: 0.8, pitch: 1.05, lang: 'de-DE' })
 }
 
 export default function WeightGame({ level = 1, onComplete }) {

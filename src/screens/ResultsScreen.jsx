@@ -7,6 +7,7 @@ import StarRow from '../components/StarRow.jsx'
 import Button from '../components/Button.jsx'
 import { sfx } from '../sfx.js'
 import { voice } from '../voice.js'
+import { speak } from '../tts.js'
 import { useT } from '../i18n.js'
 import { useProfile } from '../hooks/useProfile.js'
 
@@ -82,14 +83,10 @@ export default function ResultsScreen() {
     }, 900)
     // TTS: announce coins if earned
     const c = coinsEarned > 0 ? setTimeout(() => {
-      if (!window.speechSynthesis) return
-      window.speechSynthesis.cancel()
       const txt = newMissionsCompleted.length > 0
         ? `Plus ${coinsEarned} Coins und ${newMissionsCompleted.length} Aufgabe erledigt!`
         : `Plus ${coinsEarned} Coins!`
-      const u = new SpeechSynthesisUtterance(txt)
-      u.lang = 'de-DE'; u.rate = 0.9; u.pitch = 1.1
-      window.speechSynthesis.speak(u)
+      speak(txt, { rate: 0.9, pitch: 1.1, lang: 'de-DE' })
     }, 2200) : null
     return () => { clearTimeout(t); clearTimeout(v); if (c) clearTimeout(c); voice.stop() }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps

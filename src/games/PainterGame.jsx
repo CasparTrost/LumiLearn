@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
+import { speak } from '../tts.js'
 
 // ─── Brush constants ──────────────────────────────────────────────────────────
 const BRUSH_R    = 8                       // brush dot radius in SVG user-units (viewBox 200×200)
@@ -527,13 +528,7 @@ export default function PainterGame({ level = 1, onComplete }) {
     lastPtRef.current = null
     // TTS: announce scene task
     const s = scenes[sceneIdx]
-    if (s?.hint) setTimeout(() => {
-      if (!window.speechSynthesis) return
-      window.speechSynthesis.cancel()
-      const u = new SpeechSynthesisUtterance(s.hint.replace(/[^\w\säöüÄÖÜß.,!?]/g,''))
-      u.lang = 'de-DE'; u.rate = 0.8; u.pitch = 1.05
-      window.speechSynthesis.speak(u)
-    }, 500)
+    if (s?.hint) setTimeout(() => speak(s.hint, { rate: 0.8, pitch: 1.05, lang: 'de-DE' }), 500)
   }, [sceneIdx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Pre-compute which grid cells are inside each region whenever scene changes.

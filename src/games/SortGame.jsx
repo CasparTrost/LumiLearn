@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
+import { speak } from '../tts.js'
 
 /**
  * Sortier-Spaß — Kategorisieren & Konzeptbildung
@@ -316,11 +317,7 @@ function pickLevelSet(level) {
 function shuffleArr(a) { return [...a].sort(() => Math.random() - 0.5) }
 
 function speakDE(text) {
-  if (!window.speechSynthesis) return
-  window.speechSynthesis.cancel()
-  const u = new SpeechSynthesisUtterance((text||'').replace(/[^\w\säöüÄÖÜß.,!?]/g,''))
-  u.lang = 'de-DE'; u.rate = 0.8; u.pitch = 1.05
-  window.speechSynthesis.speak(u)
+  speak(text, { rate: 0.8, pitch: 1.05, lang: 'de-DE' })
 }
 
 export default function SortGame({ level = 1, onComplete }) {

@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { generateQuestions } from './gameEngine.js'
 import { sfx } from '../sfx.js'
+import { speak } from '../tts.js'
 
 const FOODS = ['🍕','🍎','🍗','🌮','🍩','🍓','🧁','🍔','🍒','🥕']
 
@@ -303,11 +304,7 @@ function DinoScene({ chomping, shaking, dinoScale, streak, eaten, total, project
 }
 
 function speakDE(text) {
-  if (!window.speechSynthesis) return
-  window.speechSynthesis.cancel()
-  const u = new SpeechSynthesisUtterance((text||'').replace(/[^\w\säöüÄÖÜß.,!?]/g,''))
-  u.lang = 'de-DE'; u.rate = 0.8; u.pitch = 1.05
-  window.speechSynthesis.speak(u)
+  speak(text, { rate: 0.8, pitch: 1.05, lang: 'de-DE' })
 }
 
 export default function ChoiceGame({ moduleId, level, onComplete }) {

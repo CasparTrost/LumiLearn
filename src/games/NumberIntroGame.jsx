@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { voice } from '../voice.js'
+import { speak } from '../tts.js'
 
 const NUMBER_WORDS   = ['','eins','zwei','drei','vier','fünf','sechs','sieben','acht','neun','zehn']
 const NUMBER_AUDIO   = ['','eins','zwei','drei','vier','fuenf','sechs','sieben','acht','neun','zehn']
@@ -197,12 +198,11 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
                         const newOrder = tapped.size + 1
                         setTapped(p => { const m = new Map(p); m.set(i, newOrder); return m })
                         // Speak the count number
-                        if (window.speechSynthesis) {
-                          window.speechSynthesis.cancel()
-                          const u = new SpeechSynthesisUtterance(String(newOrder))
-                          u.lang = 'de-DE'; u.rate = 0.8; u.pitch = 1.2
-                          window.speechSynthesis.speak(u)
-                        }
+                        // Plain digit text — genuinely language-neutral (the
+                        // synthesizer reads it as a number word in whichever
+                        // voice/language it's given), unlike the German-prose
+                        // TTS elsewhere, so no explicit lang pin needed here.
+                        speak(String(newOrder), { rate: 0.8, pitch: 1.2 })
                       }
                     }}
                     style={{

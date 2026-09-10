@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { voice } from '../voice.js'
+import { speak } from '../tts.js'
 
 /**
  * Gefühlswelt — Emotionale Intelligenz
@@ -181,11 +182,7 @@ const EMOTION_PASTEL = {
 }
 
 function speakDE(text) {
-  if (!window.speechSynthesis) return
-  window.speechSynthesis.cancel()
-  const u = new SpeechSynthesisUtterance(text)
-  u.lang = 'de-DE'; u.rate = 0.82; u.pitch = 1.05
-  window.speechSynthesis.speak(u)
+  speak(text, { rate: 0.82, pitch: 1.05, lang: 'de-DE' })
 }
 
 function shuffle(a) { return [...a].sort(() => Math.random() - 0.5) }

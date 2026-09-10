@@ -10,6 +10,7 @@ import LumiCharacter from '../components/LumiCharacter.jsx'
 import FarmProgress from '../components/FarmProgress.jsx'
 import ProfileSwitcher from '../components/ProfileSwitcher.jsx'
 import { useProfile } from '../hooks/useProfile.js'
+import { speak } from '../tts.js'
 
 // ── All modules ───────────────────────────────────────────────────────────────
 const MODULES = [
@@ -129,11 +130,7 @@ export default function HomeScreen() {
     const hour = new Date().getHours()
     const greeting = hour < 12 ? 'Guten Morgen' : hour < 17 ? 'Hallo' : 'Guten Abend'
     setTimeout(() => {
-      if (!window.speechSynthesis) return
-      window.speechSynthesis.cancel()
-      const u = new SpeechSynthesisUtterance(`${greeting}, ${profile.name}! Was möchtest du heute lernen?`)
-      u.lang = 'de-DE'; u.rate = 0.85; u.pitch = 1.1
-      window.speechSynthesis.speak(u)
+      speak(`${greeting}, ${profile.name}! Was möchtest du heute lernen?`, { rate: 0.85, pitch: 1.1, lang: 'de-DE' })
     }, 800)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
