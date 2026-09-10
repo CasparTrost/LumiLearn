@@ -265,16 +265,49 @@ function Sparkles({ x, y, cellSize }) {
 
 // ──────────────────────────────────────────────────────────────────
 // D-PAD BUTTON  (touch-friendly with hold-repeat)
+//
+// IMPORTANT: without setPointerCapture, `whileTap={{ scale: 0.86 }}`
+// shrinking the button on press can slide the button's hit-area out from
+// under the finger — the browser then delivers `pointerup` to whatever
+// element ends up under the pointer, NOT to this button, so `stop()`
+// never runs and the repeat interval fires forever (the character keeps
+// walking on its own). Pointer capture pins all events for this pointer
+// to this element regardless of visual size changes. A window-level
+// fallback listener is a second safety net in case capture itself fails.
 // ──────────────────────────────────────────────────────────────────
 function DPadButton({ label, onPress, size = 52 }) {
   const repeatRef = useRef(null)
+  const activeRef = useRef(false)
 
-  const start = useCallback(() => {
+  const stop = useCallback(() => {
+    if (!activeRef.current) return
+    activeRef.current = false
+    clearInterval(repeatRef.current)
+    repeatRef.current = null
+  }, [])
+
+  const start = useCallback(e => {
+    activeRef.current = true
+    try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* ignore */ }
     onPress()
+    clearInterval(repeatRef.current)
     repeatRef.current = setInterval(onPress, 155)
   }, [onPress])
 
-  const stop = useCallback(() => clearInterval(repeatRef.current), [])
+  // Global safety net — guarantees the repeat stops even if this
+  // element never receives its own pointerup/cancel (capture failure,
+  // browser quirk, or the finger sliding off while the button shrinks).
+  useEffect(() => {
+    window.addEventListener('pointerup', stop)
+    window.addEventListener('pointercancel', stop)
+    window.addEventListener('blur', stop)
+    return () => {
+      window.removeEventListener('pointerup', stop)
+      window.removeEventListener('pointercancel', stop)
+      window.removeEventListener('blur', stop)
+      stop()
+    }
+  }, [stop])
 
   return (
     <motion.button
@@ -369,21 +402,24 @@ export default function MazeGame({ level = 1, onComplete }) {
   }, [doMove])
 
   // ── DRAGON MOVEMENT ─────────────────────────────────────────────
+  // Reflect-at-boundary ping-pong: the dragon now actually reaches BOTH
+  // ends of its patrol (the previous version corrected the index before
+  // ever dispatching it, so the two outermost cells were never visited —
+  // the effective patrol was 2 cells shorter than intended on each side).
   useEffect(() => {
     const wps = mazeRef.current.dragonWps
-    if (!cfg.hasDragon || !wps?.length || st.won || st.dead) return
+    if (!cfg.hasDragon || !wps || wps.length < 2 || st.won || st.dead) return
 
+    const last = wps.length - 1
     const iv = setInterval(() => {
-      dragonStepRef.current += dragonDirRef.current
-      if (dragonStepRef.current >= wps.length - 1) {
-        dragonDirRef.current = -1
-        dragonStepRef.current = wps.length - 2
-      }
-      if (dragonStepRef.current <= 0) {
-        dragonDirRef.current = 1
-        dragonStepRef.current = 1
-      }
-      dispatch({ type: 'DRAGON_STEP', pos: wps[dragonStepRef.current], now: Date.now() })
+      let i   = dragonStepRef.current
+      let dir = dragonDirRef.current
+      if (i >= last) dir = -1
+      else if (i <= 0) dir = 1
+      i += dir
+      dragonStepRef.current = i
+      dragonDirRef.current  = dir
+      dispatch({ type: 'DRAGON_STEP', pos: wps[i], now: Date.now() })
     }, cfg.dragonSpeed)
 
     return () => clearInterval(iv)
