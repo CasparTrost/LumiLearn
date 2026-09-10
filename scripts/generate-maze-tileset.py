@@ -9,20 +9,27 @@ your PixelLab API key. It only spends credits on the two tileset calls
 below (one per maze theme) and asks for confirmation first, since the
 free tier only has 40 generations total.
 
+This file is standalone — it does NOT need to live inside the LumiLearn
+repo or be run from any particular folder. Save it anywhere (Desktop is
+fine) and run it from there; its output folder is created right next to
+wherever this .py file itself is saved, not relative to your current
+directory.
+
 Setup:
     pip install pixellab
 
-    macOS / Linux (bash/zsh):
+    macOS / Linux (bash/zsh), from the folder where you saved this file:
         export PIXELLAB_API_KEY="your-key-here"
-        python3 scripts/generate-maze-tileset.py
+        python3 generate-maze-tileset.py
 
-    Windows (PowerShell):
+    Windows (PowerShell), from the folder where you saved this file
+    (e.g. cd $env:USERPROFILE\Desktop):
         $env:PIXELLAB_API_KEY = "your-key-here"
-        python scripts/generate-maze-tileset.py
+        python generate-maze-tileset.py
 
     Windows (cmd.exe):
         set PIXELLAB_API_KEY=your-key-here
-        python scripts\generate-maze-tileset.py
+        python generate-maze-tileset.py
 
     The env var only lasts for the current terminal session — set it
     again if you open a new window.
@@ -36,7 +43,8 @@ What it does:
        create_topdown_tileset — each call produces a full seamless set
        of wall/corner/floor tiles in one shot, rather than us hand-
        picking or hand-fixing individual tile files again.
-    4. Saves the results to ./pixellab-output/ with clear filenames.
+    4. Saves the results next to this script, in a pixellab-output/
+       folder, with clear filenames.
 
 After it finishes: send the files in ./pixellab-output/ back — they'll
 get sliced up and wired into src/games/MazeGame.jsx / mazeGen.js to
@@ -62,7 +70,7 @@ except ImportError:
     print("Missing dependency. Run:  pip install pixellab")
     sys.exit(1)
 
-OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "pixellab-output")
+OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pixellab-output")
 TILE_SIZE = 32  # matches the existing sprites well (16px dungeon / 48px
                  # forest tiles both scale cleanly); bump to 64 for more
                  # detail if you have credits to spare, but 32 is the
