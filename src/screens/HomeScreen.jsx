@@ -55,6 +55,14 @@ const cardVariants = {
   visible: (i) => ({ opacity:1, y:0, scale:1, transition:{ delay: i*0.055, type:'spring', stiffness:340, damping:18 } }),
 }
 
+// Module-level (not component state): HomeScreen remounts fresh every time
+// the router switches state.screen back to 'home' (App.jsx keys the screen
+// on state.screen inside AnimatePresence), so a plain useEffect([]) fires
+// on every return trip, not just the app's initial load. This flag lives
+// outside the component so it survives those remounts and only resets on
+// an actual page reload — i.e. once per app open, as intended.
+let hasGreetedThisSession = false
+
 // ── Lumi with orbiting completion stars ───────────────────────────────────────
 function LumiWithOrbit({ completedCount, size }) {
   const cap   = Math.min(completedCount, 10)
@@ -113,8 +121,11 @@ export default function HomeScreen() {
     ? MODULES.find(m => m.id === lastPlayed.moduleId)
     : null
 
-  // Greeting TTS on first visit
+  // Greeting TTS — once per app open, not on every return to this screen
+  // (see hasGreetedThisSession above).
   useEffect(() => {
+    if (hasGreetedThisSession) return
+    hasGreetedThisSession = true
     const hour = new Date().getHours()
     const greeting = hour < 12 ? 'Guten Morgen' : hour < 17 ? 'Hallo' : 'Guten Abend'
     setTimeout(() => {
