@@ -8,6 +8,7 @@ import { MAX_LEVELS } from '../AppContext.jsx'
 import StarRow from '../components/StarRow.jsx'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import FarmProgress from '../components/FarmProgress.jsx'
+import ProfileSwitcher from '../components/ProfileSwitcher.jsx'
 import { useProfile } from '../hooks/useProfile.js'
 
 // ── All modules ───────────────────────────────────────────────────────────────
@@ -92,6 +93,7 @@ export default function HomeScreen() {
   const { profile: activeProfile, progress, farmLevel, streak, dailyMission, lastPlayed } = useProfile()
   const profile = activeProfile ?? { name: 'Lumi', avatar: '🦊' }
   const [showParent, setShowParent] = useState(false)
+  const [showSwitcher, setShowSwitcher] = useState(false)
   const [activeCategory, setActiveCategory] = useState('all')
   const completedCount = Object.values(progress).filter(p => p?.completed).length
 
@@ -194,7 +196,12 @@ export default function HomeScreen() {
         borderRadius:'0 0 28px 28px',
         boxShadow:'0 6px 28px rgba(74,0,224,0.3)',
       }}>
-        <div style={{ fontSize:'clamp(36px,7vw,52px)', lineHeight:1 }}>{profile.avatar}</div>
+        <motion.button
+          whileHover={{ scale:1.1 }} whileTap={{ scale:0.92 }}
+          onClick={() => setShowSwitcher(true)}
+          style={{ fontSize:'clamp(36px,7vw,52px)', lineHeight:1, background:'none', border:'none', cursor:'pointer', padding:0, borderRadius:'50%' }}
+          title="Profil wechseln"
+        >{profile.avatar}</motion.button>
         <div style={{ flex:1 }}>
           <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(14px,2.8vw,20px)', color:'rgba(255,255,255,0.75)' }}>
             {getGreeting()},
@@ -484,6 +491,7 @@ export default function HomeScreen() {
         })}
       </div>
       {showParent && <ParentScreen onClose={() => setShowParent(false)} />}
+      {showSwitcher && <ProfileSwitcher onClose={() => setShowSwitcher(false)} />}
 
 </div>
   )
