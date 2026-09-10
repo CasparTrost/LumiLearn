@@ -646,29 +646,43 @@ export default function MazeGame({ level = 1, onComplete }) {
         </div>
       </div>
 
-      {/* ── Danger banner ───────────────────────────────────────── */}
-      <AnimatePresence>
-        {st.dangerLevel > 0 && !st.won && !st.dead && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            style={{
-              background:  st.dangerLevel >= 1 ? 'rgba(220,38,38,0.88)' : 'rgba(160,55,0,0.75)',
-              color:       'white',
-              padding:     '4px 18px',
-              borderRadius: 20,
-              fontFamily:  'Fredoka, var(--font-heading), sans-serif',
-              fontSize:    14,
-              fontWeight:  600,
-              marginBottom: 3,
-              flexShrink:  0,
-            }}
-          >
-            {st.dangerLevel >= 1 ? '⚠️ Der Drache ist ganz nah!' : '😰 Ich höre den Drachen…'}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* ── Danger banner ───────────────────────────────────────────
+          Fixed-height slot, always present in the flex layout (even
+          when empty) — the board container below is watched by a
+          ResizeObserver (useBoardSize), so if this banner mounting/
+          unmounting changed the available height, the whole maze would
+          visibly resize for as long as the banner was shown. Reserving
+          the space up front means showing/hiding the banner only
+          fades its content, never touches the board's size. */}
+      <div style={{
+        height:      34,
+        flexShrink:  0,
+        display:     'flex',
+        alignItems:  'center',
+        justifyContent: 'center',
+        width:       '100%',
+      }}>
+        <AnimatePresence>
+          {st.dangerLevel > 0 && !st.won && !st.dead && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              style={{
+                background:  st.dangerLevel >= 1 ? 'rgba(220,38,38,0.88)' : 'rgba(160,55,0,0.75)',
+                color:       'white',
+                padding:     '4px 18px',
+                borderRadius: 20,
+                fontFamily:  'Fredoka, var(--font-heading), sans-serif',
+                fontSize:    14,
+                fontWeight:  600,
+              }}
+            >
+              {st.dangerLevel >= 1 ? '⚠️ Der Drache ist ganz nah!' : '😰 Ich höre den Drachen…'}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       {/* ── BOARD CONTAINER ────────────────────────────────────────*/}
       <div
