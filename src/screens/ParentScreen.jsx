@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useApp, MAX_LEVELS } from '../AppContext.jsx'
 import { useProfile } from '../hooks/useProfile.js'
+import { getFarmLevel, FARM_LEVEL_LABELS } from '../components/FarmProgress.jsx'
 
 const MODULE_NAMES = {
   'number-intro': 'Zahlen entdecken',
@@ -78,7 +79,13 @@ function PinPad({ onSuccess, onCancel, correctPin = '1234' }) {
 
 export default function ParentScreen({ onClose }) {
   const { state, dispatch } = useApp()
-  const { profile, progress, coins, farmLevel, streak } = useProfile()
+  const { profile, progress, coins, streak } = useProfile()
+  // The real farm level, computed the same way FarmProgress.jsx computes
+  // it for the kid's screen (from real completed-module count) — not the
+  // separate profile.farmLevel stat, which used to be a disconnected,
+  // never-updated number (see AppContext.jsx's starsToCoins comment).
+  const completedCount = Object.values(progress).filter(p => p?.completed).length
+  const farmLevel = getFarmLevel(completedCount)
   const currentPin = state.settings?.parentPin ?? '1234'
   const pinIsDefault = state.settings?.pinIsDefault ?? true
   const [unlocked, setUnlocked] = useState(false)
@@ -181,7 +188,7 @@ export default function ParentScreen({ onClose }) {
           )}
           <div style={{ display:'flex', alignItems:'center', gap:6, background:'rgba(107,203,119,0.1)', borderRadius:12, padding:'8px 14px', border:'1.5px solid rgba(107,203,119,0.4)' }}>
             <span style={{ fontSize:20 }}>🏕️</span>
-            <span style={{ fontFamily:'var(--font-heading)', color:'#2d7a3a', fontWeight:700, fontSize:16 }}>Farm Level {farmLevel}</span>
+            <span style={{ fontFamily:'var(--font-heading)', color:'#2d7a3a', fontWeight:700, fontSize:16 }}>{FARM_LEVEL_LABELS[farmLevel]} (Level {farmLevel})</span>
           </div>
         </div>
 

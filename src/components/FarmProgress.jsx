@@ -79,11 +79,17 @@ const ANIMAL_COUNT = {
   horse:   [0, 0, 0, 0, 0, 0, 2],
 }
 
-function getLevel(n) {
+// Exported so ParentScreen can show the SAME real farm level the kid sees
+// here, instead of the separate (and, until recently, dead/frozen)
+// profile.farmLevel stat — see AppContext.jsx's starsToCoins comment.
+export function getFarmLevel(completedCount) {
+  const n = completedCount
   if (n<=2) return 1; if (n<=5) return 2; if (n<=8) return 3
   if (n<=12) return 4; if (n<=16) return 5; return 6
 }
-const LABELS  = ['','Kleiner Hof','Wachsender Hof','Blühender Hof','Großer Hof','Prächtiger Hof','Traumhof!']
+const getLevel = getFarmLevel
+export const FARM_LEVEL_LABELS = ['','Kleiner Hof','Wachsender Hof','Blühender Hof','Großer Hof','Prächtiger Hof','Traumhof!']
+const LABELS = FARM_LEVEL_LABELS
 const NEXT_AT = [0,3,6,9,13,17,Infinity]
 
 // Compute which animals should be on farm for a given level

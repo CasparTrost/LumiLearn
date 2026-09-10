@@ -98,7 +98,7 @@ function LumiWithOrbit({ completedCount, size }) {
 export default function HomeScreen() {
   const t = useT()
   const { state, dispatch } = useApp()
-  const { profile: activeProfile, progress, farmLevel, streak, dailyMission, lastPlayed } = useProfile()
+  const { profile: activeProfile, progress, streak, dailyMission, lastPlayed } = useProfile()
   const profile = activeProfile ?? { name: 'Lumi', avatar: '🦊' }
   const [showParent, setShowParent] = useState(false)
   const [showSwitcher, setShowSwitcher] = useState(false)
