@@ -8,6 +8,7 @@ import Button from '../components/Button.jsx'
 import { sfx } from '../sfx.js'
 import { voice } from '../voice.js'
 import { useT } from '../i18n.js'
+import { useProfile } from '../hooks/useProfile.js'
 
 function Confetti({ count = 32 }) {
   const pieces = Array.from({ length: count }, (_, i) => ({
@@ -41,6 +42,7 @@ function Confetti({ count = 32 }) {
 export default function ResultsScreen() {
   const t = useT()
   const { state, dispatch } = useApp()
+  const { streak: profileStreak } = useProfile()
   const { gameResult, currentGame } = state
   const stars       = gameResult?.stars        ?? 0
   const score       = gameResult?.score        ?? 0
@@ -54,7 +56,7 @@ export default function ResultsScreen() {
   const coinsEarned    = gameResult?.coinsEarned    ?? 0
   const streakBonusCoins = gameResult?.streakBonus ?? 0
   const newMissionsCompleted = gameResult?.newMissionsCompleted ?? []
-  const streakCount    = state.streak?.count ?? 0
+  const streakCount    = profileStreak?.count ?? 0
 
   // Modules where a fraction counter makes sense
   const SCORE_MODULES = ['numbers','letters','listen','words','patterns','shapes','emotions','shadows','bubbles']

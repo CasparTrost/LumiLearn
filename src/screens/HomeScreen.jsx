@@ -8,6 +8,7 @@ import { MAX_LEVELS } from '../AppContext.jsx'
 import StarRow from '../components/StarRow.jsx'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import FarmProgress from '../components/FarmProgress.jsx'
+import { useProfile } from '../hooks/useProfile.js'
 
 // ── All modules ───────────────────────────────────────────────────────────────
 const MODULES = [
@@ -71,11 +72,8 @@ function LumiWithOrbit({ completedCount, size }) {
 export default function HomeScreen() {
   const t = useT()
   const { state, dispatch } = useApp()
-  const profile      = state.profile  ?? { name:'Lumi', avatar:'🦊' }
-  const progress     = state.progress ?? {}
-  const farmLevel    = state.farmLevel ?? 1
-  const streak       = state.streak   ?? { count: 0 }
-  const dailyMission = state.dailyMission ?? { date: null, missions: [], completedIds: [] }
+  const { profile: activeProfile, progress, farmLevel, streak, dailyMission, lastPlayed } = useProfile()
+  const profile = activeProfile ?? { name: 'Lumi', avatar: '🦊' }
   const [showParent, setShowParent] = useState(false)
   const completedCount = Object.values(progress).filter(p => p?.completed).length
 

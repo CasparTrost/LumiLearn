@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react'
 import { useApp, MAX_LEVELS } from '../AppContext.jsx'
 import InfoButton from '../components/InfoButton.jsx'
 import ErrorBoundary from '../components/ErrorBoundary.jsx'
+import { useProfile } from '../hooks/useProfile.js'
 import ChoiceGame    from '../games/ChoiceGame.jsx'
 import TyperGame     from '../games/TyperGame.jsx'
 import MemoryGame    from '../games/MemoryGame.jsx'
@@ -66,6 +67,7 @@ const GAME_MAP = {
 
 export default function GameScreen() {
   const { state, dispatch } = useApp()
+  const { coins } = useProfile()
   const { moduleId, level } = state.currentGame ?? { moduleId: 'numbers', level: 1 }
 
   const meta          = MODULE_META[moduleId] ?? MODULE_META.numbers
@@ -108,7 +110,7 @@ export default function GameScreen() {
           border:'1px solid rgba(255,217,61,0.4)',
         }}>
           <span style={{ fontSize:16 }}>🪙</span>
-          <span style={{ fontFamily:'var(--font-heading)', color:'#FFD93D', fontWeight:700, fontSize:15 }}>{state.coins ?? 0}</span>
+          <span style={{ fontFamily:'var(--font-heading)', color:'#FFD93D', fontWeight:700, fontSize:15 }}>{coins}</span>
         </span>
         <span style={{ fontFamily:'var(--font-heading)', fontSize:16, color:'rgba(255,255,255,0.75)' }}>
           Level {level} / {MAX_LEVELS[moduleId] ?? 5}

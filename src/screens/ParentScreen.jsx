@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useApp, MAX_LEVELS } from '../AppContext.jsx'
+import { useProfile } from '../hooks/useProfile.js'
 
 const MODULE_NAMES = {
   'number-intro': 'Zahlen entdecken',
@@ -77,9 +78,7 @@ function PinPad({ onSuccess, onCancel, correctPin = '1234' }) {
 
 export default function ParentScreen({ onClose }) {
   const { state, dispatch } = useApp()
-  const coins     = state.coins    ?? 0
-  const farmLevel = state.farmLevel ?? 1
-  const streak    = state.streak   ?? { count: 0 }
+  const { progress, coins, farmLevel, streak } = useProfile()
   const currentPin = state.settings?.parentPin ?? '1234'
   const pinIsDefault = state.settings?.pinIsDefault ?? true
   const [unlocked, setUnlocked] = useState(false)
@@ -104,19 +103,10 @@ export default function ParentScreen({ onClose }) {
   }, [dispatch])
 
   const resetFarm = useCallback((targetLevel) => {
-    try {
-      if (targetLevel === 0) {
-        localStorage.removeItem('lumilearn_farm_level')
-      } else {
-        localStorage.setItem('lumilearn_farm_level', String(targetLevel))
-      }
-    } catch {}
     showToast(targetLevel === 0 ? 'Hof komplett zurückgesetzt' : `Hof → Level ${targetLevel}`)
   }, [])
 
-  const currentFarmLevel = (() => {
-    try { return parseInt(localStorage.getItem('lumilearn_farm_level') || '0', 10) } catch { return 0 }
-  })()
+  const currentFarmLevel = farmLevel ?? 1
 
   const handlePinChange = () => {
     setPinError('')
@@ -230,7 +220,7 @@ export default function ParentScreen({ onClose }) {
           </div>
           <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
             {Object.entries(MODULE_NAMES).map(([id, name]) => {
-              const prog = state.progress[id]
+              const prog = progress[id]
               const curLv = prog?.currentLevel ?? 1
               const maxLv = MAX_LEVELS[id] ?? 10
               const stars = Object.values(prog?.levelStars ?? {}).reduce((a,b) => a+b, 0)
@@ -323,7 +313,6 @@ export default function ParentScreen({ onClose }) {
           <motion.button whileTap={{scale:0.95}}
             onClick={() => {
               dispatch({ type:'RESET_ALL' })
-              try { localStorage.removeItem('lumilearn_farm_level') } catch {}
               showToast('Alles zurückgesetzt')
               setTimeout(onClose, 1500)
             }}

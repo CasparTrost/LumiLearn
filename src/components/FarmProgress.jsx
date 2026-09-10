@@ -444,7 +444,7 @@ function LevelUpCelebration({ level, newAnimals, onDone }) {
   )
 }
 
-export default function FarmProgress({ completedCount: rawCount = 0, totalModules = 17 }) {
+export default function FarmProgress({ completedCount: rawCount = 0, totalModules = 17, profile }) {
   const completedCount = rawCount  // use real count
   const level = getLevel(completedCount)
   const pct = Math.round((completedCount / totalModules) * 100)
