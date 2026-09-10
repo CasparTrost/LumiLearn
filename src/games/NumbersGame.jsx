@@ -129,6 +129,7 @@ export default function NumbersGame({ level = 1, onComplete }) {
   const [score,      setScore]     = useState(0)
   const [showWeiter, setShowWeiter] = useState(false)
   const [wrongCount,  setWrongCount]  = useState(0)  // consecutive wrong attempts on current question
+  const [misses,      setMisses]      = useState(0)  // whole level, for the star rating
   const cartControls = useAnimation()
 
   useEffect(() => {
@@ -147,6 +148,15 @@ export default function NumbersGame({ level = 1, onComplete }) {
   const totalCollected = totalBagged + flying.length
   const hasBagged      = totalBagged > 0
 
+  // Reading the order out once and never again is hard on a child holding
+  // "vier Orangen und zwei Trauben" in mind while hunting the shelves.
+  const speakOrder = useCallback(() => {
+    const q2 = questions[idx]
+    if (!q2) return
+    const txt = q2.parts.map(p => `${p.n} ${p.n === 1 ? p.item.singular : p.item.name}`).join(' und ')
+    speak(`${q2.greeting} ${txt}.`, { rate: 0.8, pitch: 1.0, lang: 'de-DE' })
+  }, [questions, idx])
+
   useEffect(() => {
     setBagged({})
     setFlying([])
@@ -157,17 +167,17 @@ export default function NumbersGame({ level = 1, onComplete }) {
     setWrongCount(0)
     clearTimeout(timerRef.current)
     // TTS: read the customer request
-    const q2 = questions[idx]
-    if (q2) {
-      const txt = q2.parts.map(p => `${p.n} ${p.n === 1 ? p.item.singular : p.item.name}`).join(' und ')
-      setTimeout(() => speak(`${q2.greeting} ${txt}.`, { rate: 0.8, pitch: 1.0, lang: 'de-DE' }), 600)
-    }
+    const t = setTimeout(speakOrder, 600)
+    return () => clearTimeout(t)
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const advance = useCallback(() => {
     const next = idx + 1
     if (next >= questions.length) {
-      onComplete({ score: score + 1, total: questions.length })
+      // Every order is eventually filled correctly, so score alone always
+      // meant three stars. Rate the failed attempts instead.
+      onComplete({ score: score + 1, total: questions.length,
+                   stars: misses === 0 ? 3 : misses <= questions.length ? 2 : 1 })
     } else {
       setIdx(next)
     }
@@ -243,16 +253,36 @@ export default function NumbersGame({ level = 1, onComplete }) {
       setTimeout(() => speak(q.thanks, { rate: 0.9, pitch: 1.1, lang: 'de-DE' }), 200)
       timerRef.current = setTimeout(() => setShowWeiter(true), 900)
     } else {
-      setBubble(WRONG[rnd(0, WRONG.length - 1)])
+      // Name what is actually off. The old message ("Das stimmt leider
+      // nicht!") never said whether there were too many or too few, which is
+      // the one thing the child needs to fix it.
+      const off = q.parts
+        .map((p, i) => ({ p, have: bagged[i] || 0 }))
+        .find(({ p, have }) => have !== p.n)
+      const tooMany = off.have > off.p.n
+      setBubble(tooMany
+        ? `Zu viele ${off.p.item.name}! 🤔`
+        : `Da fehlen noch ${off.p.item.name}! 🤔`)
       setPhase('wrong')
       setWrongCount(c => c + 1)
+      setMisses(m => m + 1)
+      setTimeout(() => speak(tooMany
+        ? `Das sind zu viele ${off.p.item.name}. Es sollen ${off.p.n} sein.`
+        : `Da fehlen noch ${off.p.item.name}. Es sollen ${off.p.n} sein.`,
+        { rate: 0.85, pitch: 1.0, lang: 'de-DE' }), 200)
       timerRef.current = setTimeout(() => {
-        setBagged({})
+        // Only the wrong baskets go back on the shelf. Emptying the whole cart
+        // made the child re-collect items that were already counted correctly.
+        setBagged(b => {
+          const keep = {}
+          q.parts.forEach((p, i) => { if ((b[i] || 0) === p.n) keep[i] = b[i] })
+          return keep
+        })
         setFlying([])
         setReturning([])
         setPhase('shopping')
         setBubble('')
-      }, 1400)
+      }, 1700)
     }
   }, [phase, flying.length, hasBagged, bagged, q, advance])
 
@@ -360,6 +390,20 @@ export default function NumbersGame({ level = 1, onComplete }) {
                     </span>
                   ))}
                   !
+                  {/* Hear the order again — it was spoken once on entry with
+                      no way back to it. */}
+                  <motion.button
+                    whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }}
+                    onClick={speakOrder}
+                    aria-label="Bestellung noch einmal anhören"
+                    style={{
+                      marginLeft: 10, verticalAlign: 'middle',
+                      background: 'white', border: `2px solid ${accentColor}66`,
+                      borderRadius: 99, padding: '4px 12px', cursor: 'pointer',
+                      fontFamily: 'var(--font-heading)', fontSize: 13,
+                      color: accentColor, whiteSpace: 'nowrap',
+                    }}
+                  >🔊 Nochmal</motion.button>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -426,8 +470,9 @@ export default function NumbersGame({ level = 1, onComplete }) {
                   )
                 })}
               </div>
-              {/* Hint after 2 wrong attempts: show correct quantity visually */}
-              {wrongCount >= 2 && (
+              {/* Quantity hint — used to wait for a second failed attempt,
+                  by which point the cart had been emptied twice. */}
+              {wrongCount >= 1 && (
                 <motion.div
                   initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
                   style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', marginTop: 4 }}
