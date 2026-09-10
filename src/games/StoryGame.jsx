@@ -1,14 +1,14 @@
 import { useState, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
+import { speak } from '../tts.js'
 
 function speakDE(text) {
-  if (!window.speechSynthesis) return
-  window.speechSynthesis.cancel()
-  const clean = text.replace(/[🌟✨🎉💛🍭🎁🌸🐾🌈❤️🌙⭐🦋🎵💎🪄🔮🌊🏔️🗺️🎭🃏🌿🦄🐲🔑🏆🌺💫🌻🌹🎀🎊🎈🎂🍀🍃🌾🌵🌴]/gu,'')
-  const u = new SpeechSynthesisUtterance(clean)
-  u.lang = 'de-DE'; u.rate = 0.78; u.pitch = 1.05
-  window.speechSynthesis.speak(u)
+  // tts.js's own cleaning (an emoji-range strip plus a strict word-
+  // character whitelist pass) already covers everything this file's
+  // custom emoji list targeted, and more (e.g. ❤️/⭐ sit outside the
+  // emoji-range strip but get removed by the whitelist pass anyway).
+  speak(text, { rate: 0.78, pitch: 1.05, lang: 'de-DE' })
 }
 
 /**

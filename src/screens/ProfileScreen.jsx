@@ -4,8 +4,8 @@ import { useApp } from '../AppContext.jsx'
 import { useT } from '../i18n.js'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 
-const AVATARS = ['🐻','🐼','🦁','🐨','🦊','🐧','🦋','🐬','🦄','🐸','🐙','🐯','🐮','🐷','🐔','🦉']
-const AGES = [3, 4, 5, 6, 7]
+export const AVATARS = ['🐻','🐼','🦁','🐨','🦊','🐧','🦋','🐬','🦄','🐸','🐙','🐯','🐮','🐷','🐔','🦉']
+export const AGES = [3, 4, 5, 6, 7]
 const COLORS = ['#FF6B6B','#FF9F43','#FFD93D','#6BCB77','#4ECDC4','#74B9FF','#A29BFE','#FD79A8','#FF6B6B','#00B894','#6C63FF','#E17055','#0984E3','#00CEC9','#FDCB6E','#E84393']
 
 function SimpleBtn({ onClick, disabled, gold, green, ghost, small, children }) {

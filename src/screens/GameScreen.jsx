@@ -96,9 +96,14 @@ export default function GameScreen() {
   const meta          = MODULE_META[moduleId] ?? MODULE_META.numbers
   const GameComponent = GAME_MAP[moduleId]    ?? ChoiceGame
 
-  const handleComplete = ({ score, total }) => {
+  const handleComplete = ({ score, total, stars: providedStars }) => {
+    // Some games (e.g. MemoryGame) compute their own star rating from a
+    // metric other than score/total (move efficiency) and show it to the
+    // child directly — respect that instead of silently recomputing a
+    // different number from score/total, which used to award 3 stars
+    // regardless of what was actually displayed.
     const pct   = total > 0 ? score / total : 0
-    const stars = pct >= 0.85 ? 3 : pct >= 0.6 ? 2 : pct >= 0.35 ? 1 : 0
+    const stars = providedStars ?? (pct >= 0.85 ? 3 : pct >= 0.6 ? 2 : pct >= 0.35 ? 1 : 0)
     dispatch({ type: 'FINISH_GAME', payload: { moduleId, level, stars, score, total } })
   }
 
@@ -116,6 +121,7 @@ export default function GameScreen() {
         flexShrink: 0,
       }}>
         <motion.button whileHover={{scale:1.1}} whileTap={{scale:0.92}} onClick={quit}
+          aria-label="Spiel verlassen"
           style={{
             width: 44, height: 44, borderRadius:'50%',
             background:'rgba(255,255,255,0.22)',

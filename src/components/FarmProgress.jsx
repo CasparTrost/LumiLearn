@@ -79,11 +79,17 @@ const ANIMAL_COUNT = {
   horse:   [0, 0, 0, 0, 0, 0, 2],
 }
 
-function getLevel(n) {
+// Exported so ParentScreen can show the SAME real farm level the kid sees
+// here, instead of the separate (and, until recently, dead/frozen)
+// profile.farmLevel stat — see AppContext.jsx's starsToCoins comment.
+export function getFarmLevel(completedCount) {
+  const n = completedCount
   if (n<=2) return 1; if (n<=5) return 2; if (n<=8) return 3
   if (n<=12) return 4; if (n<=16) return 5; return 6
 }
-const LABELS  = ['','Kleiner Hof','Wachsender Hof','Blühender Hof','Großer Hof','Prächtiger Hof','Traumhof!']
+const getLevel = getFarmLevel
+export const FARM_LEVEL_LABELS = ['','Kleiner Hof','Wachsender Hof','Blühender Hof','Großer Hof','Prächtiger Hof','Traumhof!']
+const LABELS = FARM_LEVEL_LABELS
 const NEXT_AT = [0,3,6,9,13,17,Infinity]
 
 // Compute which animals should be on farm for a given level
@@ -276,32 +282,6 @@ function Farmer({ farmScale = 1 }) {
         style={{ width:'100%', imageRendering:'pixelated',
           transform: flipX ? 'scaleX(-1)' : 'none',
           filter:'drop-shadow(1px 3px 3px rgba(0,0,0,.5))' }}/>
-    </div>
-  )
-}
-
-// Confetti particle
-function Confetti({ count = 30 }) {
-  const pieces = Array.from({length: count}, (_, i) => ({
-    id: i,
-    x: Math.random() * 100,
-    color: ['#FFD93D','#FF6B6B','#6BCB77','#4D96FF','#FF9F1C','#fff'][i % 6],
-    delay: Math.random() * 0.5,
-    dur: 1.5 + Math.random() * 1,
-    rotate: Math.random() * 360,
-  }))
-  return (
-    <div style={{position:'absolute',inset:0,overflow:'hidden',pointerEvents:'none',zIndex:200}}>
-      {pieces.map(p => (
-        <motion.div key={p.id}
-          initial={{x:`${p.x}vw`, y:'-10%', rotate:0, opacity:1}}
-          animate={{y:'110%', rotate: p.rotate + 720, opacity:[1,1,0]}}
-          transition={{duration: p.dur, delay: p.delay, ease:'easeIn'}}
-          style={{position:'absolute', width:8, height:8,
-            background: p.color, borderRadius: p.id%3===0 ? '50%' : 2,
-            top:0, left:0}}
-        />
-      ))}
     </div>
   )
 }

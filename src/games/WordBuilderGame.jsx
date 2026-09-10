@@ -2,15 +2,11 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
+import { speak } from '../tts.js'
 
 function speakDE(text) {
-  if (!window.speechSynthesis) return
-  window.speechSynthesis.cancel()
-  const u = new SpeechSynthesisUtterance(text)
-  u.lang = 'de-DE'; u.rate = 0.7; u.pitch = 1.1
-  window.speechSynthesis.speak(u)
+  speak(text, { rate: 0.7, pitch: 1.1, lang: 'de-DE' })
 }
-import { voice } from '../voice.js'
 
 /**
  * Silben-Spaß — Wörter aus Silben zusammenbauen

@@ -1,6 +1,5 @@
-﻿import React, { useState, useEffect, useMemo } from 'react'
+﻿import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import ParentScreen from './ParentScreen.jsx'
 import { Settings } from 'lucide-react'
 import { useApp } from '../AppContext.jsx'
 import { useT } from '../i18n.js'
@@ -10,6 +9,12 @@ import LumiCharacter from '../components/LumiCharacter.jsx'
 import FarmProgress from '../components/FarmProgress.jsx'
 import ProfileSwitcher from '../components/ProfileSwitcher.jsx'
 import { useProfile } from '../hooks/useProfile.js'
+import { speak } from '../tts.js'
+
+// Rarely opened (only via the settings gear) and pulls in its own sizeable
+// UI (PIN gate, stats, error log, profile management) — no reason to ship
+// it in the initial bundle every kid loading the home screen pays for.
+const ParentScreen = lazy(() => import('./ParentScreen.jsx'))
 
 // ── All modules ───────────────────────────────────────────────────────────────
 const MODULES = [
@@ -98,7 +103,7 @@ function LumiWithOrbit({ completedCount, size }) {
 export default function HomeScreen() {
   const t = useT()
   const { state, dispatch } = useApp()
-  const { profile: activeProfile, progress, farmLevel, streak, dailyMission, lastPlayed } = useProfile()
+  const { profile: activeProfile, progress, streak, dailyMission, lastPlayed } = useProfile()
   const profile = activeProfile ?? { name: 'Lumi', avatar: '🦊' }
   const [showParent, setShowParent] = useState(false)
   const [showSwitcher, setShowSwitcher] = useState(false)
@@ -129,11 +134,7 @@ export default function HomeScreen() {
     const hour = new Date().getHours()
     const greeting = hour < 12 ? 'Guten Morgen' : hour < 17 ? 'Hallo' : 'Guten Abend'
     setTimeout(() => {
-      if (!window.speechSynthesis) return
-      window.speechSynthesis.cancel()
-      const u = new SpeechSynthesisUtterance(`${greeting}, ${profile.name}! Was möchtest du heute lernen?`)
-      u.lang = 'de-DE'; u.rate = 0.85; u.pitch = 1.1
-      window.speechSynthesis.speak(u)
+      speak(`${greeting}, ${profile.name}! Was möchtest du heute lernen?`, { rate: 0.85, pitch: 1.1, lang: 'de-DE' })
     }, 800)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -212,6 +213,7 @@ export default function HomeScreen() {
           onClick={() => setShowSwitcher(true)}
           style={{ fontSize:'clamp(36px,7vw,52px)', lineHeight:1, background:'none', border:'none', cursor:'pointer', padding:0, borderRadius:'50%' }}
           title="Profil wechseln"
+          aria-label="Profil wechseln"
         >{profile.avatar}</motion.button>
         <div style={{ flex:1 }}>
           <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(14px,2.8vw,20px)', color:'rgba(255,255,255,0.75)' }}>
@@ -226,6 +228,7 @@ export default function HomeScreen() {
           style={{ width:48,height:48,borderRadius:'50%',background:'rgba(255,255,255,0.18)',display:'flex',alignItems:'center',justifyContent:'center' }}
           onClick={() => setShowParent(true)}
           title="Einstellungen"
+          aria-label="Einstellungen (Elternbereich)"
         >
           <Settings size={20} color="white" />
         </motion.button>
@@ -501,7 +504,24 @@ export default function HomeScreen() {
           )
         })}
       </div>
-      {showParent && <ParentScreen onClose={() => setShowParent(false)} />}
+      {showParent && (
+        <Suspense fallback={
+          <div style={{
+            position:'fixed', inset:0, zIndex:50,
+            background:'rgba(0,0,0,0.35)',
+            display:'flex', alignItems:'center', justifyContent:'center',
+          }}>
+            <div style={{
+              width:46, height:46, borderRadius:'50%',
+              border:'4px solid rgba(255,255,255,0.35)',
+              borderTopColor:'white',
+              animation:'spin 0.8s linear infinite',
+            }} />
+          </div>
+        }>
+          <ParentScreen onClose={() => setShowParent(false)} />
+        </Suspense>
+      )}
       {showSwitcher && <ProfileSwitcher onClose={() => setShowSwitcher(false)} />}
 
 </div>

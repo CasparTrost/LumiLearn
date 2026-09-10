@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
+import { speak } from '../tts.js'
 
 /**
  * Uhrzeiten-Meister — Uhrzeit lesen & stellen
@@ -75,6 +76,62 @@ function timeDiffMin(h1, m1, h2, m2) {
   return Math.min(raw, 720 - raw)
 }
 
+// ── Tap-to-step button (with hold-repeat) ───────────────────────────────────
+// Non-drag alternative to grabbing a clock hand — same pattern as MazeGame's
+// D-Pad buttons (pointer capture + a window-level fallback, so the repeat
+// reliably stops even if the pointerup lands on a different element after
+// the whileTap scale shrinks the hit area).
+function StepButton({ label, onPress, color, ariaLabel }) {
+  const repeatRef = useRef(null)
+  const activeRef = useRef(false)
+
+  const stop = useCallback(() => {
+    if (!activeRef.current) return
+    activeRef.current = false
+    clearInterval(repeatRef.current)
+    repeatRef.current = null
+  }, [])
+
+  const start = useCallback(e => {
+    activeRef.current = true
+    try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* ignore */ }
+    onPress()
+    clearInterval(repeatRef.current)
+    repeatRef.current = setInterval(onPress, 220)
+  }, [onPress])
+
+  useEffect(() => {
+    window.addEventListener('pointerup', stop)
+    window.addEventListener('pointercancel', stop)
+    window.addEventListener('blur', stop)
+    return () => {
+      window.removeEventListener('pointerup', stop)
+      window.removeEventListener('pointercancel', stop)
+      window.removeEventListener('blur', stop)
+      stop()
+    }
+  }, [stop])
+
+  return (
+    <motion.button
+      whileTap={{ scale: 0.88 }}
+      onPointerDown={start}
+      onPointerUp={stop}
+      onPointerLeave={stop}
+      onPointerCancel={stop}
+      aria-label={ariaLabel}
+      style={{
+        width: 38, height: 38, borderRadius: 12,
+        background: color, color: 'white', border: 'none',
+        fontSize: 20, fontWeight: 800, lineHeight: 1,
+        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none',
+        boxShadow: `0 3px 10px ${color}66`,
+      }}
+    >{label}</motion.button>
+  )
+}
+
 // ── Analog Clock SVG ─────────────────────────────────────────────────────────
 const CX = 120, CY = 120, R = 108
 
@@ -131,6 +188,18 @@ function ClockFace({ targetH, targetM, interactive, onAnswer, level = 1 }) {
       window.removeEventListener('touchend',  handleUp)
     }
   }, [dragging, getAngle])
+
+  // Tap alternative to dragging — steps the hour hand by ±1 (wraps 1–12)
+  // and the minute hand by ±5 (wraps 0–55). A 5-minute step still lands
+  // well within every level's matching tolerance (min. 4 minutes), since
+  // the farthest any target minute can be from the nearest multiple of 5
+  // is 2.5 minutes.
+  const stepHour = useCallback((delta) => {
+    setHours(h => (((h - 1 + delta) % 12) + 12) % 12 + 1)
+  }, [])
+  const stepMinute = useCallback((delta) => {
+    setMinutes(m => (((m + delta) % 60) + 60) % 60)
+  }, [])
 
   // Submit answer
   const submit = useCallback(() => {
@@ -288,14 +357,32 @@ function ClockFace({ targetH, targetM, interactive, onAnswer, level = 1 }) {
         </div>
       )}
 
-      {/* Legend */}
+      {/* Legend + tap controls — dragging the hands works, but tapping the
+          ± buttons is the non-drag alternative for kids (or input devices)
+          that can't reliably drag. */}
       {interactive && (
         <div style={{
-          display: 'flex', gap: 18, justifyContent: 'center',
-          fontFamily: 'var(--font-heading)', fontSize: 14, fontWeight: 700,
+          display: 'flex', gap: 'clamp(14px,4vw,28px)', justifyContent: 'center',
+          flexWrap: 'wrap',
         }}>
-          <span style={{ color: '#4A00E0' }}>🔵 Stundenzeiger ziehen</span>
-          <span style={{ color: '#FF6B6B' }}>🔴 Minutenzeiger ziehen</span>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontFamily: 'var(--font-heading)', fontSize: 14, fontWeight: 700, color: '#4A00E0' }}>
+              🔵 Stunde
+            </span>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <StepButton label="−" color="#4A00E0" onPress={() => stepHour(-1)} ariaLabel="Stundenzeiger zurück" />
+              <StepButton label="+" color="#4A00E0" onPress={() => stepHour(1)}  ariaLabel="Stundenzeiger vor" />
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontFamily: 'var(--font-heading)', fontSize: 14, fontWeight: 700, color: '#FF6B6B' }}>
+              🔴 Minute
+            </span>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <StepButton label="−" color="#FF6B6B" onPress={() => stepMinute(-5)} ariaLabel="Minutenzeiger zurück" />
+              <StepButton label="+" color="#FF6B6B" onPress={() => stepMinute(5)}  ariaLabel="Minutenzeiger vor" />
+            </div>
+          </div>
         </div>
       )}
 
@@ -339,13 +426,7 @@ export default function ClockGame({ level = 1, onComplete }) {
     const task = idx % 2 === 0
       ? `Wie viel Uhr ist es? ${t.h} Uhr ${t.m > 0 ? t.m : ''}`
       : `Stelle die Uhr auf ${t.h} Uhr ${t.m > 0 ? t.m : ''}`
-    setTimeout(() => {
-      if (!window.speechSynthesis) return
-      window.speechSynthesis.cancel()
-      const u = new SpeechSynthesisUtterance(task)
-      u.lang = 'de-DE'; u.rate = 0.8; u.pitch = 1.05
-      window.speechSynthesis.speak(u)
-    }, 500)
+    setTimeout(() => speak(task, { rate: 0.8, pitch: 1.05, lang: 'de-DE' }), 500)
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Alternate between 'read' and 'set' modes
@@ -511,7 +592,7 @@ export default function ClockGame({ level = 1, onComplete }) {
               ? (<>💡 Tipp: Der kurze Zeiger = Stunden, der lange = Minuten. Es ist <strong style={{ color:'#4A00E0' }}>{toGermanTime(t.h, t.m)}</strong>!</>)
               : mode === 'read'
                 ? (<>Welche Uhrzeit zeigt die Uhr? 🕐</>)
-                : (<>Stelle die Uhr auf <strong style={{ color: '#4A00E0' }}>{fmt(t.h, t.m)}</strong>! Ziehe die Zeiger! 🖐️</>)
+                : (<>Stelle die Uhr auf <strong style={{ color: '#4A00E0' }}>{fmt(t.h, t.m)}</strong>! Ziehe die Zeiger oder tippe ➕➖! 🖐️</>)
           }
         </motion.div>
       </div>

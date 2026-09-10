@@ -30,11 +30,16 @@ function freshProgress() {
 const ALL_MODULE_IDS = Object.keys(MAX_LEVELS)
 
 // ── Coin helpers ──────────────────────────────────────────────────────────────
+// Coins are a pure earned-achievement counter (shown in GameScreen,
+// ResultsScreen, ProfileSwitcher) — not a currency with anywhere to spend
+// them. There used to be an UPGRADE_FARM action + FARM_COSTS letting coins
+// "buy" farm levels, but the farm (FarmProgress.jsx) already has its own
+// complete, better-fitting progression tied to real achievement
+// (getFarmLevel(completedCount) — see FarmProgress.jsx), so that dead
+// parallel system was removed rather than built out into an actual shop.
 export function starsToCoins(stars) {
   return stars >= 3 ? 18 : stars >= 2 ? 10 : stars >= 1 ? 5 : 0
 }
-
-export const FARM_COSTS = [0, 50, 100, 175, 275, 400] // cost to reach level 2,3,4,5,6
 
 // ── Daily Missions definition (functions NOT stored in localStorage) ──────────
 export const ALL_MISSIONS = [
@@ -151,6 +156,23 @@ function reducer(state, action) {
       }
     }
 
+    case 'UPDATE_PROFILE': {
+      const { id, name, age, avatar } = action.payload
+      if (!state.profiles[id]) return state
+      return {
+        ...state,
+        profiles: {
+          ...state.profiles,
+          [id]: {
+            ...state.profiles[id],
+            ...(name   !== undefined ? { name }   : {}),
+            ...(age    !== undefined ? { age }    : {}),
+            ...(avatar !== undefined ? { avatar } : {}),
+          },
+        },
+      }
+    }
+
     case 'SET_ACTIVE_PROFILE':
       return { ...state, activeProfileId: action.payload }
 
@@ -212,16 +234,6 @@ function reducer(state, action) {
           ...p,
           dailyMission: { date: today, missions: pickMissionsForDate(today), completedIds: [] },
         }
-      })
-    }
-
-    case 'UPGRADE_FARM': {
-      return updateActiveProfile(state, p => {
-        const curLevel = p.farmLevel ?? 1
-        if (curLevel >= 6) return p
-        const cost = FARM_COSTS[curLevel] ?? 999
-        if ((p.coins ?? 0) < cost) return p
-        return { ...p, farmLevel: curLevel + 1, coins: (p.coins ?? 0) - cost }
       })
     }
 

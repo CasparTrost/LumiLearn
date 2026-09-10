@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
+import { speak } from '../tts.js'
 
 /**
  * Sortier-Spaß — Kategorisieren & Konzeptbildung
@@ -302,9 +303,13 @@ const LEVEL_SETS = [
   ],
 ]
 
-// Pick a random variant set for the given level (1-based), cycling through tiers
+// Pick a random variant set for the given level (1-based), cycling through
+// tiers. Spread evenly across MAX_LEVELS.sort (10) levels rather than a
+// flat "2 levels per tier" step — that old formula topped out at tier
+// index 4 for level 10, one short of LEVEL_SETS' last (hardest) tier,
+// which could then never be reached in normal play.
 function pickLevelSet(level) {
-  const tierIdx = Math.min(Math.floor((level - 1) / 2), LEVEL_SETS.length - 1)
+  const tierIdx = Math.min(Math.floor((level - 1) * LEVEL_SETS.length / 10), LEVEL_SETS.length - 1)
   const variants = LEVEL_SETS[tierIdx]
   return variants[Math.floor(Math.random() * variants.length)]
 }
@@ -312,11 +317,7 @@ function pickLevelSet(level) {
 function shuffleArr(a) { return [...a].sort(() => Math.random() - 0.5) }
 
 function speakDE(text) {
-  if (!window.speechSynthesis) return
-  window.speechSynthesis.cancel()
-  const u = new SpeechSynthesisUtterance((text||'').replace(/[^\w\säöüÄÖÜß.,!?]/g,''))
-  u.lang = 'de-DE'; u.rate = 0.8; u.pitch = 1.05
-  window.speechSynthesis.speak(u)
+  speak(text, { rate: 0.8, pitch: 1.05, lang: 'de-DE' })
 }
 
 export default function SortGame({ level = 1, onComplete }) {

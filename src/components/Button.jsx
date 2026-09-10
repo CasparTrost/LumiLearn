@@ -61,6 +61,8 @@ export default function Button({ children, onClick, variant = 'primary', size = 
   return (
     <motion.button
       onClick={disabled ? undefined : onClick}
+      disabled={disabled}
+      aria-disabled={disabled}
       whileHover={disabled ? {} : { scale: 1.04, y: -2 }}
       whileTap={disabled ? {} : { scale: 0.97 }}
       style={{ ...base, ...sizes[size], ...variants[variant], ...disabledStyle, ...style }}

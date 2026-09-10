@@ -2,13 +2,10 @@ import { useState, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
+import { speak } from '../tts.js'
 
 function speakDE(text) {
-  if (!window.speechSynthesis) return
-  window.speechSynthesis.cancel()
-  const u = new SpeechSynthesisUtterance((text||'').replace(/[^\w\säöüÄÖÜß.,!?]/g,''))
-  u.lang = 'de-DE'; u.rate = 0.85; u.pitch = 1.1
-  window.speechSynthesis.speak(u)
+  speak(text, { rate: 0.85, pitch: 1.1, lang: 'de-DE' })
 }
 
 // Sparkle burst that fires when a pair is found

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
+import { speak as ttsSpeak } from '../tts.js'
 
 /**
  * Buchstabenwald — Tippen & Schreiben
@@ -98,13 +99,7 @@ const ROWS = [
 ]
 
 function speak(text, slow = false) {
-  if (!window.speechSynthesis) return
-  window.speechSynthesis.cancel()
-  const u = new SpeechSynthesisUtterance(text)
-  u.lang  = 'de-DE'
-  u.rate  = slow ? 0.65 : 0.85
-  u.pitch = 1.05
-  window.speechSynthesis.speak(u)
+  ttsSpeak(text, { rate: slow ? 0.65 : 0.85, pitch: 1.05, lang: 'de-DE' })
 }
 
 function shuffle(a) { return [...a].sort(() => Math.random() - 0.5) }

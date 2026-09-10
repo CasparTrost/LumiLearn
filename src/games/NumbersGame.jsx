@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { motion, AnimatePresence, useAnimation } from 'framer-motion'
+import { speak } from '../tts.js'
 
 function rnd(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min }
 function shuffle(arr)  { return [...arr].sort(() => Math.random() - 0.5) }
@@ -159,13 +160,7 @@ export default function NumbersGame({ level = 1, onComplete }) {
     const q2 = questions[idx]
     if (q2) {
       const txt = q2.parts.map(p => `${p.n} ${p.n === 1 ? p.item.singular : p.item.name}`).join(' und ')
-      setTimeout(() => {
-        if (!window.speechSynthesis) return
-        window.speechSynthesis.cancel()
-        const u = new SpeechSynthesisUtterance(`${q2.greeting} ${txt}.`)
-        u.lang = 'de-DE'; u.rate = 0.8; u.pitch = 1.0
-        window.speechSynthesis.speak(u)
-      }, 600)
+      setTimeout(() => speak(`${q2.greeting} ${txt}.`, { rate: 0.8, pitch: 1.0, lang: 'de-DE' }), 600)
     }
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -245,13 +240,7 @@ export default function NumbersGame({ level = 1, onComplete }) {
       setPhase('correct')
       setScore(s => s + 1)
       // TTS thanks
-      setTimeout(() => {
-        if (!window.speechSynthesis) return
-        window.speechSynthesis.cancel()
-        const u = new SpeechSynthesisUtterance(q.thanks.replace(/[^\w\säöüÄÖÜß.,!?]/g,''))
-        u.lang = 'de-DE'; u.rate = 0.9; u.pitch = 1.1
-        window.speechSynthesis.speak(u)
-      }, 200)
+      setTimeout(() => speak(q.thanks, { rate: 0.9, pitch: 1.1, lang: 'de-DE' }), 200)
       timerRef.current = setTimeout(() => setShowWeiter(true), 900)
     } else {
       setBubble(WRONG[rnd(0, WRONG.length - 1)])

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence, useAnimationFrame, motionValue } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
+import { speak } from '../tts.js'
 
 /**
  * Blasen-Blitz — Subitizing & Inhibitorische Kontrolle
@@ -95,13 +96,7 @@ export default function BubblePopGame({ level = 1, onComplete }) {
     setTimeLeft(cfg.timeS)
     setPhase('playing')
     // TTS: speak the target number
-    setTimeout(() => {
-      if (!window.speechSynthesis) return
-      window.speechSynthesis.cancel()
-      const u = new SpeechSynthesisUtterance(`Finde die ${t}!`)
-      u.lang = 'de-DE'; u.rate = 0.9; u.pitch = 1.1
-      window.speechSynthesis.speak(u)
-    }, 300)
+    setTimeout(() => speak(`Finde die ${t}!`, { rate: 0.9, pitch: 1.1, lang: 'de-DE' }), 300)
   }, [roundIdx, cfg])
 
   // Init physics state + MotionValues whenever bubbles change
@@ -135,7 +130,7 @@ export default function BubblePopGame({ level = 1, onComplete }) {
           setMood('encouraging')
           if (nl <= 0) {
             setPhase('done')
-            setTimeout(() => onComplete({ score: roundsWonRef.current, total: 3 }), 1200)
+            setTimeout(() => onComplete({ score: roundsWonRef.current, total: 3, stars: roundsWonRef.current }), 1200)
           } else {
             setPhase('roundFail')
             setTimeout(() => setRoundIdx(r => r + 1), 1500)
@@ -173,7 +168,11 @@ export default function BubblePopGame({ level = 1, onComplete }) {
         setRoundsWon(nw)
         setPhase('roundWin')
         if (roundIdx + 1 >= 3) {
-          setTimeout(() => onComplete({ score: nw, total: 3 }), 1400)
+          // Explicit stars = rounds won (1 round -> 1 star, etc.) — the
+          // GameScreen's default score/total percentage thresholds would
+          // otherwise map exactly 1/3 rounds won to 0 stars (0.33 falls
+          // just under the 0.35 cutoff for 1 star), same as 0/3.
+          setTimeout(() => onComplete({ score: nw, total: 3, stars: nw }), 1400)
         } else {
           setTimeout(() => setRoundIdx(r => r + 1), 1500)
         }
@@ -187,7 +186,7 @@ export default function BubblePopGame({ level = 1, onComplete }) {
       setTimeout(() => setMood('happy'), 700)
       if (nl <= 0) {
         setPhase('done')
-        setTimeout(() => onComplete({ score: roundsWonRef.current, total: 3 }), 1200)
+        setTimeout(() => onComplete({ score: roundsWonRef.current, total: 3, stars: roundsWonRef.current }), 1200)
       }
     }
   }, [phase, bubbles, target, roundIdx, onComplete])

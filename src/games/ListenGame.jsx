@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
+import { speak as ttsSpeak } from '../tts.js'
 
 /**
  * Hörabenteuer — Phonologisches Bewusstsein
@@ -106,13 +107,7 @@ const WORD_BANK = [
 function shuffle(a) { return [...a].sort(() => Math.random() - 0.5) }
 
 function speak(text, slow = false) {
-  if (!window.speechSynthesis) return
-  window.speechSynthesis.cancel()
-  const u = new SpeechSynthesisUtterance(text)
-  u.lang  = 'de-DE'
-  u.rate  = slow ? 0.45 : 0.72
-  u.pitch = 1.1
-  window.speechSynthesis.speak(u)
+  ttsSpeak(text, { rate: slow ? 0.45 : 0.72, pitch: 1.1, lang: 'de-DE' })
 }
 
 export default function ListenGame({ level = 1, onComplete }) {

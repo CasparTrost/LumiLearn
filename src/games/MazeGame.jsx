@@ -519,7 +519,7 @@ export default function MazeGame({ level = 1, onComplete }) {
         try { sfx.potion() } catch { /* ignore */ }
         const count  = st.coll.length
         const total  = mazeRef.current.potions.length
-        speak(`Zaubertrank ${count} von ${total}!`)
+        speak(`Zaubertrank ${count} von ${total}!`, { lang: 'de-DE' })
         const sid = Date.now()
         setSparkles(prev => [...prev, { id: sid, x: ev.x, y: ev.y }])
         setTimeout(() => setSparkles(prev => prev.filter(s => s.id !== sid)), 700)
@@ -528,13 +528,13 @@ export default function MazeGame({ level = 1, onComplete }) {
 
       case 'hit':
         try { sfx.hitPlayer() } catch { /* ignore */ }
-        speak('Vorsicht! Der Drache hat dich erwischt!')
+        speak('Vorsicht! Der Drache hat dich erwischt!', { lang: 'de-DE' })
         navigator.vibrate?.([60, 40, 60])
         break
 
       case 'dead':
         try { sfx.wrong() } catch { /* ignore */ }
-        speak('Oh nein! Der Drache war zu schnell. Versuch es nochmal!')
+        speak('Oh nein! Der Drache war zu schnell. Versuch es nochmal!', { lang: 'de-DE' })
         navigator.vibrate?.([80, 40, 80, 40, 80])
         setShowOverlay('dead')
         finish(0, Math.max(1, mazeRef.current.potions.length), 2200)
@@ -542,7 +542,7 @@ export default function MazeGame({ level = 1, onComplete }) {
 
       case 'won':
         try { sfx.complete() } catch { /* ignore */ }
-        speak('Super! Du hast das Labyrinth gemeistert!')
+        speak('Super! Du hast das Labyrinth gemeistert!', { lang: 'de-DE' })
         navigator.vibrate?.([50, 30, 50, 30, 100])
         setShowOverlay('won')
         finish(mazeRef.current.potions.length, mazeRef.current.potions.length, 2200)
@@ -570,7 +570,7 @@ export default function MazeGame({ level = 1, onComplete }) {
     const msg = n > 0
       ? `Sammle ${n} Zaubertrank${n > 1 ? 'e' : ''} und finde den Ausgang${dragonWarning}`
       : `Finde den Ausgang des Labyrinths${dragonWarning}`
-    const tid = setTimeout(() => speak(msg), 700)
+    const tid = setTimeout(() => speak(msg, { lang: 'de-DE' }), 700)
     return () => clearTimeout(tid)
   }, [cfg.hasDragon])
 
