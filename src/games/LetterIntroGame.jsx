@@ -1,13 +1,14 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { voice } from '../voice.js'
+import { speak } from '../tts.js'
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 const LETTER_DATA = {
   A: { color:'#FF6B6B', info:'A ist der 1. Buchstabe des Alphabets – und ein Vokal.',         opts:[{ e:'🍎', w:'Apfel' },   { e:'🐒', w:'Affe' },      { e:'🚗', w:'Auto' },    { e:'🐊', w:'Alligator' }, { e:'🍆', w:'Aubergine' }, { e:'🦅', w:'Adler' }]},
   B: { color:'#FF9F43', info:'B ist der 2. Buchstabe des Alphabets.',                          opts:[{ e:'🌸', w:'Blume' },   { e:'🐝', w:'Biene' },     { e:'🎈', w:'Ballon' }]},
   D: { color:'#c8a500', info:'D ist der 4. Buchstabe – nach C kommt D.',                       opts:[{ e:'🦖', w:'Dino' },    { e:'🐉', w:'Drache' },    { e:'🥫', w:'Dose' }]},
-  E: { color:'#5DB85D', info:'E ist der 5. Buchstabe des Alphabets – und ein Vokal.',          opts:[{ e:'🥚', w:'Ei' },      { e:'🐘', w:'Elefant' },   { e:'🦆', w:'Ente' },    { e:'🦔', w:'Eichhörnchen' }, { e:'🍓', w:'Erdbeere' }, { e:'🦅', w:'Eule' }]},
+  E: { color:'#5DB85D', info:'E ist der 5. Buchstabe des Alphabets – und ein Vokal.',          opts:[{ e:'🥚', w:'Ei' },      { e:'🐘', w:'Elefant' },   { e:'🦆', w:'Ente' },    { e:'🦔', w:'Eichhörnchen' }, { e:'🍓', w:'Erdbeere' }, { e:'🦉', w:'Eule' }]},
   F: { color:'#74B9FF', info:'F ist der 6. Buchstabe. F klingt wie ein leises „fff".',         opts:[{ e:'🐟', w:'Fisch' },   { e:'🐸', w:'Frosch' },    { e:'🦊', w:'Fuchs' }]},
   G: { color:'#A29BFE', info:'G ist der 7. Buchstabe des Alphabets.',                          opts:[{ e:'🦒', w:'Giraffe' }, { e:'👻', w:'Geist' },     { e:'🎁', w:'Geschenk' }]},
   H: { color:'#E84393', info:'H ist der 8. Buchstabe. H haucht ganz leise.',                   opts:[{ e:'🐶', w:'Hund' },    { e:'🐰', w:'Hase' },      { e:'🏠', w:'Haus' }]},
@@ -26,10 +27,24 @@ const LETTER_DATA = {
   V: { color:'#FF6B6B', info:'V ist der 22. Buchstabe. V klingt ähnlich wie F.',              opts:[{ e:'🐦', w:'Vogel' },   { e:'🌋', w:'Vulkan' },    { e:'🏺', w:'Vase' }]},
   W: { color:'#FF9F43', info:'W ist der 23. Buchstabe des Alphabets.',                         opts:[{ e:'🐺', w:'Wolf' },    { e:'☁️', w:'Wolke' },     { e:'🐋', w:'Wal' }]},
   Z: { color:'#5DB85D', info:'Z ist der 26. und letzte Buchstabe des Alphabets.',              opts:[{ e:'🦓', w:'Zebra' },   { e:'🦷', w:'Zahn' },      { e:'🚂', w:'Zug' },     { e:'🎯', w:'Ziel' },    { e:'🧱', w:'Ziegel' }]},
-  C: { color:'#E17055', info:'C ist der 3. Buchstabe. C klingt oft wie K oder Z.',                opts:[{ e:'🤡', w:'Clown' },   { e:'💻', w:'Computer' },  { e:'🍪', w:'Cookie' }]},
-  Q: { color:'#6C5CE7', info:'Q ist der 17. Buchstabe. Q kommt fast immer mit U zusammen.',       opts:[{ e:'🐊', w:'Qualle' },  { e:'💨', w:'Qualm' },     { e:'🎵', w:'Quetsche' }]},
-  X: { color:'#00B894', info:'X ist der 24. Buchstabe. X macht ein „ks" Geräusch.',               opts:[{ e:'🎸', w:'Xylofon' }, { e:'✖️', w:'Kreuz' },    { e:'📐', w:'X-Form' }]},
-  Y: { color:'#FDCB6E', info:'Y ist der 25. Buchstabe. Y klingt wie ein „Ü" oder „J".',           opts:[{ e:'🧘', w:'Yoga' },    { e:'🛥️', w:'Yacht' },    { e:'🧶', w:'Yarn' }]},
+  C: { color:'#E17055', info:'C ist der 3. Buchstabe. C klingt oft wie K oder Z.',                opts:[{ e:'🤡', w:'Clown' },   { e:'💻', w:'Computer' },  { e:'🥐', w:'Croissant' }]},
+  Q: { color:'#6C5CE7', info:'Q ist der 17. Buchstabe. Q kommt fast immer mit U zusammen.',       opts:[{ e:'🪼', w:'Qualle' },  { e:'💨', w:'Qualm' },     { e:'🦆', w:'Quaken' }]},
+  X: { color:'#00B894', info:'X ist der 24. Buchstabe. X macht ein „ks" Geräusch.',               opts:[{ e:'🎹', w:'Xylofon' }, { e:'❌', w:'X' },         { e:'🎼', w:'Xylophon' }]},
+  Y: { color:'#FDCB6E', info:'Y ist der 25. Buchstabe. Y klingt wie ein „Ü" oder „J".',           opts:[{ e:'🧘', w:'Yoga' },    { e:'🛥️', w:'Yacht' },    { e:'🪀', w:'Yo-Yo' }]},
+}
+
+// The bare sound of each letter. The info sentences mention it only in
+// passing ("F ist der 6. Buchstabe. F klingt wie ein leises fff"), buried
+// mid-sentence where it is easy to miss — even though mapping a shape to its
+// sound is the whole point of the module. These are spoken on their own,
+// slowly, and anchored to a word the child knows, which is how phonics is
+// normally taught. Plosives cannot be voiced without a trailing vowel by any
+// speech synthesiser, so the anchor word carries the weight for those.
+const LETTER_SOUND = {
+  A:'Aaa',  B:'Bbb',  C:'Zzz',  D:'Ddd', E:'Eee', F:'Fff', G:'Ggg',
+  H:'Hhh',  I:'Iii',  J:'Jjj',  K:'Kkk', L:'Lll', M:'Mmm', N:'Nnn',
+  O:'Ooo',  P:'Ppp',  Q:'Kwkw', R:'Rrr', S:'Sss', T:'Ttt', U:'Uuu',
+  V:'Fff',  W:'Www',  X:'Kss',  Y:'Üüü', Z:'Zzz',
 }
 
 const ALL_LETTERS = Object.keys(LETTER_DATA)
@@ -111,28 +126,50 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
   const [score,    setScore]    = useState(0)
   const [shakeOpt, setShakeOpt] = useState(null)
   const [showWeiter, setShowWeiter] = useState(false)
+  const [misses,   setMisses]   = useState(0)
 
   // Stop narration when game unmounts
   useEffect(() => () => voice.stop(), [])
 
-  // Play letter info then question prompt on each new question
+  // Speak the letter's sound on its own, anchored to one of its own words.
+  const speakSound = useCallback(() => {
+    const q = questions[idx]
+    if (!q) return
+    const snd = LETTER_SOUND[q.letter]
+    if (!snd) return
+    voice.stop()
+    speak(`${snd}. ${snd}. Wie in ${q.correct.w}.`, { rate: 0.45, pitch: 1.1, lang: 'de-DE' })
+  }, [questions, idx])
+
+  // Sound first, then the fact sentence and the question. C, Q, X and Y have
+  // no recorded info track (they were simply silent before), so those fall
+  // back to reading the same sentence out.
   useEffect(() => {
-    const letter = questions[idx]?.letter
-    if (!letter) return
-    const infoAudio = LETTER_INFO_AUDIO[letter]
-    if (infoAudio) voice.chain([infoAudio, ABC + `welches-wort-beginnt-mit-${letter.toLowerCase()}.mp3`])
+    const q = questions[idx]
+    if (!q) return
+    speakSound()
+    const t = setTimeout(() => {
+      const infoAudio = LETTER_INFO_AUDIO[q.letter]
+      const prompt = ABC + `welches-wort-beginnt-mit-${q.letter.toLowerCase()}.mp3`
+      if (infoAudio) voice.chain([infoAudio, prompt])
+      else voice.chain([null, prompt], [q.info, `Welches Wort beginnt mit ${q.letter}?`])
+    }, 2600)
+    return () => clearTimeout(t)
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const weiterClick = useCallback(() => {
     setShowWeiter(false)
     const next = idx + 1
     if (next >= questions.length) {
-      onComplete({ score, total: questions.length })
+      // A wrong pick can simply be retried, so every question ends up correct
+      // and score alone would always award three stars. Rate the wrong taps.
+      const stars = misses <= 1 ? 3 : misses <= questions.length ? 2 : 1
+      onComplete({ score, total: questions.length, stars })
     } else {
       setIdx(next)
       setSelected(null)
     }
-  }, [idx, questions.length, score, onComplete])
+  }, [idx, questions.length, score, misses, onComplete])
 
   const q = questions[idx]
   if (!q) return null
@@ -150,6 +187,7 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
       setShowWeiter(true)
     } else {
       setShakeOpt(opt)
+      setMisses(m => m + 1)
       setTimeout(() => setShakeOpt(null), 600)
     }
   }
@@ -160,7 +198,7 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
       {/* Progress */}
       <div style={{ width:'100%', maxWidth:520, height:10, background:'rgba(0,0,0,0.08)', borderRadius:10, overflow:'hidden' }}>
         <motion.div
-          animate={{ width:`${(idx / questions.length) * 100}%` }}
+          animate={{ width:`${((idx + (selected ? 1 : 0)) / questions.length) * 100}%` }}
           style={{ height:'100%', background:q.color, borderRadius:10 }}
           transition={{ duration:0.4 }}
         />
@@ -205,6 +243,21 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
           )}
         </motion.div>
       </AnimatePresence>
+
+      {/* The sound on demand — a child who missed it had no way back to it */}
+      <motion.button
+        whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
+        onClick={speakSound}
+        aria-label={`So klingt ${q.letter}`}
+        style={{
+          display:'flex', alignItems:'center', gap:8,
+          background:'white', border:`2.5px solid ${q.color}`, borderRadius:99,
+          padding:'8px 20px', cursor:'pointer',
+          fontFamily:'var(--font-heading)', fontSize:'clamp(14px,3vw,17px)',
+          fontWeight:700, color:q.color,
+          boxShadow:`0 4px 16px ${q.color}33`,
+        }}
+      >🔊 So klingt {q.letter}</motion.button>
 
       {/* Info badge — outside AnimatePresence so it fades in calmly */}
       <AnimatePresence mode="wait">
