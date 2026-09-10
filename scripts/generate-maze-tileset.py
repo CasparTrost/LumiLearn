@@ -94,27 +94,32 @@ OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pixellab-out
 # to the REST endpoint directly instead, per api.pixellab.ai/v2/docs.
 API_BASE = "https://api.pixellab.ai/v2"
 
+# v2 prompts — round 1 (grey-on-grey dungeon, muted overall) read as
+# "flat"/"trist" rather than "schön" once actually in the game. Rewritten
+# for a crisper, more modern-game look: bolder outlines, more saturated/
+# higher-contrast colours, clearly legible patterns rather than a noisy
+# realistic texture. transition_size lowered from 0.25 to 0.15 too — a
+# sharper, less-blended boundary reads as a cleaner/bolder contour line
+# instead of a soft gradient, matching that same "clear contours" goal.
 # tile_size: 32 is the recommended balance of quality vs. cost (16 or 32
-# are the only standard-mode options). transition_size 0.25 gives a
-# modest, not-too-dramatic elevation effect between floor and wall —
-# matches the tileset endpoint's own "forest path" example.
+# are the only standard-mode options).
 TILESETS = [
     {
         "name": "dungeon",
-        "lower_description": "smooth dark grey dungeon stone floor with subtle cracks",
-        "upper_description": "rough dark dungeon stone wall with mortar lines and a bit of moss",
-        "transition_description": "cracked worn stone edge where floor meets wall",
+        "lower_description": "dark blue-grey stone floor, modern pixel art game style, clean crisp geometric tile pattern, bold clear outlines, high contrast, saturated cool tones",
+        "upper_description": "sturdy stone brick wall, modern pixel art game style, bold clean outlines, clearly defined brick pattern, bright highlighted top edge, high contrast, saturated cool tones",
+        "transition_description": "crisp sharp contour where floor meets wall, clean bold edge line",
         "tile_size": {"width": 32, "height": 32},
-        "transition_size": 0.25,
+        "transition_size": 0.15,
         "view": "low top-down",
     },
     {
         "name": "forest",
-        "lower_description": "lush green grass path",
-        "upper_description": "dense dark green forest hedge, leafy",
-        "transition_description": "grass thinning into hedge roots",
+        "lower_description": "vibrant green grass path with small clover and pebble details, modern pixel art game style, clean crisp pattern, bold clear outlines, saturated colors",
+        "upper_description": "dense leafy hedge wall, modern pixel art game style, bold clean outlines, clearly defined individual leaf clusters, saturated vibrant green, bright highlighted top edge, high contrast",
+        "transition_description": "crisp sharp contour where grass meets hedge, clean bold edge line",
         "tile_size": {"width": 32, "height": 32},
-        "transition_size": 0.25,
+        "transition_size": 0.15,
         "view": "low top-down",
     },
 ]

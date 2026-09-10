@@ -125,7 +125,11 @@ const Board = memo(function Board({ maze, cellSize, coll, theme }) {
               imageRendering:  'pixelated',
               display:         'block',
               objectFit:       'cover',
-              filter:          'brightness(0.72) saturate(0.9)',
+              // Kept light — the old 0.72 brightness + 0.9 saturate
+              // combo was tuned for the previous grey-on-grey tileset
+              // and just made the newer, more saturated/higher-contrast
+              // tileset look duller than intended.
+              filter:          'brightness(0.88)',
             }}
             onError={e => {
               e.target.style.display = 'none'
@@ -150,7 +154,7 @@ const Board = memo(function Board({ maze, cellSize, coll, theme }) {
             height:          cellSize,
             imageRendering:  'pixelated',
             display:         'block',
-            filter:          'brightness(0.85)',
+            filter:          'brightness(0.96)',
             pointerEvents:   'none',
           }}
           onError={e => { e.target.style.display = 'none' }}
