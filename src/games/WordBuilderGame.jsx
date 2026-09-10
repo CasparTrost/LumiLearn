@@ -8,6 +8,13 @@ function speakDE(text) {
   speak(text, { rate: 0.7, pitch: 1.1, lang: 'de-DE' })
 }
 
+// Single syllable, spoken slower and a little higher than the whole word, so
+// the child hears the part it just placed as its own unit before the finished
+// word is read back. Blending only works if the parts are audible as parts.
+function speakSyllable(text) {
+  speak(text, { rate: 0.55, pitch: 1.15, lang: 'de-DE' })
+}
+
 /**
  * Silben-Spaß — Wörter aus Silben zusammenbauen
  *
@@ -25,105 +32,101 @@ function speakDE(text) {
 // syllables in CORRECT order; we shuffle them at runtime.
 
 const WORDS_L1 = [
-  { word: 'MAMA',   syllables: ['MA','MA'],      emoji: '👩',  hint: 'Mama' },
-  { word: 'PAPA',   syllables: ['PA','PA'],      emoji: '👨',  hint: 'Papa' },
-  { word: 'HUND',   syllables: ['HU','ND'],      emoji: '🐶',  hint: 'Hund' },
-  { word: 'KATZE',  syllables: ['KAT','ZE'],     emoji: '🐱',  hint: 'Katze' },
-  { word: 'BAUM',   syllables: ['BA','UM'],      emoji: '🌳',  hint: 'Baum' },
-  { word: 'AUTO',   syllables: ['AU','TO'],      emoji: '🚗',  hint: 'Auto' },
-  { word: 'MOND',   syllables: ['MO','ND'],      emoji: '🌙',  hint: 'Mond' },
-  { word: 'BETT',   syllables: ['BE','TT'],      emoji: '🛏️', hint: 'Bett' },
-  { word: 'BALL',   syllables: ['BA','LL'],      emoji: '⚽',  hint: 'Ball' },
-  { word: 'BUCH',   syllables: ['BU','CH'],      emoji: '📚',  hint: 'Buch' },
-  { word: 'BOOT',   syllables: ['BO','OT'],      emoji: '⛵',  hint: 'Boot' },
-  { word: 'MAUS',   syllables: ['MA','US'],      emoji: '🐭',  hint: 'Maus' },
-  { word: 'FISCH',  syllables: ['FI','SCH'],     emoji: '🐟',  hint: 'Fisch' },
-  { word: 'HAUS',   syllables: ['HA','US'],      emoji: '🏠',  hint: 'Haus' },
-  { word: 'ROSE',   syllables: ['RO','SE'],      emoji: '🌹',  hint: 'Rose' },
-  { word: 'ZELT',   syllables: ['ZE','LT'],      emoji: '⛺',  hint: 'Zelt' },
-  { word: 'PILZ',   syllables: ['PI','LZ'],      emoji: '🍄',  hint: 'Pilz' },
-  { word: 'ESEL',   syllables: ['E','SEL'],      emoji: '🫏',  hint: 'Esel' },
-  { word: 'AFFE',   syllables: ['AF','FE'],      emoji: '🐒',  hint: 'Affe' },
-  { word: 'PFERD',  syllables: ['PFER','D'],     emoji: '🐴',  hint: 'Pferd' },
-  { word: 'IGEL',   syllables: ['I','GEL'],      emoji: '🦔',  hint: 'Igel' },
-  { word: 'ENTE',   syllables: ['EN','TE'],      emoji: '🦆',  hint: 'Ente' },
-  { word: 'WOLF',   syllables: ['WO','LF'],      emoji: '🐺',  hint: 'Wolf' },
-  { word: 'NASE',   syllables: ['NA','SE'],      emoji: '👃',  hint: 'Nase' },
-  { word: 'HAND',   syllables: ['HA','ND'],      emoji: '✋',  hint: 'Hand' },
-  { word: 'WALD',   syllables: ['WA','LD'],      emoji: '🌲',  hint: 'Wald' },
-  { word: 'BIENE',  syllables: ['BI','E','NE'],  emoji: '🐝',  hint: 'Biene' },
-  { word: 'LAMPE',  syllables: ['LAM','PE'],     emoji: '💡',  hint: 'Lampe' },
-  { word: 'SCHAF',  syllables: ['SCHA','F'],     emoji: '🐑',  hint: 'Schaf' },
-  { word: 'TIGER',  syllables: ['TI','GER'],     emoji: '🐯',  hint: 'Tiger' },
-  { word: 'LÖWE',   syllables: ['LÖ','WE'],      emoji: '🦁',  hint: 'Löwe' },
-  { word: 'KEKS',   syllables: ['KE','KS'],      emoji: '🍪',  hint: 'Keks' },
-  { word: 'STERN',  syllables: ['STER','N'],     emoji: '⭐',  hint: 'Stern' },
-  { word: 'VOGEL',  syllables: ['VO','GEL'],     emoji: '🐦',  hint: 'Vogel' },
-  { word: 'ZAHN',   syllables: ['ZA','HN'],      emoji: '🦷',  hint: 'Zahn' },
-  { word: 'REGEN',  syllables: ['RE','GEN'],     emoji: '🌧️', hint: 'Regen' },
-  { word: 'KAKAO',  syllables: ['KA','KA','O'],  emoji: '🍫',  hint: 'Kakao' },
-  { word: 'SALZ',   syllables: ['SA','LZ'],      emoji: '🧂',  hint: 'Salz' },
-  { word: 'TISCH',  syllables: ['TI','SCH'],     emoji: '🪑',  hint: 'Tisch' },
-  { word: 'HERZ',   syllables: ['HER','Z'],      emoji: '❤️',  hint: 'Herz' },
-  { word: 'APFEL',  syllables: ['AP','FEL'],     emoji: '🍎',  hint: 'Apfel' },
-  { word: 'TAUBE',  syllables: ['TAU','BE'],     emoji: '🕊️', hint: 'Taube' },
-  { word: 'BLUME',  syllables: ['BLU','ME'],     emoji: '🌸',  hint: 'Blume' },
-  { word: 'GABEL',  syllables: ['GA','BEL'],     emoji: '🍴',  hint: 'Gabel' },
-  { word: 'STUHL',  syllables: ['STUH','L'],     emoji: '🪑',  hint: 'Stuhl' },
-  { word: 'FROSCH', syllables: ['FRO','SCH'],    emoji: '🐸',  hint: 'Frosch' },
-  { word: 'NEBEL',  syllables: ['NE','BEL'],     emoji: '🌫️', hint: 'Nebel' },
-  { word: 'TRAUM',  syllables: ['TRA','UM'],     emoji: '💤',  hint: 'Traum' },
+  { word: 'MAMA',     syllables: ['MA','MA'],      emoji: '👩',  hint: 'Mama' },
+  { word: 'PAPA',     syllables: ['PA','PA'],      emoji: '👨',  hint: 'Papa' },
+  { word: 'HASE',     syllables: ['HA','SE'],      emoji: '🐰',  hint: 'Hase' },
+  { word: 'KATZE',    syllables: ['KAT','ZE'],     emoji: '🐱',  hint: 'Katze' },
+  { word: 'AUTO',     syllables: ['AU','TO'],      emoji: '🚗',  hint: 'Auto' },
+  { word: 'SONNE',    syllables: ['SON','NE'],     emoji: '☀️',  hint: 'Sonne' },
+  { word: 'ROSE',     syllables: ['RO','SE'],      emoji: '🌹',  hint: 'Rose' },
+  { word: 'ESEL',     syllables: ['E','SEL'],      emoji: '🫏',  hint: 'Esel' },
+  { word: 'AFFE',     syllables: ['AF','FE'],      emoji: '🐒',  hint: 'Affe' },
+  { word: 'IGEL',     syllables: ['I','GEL'],      emoji: '🦔',  hint: 'Igel' },
+  { word: 'ENTE',     syllables: ['EN','TE'],      emoji: '🦆',  hint: 'Ente' },
+  { word: 'NASE',     syllables: ['NA','SE'],      emoji: '👃',  hint: 'Nase' },
+  { word: 'LAMPE',    syllables: ['LAM','PE'],     emoji: '💡',  hint: 'Lampe' },
+  { word: 'TIGER',    syllables: ['TI','GER'],     emoji: '🐯',  hint: 'Tiger' },
+  { word: 'LÖWE',     syllables: ['LÖ','WE'],      emoji: '🦁',  hint: 'Löwe' },
+  { word: 'VOGEL',    syllables: ['VO','GEL'],     emoji: '🐦',  hint: 'Vogel' },
+  { word: 'REGEN',    syllables: ['RE','GEN'],     emoji: '🌧️', hint: 'Regen' },
+  { word: 'APFEL',    syllables: ['AP','FEL'],     emoji: '🍎',  hint: 'Apfel' },
+  { word: 'TAUBE',    syllables: ['TAU','BE'],     emoji: '🕊️', hint: 'Taube' },
+  { word: 'BLUME',    syllables: ['BLU','ME'],     emoji: '🌸',  hint: 'Blume' },
+  { word: 'GABEL',    syllables: ['GA','BEL'],     emoji: '🍴',  hint: 'Gabel' },
+  { word: 'BIENE',    syllables: ['BIE','NE'],     emoji: '🐝',  hint: 'Biene' },
+  { word: 'WOLKE',    syllables: ['WOL','KE'],     emoji: '☁️',  hint: 'Wolke' },
+  { word: 'EULE',     syllables: ['EU','LE'],      emoji: '🦉',  hint: 'Eule' },
+  { word: 'ZIEGE',    syllables: ['ZIE','GE'],     emoji: '🐐',  hint: 'Ziege' },
+  { word: 'ROBBE',    syllables: ['ROB','BE'],     emoji: '🦭',  hint: 'Robbe' },
+  { word: 'SCHNECKE', syllables: ['SCHNE','CKE'],  emoji: '🐌',  hint: 'Schnecke' },
+  { word: 'KRONE',    syllables: ['KRO','NE'],     emoji: '👑',  hint: 'Krone' },
+  { word: 'KERZE',    syllables: ['KER','ZE'],     emoji: '🕯️', hint: 'Kerze' },
+  { word: 'TASSE',    syllables: ['TAS','SE'],     emoji: '☕',  hint: 'Tasse' },
+  { word: 'SCHERE',   syllables: ['SCHE','RE'],    emoji: '✂️',  hint: 'Schere' },
+  { word: 'BESEN',    syllables: ['BE','SEN'],     emoji: '🧹',  hint: 'Besen' },
+  { word: 'LEITER',   syllables: ['LEI','TER'],    emoji: '🪜',  hint: 'Leiter' },
+  { word: 'BRILLE',   syllables: ['BRIL','LE'],    emoji: '👓',  hint: 'Brille' },
+  { word: 'SOCKE',    syllables: ['SO','CKE'],     emoji: '🧦',  hint: 'Socke' },
+  { word: 'HOSE',     syllables: ['HO','SE'],      emoji: '👖',  hint: 'Hose' },
+  { word: 'MÜTZE',    syllables: ['MÜT','ZE'],     emoji: '🧢',  hint: 'Mütze' },
+  { word: 'BIRNE',    syllables: ['BIR','NE'],     emoji: '🍐',  hint: 'Birne' },
+  { word: 'TRAUBE',   syllables: ['TRAU','BE'],    emoji: '🍇',  hint: 'Traube' },
+  { word: 'BREZEL',   syllables: ['BRE','ZEL'],    emoji: '🥨',  hint: 'Brezel' },
+  { word: 'HONIG',    syllables: ['HO','NIG'],     emoji: '🍯',  hint: 'Honig' },
+  { word: 'GEIGE',    syllables: ['GEI','GE'],     emoji: '🎻',  hint: 'Geige' },
+  { word: 'INSEL',    syllables: ['IN','SEL'],     emoji: '🏝️', hint: 'Insel' },
+  { word: 'FEDER',    syllables: ['FE','DER'],     emoji: '🪶',  hint: 'Feder' },
+  { word: 'GURKE',    syllables: ['GUR','KE'],     emoji: '🥒',  hint: 'Gurke' },
+  { word: 'SPINNE',   syllables: ['SPIN','NE'],    emoji: '🕷️', hint: 'Spinne' },
 ]
 
 const WORDS_L2 = [
-  { word: 'BANANE',   syllables: ['BA','NA','NE'],      emoji: '🍌', hint: 'Banane' },
-  { word: 'ELEFANT',  syllables: ['E','LE','FANT'],     emoji: '🐘', hint: 'Elefant' },
-  { word: 'TOMATE',   syllables: ['TO','MA','TE'],      emoji: '🍅', hint: 'Tomate' },
-  { word: 'RAUPE',    syllables: ['RAU','PE'],          emoji: '🐛', hint: 'Raupe' },
-  { word: 'PINSEL',   syllables: ['PIN','SEL'],         emoji: '🖌️',hint: 'Pinsel' },
-  { word: 'DRACHEN',  syllables: ['DRA','CHEN'],        emoji: '🐉', hint: 'Drachen' },
-  { word: 'KÜCHE',    syllables: ['KÜ','CHE'],          emoji: '🍳', hint: 'Küche' },
-  { word: 'WOLKE',    syllables: ['WOL','KE'],          emoji: '⛅', hint: 'Wolke' },
-  { word: 'APFEL',    syllables: ['AP','FEL'],          emoji: '🍎', hint: 'Apfel' },
-  { word: 'SCHIFF',   syllables: ['SCHIFF'],            emoji: '🚢', hint: 'Schiff' },
-  { word: 'KATZE',    syllables: ['KAT','ZE'],          emoji: '🐱', hint: 'Katze' },
-  { word: 'TRAUBE',   syllables: ['TRAU','BE'],         emoji: '🍇', hint: 'Traube' },
-  { word: 'KUGEL',    syllables: ['KU','GEL'],          emoji: '🔮', hint: 'Kugel' },
-  { word: 'SPIEGEL',  syllables: ['SPIE','GEL'],        emoji: '🪞', hint: 'Spiegel' },
-  { word: 'TASCHE',   syllables: ['TA','SCHE'],         emoji: '👜', hint: 'Tasche' },
-  { word: 'KERZE',    syllables: ['KER','ZE'],          emoji: '🕯️',hint: 'Kerze' },
-  { word: 'SCHERE',   syllables: ['SCHE','RE'],         emoji: '✂️', hint: 'Schere' },
-  { word: 'BUTTER',   syllables: ['BUT','TER'],         emoji: '🧈', hint: 'Butter' },
-  { word: 'NUDELN',   syllables: ['NU','DELN'],         emoji: '🍝', hint: 'Nudeln' },
-  { word: 'SUPPE',    syllables: ['SUP','PE'],          emoji: '🍲', hint: 'Suppe' },
-  { word: 'BRUDER',   syllables: ['BRU','DER'],         emoji: '👦', hint: 'Bruder' },
-  { word: 'SCHWEIN',  syllables: ['SCHWEIN'],           emoji: '🐷', hint: 'Schwein' },
-  { word: 'KIRCHE',   syllables: ['KIR','CHE'],         emoji: '⛪', hint: 'Kirche' },
-  { word: 'DACKEL',   syllables: ['DA','CKEL'],         emoji: '🐕', hint: 'Dackel' },
-  { word: 'HAMSTER',  syllables: ['HAM','STER'],        emoji: '🐹', hint: 'Hamster' },
-  { word: 'ZIEGE',    syllables: ['ZIE','GE'],          emoji: '🐐', hint: 'Ziege' },
-  { word: 'KAMEL',    syllables: ['KA','MEL'],          emoji: '🐪', hint: 'Kamel' },
-  { word: 'TELLER',   syllables: ['TEL','LER'],         emoji: '🍽️',hint: 'Teller' },
-  { word: 'BLUME',    syllables: ['BLU','ME'],          emoji: '🌸', hint: 'Blume' },
-  { word: 'FALKE',    syllables: ['FAL','KE'],          emoji: '🦅', hint: 'Falke' },
-  { word: 'MÜTZE',    syllables: ['MÜT','ZE'],          emoji: '🧢', hint: 'Mütze' },
-  { word: 'STIEFEL',  syllables: ['STIE','FEL'],        emoji: '🥾', hint: 'Stiefel' },
-  { word: 'WASSER',   syllables: ['WAS','SER'],         emoji: '💧', hint: 'Wasser' },
-  { word: 'ABEND',    syllables: ['A','BEND'],          emoji: '🌆', hint: 'Abend' },
-  { word: 'FREUND',   syllables: ['FREUND'],            emoji: '🤝', hint: 'Freund' },
-  { word: 'KOFFER',   syllables: ['KOF','FER'],         emoji: '🧳', hint: 'Koffer' },
-  { word: 'TASSE',    syllables: ['TAS','SE'],          emoji: '☕', hint: 'Tasse' },
-  { word: 'BIRNE',    syllables: ['BIR','NE'],          emoji: '🍐', hint: 'Birne' },
-  { word: 'KISSEN',   syllables: ['KIS','SEN'],         emoji: '🛏️',hint: 'Kissen' },
-  { word: 'GARTEN',   syllables: ['GAR','TEN'],         emoji: '🌻', hint: 'Garten' },
-  { word: 'KUCHEN',   syllables: ['KU','CHEN'],         emoji: '🎂', hint: 'Kuchen' },
-  { word: 'RAKETE',   syllables: ['RA','KE','TE'],       emoji: '🚀', hint: 'Rakete' },
-  { word: 'PINGUIN',  syllables: ['PIN','GUIN'],         emoji: '🐧', hint: 'Pinguin' },
-  { word: 'KAMERA',   syllables: ['KA','ME','RA'],       emoji: '📷', hint: 'Kamera' },
-  { word: 'ZITRONE',  syllables: ['ZI','TRO','NE'],      emoji: '🍋', hint: 'Zitrone' },
-  { word: 'KAROTTE',  syllables: ['KA','ROT','TE'],      emoji: '🥕', hint: 'Karotte' },
-  { word: 'SPIEGEL',  syllables: ['SPIE','GEL'],         emoji: '🧑‍🔬', hint: 'Spiegel' },
-  { word: 'TURM',     syllables: ['TUR','M'],            emoji: '🗼', hint: 'Turm' },
+  { word: 'BANANE',    syllables: ['BA','NA','NE'],    emoji: '🍌', hint: 'Banane' },
+  { word: 'ELEFANT',   syllables: ['E','LE','FANT'],   emoji: '🐘', hint: 'Elefant' },
+  { word: 'TOMATE',    syllables: ['TO','MA','TE'],    emoji: '🍅', hint: 'Tomate' },
+  { word: 'MELONE',    syllables: ['ME','LO','NE'],    emoji: '🍈', hint: 'Melone' },
+  { word: 'ZITRONE',   syllables: ['ZI','TRO','NE'],   emoji: '🍋', hint: 'Zitrone' },
+  { word: 'KAMERA',    syllables: ['KA','ME','RA'],    emoji: '📷', hint: 'Kamera' },
+  { word: 'RAUPE',     syllables: ['RAU','PE'],        emoji: '🐛', hint: 'Raupe' },
+  { word: 'PINSEL',    syllables: ['PIN','SEL'],       emoji: '🖌️', hint: 'Pinsel' },
+  { word: 'DRACHEN',   syllables: ['DRA','CHEN'],      emoji: '🐉', hint: 'Drachen' },
+  { word: 'KÜCHE',     syllables: ['KÜ','CHE'],        emoji: '🍳', hint: 'Küche' },
+  { word: 'KUGEL',     syllables: ['KU','GEL'],        emoji: '🔮', hint: 'Kugel' },
+  { word: 'SPIEGEL',   syllables: ['SPIE','GEL'],      emoji: '🪞', hint: 'Spiegel' },
+  { word: 'TASCHE',    syllables: ['TA','SCHE'],       emoji: '👜', hint: 'Tasche' },
+  { word: 'BUTTER',    syllables: ['BUT','TER'],       emoji: '🧈', hint: 'Butter' },
+  { word: 'NUDELN',    syllables: ['NU','DELN'],       emoji: '🍝', hint: 'Nudeln' },
+  { word: 'SUPPE',     syllables: ['SUP','PE'],        emoji: '🍲', hint: 'Suppe' },
+  { word: 'BRUDER',    syllables: ['BRU','DER'],       emoji: '👦', hint: 'Bruder' },
+  { word: 'KIRCHE',    syllables: ['KIR','CHE'],       emoji: '⛪', hint: 'Kirche' },
+  { word: 'DACKEL',    syllables: ['DA','CKEL'],       emoji: '🐕', hint: 'Dackel' },
+  { word: 'HAMSTER',   syllables: ['HAM','STER'],      emoji: '🐹', hint: 'Hamster' },
+  { word: 'KAMEL',     syllables: ['KA','MEL'],        emoji: '🐪', hint: 'Kamel' },
+  { word: 'TELLER',    syllables: ['TEL','LER'],       emoji: '🍽️', hint: 'Teller' },
+  { word: 'FALKE',     syllables: ['FAL','KE'],        emoji: '🦅', hint: 'Falke' },
+  { word: 'STIEFEL',   syllables: ['STIE','FEL'],      emoji: '🥾', hint: 'Stiefel' },
+  { word: 'WASSER',    syllables: ['WAS','SER'],       emoji: '💧', hint: 'Wasser' },
+  { word: 'ABEND',     syllables: ['A','BEND'],        emoji: '🌆', hint: 'Abend' },
+  { word: 'KOFFER',    syllables: ['KOF','FER'],       emoji: '🧳', hint: 'Koffer' },
+  { word: 'KISSEN',    syllables: ['KIS','SEN'],       emoji: '🛏️', hint: 'Kissen' },
+  { word: 'GARTEN',    syllables: ['GAR','TEN'],       emoji: '🌻', hint: 'Garten' },
+  { word: 'KUCHEN',    syllables: ['KU','CHEN'],       emoji: '🎂', hint: 'Kuchen' },
+  { word: 'ZWIEBEL',   syllables: ['ZWIE','BEL'],      emoji: '🧅', hint: 'Zwiebel' },
+  { word: 'TROMMEL',   syllables: ['TROM','MEL'],      emoji: '🥁', hint: 'Trommel' },
+  { word: 'KISTE',     syllables: ['KIS','TE'],        emoji: '📦', hint: 'Kiste' },
+  { word: 'ANGEL',     syllables: ['AN','GEL'],        emoji: '🎣', hint: 'Angel' },
+  { word: 'FLASCHE',   syllables: ['FLA','SCHE'],      emoji: '🍼', hint: 'Flasche' },
+  { word: 'SEIFE',     syllables: ['SEI','FE'],        emoji: '🧼', hint: 'Seife' },
+  { word: 'KÜKEN',     syllables: ['KÜ','KEN'],        emoji: '🐤', hint: 'Küken' },
+  { word: 'MUSCHEL',   syllables: ['MU','SCHEL'],      emoji: '🐚', hint: 'Muschel' },
+  { word: 'KRABBE',    syllables: ['KRAB','BE'],       emoji: '🦀', hint: 'Krabbe' },
+  { word: 'ZEBRA',     syllables: ['ZE','BRA'],        emoji: '🦓', hint: 'Zebra' },
+  { word: 'PANDA',     syllables: ['PAN','DA'],        emoji: '🐼', hint: 'Panda' },
+  { word: 'PAPAGEI',   syllables: ['PA','PA','GEI'],   emoji: '🦜', hint: 'Papagei' },
+  { word: 'SCHLANGE',  syllables: ['SCHLAN','GE'],     emoji: '🐍', hint: 'Schlange' },
+  { word: 'PIZZA',     syllables: ['PIZ','ZA'],        emoji: '🍕', hint: 'Pizza' },
+  { word: 'WAFFEL',    syllables: ['WAF','FEL'],       emoji: '🧇', hint: 'Waffel' },
+  { word: 'SALAT',     syllables: ['SA','LAT'],        emoji: '🥗', hint: 'Salat' },
 ]
 
 const WORDS_L3 = [
@@ -135,12 +138,11 @@ const WORDS_L3 = [
   { word: 'GIRAFFE',       syllables: ['GI','RAF','FE'],             emoji: '🦒', hint: 'Giraffe' },
   { word: 'ANANAS',        syllables: ['A','NA','NAS'],              emoji: '🍍', hint: 'Ananas' },
   { word: 'REGENBOGEN',    syllables: ['RE','GEN','BO','GEN'],       emoji: '🌈', hint: 'Regenbogen' },
-  { word: 'GURKE',         syllables: ['GUR','KE'],                 emoji: '🥒', hint: 'Gurke' },
   { word: 'RAKETE',        syllables: ['RA','KE','TE'],              emoji: '🚀', hint: 'Rakete' },
-  { word: 'PINGUIN',       syllables: ['PIN','GUIN'],               emoji: '🐧', hint: 'Pinguin' },
+  { word: 'PINGUIN',       syllables: ['PIN','GU','IN'],            emoji: '🐧', hint: 'Pinguin' },
   { word: 'POLIZEI',       syllables: ['PO','LI','ZEI'],             emoji: '👮', hint: 'Polizei' },
   { word: 'ROBOTER',       syllables: ['RO','BO','TER'],             emoji: '🤖', hint: 'Roboter' },
-  { word: 'PAPRIKA',       syllables: ['PAP','RI','KA'],             emoji: '🫑', hint: 'Paprika' },
+  { word: 'PAPRIKA',       syllables: ['PA','PRI','KA'],             emoji: '🫑', hint: 'Paprika' },
   { word: 'KAROTTE',       syllables: ['KA','ROT','TE'],             emoji: '🥕', hint: 'Karotte' },
   { word: 'LATERNE',       syllables: ['LA','TER','NE'],             emoji: '🏮', hint: 'Laterne' },
   { word: 'SCHAUKEL',      syllables: ['SCHAU','KEL'],              emoji: '🎠', hint: 'Schaukel' },
@@ -150,7 +152,6 @@ const WORDS_L3 = [
   { word: 'KÜRBIS',        syllables: ['KÜR','BIS'],                emoji: '🎃', hint: 'Kürbis' },
   { word: 'KROKODIL',      syllables: ['KRO','KO','DIL'],           emoji: '🐊', hint: 'Krokodil' },
   { word: 'BLAUBEERE',     syllables: ['BLAU','BEE','RE'],           emoji: '🫐', hint: 'Blaubeere' },
-  { word: 'SPINNE',        syllables: ['SPIN','NE'],                emoji: '🕷️',hint: 'Spinne' },
   { word: 'TROMPETE',      syllables: ['TROM','PE','TE'],            emoji: '🎺', hint: 'Trompete' },
   { word: 'GITARRE',       syllables: ['GI','TAR','RE'],             emoji: '🎸', hint: 'Gitarre' },
   { word: 'KLAVIER',       syllables: ['KLA','VIER'],               emoji: '🎹', hint: 'Klavier' },
@@ -194,7 +195,7 @@ const WORDS_L5 = [
   { word: 'JAHRESZEITEN',       syllables: ['JAH','RES','ZEI','TEN'],           emoji: '🍂', hint: 'Jahreszeiten' },
   { word: 'SCHWIMMBECKEN',      syllables: ['SCHWIMM','BE','CKEN'],             emoji: '🏊', hint: 'Schwimmbecken' },
   { word: 'GEBURTSTAGSPARTY',   syllables: ['GE','BURTS','TAGS','PAR','TY'],    emoji: '🎉', hint: 'Geburtstagsparty' },
-  { word: 'SEEPFERDCHEN',       syllables: ['SEE','PFERD','CHEN'],              emoji: '🦄', hint: 'Seepferdchen' },
+  { word: 'SEEPFERDCHEN',       syllables: ['SEE','PFERD','CHEN'],              emoji: '🐠', hint: 'Seepferdchen' },
   { word: 'NIKOLAUSSTIEFEL',    syllables: ['NI','KO','LAUS','STIE','FEL'],     emoji: '🎁', hint: 'Nikolausstiefel' },
   { word: 'MEERESSCHILDKRÖTE',  syllables: ['MEE','RES','SCHILD','KRÖ','TE'],   emoji: '🐢', hint: 'Meeresschildkröte' },
   { word: 'RAUMSCHIFF',         syllables: ['RAUM','SCHIFF'],                  emoji: '🛸', hint: 'Raumschiff' },
@@ -225,13 +226,17 @@ function buildRound(words, idx) {
 }
 
 // ── Tile ────────────────────────────────────────────────────────────────────
-function SyllableTile({ text, used, index, onClick }) {
+function SyllableTile({ text, used, index, rejected, onClick }) {
   return (
     <motion.button
       layout
       key={text + index}
       initial={{ scale: 0, opacity: 0 }}
-      animate={used ? { scale: 0.7, opacity: 0.3, y: 0 } : { scale: 1, opacity: 1, y: 0 }}
+      animate={
+        rejected ? { x: [0, -9, 9, -7, 7, 0], scale: 1, opacity: 1, y: 0 }
+        : used   ? { scale: 0.7, opacity: 0.3, y: 0 }
+                 : { scale: 1, opacity: 1, y: 0 }
+      }
       whileHover={!used ? { scale: 1.12, y: -5 } : {}}
       whileTap={!used ? { scale: 0.88 } : {}}
       onClick={onClick}
@@ -239,10 +244,14 @@ function SyllableTile({ text, used, index, onClick }) {
         minWidth: 64, padding: '18px 24px',
         fontFamily: 'var(--font-heading)', fontSize: 'clamp(22px,5vw,32px)', fontWeight: 900,
         letterSpacing: 2,
-        background: used ? '#F0EEFF' : 'linear-gradient(135deg,#6C63FF,#4A00E0)',
-        color: used ? '#C0B8E8' : 'white',
+        background: rejected ? 'linear-gradient(135deg,#FF8E8E,#FF6B6B)'
+                  : used     ? '#F0EEFF'
+                             : 'linear-gradient(135deg,#6C63FF,#4A00E0)',
+        color: used && !rejected ? '#C0B8E8' : 'white',
         border: 'none', borderRadius: 18,
-        boxShadow: used ? 'none' : '0 6px 22px rgba(74,0,224,0.38)',
+        boxShadow: rejected ? '0 6px 22px rgba(255,107,107,0.45)'
+                 : used     ? 'none'
+                            : '0 6px 22px rgba(74,0,224,0.38)',
         cursor: used ? 'default' : 'pointer',
         transition: 'background 0.25s, color 0.25s',
         pointerEvents: used ? 'none' : 'auto',
@@ -252,7 +261,7 @@ function SyllableTile({ text, used, index, onClick }) {
 }
 
 // ── Word slots ─────────────────────────────────────────────────────────────
-function WordSlot({ text, shake, isDone, isFirst, isLast, only }) {
+function WordSlot({ text, isDone, isFirst, isLast, only }) {
   // When merged: remove inner padding so letters sit flush against each other
   const pt = '18px'
   const pb = '18px'
@@ -268,7 +277,6 @@ function WordSlot({ text, shake, isDone, isFirst, isLast, only }) {
 
   return (
     <motion.div
-      animate={shake ? { x: [0, -8, 8, -6, 6, 0] } : { x: 0 }}
       transition={{ duration: 0.4 }}
       style={{
         padding: `${pt} ${pr} ${pb} ${pl}`,
@@ -305,11 +313,13 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
   const [round,    setRound]    = useState(() => buildRound(wordPool, 0))
   const [placed,   setPlaced]   = useState([])   // syllable ids placed so far
   const [usedIds,  setUsedIds]  = useState(new Set())
-  const [shake,    setShake]    = useState(false)
-  const [feedback, setFeedback] = useState(null)  // null | 'ok' | 'wrong'
+  const [rejectedId, setRejectedId] = useState(null)
+  // Misplaced taps across the whole level — the only real accuracy signal,
+  // since a wrong syllable is now refused and every word does get finished.
+  const [misses,   setMisses]   = useState(0)
+  const [feedback, setFeedback] = useState(null)  // null | 'ok'
   const [score,    setScore]    = useState(0)
   const [mood,     setMood]     = useState('happy')
-  const [showHint, setShowHint] = useState(true)
   const [showWeiter, setShowWeiter] = useState(false)
   const feedbackTimeout         = useRef(null)
 
@@ -319,46 +329,47 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
     setPlaced([])
     setUsedIds(new Set())
     setFeedback(null)
-    setShake(false)
-    setShowHint(true)
+    setRejectedId(null)
   }, [idx])  // wordPool is stable
 
   const clickTile = useCallback((tile) => {
     if (feedback) return
-    setShowHint(false)
+    const expected = round.syllables[placed.length]
+
+    // Check the syllable against the slot it would fill, right now. Before,
+    // nothing was verified until every slot was full, and a single wrong
+    // syllable then wiped the whole word — including the parts the child had
+    // already placed correctly. Comparing by text (not id) keeps words with a
+    // repeated syllable working: either MA tile fits either slot of MA-MA.
+    if (tile.text !== expected) {
+      clearTimeout(feedbackTimeout.current)
+      setRejectedId(tile.id)
+      setMisses(m => m + 1)
+      setMood('encouraging')
+      sfx.wrong()
+      feedbackTimeout.current = setTimeout(() => {
+        setRejectedId(null)
+        setMood('happy')
+      }, 700)
+      return
+    }
+
+    setRejectedId(null)
     setUsedIds(s => new Set([...s, tile.id]))
     const newPlaced = [...placed, tile]
+    setPlaced(newPlaced)
+    speakSyllable(tile.text)
 
-    // Check if complete
     if (newPlaced.length === round.syllables.length) {
-      const built = newPlaced.map(t => t.text).join('')
-      const correct = round.word
       clearTimeout(feedbackTimeout.current)
-
-      if (built === correct) {
-        setFeedback('ok')
-        setMood('excited')
-        setPlaced(newPlaced)
-        sfx.correct()
-        setTimeout(() => speakDE(round.word.toLowerCase()), 300)
-        feedbackTimeout.current = setTimeout(() => setShowWeiter(true), 800)
-      } else {
-        setFeedback('wrong')
-        setMood('encouraging')
-        sfx.wrong()
-        setShake(true)
-        feedbackTimeout.current = setTimeout(() => {
-          setPlaced([])
-          setUsedIds(new Set())
-          setFeedback(null)
-          setShake(false)
-          setMood('happy')
-        }, 900)
-      }
-    } else {
-      setPlaced(newPlaced)
+      setFeedback('ok')
+      setMood('excited')
+      sfx.correct()
+      // Let the last syllable finish before reading the assembled word back.
+      setTimeout(() => speakDE(round.word.toLowerCase()), 600)
+      feedbackTimeout.current = setTimeout(() => setShowWeiter(true), 1100)
     }
-  }, [feedback, placed, round, score, idx, TOTAL, onComplete])
+  }, [feedback, placed, round])
 
   // Remove last tile
   const clickSlot = useCallback((slotIdx) => {
@@ -379,11 +390,16 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
     setFeedback(null)
     setPlaced([])
     setUsedIds(new Set())
-    setShake(false)
+    setRejectedId(null)
     setMood('happy')
     if (idx + 1 >= TOTAL) {
       sfx.complete()
-      setTimeout(() => onComplete({ score: ns, total: TOTAL }), 300)
+      // Every word gets finished (a wrong syllable is refused rather than
+      // accepted), so score is always TOTAL and would hand out 3 stars no
+      // matter how the round went. Rate the misplaced taps instead — never
+      // below one star, the word did get built.
+      const stars = misses <= 2 ? 3 : misses <= 6 ? 2 : 1
+      setTimeout(() => onComplete({ score: ns, total: TOTAL, stars }), 300)
     } else {
       setIdx(i => i + 1)
     }
@@ -405,7 +421,7 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
             transition={{ duration: 0.5 }}
             style={{
               position: 'fixed', inset: 0, zIndex: 150, pointerEvents: 'none',
-              background: feedback === 'ok' ? '#6BCB77' : '#FF6B6B',
+              background: '#6BCB77',
             }}
           />
         )}
@@ -456,7 +472,6 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
           initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
           style={{
             fontSize: 'clamp(80px,18vw,120px)', lineHeight: 1,
-            filter: showHint ? 'none' : 'blur(0px)',
             textShadow: '0 8px 28px rgba(0,0,0,0.15)',
           }}
         >
@@ -479,7 +494,6 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
           >
             <WordSlot
               text={placed[i]?.text || ''}
-              shake={shake && !!placed[i]}
               isDone={isDone}
               isFirst={i === 0}
               isLast={i === round.syllables.length - 1}
@@ -502,6 +516,7 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
             text={tile.text}
             used={usedIds.has(tile.id)}
             index={tile.id}
+            rejected={rejectedId === tile.id}
             onClick={() => clickTile(tile)}
           />
         ))}
