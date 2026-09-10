@@ -129,17 +129,34 @@ function randomInZone(zone) {
   return {x:(minX+maxX)/2, y:(minY+maxY)/2}
 }
 
+function usePageVisible() {
+  const ref = useRef(!document.hidden)
+  useEffect(() => {
+    const h = () => { ref.current = !document.hidden }
+    document.addEventListener('visibilitychange', h)
+    return () => document.removeEventListener('visibilitychange', h)
+  }, [])
+  return ref
+}
+
 function RoamingAnimal({ def, farmScale = 1, delay = 0 }) {
   const posRef = useRef(randomInZone(def.zone))
   const targetRef = useRef(randomInZone(def.zone))
   const pauseRef = useRef(false)
   const pauseTimerRef = useRef(null)
+  const visibleRef = usePageVisible()
   const [pos, setPos] = useState(posRef.current)
   const [movingRight, setMovingRight] = useState(false)
   const [paused, setPaused] = useState(false)
 
   useEffect(() => {
-    const iv = setInterval(() => {
+    let lastTick = 0
+    let rafId
+    const INTERVAL = 100 // ms between logic ticks (10fps is plenty for animals)
+    const tick = (now) => {
+      rafId = requestAnimationFrame(tick)
+      if (!visibleRef.current || now - lastTick < INTERVAL) return
+      lastTick = now
       if (pauseRef.current) return
       const dx = targetRef.current.x - posRef.current.x
       const dy = targetRef.current.y - posRef.current.y
@@ -151,8 +168,8 @@ function RoamingAnimal({ def, farmScale = 1, delay = 0 }) {
           pauseTimerRef.current = setTimeout(() => { pauseRef.current = false; setPaused(false) }, 800 + Math.random()*1500)
         }
       } else {
-        const newX = posRef.current.x + (dx/dist)*0.4
-        const newY = posRef.current.y + (dy/dist)*0.4
+        const newX = posRef.current.x + (dx/dist)*0.8
+        const newY = posRef.current.y + (dy/dist)*0.8
         const zonePoints = ZONES[def.zone]
         if (!zonePoints || pointInPoly(newX, newY, zonePoints)) {
           posRef.current = { x: newX, y: newY }
@@ -162,9 +179,10 @@ function RoamingAnimal({ def, farmScale = 1, delay = 0 }) {
           targetRef.current = randomInZone(def.zone)
         }
       }
-    }, 50)
-    return () => { clearInterval(iv); if(pauseTimerRef.current) clearTimeout(pauseTimerRef.current) }
-  }, [def.zone])
+    }
+    rafId = requestAnimationFrame(tick)
+    return () => { cancelAnimationFrame(rafId); if(pauseTimerRef.current) clearTimeout(pauseTimerRef.current) }
+  }, [def.zone]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const click = () => { try { def.sfx() } catch {} }
 
@@ -196,11 +214,18 @@ function Farmer({ farmScale = 1 }) {
   const posRef = useRef(wps[0])
   const wpRef = useRef(0)
   const pauseRef = useRef(false)
+  const visibleRef = usePageVisible()
   const [pos, setPos] = useState(wps[0])
   const [dir, setDir] = useState('idle_front')
 
   useEffect(() => {
-    const iv = setInterval(() => {
+    let lastTick = 0
+    let rafId
+    const INTERVAL = 80
+    const tick = (now) => {
+      rafId = requestAnimationFrame(tick)
+      if (!visibleRef.current || now - lastTick < INTERVAL) return
+      lastTick = now
       if (pauseRef.current) return
       const t = wps[wpRef.current]
       const dx=t.x-posRef.current.x, dy=t.y-posRef.current.y
@@ -224,15 +249,16 @@ function Farmer({ farmScale = 1 }) {
           setTimeout(() => { pauseRef.current = false }, 600 + Math.random()*1200)
         }
       } else {
-        posRef.current = { x: posRef.current.x+dx/dist*0.7, y: posRef.current.y+dy/dist*0.7 }
+        posRef.current = { x: posRef.current.x+dx/dist*1.0, y: posRef.current.y+dy/dist*1.0 }
         setPos({...posRef.current})
         const adx=Math.abs(dx), ady=Math.abs(dy)
         if (adx > ady) setDir(dx > 0 ? 'right' : 'left')
         else setDir(dy > 0 ? 'down' : 'up')
       }
-    }, 50)
-    return () => clearInterval(iv)
-  }, [])
+    }
+    rafId = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(rafId)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   let gif = 'farmer_idle_front.gif', flipX = false
   if (dir==='right')      { gif='farmer_walk_right.gif' }
@@ -444,7 +470,7 @@ function LevelUpCelebration({ level, newAnimals, onDone }) {
   )
 }
 
-export default function FarmProgress({ completedCount: rawCount = 0, totalModules = 17 }) {
+export default function FarmProgress({ completedCount: rawCount = 0, totalModules = 17, profile }) {
   const completedCount = rawCount  // use real count
   const level = getLevel(completedCount)
   const pct = Math.round((completedCount / totalModules) * 100)
@@ -560,13 +586,7 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
         <div style={{display:'flex',justifyContent:'space-between',marginTop:5,
           fontSize:10,color:'rgba(255,255,255,.5)',fontFamily:'var(--font-body)'}}>
           <span>{completedCount} / {totalModules} Module</span>
-          <span style={{display:'flex',alignItems:'center',gap:8}}>
-            {pct}%
-            {/* TEST BUTTON - remove before release */}
-            <span onClick={()=>setCelebration({level, newAnimals:getNewAnimals(level)||getAnimalsForLevel(level).slice(0,2)})}
-              style={{fontSize:9,opacity:.3,cursor:'pointer',userSelect:'none'}}
-              title="Test Level-Up Animation">✨</span>
-          </span>
+          <span>{pct}%</span>
         </div>
       </div>
 

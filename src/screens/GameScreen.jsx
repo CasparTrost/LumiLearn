@@ -1,25 +1,50 @@
+import { lazy, Suspense } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowLeft } from 'lucide-react'
 import { useApp, MAX_LEVELS } from '../AppContext.jsx'
 import InfoButton from '../components/InfoButton.jsx'
-import ChoiceGame    from '../games/ChoiceGame.jsx'
-import TyperGame     from '../games/TyperGame.jsx'
-import MemoryGame    from '../games/MemoryGame.jsx'
-import PainterGame   from '../games/PainterGame.jsx'
-import ListenGame    from '../games/ListenGame.jsx'
-import EmotionGame   from '../games/EmotionGame.jsx'
-import MazeGame      from '../games/MazeGame.jsx'
-import ShadowGame    from '../games/ShadowGame.jsx'
-import BubblePopGame from '../games/BubblePopGame.jsx'
-import StoryGame     from '../games/StoryGame.jsx'
-import SortGame        from '../games/SortGame.jsx'
-import ClockGame       from '../games/ClockGame.jsx'
-import WordBuilderGame from '../games/WordBuilderGame.jsx'
-import WeightGame        from '../games/WeightGame.jsx'
-import NumberIntroGame   from '../games/NumberIntroGame.jsx'
-import LetterIntroGame   from '../games/LetterIntroGame.jsx'
-import NumbersGame       from '../games/NumbersGame.jsx'
-import ColoringGame      from '../games/ColoringGame.jsx'
+import ErrorBoundary from '../components/ErrorBoundary.jsx'
+import { useProfile } from '../hooks/useProfile.js'
+
+const ChoiceGame    = lazy(() => import('../games/ChoiceGame.jsx'))
+const TyperGame     = lazy(() => import('../games/TyperGame.jsx'))
+const MemoryGame    = lazy(() => import('../games/MemoryGame.jsx'))
+const PainterGame   = lazy(() => import('../games/PainterGame.jsx'))
+const ListenGame    = lazy(() => import('../games/ListenGame.jsx'))
+const EmotionGame   = lazy(() => import('../games/EmotionGame.jsx'))
+const MazeGame      = lazy(() => import('../games/MazeGame.jsx'))
+const ShadowGame    = lazy(() => import('../games/ShadowGame.jsx'))
+const BubblePopGame = lazy(() => import('../games/BubblePopGame.jsx'))
+const StoryGame     = lazy(() => import('../games/StoryGame.jsx'))
+const SortGame        = lazy(() => import('../games/SortGame.jsx'))
+const ClockGame       = lazy(() => import('../games/ClockGame.jsx'))
+const WordBuilderGame = lazy(() => import('../games/WordBuilderGame.jsx'))
+const WeightGame        = lazy(() => import('../games/WeightGame.jsx'))
+const NumberIntroGame   = lazy(() => import('../games/NumberIntroGame.jsx'))
+const LetterIntroGame   = lazy(() => import('../games/LetterIntroGame.jsx'))
+const NumbersGame       = lazy(() => import('../games/NumbersGame.jsx'))
+const ColoringGame      = lazy(() => import('../games/ColoringGame.jsx'))
+
+function GameLoadingFallback({ gradient }) {
+  return (
+    <div style={{
+      flex:1, display:'flex', alignItems:'center', justifyContent:'center',
+      flexDirection:'column', gap:16,
+      background: gradient ?? 'var(--bg)',
+    }}>
+      <div style={{
+        width:52, height:52, borderRadius:'50%',
+        border:'4px solid rgba(255,255,255,0.3)',
+        borderTopColor:'white',
+        animation:'spin 0.8s linear infinite',
+      }} />
+      <div style={{
+        fontFamily:'var(--font-heading)', fontSize:18, color:'white',
+        textShadow:'0 1px 8px rgba(0,0,0,0.3)',
+      }}>Spiel wird geladen…</div>
+    </div>
+  )
+}
 
 const MODULE_META = {
   numbers:  { label: 'Zahlenland 🔢',         gradient: 'linear-gradient(135deg, #6BCB77, #44D498)' },
@@ -65,6 +90,7 @@ const GAME_MAP = {
 
 export default function GameScreen() {
   const { state, dispatch } = useApp()
+  const { coins } = useProfile()
   const { moduleId, level } = state.currentGame ?? { moduleId: 'numbers', level: 1 }
 
   const meta          = MODULE_META[moduleId] ?? MODULE_META.numbers
@@ -107,7 +133,7 @@ export default function GameScreen() {
           border:'1px solid rgba(255,217,61,0.4)',
         }}>
           <span style={{ fontSize:16 }}>🪙</span>
-          <span style={{ fontFamily:'var(--font-heading)', color:'#FFD93D', fontWeight:700, fontSize:15 }}>{state.coins ?? 0}</span>
+          <span style={{ fontFamily:'var(--font-heading)', color:'#FFD93D', fontWeight:700, fontSize:15 }}>{coins}</span>
         </span>
         <span style={{ fontFamily:'var(--font-heading)', fontSize:16, color:'rgba(255,255,255,0.75)' }}>
           Level {level} / {MAX_LEVELS[moduleId] ?? 5}
@@ -116,7 +142,11 @@ export default function GameScreen() {
       </div>
 
       {/* Game */}
-      <GameComponent moduleId={moduleId} level={level} onComplete={handleComplete} />
+      <ErrorBoundary moduleId={moduleId} onHome={() => dispatch({ type: 'NAVIGATE', payload: 'home' })}>
+        <Suspense fallback={<GameLoadingFallback gradient={meta.gradient} />}>
+          <GameComponent moduleId={moduleId} level={level} onComplete={handleComplete} />
+        </Suspense>
+      </ErrorBoundary>
     </div>
   )
 }

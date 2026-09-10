@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react'
+﻿import React, { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import ParentScreen from './ParentScreen.jsx'
 import { Settings } from 'lucide-react'
@@ -8,6 +8,8 @@ import { MAX_LEVELS } from '../AppContext.jsx'
 import StarRow from '../components/StarRow.jsx'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import FarmProgress from '../components/FarmProgress.jsx'
+import ProfileSwitcher from '../components/ProfileSwitcher.jsx'
+import { useProfile } from '../hooks/useProfile.js'
 
 // ── All modules ───────────────────────────────────────────────────────────────
 const MODULES = [
@@ -30,6 +32,23 @@ const MODULES = [
   { id:'stories',      title:'Lumis Abenteuer',  sub:'Entscheide die Story', emoji:'📖', sciTag:'🧡 Moralisches Denken & Empathie', gradient:'linear-gradient(135deg,#44D498,#6C63FF)', shadow:'rgba(68,212,152,0.45)'  },
   { id:'coloring',     title:'Mal-Atelier',       sub:'Ausmalen & Kreativ',   emoji:'🖍️', sciTag:'🎨 Kreativität & Feinmotorik',   gradient:'linear-gradient(135deg,#FD79A8,#E84393)', shadow:'rgba(253,121,168,0.45)' },
 ]
+
+const CATEGORIES = [
+  { id: 'all',      label: '⭐ Alle',    color: '#6C63FF' },
+  { id: 'math',     label: '🔢 Mathe',   color: '#6BCB77' },
+  { id: 'language', label: '✏️ Sprache', color: '#74B9FF' },
+  { id: 'creative', label: '🎨 Kreativ', color: '#FD79A8' },
+  { id: 'think',    label: '🧩 Denken',  color: '#FF9F43' },
+  { id: 'social',   label: '😊 Sozial',  color: '#A29BFE' },
+]
+
+const CATEGORY_MAP = {
+  math:     ['numbers', 'number-intro', 'bubbles', 'weight', 'clock'],
+  language: ['letters', 'letter-intro', 'words', 'words2', 'listen', 'shadows'],
+  creative: ['shapes', 'coloring'],
+  think:    ['patterns', 'sort', 'maze'],
+  social:   ['emotions', 'stories'],
+}
 
 const cardVariants = {
   hidden:  { opacity:0, y:44, scale:0.88 },
@@ -71,13 +90,28 @@ function LumiWithOrbit({ completedCount, size }) {
 export default function HomeScreen() {
   const t = useT()
   const { state, dispatch } = useApp()
-  const profile      = state.profile  ?? { name:'Lumi', avatar:'🦊' }
-  const progress     = state.progress ?? {}
-  const farmLevel    = state.farmLevel ?? 1
-  const streak       = state.streak   ?? { count: 0 }
-  const dailyMission = state.dailyMission ?? { date: null, missions: [], completedIds: [] }
+  const { profile: activeProfile, progress, farmLevel, streak, dailyMission, lastPlayed } = useProfile()
+  const profile = activeProfile ?? { name: 'Lumi', avatar: '🦊' }
   const [showParent, setShowParent] = useState(false)
+  const [showSwitcher, setShowSwitcher] = useState(false)
+  const [activeCategory, setActiveCategory] = useState('all')
   const completedCount = Object.values(progress).filter(p => p?.completed).length
+
+  const getGreeting = () => {
+    const h = new Date().getHours()
+    if (h < 12) return t('home.morning')
+    if (h < 17) return t('home.afternoon')
+    return t('home.evening')
+  }
+
+  const filteredModules = useMemo(() => {
+    if (activeCategory === 'all') return MODULES
+    return MODULES.filter(m => (CATEGORY_MAP[activeCategory] ?? []).includes(m.id))
+  }, [activeCategory])
+
+  const lastPlayedModule = lastPlayed?.moduleId
+    ? MODULES.find(m => m.id === lastPlayed.moduleId)
+    : null
 
   // Greeting TTS on first visit
   useEffect(() => {
@@ -162,10 +196,15 @@ export default function HomeScreen() {
         borderRadius:'0 0 28px 28px',
         boxShadow:'0 6px 28px rgba(74,0,224,0.3)',
       }}>
-        <div style={{ fontSize:'clamp(36px,7vw,52px)', lineHeight:1 }}>{profile.avatar}</div>
+        <motion.button
+          whileHover={{ scale:1.1 }} whileTap={{ scale:0.92 }}
+          onClick={() => setShowSwitcher(true)}
+          style={{ fontSize:'clamp(36px,7vw,52px)', lineHeight:1, background:'none', border:'none', cursor:'pointer', padding:0, borderRadius:'50%' }}
+          title="Profil wechseln"
+        >{profile.avatar}</motion.button>
         <div style={{ flex:1 }}>
           <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(14px,2.8vw,20px)', color:'rgba(255,255,255,0.75)' }}>
-            Hallo,
+            {getGreeting()},
           </div>
           <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(16px,4vw,28px)', color:'white', fontWeight:700, lineHeight:1.1 }}>
             {profile.name}! 👋
@@ -174,7 +213,8 @@ export default function HomeScreen() {
         <LumiWithOrbit completedCount={completedCount} size={64} />
         <motion.button whileHover={{scale:1.1}} whileTap={{scale:0.9}}
           style={{ width:48,height:48,borderRadius:'50%',background:'rgba(255,255,255,0.18)',display:'flex',alignItems:'center',justifyContent:'center' }}
-          onClick={() => dispatch({ type:'NAVIGATE', payload:'welcome' })}
+          onClick={() => setShowParent(true)}
+          title="Einstellungen"
         >
           <Settings size={20} color="white" />
         </motion.button>
@@ -223,7 +263,7 @@ export default function HomeScreen() {
                   fontWeight:600,
                   textDecoration: done ? 'line-through' : 'none',
                   whiteSpace:'nowrap',
-                }}>{m.text}</span>
+                }}>{t('mission.' + m.id)}</span>
               </div>
             )
           })}
@@ -232,6 +272,84 @@ export default function HomeScreen() {
 
       {/* ── Farm Progress ── */}
       <FarmProgress completedCount={completedCount} totalModules={MODULES.length} profile={profile} />
+
+      {/* ── Continue card ── */}
+      {lastPlayedModule && (
+        <motion.div
+          initial={{ opacity:0, y:-12 }}
+          animate={{ opacity:1, y:0 }}
+          transition={{ delay:0.2 }}
+          style={{ padding:'0 clamp(20px,4vw,40px)', marginBottom:8 }}
+        >
+          <motion.button
+            whileHover={{ scale:1.02, y:-2 }}
+            whileTap={{ scale:0.98 }}
+            onClick={() => startModule(lastPlayedModule)}
+            style={{
+              width:'100%', cursor:'pointer', textAlign:'left',
+              background:'linear-gradient(135deg,rgba(74,0,224,0.12),rgba(142,45,226,0.12))',
+              borderRadius:20, padding:'clamp(12px,2vw,16px) clamp(16px,3vw,22px)',
+              display:'flex', alignItems:'center', gap:14,
+              border:'1.5px solid rgba(108,99,255,0.3)',
+              backdropFilter:'blur(8px)',
+            }}
+          >
+            <div style={{
+              width:46, height:46, borderRadius:'50%', flexShrink:0,
+              background: lastPlayedModule.gradient,
+              display:'flex', alignItems:'center', justifyContent:'center',
+              fontSize:22, boxShadow:`0 4px 14px ${lastPlayedModule.shadow}`,
+            }}>{lastPlayedModule.emoji}</div>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(11px,2.5vw,13px)', color:'var(--violet-mid)', fontWeight:600, marginBottom:2 }}>
+                {t('home.continue')} ▶
+              </div>
+              <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(14px,3vw,18px)', color:'var(--text-primary)', fontWeight:700, lineHeight:1.2, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis' }}>
+                {lastPlayedModule.title}
+              </div>
+            </div>
+            <div style={{
+              background: lastPlayedModule.gradient,
+              borderRadius:12, padding:'6px 16px',
+              fontFamily:'var(--font-heading)', fontSize:13, color:'white', fontWeight:700,
+              whiteSpace:'nowrap', flexShrink:0,
+            }}>▶ Weiter</div>
+          </motion.button>
+        </motion.div>
+      )}
+
+      {/* ── Category filter chips ── */}
+      <div style={{
+        display:'flex', gap:8, overflowX:'auto', overflowY:'hidden',
+        padding:'0 clamp(20px,4vw,40px) 10px',
+        scrollbarWidth:'none', WebkitOverflowScrolling:'touch',
+      }}>
+        {CATEGORIES.map(cat => (
+          <motion.button
+            key={cat.id}
+            whileTap={{ scale:0.92 }}
+            onClick={() => setActiveCategory(cat.id)}
+            style={{
+              flexShrink:0, cursor:'pointer',
+              padding:'7px 16px', borderRadius:99,
+              fontFamily:'var(--font-heading)', fontSize:'clamp(12px,2.5vw,14px)', fontWeight:700,
+              background: activeCategory === cat.id
+                ? cat.color
+                : 'rgba(255,255,255,0.55)',
+              color: activeCategory === cat.id ? 'white' : 'var(--text-secondary)',
+              boxShadow: activeCategory === cat.id
+                ? `0 4px 14px ${cat.color}55`
+                : 'none',
+              outline: activeCategory === cat.id
+                ? 'none'
+                : '1.5px solid rgba(0,0,0,0.08)',
+              transition:'all 0.2s',
+            }}
+          >
+            {cat.label}
+          </motion.button>
+        ))}
+      </div>
 
       {/* ── Card grid ── */}
       <div style={{
@@ -242,7 +360,7 @@ export default function HomeScreen() {
         padding:'clamp(10px,2vw,20px) clamp(20px,4vw,40px) clamp(24px,4vw,40px)',
         alignContent:'start',
       }}>
-        {MODULES.map((mod, i) => {
+        {filteredModules.map((mod, i) => {
           const p          = progress[mod.id] ?? { currentLevel:1, levelStars:{}, completed:false }
           const maxLvl     = MAX_LEVELS[mod.id] ?? 10
           const levelStars = p.levelStars  ?? {}
@@ -357,17 +475,6 @@ export default function HomeScreen() {
                   </span>
                 </div>
 
-                {/* Science tag */}
-                <div style={{
-                  fontFamily:'var(--font-body)', fontSize:'clamp(11px,1.8vw,12px)',
-                  color:'var(--text-muted)', background:'var(--bg)',
-                  padding:'5px 10px', borderRadius:99,
-                  display:'inline-block', border:'1.5px solid var(--border)',
-                  alignSelf:'flex-start',
-                }}>
-                  {mod.sciTag}
-                </div>
-
                 {/* Play CTA */}
                 <div className="play-cta-bob" style={{
                   marginTop:2, background: mod.gradient,
@@ -383,25 +490,8 @@ export default function HomeScreen() {
           )
         })}
       </div>
-      {/* ⚙️ Settings button — fixed bottom-right, small and unobtrusive */}
-      <motion.button
-        whileHover={{ scale:1.12 }} whileTap={{ scale:0.92 }}
-        onClick={() => setShowParent(true)}
-        style={{
-          position:'fixed', bottom:20, right:20, zIndex:900,
-          width:42, height:42, borderRadius:'50%',
-          background:'rgba(255,255,255,0.25)',
-          backdropFilter:'blur(8px)',
-          border:'1.5px solid rgba(255,255,255,0.4)',
-          color:'white',
-          fontSize:20, cursor:'pointer',
-          display:'flex', alignItems:'center', justifyContent:'center',
-          boxShadow:'0 2px 12px rgba(0,0,0,0.15)',
-        }}
-        title="Einstellungen"
-      >⚙️</motion.button>
-
       {showParent && <ParentScreen onClose={() => setShowParent(false)} />}
+      {showSwitcher && <ProfileSwitcher onClose={() => setShowSwitcher(false)} />}
 
 </div>
   )

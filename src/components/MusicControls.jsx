@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { asset } from '../lib/assets.js'
 
 const LS_ENABLED = 'lumi_music_enabled'
 const LS_VOLUME  = 'lumi_music_volume'
@@ -18,7 +19,7 @@ export default function MusicControls() {
 
   // Create audio element once
   useEffect(() => {
-    const audio = new Audio('music/background.mp3')
+    const audio = new Audio(asset('music/background.mp3'))
     audio.loop   = true
     audio.volume = volume
     audioRef.current = audio

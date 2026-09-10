@@ -1,8 +1,7 @@
-import { useState, useContext, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useApp, MAX_LEVELS } from '../AppContext.jsx'
-
-const PIN = '1234'
+import { useProfile } from '../hooks/useProfile.js'
 
 const MODULE_NAMES = {
   'number-intro': 'Zahlen entdecken',
@@ -25,7 +24,7 @@ const MODULE_NAMES = {
   coloring:        'Mal-Atelier',
 }
 
-function PinPad({ onSuccess, onCancel }) {
+function PinPad({ onSuccess, onCancel, correctPin = '1234' }) {
   const [pin, setPin] = useState('')
   const [shake, setShake] = useState(false)
 
@@ -34,7 +33,7 @@ function PinPad({ onSuccess, onCancel }) {
     const next = pin + n
     setPin(next)
     if (next.length === 4) {
-      if (next === PIN) { onSuccess() }
+      if (next === correctPin) { onSuccess() }
       else { setShake(true); setTimeout(() => { setPin(''); setShake(false) }, 600) }
     }
   }
@@ -79,11 +78,17 @@ function PinPad({ onSuccess, onCancel }) {
 
 export default function ParentScreen({ onClose }) {
   const { state, dispatch } = useApp()
-  const coins     = state.coins    ?? 0
-  const farmLevel = state.farmLevel ?? 1
-  const streak    = state.streak   ?? { count: 0 }
+  const { progress, coins, farmLevel, streak } = useProfile()
+  const currentPin = state.settings?.parentPin ?? '1234'
+  const pinIsDefault = state.settings?.pinIsDefault ?? true
   const [unlocked, setUnlocked] = useState(false)
   const [toast, setToast] = useState(null)
+  // PIN change state
+  const [showPinChange, setShowPinChange] = useState(false)
+  const [pinCurrent, setPinCurrent] = useState('')
+  const [pinNew, setPinNew] = useState('')
+  const [pinRepeat, setPinRepeat] = useState('')
+  const [pinError, setPinError] = useState('')
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2200) }
 
@@ -98,19 +103,20 @@ export default function ParentScreen({ onClose }) {
   }, [dispatch])
 
   const resetFarm = useCallback((targetLevel) => {
-    try {
-      if (targetLevel === 0) {
-        localStorage.removeItem('lumilearn_farm_level')
-      } else {
-        localStorage.setItem('lumilearn_farm_level', String(targetLevel))
-      }
-    } catch {}
     showToast(targetLevel === 0 ? 'Hof komplett zurückgesetzt' : `Hof → Level ${targetLevel}`)
   }, [])
 
-  const currentFarmLevel = (() => {
-    try { return parseInt(localStorage.getItem('lumilearn_farm_level') || '0', 10) } catch { return 0 }
-  })()
+  const currentFarmLevel = farmLevel ?? 1
+
+  const handlePinChange = () => {
+    setPinError('')
+    if (pinCurrent !== currentPin) { setPinError('Falscher aktueller PIN'); return }
+    if (!/^\d{4}$/.test(pinNew)) { setPinError('PIN muss 4 Ziffern haben'); return }
+    if (pinNew !== pinRepeat) { setPinError('PIN stimmt nicht überein'); return }
+    dispatch({ type: 'SET_PARENT_PIN', payload: pinNew })
+    setPinCurrent(''); setPinNew(''); setPinRepeat(''); setShowPinChange(false)
+    showToast('PIN erfolgreich geändert!')
+  }
 
   if (!unlocked) {
     return (
@@ -122,7 +128,7 @@ export default function ParentScreen({ onClose }) {
         <motion.div initial={{scale:0.85,y:20}} animate={{scale:1,y:0}}
           onClick={e => e.stopPropagation()}
           style={{ background:'white', borderRadius:28, padding:'32px 28px', maxWidth:340, width:'100%', boxShadow:'0 20px 60px rgba(0,0,0,0.3)' }}>
-          <PinPad onSuccess={() => setUnlocked(true)} onCancel={onClose} />
+          <PinPad onSuccess={() => setUnlocked(true)} onCancel={onClose} correctPin={currentPin} />
         </motion.div>
       </div>
     )
@@ -158,6 +164,14 @@ export default function ParentScreen({ onClose }) {
             ✕
           </motion.button>
         </div>
+
+        {/* Default PIN warning */}
+        {pinIsDefault && (
+          <div style={{ background:'#fff8e1', border:'2px solid #FFD93D', borderRadius:16, padding:'12px 16px', marginBottom:16, fontFamily:'var(--font-body)', fontSize:14, color:'#b8860b', display:'flex', alignItems:'center', gap:8 }}>
+            <span style={{ fontSize:20 }}>⚠️</span>
+            <span>Bitte ändere die Standard-PIN 1234!</span>
+          </div>
+        )}
 
         {/* Gamification stats */}
         <div style={{ background:'white', borderRadius:20, padding:16, marginBottom:16, boxShadow:'0 2px 12px rgba(0,0,0,0.06)', display:'flex', gap:12, flexWrap:'wrap' }}>
@@ -206,7 +220,7 @@ export default function ParentScreen({ onClose }) {
           </div>
           <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
             {Object.entries(MODULE_NAMES).map(([id, name]) => {
-              const prog = state.progress[id]
+              const prog = progress[id]
               const curLv = prog?.currentLevel ?? 1
               const maxLv = MAX_LEVELS[id] ?? 10
               const stars = Object.values(prog?.levelStars ?? {}).reduce((a,b) => a+b, 0)
@@ -249,6 +263,45 @@ export default function ParentScreen({ onClose }) {
           </div>
         </div>
 
+        {/* PIN change section */}
+        <div style={{ background:'white', borderRadius:20, padding:20, marginBottom:16, boxShadow:'0 2px 12px rgba(0,0,0,0.06)' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:showPinChange ? 16 : 0 }}>
+            <div style={{ fontFamily:'var(--font-heading)', fontSize:16, fontWeight:700, color:'#333' }}>🔑 PIN ändern</div>
+            <motion.button whileTap={{scale:0.92}}
+              onClick={() => { setShowPinChange(v => !v); setPinError('') }}
+              style={{ background:'#ECE8FF', border:'none', borderRadius:10, padding:'6px 14px', fontFamily:'var(--font-heading)', fontSize:14, color:'#4A00E0', cursor:'pointer', fontWeight:700 }}>
+              {showPinChange ? 'Abbrechen' : 'Ändern'}
+            </motion.button>
+          </div>
+          <AnimatePresence>
+            {showPinChange && (
+              <motion.div initial={{height:0,opacity:0}} animate={{height:'auto',opacity:1}} exit={{height:0,opacity:0}}>
+                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                  {[
+                    { label:'Aktueller PIN', value:pinCurrent, setter:setPinCurrent },
+                    { label:'Neuer PIN (4 Ziffern)', value:pinNew, setter:setPinNew },
+                    { label:'Neuen PIN wiederholen', value:pinRepeat, setter:setPinRepeat },
+                  ].map(({ label, value, setter }) => (
+                    <div key={label}>
+                      <div style={{ fontFamily:'var(--font-body)', fontSize:12, color:'#888', marginBottom:4 }}>{label}</div>
+                      <input
+                        type="password" value={value} maxLength={4}
+                        onChange={e => setter(e.target.value.replace(/\D/g,'').slice(0,4))}
+                        style={{ width:'100%', padding:'10px 14px', borderRadius:12, border:'2px solid #A29BFE', fontFamily:'var(--font-heading)', fontSize:18, letterSpacing:8, outline:'none', boxSizing:'border-box' }}
+                      />
+                    </div>
+                  ))}
+                  {pinError && <div style={{ color:'#e74c3c', fontFamily:'var(--font-body)', fontSize:13 }}>⚠️ {pinError}</div>}
+                  <motion.button whileTap={{scale:0.95}} onClick={handlePinChange}
+                    style={{ background:'linear-gradient(135deg,#4A00E0,#8E2DE2)', color:'white', border:'none', borderRadius:14, padding:'12px', fontFamily:'var(--font-heading)', fontSize:16, fontWeight:700, cursor:'pointer', marginTop:4 }}>
+                    PIN ändern
+                  </motion.button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
         {/* Full reset */}
         <div style={{ background:'#fff5f5', borderRadius:20, padding:20, boxShadow:'0 2px 12px rgba(0,0,0,0.06)', border:'2px solid #FFE0E0' }}>
           <div style={{ fontFamily:'var(--font-heading)', fontSize:16, fontWeight:700, marginBottom:8, color:'#e74c3c' }}>
@@ -260,7 +313,6 @@ export default function ParentScreen({ onClose }) {
           <motion.button whileTap={{scale:0.95}}
             onClick={() => {
               dispatch({ type:'RESET_ALL' })
-              try { localStorage.removeItem('lumilearn_farm_level') } catch {}
               showToast('Alles zurückgesetzt')
               setTimeout(onClose, 1500)
             }}

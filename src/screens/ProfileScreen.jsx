@@ -195,18 +195,19 @@ function CreateProfileForm({ onSave, onCancel, showCancel }) {
 export default function ProfileScreen() {
   const t = useT()
   const { state, dispatch } = useApp()
-  const profiles = state.profiles ?? (state.profile ? [state.profile] : [])
+  // Support both old array format and new object format
+  const profilesObj = state.profiles ?? {}
+  const profiles = Array.isArray(profilesObj) ? profilesObj : Object.values(profilesObj)
   const [mode, setMode] = useState(profiles.length === 0 ? 'create' : 'select')
 
   const selectProfile = (p) => {
-    dispatch({ type:'SET_PROFILE', payload:p })
-    dispatch({ type:'NAVIGATE', payload:'home' })
+    dispatch({ type: 'SET_ACTIVE_PROFILE', payload: p.id })
+    dispatch({ type: 'NAVIGATE', payload: 'home' })
   }
 
   const createProfile = (data) => {
-    dispatch({ type:'ADD_PROFILE', payload:data })
-    dispatch({ type:'SET_PROFILE', payload:data })
-    dispatch({ type:'NAVIGATE', payload:'home' })
+    dispatch({ type: 'ADD_PROFILE', payload: data })
+    dispatch({ type: 'NAVIGATE', payload: 'home' })
   }
 
   return (
@@ -286,6 +287,7 @@ export default function ProfileScreen() {
                 </h1>
               </div>
               <CreateProfileForm onSave={createProfile} onCancel={() => setMode('select')} showCancel={profiles.length > 0} />
+
             </motion.div>
           )}
         </AnimatePresence>
