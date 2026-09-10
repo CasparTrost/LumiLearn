@@ -1,33 +1,31 @@
 import { useRef } from 'react'
 
-export function useSwipe(onDir, { threshold = 20, repeatMs = 160 } = {}) {
-  const st = useRef({ x: 0, y: 0, dir: null, timer: null })
+// One swipe = one step. Auto-repeat is intentionally omitted here —
+// hold-repeat is provided by the D-Pad buttons instead.
+export function useSwipe(onDir, { threshold = 20 } = {}) {
+  const st = useRef({ startX: 0, startY: 0, fired: false })
 
-  const stop = () => {
-    clearInterval(st.current.timer)
-    st.current.timer = null
-    st.current.dir = null
-  }
+  const stop = () => { st.current.fired = false }
 
   return {
     onPointerDown: e => {
-      st.current.x = e.clientX
-      st.current.y = e.clientY
-      st.current.dir = null
+      st.current.startX = e.clientX
+      st.current.startY = e.clientY
+      st.current.fired  = false
       try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* ignore */ }
     },
     onPointerMove: e => {
       const s = st.current
-      if (s.dir) return
-      const dx = e.clientX - s.x
-      const dy = e.clientY - s.y
+      if (s.fired) return                   // already fired once for this gesture
+      const dx = e.clientX - s.startX
+      const dy = e.clientY - s.startY
       if (Math.max(Math.abs(dx), Math.abs(dy)) < threshold) return
+      s.fired = true                        // latch — only one move per swipe
       const isHoriz = Math.abs(dx) > Math.abs(dy)
-      s.dir = isHoriz ? [Math.sign(dx), 0] : [0, Math.sign(dy)]
-      onDir(s.dir[0], s.dir[1])
-      s.timer = setInterval(() => onDir(s.dir[0], s.dir[1]), repeatMs)
+      onDir(isHoriz ? Math.sign(dx) : 0, isHoriz ? 0 : Math.sign(dy))
     },
     onPointerUp:     stop,
+    onPointerLeave:  stop,   // safety: pointer left element without releasing
     onPointerCancel: stop,
   }
 }
