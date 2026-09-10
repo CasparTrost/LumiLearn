@@ -74,6 +74,7 @@ import base64
 import json
 import os
 import sys
+import time
 
 try:
     import pixellab
@@ -161,6 +162,9 @@ def tile_to_metadata(tile):
     }
 
 
+IN_PROGRESS_STATUSES = {"processing", "pending", "queued", "running", "started"}
+
+
 def call_generate_tileset_http(api_key, t):
     """Fallback for when the installed SDK doesn't have generate_tileset()
     yet. Talks to POST /create-tileset directly. Returns a plain dict —
@@ -185,6 +189,96 @@ def call_generate_tileset_http(api_key, t):
     if resp.status_code >= 400:
         raise RuntimeError(f"HTTP {resp.status_code}: {resp.text[:800]}")
     return resp.json()
+
+
+def as_dict(obj):
+    if isinstance(obj, dict):
+        return obj
+    if obj is None:
+        return {}
+    return getattr(obj, "__dict__", {}) or {}
+
+
+def find_tiles(data):
+    """generate_tileset() is async: the initial response is just a job
+    stub ({background_job_id, tileset_id, status}), not the tiles. Once
+    the job is done, the tiles could plausibly show up in a few
+    different spots depending on exactly how the finished payload is
+    shaped — try each, in order."""
+    d = as_dict(data)
+    candidates = [
+        as_dict(d.get("tileset")).get("tiles"),
+        as_dict(as_dict(d.get("result")).get("tileset")).get("tiles"),
+        as_dict(d.get("result")).get("tiles"),
+        d.get("tiles"),
+    ]
+    for tiles in candidates:
+        if tiles:
+            return tiles
+    return None
+
+
+def resolve_tileset(api_key, response):
+    """Given the immediate response from generate_tileset()/create-tileset,
+    return the finished tile list — polling the async job first if the
+    response is just a job stub rather than the finished tileset."""
+    tiles = find_tiles(response)
+    if tiles:
+        return tiles
+
+    d = as_dict(response)
+    job_id = d.get("background_job_id")
+    tileset_id = d.get("tileset_id")
+    if not job_id:
+        # Not a job stub and no tiles either — nothing more we can do here.
+        return None
+
+    if requests is None:
+        raise RuntimeError(
+            "This API call is async (returned a background_job_id) but the "
+            "'requests' package isn't installed to poll for the result. Run: pip install requests"
+        )
+
+    headers = {"Authorization": f"Bearer {api_key}"}
+    job_url = f"{API_BASE}/background-jobs/{job_id}"
+    print(f"  Job queued ({job_id}) — polling until it finishes...")
+    data = None
+    for attempt in range(90):  # up to ~7.5 minutes at 5s intervals
+        resp = requests.get(job_url, headers=headers, timeout=60)
+        if resp.status_code >= 400:
+            raise RuntimeError(f"Polling job status failed: HTTP {resp.status_code}: {resp.text[:500]}")
+        data = resp.json()
+        status = data.get("status")
+        if status not in IN_PROGRESS_STATUSES:
+            print(f"  Job finished with status={status}")
+            break
+        if attempt % 6 == 0:  # log roughly every 30s, not every 5s
+            print(f"  ...still {status} ({attempt * 5}s elapsed)")
+        time.sleep(5)
+    else:
+        raise RuntimeError(
+            f"Job {job_id} was still processing after ~7.5 minutes. "
+            f"It's still running on PixelLab's side — check back later "
+            f"(tileset_id={tileset_id})."
+        )
+
+    tiles = find_tiles(data)
+    if tiles:
+        return tiles
+
+    if tileset_id:
+        print(f"  Tiles not found directly in job result — trying GET /tilesets/{tileset_id}...")
+        resp2 = requests.get(f"{API_BASE}/tilesets/{tileset_id}", headers=headers, timeout=60)
+        if resp2.status_code < 400:
+            data2 = resp2.json()
+            tiles = data2.get("tiles") or find_tiles(data2) or find_tiles({"tileset": data2})
+            if tiles:
+                return tiles
+        else:
+            print(f"  GET /tilesets/{{id}} failed too: HTTP {resp2.status_code}: {resp2.text[:500]}")
+
+    print(f"  Could not locate tiles automatically. Raw finished job payload:\n  {data!r}")
+    return None
 
 
 def main():
@@ -256,12 +350,12 @@ def main():
                 )
             continue
 
-        tileset = getattr(response, "tileset", None) or (response.get("tileset") if isinstance(response, dict) else None)
-        tiles = getattr(tileset, "tiles", None) if tileset is not None else None
-        if tiles is None and isinstance(tileset, dict):
-            tiles = tileset.get("tiles")
+        try:
+            tiles = resolve_tileset(api_key, response)
+        except Exception as e:
+            print(f"  Failed while waiting for the result: {e}")
+            continue
         if not tiles:
-            print(f"  Unrecognized response shape — inspect manually:\n  {response!r}")
             continue
 
         theme_dir = os.path.join(OUT_DIR, t["name"])
