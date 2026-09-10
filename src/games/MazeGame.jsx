@@ -23,10 +23,11 @@ const LEVEL_CONFIG = level => {
   const rows        = cols
   const fogRadius   = level <= 3 ? null : level <= 6 ? 4.5 : 3.5
   const theme       = level <= 3 ? 'forest' : 'dungeon'
-  // Dragon speed: starts slow (1.2s/step at lvl 2) and gets faster each level.
-  // Keep it slow enough that children can time passing the 5-cell patrol zone.
-  const dragonSpeed = Math.max(300, 1200 - (level - 2) * 80)
-  return { hasDragon, cols, rows, fogRadius, theme, dragonSpeed }
+  // Note: the dragon no longer moves on its own real-time clock — it takes
+  // exactly one patrol step per player move (see mazeReducer.js). This
+  // makes the patrol provably avoidable regardless of device speed or
+  // reaction time, since the player has unlimited time to plan each move.
+  return { hasDragon, cols, rows, fogRadius, theme }
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -275,7 +276,7 @@ function Sparkles({ x, y, cellSize }) {
 // to this element regardless of visual size changes. A window-level
 // fallback listener is a second safety net in case capture itself fails.
 // ──────────────────────────────────────────────────────────────────
-function DPadButton({ label, onPress, size = 52 }) {
+function DPadButton({ label, onPress, size = 52, ariaLabel, style: styleOverride }) {
   const repeatRef = useRef(null)
   const activeRef = useRef(false)
 
@@ -316,7 +317,7 @@ function DPadButton({ label, onPress, size = 52 }) {
       onPointerUp={stop}
       onPointerLeave={stop}
       onPointerCancel={stop}
-      aria-label={label}
+      aria-label={ariaLabel ?? label}
       style={{
         width:             size,
         height:            size,
@@ -334,6 +335,7 @@ function DPadButton({ label, onPress, size = 52 }) {
         touchAction:       'none',
         userSelect:        'none',
         WebkitUserSelect:  'none',
+        ...styleOverride,
       }}
     >
       {label}
@@ -349,7 +351,7 @@ export default function MazeGame({ level = 1, onComplete }) {
   const mazeRef  = useRef(null)
   if (!mazeRef.current) mazeRef.current = genMaze(cfg.cols, cfg.rows)
 
-  const [st, dispatch] = useReducer(mazeReducer, null, () => initState(mazeRef.current))
+  const [st, dispatch] = useReducer(mazeReducer, null, () => initState(mazeRef.current, cfg.hasDragon))
 
   const { containerRef, cellSize } = useBoardSize(cfg.cols, cfg.rows, 52)
 
@@ -357,8 +359,6 @@ export default function MazeGame({ level = 1, onComplete }) {
   const onCompleteRef   = useRef(onComplete)
   onCompleteRef.current = onComplete
 
-  const dragonStepRef = useRef(0)
-  const dragonDirRef  = useRef(1)
   const prevDangerRef = useRef(0)
 
   const [sparkles, setSparkles]     = useState([]) // [{ id, x, y }]
@@ -385,6 +385,12 @@ export default function MazeGame({ level = 1, onComplete }) {
     )
   }, [])
 
+  // Pass a turn without moving — always 100% safe (see mazeReducer.js).
+  // This is how the player waits for the dragon to clear the way.
+  const doWait = useCallback(() => {
+    dispatch({ type: 'WAIT', now: Date.now() })
+  }, [])
+
   // ── KEYBOARD ────────────────────────────────────────────────────
   useEffect(() => {
     const DIRS = {
@@ -392,6 +398,11 @@ export default function MazeGame({ level = 1, onComplete }) {
       w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0],
     }
     const handler = e => {
+      if (e.key === ' ' || e.key === 'Spacebar') {
+        e.preventDefault()
+        doWait()
+        return
+      }
       const dir = DIRS[e.key]
       if (!dir) return
       e.preventDefault()
@@ -399,31 +410,12 @@ export default function MazeGame({ level = 1, onComplete }) {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [doMove])
+  }, [doMove, doWait])
 
-  // ── DRAGON MOVEMENT ─────────────────────────────────────────────
-  // Reflect-at-boundary ping-pong: the dragon now actually reaches BOTH
-  // ends of its patrol (the previous version corrected the index before
-  // ever dispatching it, so the two outermost cells were never visited —
-  // the effective patrol was 2 cells shorter than intended on each side).
-  useEffect(() => {
-    const wps = mazeRef.current.dragonWps
-    if (!cfg.hasDragon || !wps || wps.length < 2 || st.won || st.dead) return
-
-    const last = wps.length - 1
-    const iv = setInterval(() => {
-      let i   = dragonStepRef.current
-      let dir = dragonDirRef.current
-      if (i >= last) dir = -1
-      else if (i <= 0) dir = 1
-      i += dir
-      dragonStepRef.current = i
-      dragonDirRef.current  = dir
-      dispatch({ type: 'DRAGON_STEP', pos: wps[i], now: Date.now() })
-    }, cfg.dragonSpeed)
-
-    return () => clearInterval(iv)
-  }, [cfg.hasDragon, cfg.dragonSpeed, st.won, st.dead])
+  // Note: there is no independent dragon-movement timer anymore. The
+  // dragon takes exactly one patrol step per player MOVE, applied
+  // atomically inside mazeReducer.js — see the comment there for why
+  // this makes the patrol provably avoidable.
 
   // ── SIDE EFFECTS — consume events from reducer ───────────────────
   useEffect(() => {
@@ -487,7 +479,9 @@ export default function MazeGame({ level = 1, onComplete }) {
   // ── INTRO SPEECH ─────────────────────────────────────────────────
   useEffect(() => {
     const n = mazeRef.current.potions.length
-    const dragonWarning = cfg.hasDragon ? ' — pass auf den Drachen auf!' : '!'
+    const dragonWarning = cfg.hasDragon
+      ? ' — pass auf den Drachen auf! Drück die Warten-Taste, wenn er im Weg steht.'
+      : '!'
     const msg = n > 0
       ? `Sammle ${n} Zaubertrank${n > 1 ? 'e' : ''} und finde den Ausgang${dragonWarning}`
       : `Finde den Ausgang des Labyrinths${dragonWarning}`
@@ -717,36 +711,43 @@ export default function MazeGame({ level = 1, onComplete }) {
                 background:   'radial-gradient(ellipse, rgba(0,0,0,0.5), transparent 72%)',
               }} />
 
-              {/* Sprite */}
-              <motion.img
+              {/* Sprite — bump-shake lives on this WRAPPER (framer-motion owns
+                  its transform via the `x` motion value). The actual <img>
+                  below is a plain element so our own CSS `transform`
+                  (centering + left/right flip) is never overwritten by
+                  framer-motion — motion.* components always recompute
+                  `transform` from their own x/y/scale/rotate values, which
+                  silently discards any hand-written transform string. */}
+              <motion.div
                 key={st.bumpKey}
-                animate={st.bumpKey > 0
-                  ? { x: [0, -5, 5, -3, 0] }
-                  : {}
-                }
+                animate={st.bumpKey > 0 ? { x: [0, -5, 5, -3, 0] } : { x: 0 }}
                 transition={{ duration: 0.22 }}
-                src={spr(st.moving ? 'maze_knight_walk.gif' : 'maze_knight_idle.gif')}
-                alt="Spieler"
-                className={isInvincible ? 'mz-blink mz-bob' : 'mz-bob'}
-                draggable={false}
-                style={{
-                  position:       'absolute',
-                  bottom:         '2%',
-                  left:           '50%',
-                  width:          Math.round(cellSize * 1.05),
-                  height:         Math.round(cellSize * 1.05),
-                  transform:      `translateX(-50%) scaleX(${st.facing})`,
-                  imageRendering: 'pixelated',
-                  filter:         'drop-shadow(0 2px 5px rgba(0,0,0,0.75))',
-                }}
-                onError={e => {
-                  e.target.style.display = 'none'
-                  const fb = document.createElement('span')
-                  fb.textContent = '🧙'
-                  fb.style.cssText = `position:absolute;bottom:2%;left:50%;transform:translateX(-50%) scaleX(${st.facing});font-size:${cellSize * 0.8}px`
-                  e.target.parentNode.appendChild(fb)
-                }}
-              />
+                style={{ position: 'absolute', inset: 0 }}
+              >
+                <img
+                  src={spr(st.moving ? 'maze_knight_walk.gif' : 'maze_knight_idle.gif')}
+                  alt="Spieler"
+                  className={isInvincible ? 'mz-blink mz-bob' : 'mz-bob'}
+                  draggable={false}
+                  style={{
+                    position:       'absolute',
+                    bottom:         '2%',
+                    left:           '50%',
+                    width:          Math.round(cellSize * 1.05),
+                    height:         Math.round(cellSize * 1.05),
+                    transform:      `translateX(-50%) scaleX(${st.facing})`,
+                    imageRendering: 'pixelated',
+                    filter:         'drop-shadow(0 2px 5px rgba(0,0,0,0.75))',
+                  }}
+                  onError={e => {
+                    e.target.style.display = 'none'
+                    const fb = document.createElement('span')
+                    fb.textContent = '🧙'
+                    fb.style.cssText = `position:absolute;bottom:2%;left:50%;transform:translateX(-50%) scaleX(${st.facing});font-size:${cellSize * 0.8}px`
+                    e.target.parentNode.appendChild(fb)
+                  }}
+                />
+              </motion.div>
             </motion.div>
 
             {/* ── DRAGON ───────────────────────────────────────── */}
@@ -834,9 +835,32 @@ export default function MazeGame({ level = 1, onComplete }) {
         </div>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
           <DPadButton label="◀" onPress={() => doMove(-1, 0)} />
-          <DPadButton label="▼" onPress={() => doMove(0, 1)} />
+          {hasDragon ? (
+            <DPadButton
+              label="⏳"
+              ariaLabel="Warten"
+              onPress={doWait}
+              style={{ background: 'rgba(255,200,60,0.16)', borderColor: 'rgba(255,200,60,0.35)' }}
+            />
+          ) : (
+            <div style={{ width: 52, height: 52 }} />
+          )}
           <DPadButton label="▶" onPress={() => doMove(1, 0)} />
         </div>
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 4 }}>
+          <DPadButton label="▼" onPress={() => doMove(0, 1)} />
+        </div>
+        {hasDragon && (
+          <div style={{
+            textAlign:  'center',
+            color:      'rgba(255,255,255,0.55)',
+            fontSize:   11,
+            marginTop:  4,
+            fontFamily: 'Fredoka, var(--font-heading), sans-serif',
+          }}>
+            ⏳ Warten, bis der Drache vorbeizieht
+          </div>
+        )}
       </div>
     </div>
   )
