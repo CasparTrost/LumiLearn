@@ -174,7 +174,8 @@ export default function HomeScreen() {
         <LumiWithOrbit completedCount={completedCount} size={64} />
         <motion.button whileHover={{scale:1.1}} whileTap={{scale:0.9}}
           style={{ width:48,height:48,borderRadius:'50%',background:'rgba(255,255,255,0.18)',display:'flex',alignItems:'center',justifyContent:'center' }}
-          onClick={() => dispatch({ type:'NAVIGATE', payload:'welcome' })}
+          onClick={() => setShowParent(true)}
+          title="Einstellungen"
         >
           <Settings size={20} color="white" />
         </motion.button>
@@ -357,17 +358,6 @@ export default function HomeScreen() {
                   </span>
                 </div>
 
-                {/* Science tag */}
-                <div style={{
-                  fontFamily:'var(--font-body)', fontSize:'clamp(11px,1.8vw,12px)',
-                  color:'var(--text-muted)', background:'var(--bg)',
-                  padding:'5px 10px', borderRadius:99,
-                  display:'inline-block', border:'1.5px solid var(--border)',
-                  alignSelf:'flex-start',
-                }}>
-                  {mod.sciTag}
-                </div>
-
                 {/* Play CTA */}
                 <div className="play-cta-bob" style={{
                   marginTop:2, background: mod.gradient,
@@ -383,24 +373,6 @@ export default function HomeScreen() {
           )
         })}
       </div>
-      {/* ⚙️ Settings button — fixed bottom-right, small and unobtrusive */}
-      <motion.button
-        whileHover={{ scale:1.12 }} whileTap={{ scale:0.92 }}
-        onClick={() => setShowParent(true)}
-        style={{
-          position:'fixed', bottom:20, right:20, zIndex:900,
-          width:42, height:42, borderRadius:'50%',
-          background:'rgba(255,255,255,0.25)',
-          backdropFilter:'blur(8px)',
-          border:'1.5px solid rgba(255,255,255,0.4)',
-          color:'white',
-          fontSize:20, cursor:'pointer',
-          display:'flex', alignItems:'center', justifyContent:'center',
-          boxShadow:'0 2px 12px rgba(0,0,0,0.15)',
-        }}
-        title="Einstellungen"
-      >⚙️</motion.button>
-
       {showParent && <ParentScreen onClose={() => setShowParent(false)} />}
 
 </div>

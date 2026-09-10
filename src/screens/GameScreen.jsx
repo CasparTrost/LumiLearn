@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { ArrowLeft } from 'lucide-react'
 import { useApp, MAX_LEVELS } from '../AppContext.jsx'
 import InfoButton from '../components/InfoButton.jsx'
+import ErrorBoundary from '../components/ErrorBoundary.jsx'
 import ChoiceGame    from '../games/ChoiceGame.jsx'
 import TyperGame     from '../games/TyperGame.jsx'
 import MemoryGame    from '../games/MemoryGame.jsx'
@@ -116,7 +117,9 @@ export default function GameScreen() {
       </div>
 
       {/* Game */}
-      <GameComponent moduleId={moduleId} level={level} onComplete={handleComplete} />
+      <ErrorBoundary moduleId={moduleId} onHome={() => dispatch({ type: 'NAVIGATE', payload: 'home' })}>
+        <GameComponent moduleId={moduleId} level={level} onComplete={handleComplete} />
+      </ErrorBoundary>
     </div>
   )
 }
