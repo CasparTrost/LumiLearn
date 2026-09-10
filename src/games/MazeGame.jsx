@@ -23,11 +23,13 @@ const LEVEL_CONFIG = level => {
   const rows        = cols
   const fogRadius   = level <= 3 ? null : level <= 6 ? 4.5 : 3.5
   const theme       = level <= 3 ? 'forest' : 'dungeon'
-  // Note: the dragon no longer moves on its own real-time clock — it takes
-  // exactly one patrol step per player move (see mazeReducer.js). This
-  // makes the patrol provably avoidable regardless of device speed or
-  // reaction time, since the player has unlimited time to plan each move.
-  return { hasDragon, cols, rows, fogRadius, theme }
+  // Dragon moves independently, once every `dragonSpeed` ms. Deliberately
+  // slow and only ramps up gently with level — this is a kids' game, not
+  // a reflex test. Combined with the short 5-cell patrol (mazeGen.js) and
+  // long invincibility frames after a hit, a child has real time to watch
+  // the pattern, judge a gap, and cross.
+  const dragonSpeed = Math.max(650, 1300 - (level - 2) * 90)
+  return { hasDragon, cols, rows, fogRadius, theme, dragonSpeed }
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -276,7 +278,7 @@ function Sparkles({ x, y, cellSize }) {
 // to this element regardless of visual size changes. A window-level
 // fallback listener is a second safety net in case capture itself fails.
 // ──────────────────────────────────────────────────────────────────
-function DPadButton({ label, onPress, size = 52, ariaLabel, style: styleOverride, repeat = true }) {
+function DPadButton({ label, onPress, size = 52, ariaLabel, style: styleOverride }) {
   const repeatRef = useRef(null)
   const activeRef = useRef(false)
 
@@ -287,22 +289,13 @@ function DPadButton({ label, onPress, size = 52, ariaLabel, style: styleOverride
     repeatRef.current = null
   }, [])
 
-  // Movement buttons deliberately do NOT hold-repeat (repeat=false, see
-  // callers below): the dragon only advances one patrol step per player
-  // move, so the player is meant to get unlimited time to look at the
-  // board between steps. Holding a direction button and auto-firing
-  // several moves blind defeats that guarantee and can walk you straight
-  // into the dragon before you can react. WAIT is the one button that
-  // keeps repeat=true, since standing still is always 100% safe.
   const start = useCallback(e => {
     activeRef.current = true
     try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* ignore */ }
     onPress()
-    if (repeat) {
-      clearInterval(repeatRef.current)
-      repeatRef.current = setInterval(onPress, 155)
-    }
-  }, [onPress, repeat])
+    clearInterval(repeatRef.current)
+    repeatRef.current = setInterval(onPress, 155)
+  }, [onPress])
 
   // Global safety net — guarantees the repeat stops even if this
   // element never receives its own pointerup/cancel (capture failure,
@@ -368,7 +361,9 @@ export default function MazeGame({ level = 1, onComplete }) {
   const onCompleteRef   = useRef(onComplete)
   onCompleteRef.current = onComplete
 
-  const prevDangerRef = useRef(0)
+  const prevDangerRef  = useRef(0)
+  const dragonStepRef  = useRef(0)
+  const dragonDirRef   = useRef(1)
 
   const [sparkles, setSparkles]     = useState([]) // [{ id, x, y }]
   const [showOverlay, setShowOverlay] = useState(null) // 'won' | 'dead'
@@ -394,12 +389,6 @@ export default function MazeGame({ level = 1, onComplete }) {
     )
   }, [])
 
-  // Pass a turn without moving — always 100% safe (see mazeReducer.js).
-  // This is how the player waits for the dragon to clear the way.
-  const doWait = useCallback(() => {
-    dispatch({ type: 'WAIT', now: Date.now() })
-  }, [])
-
   // ── KEYBOARD ────────────────────────────────────────────────────
   useEffect(() => {
     const DIRS = {
@@ -407,32 +396,39 @@ export default function MazeGame({ level = 1, onComplete }) {
       w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0],
     }
     const handler = e => {
-      if (e.key === ' ' || e.key === 'Spacebar') {
-        e.preventDefault()
-        doWait() // WAIT is always safe — fine to let this auto-repeat
-        return
-      }
       const dir = DIRS[e.key]
       if (!dir) return
       e.preventDefault()
-      // Ignore the OS's auto-repeat from holding the key down. The whole
-      // point of turn-locking the dragon to player moves is that the
-      // player gets unlimited time to look at the board and decide —
-      // holding a key and auto-repeating several steps blind defeats
-      // that guarantee and can walk you straight into the dragon before
-      // you can react. One key press = one step; hold WAIT if you want
-      // to watch the dragon for a while before committing.
-      if (e.repeat) return
       doMove(dir[0], dir[1])
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [doMove, doWait])
+  }, [doMove])
 
-  // Note: there is no independent dragon-movement timer anymore. The
-  // dragon takes exactly one patrol step per player MOVE, applied
-  // atomically inside mazeReducer.js — see the comment there for why
-  // this makes the patrol provably avoidable.
+  // ── DRAGON MOVEMENT — independent patrol, real time ───────────────
+  // Reflects cleanly at both ends of the patrol (visits every cell,
+  // including the two extremes — an earlier version corrected the index
+  // before dispatching it, so the outermost cells were never actually
+  // reached). Speed is deliberately slow and only ramps up gently with
+  // level, so a child has real time to watch the pattern and react.
+  useEffect(() => {
+    const wps = mazeRef.current.dragonWps
+    if (!cfg.hasDragon || !wps || wps.length < 2 || st.won || st.dead) return
+
+    const last = wps.length - 1
+    const iv = setInterval(() => {
+      let i   = dragonStepRef.current
+      let dir = dragonDirRef.current
+      if (i >= last) dir = -1
+      else if (i <= 0) dir = 1
+      i += dir
+      dragonStepRef.current = i
+      dragonDirRef.current  = dir
+      dispatch({ type: 'DRAGON_STEP', pos: wps[i], now: Date.now() })
+    }, cfg.dragonSpeed)
+
+    return () => clearInterval(iv)
+  }, [cfg.hasDragon, cfg.dragonSpeed, st.won, st.dead])
 
   // ── SIDE EFFECTS — consume events from reducer ───────────────────
   useEffect(() => {
@@ -496,9 +492,7 @@ export default function MazeGame({ level = 1, onComplete }) {
   // ── INTRO SPEECH ─────────────────────────────────────────────────
   useEffect(() => {
     const n = mazeRef.current.potions.length
-    const dragonWarning = cfg.hasDragon
-      ? ' — pass auf den Drachen auf! Drück die Warten-Taste, wenn er im Weg steht.'
-      : '!'
+    const dragonWarning = cfg.hasDragon ? ' — pass auf den Drachen auf!' : '!'
     const msg = n > 0
       ? `Sammle ${n} Zaubertrank${n > 1 ? 'e' : ''} und finde den Ausgang${dragonWarning}`
       : `Finde den Ausgang des Labyrinths${dragonWarning}`
@@ -854,36 +848,13 @@ export default function MazeGame({ level = 1, onComplete }) {
       {/* ── D-PAD ───────────────────────────────────────────────── */}
       <div style={{ flexShrink: 0, marginTop: 8, userSelect: 'none', WebkitUserSelect: 'none' }}>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
-          <DPadButton label="▲" onPress={() => doMove(0, -1)} repeat={false} />
+          <DPadButton label="▲" onPress={() => doMove(0, -1)} />
         </div>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-          <DPadButton label="◀" onPress={() => doMove(-1, 0)} repeat={false} />
-          {hasDragon ? (
-            <DPadButton
-              label="⏳"
-              ariaLabel="Warten"
-              onPress={doWait}
-              style={{ background: 'rgba(255,200,60,0.16)', borderColor: 'rgba(255,200,60,0.35)' }}
-            />
-          ) : (
-            <div style={{ width: 52, height: 52 }} />
-          )}
-          <DPadButton label="▶" onPress={() => doMove(1, 0)} repeat={false} />
+          <DPadButton label="◀" onPress={() => doMove(-1, 0)} />
+          <DPadButton label="▼" onPress={() => doMove(0, 1)} />
+          <DPadButton label="▶" onPress={() => doMove(1, 0)} />
         </div>
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 4 }}>
-          <DPadButton label="▼" onPress={() => doMove(0, 1)} repeat={false} />
-        </div>
-        {hasDragon && (
-          <div style={{
-            textAlign:  'center',
-            color:      'rgba(255,255,255,0.55)',
-            fontSize:   11,
-            marginTop:  4,
-            fontFamily: 'Fredoka, var(--font-heading), sans-serif',
-          }}>
-            ⏳ Warten, bis der Drache vorbeizieht
-          </div>
-        )}
       </div>
     </div>
   )
