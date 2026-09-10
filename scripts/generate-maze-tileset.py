@@ -15,6 +15,7 @@ locally by whoever holds the PixelLab API key.
 
 Setup:
     pip install pixellab
+    pip install requests    # only used as a fallback, see below
 
     macOS / Linux (bash/zsh), from the folder where you saved this file:
         export PIXELLAB_API_KEY="your-key-here"
@@ -80,7 +81,17 @@ except ImportError:
     print("Missing dependency. Run:  pip install pixellab")
     sys.exit(1)
 
+try:
+    import requests
+except ImportError:
+    requests = None  # only needed for the HTTP fallback below
+
 OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pixellab-output")
+
+# Used only as a fallback when the installed pixellab SDK doesn't expose
+# generate_tileset() yet (i.e. the SDK is older than the live API). Talks
+# to the REST endpoint directly instead, per api.pixellab.ai/v2/docs.
+API_BASE = "https://api.pixellab.ai/v2"
 
 # tile_size: 32 is the recommended balance of quality vs. cost (16 or 32
 # are the only standard-mode options). transition_size 0.25 gives a
@@ -150,6 +161,32 @@ def tile_to_metadata(tile):
     }
 
 
+def call_generate_tileset_http(api_key, t):
+    """Fallback for when the installed SDK doesn't have generate_tileset()
+    yet. Talks to POST /create-tileset directly. Returns a plain dict —
+    tile_to_metadata()/save_tile_image() already handle dict-shaped tiles,
+    so no separate parsing path is needed below."""
+    if requests is None:
+        raise RuntimeError("The 'requests' package is needed for this fallback. Run: pip install requests")
+
+    resp = requests.post(
+        f"{API_BASE}/create-tileset",
+        headers={"Authorization": f"Bearer {api_key}"},
+        json={
+            "lower_description": t["lower_description"],
+            "upper_description": t["upper_description"],
+            "transition_description": t["transition_description"],
+            "tile_size": t["tile_size"],
+            "transition_size": t["transition_size"],
+            "view": t["view"],
+        },
+        timeout=180,
+    )
+    if resp.status_code >= 400:
+        raise RuntimeError(f"HTTP {resp.status_code}: {resp.text[:800]}")
+    return resp.json()
+
+
 def main():
     api_key = os.environ.get("PIXELLAB_API_KEY")
     if not api_key:
@@ -157,6 +194,20 @@ def main():
         sys.exit(1)
 
     client = pixellab.Client(secret=api_key)
+
+    version = getattr(pixellab, "__version__", None)
+    print(f"pixellab SDK version: {version or 'unknown'}")
+
+    use_sdk = hasattr(client, "generate_tileset")
+    if not use_sdk:
+        print(
+            "\nNote: your installed pixellab SDK does not have generate_tileset() yet.\n"
+            "This usually means it's outdated — try this first, in a NEW terminal\n"
+            "(so PIXELLAB_API_KEY is still set), then re-run this script:\n"
+            "    pip install --upgrade pixellab\n"
+            "\nFor this run, falling back to calling the REST API directly instead\n"
+            "(POST /create-tileset) — no SDK update needed for it to work.\n"
+        )
 
     try:
         balance = client.get_balance()
@@ -179,14 +230,17 @@ def main():
     for t in TILESETS:
         print(f"\nGenerating '{t['name']}' tileset ({t['view']}, transition_size={t['transition_size']})...")
         try:
-            response = client.generate_tileset(
-                lower_description=t["lower_description"],
-                upper_description=t["upper_description"],
-                transition_description=t["transition_description"],
-                tile_size=t["tile_size"],
-                transition_size=t["transition_size"],
-                view=t["view"],
-            )
+            if use_sdk:
+                response = client.generate_tileset(
+                    lower_description=t["lower_description"],
+                    upper_description=t["upper_description"],
+                    transition_description=t["transition_description"],
+                    tile_size=t["tile_size"],
+                    transition_size=t["transition_size"],
+                    view=t["view"],
+                )
+            else:
+                response = call_generate_tileset_http(api_key, t)
         except TypeError as e:
             print(f"  Parameter mismatch calling generate_tileset: {e}")
             print("  Run: python3 -c \"import pixellab; help(pixellab.Client.generate_tileset)\"")
@@ -194,6 +248,12 @@ def main():
             continue
         except Exception as e:
             print(f"  Generation failed: {e}")
+            if not use_sdk:
+                print(
+                    "  (This was the HTTP fallback — if this says 401/403, the auth header\n"
+                    "  name/format this script guessed (Authorization: Bearer <key>) may be\n"
+                    "  wrong. Send me this exact error and I'll correct it.)"
+                )
             continue
 
         tileset = getattr(response, "tileset", None) or (response.get("tileset") if isinstance(response, dict) else None)
