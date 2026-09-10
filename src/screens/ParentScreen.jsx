@@ -23,6 +23,7 @@ const MODULE_NAMES = {
   words2:         'Silben-Spaß',
   weight:         'Waage-Welt',
   coloring:        'Mal-Atelier',
+  'empathy': 'Gefühlsdetektiv',
   'initial-sound': 'Anlaut-Detektiv',
   'rhyme': 'Reim-Rallye',
   'shapes-land': 'Formen-Land',
