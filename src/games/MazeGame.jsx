@@ -37,6 +37,9 @@ const LEVEL_CONFIG = level => {
 // Selects from the mw_*.png set (dungeon) or forest_wall_*.png (forest)
 // based on which neighbours are walls.
 // ──────────────────────────────────────────────────────────────────
+// Returns { file, rotate } — rotate is a CSS rotation in degrees applied
+// to the sprite so its "open edge" visually faces the actual open
+// (floor) neighbour(s).
 function wallSprite(x, y, g, theme) {
   const hasU = g[y - 1]?.[x] === 1
   const hasD = g[y + 1]?.[x] === 1
@@ -44,29 +47,49 @@ function wallSprite(x, y, g, theme) {
   const hasR = g[y]?.[x + 1] === 1
 
   if (theme === 'forest') {
-    // Forest theme uses forest_wall_*.png sprites
-    if (!hasU && !hasL &&  hasD &&  hasR) return 'forest_corner_tl.png'
-    if (!hasU && !hasR &&  hasD &&  hasL) return 'forest_corner_tr.png'
-    if (!hasD && !hasL &&  hasU &&  hasR) return 'forest_corner_bl.png'
-    if (!hasD && !hasR &&  hasU &&  hasL) return 'forest_corner_br.png'
-    if ( hasU &&  hasD && !hasL && !hasR) return 'forest_wall_vert.png'
-    if (!hasU &&  hasD &&  hasL &&  hasR) return 'forest_wall_top.png'
-    if ( hasU && !hasD &&  hasL &&  hasR) return 'forest_wall_solid.png'
-    if ( hasU &&  hasD &&  hasL &&  hasR) return 'forest_wall_inner.png'
-    return 'forest_wall_solid.png'
+    // The named forest_wall_* set turned out inconsistent under close
+    // inspection (e.g. forest_corner_tr.png does not actually show a
+    // top+right highlight the way its name implies) — rather than trust
+    // 8 separately hand-picked files, every orientation is DERIVED by
+    // rotating just two trusted base tiles:
+    //   forest_wall_solid.png — confirmed bright/open edge on the LEFT
+    //   forest_corner_tl.png  — confirmed bright/open edges on TOP+LEFT
+    // Rotating in 90° steps moves "left" -> "top" -> "right" -> "bottom"
+    // (clockwise), so every straight edge and every corner can be built
+    // from these two with a guaranteed-consistent geometry — no risk of
+    // a mismatched or "twisted"-looking tile from a wrong file pick.
+    if (!hasU && !hasL &&  hasD &&  hasR) return { file: 'forest_corner_tl.png', rotate: 0 }
+    if (!hasU && !hasR &&  hasD &&  hasL) return { file: 'forest_corner_tl.png', rotate: 90 }
+    if (!hasD && !hasR &&  hasU &&  hasL) return { file: 'forest_corner_tl.png', rotate: 180 }
+    if (!hasD && !hasL &&  hasU &&  hasR) return { file: 'forest_corner_tl.png', rotate: 270 }
+    if (!hasL) return { file: 'forest_wall_solid.png', rotate: 0 }
+    if (!hasU) return { file: 'forest_wall_solid.png', rotate: 90 }
+    if (!hasR) return { file: 'forest_wall_solid.png', rotate: 180 }
+    if (!hasD) return { file: 'forest_wall_solid.png', rotate: 270 }
+    // Fully enclosed (or an isolated pillar with floor on both sides) —
+    // no single edge to highlight, use the interior bramble texture.
+    return { file: 'forest_wall_inner.png', rotate: 0 }
   }
 
-  // Dungeon theme uses mw_*.png sprites
-  if (!hasU && !hasL &&  hasD &&  hasR) return 'mw_tl.png'
-  if (!hasU && !hasR &&  hasD &&  hasL) return 'mw_tr.png'
-  if (!hasD && !hasL &&  hasU &&  hasR) return 'mw_bl.png'
-  if (!hasD && !hasR &&  hasU &&  hasL) return 'mw_br.png'
-  if ( hasU &&  hasD &&  hasL &&  hasR) return 'mw_solid.png'
-  if (!hasD) return 'mw_top.png'
-  if (!hasU) return 'mw_bot.png'
-  if (!hasL) return 'mw_left.png'
-  if (!hasR) return 'mw_right.png'
-  return 'mw_solid.png'
+  // Dungeon theme uses mw_*.png sprites.
+  // Each sprite's light "cap" edge sits on the side that should face an
+  // OPEN (floor) cell — mw_top.png has its light band at the TOP of the
+  // image, so it belongs where there's floor ABOVE (!hasU), not below.
+  // The two plain-edge fallback lines had this backwards (checking
+  // !hasD for mw_top, !hasU for mw_bot) — swapped versus the corner
+  // cases just above, which already use the correct !hasU/!hasD pairing
+  // — so a wall whose open side was above showed its light edge on the
+  // bottom, and vice versa. That's what read as "twisted"/mismatched.
+  if (!hasU && !hasL &&  hasD &&  hasR) return { file: 'mw_tl.png', rotate: 0 }
+  if (!hasU && !hasR &&  hasD &&  hasL) return { file: 'mw_tr.png', rotate: 0 }
+  if (!hasD && !hasL &&  hasU &&  hasR) return { file: 'mw_bl.png', rotate: 0 }
+  if (!hasD && !hasR &&  hasU &&  hasL) return { file: 'mw_br.png', rotate: 0 }
+  if ( hasU &&  hasD &&  hasL &&  hasR) return { file: 'mw_solid.png', rotate: 0 }
+  if (!hasU) return { file: 'mw_top.png', rotate: 0 }
+  if (!hasD) return { file: 'mw_bot.png', rotate: 0 }
+  if (!hasL) return { file: 'mw_left.png', rotate: 0 }
+  if (!hasR) return { file: 'mw_right.png', rotate: 0 }
+  return { file: 'mw_solid.png', rotate: 0 }
 }
 
 function floorSprite(x, y, theme) {
@@ -108,7 +131,9 @@ const Board = memo(function Board({ maze, cellSize, coll, theme }) {
           // Torch: wall that has floor directly below, sprinkled randomly
           const hasTorch = isWall && g[y + 1]?.[x] === 0 && ((x * 3 + y * 7) % 8 === 0)
 
-          const sprite = isWall ? wallSprite(x, y, g, theme) : floorSprite(x, y, theme)
+          const wallInfo    = isWall ? wallSprite(x, y, g, theme) : null
+          const spriteFile   = isWall ? wallInfo.file : floorSprite(x, y, theme)
+          const spriteRotate = isWall ? wallInfo.rotate : 0
 
           return (
             <div
@@ -124,7 +149,7 @@ const Board = memo(function Board({ maze, cellSize, coll, theme }) {
             >
               {/* Base tile */}
               <img
-                src={spr(sprite)}
+                src={spr(spriteFile)}
                 alt=""
                 draggable={false}
                 style={{
@@ -135,6 +160,7 @@ const Board = memo(function Board({ maze, cellSize, coll, theme }) {
                   imageRendering:  'pixelated',
                   display:         'block',
                   objectFit:       'cover',
+                  transform:       spriteRotate ? `rotate(${spriteRotate}deg)` : undefined,
                   filter:          isWall ? 'brightness(0.78)' : 'brightness(0.72) saturate(0.9)',
                 }}
                 onError={e => {
