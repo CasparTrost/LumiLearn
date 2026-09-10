@@ -11,8 +11,21 @@ free tier only has 40 generations total.
 
 Setup:
     pip install pixellab
-    export PIXELLAB_API_KEY="your-key-here"
-    python3 scripts/generate-maze-tileset.py
+
+    macOS / Linux (bash/zsh):
+        export PIXELLAB_API_KEY="your-key-here"
+        python3 scripts/generate-maze-tileset.py
+
+    Windows (PowerShell):
+        $env:PIXELLAB_API_KEY = "your-key-here"
+        python scripts/generate-maze-tileset.py
+
+    Windows (cmd.exe):
+        set PIXELLAB_API_KEY=your-key-here
+        python scripts\generate-maze-tileset.py
+
+    The env var only lasts for the current terminal session — set it
+    again if you open a new window.
 
 What it does:
     1. Prints your current credit balance (if the SDK exposes it) so you
