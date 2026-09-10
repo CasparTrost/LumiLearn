@@ -54,7 +54,7 @@ const STORIES = [
       run: {
         panels: [
           { text: 'Lumi läuft weiter... aber der Igel weint immer noch. 😢', emoji:'😞', mood:'sleepy' },
-          { text: 'Lumi dreht sich um und geht doch zurück — besser spät als nie! 🔄', emoji:'🔄', mood:'encouraging' },
+          { text: 'Lumi dreht doch um und hilft. Der Igel hat lange allein geweint. 🔄', emoji:'🔄', mood:'encouraging' },
         ],
         lesson: '💡 Manchmal erkennen wir erst danach, was das Richtige wäre.',
         stars: 2,
@@ -87,7 +87,7 @@ const STORIES = [
       keep: {
         panels: [
           { text: 'Lumi isst alleine. Aber irgendwie schmeckt der Kuchen heute nicht so gut...', emoji:'😐🍰', mood:'sleepy' },
-          { text: 'Lumi beschließt: das nächste Mal teilt Lumi. Teilen macht glücklicher! 🤝', emoji:'🤝', mood:'encouraging' },
+          { text: 'Lumi nimmt sich vor, nächstes Mal zu teilen. Die Maus ist heute hungrig geblieben. 🐭', emoji:'🤝', mood:'encouraging' },
         ],
         lesson: '💡 Selbst wenn wir nicht teilen, können wir daraus lernen.',
         stars: 2,
@@ -153,7 +153,7 @@ const STORIES = [
       skip: {
         panels: [
           { text: 'Lumi geht vor. Die anderen Kinder sind traurig und sauer. 😢', emoji:'😠', mood:'encouraging' },
-          { text: 'Lumi sieht ihre Gesichter und entschuldigt sich. "Es tut mir leid." 💛', emoji:'💛', mood:'happy' },
+          { text: 'Lumi sieht ihre Gesichter und entschuldigt sich. Schön war das Warten für sie trotzdem nicht. 💛', emoji:'💛', mood:'happy' },
         ],
         lesson: '💡 Entschuldigen ist mutig — jeder macht Fehler!',
         stars: 2,
@@ -187,7 +187,7 @@ const STORIES = [
       leave: {
         panels: [
           { text: 'Lumi geht weiter... aber das leise Miauen ist nicht zu vergessen. 😔', emoji:'😟', mood:'sleepy' },
-          { text: 'Lumi dreht um und bringt das Kätzchen doch nach Hause. Manchmal braucht das Herz einen Moment! 💛', emoji:'💛', mood:'encouraging' },
+          { text: 'Lumi dreht um und bringt das Kätzchen doch nach Hause — nach einer langen, bangen Stunde. 💛', emoji:'💛', mood:'encouraging' },
         ],
         lesson: '💡 Auf unser Herz zu hören ist immer eine gute Idee.',
         stars: 2,
@@ -221,7 +221,7 @@ const STORIES = [
       keep: {
         panels: [
           { text: 'Lumi isst... aber irgendwie schmeckt das Brot heute nicht so gut. 😐', emoji:'😐', mood:'sleepy' },
-          { text: 'Beim nächsten Mal gibt Lumi Jonas die Hälfte: "Ich mache das besser!" Jonas lächelt. 💛', emoji:'💛', mood:'encouraging' },
+          { text: 'Beim nächsten Mal teilt Lumi mit Jonas. Heute hatte Jonas nichts. 💛', emoji:'💛', mood:'encouraging' },
         ],
         lesson: '💡 Es ist nie zu spät, das Richtige zu tun.',
         stars: 2,
@@ -323,7 +323,7 @@ const STORIES = [
       ignore: {
         panels: [
           { text: 'Lumi spielt... aber nach einer Weile weint Emma in einer Ecke. 😢 Das Lachen hört auf.', emoji:'😢', mood:'sleepy' },
-          { text: 'Lumi geht zu Emma: "Es tut mir leid — willst du jetzt mitspielen?" Emma lächelt erleichtert. 💛', emoji:'💛', mood:'encouraging' },
+          { text: 'Lumi geht zu Emma: "Willst du mitspielen?" Emma lächelt — sie hat lange allein gesessen. 💛', emoji:'💛', mood:'encouraging' },
         ],
         lesson: '💡 Es ist nie zu spät, freundlich zu sein. Aber früher ist besser!',
         stars: 2,
@@ -365,6 +365,7 @@ const STORIES = [
     },
   },
   {
+    id: 'lonelykid',
     title: 'Das einsame Kind',
     panels: [
       { text: 'Beim Mittagessen sitzt ein neues Kind ganz allein am Rand. Es schaut traurig auf seinen Teller. 👦😢', emoji:'😢', mood:'thinking' },
@@ -389,7 +390,7 @@ const STORIES = [
       ignore: {
         panels: [
           { text: 'Lumi bleibt bei den Freunden, aber kann das traurige Kind nicht vergessen. 😔', emoji:'😔', mood:'encouraging' },
-          { text: 'Am nächsten Tag läuft Lumi dem Kind nach: "Darf ich mich vorstellen?" Das Kind nickt erleichtert. 🌟', emoji:'🌟', mood:'happy' },
+          { text: 'Am nächsten Tag spricht Lumi das Kind an. Einen ganzen Tag war es allein. 🌟', emoji:'🌟', mood:'happy' },
         ],
         lesson: '💡 Es ist nie zu spät, nett zu sein!',
         stars: 2,
@@ -397,6 +398,7 @@ const STORIES = [
     },
   },
   {
+    id: 'promise',
     title: 'Das Versprechen',
     panels: [
       { text: 'Lumi hat Oma versprochen, nach der Schule sofort nach Hause zu kommen. Aber die Freunde wollen noch auf dem Spielplatz bleiben. 🤔', emoji:'🤔', mood:'thinking' },
@@ -421,7 +423,7 @@ const STORIES = [
       stay: {
         panels: [
           { text: 'Lumi spielt... aber dann klingelt das Telefon. Oma macht sich Sorgen. 😞', emoji:'😞', mood:'sleepy' },
-          { text: 'Lumi rennt nach Hause. "Es tut mir leid, Oma." Sie umarmen sich. Oma sagt: "Ich bin froh, dass du sicher bist." 💛', emoji:'💛', mood:'encouraging' },
+          { text: 'Lumi rennt nach Hause. Oma hat sich lange Sorgen gemacht. Sie umarmen sich. 💛', emoji:'💛', mood:'encouraging' },
         ],
         lesson: '💡 Versprechen sind wichtig — besonders für Menschen die uns lieben!',
         stars: 2,
@@ -429,6 +431,7 @@ const STORIES = [
     },
   },
   {
+    id: 'fakegrade',
     title: 'Die gefälschte Note',
     panels: [
       { text: 'Lumi hat eine schlechte Note bekommen. 😟 Die Eltern werden das sehen wenn Lumi das Heft mitbringt.', emoji:'📓', mood:'thinking' },
@@ -461,6 +464,7 @@ const STORIES = [
     },
   },
   {
+    id: 'screentime',
     title: 'Zu viel Bildschirm',
     panels: [
       { text: 'Lumi spielt schon 2 Stunden auf dem Tablet. Mama sagt: "Noch 10 Minuten, dann Pause." 📱', emoji:'📱', mood:'thinking' },
@@ -505,9 +509,14 @@ export default function StoryGame({ level = 1, onComplete }) {
   const [outPanel,   setOutPanel]   = useState(0)
   const [totalStars, setTotalStars] = useState(0)
   const [phase,      setPhase]      = useState('intro') // intro | choice | outcome | lesson
+  const [showAlt,    setShowAlt]    = useState(false)
 
   const story   = stories[storyIdx]
   const outcome = chosen ? story.outcomes[chosen] : null
+  // The branch the child did not take, for the comparison at the end.
+  const altOutcome = chosen
+    ? Object.entries(story.outcomes).find(([k]) => k !== chosen)?.[1] ?? null
+    : null
 
   const nextPanel = useCallback(() => {
     const maxIntro = story.panels.length - 1
@@ -540,6 +549,7 @@ export default function StoryGame({ level = 1, onComplete }) {
       setChosen(null)
       setOutPanel(0)
       setPhase('intro')
+      setShowAlt(false)
     }
   }, [storyIdx, stories, totalStars, onComplete])
 
@@ -636,6 +646,48 @@ export default function StoryGame({ level = 1, onComplete }) {
                   <span key={i} style={{ fontSize:28, filter: i < (outcome?.stars ?? 3) ? 'none' : 'grayscale(1) opacity(0.3)' }}>⭐</span>
                 ))}
               </div>
+
+              {/* Both branches were always held in the data but only ever one
+                  was shown, so the decision had nothing to be compared
+                  against and felt weightless. This puts the other path side
+                  by side with the chosen one. */}
+              {altOutcome && !showAlt && (
+                <motion.button
+                  whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
+                  onClick={() => setShowAlt(true)}
+                  style={{
+                    background: 'white', border: '2.5px solid var(--violet-light)',
+                    borderRadius: 99, padding: '10px 24px', cursor: 'pointer',
+                    fontFamily: 'var(--font-heading)', fontSize: 'clamp(13px,2.8vw,16px)',
+                    color: 'var(--violet-deep)',
+                  }}
+                >🔀 Und wenn Lumi anders entschieden hätte?</motion.button>
+              )}
+              {altOutcome && showAlt && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                  style={{
+                    background: '#FFF8E8', border: '2px dashed #FFB800',
+                    borderRadius: 18, padding: '14px 18px', maxWidth: 460,
+                    display: 'flex', flexDirection: 'column', gap: 8,
+                  }}
+                >
+                  <div style={{ fontFamily: 'var(--font-heading)', fontSize: 13, color: '#8B6F00' }}>
+                    Der andere Weg wäre gewesen:
+                  </div>
+                  {altOutcome.panels.map((pn, i) => (
+                    <div key={i} style={{
+                      fontFamily: 'var(--font-body)', fontSize: 'clamp(13px,2.8vw,15px)',
+                      color: 'var(--text-secondary)', whiteSpace: 'pre-line',
+                    }}>{pn.text}</div>
+                  ))}
+                  <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <span key={i} style={{ fontSize: 18, filter: i < (altOutcome.stars ?? 2) ? 'none' : 'grayscale(1) opacity(0.3)' }}>⭐</span>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
             </div>
           )}
         </motion.div>
