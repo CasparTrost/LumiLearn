@@ -21,6 +21,7 @@ export const MAX_LEVELS = {
   words2:         10,
   weight:         10,
   coloring:        10,
+  'rocket-math': 10,
 }
 
 function freshProgress() {

@@ -23,6 +23,7 @@ const MODULE_NAMES = {
   words2:         'Silben-Spaß',
   weight:         'Waage-Welt',
   coloring:        'Mal-Atelier',
+  'rocket-math': 'Rechen-Rakete',
 }
 
 function PinPad({ onSuccess, onCancel, correctPin = '1234' }) {

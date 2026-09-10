@@ -66,6 +66,7 @@ export const translations = {
     'module.maze': 'Lumi-Labyrinth',
     'module.stories': 'Lumis Abenteuer',
     'module.coloring': 'Mal-Atelier',
+    'module.rocket-math': 'Rechen-Rakete',
     'module.coloring.sub': 'Ausmalen & Kreativ',
 
     'mission.play3': '3 Spiele spielen',
@@ -145,6 +146,7 @@ export const translations = {
     'module.maze': 'Lumi Maze',
     'module.stories': "Lumi's Adventures",
     'module.coloring': 'Coloring Studio',
+    'module.rocket-math': 'Math Rocket',
     'module.coloring.sub': 'Color & Create',
 
     'mission.play3': 'Play 3 games',

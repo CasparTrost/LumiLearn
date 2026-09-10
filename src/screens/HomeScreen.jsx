@@ -35,6 +35,7 @@ const MODULES = [
   { id:'clock',        title:'Uhren-Uhr',        sub:'Zeit lesen & stellen', emoji:'🕐', sciTag:'⏰ Zeitgefühl & Sequenzierung',    gradient:'linear-gradient(135deg,#FF9F43,#FF6B6B)', shadow:'rgba(255,159,67,0.45)'  },
   { id:'maze',         title:'Lumi-Labyrinth',   sub:'Weg durchs Labyrinth', emoji:'🌀', sciTag:'🧭 Räumliches Denken & Planung',   gradient:'linear-gradient(135deg,#4A00E0,#6C3FAC)', shadow:'rgba(74,0,224,0.45)'  },
   { id:'stories',      title:'Lumis Abenteuer',  sub:'Entscheide die Story', emoji:'📖', sciTag:'🧡 Moralisches Denken & Empathie', gradient:'linear-gradient(135deg,#44D498,#6C63FF)', shadow:'rgba(68,212,152,0.45)'  },
+  { id:'rocket-math', title:'Rechen-Rakete', sub:'Plus & Minus am Zahlenstrahl', emoji:'🚀', sciTag:'➕ Zahlenstrahl & Rechnen', gradient:'linear-gradient(135deg,#6C63FF,#00B894)', shadow:'rgba(108,99,255,0.45)' },
   { id:'coloring',     title:'Mal-Atelier',       sub:'Ausmalen & Kreativ',   emoji:'🖍️', sciTag:'🎨 Kreativität & Feinmotorik',   gradient:'linear-gradient(135deg,#FD79A8,#E84393)', shadow:'rgba(253,121,168,0.45)' },
 ]
 
@@ -48,7 +49,7 @@ const CATEGORIES = [
 ]
 
 const CATEGORY_MAP = {
-  math:     ['numbers', 'number-intro', 'bubbles', 'weight', 'clock'],
+  math:     ['rocket-math', 'numbers', 'number-intro', 'bubbles', 'weight', 'clock'],
   language: ['letters', 'letter-intro', 'words', 'words2', 'listen', 'shadows'],
   creative: ['shapes', 'coloring'],
   think:    ['patterns', 'sort', 'maze'],
