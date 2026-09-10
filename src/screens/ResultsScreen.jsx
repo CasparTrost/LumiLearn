@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useApp } from '../AppContext.jsx'
 import { ALL_MISSIONS } from '../AppContext.jsx'
@@ -65,6 +65,11 @@ export default function ResultsScreen() {
   const nextLevel     = nextLevelNum   // kept as alias for clarity
 
   const mood = stars >= 3 ? 'excited' : stars >= 2 ? 'happy' : stars >= 1 ? 'encouraging' : 'thinking'
+  const [showButtons, setShowButtons] = useState(false)
+  useEffect(() => {
+    const b = setTimeout(() => setShowButtons(true), 1400)
+    return () => clearTimeout(b)
+  }, [])
   useEffect(() => {
     const t = setTimeout(() => {
       if (stars >= 3)      sfx.complete()
@@ -258,25 +263,52 @@ export default function ResultsScreen() {
             </motion.div>
           )}
 
-          {/* Buttons */}
-        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', justifyContent: 'center', marginTop: 8 }}>
-          <Button variant="white" size="md" onClick={() => dispatch({ type: 'START_GAME', payload: { moduleId, level } })}>
-            🔄 Nochmal
-          </Button>
-          {nextLevel && (
-            <Button variant="gold" size="md" onClick={() => dispatch({ type: 'START_GAME', payload: { moduleId, level: nextLevel } })}>
-              {isFirstPass ? `🚀 Level ${nextLevel}` : `➡️ Level ${nextLevel}`}
-            </Button>
+          {/* Buttons — appear after short delay */}
+          {showButtons && (
+            <motion.div
+              initial={{ opacity:0, y:16 }}
+              animate={{ opacity:1, y:0 }}
+              transition={{ type:'spring', stiffness:300, damping:22 }}
+              style={{ display:'flex', flexDirection:'column', gap:10, width:'100%', alignItems:'center', marginTop:8 }}
+            >
+              {/* 0-star mode: big Nochmal, small home */}
+              {stars === 0 && (
+                <>
+                  <Button variant="gold" size="lg" onClick={() => dispatch({ type: 'START_GAME', payload: { moduleId, level } })}>
+                    🔄 Nochmal versuchen!
+                  </Button>
+                  <Button variant="white" size="sm" onClick={() => dispatch({ type: 'NAVIGATE', payload: 'home' })}>
+                    🏠 Menü
+                  </Button>
+                </>
+              )}
+              {/* 1-3 star mode */}
+              {stars >= 1 && (
+                <>
+                  {/* Primary action: next level or mastered */}
+                  {nextLevel && (
+                    <Button variant="gold" size="lg" onClick={() => dispatch({ type: 'START_GAME', payload: { moduleId, level: nextLevel } })}>
+                      {isFirstPass ? `🚀 Level ${nextLevel} starten!` : `➡️ Weiter zu Level ${nextLevel}`}
+                    </Button>
+                  )}
+                  {!nextLevel && justCompleted && (
+                    <Button variant="gold" size="lg" onClick={() => dispatch({ type: 'NAVIGATE', payload: 'home' })}>
+                      🌟 Zurück zur Auswahl
+                    </Button>
+                  )}
+                  {/* Secondary actions row */}
+                  <div style={{ display:'flex', gap:10, flexWrap:'wrap', justifyContent:'center' }}>
+                    <Button variant="white" size="md" onClick={() => dispatch({ type: 'START_GAME', payload: { moduleId, level } })}>
+                      🔄 Nochmal
+                    </Button>
+                    <Button variant="primary" size="md" onClick={() => dispatch({ type: 'NAVIGATE', payload: 'home' })}>
+                      🏠 Menü
+                    </Button>
+                  </div>
+                </>
+              )}
+            </motion.div>
           )}
-          {!nextLevel && justCompleted && (
-            <Button variant="gold" size="md" onClick={() => dispatch({ type: 'NAVIGATE', payload: 'home' })}>
-              🌟 Zurück zur Auswahl
-            </Button>
-          )}
-          <Button variant="primary" size="md" onClick={() => dispatch({ type: 'NAVIGATE', payload: 'home' })}>
-            🏠 Menü
-          </Button>
-        </div>
       </motion.div>
     </div>
   )
