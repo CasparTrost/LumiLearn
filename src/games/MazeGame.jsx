@@ -23,7 +23,9 @@ const LEVEL_CONFIG = level => {
   const rows        = cols
   const fogRadius   = level <= 3 ? null : level <= 6 ? 4.5 : 3.5
   const theme       = level <= 3 ? 'forest' : 'dungeon'
-  const dragonSpeed = Math.max(280, 950 - (level - 2) * 90)
+  // Dragon speed: starts slow (1.2s/step at lvl 2) and gets faster each level.
+  // Keep it slow enough that children can time passing the 5-cell patrol zone.
+  const dragonSpeed = Math.max(300, 1200 - (level - 2) * 80)
   return { hasDragon, cols, rows, fogRadius, theme, dragonSpeed }
 }
 

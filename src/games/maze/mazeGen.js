@@ -63,10 +63,13 @@ export function genMaze(cols, rows, seed = Date.now()) {
     return dStart > 4 && g[p.y]?.[p.x] === 0
   })
 
-  // Dragon patrol: middle 20% of main path, bouncing back and forth
-  const wpStart = Math.floor(mainPath.length * 0.35)
-  const wpEnd   = Math.floor(mainPath.length * 0.55)
-  const dragonWps = mainPath.slice(wpStart, wpEnd + 1)
+  // Dragon patrol: a SHORT stretch (5 cells) centred around 45% of the main path.
+  // DFS mazes have exactly one path — keeping the patrol short ensures the player
+  // can always wait for the dragon to move aside and slip past.
+  const mid     = Math.floor(mainPath.length * 0.45)
+  const wpStart = Math.max(Math.floor(mainPath.length * 0.20), mid - 2)
+  const wpEnd   = Math.min(Math.floor(mainPath.length * 0.75), mid + 2)
+  const dragonWps = mainPath.slice(wpStart, wpEnd + 1).filter(Boolean)
 
   return { g, cols, rows, start, exit, potions, dragonWps, mainPath }
 }
