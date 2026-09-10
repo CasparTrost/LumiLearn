@@ -98,9 +98,15 @@ API_BASE = "https://api.pixellab.ai/v2"
 # "flat"/"trist" rather than "schön" once actually in the game. Rewritten
 # for a crisper, more modern-game look: bolder outlines, more saturated/
 # higher-contrast colours, clearly legible patterns rather than a noisy
-# realistic texture. transition_size lowered from 0.25 to 0.15 too — a
-# sharper, less-blended boundary reads as a cleaner/bolder contour line
-# instead of a soft gradient, matching that same "clear contours" goal.
+# realistic texture.
+#
+# transition_size + shape_style: the API rejected a bare 0.15 — standard/
+# pro mode only accepts transition_size 0/0.25/0.5/1.0 UNLESS shape_style
+# is explicitly 'square' or 'round', which unlocks any value in between
+# (per the live 422 response). 'square' also happens to fit "clear
+# contours" better than the default anyway — blocky/sharp transitions
+# instead of a rounded blend — so both the value and the shape it was
+# aiming for are set explicitly now.
 # tile_size: 32 is the recommended balance of quality vs. cost (16 or 32
 # are the only standard-mode options).
 TILESETS = [
@@ -111,6 +117,7 @@ TILESETS = [
         "transition_description": "crisp sharp contour where floor meets wall, clean bold edge line",
         "tile_size": {"width": 32, "height": 32},
         "transition_size": 0.15,
+        "shape_style": "square",
         "view": "low top-down",
     },
     {
@@ -120,6 +127,7 @@ TILESETS = [
         "transition_description": "crisp sharp contour where grass meets hedge, clean bold edge line",
         "tile_size": {"width": 32, "height": 32},
         "transition_size": 0.15,
+        "shape_style": "square",
         "view": "low top-down",
     },
 ]
@@ -187,6 +195,7 @@ def call_generate_tileset_http(api_key, t):
             "transition_description": t["transition_description"],
             "tile_size": t["tile_size"],
             "transition_size": t["transition_size"],
+            "shape_style": t.get("shape_style"),
             "view": t["view"],
         },
         timeout=180,
@@ -330,7 +339,7 @@ def main():
         print(f"\nGenerating '{t['name']}' tileset ({t['view']}, transition_size={t['transition_size']})...")
         try:
             if use_sdk:
-                response = client.generate_tileset(
+                kwargs = dict(
                     lower_description=t["lower_description"],
                     upper_description=t["upper_description"],
                     transition_description=t["transition_description"],
@@ -338,6 +347,9 @@ def main():
                     transition_size=t["transition_size"],
                     view=t["view"],
                 )
+                if t.get("shape_style"):
+                    kwargs["shape_style"] = t["shape_style"]
+                response = client.generate_tileset(**kwargs)
             else:
                 response = call_generate_tileset_http(api_key, t)
         except TypeError as e:
