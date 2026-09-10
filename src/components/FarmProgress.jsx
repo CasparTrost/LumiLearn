@@ -286,32 +286,6 @@ function Farmer({ farmScale = 1 }) {
   )
 }
 
-// Confetti particle
-function Confetti({ count = 30 }) {
-  const pieces = Array.from({length: count}, (_, i) => ({
-    id: i,
-    x: Math.random() * 100,
-    color: ['#FFD93D','#FF6B6B','#6BCB77','#4D96FF','#FF9F1C','#fff'][i % 6],
-    delay: Math.random() * 0.5,
-    dur: 1.5 + Math.random() * 1,
-    rotate: Math.random() * 360,
-  }))
-  return (
-    <div style={{position:'absolute',inset:0,overflow:'hidden',pointerEvents:'none',zIndex:200}}>
-      {pieces.map(p => (
-        <motion.div key={p.id}
-          initial={{x:`${p.x}vw`, y:'-10%', rotate:0, opacity:1}}
-          animate={{y:'110%', rotate: p.rotate + 720, opacity:[1,1,0]}}
-          transition={{duration: p.dur, delay: p.delay, ease:'easeIn'}}
-          style={{position:'absolute', width:8, height:8,
-            background: p.color, borderRadius: p.id%3===0 ? '50%' : 2,
-            top:0, left:0}}
-        />
-      ))}
-    </div>
-  )
-}
-
 // Epic level-up overlay
 function LevelUpCelebration({ level, newAnimals, onDone }) {
   const [phase, setPhase] = useState('enter') // enter → animals → done

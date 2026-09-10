@@ -5,40 +5,12 @@ import { ALL_MISSIONS } from '../AppContext.jsx'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import StarRow from '../components/StarRow.jsx'
 import Button from '../components/Button.jsx'
+import Confetti from '../components/Confetti.jsx'
 import { sfx } from '../sfx.js'
 import { voice } from '../voice.js'
 import { speak } from '../tts.js'
 import { useT } from '../i18n.js'
 import { useProfile } from '../hooks/useProfile.js'
-
-function Confetti({ count = 32 }) {
-  const pieces = Array.from({ length: count }, (_, i) => ({
-    x: 10 + Math.random() * 80,
-    color: ['#FFD93D', '#FF6B6B', '#6C63FF', '#4ECDC4', '#6BCB77', '#FD79A8'][i % 6],
-    size: 8 + Math.random() * 10,
-    delay: Math.random() * 0.8,
-    duration: 1.5 + Math.random() * 1,
-    rotate: Math.random() * 360,
-  }))
-  return (
-    <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
-      {pieces.map((p, i) => (
-        <motion.div
-          key={i}
-          initial={{ x: `${p.x}vw`, y: '-5vh', rotate: 0, opacity: 1 }}
-          animate={{ y: '110vh', rotate: p.rotate + 720, opacity: [1, 1, 0] }}
-          transition={{ duration: p.duration, delay: p.delay, ease: 'easeIn' }}
-          style={{
-            position: 'absolute',
-            width: p.size, height: p.size,
-            background: p.color,
-            borderRadius: i % 3 === 0 ? '50%' : i % 3 === 1 ? 3 : '50% 0',
-          }}
-        />
-      ))}
-    </div>
-  )
-}
 
 export default function ResultsScreen() {
   const t = useT()
@@ -115,7 +87,7 @@ export default function ResultsScreen() {
       position: 'relative',
       overflow: 'hidden',
     }}>
-      {stars >= 2 && <Confetti count={stars === 3 ? 60 : 28} />}
+      {stars >= 2 && <Confetti count={stars === 3 ? 60 : 28} yFrom="-5vh" yTo="110vh" />}
 
       {/* Decorative glowing orbs */}
       <div style={{ position:'fixed', top:'10%', left:'5%', width:220, height:220, borderRadius:'50%', background:'radial-gradient(circle, rgba(142,45,226,0.25), transparent 70%)', pointerEvents:'none', zIndex:0 }} />
