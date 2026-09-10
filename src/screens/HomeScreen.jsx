@@ -223,7 +223,7 @@ export default function HomeScreen() {
                   fontWeight:600,
                   textDecoration: done ? 'line-through' : 'none',
                   whiteSpace:'nowrap',
-                }}>{m.text}</span>
+                }}>{t('mission.' + m.id)}</span>
               </div>
             )
           })}

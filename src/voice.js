@@ -4,6 +4,14 @@
  * Works within existing user-gesture context (no AudioContext needed).
  */
 
+import { asset, BASE } from './lib/assets.js'
+
+function resolveAsset(src) {
+  if (!src) return src
+  if (src.startsWith('http') || src.startsWith(BASE) || src.startsWith('/')) return src
+  return asset(src)
+}
+
 let _current = null
 
 function _stop() {
@@ -19,7 +27,7 @@ export const voice = {
     _stop()
     if (!src) return
     try {
-      const a = new Audio(src)
+      const a = new Audio(resolveAsset(src))
       _current = a
       a.play().catch(() => {})
     } catch { /* ignore */ }
@@ -37,7 +45,7 @@ export const voice = {
     const playNext = () => {
       if (i >= list.length) { _current = null; return }
       try {
-        const a = new Audio(list[i++])
+        const a = new Audio(resolveAsset(list[i++]))
         _current = a
         a.addEventListener('ended', playNext, { once: true })
         a.play().catch(playNext)  // skip on error (e.g. missing file)

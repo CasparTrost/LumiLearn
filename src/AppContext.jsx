@@ -58,7 +58,7 @@ function pickMissionsForDate(dateStr) {
   for (let i = 0; i < 3; i++) {
     const idx = (hash + i * 7) % (pool.length - i)
     const [m] = pool.splice(idx, 1)
-    picked.push({ id: m.id, text: m.text, icon: m.icon })
+    picked.push({ id: m.id, icon: m.icon })
   }
   return picked
 }
@@ -279,7 +279,7 @@ function migrate(saved) {
     withDefaults.dailyMission = {
       ...withDefaults.dailyMission,
       missions: (withDefaults.dailyMission.missions ?? []).map(m => ({
-        id: m.id, text: m.text, icon: m.icon,
+        id: m.id, icon: m.icon,
       })),
     }
   }
@@ -349,7 +349,7 @@ export function AppProvider({ children }) {
       streakLastBonus: state.streakLastBonus,
       dailyMission:   {
         date:         state.dailyMission?.date,
-        missions:     (state.dailyMission?.missions ?? []).map(m => ({ id: m.id, text: m.text, icon: m.icon })),
+        missions:     (state.dailyMission?.missions ?? []).map(m => ({ id: m.id, icon: m.icon })),
         completedIds: state.dailyMission?.completedIds ?? [],
         // persist session stats per day (no functions, just numbers)
         sessionPlays:  state._sessionPlays ?? 0,

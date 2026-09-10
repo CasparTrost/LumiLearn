@@ -31,10 +31,10 @@ export default function LanguageScreen() {
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} style={{ textAlign: 'center', marginBottom: 24 }}>
         <LumiCharacter mood="happy" size={110} />
         <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(26px, 6vw, 38px)', color: 'white', marginTop: 12 }}>
-          Choose your language
+          {t('language.title')}
         </h1>
         <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 16, marginTop: 6 }}>
-          Wähle deine Sprache
+          {t('language.subtitle')}
         </p>
       </motion.div>
 
@@ -65,7 +65,7 @@ export default function LanguageScreen() {
               {isSelected && (
                 <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
                   style={{ background: 'white', color: '#4A00E0', fontSize: 12, fontWeight: 700, borderRadius: 99, padding: '3px 12px', fontFamily: 'var(--font-heading)' }}>
-                  ✓ Selected
+                  {t('language.selected')}
                 </motion.div>
               )}
             </motion.button>
@@ -74,7 +74,7 @@ export default function LanguageScreen() {
       </div>
 
       <Button size="lg" variant="gold" disabled={!selected} onClick={confirm}>
-        Continue →
+        {t('language.continue')}
       </Button>
     </div>
   )

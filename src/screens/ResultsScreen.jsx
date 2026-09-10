@@ -7,6 +7,7 @@ import StarRow from '../components/StarRow.jsx'
 import Button from '../components/Button.jsx'
 import { sfx } from '../sfx.js'
 import { voice } from '../voice.js'
+import { useT } from '../i18n.js'
 
 function Confetti({ count = 32 }) {
   const pieces = Array.from({ length: count }, (_, i) => ({
@@ -38,6 +39,7 @@ function Confetti({ count = 32 }) {
 }
 
 export default function ResultsScreen() {
+  const t = useT()
   const { state, dispatch } = useApp()
   const { gameResult, currentGame } = state
   const stars       = gameResult?.stars        ?? 0
@@ -230,7 +232,7 @@ export default function ResultsScreen() {
                     border:'1.5px solid rgba(107,203,119,0.5)',
                   }}>
                     <span style={{ fontSize:20 }}>✅</span>
-                    <span style={{ fontFamily:'var(--font-body)', color:'white', fontSize:15 }}>Aufgabe erledigt: {m.text}</span>
+                    <span style={{ fontFamily:'var(--font-body)', color:'white', fontSize:15 }}>Aufgabe erledigt: {t('mission.' + id)}</span>
                   </div>
                 )
               })}

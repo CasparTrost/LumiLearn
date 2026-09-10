@@ -65,6 +65,24 @@ export const translations = {
     'module.clock': 'Uhren-Uhr',
     'module.maze': 'Lumi-Labyrinth',
     'module.stories': 'Lumis Abenteuer',
+    'module.coloring': 'Mal-Atelier',
+    'module.coloring.sub': 'Ausmalen & Kreativ',
+
+    'mission.play3': '3 Spiele spielen',
+    'mission.level5': '5 Level abschließen',
+    'mission.stars3': '3 Sterne holen',
+    'mission.play2diff': '2 verschiedene Spiele',
+    'mission.level3': '3 Level schaffen',
+
+    'home.morning': 'Guten Morgen',
+    'home.afternoon': 'Guten Nachmittag',
+    'home.evening': 'Guten Abend',
+    'home.continue': 'Weiterspielen',
+
+    'results.module_mastered': 'Modul gemeistert!',
+    'results.try_again_message': 'Fast geschafft! Versuch es nochmal 💪',
+
+    'language.choose': 'Wähle deine Sprache',
   },
 
   en: {
@@ -126,12 +144,30 @@ export const translations = {
     'module.clock': 'Clock Time',
     'module.maze': 'Lumi Maze',
     'module.stories': "Lumi's Adventures",
+    'module.coloring': 'Coloring Studio',
+    'module.coloring.sub': 'Color & Create',
+
+    'mission.play3': 'Play 3 games',
+    'mission.level5': 'Complete 5 levels',
+    'mission.stars3': 'Get 3 stars',
+    'mission.play2diff': '2 different games',
+    'mission.level3': 'Complete 3 levels',
+
+    'home.morning': 'Good Morning',
+    'home.afternoon': 'Good Afternoon',
+    'home.evening': 'Good Evening',
+    'home.continue': 'Continue',
+
+    'results.module_mastered': 'Module mastered!',
+    'results.try_again_message': 'Almost there! Try again 💪',
+
+    'language.choose': 'Choose your language',
   }
 }
 
 export function useT() {
   const { state } = useApp()
-  const lang = state.language ?? 'en'
-  const dict = translations[lang] ?? translations.en
+  const lang = state?.language ?? 'de'
+  const dict = translations[lang] ?? translations.de
   return (key, fallback) => dict[key] ?? fallback ?? key
 }
