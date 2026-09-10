@@ -156,6 +156,23 @@ function reducer(state, action) {
       }
     }
 
+    case 'UPDATE_PROFILE': {
+      const { id, name, age, avatar } = action.payload
+      if (!state.profiles[id]) return state
+      return {
+        ...state,
+        profiles: {
+          ...state.profiles,
+          [id]: {
+            ...state.profiles[id],
+            ...(name   !== undefined ? { name }   : {}),
+            ...(age    !== undefined ? { age }    : {}),
+            ...(avatar !== undefined ? { avatar } : {}),
+          },
+        },
+      }
+    }
+
     case 'SET_ACTIVE_PROFILE':
       return { ...state, activeProfileId: action.payload }
 
