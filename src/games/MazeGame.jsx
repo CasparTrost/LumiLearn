@@ -276,7 +276,7 @@ function Sparkles({ x, y, cellSize }) {
 // to this element regardless of visual size changes. A window-level
 // fallback listener is a second safety net in case capture itself fails.
 // ──────────────────────────────────────────────────────────────────
-function DPadButton({ label, onPress, size = 52, ariaLabel, style: styleOverride }) {
+function DPadButton({ label, onPress, size = 52, ariaLabel, style: styleOverride, repeat = true }) {
   const repeatRef = useRef(null)
   const activeRef = useRef(false)
 
@@ -287,13 +287,22 @@ function DPadButton({ label, onPress, size = 52, ariaLabel, style: styleOverride
     repeatRef.current = null
   }, [])
 
+  // Movement buttons deliberately do NOT hold-repeat (repeat=false, see
+  // callers below): the dragon only advances one patrol step per player
+  // move, so the player is meant to get unlimited time to look at the
+  // board between steps. Holding a direction button and auto-firing
+  // several moves blind defeats that guarantee and can walk you straight
+  // into the dragon before you can react. WAIT is the one button that
+  // keeps repeat=true, since standing still is always 100% safe.
   const start = useCallback(e => {
     activeRef.current = true
     try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* ignore */ }
     onPress()
-    clearInterval(repeatRef.current)
-    repeatRef.current = setInterval(onPress, 155)
-  }, [onPress])
+    if (repeat) {
+      clearInterval(repeatRef.current)
+      repeatRef.current = setInterval(onPress, 155)
+    }
+  }, [onPress, repeat])
 
   // Global safety net — guarantees the repeat stops even if this
   // element never receives its own pointerup/cancel (capture failure,
@@ -400,12 +409,20 @@ export default function MazeGame({ level = 1, onComplete }) {
     const handler = e => {
       if (e.key === ' ' || e.key === 'Spacebar') {
         e.preventDefault()
-        doWait()
+        doWait() // WAIT is always safe — fine to let this auto-repeat
         return
       }
       const dir = DIRS[e.key]
       if (!dir) return
       e.preventDefault()
+      // Ignore the OS's auto-repeat from holding the key down. The whole
+      // point of turn-locking the dragon to player moves is that the
+      // player gets unlimited time to look at the board and decide —
+      // holding a key and auto-repeating several steps blind defeats
+      // that guarantee and can walk you straight into the dragon before
+      // you can react. One key press = one step; hold WAIT if you want
+      // to watch the dragon for a while before committing.
+      if (e.repeat) return
       doMove(dir[0], dir[1])
     }
     window.addEventListener('keydown', handler)
@@ -735,6 +752,12 @@ export default function MazeGame({ level = 1, onComplete }) {
                     left:           '50%',
                     width:          Math.round(cellSize * 1.05),
                     height:         Math.round(cellSize * 1.05),
+                    // The mz-bob CSS animation (className below) owns
+                    // `transform` while it runs and reads this custom
+                    // property to apply the flip — see maze.css. This
+                    // inline transform is only the fallback for when the
+                    // animation is off (prefers-reduced-motion).
+                    '--facing':     st.facing,
                     transform:      `translateX(-50%) scaleX(${st.facing})`,
                     imageRendering: 'pixelated',
                     filter:         'drop-shadow(0 2px 5px rgba(0,0,0,0.75))',
@@ -831,10 +854,10 @@ export default function MazeGame({ level = 1, onComplete }) {
       {/* ── D-PAD ───────────────────────────────────────────────── */}
       <div style={{ flexShrink: 0, marginTop: 8, userSelect: 'none', WebkitUserSelect: 'none' }}>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
-          <DPadButton label="▲" onPress={() => doMove(0, -1)} />
+          <DPadButton label="▲" onPress={() => doMove(0, -1)} repeat={false} />
         </div>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-          <DPadButton label="◀" onPress={() => doMove(-1, 0)} />
+          <DPadButton label="◀" onPress={() => doMove(-1, 0)} repeat={false} />
           {hasDragon ? (
             <DPadButton
               label="⏳"
@@ -845,10 +868,10 @@ export default function MazeGame({ level = 1, onComplete }) {
           ) : (
             <div style={{ width: 52, height: 52 }} />
           )}
-          <DPadButton label="▶" onPress={() => doMove(1, 0)} />
+          <DPadButton label="▶" onPress={() => doMove(1, 0)} repeat={false} />
         </div>
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: 4 }}>
-          <DPadButton label="▼" onPress={() => doMove(0, 1)} />
+          <DPadButton label="▼" onPress={() => doMove(0, 1)} repeat={false} />
         </div>
         {hasDragon && (
           <div style={{

@@ -5,9 +5,14 @@
   50%       { opacity: 0.25; }
 }
 
+/* IMPORTANT: a CSS animation that targets `transform` always wins over an
+   inline `style.transform` value for as long as it runs — this keyframe
+   MUST include the left/right facing flip itself (via the --facing custom
+   property set inline by MazeGame.jsx), or the character can never appear
+   to turn around, no matter what the inline style says. */
 @keyframes mz-bob {
-  0%, 100% { transform: translateY(0)   translateX(-50%); }
-  50%       { transform: translateY(-3px) translateX(-50%); }
+  0%, 100% { transform: translateY(0)   translateX(-50%) scaleX(var(--facing, 1)); }
+  50%       { transform: translateY(-3px) translateX(-50%) scaleX(var(--facing, 1)); }
 }
 
 @keyframes mz-danger-pulse {
@@ -32,6 +37,15 @@
 
 .mz-blink  { animation: mz-blink  0.18s steps(2) infinite; }
 .mz-bob    { animation: mz-bob    1.6s  ease-in-out infinite; }
+/* Two classes that each set the full `animation` shorthand cannot be
+   combined by just applying both class names — whichever rule is later
+   in this file wins outright (equal specificity), so only ONE of the two
+   animations would actually run. This combined class lists both
+   animations together in one declaration so blink + bob play at once
+   (used while the player is invincible after being hit). */
+.mz-blink.mz-bob {
+  animation: mz-blink 0.18s steps(2) infinite, mz-bob 1.6s ease-in-out infinite;
+}
 .mz-portal { animation: mz-portal-spin 3s linear infinite; display: inline-block; }
 .mz-coin   { animation: mz-coin-bob 1.2s ease-in-out infinite; display: inline-block; }
 .mz-dragon { animation: mz-dragon-hover 1.4s ease-in-out infinite; }
