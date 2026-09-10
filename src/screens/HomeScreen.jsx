@@ -37,6 +37,7 @@ const MODULES = [
   { id:'stories',      title:'Lumis Abenteuer',  sub:'Entscheide die Story', emoji:'📖', sciTag:'🧡 Moralisches Denken & Empathie', gradient:'linear-gradient(135deg,#44D498,#6C63FF)', shadow:'rgba(68,212,152,0.45)'  },
   { id:'rocket-math', title:'Rechen-Rakete', sub:'Plus & Minus am Zahlenstrahl', emoji:'🚀', sciTag:'➕ Zahlenstrahl & Rechnen', gradient:'linear-gradient(135deg,#6C63FF,#00B894)', shadow:'rgba(108,99,255,0.45)' },
   { id:'shapes-land', title:'Formen-Land', sub:'Formen, Größen & Muster', emoji:'🔷', sciTag:'📐 Geometrie & Seriation', gradient:'linear-gradient(135deg,#00B894,#74B9FF)', shadow:'rgba(0,184,148,0.45)' },
+  { id:'rhyme', title:'Reim-Rallye', sub:'Was reimt sich?', emoji:'🎵', sciTag:'🎶 Reimbewusstsein', gradient:'linear-gradient(135deg,#FD79A8,#FF9F43)', shadow:'rgba(253,121,168,0.45)' },
   { id:'coloring',     title:'Mal-Atelier',       sub:'Ausmalen & Kreativ',   emoji:'🖍️', sciTag:'🎨 Kreativität & Feinmotorik',   gradient:'linear-gradient(135deg,#FD79A8,#E84393)', shadow:'rgba(253,121,168,0.45)' },
 ]
 
@@ -51,7 +52,7 @@ const CATEGORIES = [
 
 const CATEGORY_MAP = {
   math:     ['shapes-land', 'rocket-math', 'numbers', 'number-intro', 'bubbles', 'weight', 'clock'],
-  language: ['letters', 'letter-intro', 'words', 'words2', 'listen', 'shadows'],
+  language: ['rhyme', 'letters', 'letter-intro', 'words', 'words2', 'listen', 'shadows'],
   creative: ['shapes', 'coloring'],
   think:    ['patterns', 'sort', 'maze'],
   social:   ['emotions', 'stories'],
