@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { AppProvider, useApp } from './AppContext.jsx'
 import MusicControls from './components/MusicControls.jsx'
@@ -16,6 +17,13 @@ const slideVariants = {
 
 function Router() {
   const { state } = useApp()
+
+  // Keep <html lang="…"> in sync with the selected language
+  useEffect(() => {
+    if (state.language) {
+      document.documentElement.lang = state.language
+    }
+  }, [state.language])
 
   const screens = {
     welcome:  <WelcomeScreen />,
