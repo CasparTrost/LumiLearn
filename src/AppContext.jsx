@@ -24,6 +24,7 @@ export const MAX_LEVELS = {
   'rocket-math': 10,
   'shapes-land': 10,
   'rhyme': 10,
+  'initial-sound': 10,
 }
 
 function freshProgress() {
