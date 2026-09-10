@@ -90,6 +90,12 @@ export default function ParentScreen({ onClose }) {
   const pinIsDefault = state.settings?.pinIsDefault ?? true
   const [unlocked, setUnlocked] = useState(false)
   const [toast, setToast] = useState(null)
+  // ErrorBoundary.jsx has always written crashes here for "parent panel
+  // debugging" per its own comment — nothing ever read it back until now.
+  const [errorLog, setErrorLog] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('lumilearn_errors') || '[]') } catch { return [] }
+  })
+  const [showErrors, setShowErrors] = useState(false)
   // PIN change state
   const [showPinChange, setShowPinChange] = useState(false)
   const [pinCurrent, setPinCurrent] = useState('')
@@ -277,6 +283,62 @@ export default function ParentScreen({ onClose }) {
                     PIN ändern
                   </motion.button>
                 </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Error log — collected by ErrorBoundary.jsx whenever a game
+            crashes, previously never surfaced anywhere. */}
+        <div style={{ background:'white', borderRadius:20, padding:20, marginBottom:16, boxShadow:'0 2px 12px rgba(0,0,0,0.06)' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:showErrors ? 16 : 0 }}>
+            <div style={{ fontFamily:'var(--font-heading)', fontSize:16, fontWeight:700, color:'#333', display:'flex', alignItems:'center', gap:8 }}>
+              🐞 Fehler-Log
+              {errorLog.length > 0 && (
+                <span style={{ background:'#FFE0E0', color:'#e74c3c', borderRadius:99, padding:'2px 9px', fontSize:12 }}>{errorLog.length}</span>
+              )}
+            </div>
+            <motion.button whileTap={{scale:0.92}}
+              onClick={() => setShowErrors(v => !v)}
+              style={{ background:'#ECE8FF', border:'none', borderRadius:10, padding:'6px 14px', fontFamily:'var(--font-heading)', fontSize:14, color:'#4A00E0', cursor:'pointer', fontWeight:700 }}>
+              {showErrors ? 'Verbergen' : 'Anzeigen'}
+            </motion.button>
+          </div>
+          <AnimatePresence>
+            {showErrors && (
+              <motion.div initial={{height:0,opacity:0}} animate={{height:'auto',opacity:1}} exit={{height:0,opacity:0}}>
+                {errorLog.length === 0 ? (
+                  <div style={{ fontFamily:'var(--font-body)', fontSize:14, color:'#888' }}>
+                    Keine Fehler aufgezeichnet. 🎉
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ display:'flex', flexDirection:'column', gap:8, maxHeight:280, overflowY:'auto' }}>
+                      {errorLog.map((e, i) => (
+                        <div key={i} style={{ background:'#fff5f5', border:'1.5px solid #FFE0E0', borderRadius:12, padding:'10px 12px' }}>
+                          <div style={{ display:'flex', justifyContent:'space-between', gap:8, fontFamily:'var(--font-heading)', fontSize:12, color:'#c0392b', fontWeight:700, marginBottom:3 }}>
+                            <span>{MODULE_NAMES[e.module] ?? e.module ?? 'Unbekannt'}</span>
+                            <span style={{ color:'#999', fontWeight:400 }}>
+                              {e.ts ? new Date(e.ts).toLocaleString('de-DE') : ''}
+                            </span>
+                          </div>
+                          <div style={{ fontFamily:'var(--font-body)', fontSize:13, color:'#555', wordBreak:'break-word' }}>
+                            {e.message || 'Unbekannter Fehler'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <motion.button whileTap={{scale:0.95}}
+                      onClick={() => {
+                        try { localStorage.removeItem('lumilearn_errors') } catch {}
+                        setErrorLog([])
+                        showToast('Fehler-Log geleert')
+                      }}
+                      style={{ marginTop:12, background:'#FFE4E4', color:'#CC0000', border:'none', borderRadius:14, padding:'10px 16px', fontFamily:'var(--font-heading)', fontSize:14, fontWeight:700, cursor:'pointer' }}>
+                      🗑️ Log leeren
+                    </motion.button>
+                  </>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
