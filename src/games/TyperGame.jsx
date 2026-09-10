@@ -374,6 +374,17 @@ function StaticTyperGame({ level, onComplete }) {
   const nextChar  = word[typed.length]
   const finished  = typed.length === word.length
 
+  const handleKey = useCallback((k) => {
+    if (finished) return
+    if (k === nextChar) {
+      setTyped(t => t + k)
+    } else {
+      setShake(true)
+      setMood('encouraging')
+      setTimeout(() => { setShake(false); setMood('happy') }, 500)
+    }
+  }, [finished, nextChar])
+
   // Physical keyboard support
   useEffect(() => {
     const onKey = (e) => {
@@ -410,17 +421,6 @@ function StaticTyperGame({ level, onComplete }) {
     }, 1000)
     return () => clearTimeout(t)
   }, [finished]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleKey = useCallback((k) => {
-    if (finished) return
-    if (k === nextChar) {
-      setTyped(t => t + k)
-    } else {
-      setShake(true)
-      setMood('encouraging')
-      setTimeout(() => { setShake(false); setMood('happy') }, 500)
-    }
-  }, [finished, nextChar])
 
   return (
     <div style={{

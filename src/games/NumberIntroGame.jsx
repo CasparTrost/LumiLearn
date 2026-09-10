@@ -36,7 +36,7 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
   // Speak the number name when a new round starts
   useEffect(() => {
     const n = rounds[idx]?.n
-    if (n != null) voice.play(`/audio/zahlen-entdecken/${NUMBER_AUDIO[n]}.mp3`)
+    if (n != null) voice.play(`audio/zahlen-entdecken/${NUMBER_AUDIO[n]}.mp3`)
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const round = rounds[idx]

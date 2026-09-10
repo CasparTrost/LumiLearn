@@ -549,9 +549,6 @@ export default function PainterGame({ level = 1, onComplete }) {
     insideCellsRef.current = map
   }, [sceneIdx]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Clear brush pos when colour deselected
-  useEffect(() => { if (!selected) setBrushPos(null) }, [selected])
-
   // ── Check for scene completion ──────────────────────────────────────────────
   useEffect(() => {
     if (!scene || advRef.current) return
