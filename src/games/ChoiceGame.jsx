@@ -255,7 +255,7 @@ function DinoScene({ chomping, shaking, dinoScale, streak, eaten, total, project
               fontFamily: 'var(--font-heading)', fontSize: 14, color: 'white',
               whiteSpace: 'nowrap', pointerEvents: 'none', zIndex: 40,
             }}
-          >{'👆 Tippe zum Springen!'}</motion.div>
+          >{'👆 Tippe den Dino – er hüpft gern!'}</motion.div>
         )}
       </AnimatePresence>
 

@@ -106,9 +106,17 @@ function numbersQ(level) {
     const wrong = [String(a > b ? b : a)]
     // Add two more distractors near the actual values
     const extras = uniqueWrong(Number(ans), 2, Math.max(1, Math.min(a,b) - 3), Math.max(a,b) + 4)
+    // Every other question type carries an emoji quantity to look at; compare
+    // and missing_step were bare numerals, which is the most abstract form
+    // exactly where the game otherwise leans on pictures. Small numbers get
+    // dots so the comparison can be seen, not only read.
+    const dots = n => '●'.repeat(n)
+    const visual = (a <= 12 && b <= 12)
+      ? `${a} ${dots(a)}   vs   ${b} ${dots(b)}`
+      : `${a}  vs  ${b}`
     return {
       prompt:  `Welche Zahl ist größer? 🔍`,
-      visual:  `${a}  vs  ${b}`,
+      visual,
       options: shuffle([ans, ...wrong, ...extras]).slice(0, 4),
       answer:  ans,
     }
@@ -141,7 +149,9 @@ function numbersQ(level) {
     const wrong = uniqueWrong(ans, 3, Math.max(0, ans - step * 2), ans + step * 3)
     return {
       prompt:  `Welche Zahl fehlt? (+${step} Schritte)`,
-      visual:  disp.join('  →  '),
+      // The jump size is named in the prompt but was invisible in the row
+      // itself, so the child had to hold "+5" in mind while scanning.
+      visual:  disp.join(`  —+${step}→  `),
       options: shuffle([String(ans), ...wrong]),
       answer:  String(ans),
     }
