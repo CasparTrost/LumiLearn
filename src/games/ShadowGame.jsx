@@ -92,6 +92,8 @@ export default function ShadowGame({ level = 1, onComplete }) {
   // FIX 2: two-phase reveal — revealed moves silhouette, colorRevealed makes it colorful
   const [colorRevealed, setColorRevealed] = useState(false)
   const [mood,         setMood]        = useState('thinking')
+  const [wrongPicks,   setWrongPicks]  = useState([])
+  const [misses,       setMisses]      = useState(0)
 
   const ch      = challenges[idx]
   // Freeze option order per question
@@ -110,6 +112,13 @@ export default function ShadowGame({ level = 1, onComplete }) {
   const cardRef    = useRef(null)
   const overlayRef = useRef(null)
 
+  // How much of the picture the torch uncovers at once. This was a fixed
+  // 90 px at every level, so the one control the child actually operates
+  // never got harder — while the "difficulty" that did change was a tilt of
+  // up to 32 degrees, which barely affects recognising a silhouette. A
+  // narrower beam forces the shape to be assembled from parts.
+  const beam = level <= 2 ? 130 : level <= 5 ? 95 : level <= 8 ? 72 : 58
+
   const onPointerMove = useCallback((e) => {
     const overlay = overlayRef.current
     const card    = cardRef.current
@@ -118,10 +127,10 @@ export default function ShadowGame({ level = 1, onComplete }) {
     const x = ((e.clientX - rect.left) / rect.width  * 100).toFixed(1)
     const y = ((e.clientY - rect.top)  / rect.height * 100).toFixed(1)
     // mask: black = overlay visible (dark), transparent = overlay hidden (emoji shows through)
-    const mask = `radial-gradient(circle 90px at ${x}% ${y}%, transparent 0%, transparent 35px, black 80px, black 90px)`
+    const mask = `radial-gradient(circle ${beam}px at ${x}% ${y}%, transparent 0%, transparent ${Math.round(beam * 0.39)}px, black ${Math.round(beam * 0.89)}px, black ${beam}px)`
     overlay.style.maskImage = mask
     overlay.style.webkitMaskImage = mask
-  }, [])
+  }, [beam])
 
   const onPointerLeave = useCallback(() => {
     const overlay = overlayRef.current
@@ -134,10 +143,14 @@ export default function ShadowGame({ level = 1, onComplete }) {
     setShowFact(false)
     setShowWeiter(false)
     if (idx + 1 >= challenges.length) {
-      onComplete({ score: correct, total: challenges.length })
+      // Wrong taps can now be retried, so every round ends correct and the
+      // score alone would always be full marks.
+      onComplete({ score: correct, total: challenges.length,
+                   stars: misses <= 1 ? 3 : misses <= challenges.length ? 2 : 1 })
     } else {
       setIdx(i => i + 1)
       setSelected(null)
+      setWrongPicks([])
       setMood('thinking')
       setRevealed(false)
       setColorRevealed(false)
@@ -147,17 +160,25 @@ export default function ShadowGame({ level = 1, onComplete }) {
   const pick = useCallback((emoji) => {
     if (selected !== null || !ch) return
     const ok = emoji === ch.shadow
-    const nc = correct + (ok ? 1 : 0)
-    setSelected(emoji)
-    setMood(ok ? 'excited' : 'encouraging')
-    if (ok) {
-      setCorrect(nc)
-      setRevealed(true)
-      setTimeout(() => setColorRevealed(true), 700)
-      speakDE(ch.name + '! ' + ch.fact)
-    } else {
-      speakDE('Nicht ganz. Das ist ' + ch.name + '.')
+    if (!ok) {
+      // This was the only quiz module that ended the question on a wrong tap:
+      // it named the answer and moved on, so the child never got to look
+      // again with the torch. Now the wrong option is marked and the round
+      // stays open.
+      setWrongPicks(w => w.includes(emoji) ? w : [...w, emoji])
+      setMisses(m => m + 1)
+      setMood('encouraging')
+      speakDE('Noch nicht ganz. Schau nochmal mit der Lampe!')
+      setTimeout(() => setMood('thinking'), 1200)
+      return
     }
+    const nc = correct + 1
+    setSelected(emoji)
+    setMood('excited')
+    setCorrect(nc)
+    setRevealed(true)
+    setTimeout(() => setColorRevealed(true), 700)
+    speakDE(ch.name + '! ' + ch.fact)
     setShowFact(true)
     setTimeout(() => setShowWeiter(true), 800)
   }, [selected, ch, correct, idx, challenges, onComplete])
@@ -325,6 +346,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
           const isCorrect = emoji === ch.shadow
           const isChosen  = emoji === selected
           const done      = selected !== null
+          const isWrong   = wrongPicks.includes(emoji)
 
           let bg     = 'white'
           let border = '3px solid #ECE8FF'
@@ -332,14 +354,16 @@ export default function ShadowGame({ level = 1, onComplete }) {
 
           if (done && isCorrect)     { bg='#E8F8EE'; border='3px solid #6BCB77'; shadow='0 8px 28px rgba(107,203,119,0.4)' }
           else if (done && isChosen) { bg='#FFE8E8'; border='3px solid #FF6B6B' }
+          else if (isWrong)          { bg='#FFE8E8'; border='3px solid #FF6B6B' }
 
           return (
             <motion.button key={`${idx}-${i}`}
               initial={{ opacity:0, y:14 }} animate={{ opacity:1, y:0 }}
               transition={{ delay:i*0.06, type:'spring', stiffness:300 }}
-              whileHover={!done ? { scale:1.05 } : {}}
-              whileTap={!done ? { scale:0.95 } : {}}
-              onClick={() => pick(emoji)}
+              whileHover={!done && !isWrong ? { scale:1.05 } : {}}
+              whileTap={!done && !isWrong ? { scale:0.95 } : {}}
+              animate={isWrong ? { opacity: 0.5 } : { opacity: 1 }}
+              onClick={() => { if (!isWrong) pick(emoji) }}
               style={{
                 padding:'clamp(16px,3.5vw,28px) 12px',
                 borderRadius:22, background:bg, border, boxShadow:shadow,
