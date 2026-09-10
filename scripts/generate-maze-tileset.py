@@ -37,9 +37,11 @@ What it does:
     1. Prints your current credit/generation balance (client.get_balance())
        so you can see what you're spending before committing.
     2. Asks for a y/n confirmation before spending anything.
-    3. Generates ONE Wang tileset for the dungeon theme (used levels 4+)
-       and ONE for the forest theme (used levels 1-3) via
-       client.generate_tileset() — POST /v2/create-tileset. Each call
+    3. Generates one Wang tileset per entry in TILESETS below via
+       client.generate_tileset() — POST /v2/create-tileset. Currently
+       just the dungeon theme (used levels 4+) — the forest theme
+       (levels 1-3) already went through this and is wired in; re-add
+       a forest entry here only if it needs another redo. Each call
        produces a full 16-tile (or 25-tile at transition_size=1.0)
        seamlessly-connecting set in one shot: you describe the "lower"
        (walkable floor) and "upper" (wall) terrain and it returns every
@@ -94,37 +96,33 @@ OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pixellab-out
 # to the REST endpoint directly instead, per api.pixellab.ai/v2/docs.
 API_BASE = "https://api.pixellab.ai/v2"
 
-# v2 prompts — round 1 (grey-on-grey dungeon, muted overall) read as
-# "flat"/"trist" rather than "schön" once actually in the game. Rewritten
-# for a crisper, more modern-game look: bolder outlines, more saturated/
-# higher-contrast colours, clearly legible patterns rather than a noisy
-# realistic texture.
+# v3 — dungeon ONLY. forest's v2 (see TILESETS history) came out great
+# and is already wired into the game; regenerating it again would just
+# spend another generation for nothing.
 #
-# transition_size + shape_style: the API rejected a bare 0.15 — standard/
-# pro mode only accepts transition_size 0/0.25/0.5/1.0 UNLESS shape_style
-# is explicitly 'square' or 'round', which unlocks any value in between
-# (per the live 422 response). 'square' also happens to fit "clear
-# contours" better than the default anyway — blocky/sharp transitions
-# instead of a rounded blend — so both the value and the shape it was
-# aiming for are set explicitly now.
+# dungeon v2 (both floor and wall as "blue-grey stone") came back with
+# floor and wall reading as almost the exact same dark navy colour —
+# "high contrast" got applied as crisp internal texture, not as contrast
+# BETWEEN the two materials, so walkable floor vs. wall was nearly
+# impossible to tell apart at a glance. v3 forces a large light/dark gap
+# between them instead — light warm floor vs. dark cool wall — which is
+# a much more reliable way to guarantee that distinction than any style
+# adjective alone.
+#
+# transition_size + shape_style: the API rejects a bare continuous
+# transition_size (0.15) — standard/pro mode only accepts 0/0.25/0.5/1.0
+# UNLESS shape_style is explicitly 'square' or 'round', which unlocks any
+# value in between (per a live 422 response from an earlier run).
+# 'square' also fits "clear contours" well — blocky/sharp transitions
+# instead of a rounded blend.
 # tile_size: 32 is the recommended balance of quality vs. cost (16 or 32
 # are the only standard-mode options).
 TILESETS = [
     {
         "name": "dungeon",
-        "lower_description": "dark blue-grey stone floor, modern pixel art game style, clean crisp geometric tile pattern, bold clear outlines, high contrast, saturated cool tones",
-        "upper_description": "sturdy stone brick wall, modern pixel art game style, bold clean outlines, clearly defined brick pattern, bright highlighted top edge, high contrast, saturated cool tones",
-        "transition_description": "crisp sharp contour where floor meets wall, clean bold edge line",
-        "tile_size": {"width": 32, "height": 32},
-        "transition_size": 0.15,
-        "shape_style": "square",
-        "view": "low top-down",
-    },
-    {
-        "name": "forest",
-        "lower_description": "vibrant green grass path with small clover and pebble details, modern pixel art game style, clean crisp pattern, bold clear outlines, saturated colors",
-        "upper_description": "dense leafy hedge wall, modern pixel art game style, bold clean outlines, clearly defined individual leaf clusters, saturated vibrant green, bright highlighted top edge, high contrast",
-        "transition_description": "crisp sharp contour where grass meets hedge, clean bold edge line",
+        "lower_description": "light warm sandstone floor, pale tan and beige tones, smooth flat surface, modern pixel art game style, bold clean outlines, crisp geometric pattern, clearly different and much lighter than the wall",
+        "upper_description": "dark cool slate-blue stone brick wall, deep shadowed tones, modern pixel art game style, bold clean outlines, crisp brick pattern, bright glowing highlight along the top edge, clearly different and much darker than the floor",
+        "transition_description": "sharp clean contour where the light sandstone floor meets the dark slate wall, strong light-to-dark tonal jump",
         "tile_size": {"width": 32, "height": 32},
         "transition_size": 0.15,
         "shape_style": "square",
