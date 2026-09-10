@@ -26,8 +26,8 @@ const WORD_SETS = {
     'LOCH','MAUS','MOND','NETZ','OBST','PILZ','RABE','ROSE','SALZ','SAND',
     'SOFA','SOHN','TANZ','TOPF','TURM','WALD','ZAUN','ZELT','BAHN','BEIN',
     'BILD','FELS','HELM','FELD','HUHN','AFFE','ESEL','PFAU','LAUB','BURG',
-    'DACH','RING','TORE','GRAS','KORN','MAST','OFEN','PFAD','BOOT','HERD',
-    'EIER','MILCH','MOND','BROT','FETT','HONIG','KALT',
+    'DACH','RING','TORE','GRAS','KORN','MAST','OFEN','PFAD','HERD','EIER',
+    'MILCH','BROT','FETT','HONIG','KALT',
   ],
   // Level 2: 4–5 letter everyday words
   level2: [
@@ -39,7 +39,7 @@ const WORD_SETS = {
     'TRAUM','WAGEN','ZWERG','MÜTZE','JACKE','PUPPE','GEIGE','SCHAF','FALKE','BIENE',
     'EICHE','BIRKE','REGAL','ANKER','OTTER','LUCHS','VATER','FISCH','KREBS','KÜCHE',
     'PFEIL','RIESE','LACHS','REGEN','STURM','WOLKE','NEBEL','HÜGEL','LICHT','STEIN',
-    'HEXE','ZWERG','DRÜSE','MÄHNE','EIMER','PINSEL','SPINNE','HARFE','ORGEL','TINTE',
+    'HEXE','DRÜSE','MÄHNE','EIMER','PINSEL','SPINNE','HARFE','ORGEL','TINTE',
   ],
   // Level 3: 5–7 letter words
   level3: [
@@ -54,42 +54,89 @@ const WORD_SETS = {
   ],
   // Level 4: compound 6–9 letter words
   level4: [
-    'KROKODIL','LUFTBALL','WALDTIER','FLUGZEUG','SEESTERN','GESICHT','PIRATEN',
-    'BÄCKEREI','SCHULBUS','HAUSTIER','SCHULHOF','SCHNECKE','TRUTHAHN','ZAUBERER',
-    'FEUERWEHR','TRAMPOLIN','OSTERHASE','SPIELZEUG','ERDBEEREN','GEHEIMNIS',
-    'SCHNEEBALL','SCHAUKEL','FAHRSTUHL','BAUMSTAMM','WALDBRAND','TIERGARTEN',
-    'MÜLLWAGEN','SEEHUND','BLAUBEERE','ZITRONE','SONNENUHR','SCHÜLER',
-    'BAUMWOLLE','STERNSCHNUPPE','GLÜHBIRNE','SEIFENBLASE','KINDERPARK',
-    'TISCHTENNIS','WACKELZAHN','SCHLAFSACK','SANDKASTEN','FERNROHR',
-    'KASPERL','BALLERINA','LERNSPIEL','SEEPFERDCHEN','TISCHLAMPE',
-    'SCHOKOLADE','SONNENBLUME','WASSERFALL','KINDERFILM','KRISTALL',
+    'KROKODIL','LUFTBALL','WALDTIER','FLUGZEUG','SEESTERN','GESICHT','PIRATEN','BÄCKEREI','SCHULBUS','HAUSTIER',
+    'SCHULHOF','SCHNECKE','TRUTHAHN','ZAUBERER','FEUERWEHR','TRAMPOLIN','OSTERHASE','SPIELZEUG','ERDBEEREN','GEHEIMNIS',
+    'SCHNEEBALL','SCHAUKEL','FAHRSTUHL','BAUMSTAMM','WALDBRAND','TIERGARTEN','MÜLLWAGEN','SEEHUND','BLAUBEERE','ZITRONE',
+    'SONNENUHR','SCHÜLER','BAUMWOLLE','STERNSCHNUPPE','GLÜHBIRNE','SEIFENBLASE','KINDERPARK','TISCHTENNIS','WACKELZAHN','SCHLAFSACK',
+    'SANDKASTEN','FERNROHR','KASPERL','BALLERINA','LERNSPIEL','SEEPFERDCHEN','TISCHLAMPE','SCHOKOLADE','SONNENBLUME','WASSERFALL',
+    'KINDERFILM','KRISTALL',
   ],
   // Level 5: long compound German words
   level5: [
-    'SCHMETTERLING','SONNENSCHEIN','BLAUBEERE','ERDBEERE','KARTOFFEL',
-    'ASTRONAUT','LAUBFROSCH','EICHHÖRNCHEN','FAHRRADHELM','KINDERGARTEN',
-    'WEIHNACHTSMANN','GEBURTSTAGSKUCHEN','TASCHENLAMPE','REGENBOGEN','STAUBSAUGER',
-    'SCHOKOLADENKUCHEN','SEIFENBLASEN','FUSSBALLSPIELER','SCHULRANZEN','MEERESSCHILDKRÖTE',
-    'KÜHLSCHRANK','AUTOBAHN','WINTERLANDSCHAFT','JAHRESZEITEN','ELEFANTENBABY',
-    'RAUMSCHIFF','DRACHENFLIEGER','UNTERWASSERWELT','FEUERSPUCKER','ZIRKUSDIREKTOR',
-    'BLUMENSTRAUSS','NIKOLAUSSTIEFEL','STRASSENLATERNE','SPIELZEUGAUTO','SANDBURGREITER',
-    'SCHULTASCHE','FAHRRADTOUR','NACHTSTIMMUNG','BAUERNHOFTIER','MONDRAKETE',
+    'SCHMETTERLING','SONNENSCHEIN','BLAUBEERE','ERDBEERE','KARTOFFEL','ASTRONAUT','LAUBFROSCH','EICHHÖRNCHEN','FAHRRADHELM','KINDERGARTEN',
+    'WEIHNACHTSMANN','GEBURTSTAGSKUCHEN','TASCHENLAMPE','REGENBOGEN','STAUBSAUGER','SCHOKOLADENKUCHEN','SEIFENBLASEN','FUSSBALLSPIELER','SCHULRANZEN','MEERESSCHILDKRÖTE',
+    'KÜHLSCHRANK','AUTOBAHN','WINTERLANDSCHAFT','JAHRESZEITEN','ELEFANTENBABY','RAUMSCHIFF','DRACHENFLIEGER','UNTERWASSERWELT','FEUERSPUCKER','ZIRKUSDIREKTOR',
+    'BLUMENSTRAUSS','NIKOLAUSSTIEFEL','STRASSENLATERNE','SPIELZEUGAUTO','SANDBURGREITER','SCHULTASCHE','FAHRRADTOUR','NACHTSTIMMUNG','BAUERNHOFTIER','MONDRAKETE',
     'SCHAUKELPFERD','ZAHNBÜRSTE','SEEPFERDCHEN','GÄRTNERMEISTER','BLUMENWASSER',
   ],
 }
 
 
+// Picture anchor for the word being typed. This map existed from the start
+// but was never rendered anywhere — children typed letter chains with no
+// clue what word they were building. It only covered a fraction of the
+// vocabulary, so it has been extended to cover the great majority of it,
+// and pickWords below prefers the words it can illustrate.
 const WORD_EMOJI = {
-  OMA:'👵',OPA:'👴',EIS:'🍦',UHR:'⏰',ZUG:'🚂',BUS:'🚌',HUT:'🎩',FEE:'🧚',ARM:'💪',
-  TAG:'🌞',HUND:'🐕',BALL:'⚽',BUCH:'📚',MUND:'👄',HAND:'✋',KOPF:'🧠',NASE:'👃',WOLF:'🐺',
-  IGEL:'🦔',HERZ:'❤️',BOOT:'⛵',GANS:'🪿',MAUS:'🐭',MOND:'🌙',RABE:'🐦‍⬛',ROSE:'🌹',
-  MAMA:'👩',PAPA:'👨',AUTO:'🚗',HAUS:'🏠',BROT:'🍞',BAUM:'🌳',KATZE:'🐱',VOGEL:'🐦',
-  STERN:'⭐',APFEL:'🍎',SCHUH:'👟',PIZZA:'🍕',FEUER:'🔥',NUDEL:'🍝',TASSE:'☕',
-  ZIEGE:'🐐',KAMEL:'🐪',PFERD:'🐴',TIGER:'🐯',FLUSS:'🏞️',WIESE:'🌿',GURKE:'🥒',
-  SCHULE:'🏫',GARTEN:'🌻',HERBST:'🍂',WINTER:'❄️',SOMMER:'☀️',FREUND:'🤝',RITTER:'⚔️',
-  ZIRKUS:'🎪',RAKETE:'🚀',AMEISE:'🐜',ROBOTER:'🤖',ELEFANT:'🐘',TRAUBE:'🍇',
-  KROKODIL:'🐊',FLUGZEUG:'✈️',SEESTERN:'⭐',SCHNECKE:'🐌',FEUERWEHR:'🚒',
-  SCHMETTERLING:'🦋',SONNENSCHEIN:'🌞',ASTRONAUT:'👨‍🚀',REGENBOGEN:'🌈',RAUMSCHIFF:'🚀',
+  OMA:'👵',OPA:'👴',EIS:'🍦',UHR:'⏰',ZUG:'🚂',BUS:'🚌',
+  HUT:'🎩',FEE:'🧚',ARM:'💪',ELF:'🧝',TAG:'🌞',OHR:'👂',
+  ROT:'🔴',HOF:'🏡',TOR:'🥅',TAU:'💧',TEE:'🍵',TON:'🎵',
+  AXT:'🪓',KUH:'🐄',BAD:'🛁',TAL:'🏞️',HUND:'🐕',BALL:'⚽',
+  BUCH:'📚',MUND:'👄',FUSS:'🦶',HAND:'✋',KOPF:'🧠',NASE:'👃',
+  WOLF:'🐺',IGEL:'🦔',GELD:'💰',HERZ:'❤️',HOLZ:'🪵',BOOT:'⛵',
+  GANS:'🪿',GLAS:'🥛',HAAR:'💇',HAHN:'🐓',HASE:'🐰',KEKS:'🍪',
+  LOCH:'🕳️',MAUS:'🐭',MOND:'🌙',NETZ:'🕸️',OBST:'🍏',PILZ:'🍄',
+  RABE:'🐦‍⬛',ROSE:'🌹',SALZ:'🧂',SAND:'🏖️',SOFA:'🛋️',SOHN:'👦',
+  TANZ:'💃',TOPF:'🍲',TURM:'🗼',WALD:'🌲',ZAUN:'🚧',ZELT:'⛺',
+  BAHN:'🚆',BEIN:'🦵',BILD:'🖼️',FELS:'🪨',HELM:'⛑️',FELD:'🌾',
+  HUHN:'🐔',AFFE:'🐒',ESEL:'🫏',PFAU:'🦚',LAUB:'🍂',BURG:'🏰',
+  DACH:'🏠',RING:'💍',GRAS:'🌱',KORN:'🌽',OFEN:'🔥',HERD:'🍳',
+  EIER:'🥚',MILCH:'🥛',BROT:'🍞',FETT:'🧈',HONIG:'🍯',MAMA:'👩',
+  PAPA:'👨',AUTO:'🚗',HAUS:'🏠',KIND:'🧒',BAUM:'🌳',HEMD:'👕',
+  LÖWE:'🦁',TIER:'🐾',GABEL:'🍴',TISCH:'🪑',STUHL:'🪑',LAMPE:'💡',
+  KATZE:'🐱',VOGEL:'🐦',STERN:'⭐',APFEL:'🍎',SCHUH:'👟',PIZZA:'🍕',
+  FEUER:'🔥',WURST:'🌭',NUDEL:'🍝',SUPPE:'🍲',TASSE:'☕',KERZE:'🕯️',
+  KISTE:'📦',DACHS:'🦡',AMSEL:'🐦',ADLER:'🦅',BIRNE:'🍐',TORTE:'🍰',
+  BEERE:'🫐',FARBE:'🎨',SEIFE:'🧼',NAGEL:'🔩',ENGEL:'👼',KRONE:'👑',
+  ZIEGE:'🐐',KAMEL:'🐪',PFERD:'🐴',TIGER:'🐯',FLUSS:'🏞️',INSEL:'🏝️',
+  WIESE:'🌿',GURKE:'🥒',SOCKE:'🧦',TEICH:'🦆',TRAUM:'💤',WAGEN:'🚙',
+  ZWERG:'🧙',MÜTZE:'🧢',JACKE:'🧥',PUPPE:'🪆',GEIGE:'🎻',SCHAF:'🐑',
+  FALKE:'🦅',BIENE:'🐝',EICHE:'🌳',BIRKE:'🌳',REGAL:'📚',ANKER:'⚓',
+  OTTER:'🦦',LUCHS:'🐆',VATER:'👨',FISCH:'🐟',KREBS:'🦀',KÜCHE:'🍳',
+  PFEIL:'🏹',LACHS:'🐟',REGEN:'🌧️',STURM:'🌪️',WOLKE:'☁️',NEBEL:'🌫️',
+  HÜGEL:'⛰️',LICHT:'💡',STEIN:'🪨',HEXE:'🧙',EIMER:'🪣',PINSEL:'🖌️',
+  SPINNE:'🕷️',HARFE:'🎵',ORGEL:'🎹',TINTE:'🖋️',MÄHNE:'🦁',SAHNE:'🥛',
+  STALL:'🏚️',SCHULE:'🏫',GARTEN:'🌻',HERBST:'🍂',WINTER:'❄️',SOMMER:'☀️',
+  TRAUBE:'🍇',FREUND:'🤝',SCHATZ:'💎',RITTER:'⚔️',ZIRKUS:'🎪',RAKETE:'🚀',
+  SCHLOSS:'🏰',BAHNHOF:'🚉',SPIEGEL:'🪞',AMEISE:'🐜',BRÜCKE:'🌉',FENSTER:'🪟',
+  TEMPEL:'🛕',ROBOTER:'🤖',ELEFANT:'🐘',NACHT:'🌙',KRAFT:'💪',MARKT:'🛒',
+  MÖHRE:'🥕',MÜCKE:'🦟',NATUR:'🌳',RAUCH:'💨',MUSIK:'🎵',BÄCKER:'🥖',
+  KÄFER:'🐞',KREIS:'⭕',NUMMER:'🔢',QUELLE:'💧',KUGEL:'🔮',TASCHE:'👜',
+  SCHERE:'✂️',BREZEL:'🥨',KIRCHE:'⛪',HAFEN:'⚓',HÜTTE:'🛖',FLÖTE:'🎶',
+  BÜHNE:'🎭',MÜHLE:'🌬️',BALKON:'🏠',KELLER:'🪜',CLOWN:'🤡',KOFFER:'🧳',
+  KISSEN:'🛏️',TELLER:'🍽️',PFANNE:'🍳',BAGGER:'🚜',TRAKTOR:'🚜',POLIZEI:'👮',
+  PIRAT:'🏴‍☠️',DRACHEN:'🐉',BLUMEN:'💐',APRIKOSE:'🍑',SPINAT:'🥬',PAPRIKA:'🫑',
+  KAROTTE:'🥕',LATERNE:'🏮',KALENDER:'📅',LEITER:'🪜',TREPPE:'🪜',BÜRSTE:'🪥',
+  ZAHNRAD:'⚙️',KASPER:'🤡',STIFTE:'✏️',FARBEN:'🎨',WOLKEN:'☁️',WELLEN:'🌊',
+  STRASSE:'🛣️',KROKODIL:'🐊',FLUGZEUG:'✈️',SEESTERN:'⭐',SCHNECKE:'🐌',FEUERWEHR:'🚒',
+  LUFTBALL:'🎈',GESICHT:'😊',PIRATEN:'🏴‍☠️',BÄCKEREI:'🥐',SCHULBUS:'🚌',HAUSTIER:'🐕',
+  SCHULHOF:'🏫',TRUTHAHN:'🦃',ZAUBERER:'🧙',TRAMPOLIN:'🤸',OSTERHASE:'🐰',SPIELZEUG:'🧸',
+  ERDBEEREN:'🍓',SCHNEEBALL:'⛄',SCHAUKEL:'🎠',FAHRSTUHL:'🛗',BAUMSTAMM:'🪵',TIERGARTEN:'🦁',
+  MÜLLWAGEN:'🚛',SEEHUND:'🦭',BLAUBEERE:'🫐',ZITRONE:'🍋',SONNENUHR:'🌞',SCHÜLER:'🎒',
+  GLÜHBIRNE:'💡',SEIFENBLASE:'🫧',TISCHTENNIS:'🏓',WACKELZAHN:'🦷',SCHLAFSACK:'💤',SANDKASTEN:'🏖️',
+  FERNROHR:'🔭',BALLERINA:'🩰',SEEPFERDCHEN:'🐠',TISCHLAMPE:'💡',SCHOKOLADE:'🍫',SONNENBLUME:'🌻',
+  WASSERFALL:'🌊',KRISTALL:'💎',SCHMETTERLING:'🦋',SONNENSCHEIN:'🌞',ERDBEERE:'🍓',KARTOFFEL:'🥔',
+  ASTRONAUT:'👨‍🚀',LAUBFROSCH:'🐸',EICHHÖRNCHEN:'🐿️',FAHRRADHELM:'🚲',KINDERGARTEN:'🏫',WEIHNACHTSMANN:'🎅',
+  TASCHENLAMPE:'🔦',REGENBOGEN:'🌈',STAUBSAUGER:'🌀',SCHULRANZEN:'🎒',KÜHLSCHRANK:'🧊',AUTOBAHN:'🛣️',
+  JAHRESZEITEN:'🍂',RAUMSCHIFF:'🚀',UNTERWASSERWELT:'🌊',ZIRKUSDIREKTOR:'🎪',BLUMENSTRAUSS:'💐',SPIELZEUGAUTO:'🚗',
+  SCHAUKELPFERD:'🎠',ZAHNBÜRSTE:'🪥',MONDRAKETE:'🚀',FUSSBALLSPIELER:'⚽',WINTERLANDSCHAFT:'❄️',SCHULTASCHE:'🎒',
+  FAHRRADTOUR:'🚲',KINDERFILM:'🎬',KINDERPARK:'🎡',LERNSPIEL:'🧩',BAUMWOLLE:'☁️',
+}
+
+function pickWords(set, n) {
+  const withPic = shuffle(set.filter(w => WORD_EMOJI[w]))
+  const without = shuffle(set.filter(w => !WORD_EMOJI[w]))
+  return [...withPic, ...without].slice(0, n)
 }
 
 const ROWS = [
@@ -110,7 +157,7 @@ function shuffle(a) { return [...a].sort(() => Math.random() - 0.5) }
 function FallingLettersGame({ level, onComplete }) {
   const setNum  = level <= 5 ? 2 : level <= 7 ? 3 : level <= 9 ? 4 : 5
   const wordSet = WORD_SETS[`level${setNum}`] ?? WORD_SETS.level2
-  const [words]        = useState(() => shuffle(wordSet).slice(0, 5))
+  const [words]        = useState(() => pickWords(wordSet, 5))
   const [wIdx,         setWIdx]       = useState(0)
   const [typed,        setTyped]      = useState(0) // # of letters correctly typed for current word
   const [score,        setScore]      = useState(0)
@@ -176,7 +223,7 @@ function FallingLettersGame({ level, onComplete }) {
       setTimeout(() => setMood('happy'), 400)
       setErrors(e => {
         const ne = e + 1
-        if (ne === 3) {
+        if (ne === 2) {
           setShowHint(true)
           setTimeout(() => speak(`Der Buchstabe ist: ${targetChar}`, true), 200)
         }
@@ -205,6 +252,12 @@ function FallingLettersGame({ level, onComplete }) {
             setTyped(0)
             setErrors(0)
             setShowHint(false)
+            // Hearts belonged to the whole round of five words, so three
+            // missed letters on one hard word ended the entire game — even
+            // if four words had already been typed perfectly. They refill
+            // per word instead: a tough word costs that word, not the run.
+            setLives(3)
+            livesRef.current = 3
             setLetterY(-10)
             setCompleting(false)
             completingRef.current = false
@@ -257,6 +310,19 @@ function FallingLettersGame({ level, onComplete }) {
         <div style={{ flex:1, background:'white', borderRadius:'24px 24px 24px 6px', padding:'12px 18px', boxShadow:'0 4px 20px rgba(108,99,255,0.12)', fontFamily:'var(--font-heading)', fontSize:'clamp(15px,3.2vw,22px)', color:'var(--text-primary)' }}>
           {showHint ? `💡 Der Buchstabe ist: ${targetChar.toUpperCase()}` : 'Tippe den fallenden Buchstaben! ⌨️'}
         </div>
+      </div>
+
+      {/* What word is being built. Fixed height so an unillustrated word
+          doesn't shift the whole board. */}
+      <div style={{ height:'clamp(44px,9vw,64px)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+        {WORD_EMOJI[word] && (
+          <motion.span key={word}
+            initial={{ scale:0.6, opacity:0 }} animate={{ scale:1, opacity:1 }}
+            style={{ fontSize:'clamp(38px,8vw,58px)', lineHeight:1,
+                     filter:'drop-shadow(0 5px 14px rgba(0,0,0,0.16))' }}>
+            {WORD_EMOJI[word]}
+          </motion.span>
+        )}
       </div>
 
       {/* Word progress display */}
@@ -327,7 +393,7 @@ function FallingLettersGame({ level, onComplete }) {
         {ROWS.map((row, ri) => (
           <div key={ri} style={{ display:'flex', justifyContent:'center', gap:'clamp(3px,0.8vw,6px)' }}>
             {row.map((k) => {
-              const isTarget = k === targetChar && !completing && !done
+              const isTarget = k === targetChar && !completing && !done && showHint
               return (
                 <motion.button key={k}
                   whileTap={{ scale:0.86 }}
@@ -357,17 +423,31 @@ function FallingLettersGame({ level, onComplete }) {
 function StaticTyperGame({ level, onComplete }) {
   const setNum   = level <= 1 ? 1 : level <= 2 ? 2 : level <= 3 ? 3 : level <= 6 ? 4 : 5
   const set      = WORD_SETS[`level${setNum}`] ?? WORD_SETS.level1
-  const [words]  = useState(() => shuffle(set).slice(0, 6))
+  const [words]  = useState(() => pickWords(set, 6))
   const [wIdx,   setWIdx]   = useState(0)
   const [typed,  setTyped]  = useState('')
   const [shake,  setShake]  = useState(false)
   const [correct, setCorrect] = useState(0)
   const [mood,   setMood]   = useState('happy')
   const [done,   setDone]   = useState(false)
+  const [misses, setMisses] = useState(0)
+  const [hintOn, setHintOn] = useState(false)
 
   const word      = words[wIdx] ?? ''
   const nextChar  = word[typed.length]
   const finished  = typed.length === word.length
+
+  // The hint is per letter: every letter starts unaided, so the child has to
+  // find it on the keyboard themselves at least once.
+  useEffect(() => { setMisses(0); setHintOn(false) }, [typed.length, wIdx])
+
+  // ...but a child who simply doesn't know the letter must not be stranded,
+  // so the spotlight also comes on by itself after a while.
+  useEffect(() => {
+    if (finished || hintOn) return
+    const id = setTimeout(() => setHintOn(true), 7000)
+    return () => clearTimeout(id)
+  }, [typed.length, wIdx, finished, hintOn])
 
   const handleKey = useCallback((k) => {
     if (finished) return
@@ -377,6 +457,11 @@ function StaticTyperGame({ level, onComplete }) {
       setShake(true)
       setMood('encouraging')
       setTimeout(() => { setShake(false); setMood('happy') }, 500)
+      setMisses(m => {
+        const n = m + 1
+        if (n >= 2) setHintOn(true)
+        return n
+      })
     }
   }, [finished, nextChar])
 
@@ -446,7 +531,7 @@ function StaticTyperGame({ level, onComplete }) {
           fontSize:'clamp(18px,3.8vw,26px)',
           color:'var(--text-primary)',
         }}>
-          Tippe das Wort! Der goldene Buchstabe ist dran. ✨
+          {hintOn ? `💡 Suche das ${nextChar} auf der Tastatur!` : 'Tippe das Wort! 🔤'}
         </div>
       </div>
 
@@ -460,9 +545,14 @@ function StaticTyperGame({ level, onComplete }) {
             background:'white', borderRadius:24,
             boxShadow:'0 6px 24px rgba(108,99,255,0.12)',
             width:'100%', maxWidth:760,
-            justifyContent:'center', flexWrap:'wrap',
+            justifyContent:'center', flexWrap:'wrap', alignItems:'center',
           }}
         >
+          {WORD_EMOJI[word] && (
+            <span style={{ fontSize:'clamp(30px,6vw,46px)', lineHeight:1, marginRight:'clamp(4px,1.5vw,12px)' }}>
+              {WORD_EMOJI[word]}
+            </span>
+          )}
           {word.split('').map((ch, i) => {
             const isTyped  = i < typed.length
             const isCurrent = i === typed.length
@@ -505,7 +595,7 @@ function StaticTyperGame({ level, onComplete }) {
         {ROWS.map((row, ri) => (
           <div key={ri} style={{ display:'flex', justifyContent:'center', gap:'clamp(4px,1vw,8px)' }}>
             {row.map((k) => {
-              const isNext = k === nextChar && !finished
+              const isNext = k === nextChar && !finished && hintOn
 
               return (
                 <motion.button key={k}
