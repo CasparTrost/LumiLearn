@@ -37,9 +37,11 @@ What it does:
     1. Prints your current credit/generation balance (client.get_balance())
        so you can see what you're spending before committing.
     2. Asks for a y/n confirmation before spending anything.
-    3. Generates ONE Wang tileset for the dungeon theme (used levels 4+)
-       and ONE for the forest theme (used levels 1-3) via
-       client.generate_tileset() — POST /v2/create-tileset. Each call
+    3. Generates one Wang tileset per entry in TILESETS below via
+       client.generate_tileset() — POST /v2/create-tileset. Currently
+       just the dungeon theme (used levels 4+) — the forest theme
+       (levels 1-3) already went through this and is wired in; re-add
+       a forest entry here only if it needs another redo. Each call
        produces a full 16-tile (or 25-tile at transition_size=1.0)
        seamlessly-connecting set in one shot: you describe the "lower"
        (walkable floor) and "upper" (wall) terrain and it returns every
@@ -94,27 +96,36 @@ OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pixellab-out
 # to the REST endpoint directly instead, per api.pixellab.ai/v2/docs.
 API_BASE = "https://api.pixellab.ai/v2"
 
+# v3 — dungeon ONLY. forest's v2 (see TILESETS history) came out great
+# and is already wired into the game; regenerating it again would just
+# spend another generation for nothing.
+#
+# dungeon v2 (both floor and wall as "blue-grey stone") came back with
+# floor and wall reading as almost the exact same dark navy colour —
+# "high contrast" got applied as crisp internal texture, not as contrast
+# BETWEEN the two materials, so walkable floor vs. wall was nearly
+# impossible to tell apart at a glance. v3 forces a large light/dark gap
+# between them instead — light warm floor vs. dark cool wall — which is
+# a much more reliable way to guarantee that distinction than any style
+# adjective alone.
+#
+# transition_size + shape_style: the API rejects a bare continuous
+# transition_size (0.15) — standard/pro mode only accepts 0/0.25/0.5/1.0
+# UNLESS shape_style is explicitly 'square' or 'round', which unlocks any
+# value in between (per a live 422 response from an earlier run).
+# 'square' also fits "clear contours" well — blocky/sharp transitions
+# instead of a rounded blend.
 # tile_size: 32 is the recommended balance of quality vs. cost (16 or 32
-# are the only standard-mode options). transition_size 0.25 gives a
-# modest, not-too-dramatic elevation effect between floor and wall —
-# matches the tileset endpoint's own "forest path" example.
+# are the only standard-mode options).
 TILESETS = [
     {
         "name": "dungeon",
-        "lower_description": "smooth dark grey dungeon stone floor with subtle cracks",
-        "upper_description": "rough dark dungeon stone wall with mortar lines and a bit of moss",
-        "transition_description": "cracked worn stone edge where floor meets wall",
+        "lower_description": "light warm sandstone floor, pale tan and beige tones, smooth flat surface, modern pixel art game style, bold clean outlines, crisp geometric pattern, clearly different and much lighter than the wall",
+        "upper_description": "dark cool slate-blue stone brick wall, deep shadowed tones, modern pixel art game style, bold clean outlines, crisp brick pattern, bright glowing highlight along the top edge, clearly different and much darker than the floor",
+        "transition_description": "sharp clean contour where the light sandstone floor meets the dark slate wall, strong light-to-dark tonal jump",
         "tile_size": {"width": 32, "height": 32},
-        "transition_size": 0.25,
-        "view": "low top-down",
-    },
-    {
-        "name": "forest",
-        "lower_description": "lush green grass path",
-        "upper_description": "dense dark green forest hedge, leafy",
-        "transition_description": "grass thinning into hedge roots",
-        "tile_size": {"width": 32, "height": 32},
-        "transition_size": 0.25,
+        "transition_size": 0.15,
+        "shape_style": "square",
         "view": "low top-down",
     },
 ]
@@ -182,6 +193,7 @@ def call_generate_tileset_http(api_key, t):
             "transition_description": t["transition_description"],
             "tile_size": t["tile_size"],
             "transition_size": t["transition_size"],
+            "shape_style": t.get("shape_style"),
             "view": t["view"],
         },
         timeout=180,
@@ -325,7 +337,7 @@ def main():
         print(f"\nGenerating '{t['name']}' tileset ({t['view']}, transition_size={t['transition_size']})...")
         try:
             if use_sdk:
-                response = client.generate_tileset(
+                kwargs = dict(
                     lower_description=t["lower_description"],
                     upper_description=t["upper_description"],
                     transition_description=t["transition_description"],
@@ -333,6 +345,9 @@ def main():
                     transition_size=t["transition_size"],
                     view=t["view"],
                 )
+                if t.get("shape_style"):
+                    kwargs["shape_style"] = t["shape_style"]
+                response = client.generate_tileset(**kwargs)
             else:
                 response = call_generate_tileset_http(api_key, t)
         except TypeError as e:

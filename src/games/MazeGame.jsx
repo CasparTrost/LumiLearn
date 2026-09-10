@@ -14,6 +14,7 @@ import './maze/maze.css'
 const BASE = import.meta.env.BASE_URL ?? '/'
 const spr = f => BASE.replace(/\/$/, '') + '/sprites/maze/' + f
 const wangSpr = (theme, id) => spr(`wang/${theme}/wang_${id}.png`)
+const wangMask = id => spr(`wang/masks/mask_${id}.png`)
 
 // ──────────────────────────────────────────────────────────────────
 // LEVEL CONFIG
@@ -89,6 +90,22 @@ const Board = memo(function Board({ maze, cellSize, coll, theme }) {
   // half a cell from the maze's own cell grid. id=0 (all 4 neighbours
   // floor) needs no sprite — the floor layer underneath already shows
   // through there.
+  // Floor vs. wall contrast, forced via CSS rather than trusted to the
+  // generated art: three separate PixelLab prompt attempts for the
+  // dungeon theme (increasingly explicit about wanting a light floor vs.
+  // a dark wall) all still came back with near-identical base colours
+  // for both — measured directly from the rendered game, not just the
+  // source tiles (e.g. floor ~rgb(38,60,91) vs. wall ~rgb(35,57,87) at
+  // equal fog-of-war distance from the player, a ~3-unit difference,
+  // imperceptible). Only the brick linework told floor and wall apart,
+  // which is not enough at a glance for the target audience. Forcing a
+  // real brightness gap here guarantees legibility regardless of what
+  // any future regeneration produces. Forest already has strong natural
+  // contrast (bright grass vs. dark hedge) and doesn't need this.
+  const isDungeon   = theme === 'dungeon'
+  const floorFilter = isDungeon ? 'brightness(1.2) saturate(1.05)' : 'brightness(0.88)'
+  const wallFilter  = isDungeon ? 'brightness(0.62)' : 'brightness(0.96)'
+
   const wangOverlay = []
   for (let dy = 0; dy <= rows; dy++) {
     for (let dx = 0; dx <= cols; dx++) {
@@ -125,7 +142,7 @@ const Board = memo(function Board({ maze, cellSize, coll, theme }) {
               imageRendering:  'pixelated',
               display:         'block',
               objectFit:       'cover',
-              filter:          'brightness(0.72) saturate(0.9)',
+              filter:          floorFilter,
             }}
             onError={e => {
               e.target.style.display = 'none'
@@ -135,27 +152,48 @@ const Board = memo(function Board({ maze, cellSize, coll, theme }) {
         ))
       )}
 
-      {/* Wall layer — PixelLab Wang tileset, dual-grid positioned */}
-      {wangOverlay.map(({ dx, dy, id }) => (
-        <img
-          key={`w-${dx},${dy}`}
-          src={wangSpr(theme, id)}
-          alt=""
-          draggable={false}
-          style={{
-            position:        'absolute',
-            left:            (dx - 0.5) * cellSize,
-            top:             (dy - 0.5) * cellSize,
-            width:           cellSize,
-            height:          cellSize,
-            imageRendering:  'pixelated',
-            display:         'block',
-            filter:          'brightness(0.85)',
-            pointerEvents:   'none',
-          }}
-          onError={e => { e.target.style.display = 'none' }}
-        />
-      ))}
+      {/* Wall layer — PixelLab Wang tileset, dual-grid positioned.
+          Dungeon only: also masked to its own "upper"(wall) quadrants
+          (per the corner classification PixelLab returned per id) —
+          measured directly, floor and wall pixels within a single
+          generated tile are only a few RGB units apart, nowhere near
+          enough contrast on their own. Punching the floor quadrants
+          fully transparent lets the separately-brightened floor layer
+          show through there instead, guaranteeing real contrast
+          regardless of how close the tile's own colours are. Forest
+          already has strong natural floor/wall contrast and doesn't
+          need this. */}
+      {wangOverlay.map(({ dx, dy, id }) => {
+        const maskUrl = isDungeon && id !== 15 ? wangMask(id) : null
+        return (
+          <img
+            key={`w-${dx},${dy}`}
+            src={wangSpr(theme, id)}
+            alt=""
+            draggable={false}
+            style={{
+              position:        'absolute',
+              left:            (dx - 0.5) * cellSize,
+              top:             (dy - 0.5) * cellSize,
+              width:           cellSize,
+              height:          cellSize,
+              imageRendering:  'pixelated',
+              display:         'block',
+              filter:          wallFilter,
+              pointerEvents:   'none',
+              ...(maskUrl ? {
+                maskImage:        `url(${maskUrl})`,
+                WebkitMaskImage:  `url(${maskUrl})`,
+                maskSize:         '100% 100%',
+                WebkitMaskSize:   '100% 100%',
+                maskRepeat:       'no-repeat',
+                WebkitMaskRepeat: 'no-repeat',
+              } : null),
+            }}
+            onError={e => { e.target.style.display = 'none' }}
+          />
+        )
+      })}
 
       {/* Decorations — torch / exit / potion, above both tile layers */}
       {g.map((row, y) =>
@@ -646,29 +684,43 @@ export default function MazeGame({ level = 1, onComplete }) {
         </div>
       </div>
 
-      {/* ── Danger banner ───────────────────────────────────────── */}
-      <AnimatePresence>
-        {st.dangerLevel > 0 && !st.won && !st.dead && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            style={{
-              background:  st.dangerLevel >= 1 ? 'rgba(220,38,38,0.88)' : 'rgba(160,55,0,0.75)',
-              color:       'white',
-              padding:     '4px 18px',
-              borderRadius: 20,
-              fontFamily:  'Fredoka, var(--font-heading), sans-serif',
-              fontSize:    14,
-              fontWeight:  600,
-              marginBottom: 3,
-              flexShrink:  0,
-            }}
-          >
-            {st.dangerLevel >= 1 ? '⚠️ Der Drache ist ganz nah!' : '😰 Ich höre den Drachen…'}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* ── Danger banner ───────────────────────────────────────────
+          Fixed-height slot, always present in the flex layout (even
+          when empty) — the board container below is watched by a
+          ResizeObserver (useBoardSize), so if this banner mounting/
+          unmounting changed the available height, the whole maze would
+          visibly resize for as long as the banner was shown. Reserving
+          the space up front means showing/hiding the banner only
+          fades its content, never touches the board's size. */}
+      <div style={{
+        height:      34,
+        flexShrink:  0,
+        display:     'flex',
+        alignItems:  'center',
+        justifyContent: 'center',
+        width:       '100%',
+      }}>
+        <AnimatePresence>
+          {st.dangerLevel > 0 && !st.won && !st.dead && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              style={{
+                background:  st.dangerLevel >= 1 ? 'rgba(220,38,38,0.88)' : 'rgba(160,55,0,0.75)',
+                color:       'white',
+                padding:     '4px 18px',
+                borderRadius: 20,
+                fontFamily:  'Fredoka, var(--font-heading), sans-serif',
+                fontSize:    14,
+                fontWeight:  600,
+              }}
+            >
+              {st.dangerLevel >= 1 ? '⚠️ Der Drache ist ganz nah!' : '😰 Ich höre den Drachen…'}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       {/* ── BOARD CONTAINER ────────────────────────────────────────*/}
       <div
