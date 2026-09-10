@@ -88,12 +88,17 @@ const BOX_ITEMS = [
   { emoji: '🛹', label: 'Skateboard' },
 ]
 
-function makeNumericQuestions(n = 8, maxKg = 15) {
+// allowEqual exists because the reducer always understood a tie ('equal' in
+// correctSide) but nothing ever produced one: every generator explicitly
+// looped until both sides differed. Children therefore never met the word
+// "gleich schwer" at all, even though it is half of what a balance teaches.
+function makeNumericQuestions(n = 8, maxKg = 15, allowEqual = false) {
   const qs = []
   for (let i = 0; i < n; i++) {
     const lw = randomBetween(1, maxKg)
     let rw
-    do { rw = randomBetween(1, maxKg) } while (rw === lw)
+    if (allowEqual && Math.random() < 0.25) rw = lw
+    else do { rw = randomBetween(1, maxKg) } while (rw === lw)
     const li = BOX_ITEMS[randomBetween(0, BOX_ITEMS.length - 1)]
     let ri
     do { ri = BOX_ITEMS[randomBetween(0, BOX_ITEMS.length - 1)] } while (ri === li)
@@ -107,15 +112,38 @@ function makeNumericQuestions(n = 8, maxKg = 15) {
 }
 
 // ── L3: Addition one side ────────────────────────────────────────────────────
-function makeAdditionQuestions(n = 8) {
+function makeAdditionQuestions(n = 8, allowEqual = true) {
   const qs = []
   for (let i = 0; i < n; i++) {
     const a = randomBetween(1, 8)
     const b = randomBetween(1, 8)
     let rw
-    do { rw = randomBetween(2, 14) } while (rw === a + b)
+    if (allowEqual && Math.random() < 0.25) rw = a + b
+    else do { rw = randomBetween(2, 14) } while (rw === a + b)
     qs.push({
       leftEmoji: '📦', leftLabel: `${a} + ${b} kg`, leftW: a + b,
+      rightEmoji: '📦', rightLabel: `${rw} kg`,      rightW: rw,
+      showNumbers: true,
+    })
+  }
+  return qs
+}
+
+// ── Subtraction. The ladder jumped straight from addition to multiplication,
+// skipping subtraction altogether — and multiplication is well beyond this
+// age group anyway, so it now sits at the very top instead of one step above
+// addition.
+function makeSubtractionQuestions(n = 8, allowEqual = true) {
+  const qs = []
+  for (let i = 0; i < n; i++) {
+    const a = randomBetween(5, 15)
+    const b = randomBetween(1, a - 1)
+    const lw = a - b
+    let rw
+    if (allowEqual && Math.random() < 0.25) rw = lw
+    else do { rw = randomBetween(1, 14) } while (rw === lw)
+    qs.push({
+      leftEmoji: '📦', leftLabel: `${a} − ${b} kg`, leftW: lw,
       rightEmoji: '📦', rightLabel: `${rw} kg`,      rightW: rw,
       showNumbers: true,
     })
@@ -143,15 +171,16 @@ function makeMultiplyQuestions(n = 8) {
 function buildQuestions(level) {
   const n = level <= 4 ? 8 : level <= 7 ? 10 : 12
   if (level <= 2) return [...INTUITIVE].sort(() => Math.random() - 0.5).slice(0, n)
-  if (level <= 4) return makeNumericQuestions(n, 15)
-  if (level <= 6) return makeNumericQuestions(n, 50)
-  if (level <= 8) return makeAdditionQuestions(n)
+  if (level <= 3) return makeNumericQuestions(n, 15)
+  if (level <= 5) return makeNumericQuestions(n, 50, true)
+  if (level <= 7) return makeAdditionQuestions(n)
+  if (level <= 9) return makeSubtractionQuestions(n)
   return makeMultiplyQuestions(n)
 }
 
 // ── Balance Scale — realistic SVG with beam, chains and pans ────────────────
 function BalanceScale({ tiltDeg, leftEmoji, rightEmoji, leftLabel, rightLabel,
-                        answered, leftHeavier, onPickLeft, onPickRight }) {
+                        answered, leftHeavier, onPickLeft, onPickRight, leftSize = 40, rightSize = 40 }) {
   const W = 400, CX = 200, PIVOT_Y = 70, ARM = 150, CHAIN = 90, PAN_W = 88
 
   return (
@@ -219,7 +248,7 @@ function BalanceScale({ tiltDeg, leftEmoji, rightEmoji, leftLabel, rightLabel,
           {answered && leftHeavier && (
             <circle cx={CX-ARM} cy={PIVOT_Y+CHAIN-22} r={38} fill="#FFD93D" opacity={0.22}/>
           )}
-          <text x={CX-ARM} y={PIVOT_Y+CHAIN-8} textAnchor="middle" fontSize={40}
+          <text x={CX-ARM} y={PIVOT_Y+CHAIN-8} textAnchor="middle" fontSize={leftSize}
             dominantBaseline="middle" style={{userSelect:'none',
               filter: answered&&leftHeavier?'drop-shadow(0 0 8px #FFD93D)':'none'}}>
             {leftEmoji}
@@ -240,7 +269,7 @@ function BalanceScale({ tiltDeg, leftEmoji, rightEmoji, leftLabel, rightLabel,
           {answered && !leftHeavier && (
             <circle cx={CX+ARM} cy={PIVOT_Y+CHAIN-22} r={38} fill="#FFD93D" opacity={0.22}/>
           )}
-          <text x={CX+ARM} y={PIVOT_Y+CHAIN-8} textAnchor="middle" fontSize={40}
+          <text x={CX+ARM} y={PIVOT_Y+CHAIN-8} textAnchor="middle" fontSize={rightSize}
             dominantBaseline="middle" style={{userSelect:'none',
               filter: answered&&!leftHeavier?'drop-shadow(0 0 8px #FFD93D)':'none'}}>
             {rightEmoji}
@@ -293,6 +322,15 @@ export default function WeightGame({ level = 1, onComplete }) {
 
   const q = questions[idx]
 
+  // In the intuitive levels the picture is the only clue, and an elephant used
+  // to be drawn exactly as large as a mouse — the one visual cue that could
+  // support the judgement was thrown away. Boxes with printed weights keep a
+  // fixed size; there the number carries the information.
+  const emojiSize = (w) => {
+    if (q?.showNumbers) return 40
+    return Math.round(24 + Math.sqrt(Math.min(w, 60) / 60) * 34)
+  }
+
   // Speak item labels when question changes
   useEffect(() => {
     if (q && q.leftLabel && q.rightLabel && level <= 2) {
@@ -301,6 +339,13 @@ export default function WeightGame({ level = 1, onComplete }) {
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
   const correctSide   = q.leftW > q.rightW ? 'left' : q.rightW > q.leftW ? 'right' : 'equal'
   const heavierLabel  = q.leftW >= q.rightW ? q.leftLabel : q.rightLabel
+  // From level 3 on the weights are actual numbers, so the answer can say by
+  // how much — "schwerer" alone never connected the verdict to the arithmetic.
+  const resultText = correctSide === 'equal'
+    ? 'Beide sind gleich schwer!'
+    : q.showNumbers
+      ? `${heavierLabel} ist ${Math.abs(q.leftW - q.rightW)} kg schwerer.`
+      : `${heavierLabel} ist schwerer.`
   const tiltDeg       = answered ? (q.leftW > q.rightW ? -18 : q.rightW > q.leftW ? 18 : 0) : 0
 
   const answer = useCallback((side) => {
@@ -318,6 +363,7 @@ export default function WeightGame({ level = 1, onComplete }) {
     const onKey = (e) => {
       if (e.key === 'ArrowLeft')  answer('left')
       if (e.key === 'ArrowRight') answer('right')
+      if (e.key === 'ArrowDown')  answer('equal')
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -386,9 +432,12 @@ export default function WeightGame({ level = 1, onComplete }) {
             }}
           >
             {answered
-              ? isCorrect
-                ? <><strong style={{ color: '#6BCB77' }}>{'Super! 🎉'}</strong>{' ' + heavierLabel + ' ist schwerer!'}</>
-                : <><strong style={{ color: '#FF6B6B' }}>{'Fast! 💪'}</strong>{' ' + heavierLabel + ' ist schwerer.'}</>
+              ? <>
+                  <strong style={{ color: isCorrect ? '#6BCB77' : '#FF6B6B' }}>
+                    {isCorrect ? 'Super! 🎉 ' : 'Fast! 💪 '}
+                  </strong>
+                  {resultText}
+                </>
               : questionText
             }
           </motion.div>
@@ -405,6 +454,7 @@ export default function WeightGame({ level = 1, onComplete }) {
             tiltDeg={tiltDeg}
             leftEmoji={q.leftEmoji}  leftLabel={q.leftLabel}
             rightEmoji={q.rightEmoji} rightLabel={q.rightLabel}
+            leftSize={emojiSize(q.leftW)} rightSize={emojiSize(q.rightW)}
             answered={answered}
             leftHeavier={q.leftW >= q.rightW}
             onPickLeft={() => answer('left')}
@@ -412,6 +462,23 @@ export default function WeightGame({ level = 1, onComplete }) {
           />
         </motion.div>
       </AnimatePresence>
+
+      {/* "Both the same" needs a control of its own — the two pans were the
+          only way to answer, so a tie was unanswerable even where the code
+          already knew about it. Shown from the level where ties can occur. */}
+      {!answered && questions.some(qq => qq.leftW === qq.rightW) && (
+        <motion.button
+          whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
+          onClick={() => answer('equal')}
+          style={{
+            background: 'white', border: '3px solid #A29BFE', borderRadius: 20,
+            padding: '10px 30px', cursor: 'pointer',
+            fontFamily: 'var(--font-heading)', fontSize: 'clamp(15px,3.2vw,19px)',
+            fontWeight: 700, color: '#6C63FF',
+            boxShadow: '0 4px 16px rgba(162,155,254,0.3)',
+          }}
+        >⚖️ Gleich schwer</motion.button>
+      )}
 
       {/* Weiter button */}
       {showWeiter && (
