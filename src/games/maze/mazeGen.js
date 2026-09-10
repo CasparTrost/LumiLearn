@@ -64,14 +64,81 @@ export function genMaze(cols, rows, seed = Date.now()) {
   })
 
   // Dragon patrol: a SHORT stretch (5 cells) centred around 45% of the main path.
-  // DFS mazes have exactly one path — keeping the patrol short ensures the player
-  // can always wait for the dragon to move aside and slip past.
   const mid     = Math.floor(mainPath.length * 0.45)
   const wpStart = Math.max(Math.floor(mainPath.length * 0.20), mid - 2)
   const wpEnd   = Math.min(Math.floor(mainPath.length * 0.75), mid + 2)
   const dragonWps = mainPath.slice(wpStart, wpEnd + 1).filter(Boolean)
 
-  return { g, cols, rows, start, exit, potions, dragonWps, mainPath }
+  // Carve an actual detour around the patrol — a real second path the
+  // player can duck into to walk AROUND the dragon, not just wait for a
+  // gap. A perfect (DFS) maze has exactly one route between any two
+  // cells, so without this the only way past the dragon is timing a
+  // dash through the same single corridor it patrols — which is
+  // technically avoidable (proven separately) but doesn't feel like
+  // "avoiding" anything since there's nowhere else to go. This opens a
+  // short parallel corridor, offset by one cell perpendicular to the
+  // patrol's direction of travel, connecting back to the main path just
+  // before and just after the patrol zone.
+  const hasBypass = addDragonBypass(g, cols, rows, mainPath, wpStart, wpEnd)
+
+  return { g, cols, rows, start, exit, potions, dragonWps, mainPath, hasBypass, wpStart, wpEnd }
+}
+
+// Carves a detour around mainPath[wpStart..wpEnd] (the dragon's patrol)
+// connecting the cells immediately before and after it, WITHOUT ever
+// touching a patrol cell. Uses a 0-1 BFS (Dijkstra with only edge
+// weights 0 and 1): moving onto an already-open cell is free, moving
+// onto a wall costs 1 (we'll carve it), patrol cells are forbidden
+// entirely. This finds the detour that requires carving the FEWEST new
+// walls, preferring existing corridors where available — and unlike a
+// fixed geometric offset, it naturally handles a patrol that bends
+// (corners, zigzags), since it's a plain graph search around whatever
+// shape the forbidden region actually has. Mutates `g` in place.
+// Returns true if a route was found (always, in practice — the only
+// failure mode is entry/exit missing at the very edge of the maze).
+function addDragonBypass(g, cols, rows, mainPath, wpStart, wpEnd) {
+  const entry = mainPath[wpStart - 1]
+  const exit  = mainPath[wpEnd + 1]
+  if (!entry || !exit) return false
+
+  const patrolSet = new Set(mainPath.slice(wpStart, wpEnd + 1).map(c => `${c.x},${c.y}`))
+  const key = p => `${p.x},${p.y}`
+
+  const dist = new Map([[key(entry), 0]])
+  const prev = new Map()
+  const deque = [entry]
+
+  while (deque.length) {
+    const cur = deque.shift()
+    if (cur.x === exit.x && cur.y === exit.y) break
+    const curDist = dist.get(key(cur))
+
+    for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) {
+      const n = { x: cur.x + dx, y: cur.y + dy }
+      if (n.x <= 0 || n.x >= cols - 1 || n.y <= 0 || n.y >= rows - 1) continue
+      const nKey = key(n)
+      if (patrolSet.has(nKey)) continue
+      const cost = g[n.y][n.x] === 0 ? 0 : 1
+      const nd = curDist + cost
+      if (!dist.has(nKey) || nd < dist.get(nKey)) {
+        dist.set(nKey, nd)
+        prev.set(nKey, cur)
+        if (cost === 0) deque.unshift(n)
+        else deque.push(n)
+      }
+    }
+  }
+
+  if (!dist.has(key(exit))) return false
+
+  // Walk back from exit to entry, carving any wall cell used along the way
+  let cur = exit
+  while (key(cur) !== key(entry)) {
+    if (g[cur.y][cur.x] === 1) g[cur.y][cur.x] = 0
+    cur = prev.get(key(cur))
+    if (!cur) break
+  }
+  return true
 }
 
 export function bfsDistance(g, from, to) {
