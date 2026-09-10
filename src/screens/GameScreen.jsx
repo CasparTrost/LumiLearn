@@ -24,6 +24,7 @@ const NumberIntroGame   = lazy(() => import('../games/NumberIntroGame.jsx'))
 const LetterIntroGame   = lazy(() => import('../games/LetterIntroGame.jsx'))
 const NumbersGame       = lazy(() => import('../games/NumbersGame.jsx'))
 const ColoringGame      = lazy(() => import('../games/ColoringGame.jsx'))
+const ShapeBuildGame = lazy(() => import('../games/ShapeBuildGame.jsx'))
 const BoardGame = lazy(() => import('../games/BoardGame.jsx'))
 const EmpathyGame = lazy(() => import('../games/EmpathyGame.jsx'))
 const InitialSoundGame = lazy(() => import('../games/InitialSoundGame.jsx'))
@@ -71,6 +72,7 @@ const MODULE_META = {
   'number-intro': { label: 'Zahlen entdecken 🧮',    gradient: 'linear-gradient(135deg, #FFD93D, #FF9F43)' },
   'letter-intro': { label: 'ABC-Abenteuer 🔡',       gradient: 'linear-gradient(135deg, #74B9FF, #6C63FF)' },
   coloring:       { label: 'Mal-Atelier 🖍️',           gradient: 'linear-gradient(135deg, #FD79A8, #E84393)' },
+  'shape-build': { label: 'Formen-Werkstatt 🧩', gradient: 'linear-gradient(135deg,#FF9F43,#A29BFE)' },
   'board': { label: 'Lumis Spielbrett 🎲', gradient: 'linear-gradient(135deg,#FFD93D,#6BCB77)' },
   'empathy': { label: 'Gefühlsdetektiv 🕵️‍♀️', gradient: 'linear-gradient(135deg,#E84393,#A29BFE)' },
   'initial-sound': { label: 'Anlaut-Detektiv 🕵️', gradient: 'linear-gradient(135deg,#74B9FF,#44D498)' },
@@ -98,6 +100,7 @@ const GAME_MAP = {
   'number-intro': NumberIntroGame,
   'letter-intro': LetterIntroGame,
   coloring:       ColoringGame,
+  'shape-build': ShapeBuildGame,
   'board': BoardGame,
   'empathy': EmpathyGame,
   'initial-sound': InitialSoundGame,

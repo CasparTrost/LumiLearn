@@ -27,6 +27,7 @@ export const MAX_LEVELS = {
   'initial-sound': 10,
   'empathy': 10,
   'board': 10,
+  'shape-build': 10,
 }
 
 function freshProgress() {

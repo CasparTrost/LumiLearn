@@ -23,6 +23,7 @@ const MODULE_NAMES = {
   words2:         'Silben-Spaß',
   weight:         'Waage-Welt',
   coloring:        'Mal-Atelier',
+  'shape-build': 'Formen-Werkstatt',
   'board': 'Lumis Spielbrett',
   'empathy': 'Gefühlsdetektiv',
   'initial-sound': 'Anlaut-Detektiv',
