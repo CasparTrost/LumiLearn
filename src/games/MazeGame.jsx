@@ -13,6 +13,7 @@ import './maze/maze.css'
 // ──────────────────────────────────────────────────────────────────
 const BASE = import.meta.env.BASE_URL ?? '/'
 const spr = f => BASE.replace(/\/$/, '') + '/sprites/maze/' + f
+const wangSpr = (theme, id) => spr(`wang/${theme}/wang_${id}.png`)
 
 // ──────────────────────────────────────────────────────────────────
 // LEVEL CONFIG
@@ -33,63 +34,32 @@ const LEVEL_CONFIG = level => {
 }
 
 // ──────────────────────────────────────────────────────────────────
-// WALL TILE LOGIC
-// Selects from the mw_*.png set (dungeon) or forest_wall_*.png (forest)
-// based on which neighbours are walls.
+// WALL TILE LOGIC — PixelLab-generated Wang (corner) tileset
 // ──────────────────────────────────────────────────────────────────
-// Returns { file, rotate } — rotate is a CSS rotation in degrees applied
-// to the sprite so its "open edge" visually faces the actual open
-// (floor) neighbour(s).
-function wallSprite(x, y, g, theme) {
-  const hasU = g[y - 1]?.[x] === 1
-  const hasD = g[y + 1]?.[x] === 1
-  const hasL = g[y]?.[x - 1] === 1
-  const hasR = g[y]?.[x + 1] === 1
-
-  if (theme === 'forest') {
-    // The named forest_wall_* set turned out inconsistent under close
-    // inspection (e.g. forest_corner_tr.png does not actually show a
-    // top+right highlight the way its name implies) — rather than trust
-    // 8 separately hand-picked files, every orientation is DERIVED by
-    // rotating just two trusted base tiles:
-    //   forest_wall_solid.png — confirmed bright/open edge on the LEFT
-    //   forest_corner_tl.png  — confirmed bright/open edges on TOP+LEFT
-    // Rotating in 90° steps moves "left" -> "top" -> "right" -> "bottom"
-    // (clockwise), so every straight edge and every corner can be built
-    // from these two with a guaranteed-consistent geometry — no risk of
-    // a mismatched or "twisted"-looking tile from a wrong file pick.
-    if (!hasU && !hasL &&  hasD &&  hasR) return { file: 'forest_corner_tl.png', rotate: 0 }
-    if (!hasU && !hasR &&  hasD &&  hasL) return { file: 'forest_corner_tl.png', rotate: 90 }
-    if (!hasD && !hasR &&  hasU &&  hasL) return { file: 'forest_corner_tl.png', rotate: 180 }
-    if (!hasD && !hasL &&  hasU &&  hasR) return { file: 'forest_corner_tl.png', rotate: 270 }
-    if (!hasL) return { file: 'forest_wall_solid.png', rotate: 0 }
-    if (!hasU) return { file: 'forest_wall_solid.png', rotate: 90 }
-    if (!hasR) return { file: 'forest_wall_solid.png', rotate: 180 }
-    if (!hasD) return { file: 'forest_wall_solid.png', rotate: 270 }
-    // Fully enclosed (or an isolated pillar with floor on both sides) —
-    // no single edge to highlight, use the interior bramble texture.
-    return { file: 'forest_wall_inner.png', rotate: 0 }
-  }
-
-  // Dungeon theme uses mw_*.png sprites.
-  // Each sprite's light "cap" edge sits on the side that should face an
-  // OPEN (floor) cell — mw_top.png has its light band at the TOP of the
-  // image, so it belongs where there's floor ABOVE (!hasU), not below.
-  // The two plain-edge fallback lines had this backwards (checking
-  // !hasD for mw_top, !hasU for mw_bot) — swapped versus the corner
-  // cases just above, which already use the correct !hasU/!hasD pairing
-  // — so a wall whose open side was above showed its light edge on the
-  // bottom, and vice versa. That's what read as "twisted"/mismatched.
-  if (!hasU && !hasL &&  hasD &&  hasR) return { file: 'mw_tl.png', rotate: 0 }
-  if (!hasU && !hasR &&  hasD &&  hasL) return { file: 'mw_tr.png', rotate: 0 }
-  if (!hasD && !hasL &&  hasU &&  hasR) return { file: 'mw_bl.png', rotate: 0 }
-  if (!hasD && !hasR &&  hasU &&  hasL) return { file: 'mw_br.png', rotate: 0 }
-  if ( hasU &&  hasD &&  hasL &&  hasR) return { file: 'mw_solid.png', rotate: 0 }
-  if (!hasU) return { file: 'mw_top.png', rotate: 0 }
-  if (!hasD) return { file: 'mw_bot.png', rotate: 0 }
-  if (!hasL) return { file: 'mw_left.png', rotate: 0 }
-  if (!hasR) return { file: 'mw_right.png', rotate: 0 }
-  return { file: 'mw_solid.png', rotate: 0 }
+// These 16-tile sets (public/sprites/maze/wang/<theme>/wang_0..15.png)
+// are CORNER tiles, not edge tiles: unlike the old mw_*/forest_wall_*
+// set (one sprite per maze CELL, picked from its 4 orthogonal
+// neighbours), each of these sprites is meant to sit at the
+// intersection POINT between four diagonally-adjacent maze cells — the
+// classic "dual-grid" Wang-tiling technique. Its four quadrants show
+// wall or floor material depending on whether the cell in that
+// diagonal direction (NW/NE/SW/SE) is a wall, so adjacent sprites
+// always line up seamlessly regardless of how jagged the maze boundary
+// is — no separate straight/corner/solid file picking needed, and no
+// risk of a mismatched rotation.
+//
+// id is a 4-bit number encoding which of the 4 surrounding cells are
+// walls: NW*8 + NE*4 + SW*2 + SE*1 (1 = wall/"upper", 0 = floor/
+// "lower" — matches the corners metadata PixelLab returned alongside
+// each tile). id=0 (all floor) needs no sprite at all.
+function wangTileId(dx, dy, g, cols, rows) {
+  const isWall = (cx, cy) =>
+    cx < 0 || cy < 0 || cx >= cols || cy >= rows ? true : g[cy][cx] === 1
+  const nw = isWall(dx - 1, dy - 1)
+  const ne = isWall(dx,     dy - 1)
+  const sw = isWall(dx - 1, dy)
+  const se = isWall(dx,     dy)
+  return (nw ? 8 : 0) | (ne ? 4 : 0) | (sw ? 2 : 0) | (se ? 1 : 0)
 }
 
 function floorSprite(x, y, theme) {
@@ -114,13 +84,80 @@ const POTION_SPRITES = ['maze_potion1.png', 'maze_potion2.png', 'maze_potion3.pn
 const Board = memo(function Board({ maze, cellSize, coll, theme }) {
   const { g, rows, cols, potions, exit } = maze
 
+  // Dual-grid overlay: one wang tile per intersection point between 4
+  // diagonally-adjacent cells, i.e. a (cols+1) x (rows+1) grid offset by
+  // half a cell from the maze's own cell grid. id=0 (all 4 neighbours
+  // floor) needs no sprite — the floor layer underneath already shows
+  // through there.
+  const wangOverlay = []
+  for (let dy = 0; dy <= rows; dy++) {
+    for (let dx = 0; dx <= cols; dx++) {
+      const id = wangTileId(dx, dy, g, cols, rows)
+      if (id === 0) continue
+      wangOverlay.push({ dx, dy, id })
+    }
+  }
+
   return (
     <div style={{
       position:        'relative',
       width:           cols * cellSize,
       height:          rows * cellSize,
+      overflow:        'hidden',
       imageRendering:  'pixelated',
     }}>
+      {/* Floor layer — every cell, including under walls, so the wang
+          overlay's rounded/diagonal transitions always have floor
+          showing through wherever a corner isn't a wall. */}
+      {g.map((row, y) =>
+        row.map((cell, x) => (
+          <img
+            key={`f-${x},${y}`}
+            src={spr(floorSprite(x, y, theme))}
+            alt=""
+            draggable={false}
+            style={{
+              position:        'absolute',
+              left:            x * cellSize,
+              top:             y * cellSize,
+              width:           cellSize,
+              height:          cellSize,
+              imageRendering:  'pixelated',
+              display:         'block',
+              objectFit:       'cover',
+              filter:          'brightness(0.72) saturate(0.9)',
+            }}
+            onError={e => {
+              e.target.style.display = 'none'
+              e.target.parentNode.style.background = theme === 'forest' ? '#2d6b1a' : '#120828'
+            }}
+          />
+        ))
+      )}
+
+      {/* Wall layer — PixelLab Wang tileset, dual-grid positioned */}
+      {wangOverlay.map(({ dx, dy, id }) => (
+        <img
+          key={`w-${dx},${dy}`}
+          src={wangSpr(theme, id)}
+          alt=""
+          draggable={false}
+          style={{
+            position:        'absolute',
+            left:            (dx - 0.5) * cellSize,
+            top:             (dy - 0.5) * cellSize,
+            width:           cellSize,
+            height:          cellSize,
+            imageRendering:  'pixelated',
+            display:         'block',
+            filter:          'brightness(0.85)',
+            pointerEvents:   'none',
+          }}
+          onError={e => { e.target.style.display = 'none' }}
+        />
+      ))}
+
+      {/* Decorations — torch / exit / potion, above both tile layers */}
       {g.map((row, y) =>
         row.map((cell, x) => {
           const isWall   = cell === 1
@@ -131,46 +168,19 @@ const Board = memo(function Board({ maze, cellSize, coll, theme }) {
           // Torch: wall that has floor directly below, sprinkled randomly
           const hasTorch = isWall && g[y + 1]?.[x] === 0 && ((x * 3 + y * 7) % 8 === 0)
 
-          const wallInfo    = isWall ? wallSprite(x, y, g, theme) : null
-          const spriteFile   = isWall ? wallInfo.file : floorSprite(x, y, theme)
-          const spriteRotate = isWall ? wallInfo.rotate : 0
+          if (!hasTorch && !(isExit && !isWall) && !potionOk) return null
 
           return (
             <div
-              key={`${x},${y}`}
+              key={`d-${x},${y}`}
               style={{
                 position: 'absolute',
                 left:     x * cellSize,
                 top:      y * cellSize,
                 width:    cellSize,
                 height:   cellSize,
-                overflow: 'hidden',
               }}
             >
-              {/* Base tile */}
-              <img
-                src={spr(spriteFile)}
-                alt=""
-                draggable={false}
-                style={{
-                  position:        'absolute',
-                  inset:           0,
-                  width:           '100%',
-                  height:          '100%',
-                  imageRendering:  'pixelated',
-                  display:         'block',
-                  objectFit:       'cover',
-                  transform:       spriteRotate ? `rotate(${spriteRotate}deg)` : undefined,
-                  filter:          isWall ? 'brightness(0.78)' : 'brightness(0.72) saturate(0.9)',
-                }}
-                onError={e => {
-                  e.target.style.display = 'none'
-                  e.target.parentNode.style.background = isWall
-                    ? (theme === 'forest' ? '#1a4d0e' : '#1a0a2e')
-                    : (theme === 'forest' ? '#2d6b1a' : '#120828')
-                }}
-              />
-
               {/* Torch (gif sprite) */}
               {hasTorch && (
                 <img
