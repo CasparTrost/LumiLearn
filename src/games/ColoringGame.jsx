@@ -302,6 +302,13 @@ export default function ColoringGame({ onComplete }) {
             background:'#FFE4E4', color:'#CC0000',
             fontFamily:'var(--font-body)', fontSize:14, cursor:'pointer', fontWeight:600,
           }}>🗑️ Neu</button>
+          {onComplete && (
+            <button onClick={() => onComplete({ score: 1, total: 1 })} style={{
+              padding:'6px 14px', borderRadius:20, border:'none',
+              background:'linear-gradient(135deg,#6C63FF,#4A00E0)', color:'#fff',
+              fontFamily:'var(--font-body)', fontSize:14, cursor:'pointer', fontWeight:600,
+            }}>✅ Fertig</button>
+          )}
         </div>
       </div>
     </div>

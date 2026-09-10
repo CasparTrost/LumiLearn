@@ -157,7 +157,7 @@ export default function BubblePopGame({ level = 1, onComplete }) {
       sfx.pop()
       // Chain detection: two correct pops within 500ms
       const now = Date.now()
-      const isChain = now - lastTargetPopRef.current < 500
+      const isChain = now - lastTargetPopRef.current < 1500
       lastTargetPopRef.current = now
       if (isChain) {
         setChainBadge(true)

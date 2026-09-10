@@ -487,7 +487,7 @@ export default function PainterGame({ level = 1, onComplete }) {
   const [strokes,   setStrokes]   = useState({})   // { regionId: [{x,y},...] }
   const [completed, setCompleted] = useState({})   // { regionId: bool }
   const [selected,  setSelected]  = useState(null) // color name
-  const [brushPos,  setBrushPos]  = useState(null) // viewport {x,y} for cursor
+  const brushDivRef = useRef(null)  // direct DOM ref for cursor — avoids 60fps re-renders
   const [score,     setScore]     = useState(0)
   const [mood,      setMood]      = useState('happy')
   const [advancing, setAdvancing] = useState(false)
@@ -580,8 +580,13 @@ export default function PainterGame({ level = 1, onComplete }) {
   const handlePointerMove = useCallback((e) => {
     if (!selected) return
 
-    // Update brush cursor position
-    setBrushPos({ x: e.clientX, y: e.clientY })
+    // Update brush cursor position — mutate DOM directly to avoid 60fps re-renders
+    const bd = brushDivRef.current
+    if (bd) {
+      bd.style.left = (e.clientX - 11) + 'px'
+      bd.style.top  = (e.clientY - 11) + 'px'
+      bd.hidden = false
+    }
 
     if (advRef.current) return
 
@@ -662,8 +667,19 @@ export default function PainterGame({ level = 1, onComplete }) {
   }, [selected])
 
   const handlePointerLeave = useCallback(() => {
-    setBrushPos(null)
+    if (brushDivRef.current) brushDivRef.current.hidden = true
   }, [])
+
+  // When the selected colour changes, update the brush div colour directly in the DOM.
+  // This useEffect must live before the early return to satisfy rules-of-hooks.
+  const selColorForEffect = selected ? getColor(selected) : null
+  useEffect(() => {
+    const el = brushDivRef.current
+    if (!el) return
+    if (!selColorForEffect) { el.hidden = true; return }
+    el.style.background  = selColorForEffect.value
+    el.style.boxShadow   = `0 3px 10px rgba(0,0,0,0.35), 0 0 0 3px ${selColorForEffect.value}44`
+  }, [selColorForEffect])
 
   if (!scene) return null
 
@@ -795,25 +811,24 @@ export default function PainterGame({ level = 1, onComplete }) {
         </div>
       </div>
 
-      {/* Floating brush tip — teardrop, follows cursor */}
-      {selected && brushPos && (
-        <div
-          aria-hidden
-          style={{
-            position: 'fixed',
-            left: brushPos.x - 11,
-            top:  brushPos.y - 11,
-            width: 22, height: 22,
-            borderRadius: '50% 50% 50% 0',
-            transform: 'rotate(-45deg)',
-            background: selColor.value,
-            border: '2.5px solid white',
-            boxShadow: `0 3px 10px rgba(0,0,0,0.35), 0 0 0 3px ${selColor.value}44`,
-            pointerEvents: 'none',
-            zIndex: 9999,
-          }}
-        />
-      )}
+      {/* Floating brush tip — teardrop, follows cursor; position updated imperatively */}
+      <div
+        ref={brushDivRef}
+        aria-hidden
+        hidden
+        style={{
+          position: 'fixed',
+          left: 0, top: 0,
+          width: 22, height: 22,
+          borderRadius: '50% 50% 50% 0',
+          transform: 'rotate(-45deg)',
+          background: selColor?.value ?? 'transparent',
+          border: '2.5px solid white',
+          boxShadow: selColor ? `0 3px 10px rgba(0,0,0,0.35), 0 0 0 3px ${selColor.value}44` : 'none',
+          pointerEvents: 'none',
+          zIndex: 9999,
+        }}
+      />
     </div>
   )
 }

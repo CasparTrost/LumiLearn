@@ -78,13 +78,13 @@ const BOX_ITEMS = [
   { emoji: '🧱', label: 'Ziegel'     },
   { emoji: '🧊', label: 'Eis'        },
   { emoji: '🍐', label: 'Wassermelone'},
-  { emoji: '🐛', label: 'Stein'      },
+  { emoji: '🪨', label: 'Stein'      },
   { emoji: '🚗', label: 'Auto'       },
   { emoji: '📚', label: 'Buch'       },
   { emoji: '🍔', label: 'Burger'     },
   { emoji: '🐍', label: 'Schlange'   },
   { emoji: '💻', label: 'Laptop'     },
-  { emoji: '🛹', label: 'Rakete'     },
+  { emoji: '🛹', label: 'Skateboard' },
 ]
 
 function makeNumericQuestions(n = 8, maxKg = 15) {
@@ -284,7 +284,9 @@ export default function WeightGame({ level = 1, onComplete }) {
     setShowWeiter(false)
     setAnswered(false)
     setIsCorrect(false)
+    setMood('happy')
     if (idx + 1 >= questions.length) {
+      sfx.complete()
       onComplete({ score, total: questions.length })
     } else {
       setIdx(i => i + 1)
@@ -300,7 +302,7 @@ export default function WeightGame({ level = 1, onComplete }) {
       setTimeout(() => speakDE(q.leftLabel + ' oder ' + q.rightLabel), 300)
     }
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
-  const correctSide   = q.leftW >= q.rightW ? 'left' : 'right'
+  const correctSide   = q.leftW > q.rightW ? 'left' : q.rightW > q.leftW ? 'right' : 'equal'
   const heavierLabel  = q.leftW >= q.rightW ? q.leftLabel : q.rightLabel
   const tiltDeg       = answered ? (q.leftW > q.rightW ? -18 : q.rightW > q.leftW ? 18 : 0) : 0
 
@@ -312,17 +314,8 @@ export default function WeightGame({ level = 1, onComplete }) {
     setMood(ok ? 'excited' : 'encouraging')
     if (ok) { sfx.correct(); setScore(s => s + 1) } else sfx.wrong()
 
-    setTimeout(() => {
-      setAnswered(false)
-      setMood('happy')
-      if (idx + 1 >= questions.length) {
-        sfx.complete()
-        setTimeout(() => onComplete({ score: score + (ok ? 1 : 0), total: questions.length }), 700)
-      } else {
-        setIdx(i => i + 1)
-      }
-    }, 1600)
-  }, [answered, correctSide, idx, questions.length, score, onComplete])
+    setTimeout(() => setShowWeiter(true), 800)
+  }, [answered, correctSide])
 
   useEffect(() => {
     const onKey = (e) => {

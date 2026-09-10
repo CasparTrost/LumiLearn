@@ -1,497 +1,804 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useReducer, useEffect, useRef, useState, useCallback, memo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import LumiCharacter from '../components/LumiCharacter.jsx'
+import { genMaze } from './maze/mazeGen.js'
+import { mazeReducer, initState } from './maze/mazeReducer.js'
+import { useBoardSize } from './maze/useBoardSize.js'
+import { useSwipe } from './maze/useSwipe.js'
+import { speak, cancelSpeech } from '../tts.js'
+import { sfx } from '../sfx.js'
+import './maze/maze.css'
 
-const BASE = import.meta.env.BASE_URL || '/LumiLearn/'
+// ──────────────────────────────────────────────────────────────────
+// ASSET HELPER
+// ──────────────────────────────────────────────────────────────────
+const BASE = import.meta.env.BASE_URL ?? '/'
+const spr = f => BASE.replace(/\/$/, '') + '/sprites/maze/' + f
 
-function speakDE(text) {
-  if (!window.speechSynthesis) return
-  window.speechSynthesis.cancel()
-  const u = new SpeechSynthesisUtterance((text||'').replace(/[^\w\säöüÄÖÜß.,!?]/g,''))
-  u.lang = 'de-DE'; u.rate = 0.9; u.pitch = 1.1
-  window.speechSynthesis.speak(u)
-}
-const spr = (n) => BASE + 'sprites/maze/' + n
-
-// ── Tileset: Set 1.png (448x320, 16x16 tiles, 28 cols x 20 rows) ─────────────
-// Wall tiles: context-aware (Wang tile system)
-// W = wall tile when surrounded, WT = wall-top (floor below), FLOOR = walkable
-// Horizontal wall tile mix (row 10, cols 4-13)
-const HWALL_TILES = [[4,10],[5,10],[6,10],[7,10],[8,10],[9,10],[10,10],[11,10],[12,10],[13,10]]
-
-const TW = {
-  wallTop:  [4, 10],
-  wallFill: [6, 10],
-  wallH:    [5, 10],
-  wallL:    [4,  8],
-  wallR:    [12, 8],
-  cornerTL: [12,11],
-  cornerTR: [13,11],
-  floor:    [9, 12],
-  floor2:   [9, 12],
-  floor3:   [9, 12],
-  floor4:   [9, 12],
-  door:     [11,11],
-  vase:     [2, 12],
+// ──────────────────────────────────────────────────────────────────
+// LEVEL CONFIG
+// ──────────────────────────────────────────────────────────────────
+const LEVEL_CONFIG = level => {
+  const hasDragon   = level >= 2
+  const cols        = level <= 2 ? 11 : level <= 4 ? 13 : level <= 7 ? 15 : 19
+  const rows        = cols
+  const fogRadius   = level <= 3 ? null : level <= 6 ? 4.5 : 3.5
+  const theme       = level <= 3 ? 'forest' : 'dungeon'
+  const dragonSpeed = Math.max(280, 950 - (level - 2) * 90)
+  return { hasDragon, cols, rows, fogRadius, theme, dragonSpeed }
 }
 
-// CSS for tileset background
-function tbg(col, row, ts) {
-  return {
-    backgroundImage: `url(${spr('maze_tileset.png')})`,
-    backgroundPosition: `${-col*16*ts}px ${-row*16*ts}px`,
-    backgroundSize: `${448*ts}px ${320*ts}px`,
-    imageRendering: 'pixelated',
+// ──────────────────────────────────────────────────────────────────
+// WALL TILE LOGIC
+// Selects from the mw_*.png set (dungeon) or forest_wall_*.png (forest)
+// based on which neighbours are walls.
+// ──────────────────────────────────────────────────────────────────
+function wallSprite(x, y, g, theme) {
+  const hasU = g[y - 1]?.[x] === 1
+  const hasD = g[y + 1]?.[x] === 1
+  const hasL = g[y]?.[x - 1] === 1
+  const hasR = g[y]?.[x + 1] === 1
+
+  if (theme === 'forest') {
+    // Forest theme uses forest_wall_*.png sprites
+    if (!hasU && !hasL &&  hasD &&  hasR) return 'forest_corner_tl.png'
+    if (!hasU && !hasR &&  hasD &&  hasL) return 'forest_corner_tr.png'
+    if (!hasD && !hasL &&  hasU &&  hasR) return 'forest_corner_bl.png'
+    if (!hasD && !hasR &&  hasU &&  hasL) return 'forest_corner_br.png'
+    if ( hasU &&  hasD && !hasL && !hasR) return 'forest_wall_vert.png'
+    if (!hasU &&  hasD &&  hasL &&  hasR) return 'forest_wall_top.png'
+    if ( hasU && !hasD &&  hasL &&  hasR) return 'forest_wall_solid.png'
+    if ( hasU &&  hasD &&  hasL &&  hasR) return 'forest_wall_inner.png'
+    return 'forest_wall_solid.png'
   }
+
+  // Dungeon theme uses mw_*.png sprites
+  if (!hasU && !hasL &&  hasD &&  hasR) return 'mw_tl.png'
+  if (!hasU && !hasR &&  hasD &&  hasL) return 'mw_tr.png'
+  if (!hasD && !hasL &&  hasU &&  hasR) return 'mw_bl.png'
+  if (!hasD && !hasR &&  hasU &&  hasL) return 'mw_br.png'
+  if ( hasU &&  hasD &&  hasL &&  hasR) return 'mw_solid.png'
+  if (!hasD) return 'mw_top.png'
+  if (!hasU) return 'mw_bot.png'
+  if (!hasL) return 'mw_left.png'
+  if (!hasR) return 'mw_right.png'
+  return 'mw_solid.png'
 }
 
-// Smart wall tile: based on neighbors
-function wallTile(x, y, g, rows, cols) {
-  const U = y > 0      && g[y-1] && g[y-1][x] === 1
-  const D = y < rows-1 && g[y+1] && g[y+1][x] === 1
-  const L = x > 0      && g[y][x-1] === 1
-  const R = x < cols-1 && g[y][x+1] === 1
-  // Vertical corridor: open left+right, wall above+below → vert sprite
-  if (!L && !R && U && D) return 'vert'
-  // All other walls: mix from horizontal tile set
-  return HWALL_TILES[(x * 3 + y * 7) % HWALL_TILES.length]
-}
-
-
-// Floor tile: always the same clean tile
-function floorTile(x, y) {
-  return TW.floor
-}
-
-// ── DFS Maze Generator ────────────────────────────────────────────────────────
-function genMaze(cols, rows) {
-  const g = Array.from({length:rows}, () => Array(cols).fill(1))
-  function carve(x, y) {
-    g[y][x] = 0
-    for (const {dx,dy} of [{dx:0,dy:-2},{dx:2,dy:0},{dx:0,dy:2},{dx:-2,dy:0}].sort(()=>Math.random()-.5)) {
-      const nx=x+dx, ny=y+dy
-      if (nx>0&&nx<cols-1&&ny>0&&ny<rows-1&&g[ny][nx]===1) { g[y+dy/2][x+dx/2]=0; carve(nx,ny) }
-    }
+function floorSprite(x, y, theme) {
+  if (theme === 'forest') {
+    // Vary forest floor tiles slightly
+    const n = (x * 7 + y * 13) % 5
+    if (n === 0) return 'forest_floor_flowers.png'
+    if (n === 1) return 'forest_floor_path.png'
+    return 'forest_floor_grass.png'
   }
-  carve(1,1)
-  return g
+  return 'mw_floor.png'
 }
 
-function bfs(g, rows, cols, from, to) {
-  if (!from||!to) return []
-  const q=[[from]], vis=new Set([`${from.x},${from.y}`])
-  while(q.length) {
-    const path=q.shift(), {x,y}=path[path.length-1]
-    if(x===to.x&&y===to.y) return path
-    for (const [dx,dy] of [[0,-1],[1,0],[0,1],[-1,0]]) {
-      const nx=x+dx,ny=y+dy,k=`${nx},${ny}`
-      if(nx>=0&&ny>=0&&nx<cols&&ny<rows&&g[ny][nx]===0&&!vis.has(k)){vis.add(k);q.push([...path,{x:nx,y:ny}])}
-    }
-  }
-  return []
-}
+// ──────────────────────────────────────────────────────────────────
+// POTION CONFIG
+// ──────────────────────────────────────────────────────────────────
+const POTION_SPRITES = ['maze_potion1.png', 'maze_potion2.png', 'maze_potion3.png']
 
-const LEVELS = [
-  {cols:9, rows:9, potions:0,dragon:false},
-  {cols:11,rows:11,potions:2,dragon:true},
-  {cols:13,rows:11,potions:2,dragon:true},
-  {cols:13,rows:13,potions:3,dragon:true},
-  {cols:15,rows:13,potions:3,dragon:true},
-  {cols:15,rows:15,potions:4,dragon:true},
-  {cols:17,rows:15,potions:4,dragon:true},
-  {cols:19,rows:17,potions:5,dragon:true},
-  {cols:21,rows:19,potions:5,dragon:true},
-  {cols:23,rows:21,potions:6,dragon:true},
-]
-const POTS = ['maze_potion1.png','maze_potion2.png','maze_potion3.png']
+// ──────────────────────────────────────────────────────────────────
+// MEMOISED BOARD — only re-renders when collected potions change
+// ──────────────────────────────────────────────────────────────────
+const Board = memo(function Board({ maze, cellSize, coll, theme }) {
+  const { g, rows, cols, potions, exit } = maze
 
-// CSS keyframe for torch — NO React state, pure CSS animation
-const TORCH_CSS = `
-@keyframes torch-anim {
-  0%   {transform:translateX(0)}
-  12%  {transform:translateX(calc(-1 * var(--fw)))}
-  25%  {transform:translateX(calc(-2 * var(--fw)))}
-  37%  {transform:translateX(calc(-3 * var(--fw)))}
-  50%  {transform:translateX(calc(-4 * var(--fw)))}
-  62%  {transform:translateX(calc(-5 * var(--fw)))}
-  75%  {transform:translateX(calc(-6 * var(--fw)))}
-  87%  {transform:translateX(calc(-7 * var(--fw)))}
-  100% {transform:translateX(0)}
-}
-`
-
-function Torch({ size }) {
   return (
-    <div style={{position:'absolute',bottom:2,left:'50%',marginLeft:`-${size/2}px`,
-      width:size,height:size,pointerEvents:'none',zIndex:3}}>
-      <img src={spr('maze_torch.gif')} alt=""
-        style={{width:size,height:size,imageRendering:'pixelated',display:'block'}}/>
+    <div style={{
+      position:        'relative',
+      width:           cols * cellSize,
+      height:          rows * cellSize,
+      imageRendering:  'pixelated',
+    }}>
+      {g.map((row, y) =>
+        row.map((cell, x) => {
+          const isWall   = cell === 1
+          const isExit   = x === exit.x && y === exit.y
+          const potion   = potions.find(p => p.x === x && p.y === y)
+          const potionOk = potion && !coll.includes(potion.id)
+
+          // Torch: wall that has floor directly below, sprinkled randomly
+          const hasTorch = isWall && g[y + 1]?.[x] === 0 && ((x * 3 + y * 7) % 8 === 0)
+
+          const sprite = isWall ? wallSprite(x, y, g, theme) : floorSprite(x, y, theme)
+
+          return (
+            <div
+              key={`${x},${y}`}
+              style={{
+                position: 'absolute',
+                left:     x * cellSize,
+                top:      y * cellSize,
+                width:    cellSize,
+                height:   cellSize,
+                overflow: 'hidden',
+              }}
+            >
+              {/* Base tile */}
+              <img
+                src={spr(sprite)}
+                alt=""
+                draggable={false}
+                style={{
+                  position:        'absolute',
+                  inset:           0,
+                  width:           '100%',
+                  height:          '100%',
+                  imageRendering:  'pixelated',
+                  display:         'block',
+                  objectFit:       'cover',
+                  filter:          isWall ? 'brightness(0.78)' : 'brightness(0.72) saturate(0.9)',
+                }}
+                onError={e => {
+                  e.target.style.display = 'none'
+                  e.target.parentNode.style.background = isWall
+                    ? (theme === 'forest' ? '#1a4d0e' : '#1a0a2e')
+                    : (theme === 'forest' ? '#2d6b1a' : '#120828')
+                }}
+              />
+
+              {/* Torch (gif sprite) */}
+              {hasTorch && (
+                <img
+                  src={spr('maze_torch.gif')}
+                  alt=""
+                  draggable={false}
+                  style={{
+                    position:       'absolute',
+                    bottom:         2,
+                    left:           '50%',
+                    transform:      'translateX(-50%)',
+                    width:          Math.round(cellSize * 0.72),
+                    height:         Math.round(cellSize * 0.72),
+                    imageRendering: 'pixelated',
+                    pointerEvents:  'none',
+                    zIndex:         3,
+                  }}
+                />
+              )}
+
+              {/* Exit portal */}
+              {isExit && !isWall && (
+                <div style={{
+                  position:        'absolute',
+                  inset:           0,
+                  display:         'flex',
+                  alignItems:      'center',
+                  justifyContent:  'center',
+                  zIndex:          5,
+                }}>
+                  <img
+                    src={spr('maze_portal.png')}
+                    alt="Ausgang"
+                    className="mz-portal"
+                    draggable={false}
+                    style={{
+                      width:          Math.round(cellSize * 0.85),
+                      height:         Math.round(cellSize * 0.85),
+                      imageRendering: 'pixelated',
+                      filter:         'drop-shadow(0 0 6px #a855f7)',
+                    }}
+                    onError={e => {
+                      e.target.style.display = 'none'
+                      e.target.parentNode.innerHTML += '<span style="font-size:' + Math.round(cellSize * 0.7) + 'px" class="mz-portal">🌀</span>'
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Potion */}
+              {potionOk && (
+                <div style={{
+                  position:       'absolute',
+                  inset:          0,
+                  display:        'flex',
+                  alignItems:     'center',
+                  justifyContent: 'center',
+                  zIndex:         5,
+                }}>
+                  <img
+                    src={spr(POTION_SPRITES[potion.type])}
+                    alt="Trank"
+                    className="mz-coin"
+                    draggable={false}
+                    style={{
+                      width:          Math.round(cellSize * 0.6),
+                      height:         Math.round(cellSize * 0.6),
+                      imageRendering: 'pixelated',
+                      filter:         'drop-shadow(0 0 5px #c084fc)',
+                    }}
+                    onError={e => {
+                      e.target.style.display = 'none'
+                      e.target.parentNode.innerHTML += '<span style="font-size:' + Math.round(cellSize * 0.55) + 'px" class="mz-coin">🧪</span>'
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          )
+        })
+      )}
+    </div>
+  )
+})
+
+// ──────────────────────────────────────────────────────────────────
+// SPARKLE BURST on potion pickup
+// ──────────────────────────────────────────────────────────────────
+function Sparkles({ x, y, cellSize }) {
+  const items = ['✦', '✧', '⋆', '✦', '✧', '⋆']
+  return (
+    <div style={{
+      position:      'absolute',
+      left:          x * cellSize,
+      top:           y * cellSize,
+      width:         cellSize,
+      height:        cellSize,
+      pointerEvents: 'none',
+      zIndex:        30,
+    }}>
+      {items.map((ch, i) => (
+        <motion.span
+          key={i}
+          initial={{ opacity: 1, scale: 0, x: cellSize / 2, y: cellSize / 2, rotate: 0 }}
+          animate={{
+            opacity: 0,
+            scale:   1.5,
+            x:       cellSize / 2 + Math.cos((i / items.length) * Math.PI * 2) * cellSize * 0.9,
+            y:       cellSize / 2 + Math.sin((i / items.length) * Math.PI * 2) * cellSize * 0.9,
+            rotate:  180,
+          }}
+          transition={{ duration: 0.55, ease: 'easeOut' }}
+          style={{ position: 'absolute', fontSize: cellSize * 0.28, color: '#FFD700', lineHeight: 1 }}
+        >
+          {ch}
+        </motion.span>
+      ))}
     </div>
   )
 }
 
+// ──────────────────────────────────────────────────────────────────
+// D-PAD BUTTON  (touch-friendly with hold-repeat)
+// ──────────────────────────────────────────────────────────────────
+function DPadButton({ label, onPress, size = 52 }) {
+  const repeatRef = useRef(null)
 
-// Simple wall sprite: pick tile based on which neighbors are walls
-function wallSprite(x, y, g, rows, cols) {
-  const hasU = y > 0       && g[y-1] && g[y-1][x] === 1
-  const hasD = y < rows-1  && g[y+1] && g[y+1][x] === 1
-  const hasL = x > 0       && g[y][x-1] === 1
-  const hasR = x < cols-1  && g[y][x+1] === 1
+  const start = useCallback(() => {
+    onPress()
+    repeatRef.current = setInterval(onPress, 155)
+  }, [onPress])
 
-  // Corners first
-  if (!hasU && !hasL && hasD && hasR) return 'mw_tl.png'
-  if (!hasU && !hasR && hasD && hasL) return 'mw_tr.png'
-  if (!hasD && !hasL && hasU && hasR) return 'mw_bl.png'
-  if (!hasD && !hasR && hasU && hasL) return 'mw_br.png'
-
-  // Solid (all 4 neighbors are walls)
-  if (hasU && hasD && hasL && hasR) return 'mw_solid.png'
-
-  // Single face exposed:
-  if (!hasD) return 'mw_top.png'   // floor below = top face visible
-  if (!hasU) return 'mw_bot.png'   // floor above = bottom face visible
-  if (!hasL) return 'mw_left.png'  // floor left = left face visible
-  if (!hasR) return 'mw_right.png' // floor right = right face visible
-
-  return 'mw_solid.png'
-}
-const FLOOR_SPRITE = 'mw_floor.png'
-
-
-export default function MazeGame({ level=1, onComplete }) {
-  const cfg = LEVELS[Math.min(level-1,LEVELS.length-1)]
-  const {cols,rows} = cfg
-
-  const cellSize = Math.min(
-    Math.floor((typeof window!=='undefined'?Math.min(window.innerWidth-8,900):600)/cols),
-    Math.floor((typeof window!=='undefined'?window.innerHeight-160:600)/rows), 52
-  )
-  const ts = cellSize/16
-  const W=cols*cellSize, H=rows*cellSize
-
-  const build = useCallback(()=>{
-    const g = genMaze(cols,rows)
-    const start={x:1,y:1}, exit={x:cols-2,y:rows-2}
-    g[exit.y][exit.x]=0
-
-    // Torches: walls that have floor below
-    const torches = new Set()
-    for(let y=0;y<rows-1;y++) for(let x=1;x<cols-1;x++)
-      if(g[y][x]===1&&g[y+1][x]===0&&Math.random()<0.14) torches.add(`${x},${y}`)
-
-    // Vases: occasional floor decoration
-    const vases = new Set()
-    for(let y=2;y<rows-2;y++) for(let x=2;x<cols-2;x++) {
-      const dS=Math.abs(x-1)+Math.abs(y-1), dE=Math.abs(x-(cols-2))+Math.abs(y-(rows-2))
-      if(g[y][x]===0&&dS>4&&dE>4&&Math.random()<0.03) vases.add(`${x},${y}`)
-    }
-
-    // Potions
-    const open=[]
-    for(let y=1;y<rows-1;y++) for(let x=1;x<cols-1;x++){
-      if(g[y][x]===0&&!vases.has(`${x},${y}`)){
-        const dS=Math.abs(x-1)+Math.abs(y-1),dE=Math.abs(x-(cols-2))+Math.abs(y-(rows-2))
-        if(dS>5&&dE>5) open.push({x,y})
-      }
-    }
-    open.sort(()=>Math.random()-.5)
-    const potions=open.slice(0,cfg.potions).map((p,i)=>({...p,id:`p${i}`,img:POTS[i%3]}))
-
-    // Dragon
-    const mainPath=bfs(g,rows,cols,start,exit)
-    const segLen=Math.max(3,Math.min(6,Math.floor(mainPath.length*0.12)))
-    const segStart=Math.floor(mainPath.length*0.35+Math.random()*mainPath.length*0.2)
-    const seg=mainPath.slice(segStart,segStart+segLen)
-    const dragonWps=seg.length>=2?[seg[0],seg[seg.length-1]]:[]
-
-    return {g,start,exit,torches,vases,potions,dragonWps}
-  },[cols,rows,cfg.potions])
-
-  const [maze,setMaze]=useState(build)
-  const [pos,setPos]=useState({x:1,y:1})
-  const [coll,setColl]=useState([])
-  const [won,setWon]=useState(false)
-  const [mood,setMood]=useState('happy')
-  const [facing,setFacing]=useState(1)
-  const [moving,setMoving]=useState(false)
-  const moveTimerRef=useRef(null)
-  const [dragon,setDragon]=useState(null)
-  const [lives,setLives]=useState(3)
-  const [moves,setMoves]=useState(0)
-  const dpRef=useRef([]),dsRef=useRef(0),ddRef=useRef(1)
-  const ref=useRef(null)
-
-  useEffect(()=>{
-    ref.current?.focus()
-    const potions = cfg.potions ?? 0
-    const dragon = cfg.dragon
-    const intro = potions > 0
-      ? `Finde ${potions} Zaubertränke und erreiche den Ausgang${dragon ? ' — pass auf den Drachen auf!' : '!'}`
-      : `Finde den Weg durch das Labyrinth!`
-    setTimeout(() => speakDE(intro), 600)
-  },[])
-
-  useEffect(()=>{
-    if(cfg.dragon&&maze.dragonWps.length>=2){
-      const p=bfs(maze.g,rows,cols,maze.dragonWps[0],maze.dragonWps[1])
-      dpRef.current=p.length>1?p:[maze.dragonWps[0]]
-      dsRef.current=0;ddRef.current=1;setDragon({...maze.dragonWps[0]})
-    } else setDragon(null)
-  },[maze])
-
-  const move=useCallback((dx,dy)=>{
-    if(won) return
-    const nx=pos.x+dx,ny=pos.y+dy
-    if(nx<0||ny<0||nx>=cols||ny>=rows||maze.g[ny][nx]===1) return
-    if(dx>0)setFacing(1);else if(dx<0)setFacing(-1)
-    setPos({x:nx,y:ny});setMoves(m=>m+1)
-    setMoving(true)
-    if(moveTimerRef.current) clearTimeout(moveTimerRef.current)
-    moveTimerRef.current=setTimeout(()=>setMoving(false),300)
-  },[won,pos,cols,rows,maze.g])
-
-  useEffect(()=>{
-    const h=e=>{
-      const m={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],w:[0,-1],s:[0,1],a:[-1,0],d:[1,0]}
-      const v=m[e.key];if(!v)return;e.preventDefault();move(v[0],v[1])
-    }
-    window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h)
-  },[move])
-
-  useEffect(()=>{
-    if(!cfg.dragon||won)return
-    const speed=Math.max(320,920-(level-2)*75)
-    const iv=setInterval(()=>{
-      const p=dpRef.current;if(!p||p.length<2)return
-      dsRef.current+=ddRef.current
-      if(dsRef.current>=p.length-1){ddRef.current=-1;dsRef.current=p.length-2}
-      if(dsRef.current<=0){ddRef.current=1;dsRef.current=1}
-      setDragon({...p[dsRef.current]})
-    },speed)
-    return()=>clearInterval(iv)
-  },[cfg.dragon,won,level])
-
-  useEffect(()=>{
-    const nc=maze.potions.filter(p=>p.x===pos.x&&p.y===pos.y&&!coll.includes(p.id))
-    if(nc.length){
-      setColl(prev=>[...prev,...nc.map(p=>p.id)])
-      setMood('excited')
-      setTimeout(()=>setMood('happy'),700)
-      speakDE('Zaubertrank gefunden!')
-    }
-    if(pos.x===maze.exit.x&&pos.y===maze.exit.y&&coll.length+nc.length>=maze.potions.length){
-      setWon(true);setMood('excited')
-      speakDE('Super! Du hast das Labyrinth gemeistert!')
-      setTimeout(()=>onComplete({score:Math.max(1,maze.potions.length),total:Math.max(1,maze.potions.length)}),2000)
-    }
-  },[pos]) // eslint-disable-line
-
-  useEffect(()=>{
-    if(!dragon||won)return
-    if(dragon.x===pos.x&&dragon.y===pos.y){
-      const nl=lives-1;setLives(nl);setMood('encouraging');setPos({x:1,y:1})
-      speakDE(nl > 0 ? 'Achtung! Der Drache hat dich erwischt!' : 'Oh nein!')
-      setTimeout(()=>setMood('happy'),900)
-      if(nl<=0)setTimeout(()=>onComplete({score:coll.length,total:maze.potions.length}),1200)
-    }
-  },[dragon]) // eslint-disable-line
-
-  const allDone=coll.length>=maze.potions.length
+  const stop = useCallback(() => clearInterval(repeatRef.current), [])
 
   return (
-    <div ref={ref} tabIndex={0} style={{
-      flex:1,display:'flex',flexDirection:'column',alignItems:'center',
-      gap:'clamp(6px,1.5vw,10px)',padding:'8px',
-      outline:'none',touchAction:'none',overscrollBehavior:'none',
-      background:'radial-gradient(ellipse at 50% 20%,#1e0a3c 0%,#080412 100%)',
-      minHeight:'100%',userSelect:'none',
+    <motion.button
+      whileTap={{ scale: 0.86 }}
+      onPointerDown={start}
+      onPointerUp={stop}
+      onPointerLeave={stop}
+      onPointerCancel={stop}
+      aria-label={label}
+      style={{
+        width:             size,
+        height:            size,
+        background:        'rgba(255,255,255,0.14)',
+        border:            '2px solid rgba(255,255,255,0.28)',
+        borderRadius:      12,
+        color:             'white',
+        fontSize:          22,
+        cursor:            'pointer',
+        display:           'flex',
+        alignItems:        'center',
+        justifyContent:    'center',
+        backdropFilter:    'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        touchAction:       'none',
+        userSelect:        'none',
+        WebkitUserSelect:  'none',
+      }}
+    >
+      {label}
+    </motion.button>
+  )
+}
+
+// ──────────────────────────────────────────────────────────────────
+// MAIN COMPONENT
+// ──────────────────────────────────────────────────────────────────
+export default function MazeGame({ level = 1, onComplete }) {
+  const cfg      = LEVEL_CONFIG(level)
+  const mazeRef  = useRef(null)
+  if (!mazeRef.current) mazeRef.current = genMaze(cfg.cols, cfg.rows)
+
+  const [st, dispatch] = useReducer(mazeReducer, null, () => initState(mazeRef.current))
+
+  const { containerRef, cellSize } = useBoardSize(cfg.cols, cfg.rows, 52)
+
+  const doneRef         = useRef(false)
+  const onCompleteRef   = useRef(onComplete)
+  onCompleteRef.current = onComplete
+
+  const dragonStepRef = useRef(0)
+  const dragonDirRef  = useRef(1)
+  const prevDangerRef = useRef(0)
+
+  const [sparkles, setSparkles]     = useState([]) // [{ id, x, y }]
+  const [showOverlay, setShowOverlay] = useState(null) // 'won' | 'dead'
+
+  // Moving timer — clear the "moving" flag after animation settles
+  const moveTimerRef = useRef(null)
+
+  // ── FINISH ──────────────────────────────────────────────────────
+  const finish = useCallback((score, total, delay = 1800) => {
+    if (doneRef.current) return
+    doneRef.current = true
+    setTimeout(() => onCompleteRef.current({ score, total }), delay)
+  }, [])
+
+  // ── MOVE HELPER ─────────────────────────────────────────────────
+  const doMove = useCallback((dx, dy) => {
+    dispatch({ type: 'MOVE', dx, dy, now: Date.now() })
+    // Clear moving flag after spring animation
+    clearTimeout(moveTimerRef.current)
+    moveTimerRef.current = setTimeout(
+      () => dispatch({ type: 'SET_MOVING', value: false }),
+      320
+    )
+  }, [])
+
+  // ── KEYBOARD ────────────────────────────────────────────────────
+  useEffect(() => {
+    const DIRS = {
+      ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0],
+      w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0],
+    }
+    const handler = e => {
+      const dir = DIRS[e.key]
+      if (!dir) return
+      e.preventDefault()
+      doMove(dir[0], dir[1])
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [doMove])
+
+  // ── DRAGON MOVEMENT ─────────────────────────────────────────────
+  useEffect(() => {
+    const wps = mazeRef.current.dragonWps
+    if (!cfg.hasDragon || !wps?.length || st.won || st.dead) return
+
+    const iv = setInterval(() => {
+      dragonStepRef.current += dragonDirRef.current
+      if (dragonStepRef.current >= wps.length - 1) {
+        dragonDirRef.current = -1
+        dragonStepRef.current = wps.length - 2
+      }
+      if (dragonStepRef.current <= 0) {
+        dragonDirRef.current = 1
+        dragonStepRef.current = 1
+      }
+      dispatch({ type: 'DRAGON_STEP', pos: wps[dragonStepRef.current], now: Date.now() })
+    }, cfg.dragonSpeed)
+
+    return () => clearInterval(iv)
+  }, [cfg.hasDragon, cfg.dragonSpeed, st.won, st.dead])
+
+  // ── SIDE EFFECTS — consume events from reducer ───────────────────
+  useEffect(() => {
+    const ev = st.event
+    if (!ev) return
+
+    switch (ev.type) {
+      case 'bump':
+        try { sfx.bump() } catch { /* ignore */ }
+        navigator.vibrate?.(18)
+        break
+
+      case 'potion': {
+        try { sfx.potion() } catch { /* ignore */ }
+        const count  = st.coll.length
+        const total  = mazeRef.current.potions.length
+        speak(`Zaubertrank ${count} von ${total}!`)
+        const sid = Date.now()
+        setSparkles(prev => [...prev, { id: sid, x: ev.x, y: ev.y }])
+        setTimeout(() => setSparkles(prev => prev.filter(s => s.id !== sid)), 700)
+        break
+      }
+
+      case 'hit':
+        try { sfx.hitPlayer() } catch { /* ignore */ }
+        speak('Vorsicht! Der Drache hat dich erwischt!')
+        navigator.vibrate?.([60, 40, 60])
+        break
+
+      case 'dead':
+        try { sfx.wrong() } catch { /* ignore */ }
+        speak('Oh nein! Der Drache war zu schnell. Versuch es nochmal!')
+        navigator.vibrate?.([80, 40, 80, 40, 80])
+        setShowOverlay('dead')
+        finish(0, Math.max(1, mazeRef.current.potions.length), 2200)
+        break
+
+      case 'won':
+        try { sfx.complete() } catch { /* ignore */ }
+        speak('Super! Du hast das Labyrinth gemeistert!')
+        navigator.vibrate?.([50, 30, 50, 30, 100])
+        setShowOverlay('won')
+        finish(mazeRef.current.potions.length, mazeRef.current.potions.length, 2200)
+        break
+
+      default:
+        break
+    }
+
+    dispatch({ type: 'CLEAR_EVENT' })
+  }, [st.event, st.coll.length, finish]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── DANGER WARNING SOUND ─────────────────────────────────────────
+  useEffect(() => {
+    if (st.dangerLevel >= 1 && prevDangerRef.current < 1) {
+      try { sfx.dragonNear() } catch { /* ignore */ }
+    }
+    prevDangerRef.current = st.dangerLevel
+  }, [st.dangerLevel])
+
+  // ── INTRO SPEECH ─────────────────────────────────────────────────
+  useEffect(() => {
+    const n = mazeRef.current.potions.length
+    const dragonWarning = cfg.hasDragon ? ' — pass auf den Drachen auf!' : '!'
+    const msg = n > 0
+      ? `Sammle ${n} Zaubertrank${n > 1 ? 'e' : ''} und finde den Ausgang${dragonWarning}`
+      : `Finde den Ausgang des Labyrinths${dragonWarning}`
+    const tid = setTimeout(() => speak(msg), 700)
+    return () => clearTimeout(tid)
+  }, [cfg.hasDragon])
+
+  // ── CLEANUP ───────────────────────────────────────────────────────
+  useEffect(() => () => {
+    cancelSpeech()
+    clearTimeout(moveTimerRef.current)
+  }, [])
+
+  // ── SWIPE ────────────────────────────────────────────────────────
+  const swipeHandlers = useSwipe(
+    (dx, dy) => doMove(dx, dy),
+    { threshold: 18 }
+  )
+
+  // ──────────────────────────────────────────────────────────────────
+  // RENDER
+  // ──────────────────────────────────────────────────────────────────
+  const { cols, rows, theme, fogRadius, hasDragon } = cfg
+  const boardW = cols * cellSize
+  const boardH = rows * cellSize
+
+  const isForest  = theme === 'forest'
+  const bgGrad    = isForest
+    ? 'radial-gradient(ellipse at 50% 30%, #1f6b2e 0%, #0b3d17 100%)'
+    : 'radial-gradient(ellipse at 50% 30%, #1e0a3c 0%, #080412 100%)'
+  const glow      = isForest
+    ? '0 0 30px rgba(0,140,0,0.5), 0 12px 50px rgba(0,0,0,0.7)'
+    : '0 0 40px rgba(74,0,224,0.45), 0 0 80px rgba(74,0,224,0.18), 0 12px 50px rgba(0,0,0,0.7)'
+
+  // Fog-of-war radial mask
+  const fogMaskImage = fogRadius && cellSize > 0
+    ? `radial-gradient(circle at ${(st.pos.x + 0.5) * cellSize}px ${(st.pos.y + 0.5) * cellSize}px, transparent 0, transparent ${fogRadius * cellSize}px, rgba(0,0,0,0.95) ${fogRadius * cellSize * 1.55}px)`
+    : null
+
+  // Invincibility: blinking
+  const isInvincible = st.invUntil > Date.now()
+
+  // Dragon facing direction
+  const dragonDir = st.dragon && st.pos
+    ? (st.dragon.x > st.pos.x ? -1 : 1)
+    : -1
+
+  return (
+    <div style={{
+      display:         'flex',
+      flexDirection:   'column',
+      alignItems:      'center',
+      height:          '100%',
+      minHeight:       0,
+      overflow:        'hidden',
+      background:      bgGrad,
+      paddingInline:   8,
+      paddingBottom:   8,
+      boxSizing:       'border-box',
     }}>
 
+      {/* ── HUD ─────────────────────────────────────────────────── */}
+      <div style={{
+        display:         'flex',
+        alignItems:      'center',
+        justifyContent:  'space-between',
+        width:           '100%',
+        maxWidth:        480,
+        padding:         '8px 4px',
+        flexShrink:      0,
+        gap:             8,
+      }}>
+        {/* Lives */}
+        <div style={{ display: 'flex', gap: 3, fontSize: 20 }}>
+          {[0, 1, 2].map(i => (
+            <motion.span
+              key={i}
+              animate={{ scale: i < st.lives ? 1 : 0.45, opacity: i < st.lives ? 1 : 0.22 }}
+              transition={{ type: 'spring', stiffness: 400 }}
+            >
+              ❤️
+            </motion.span>
+          ))}
+        </div>
+
+        {/* Potion trackers */}
+        <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+          {mazeRef.current.potions.map(p => {
+            const done = st.coll.includes(p.id)
+            return (
+              <motion.div
+                key={p.id}
+                animate={{ scale: done ? 1.12 : 0.72, opacity: done ? 1 : 0.38 }}
+                transition={{ type: 'spring', stiffness: 350 }}
+              >
+                <img
+                  src={spr(POTION_SPRITES[p.type])}
+                  alt=""
+                  style={{ width: 20, height: 20, imageRendering: 'pixelated', display: 'block' }}
+                  onError={e => { e.target.style.display = 'none' }}
+                />
+              </motion.div>
+            )
+          })}
+        </div>
+
+        {/* Moves counter */}
+        <div style={{
+          color:       'rgba(255,255,255,0.6)',
+          fontSize:    13,
+          fontFamily:  'Fredoka, var(--font-heading), sans-serif',
+          whiteSpace:  'nowrap',
+        }}>
+          👣 {st.moves}
+        </div>
+      </div>
+
+      {/* ── Danger banner ───────────────────────────────────────── */}
       <AnimatePresence>
-        {won&&(
-          <motion.div initial={{opacity:0}} animate={{opacity:1}}
-            style={{position:'fixed',inset:0,zIndex:999,background:'rgba(8,4,18,0.88)',
-              display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:16}}>
-            {['💎','✨','🌟','⭐','💫','✨','🌟'].map((e,i)=>(
-              <motion.span key={i} initial={{opacity:1,scale:0,y:0}}
-                animate={{y:-(80+i*28),x:(i%2?1:-1)*(45+i*20),scale:[0,1.5,0],opacity:[1,1,0]}}
-                transition={{duration:0.85,delay:i*0.07}}
-                style={{position:'absolute',fontSize:26,top:'50%',left:'50%'}}>{e}</motion.span>
-            ))}
-            <motion.div animate={{scale:[1,1.1,1]}} transition={{duration:0.7,repeat:Infinity}}
-              style={{fontSize:76}}>🏆</motion.div>
-            <div style={{fontFamily:'var(--font-heading)',fontSize:28,fontWeight:900,color:'#d8b4fe',
-              textShadow:'0 0 30px #9333ea'}}>Geschafft!</div>
+        {st.dangerLevel > 0 && !st.won && !st.dead && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            style={{
+              background:  st.dangerLevel >= 1 ? 'rgba(220,38,38,0.88)' : 'rgba(160,55,0,0.75)',
+              color:       'white',
+              padding:     '4px 18px',
+              borderRadius: 20,
+              fontFamily:  'Fredoka, var(--font-heading), sans-serif',
+              fontSize:    14,
+              fontWeight:  600,
+              marginBottom: 3,
+              flexShrink:  0,
+            }}
+          >
+            {st.dangerLevel >= 1 ? '⚠️ Der Drache ist ganz nah!' : '😰 Ich höre den Drachen…'}
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* HUD */}
-      <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',justifyContent:'center',width:'100%',maxWidth:W+16}}>
-        {maze.potions.length>0&&(
-          <div style={{background:'rgba(88,28,135,0.3)',borderRadius:12,padding:'5px 10px',
-            display:'flex',gap:5,border:'1px solid rgba(168,85,247,0.4)'}}>
-            {maze.potions.map(p=>(
-              <motion.div key={p.id} animate={coll.includes(p.id)?{scale:[1,1.6,1]}:{}} transition={{duration:0.3}}
-                style={{opacity:coll.includes(p.id)?1:0.22,filter:coll.includes(p.id)?'drop-shadow(0 0 6px #c084fc)':'none'}}>
-                <img src={spr(p.img)} style={{width:20,height:20,imageRendering:'pixelated',display:'block'}} alt=""/>
-              </motion.div>
-            ))}
-          </div>
-        )}
-        {cfg.dragon&&(
-          <div style={{background:'rgba(88,28,135,0.3)',borderRadius:12,padding:'5px 10px',
-            display:'flex',gap:3,border:'1px solid rgba(168,85,247,0.4)'}}>
-            {[0,1,2].map(i=><span key={i} style={{fontSize:15,opacity:i<lives?1:0.12}}>❤️</span>)}
-          </div>
-        )}
-        <div style={{background:'rgba(88,28,135,0.3)',borderRadius:12,padding:'5px 10px',
-          fontFamily:'var(--font-heading)',fontSize:13,color:'#d8b4fe',
-          border:'1px solid rgba(168,85,247,0.4)'}}>👣 {moves}</div>
-        {!allDone&&maze.potions.length>0&&(
-          <div style={{background:'rgba(161,98,7,0.2)',borderRadius:12,padding:'5px 10px',
-            fontFamily:'var(--font-heading)',fontSize:12,color:'#fde68a',
-            border:'1px solid rgba(251,191,36,0.3)'}}>🧪 Sammle alle Tränke!</div>
-        )}
-      </div>
-
-      {/* Lumi */}
-      <div style={{display:'flex',alignItems:'center',gap:8,width:'100%',maxWidth:W+16}}>
-        <LumiCharacter mood={mood} size={36}/>
-        <div style={{flex:1,background:'rgba(88,28,135,0.2)',borderRadius:12,padding:'7px 12px',
-          fontFamily:'var(--font-heading)',fontSize:'clamp(11px,2vw,14px)',color:'#e9d5ff',
-          border:'1px solid rgba(168,85,247,0.3)'}}>
-          {won?'🎉 Du hast das Dungeon bezwungen!'
-            :allDone?'🚪 Zur Tür! Du hast alle Tränke!'
-            :cfg.dragon?'Sammle 🧪 und meide den 🐲!'
-            :'Finde den Ausgang! 🚪'}
-        </div>
-      </div>
-
-      {/* Maze */}
-      <div style={{
-        position:'relative',width:W,height:H,flexShrink:0,
-        border:'3px solid #6b21a8',borderRadius:10,overflow:'hidden',
-        boxShadow:'0 0 0 1px #9333ea55,0 0 50px rgba(147,51,234,0.3),0 12px 50px rgba(0,0,0,0.7)',
-      }}>
-        <div style={{position:'absolute',inset:0,zIndex:30,pointerEvents:'none',
-          background:'radial-gradient(ellipse at 50% 50%,transparent 30%,rgba(0,0,0,0.5) 100%)'}}/>
-
-        {maze.g.map((row,y)=>row.map((cell,x)=>{
-          const isExit=maze.exit.x===x&&maze.exit.y===y
-          const potion=maze.potions.find(p=>p.x===x&&p.y===y&&!coll.includes(p.id))
-          const hasTorch=maze.torches.has(`${x},${y}`)
-          const hasVase=maze.vases.has(`${x},${y}`)&&!potion&&!isExit
-          const wallInfo = cell===1 ? wallTile(x,y,maze.g,rows,cols) : null
-          const isVert = wallInfo === 'vert'
-          const wSprite = cell===1 ? wallSprite(x,y,maze.g,rows,cols) : null  // eslint-disable-line
-          const [tc,tr] = cell===1 ? (isVert ? TW.wallFill : (wallInfo||TW.wallFill)) : floorTile(x,y)
-
-          return (
-            <div key={`${x}-${y}`} style={{position:'absolute',left:x*cellSize,top:y*cellSize,
-              width:cellSize,height:cellSize,overflow:'hidden'}}>
-              {/* Base tile */}
-              {wSprite ? (
-                <div style={{position:'absolute',inset:0,
-                  backgroundImage:`url(${spr(wSprite)})`,
-                  backgroundSize:`${cellSize}px ${cellSize}px`,
-                  backgroundRepeat:'no-repeat',backgroundPosition:'center',
-                  imageRendering:'pixelated',
-                  filter:'brightness(0.7) saturate(0.85)'}}/>
-              ) : (
-                <div style={{position:'absolute',inset:0,...tbg(tc,tr,ts),
-                  filter:cell===1?'brightness(0.65) saturate(0.85)':'brightness(0.55) saturate(0.7)'}}/>
-              )}
-              {/* Wall atmosphere */}
-              {cell===1&&(
-                <div style={{position:'absolute',inset:0,background:'rgba(67,20,120,0.3)'}}/>
-              )}
-              {/* Torch warm glow on floor */}
-              {cell===0&&y>0&&maze.torches.has(`${x},${y-1}`)&&(
-                <div style={{position:'absolute',inset:0,
-                  background:'radial-gradient(ellipse at 50% 0%,rgba(255,150,30,0.22) 0%,transparent 80%)'}}/>
-              )}
-              {/* Exit */}
-              {isExit&&(
-                <motion.div style={{position:'absolute',inset:0,zIndex:5}}
-                  animate={allDone?{opacity:[0.8,1,0.8]}:{opacity:0.4}}
-                  transition={{duration:1.5,repeat:Infinity}}>
-                  <div style={{width:'100%',height:'100%',...tbg(TW.door[0],TW.door[1],ts),
-                    filter:allDone?'brightness(1.6) drop-shadow(0 0 10px #e879f9) saturate(1.4)':'brightness(0.6)'}}/>
-                </motion.div>
-              )}
-              {/* Potion */}
-              {potion&&(
-                <motion.div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',zIndex:5}}
-                  animate={{y:[0,-2.5,0]}} transition={{duration:1.8,repeat:Infinity,ease:'easeInOut'}}>
-                  <img src={spr(potion.img)} style={{width:cellSize*0.6,height:cellSize*0.6,
-                    imageRendering:'pixelated',filter:'drop-shadow(0 0 6px #c084fc)'}} alt=""/>
-                </motion.div>
-              )}
-              {/* Vase */}
-              {hasVase&&(
-                <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',zIndex:4}}>
-                  <div style={{width:cellSize*0.65,height:cellSize*0.65,...tbg(TW.vase[0],TW.vase[1],ts*0.65),filter:'brightness(0.75)'}}/>
-                </div>
-              )}
-              {/* Torch - pure CSS, no React state flicker */}
-              {hasTorch&&<Torch size={Math.round(cellSize*0.72)}/>}
-            </div>
-          )
-        }))}
-
-        {/* Player - Knight */}
-        <motion.div style={{position:'absolute',width:cellSize,height:cellSize,
-          display:'flex',alignItems:'center',justifyContent:'center',zIndex:20,pointerEvents:'none'}}
-          animate={{left:pos.x*cellSize,top:pos.y*cellSize}}
-          transition={{type:'spring',stiffness:500,damping:32}}>
-          <img
-            key={moving?'walk':'idle'}
-            src={spr(moving?'maze_knight_walk.gif':'maze_knight_idle.gif')}
-            alt="Ritter"
+      {/* ── BOARD CONTAINER ────────────────────────────────────────*/}
+      <div
+        ref={containerRef}
+        style={{
+          flex:            1,
+          minHeight:       0,
+          display:         'flex',
+          alignItems:      'center',
+          justifyContent:  'center',
+          width:           '100%',
+        }}
+      >
+        {cellSize > 0 && (
+          <div
+            {...swipeHandlers}
             style={{
-              width:Math.round(cellSize*2.6), height:'auto',
-              transform:`scaleX(${facing})`,
-              imageRendering:'pixelated',
-              filter:'drop-shadow(0 3px 8px rgba(192,132,252,0.9))',
+              position:    'relative',
+              width:       boardW,
+              height:      boardH,
+              borderRadius: 8,
+              overflow:    'hidden',
+              boxShadow:   glow,
+              touchAction: 'none',
+              cursor:      'pointer',
+              flexShrink:  0,
             }}
-          />
-        </motion.div>
+          >
+            {/* Tiles */}
+            <Board
+              maze={mazeRef.current}
+              cellSize={cellSize}
+              coll={st.coll}
+              theme={theme}
+            />
 
-        {/* Dragon */}
-        {dragon&&(
-          <motion.div style={{position:'absolute',width:cellSize,height:cellSize,
-            display:'flex',alignItems:'center',justifyContent:'center',zIndex:18,pointerEvents:'none'}}
-            animate={{left:dragon.x*cellSize,top:dragon.y*cellSize}}
-            transition={{type:'spring',stiffness:320,damping:28}}>
-            <motion.span animate={{scale:[1,1.09,1]}} transition={{duration:0.9,repeat:Infinity}}
-              style={{fontSize:cellSize*0.72,lineHeight:1,
-                filter:'drop-shadow(0 0 12px rgba(251,146,60,0.95))'}}>
-              🐲
-            </motion.span>
-          </motion.div>
+            {/* Fog of war */}
+            {fogMaskImage && (
+              <div style={{
+                position:         'absolute',
+                inset:            0,
+                pointerEvents:    'none',
+                zIndex:           10,
+                maskImage:        fogMaskImage,
+                WebkitMaskImage:  fogMaskImage,
+                background:       isForest ? '#071f0e' : '#050208',
+              }} />
+            )}
+
+            {/* Danger vignette */}
+            {st.dangerLevel > 0 && (
+              <div style={{
+                position:      'absolute',
+                inset:         0,
+                pointerEvents: 'none',
+                zIndex:        11,
+                background:    `radial-gradient(ellipse at center, transparent 35%, rgba(220,38,38,${st.dangerLevel * 0.38}) 100%)`,
+                animation:     st.dangerLevel >= 1 ? 'mz-danger-pulse 0.7s ease-in-out infinite' : undefined,
+              }} />
+            )}
+
+            {/* Sparkle effects */}
+            {sparkles.map(s => (
+              <Sparkles key={s.id} x={s.x} y={s.y} cellSize={cellSize} />
+            ))}
+
+            {/* ── KNIGHT (player) ──────────────────────────────── */}
+            <motion.div
+              animate={{ left: st.pos.x * cellSize, top: st.pos.y * cellSize }}
+              transition={{ type: 'spring', stiffness: 600, damping: 35 }}
+              style={{
+                position:      'absolute',
+                width:         cellSize,
+                height:        cellSize,
+                zIndex:        20,
+                pointerEvents: 'none',
+              }}
+            >
+              {/* Drop shadow */}
+              <div style={{
+                position:     'absolute',
+                left:         '18%',
+                right:        '18%',
+                bottom:       '2%',
+                height:       '12%',
+                borderRadius: '50%',
+                background:   'radial-gradient(ellipse, rgba(0,0,0,0.5), transparent 72%)',
+              }} />
+
+              {/* Sprite */}
+              <motion.img
+                key={st.bumpKey}
+                animate={st.bumpKey > 0
+                  ? { x: [0, -5, 5, -3, 0] }
+                  : {}
+                }
+                transition={{ duration: 0.22 }}
+                src={spr(st.moving ? 'maze_knight_walk.gif' : 'maze_knight_idle.gif')}
+                alt="Spieler"
+                className={isInvincible ? 'mz-blink mz-bob' : 'mz-bob'}
+                draggable={false}
+                style={{
+                  position:       'absolute',
+                  bottom:         '2%',
+                  left:           '50%',
+                  width:          Math.round(cellSize * 1.05),
+                  height:         Math.round(cellSize * 1.05),
+                  transform:      `translateX(-50%) scaleX(${st.facing})`,
+                  imageRendering: 'pixelated',
+                  filter:         'drop-shadow(0 2px 5px rgba(0,0,0,0.75))',
+                }}
+                onError={e => {
+                  e.target.style.display = 'none'
+                  const fb = document.createElement('span')
+                  fb.textContent = '🧙'
+                  fb.style.cssText = `position:absolute;bottom:2%;left:50%;transform:translateX(-50%) scaleX(${st.facing});font-size:${cellSize * 0.8}px`
+                  e.target.parentNode.appendChild(fb)
+                }}
+              />
+            </motion.div>
+
+            {/* ── DRAGON ───────────────────────────────────────── */}
+            {hasDragon && st.dragon && !st.dead && (
+              <motion.div
+                animate={{ left: st.dragon.x * cellSize, top: st.dragon.y * cellSize }}
+                transition={{ type: 'spring', stiffness: 180, damping: 22 }}
+                style={{
+                  position:      'absolute',
+                  width:         cellSize,
+                  height:        cellSize,
+                  zIndex:        19,
+                  pointerEvents: 'none',
+                }}
+              >
+                <div
+                  className="mz-dragon"
+                  style={{
+                    position:       'absolute',
+                    inset:          0,
+                    display:        'flex',
+                    alignItems:     'center',
+                    justifyContent: 'center',
+                    fontSize:       Math.round(cellSize * 0.85),
+                    '--dragon-dir': dragonDir,
+                    filter:         st.dangerLevel >= 1
+                      ? 'drop-shadow(0 0 8px rgba(255,100,0,0.9))'
+                      : 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))',
+                  }}
+                >
+                  🐉
+                </div>
+              </motion.div>
+            )}
+
+            {/* ── WIN / DEAD overlay ───────────────────────────── */}
+            <AnimatePresence>
+              {showOverlay && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.82 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  style={{
+                    position:       'absolute',
+                    inset:          0,
+                    zIndex:         50,
+                    display:        'flex',
+                    flexDirection:  'column',
+                    alignItems:     'center',
+                    justifyContent: 'center',
+                    background:     showOverlay === 'won'
+                      ? 'radial-gradient(ellipse, rgba(107,203,119,0.95) 0%, rgba(16,80,24,0.98) 100%)'
+                      : 'radial-gradient(ellipse, rgba(180,0,0,0.92) 0%, rgba(40,0,0,0.97) 100%)',
+                    textAlign:      'center',
+                    gap:            12,
+                    borderRadius:   8,
+                  }}
+                >
+                  <div style={{ fontSize: 56 }}>
+                    {showOverlay === 'won' ? '🏆' : '💀'}
+                  </div>
+                  <div style={{
+                    fontFamily: 'Fredoka, var(--font-heading), sans-serif',
+                    fontSize:   26,
+                    fontWeight: 700,
+                    color:      'white',
+                  }}>
+                    {showOverlay === 'won' ? 'Labyrinth gemeistert!' : 'Der Drache war zu schnell!'}
+                  </div>
+                  <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 15 }}>
+                    {showOverlay === 'won'
+                      ? `In ${st.moves} Zügen! 🎉`
+                      : 'Versuche es nochmal…'}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         )}
       </div>
 
-      {/* D-Pad */}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(3,58px)',gridTemplateRows:'repeat(3,58px)',gap:4,flexShrink:0}}>
-        {[
-          {l:'▲',dx:0,dy:-1,c:2,r:1},{l:'◀',dx:-1,dy:0,c:1,r:2},
-          {l:'',dx:0,dy:0,c:2,r:2},  {l:'▶',dx:1,dy:0,c:3,r:2},
-          {l:'▼',dx:0,dy:1,c:2,r:3},
-        ].map(b=>(
-          <motion.button key={b.l||'mid'} whileTap={b.l?{scale:0.82}:{}}
-            onClick={()=>b.l&&move(b.dx,b.dy)}
-            style={{
-              gridColumn:b.c,gridRow:b.r,borderRadius:14,
-              background:b.l?'linear-gradient(135deg,#7c3aed,#4c1d95)':'transparent',
-              color:'#f3e8ff',border:b.l?'2px solid #9333ea':'none',
-              fontSize:24,fontWeight:900,cursor:b.l?'pointer':'default',
-              boxShadow:b.l?'0 4px 16px rgba(147,51,234,0.5),inset 0 1px 0 rgba(255,255,255,0.1)':'none',
-              display:'flex',alignItems:'center',justifyContent:'center',
-              width:58,height:58,
-            }}>{b.l}</motion.button>
-        ))}
+      {/* ── D-PAD ───────────────────────────────────────────────── */}
+      <div style={{ flexShrink: 0, marginTop: 8, userSelect: 'none', WebkitUserSelect: 'none' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
+          <DPadButton label="▲" onPress={() => doMove(0, -1)} />
+        </div>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+          <DPadButton label="◀" onPress={() => doMove(-1, 0)} />
+          <DPadButton label="▼" onPress={() => doMove(0, 1)} />
+          <DPadButton label="▶" onPress={() => doMove(1, 0)} />
+        </div>
       </div>
     </div>
   )

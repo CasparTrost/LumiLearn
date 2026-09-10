@@ -100,4 +100,34 @@ export const sfx = {
     tone(1046, 'sine', 0,    0.08, 0.20)
     tone(1318, 'sine', 0.06, 0.10, 0.18)
   },
+
+  /** Wall bump — maze */
+  bump() {
+    tone(140, 'square',   0,    0.07, 0.18)
+    tone(90,  'triangle', 0.02, 0.09, 0.12)
+  },
+
+  /** Soft footstep — maze */
+  step() {
+    tone(220, 'triangle', 0, 0.025, 0.05)
+  },
+
+  /** Potion pickup — coin + sparkle tail */
+  potion() {
+    tone(1046, 'sine', 0,    0.08, 0.20)
+    tone(1318, 'sine', 0.06, 0.10, 0.18)
+    tone(1568, 'sine', 0.14, 0.18, 0.12)
+  },
+
+  /** Player hit by dragon */
+  hitPlayer() {
+    tone(200, 'sawtooth', 0,    0.12, 0.20)
+    tone(120, 'sawtooth', 0.10, 0.25, 0.18)
+  },
+
+  /** Dragon nearby warning */
+  dragonNear() {
+    tone(55, 'sawtooth', 0,    0.35, 0.16)
+    tone(58, 'sawtooth', 0.02, 0.35, 0.10)
+  },
 }

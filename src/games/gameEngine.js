@@ -12,8 +12,11 @@ function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + m
 function shuffle(arr)    { return [...arr].sort(() => Math.random() - 0.5) }
 function uniqueWrong(correct, count, min, max) {
   const s = new Set()
+  // Guard: can't produce more unique values than the range holds (minus the correct one)
+  const available = Math.max(0, max - min)
+  const need = Math.min(count, available)
   let tries = 0
-  while (s.size < count && tries < 400) {
+  while (s.size < need && tries < 400) {
     const n = rand(min, max)
     if (n !== correct) s.add(n)
     tries++
@@ -195,13 +198,15 @@ function patternsQ(level) {
     case 'ABCA':     pattern = [pool[0], pool[1], pool[2], pool[0]];                 break
     case 'ABCD':     pattern = [pool[0], pool[1], pool[2], pool[3]];                 break
     case 'ABC_skip': {
-      // Show A_B_C (skip every other), answer is next non-skipped
+      // Show A_B_C_ (skip every other), answer is next non-skipped element.
+      // Randomise how many full+partial cycles are shown so the answer isn't always base[0].
       const base = [pool[0], pool[1], pool[2]]
-      const showLen = base.length * 2
+      const extra = rand(0, base.length - 1)          // 0, 1, or 2 extra visible elements
+      const showLen = base.length * 2 + extra * 2     // 6, 8, or 10 interleaved slots
       const seq = Array.from({ length: showLen }, (_, i) =>
         i % 2 === 0 ? base[Math.floor(i / 2) % base.length] : '⬜'
       )
-      const answer = base[showLen / 2 % base.length]
+      const answer = base[(showLen / 2) % base.length]
       const otherBase = [...new Set(base)].filter(e => e !== answer)
       const neededB   = Math.max(0, 3 - otherBase.length)
       const padB      = shuffle(PATTERN_POOL.filter(e => e !== answer && !otherBase.includes(e))).slice(0, neededB)
