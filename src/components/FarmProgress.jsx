@@ -81,7 +81,8 @@ const ANIMAL_COUNT = {
 
 // Exported so ParentScreen can show the SAME real farm level the kid sees
 // here, instead of the separate (and, until recently, dead/frozen)
-// profile.farmLevel stat — see AppContext.jsx's starsToCoins comment.
+// profile.farmLevel stat — der Hof leitet seine Stufe aus den wirklich
+// abgeschlossenen Modulen ab, nicht aus einem separaten Zähler.
 export function getFarmLevel(completedCount) {
   const n = completedCount
   if (n<=2) return 1; if (n<=5) return 2; if (n<=8) return 3

@@ -255,7 +255,7 @@ export default function ProfileSwitcher({ onClose }) {
                           color: 'var(--text-muted)',
                           marginTop: 2,
                         }}>
-                          🪙 {p.coins ?? 0} · {p.age ? `${p.age} Jahre` : ''}
+                          {p.age ? `${p.age} Jahre` : ''}
                         </div>
                       </div>
                       {isActive && (

@@ -26,8 +26,6 @@ export default function ResultsScreen() {
   const justCompleted  = gameResult?.justCompleted  ?? false
   const isFirstPass    = gameResult?.isFirstPass    ?? false
   const maxLevel       = gameResult?.maxLevel       ?? 5
-  const coinsEarned    = gameResult?.coinsEarned    ?? 0
-  const streakBonusCoins = gameResult?.streakBonus ?? 0
   const newMissionsCompleted = gameResult?.newMissionsCompleted ?? []
   const streakCount    = profileStreak?.count ?? 0
 
@@ -52,10 +50,9 @@ export default function ResultsScreen() {
     //
     // Vorher liefen hier drei Ansagen gegeneinander: das Spiel sagte seinen
     // Glückwunsch, der Bildschirmwechsel schnitt ihn ab, dieses Lob startete
-    // nach 900 ms — und wurde seinerseits nach 2200 ms von "Plus 18 Coins"
-    // zerschnitten. Die Münz-Ansage ist ersatzlos gestrichen (die Zahl steht
-    // ohnehin sichtbar auf dem Bildschirm), und das Lob wartet, bis der Satz
-    // aus dem Spiel wirklich zu Ende ist, statt ihn zu überfahren.
+    // nach 900 ms — und wurde seinerseits von einer Münz-Ansage zerschnitten.
+    // Die Münzen sind inzwischen ganz aus der App verschwunden, und das Lob
+    // wartet, bis der Satz aus dem Spiel zu Ende ist, statt ihn zu überfahren.
     const stop = afterNarration(() => {
       if (stars >= 2)      voice.play('audio/allgemein/das-hast-du-super-gemacht.mp3')
       else if (stars >= 1) voice.play('audio/allgemein/ja-super.mp3')
@@ -156,40 +153,26 @@ export default function ResultsScreen() {
           )}
         </motion.div>
 
-        {/* Coins earned & streak */}
-          {coinsEarned > 0 && (
-            <motion.div
-              initial={{ scale:0, y:10 }}
-              animate={{ scale:1, y:0 }}
-              transition={{ delay:0.8, type:'spring', stiffness:350 }}
-              style={{
-                display:'flex', gap:10, flexWrap:'wrap', justifyContent:'center',
-                marginTop:4,
-              }}
-            >
-              <div style={{
-                display:'flex', alignItems:'center', gap:6,
-                background:'rgba(255,217,61,0.18)', borderRadius:14, padding:'8px 18px',
-                border:'1.5px solid rgba(255,217,61,0.45)',
-              }}>
-                <span style={{ fontSize:22 }}>🪙</span>
-                <span style={{ fontFamily:'var(--font-heading)', color:'#FFD93D', fontWeight:700, fontSize:20 }}>+{coinsEarned}</span>
-                {streakBonusCoins > 0 && (
-                  <span style={{ fontFamily:'var(--font-body)', color:'rgba(255,255,255,0.7)', fontSize:12 }}>(🔥+{streakBonusCoins})</span>
-                )}
-              </div>
-              {streakCount >= 2 && (
-                <div style={{
-                  display:'flex', alignItems:'center', gap:5,
-                  background:'rgba(255,107,107,0.2)', borderRadius:14, padding:'8px 16px',
-                  border:'1.5px solid rgba(255,107,107,0.4)',
-                }}>
-                  <span style={{ fontSize:20 }}>🔥</span>
-                  <span style={{ fontFamily:'var(--font-heading)', color:'#FF6B6B', fontWeight:700, fontSize:16 }}>{streakCount} Tage!</span>
-                </div>
-              )}
-            </motion.div>
-          )}
+        {/* Serie — der Bauernhof und die Sterne zeigen den Fortschritt, die
+            Tagesserie den Fleiß. Hier stand vorher eine Münzanzeige; sie
+            versprach eine Währung, die es nie gab. */}
+        {streakCount >= 2 && (
+          <motion.div
+            initial={{ scale:0, y:10 }}
+            animate={{ scale:1, y:0 }}
+            transition={{ delay:0.8, type:'spring', stiffness:350 }}
+            style={{ display:'flex', justifyContent:'center', marginTop:4 }}
+          >
+            <div style={{
+              display:'flex', alignItems:'center', gap:5,
+              background:'rgba(255,107,107,0.2)', borderRadius:14, padding:'8px 16px',
+              border:'1.5px solid rgba(255,107,107,0.4)',
+            }}>
+              <span style={{ fontSize:20 }}>🔥</span>
+              <span style={{ fontFamily:'var(--font-heading)', color:'#FF6B6B', fontWeight:700, fontSize:16 }}>{streakCount} Tage!</span>
+            </div>
+          </motion.div>
+        )}
 
           {/* Mission completions */}
           {newMissionsCompleted.length > 0 && (

@@ -35,17 +35,12 @@ function freshProgress() {
 
 const ALL_MODULE_IDS = Object.keys(MAX_LEVELS)
 
-// ── Coin helpers ──────────────────────────────────────────────────────────────
-// Coins are a pure earned-achievement counter (shown in GameScreen,
-// ResultsScreen, ProfileSwitcher) — not a currency with anywhere to spend
-// them. There used to be an UPGRADE_FARM action + FARM_COSTS letting coins
-// "buy" farm levels, but the farm (FarmProgress.jsx) already has its own
-// complete, better-fitting progression tied to real achievement
-// (getFarmLevel(completedCount) — see FarmProgress.jsx), so that dead
-// parallel system was removed rather than built out into an actual shop.
-export function starsToCoins(stars) {
-  return stars >= 3 ? 18 : stars >= 2 ? 10 : stars >= 1 ? 5 : 0
-}
+// Münzen gab es hier einmal. Sie waren ein reiner Zähler ohne Laden: man
+// sammelte sie, sah sie an drei Stellen, und mehr passierte nicht. Ein Etikett,
+// das eine Währung verspricht und keine ist, wirft bei jedem, der es sieht,
+// dieselbe Frage auf — wofür? Fortschritt zeigen jetzt allein die Sterne und
+// der Bauernhof, der seine Stufen aus den wirklich abgeschlossenen Modulen
+// ableitet (FarmProgress.jsx).
 
 // ── Daily Missions definition (functions NOT stored in localStorage) ──────────
 export const ALL_MISSIONS = [
@@ -81,7 +76,6 @@ function freshProfile(overrides = {}) {
     avatar: '😊',
     createdAt: new Date().toISOString(),
     progress: Object.fromEntries(ALL_MODULE_IDS.map(id => [id, freshProgress()])),
-    coins: 0,
     farmLevel: 1,
     streak: { count: 0, lastDate: null },
     streakLastBonus: null,
@@ -201,7 +195,6 @@ function reducer(state, action) {
           [id]: {
             ...state.profiles[id],
             progress: Object.fromEntries(ALL_MODULE_IDS.map(mid => [mid, freshProgress()])),
-            coins: 0,
             farmLevel: 1,
             streak: { count: 0, lastDate: null },
             streakLastBonus: null,
@@ -271,23 +264,9 @@ function reducer(state, action) {
       const isFirstPass   = prevBestStars === 0 && stars >= 1
       const nextLevelNum  = level < maxLevel ? level + 1 : null
 
-      // ── Coins ──
-      let coinsEarned = starsToCoins(stars)
-      if (isFirstPass) coinsEarned += 5
-      else if (isNewBest) coinsEarned += 3
-
-      // ── Streak bonus ──
+      // Die Serie wird weiterhin gezählt und angezeigt; einen Bonus gab es
+      // nur in Münzen, und die sind weg.
       const streakCount = profile.streak?.count ?? 0
-      let streakBonus = 0
-      const streakLastBonus = profile.streakLastBonus ?? null
-      if (stars >= 1) {
-        if (streakCount >= 14 && streakLastBonus !== '14') streakBonus = 80
-        else if (streakCount >= 7  && streakLastBonus !== '7'  && streakLastBonus !== '14') streakBonus = 40
-        else if (streakCount >= 3  && streakLastBonus !== '3'  && streakLastBonus !== '7'  && streakLastBonus !== '14') streakBonus = 15
-      }
-      const newStreakLastBonus = streakBonus > 0
-        ? (streakCount >= 14 ? '14' : streakCount >= 7 ? '7' : '3')
-        : streakLastBonus
 
       // ── Session tracking ──
       const newSessionPlays  = (state._sessionPlays ?? 0) + 1
@@ -303,7 +282,6 @@ function reducer(state, action) {
 
       // ── Mission progress ──
       const dm = profile.dailyMission ?? { date: null, missions: [], completedIds: [] }
-      let missionCoinBonus = 0
       const newCompletedIds = [...(dm.completedIds ?? [])]
       const newlyCompletedMissionIds = []
       if (dm.date === todayStr()) {
@@ -313,17 +291,12 @@ function reducer(state, action) {
           if (def && def.check({ ...sessionState })) {
             newCompletedIds.push(m.id)
             newlyCompletedMissionIds.push(m.id)
-            missionCoinBonus += 20
           }
         }
       }
 
-      const totalCoins = coinsEarned + streakBonus + missionCoinBonus
-
       const updatedProfile = {
         ...profile,
-        coins: (profile.coins ?? 0) + totalCoins,
-        streakLastBonus: newStreakLastBonus,
         dailyMission: { ...dm, completedIds: newCompletedIds },
         lastPlayed: { moduleId, ts: new Date().toISOString() },
         progress: {
@@ -349,9 +322,6 @@ function reducer(state, action) {
           justCompleted,
           nextLevelNum,
           maxLevel,
-          coinsEarned: totalCoins,
-          streakBonus,
-          missionBonus: missionCoinBonus,
           newMissionsCompleted: newlyCompletedMissionIds,
           streakCount,
         },
@@ -422,7 +392,6 @@ function migrateToV2(data) {
         createdAt: p.createdAt || new Date().toISOString(),
         // First profile inherits the global progress
         progress: isFirst ? globalProgress : Object.fromEntries(ALL_MODULE_IDS.map(mid => [mid, freshProgress()])),
-        coins: isFirst ? (data.coins || 0) : 0,
         farmLevel: isFirst ? (data.farmLevel || 1) : 1,
         streak: isFirst ? (data.streak || { count: 0, lastDate: null }) : { count: 0, lastDate: null },
         streakLastBonus: isFirst ? (data.streakLastBonus || null) : null,
@@ -445,7 +414,6 @@ function migrateToV2(data) {
       age: data.profile.age || 5,
       avatar: data.profile.emoji || data.profile.avatar || '😊',
       progress: globalProgress,
-      coins: data.coins || 0,
       farmLevel: data.farmLevel || 1,
       streak: data.streak || { count: 0, lastDate: null },
       streakLastBonus: data.streakLastBonus || null,
