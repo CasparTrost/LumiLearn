@@ -1,26 +1,26 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { motion, AnimatePresence, useAnimation } from 'framer-motion'
-import { speak } from '../tts.js'
+import { speak, sayCount } from '../tts.js'
 
 function rnd(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min }
 function shuffle(arr)  { return [...arr].sort(() => Math.random() - 0.5) }
 
 const SHOP_ITEMS = [
-  { emoji: '🍎', name: 'Äpfel',       singular: 'Apfel',       color: '#FF6B6B' },
-  { emoji: '🍊', name: 'Orangen',     singular: 'Orange',      color: '#FF9F43' },
-  { emoji: '🍋', name: 'Zitronen',    singular: 'Zitrone',     color: '#FFD93D' },
-  { emoji: '🍇', name: 'Trauben',     singular: 'Traube',      color: '#A29BFE' },
-  { emoji: '🍓', name: 'Erdbeeren',   singular: 'Erdbeere',    color: '#FF6B9A' },
-  { emoji: '🍩', name: 'Donuts',      singular: 'Donut',       color: '#FF9F43' },
-  { emoji: '🧁', name: 'Muffins',     singular: 'Muffin',      color: '#FD79A8' },
-  { emoji: '🥕', name: 'Karotten',    singular: 'Karotte',     color: '#FF9F43' },
-  { emoji: '🌽', name: 'Maiskolben',  singular: 'Maiskolben',  color: '#FFD93D' },
-  { emoji: '🍕', name: 'Pizzastücke', singular: 'Pizzastück',  color: '#FF6B6B' },
-  { emoji: '🐟', name: 'Fische',      singular: 'Fisch',       color: '#74B9FF' },
-  { emoji: '🌸', name: 'Blumen',      singular: 'Blume',       color: '#FD79A8' },
-  { emoji: '🍌', name: 'Bananen',     singular: 'Banane',      color: '#FFD93D' },
-  { emoji: '🎈', name: 'Ballons',     singular: 'Ballon',      color: '#FF6B6B' },
-  { emoji: '🍦', name: 'Eiswaffeln',  singular: 'Eiswaffel',   color: '#74B9FF' },
+  { emoji: '🍎', name: 'Äpfel',       singular: 'Apfel',         g: 'm', color: '#FF6B6B' },
+  { emoji: '🍊', name: 'Orangen',     singular: 'Orange',        g: 'f', color: '#FF9F43' },
+  { emoji: '🍋', name: 'Zitronen',    singular: 'Zitrone',       g: 'f', color: '#FFD93D' },
+  { emoji: '🍇', name: 'Trauben',     singular: 'Traube',        g: 'f', color: '#A29BFE' },
+  { emoji: '🍓', name: 'Erdbeeren',   singular: 'Erdbeere',      g: 'f', color: '#FF6B9A' },
+  { emoji: '🍩', name: 'Donuts',      singular: 'Donut',         g: 'm', color: '#FF9F43' },
+  { emoji: '🧁', name: 'Muffins',     singular: 'Muffin',        g: 'm', color: '#FD79A8' },
+  { emoji: '🥕', name: 'Karotten',    singular: 'Karotte',       g: 'f', color: '#FF9F43' },
+  { emoji: '🌽', name: 'Maiskolben',  singular: 'Maiskolben',    g: 'm', color: '#FFD93D' },
+  { emoji: '🍕', name: 'Pizzastücke', singular: 'Pizzastück',    g: 'n', color: '#FF6B6B' },
+  { emoji: '🐟', name: 'Fische',      singular: 'Fisch',         g: 'm', color: '#74B9FF' },
+  { emoji: '🌸', name: 'Blumen',      singular: 'Blume',         g: 'f', color: '#FD79A8' },
+  { emoji: '🍌', name: 'Bananen',     singular: 'Banane',        g: 'f', color: '#FFD93D' },
+  { emoji: '🎈', name: 'Ballons',     singular: 'Ballon',        g: 'm', color: '#FF6B6B' },
+  { emoji: '🍦', name: 'Eiswaffeln',  singular: 'Eiswaffel',     g: 'f', color: '#74B9FF' },
 ]
 
 const CUSTOMERS = ['👦', '👧', '🧒', '👴', '👵', '🧑', '👩', '👨']
@@ -153,7 +153,8 @@ export default function NumbersGame({ level = 1, onComplete }) {
   const speakOrder = useCallback(() => {
     const q2 = questions[idx]
     if (!q2) return
-    const txt = q2.parts.map(p => `${p.n} ${p.n === 1 ? p.item.singular : p.item.name}`).join(' und ')
+    // "1 Apfel" wird als "eins Apfel" vorgelesen — attributiv heißt es "ein".
+    const txt = q2.parts.map(p => sayCount(p.n, p.n === 1 ? p.item.singular : p.item.name, p.item.g)).join(' und ')
     speak(`${q2.greeting} ${txt}.`, { rate: 0.8, pitch: 1.0, lang: 'de-DE' })
   }, [questions, idx])
 

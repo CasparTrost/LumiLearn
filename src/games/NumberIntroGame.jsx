@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { voice } from '../voice.js'
-import { speak } from '../tts.js'
+import { speak, sayNumber } from '../tts.js'
 
 const NUMBER_WORDS   = ['','eins','zwei','drei','vier','fünf','sechs','sieben','acht','neun','zehn']
 const NUMBER_AUDIO   = ['','eins','zwei','drei','vier','fuenf','sechs','sieben','acht','neun','zehn']
@@ -105,8 +105,8 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
     setMisses(m => m + 1)
     const tooMany = tapped.size > round.n
     speak(tooMany
-      ? `Das sind zu viele. Zähle noch einmal bis ${round.n}.`
-      : `Das sind noch zu wenige. Zähle bis ${round.n}.`,
+      ? `Das sind zu viele. Zähle noch einmal bis ${sayNumber(round.n)}.`
+      : `Das sind noch zu wenige. Zähle bis ${sayNumber(round.n)}.`,
       { rate: 0.8, pitch: 1.05, lang: 'de-DE' })
     setTimeout(() => { setCheckResult(null); setTapped(new Map()) }, 1900)
   }

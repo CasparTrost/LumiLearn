@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
-import { speak } from '../tts.js'
+import { speak, sayNumber, sayCount } from '../tts.js'
 
 /**
  * Lumis Spielbrett — würfeln, mitzählen, vorrücken
@@ -100,7 +100,8 @@ export default function BoardGame({ level = 1, onComplete }) {
       setRolling(false)
       setStepsLeft(n)
       setRolls(r => r + 1)
-      speakDE(`${n}. Zähle ${n} ${n === 1 ? 'Feld' : 'Felder'}!`)
+      // spelled out: "3." would be read as the ordinal "dritte"
+      speakDE(`${sayNumber(n)}. Zähle ${sayCount(n, n === 1 ? 'Feld' : 'Felder')}!`)
     }, 700)
   }, [rolling, stepsLeft, done, board.maxPip])
 
