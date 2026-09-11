@@ -1,10 +1,11 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowLeft } from 'lucide-react'
 import { useApp, MAX_LEVELS } from '../AppContext.jsx'
 import InfoButton from '../components/InfoButton.jsx'
 import ErrorBoundary from '../components/ErrorBoundary.jsx'
 import { useProfile } from '../hooks/useProfile.js'
+import { stopNarration } from '../narrator.js'
 
 const ChoiceGame    = lazy(() => import('../games/ChoiceGame.jsx'))
 const TyperGame     = lazy(() => import('../games/TyperGame.jsx'))
@@ -117,6 +118,11 @@ export default function GameScreen() {
   const meta          = MODULE_META[moduleId] ?? MODULE_META.numbers
   const GameComponent = GAME_MAP[moduleId]    ?? ChoiceGame
 
+  // Ein Satz aus dem vorigen Spiel lief bisher weiter, während das nächste
+  // schon seine Ansage startete — zwei Stimmen übereinander. Beim Wechsel und
+  // beim Verlassen wird alles Gesprochene gestoppt.
+  useEffect(() => stopNarration, [moduleId, level])
+
   const handleComplete = ({ score, total, stars: providedStars }) => {
     // Some games (e.g. MemoryGame) compute their own star rating from a
     // metric other than score/total (move efficiency) and show it to the
@@ -128,7 +134,7 @@ export default function GameScreen() {
     dispatch({ type: 'FINISH_GAME', payload: { moduleId, level, stars, score, total } })
   }
 
-  const quit = () => dispatch({ type: 'NAVIGATE', payload: 'home' })
+  const quit = () => { stopNarration(); dispatch({ type: 'NAVIGATE', payload: 'home' }) }
 
   return (
     <div style={{ height: '100dvh', background: 'var(--bg)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>

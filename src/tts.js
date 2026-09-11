@@ -1,32 +1,16 @@
-// src/tts.js — zentraler Speech-Synthesis-Helfer
+// src/tts.js — Sprachausgabe.
+// Spielt selbst nichts mehr ab, sondern reicht an den Erzähler weiter, damit
+// Sprache und aufgenommene Ansagen einen gemeinsamen Kanal teilen und sich
+// nicht mehr überlagern.
 
-let _currentUtterance = null
+import { narrate, stopNarration } from './narrator.js'
 
-export const speak = (text, { rate = 0.85, pitch = 1.05, lang, onEnd } = {}) => {
-  if (!window.speechSynthesis || !text) { onEnd?.(); return }
-  window.speechSynthesis.cancel()
-  // Strip emoji and non-printable characters
-  const clean = text.replace(/[\u{1F300}-\u{1FFFF}]/gu, '').replace(/[^\w\säöüÄÖÜß.,!?]/g, '').trim()
-  if (!clean) { onEnd?.(); return }
-  const u = new SpeechSynthesisUtterance(clean)
-  u.rate = rate
-  u.pitch = pitch
-  u.lang = lang || (document.documentElement.lang === 'en' ? 'en-GB' : 'de-DE')
-  // Lets a caller sequence something after the speech instead of guessing a
-  // duration — voice.chain needs this to hand over cleanly between a spoken
-  // fallback and the next recorded track.
-  if (onEnd) {
-    u.addEventListener('end', onEnd, { once: true })
-    u.addEventListener('error', onEnd, { once: true })
-  }
-  _currentUtterance = u
-  window.speechSynthesis.speak(u)
+export const speak = (text, { rate = 0.85, pitch = 1.05, lang, onEnd, skipIfSame } = {}) => {
+  if (!text) { onEnd?.(); return }
+  narrate([{ text, rate, pitch, lang }], { onEnd, skipIfSame })
 }
 
-export const cancelSpeech = () => {
-  if (window.speechSynthesis) window.speechSynthesis.cancel()
-  _currentUtterance = null
-}
+export const cancelSpeech = stopNarration
 
 // ── Zahlen aussprechen ───────────────────────────────────────────────────────
 // Eine Ziffer direkt vor einem Punkt liest eine deutsche Stimme als
