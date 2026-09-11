@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
 import { speak } from '../tts.js'
+import { afterNarration } from '../narrator.js'
 
 function speakDE(text) {
   speak(text, { rate: 0.85, pitch: 1.1, lang: 'de-DE' })
@@ -178,7 +179,7 @@ export default function MemoryGame({ level = 1, onComplete }) {
           const starCount = finalMoves <= Math.round(pairCount * 1.5) ? 3
                           : finalMoves <= Math.round(pairCount * 2.5) ? 2 : 1
           setEndStars(starCount)
-          setTimeout(() => onComplete({ score: pairCount, total: pairCount, bonus: finalMoves, stars: starCount }), 400)
+          afterNarration(() => onComplete({ score: pairCount, total: pairCount, bonus: finalMoves, stars: starCount }), { minMs: 400 })
         } else {
           setTimeout(() => setMood('happy'), 800)
         }

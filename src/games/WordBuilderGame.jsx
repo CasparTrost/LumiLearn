@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
 import { speak } from '../tts.js'
+import { afterNarration } from '../narrator.js'
 
 function speakDE(text) {
   speak(text, { rate: 0.7, pitch: 1.1, lang: 'de-DE' })
@@ -399,7 +400,7 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
       // matter how the round went. Rate the misplaced taps instead — never
       // below one star, the word did get built.
       const stars = misses <= 2 ? 3 : misses <= 6 ? 2 : 1
-      setTimeout(() => onComplete({ score: ns, total: TOTAL, stars }), 300)
+      afterNarration(() => onComplete({ score: ns, total: TOTAL, stars }), { minMs: 300 })
     } else {
       setIdx(i => i + 1)
     }

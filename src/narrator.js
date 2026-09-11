@@ -56,6 +56,43 @@ function cleanText(text) {
 }
 
 /**
+ * Ruft `cb` auf, sobald nichts mehr gesprochen wird — frühestens nach `minMs`,
+ * spätestens nach `maxMs`.
+ *
+ * Gedacht für den Übergang ans Ende eines Spiels. Vorher schalteten die Spiele
+ * nach fester Zeit weiter: "Super! Du hast das Labyrinth gemeistert!" dauert
+ * länger als die eingestellten 2200 ms, also wurde der Satz vom
+ * Bildschirmwechsel mitten drin abgeschnitten — und die Ansage des nächsten
+ * Bildschirms gleich mit. Eine feste Zeit kann nicht wissen, wie lange
+ * gesprochen wird; der Erzähler weiß es.
+ *
+ * maxMs ist das Sicherheitsnetz: hängt die Sprachausgabe, kommt das Kind
+ * trotzdem weiter.
+ */
+export function afterNarration(cb, { minMs = 0, maxMs = 9000 } = {}) {
+  let fired = false
+  const t0 = Date.now()
+  let minTimer = null
+  const fire = () => {
+    if (fired) return
+    fired = true
+    off(); clearTimeout(minTimer); clearTimeout(hardTimer)
+    cb()
+  }
+  const check = () => {
+    if (fired) return
+    clearTimeout(minTimer)
+    if (running) return                      // es wird noch gesprochen
+    const rest = Math.max(0, minMs - (Date.now() - t0))
+    minTimer = setTimeout(() => { if (!running) fire() }, rest)
+  }
+  const off = onNarrationChange(check)
+  const hardTimer = setTimeout(fire, maxMs)
+  check()
+  return () => { if (!fired) { fired = true; off(); clearTimeout(minTimer); clearTimeout(hardTimer) } }
+}
+
+/**
  * Sperrt das Vorlesen beim Darüberfahren, bis die nächste richtige Ansage
  * durchgelaufen ist. Ein Spiel ruft das auf, sobald eine neue Aufgabe
  * beginnt — also bevor die Ansage überhaupt startet.

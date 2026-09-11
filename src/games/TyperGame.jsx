@@ -205,7 +205,7 @@ function FallingLettersGame({ level, onComplete }) {
             doneRef.current = true
             setDone(true)
             clearInterval(tickRef.current)
-            setScore(s => { setTimeout(() => onComplete({ score: s, total: words.length }), 1200); return s })
+            setScore(s => { afterNarration(() => onComplete({ score: s, total: words.length }), { minMs: 1200 }); return s })
           }
           return -10
         }

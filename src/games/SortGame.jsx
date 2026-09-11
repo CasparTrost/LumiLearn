@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
 import { speak } from '../tts.js'
+import { afterNarration } from '../narrator.js'
 
 /**
  * Sortier-Spaß — Kategorisieren & Konzeptbildung
@@ -369,7 +370,7 @@ export default function SortGame({ level = 1, onComplete }) {
         if (nextIdx >= total) {
           setPhase('done')
           sfx.complete()
-          setTimeout(() => onComplete({ score: ns, total }), 1000)
+          afterNarration(() => onComplete({ score: ns, total }), { minMs: 1000 })
         } else {
           setCurIdx(nextIdx)
         }
