@@ -85,11 +85,11 @@ function PinPad({ onSuccess, onCancel, correctPin = '1234' }) {
 
 export default function ParentScreen({ onClose }) {
   const { state, dispatch } = useApp()
-  const { profile, progress, coins, streak } = useProfile()
+  const { profile, progress, streak } = useProfile()
   // The real farm level, computed the same way FarmProgress.jsx computes
   // it for the kid's screen (from real completed-module count) — not the
   // separate profile.farmLevel stat, which used to be a disconnected,
-  // never-updated number (see AppContext.jsx's starsToCoins comment).
+  // never-updated number — der Hof zählt abgeschlossene Module.
   const completedCount = Object.values(progress).filter(p => p?.completed).length
   const farmLevel = getFarmLevel(completedCount)
   const currentPin = state.settings?.parentPin ?? '1234'
@@ -189,10 +189,6 @@ export default function ParentScreen({ onClose }) {
 
         {/* Gamification stats */}
         <div style={{ background:'white', borderRadius:20, padding:16, marginBottom:16, boxShadow:'0 2px 12px rgba(0,0,0,0.06)', display:'flex', gap:12, flexWrap:'wrap' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:6, background:'rgba(255,217,61,0.12)', borderRadius:12, padding:'8px 14px', border:'1.5px solid rgba(255,217,61,0.4)' }}>
-            <span style={{ fontSize:20 }}>🪙</span>
-            <span style={{ fontFamily:'var(--font-heading)', color:'#b8860b', fontWeight:700, fontSize:16 }}>{coins} Coins</span>
-          </div>
           {streak.count >= 1 && (
             <div style={{ display:'flex', alignItems:'center', gap:6, background:'rgba(255,107,107,0.1)', borderRadius:12, padding:'8px 14px', border:'1.5px solid rgba(255,107,107,0.4)' }}>
               <span style={{ fontSize:20 }}>🔥</span>

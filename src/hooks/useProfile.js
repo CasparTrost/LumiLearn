@@ -7,7 +7,6 @@ export function useProfile() {
   return {
     profile,
     progress: profile?.progress || {},
-    coins: profile?.coins || 0,
     farmLevel: profile?.farmLevel || 1,
     streak: profile?.streak || { count: 0, lastDate: null },
     dailyMission: profile?.dailyMission || { date: null, missions: [], completedIds: [] },
