@@ -3,6 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { asset } from '../lib/assets.js'
 import { onNarrationChange } from '../narrator.js'
 
+const DUCK       = 0.35   // so leise wird die Musik, während geredet wird
+const RELEASE_MS = 800    // so lange bleibt sie unten, bevor sie wieder hochfährt
+
 const LS_ENABLED = 'lumi_music_enabled'
 const LS_VOLUME  = 'lumi_music_volume'
 
@@ -19,7 +22,16 @@ export default function MusicControls() {
   const [showSlider, setShowSlider] = useState(false)
   // Musik und Lumis Stimme liefen gleich laut übereinander. Solange geredet
   // wird, geht die Musik in den Hintergrund.
+  //
+  // Der erste Anlauf schaltete hart um, sobald eine Ansage begann oder endete.
+  // Beim Mitzählen in "Zahlen entdecken" ist das ein Ton pro Antippen — die
+  // Musik sprang dann im Sekundentakt hoch und runter, teils zweimal in
+  // derselben Millisekunde. Deshalb jetzt: weich überblenden, und nach dem
+  // Ende erst nach einer Nachlaufzeit wieder hochfahren. Folgt die nächste
+  // Ansage innerhalb dieser Zeit, bleibt die Musik unten und es pumpt nicht.
   const duckingRef = useRef(false)
+  const releaseRef = useRef(null)
+  const fadeRef    = useRef(null)
 
   // Create audio element once
   useEffect(() => {
@@ -46,12 +58,37 @@ export default function MusicControls() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Duck the music while something is being narrated
-  useEffect(() => onNarrationChange(active => {
-    duckingRef.current = active
+  const fadeTo = (target, ms = 280) => {
     const audio = audioRef.current
-    if (audio) audio.volume = volume * (active ? 0.25 : 1)
-  }), [volume])
+    if (!audio) return
+    cancelAnimationFrame(fadeRef.current)
+    const from = audio.volume
+    const t0 = performance.now()
+    const step = () => {
+      const p = Math.min(1, (performance.now() - t0) / ms)
+      audio.volume = Math.max(0, Math.min(1, from + (target - from) * p))
+      if (p < 1) fadeRef.current = requestAnimationFrame(step)
+    }
+    step()
+  }
+
+  // Duck the music while something is being narrated
+  useEffect(() => {
+    const off = onNarrationChange(active => {
+      clearTimeout(releaseRef.current)
+      if (active) {
+        duckingRef.current = true
+        fadeTo(volume * DUCK)
+      } else {
+        releaseRef.current = setTimeout(() => {
+          duckingRef.current = false
+          fadeTo(volume)
+        }, RELEASE_MS)
+      }
+    })
+    return () => { off(); clearTimeout(releaseRef.current); cancelAnimationFrame(fadeRef.current) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [volume])
 
   // Sync enabled state
   useEffect(() => {
@@ -69,7 +106,7 @@ export default function MusicControls() {
   useEffect(() => {
     const audio = audioRef.current
     if (!audio) return
-    audio.volume = volume * (duckingRef.current ? 0.25 : 1)
+    audio.volume = volume * (duckingRef.current ? DUCK : 1)
     localStorage.setItem(LS_VOLUME, String(volume))
   }, [volume])
 
