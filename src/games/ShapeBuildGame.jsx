@@ -45,47 +45,59 @@ function ShapePath({ shape, x, y, w, h, rot = 0, fill, stroke, dashed, sw }) {
   return <rect x={x} y={y} width={w} height={h} rx={shape === 'square' ? 3 : 3} {...common} />
 }
 
-// Each figure is a small parts list — the outline the child fills in.
+// Jede Figur ist eine kleine Teileliste — der Umriss, den das Kind füllt.
+//
+// Die Teile schließen exakt aneinander an: die Dachkante liegt genau auf der
+// Hauswand, der Stamm endet genau da, wo die Krone beginnt, die Räder sitzen
+// auf der Unterkante des Wagens. Vorher standen die Formen mit Lücken
+// nebeneinander, und das Ergebnis sah nach Formen aus statt nach einem Haus.
+//
+// `g` ist das Geschlecht für den Artikel: "Baue einen Baum", nicht "Baue Baum".
 const FIGURES = [
-  { name: 'Haus',       parts: [
-    { shape: 'triangle',  x: 20, y: 12, w: 60, h: 32, color: '#FF6B6B' },
-    { shape: 'square',    x: 26, y: 44, w: 48, h: 48, color: '#FFD93D' }] },
-  { name: 'Baum',       parts: [
-    { shape: 'triangle',  x: 22, y: 10, w: 56, h: 46, color: '#6BCB77' },
-    { shape: 'rectangle', x: 43, y: 56, w: 14, h: 32, color: '#8D6E63' }] },
-  { name: 'Boot',       parts: [
-    { shape: 'triangle',  x: 40, y: 12, w: 34, h: 44, color: '#FF9F43' },
-    { shape: 'rectangle', x: 18, y: 60, w: 64, h: 20, color: '#74B9FF' }] },
-  { name: 'Schneemann', parts: [
-    { shape: 'circle',    x: 38, y: 8,  w: 24, h: 24, color: '#EAF6FF' },
-    { shape: 'circle',    x: 34, y: 28, w: 32, h: 32, color: '#CFE7FF' },
-    { shape: 'circle',    x: 30, y: 56, w: 40, h: 40, color: '#AED4F7' }] },
-  { name: 'Rakete',     parts: [
-    { shape: 'triangle',  x: 38, y: 6,  w: 24, h: 26, color: '#FF6B6B' },
-    { shape: 'rectangle', x: 40, y: 32, w: 20, h: 42, color: '#A29BFE' },
-    { shape: 'triangle',  x: 22, y: 56, w: 20, h: 26, color: '#6C63FF' },
-    { shape: 'triangle',  x: 58, y: 56, w: 20, h: 26, color: '#6C63FF' }] },
-  { name: 'Blume',      parts: [
-    { shape: 'circle',    x: 40, y: 14, w: 22, h: 22, color: '#FFD93D' },
-    { shape: 'circle',    x: 20, y: 30, w: 22, h: 22, color: '#FD79A8' },
-    { shape: 'circle',    x: 60, y: 30, w: 22, h: 22, color: '#FD79A8' },
-    { shape: 'rectangle', x: 47, y: 50, w: 8,  h: 38, color: '#6BCB77' }] },
-  { name: 'Zug',        parts: [
-    { shape: 'rectangle', x: 14, y: 40, w: 50, h: 30, color: '#74B9FF' },
-    { shape: 'square',    x: 66, y: 46, w: 24, h: 24, color: '#FF9F43' },
-    { shape: 'circle',    x: 20, y: 68, w: 18, h: 18, color: '#444' },
-    { shape: 'circle',    x: 62, y: 68, w: 18, h: 18, color: '#444' }] },
-  { name: 'Kerze',      parts: [
-    { shape: 'triangle',  x: 42, y: 10, w: 16, h: 24, color: '#FF9F43' },
-    { shape: 'rectangle', x: 44, y: 36, w: 12, h: 56, color: '#FFD93D' }] },
-  { name: 'Berg',       parts: [
-    { shape: 'circle',    x: 14, y: 12, w: 20, h: 20, color: '#FFD93D' },
-    { shape: 'triangle',  x: 10, y: 26, w: 80, h: 60, color: '#8D6E63' }] },
-  { name: 'Turm',       parts: [
-    { shape: 'square',    x: 32, y: 58, w: 36, h: 36, color: '#A29BFE' },
-    { shape: 'square',    x: 38, y: 34, w: 24, h: 24, color: '#6C63FF' },
-    { shape: 'triangle',  x: 34, y: 8,  w: 32, h: 26, color: '#FF6B6B' }] },
+  { name: 'Haus', g: 'n', parts: [
+    { shape: 'triangle',  x: 22, y: 18, w: 56, h: 28, color: '#FF6B6B' },   // Dach sitzt auf …
+    { shape: 'square',    x: 30, y: 46, w: 40, h: 40, color: '#FFD93D' }] },// … der Wand ab y46
+  { name: 'Baum', g: 'm', parts: [
+    { shape: 'triangle',  x: 20, y: 14, w: 60, h: 48, color: '#6BCB77' },   // Krone endet bei y62
+    { shape: 'rectangle', x: 46, y: 62, w: 12, h: 26, color: '#8D6E63' }] },// Stamm beginnt dort
+  { name: 'Boot', g: 'n', parts: [
+    { shape: 'triangle',  x: 42, y: 16, w: 32, h: 46, color: '#FF9F43' },   // Segel steht auf …
+    { shape: 'rectangle', x: 16, y: 62, w: 68, h: 20, color: '#74B9FF' }] },// … dem Rumpf
+  { name: 'Kerze', g: 'f', parts: [
+    { shape: 'triangle',  x: 44, y: 10, w: 12, h: 24, color: '#FF9F43' },   // Flamme genau so …
+    { shape: 'rectangle', x: 44, y: 34, w: 12, h: 56, color: '#FFD93D' }] },// … breit wie die Kerze
+  { name: 'Eis', g: 'n', parts: [
+    { shape: 'circle',    x: 34, y: 20, w: 32, h: 32, color: '#FD79A8' },   // Kugel in der Waffel
+    { shape: 'triangle',  x: 38, y: 46, w: 24, h: 40, rot: 180, color: '#D9A066' }] },
+  { name: 'Schneemann', g: 'm', parts: [
+    { shape: 'circle',    x: 39, y: 8,  w: 22, h: 22, color: '#EAF6FF' },   // drei Kugeln, jede
+    { shape: 'circle',    x: 34, y: 28, w: 32, h: 32, color: '#CFE7FF' },   // auf der nächsten
+    { shape: 'circle',    x: 29, y: 54, w: 42, h: 42, color: '#AED4F7' }] },
+  { name: 'Turm', g: 'm', parts: [
+    { shape: 'triangle',  x: 30, y: 6,  w: 40, h: 28, color: '#FF6B6B' },   // Spitze  6–34
+    { shape: 'square',    x: 38, y: 34, w: 24, h: 24, color: '#6C63FF' },   // Mitte  34–58
+    { shape: 'square',    x: 32, y: 58, w: 36, h: 36, color: '#A29BFE' }] },// Sockel 58–94
+  { name: 'Rakete', g: 'f', parts: [
+    { shape: 'triangle',  x: 36, y: 6,  w: 28, h: 24, color: '#FF6B6B' },   // Spitze auf dem Rumpf
+    { shape: 'rectangle', x: 40, y: 30, w: 20, h: 44, color: '#A29BFE' },
+    { shape: 'triangle',  x: 22, y: 50, w: 18, h: 24, color: '#6C63FF' },   // Flossen schließen
+    { shape: 'triangle',  x: 60, y: 50, w: 18, h: 24, color: '#6C63FF' }] },// bündig an den Rumpf an
+  { name: 'Blume', g: 'f', parts: [
+    { shape: 'circle',    x: 39, y: 26, w: 22, h: 22, color: '#FFD93D' },   // Mitte
+    { shape: 'circle',    x: 19, y: 30, w: 20, h: 20, color: '#FD79A8' },   // Blätter berühren sie
+    { shape: 'circle',    x: 61, y: 30, w: 20, h: 20, color: '#FD79A8' },
+    { shape: 'rectangle', x: 47, y: 48, w: 6,  h: 42, color: '#6BCB77' }] },// Stiel ab Mitten-Unterkante
+  { name: 'Zug', g: 'm', parts: [
+    { shape: 'rectangle', x: 12, y: 44, w: 46, h: 28, color: '#74B9FF' },   // Wagen 12–58
+    { shape: 'square',    x: 58, y: 48, w: 24, h: 24, color: '#FF9F43' },   // Lok schließt bei 58 an
+    { shape: 'circle',    x: 18, y: 72, w: 16, h: 16, color: '#444' },      // Räder auf der
+    { shape: 'circle',    x: 62, y: 72, w: 16, h: 16, color: '#444' }] },   // Unterkante y72
 ]
+
+// "Baue einen Baum" / "Das ist ein Baum" — im Deutschen unterscheidet sich der
+// Artikel nach Fall, und maskulin ist der einzige, bei dem das auffällt.
+const ART = { m: { akk: 'einen', nom: 'ein' }, f: { akk: 'eine', nom: 'eine' }, n: { akk: 'ein', nom: 'ein' } }
+const art = (fig, fall) => (ART[fig.g] ?? ART.n)[fall]
 
 function buildRounds(level, count = 6) {
   // Easy levels only use figures with few parts. When the tier holds fewer
@@ -137,7 +149,7 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
   useEffect(() => {
     if (!fig) return
     setPlaced([]); setSelected(null); setWrongSlot(null); setMood('happy')
-    const id = setTimeout(() => speakDE(`Baue ${fig.name}! Welche Form passt wohin?`), 450)
+    const id = setTimeout(() => speakDE(`Baue ${art(fig, 'akk')} ${fig.name}! Welche Form passt wohin?`), 450)
     return () => clearTimeout(id)
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -148,6 +160,7 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
     // two identical circles are interchangeable, which is intended.
     const slot = fig.parts[slotIdx]
     const fits = piece.shape === slot.shape && piece.w === slot.w && piece.h === slot.h
+              && (piece.rot ?? 0) === (slot.rot ?? 0)
     if (!fits) {
       const s = SHAPE[piece.shape]
       // Right kind of shape, wrong size (the snowman's three circles) is a
@@ -172,7 +185,7 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
     if (next.length === fig.parts.length) {
       setMood('excited')
       sfx.correct()
-      speakDE(`Fertig! Das ist ${fig.name}.`)
+      speakDE(`Fertig! Das ist ${art(fig, 'nom')} ${fig.name}.`)
       setTimeout(() => setShowWeiter(true), 700)
     }
   }, [selected, fig, placed, tray])
@@ -213,9 +226,9 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
           fontFamily: 'var(--font-heading)', fontSize: 'clamp(14px,3vw,19px)', color: 'var(--text-primary)',
         }}>
           {complete
-            ? <>🎉 Fertig! Das ist <strong style={{ color: '#4A00E0' }}>{fig.name}</strong>.</>
+            ? <>🎉 Fertig! Das ist {art(fig, 'nom')} <strong style={{ color: '#4A00E0' }}>{fig.name}</strong>.</>
             : selected === null
-              ? <>Baue <strong style={{ color: '#4A00E0' }}>{fig.name}</strong> — wähle unten eine Form! 🧩</>
+              ? <>Baue {art(fig, 'akk')} <strong style={{ color: '#4A00E0' }}>{fig.name}</strong> — wähle unten eine Form! 🧩</>
               : <>Wohin gehört {SHAPE[tray[selected].shape].art.toLowerCase()} <strong style={{ color: '#4A00E0' }}>{SHAPE[tray[selected].shape].name}</strong>?</>}
         </div>
       </div>
@@ -264,7 +277,7 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
               }}
             >
               <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%' }}>
-                <ShapePath shape={p.shape}
+                <ShapePath shape={p.shape} rot={p.rot}
                   x={(100 - p.dw) / 2} y={(100 - p.dh) / 2} w={p.dw} h={p.dh}
                   fill={p.color} stroke="rgba(60,40,110,0.45)" sw={2.5} />
               </svg>
