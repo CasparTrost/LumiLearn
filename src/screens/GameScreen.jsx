@@ -6,6 +6,7 @@ import InfoButton from '../components/InfoButton.jsx'
 import ErrorBoundary from '../components/ErrorBoundary.jsx'
 import { useProfile } from '../hooks/useProfile.js'
 import { stopNarration } from '../narrator.js'
+import FitBox from '../components/FitBox.jsx'
 
 const ChoiceGame    = lazy(() => import('../games/ChoiceGame.jsx'))
 const TyperGame     = lazy(() => import('../games/TyperGame.jsx'))
@@ -79,6 +80,11 @@ const MODULE_META = {
   'shapes-land': { label: 'Formen-Land 🔷', gradient: 'linear-gradient(135deg,#00B894,#74B9FF)' },
   'rocket-math': { label: 'Rechen-Rakete 🚀', gradient: 'linear-gradient(135deg,#6C63FF,#00B894)' },
 }
+
+// Diese Spiele rechnen mit echten Zeigerkoordinaten oder zeichnen auf eine
+// Leinwand — ein Maßstab würde dort Treffer verschieben oder Pixel verwaschen.
+// Sie bemessen sich stattdessen selbst an ihrem Container.
+const NO_SCALE = new Set(['bubbles', 'clock', 'coloring', 'numbers', 'shapes', 'shadows', 'maze'])
 
 const GAME_MAP = {
   numbers:  NumbersGame,
@@ -174,7 +180,9 @@ export default function GameScreen() {
       {/* Game */}
       <ErrorBoundary moduleId={moduleId} onHome={() => dispatch({ type: 'NAVIGATE', payload: 'home' })}>
         <Suspense fallback={<GameLoadingFallback gradient={meta.gradient} />}>
-          <GameComponent moduleId={moduleId} level={level} onComplete={handleComplete} />
+          {NO_SCALE.has(moduleId)
+            ? <GameComponent moduleId={moduleId} level={level} onComplete={handleComplete} />
+            : <FitBox><GameComponent moduleId={moduleId} level={level} onComplete={handleComplete} /></FitBox>}
         </Suspense>
       </ErrorBoundary>
     </div>

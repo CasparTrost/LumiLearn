@@ -1,6 +1,10 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 
-export function useBoardSize(cols, rows, maxCell = 52) {
+// maxCell deckelt die Kachelgröße. Der Deckel lag bei 52, womit das Labyrinth
+// auf einem Monitor klein blieb, obwohl darunter Platz war — die Kachelgröße
+// ist ohnehin durch die Containergröße begrenzt, der Deckel verhindert nur,
+// dass ein 5x5-Labyrinth bildschirmfüllend wird.
+export function useBoardSize(cols, rows, maxCell = 76) {
   const containerRef = useRef(null)
   const [cellSize, setCellSize] = useState(24)
 
