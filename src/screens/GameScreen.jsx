@@ -182,7 +182,11 @@ export default function GameScreen() {
         <Suspense fallback={<GameLoadingFallback gradient={meta.gradient} />}>
           {NO_SCALE.has(moduleId)
             ? <GameComponent moduleId={moduleId} level={level} onComplete={handleComplete} />
-            : <FitBox><GameComponent moduleId={moduleId} level={level} onComplete={handleComplete} /></FitBox>}
+            // key: jedes Spiel misst seine nötige Höhe neu, statt die des
+            // vorigen zu erben
+            : <FitBox key={`${moduleId}-${level}`}>
+                <GameComponent moduleId={moduleId} level={level} onComplete={handleComplete} />
+              </FitBox>}
         </Suspense>
       </ErrorBoundary>
     </div>
