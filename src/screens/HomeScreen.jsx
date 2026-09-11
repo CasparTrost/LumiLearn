@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react'
+﻿import React, { useState, useEffect, useMemo, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Settings } from 'lucide-react'
 import { useApp } from '../AppContext.jsx'
@@ -10,11 +10,12 @@ import FarmProgress from '../components/FarmProgress.jsx'
 import ProfileSwitcher from '../components/ProfileSwitcher.jsx'
 import { useProfile } from '../hooks/useProfile.js'
 import { speak } from '../tts.js'
+import { lazyWithReload } from '../lib/lazyWithReload.js'
 
 // Rarely opened (only via the settings gear) and pulls in its own sizeable
 // UI (PIN gate, stats, error log, profile management) — no reason to ship
 // it in the initial bundle every kid loading the home screen pays for.
-const ParentScreen = lazy(() => import('./ParentScreen.jsx'))
+const ParentScreen = lazyWithReload(() => import('./ParentScreen.jsx'))
 
 // ── All modules ───────────────────────────────────────────────────────────────
 const MODULES = [
