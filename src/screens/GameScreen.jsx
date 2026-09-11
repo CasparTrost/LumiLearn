@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react'
+import { Suspense, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowLeft } from 'lucide-react'
 import { useApp, MAX_LEVELS } from '../AppContext.jsx'
@@ -7,31 +7,32 @@ import ErrorBoundary from '../components/ErrorBoundary.jsx'
 import { useProfile } from '../hooks/useProfile.js'
 import { stopNarration } from '../narrator.js'
 import FitBox from '../components/FitBox.jsx'
+import { lazyWithReload } from '../lib/lazyWithReload.js'
 
-const ChoiceGame    = lazy(() => import('../games/ChoiceGame.jsx'))
-const TyperGame     = lazy(() => import('../games/TyperGame.jsx'))
-const MemoryGame    = lazy(() => import('../games/MemoryGame.jsx'))
-const PainterGame   = lazy(() => import('../games/PainterGame.jsx'))
-const ListenGame    = lazy(() => import('../games/ListenGame.jsx'))
-const EmotionGame   = lazy(() => import('../games/EmotionGame.jsx'))
-const MazeGame      = lazy(() => import('../games/MazeGame.jsx'))
-const ShadowGame    = lazy(() => import('../games/ShadowGame.jsx'))
-const BubblePopGame = lazy(() => import('../games/BubblePopGame.jsx'))
-const StoryGame     = lazy(() => import('../games/StoryGame.jsx'))
-const SortGame        = lazy(() => import('../games/SortGame.jsx'))
-const ClockGame       = lazy(() => import('../games/ClockGame.jsx'))
-const WordBuilderGame = lazy(() => import('../games/WordBuilderGame.jsx'))
-const WeightGame        = lazy(() => import('../games/WeightGame.jsx'))
-const NumberIntroGame   = lazy(() => import('../games/NumberIntroGame.jsx'))
-const LetterIntroGame   = lazy(() => import('../games/LetterIntroGame.jsx'))
-const NumbersGame       = lazy(() => import('../games/NumbersGame.jsx'))
-const ColoringGame      = lazy(() => import('../games/ColoringGame.jsx'))
-const ShapeBuildGame = lazy(() => import('../games/ShapeBuildGame.jsx'))
-const EmpathyGame = lazy(() => import('../games/EmpathyGame.jsx'))
-const InitialSoundGame = lazy(() => import('../games/InitialSoundGame.jsx'))
-const RhymeGame = lazy(() => import('../games/RhymeGame.jsx'))
-const ShapeLandGame = lazy(() => import('../games/ShapeLandGame.jsx'))
-const RocketMathGame = lazy(() => import('../games/RocketMathGame.jsx'))
+const ChoiceGame    = lazyWithReload(() => import('../games/ChoiceGame.jsx'))
+const TyperGame     = lazyWithReload(() => import('../games/TyperGame.jsx'))
+const MemoryGame    = lazyWithReload(() => import('../games/MemoryGame.jsx'))
+const PainterGame   = lazyWithReload(() => import('../games/PainterGame.jsx'))
+const ListenGame    = lazyWithReload(() => import('../games/ListenGame.jsx'))
+const EmotionGame   = lazyWithReload(() => import('../games/EmotionGame.jsx'))
+const MazeGame      = lazyWithReload(() => import('../games/MazeGame.jsx'))
+const ShadowGame    = lazyWithReload(() => import('../games/ShadowGame.jsx'))
+const BubblePopGame = lazyWithReload(() => import('../games/BubblePopGame.jsx'))
+const StoryGame     = lazyWithReload(() => import('../games/StoryGame.jsx'))
+const SortGame        = lazyWithReload(() => import('../games/SortGame.jsx'))
+const ClockGame       = lazyWithReload(() => import('../games/ClockGame.jsx'))
+const WordBuilderGame = lazyWithReload(() => import('../games/WordBuilderGame.jsx'))
+const WeightGame        = lazyWithReload(() => import('../games/WeightGame.jsx'))
+const NumberIntroGame   = lazyWithReload(() => import('../games/NumberIntroGame.jsx'))
+const LetterIntroGame   = lazyWithReload(() => import('../games/LetterIntroGame.jsx'))
+const NumbersGame       = lazyWithReload(() => import('../games/NumbersGame.jsx'))
+const ColoringGame      = lazyWithReload(() => import('../games/ColoringGame.jsx'))
+const ShapeBuildGame = lazyWithReload(() => import('../games/ShapeBuildGame.jsx'))
+const EmpathyGame = lazyWithReload(() => import('../games/EmpathyGame.jsx'))
+const InitialSoundGame = lazyWithReload(() => import('../games/InitialSoundGame.jsx'))
+const RhymeGame = lazyWithReload(() => import('../games/RhymeGame.jsx'))
+const ShapeLandGame = lazyWithReload(() => import('../games/ShapeLandGame.jsx'))
+const RocketMathGame = lazyWithReload(() => import('../games/RocketMathGame.jsx'))
 
 function GameLoadingFallback({ gradient }) {
   return (
