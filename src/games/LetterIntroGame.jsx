@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { voice } from '../voice.js'
 import { hearable } from '../lib/hearable.js'
 import HearOptions from '../components/HearOptions.jsx'
+import { lockPreviews } from '../narrator.js'
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 const LETTER_DATA = {
@@ -139,6 +140,7 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
   }, [questions, idx])
 
   useEffect(() => {
+    lockPreviews()
     const t = setTimeout(sayRound, 400)
     return () => clearTimeout(t)
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps

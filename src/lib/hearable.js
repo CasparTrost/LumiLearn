@@ -9,24 +9,39 @@
  * Zwei Wege, die sich ergänzen:
  *   • Maus/Tastatur: darüberfahren oder hintabben liest die Option vor.
  *   • Finger: der Lautsprecher an der Frage liest alle Optionen der Reihe nach.
+ *
+ * Zwei Regeln, damit daraus kein Stottern wird:
+ *   • Vorrang "preview" — unterbricht nie eine laufende Ansage und ist
+ *     gesperrt, solange die Frage einer neuen Aufgabe noch aussteht.
+ *   • Eine kurze Ruhezeit, bevor gesprochen wird. Wandert der Zeiger nur über
+ *     die Antworten hinweg, fing vorher jede berührte Option an zu sprechen und
+ *     wurde von der nächsten sofort abgewürgt — ein Stakkato aus Wortanfängen.
  */
 
 import { narrate } from '../narrator.js'
 
-/**
- * Props für eine Antwort-Schaltfläche, die sich vorlesen lässt.
- * `text` ist das Gesprochene, `src` optional eine Aufnahme.
- */
+const REST_MS = 260
+
 export function hearable(text, { src, rate, pitch, enabled = true } = {}) {
   if (!enabled || (!text && !src)) return {}
-  // priority 'preview': unterbricht nie die laufende Frage. Dadurch wirkt das
-  // Vorlesen erst, wenn die Fragestellung durch ist — genau so, wie ein Kind
-  // es erwartet, und ohne dass jedes Spiel das selbst verwalten müsste.
-  const say = () => narrate([{ text, src, rate, pitch }], { skipIfSame: true, priority: 'preview' })
+
+  let timer = null
+  const start = () => {
+    clearTimeout(timer)
+    timer = setTimeout(
+      () => narrate([{ text, src, rate, pitch }], { skipIfSame: true, priority: 'preview' }),
+      REST_MS,
+    )
+  }
+  const stop = () => clearTimeout(timer)
+
   return {
     // Auf Touch-Geräten löst pointerenter beim Tippen mit aus — dort ist der
     // Lautsprecher an der Frage der Weg, nicht dieser.
-    onPointerEnter: e => { if (e.pointerType !== 'touch') say() },
-    onFocus: say,
+    onPointerEnter: e => { if (e.pointerType !== 'touch') start() },
+    onPointerLeave: stop,
+    onPointerDown: stop,      // beim Antippen zählt die Antwort, nicht die Vorschau
+    onFocus: start,
+    onBlur: stop,
   }
 }

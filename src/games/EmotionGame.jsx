@@ -5,6 +5,7 @@ import { voice } from '../voice.js'
 import { speak } from '../tts.js'
 import { hearable } from '../lib/hearable.js'
 import HearOptions from '../components/HearOptions.jsx'
+import { lockPreviews } from '../narrator.js'
 
 /**
  * Gefühlswelt — Emotionale Intelligenz
@@ -256,6 +257,7 @@ export default function EmotionGame({ level = 1, onComplete }) {
   useEffect(() => {
     const ch = challenges[idx]
     if (!ch) return
+    lockPreviews()
     if (ch.sa) {
       voice.play(ch.sa)
     } else {
