@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
 import { speak } from '../tts.js'
+import { hearable } from '../lib/hearable.js'
+import HearOptions from '../components/HearOptions.jsx'
 
 /**
  * Formen-Land — Formen erkennen, Größen ordnen, Muster fortsetzen
@@ -204,6 +206,7 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
         }}>
           {solved ? <>⭐ Richtig!</> : prompt}
         </div>
+        {r.mode === 'match' && <HearOptions items={r.options.map(t => SHAPES[t].name)} label="Alle Antworten vorlesen" />}
       </div>
 
       {/* MATCH */}
@@ -217,6 +220,7 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
                 whileHover={!solved && !isWrong ? { scale: 1.07 } : {}}
                 whileTap={!solved && !isWrong ? { scale: 0.94 } : {}}
                 onClick={() => { if (!isWrong) pickShape(type) }}
+                {...hearable(SHAPES[type].name)}
                 aria-label={SHAPES[type].name}
                 style={{
                   background: isRight ? '#E8F8EE' : isWrong ? '#FFE8E8' : 'white',
@@ -293,6 +297,7 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
                   whileHover={!solved && !isWrong ? { scale: 1.07 } : {}}
                   whileTap={!solved && !isWrong ? { scale: 0.94 } : {}}
                   onClick={() => { if (!isWrong) pickPattern(opt, i) }}
+                  {...hearable(SHAPES[opt.type].name)}
                   aria-label={SHAPES[opt.type].name}
                   style={{
                     background: isRight ? '#E8F8EE' : isWrong ? '#FFE8E8' : 'white',

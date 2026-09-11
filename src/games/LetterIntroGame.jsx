@@ -2,6 +2,8 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { voice } from '../voice.js'
 import { speak } from '../tts.js'
+import { hearable } from '../lib/hearable.js'
+import HearOptions from '../components/HearOptions.jsx'
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 const LETTER_DATA = {
@@ -321,6 +323,7 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
               whileHover={!selected ? { scale:1.07, y:-3 } : {}}
               whileTap={!selected ? { scale:0.93 } : {}}
               onClick={() => pick(opt)}
+              {...hearable(opt.w, { enabled: !selected })}
               style={{
                 background:bg, border, boxShadow:shadow,
                 borderRadius:24,

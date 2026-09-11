@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
 import { speak } from '../tts.js'
+import { hearable } from '../lib/hearable.js'
+import HearOptions from '../components/HearOptions.jsx'
 
 /**
  * Gefühlsdetektiv — Gefühle an der Körperhaltung erkennen und helfen
@@ -190,6 +192,8 @@ export default function EmpathyGame({ level = 1, onComplete }) {
         }}>
           {sc.situation}
         </div>
+        <HearOptions items={phase === 'feeling' ? feelingOptions[idx] : helpOptions[idx]}
+          label="Alle Antworten vorlesen" />
       </div>
 
       {/* The scene: the child in question, and you */}
@@ -228,6 +232,7 @@ export default function EmpathyGame({ level = 1, onComplete }) {
               <motion.button key={f}
                 whileHover={!isWrong ? { scale: 1.06 } : {}} whileTap={!isWrong ? { scale: 0.94 } : {}}
                 onClick={() => { if (!isWrong) pickFeeling(f) }}
+                {...hearable(f)}
                 aria-label={f}
                 style={{
                   background: isWrong ? '#FFE8E8' : 'white',
@@ -253,6 +258,7 @@ export default function EmpathyGame({ level = 1, onComplete }) {
                 whileHover={phase === 'help' && !isWrong ? { scale: 1.02 } : {}}
                 whileTap={phase === 'help' && !isWrong ? { scale: 0.98 } : {}}
                 onClick={() => { if (!isWrong) pickHelp(h) }}
+                {...hearable(h)}
                 style={{
                   background: isBest ? '#E8F8EE' : isWrong ? '#FFF4E5' : 'white',
                   border: `3px solid ${isBest ? '#6BCB77' : isWrong ? '#FFD93D' : '#ECE8FF'}`,
