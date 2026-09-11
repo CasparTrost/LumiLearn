@@ -16,8 +16,15 @@ function buildRounds(level) {
   if (maxN <= 3) seq = rnd([...seq, ...seq])
   else seq = rnd(seq)
   const emojiPool = rnd(ALL_EMOJIS)
+  // Extra objects beyond the target count. The board used to hold exactly n
+  // items, so tapping everything was always right and the round could not be
+  // failed — the link between quantity and numeral was never actually tested.
+  // With a few spares the child has to count out n of them and stop, which is
+  // the classic "give me n" task and the real measure of cardinality.
+  const extra = level <= 1 ? 1 : level <= 2 ? 2 : 3
   return seq.map((n, i) => ({
     n,
+    total: n + extra,
     emoji: emojiPool[i % emojiPool.length],
     color: NUM_COLORS[n],
   }))
@@ -30,6 +37,8 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
   const [tapped, setTapped] = useState(() => new Map()) // Map<index → tapOrder (1-based)>
   const [boom,   setBoom]   = useState(false)
   const [showWeiter, setShowWeiter] = useState(false)
+  const [checkResult, setCheckResult] = useState(null) // null | 'ok' | 'wrong'
+  const [misses, setMisses] = useState(0)
 
   // Stop narration when game unmounts
   useEffect(() => () => voice.stop(), [])
@@ -37,11 +46,11 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
   // Speak the number name when a new round starts
   useEffect(() => {
     const n = rounds[idx]?.n
-    if (n != null) voice.play(`audio/zahlen-entdecken/${NUMBER_AUDIO[n]}.mp3`)
+    if (n != null) voice.play(`audio/zahlen-entdecken/${NUMBER_AUDIO[n]}.mp3`, NUMBER_WORDS[n])
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const round = rounds[idx]
-  const done  = !!round && tapped.size >= round.n
+  const done  = checkResult === 'ok'
 
   // Spacebar taps the next untapped item
   useEffect(() => {
@@ -49,7 +58,7 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
       if (e.code !== 'Space' || done) return
       e.preventDefault()
       setTapped(p => {
-        const nextIdx = Array.from({ length: round.n }, (_, i) => i).find(i => !p.has(i))
+        const nextIdx = Array.from({ length: round.total }, (_, i) => i).find(i => !p.has(i))
         if (nextIdx === undefined) return p
         const m = new Map(p)
         m.set(nextIdx, p.size + 1)
@@ -71,8 +80,12 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
     setShowWeiter(false)
     setBoom(false)
     const next = idx + 1
+    setCheckResult(null)
     if (next >= rounds.length) {
-      onComplete({ score: rounds.length, total: rounds.length })
+      // Every round is eventually counted right (a miscount can be retried),
+      // so the score alone would always mean three stars.
+      const stars = misses === 0 ? 3 : misses <= rounds.length ? 2 : 1
+      onComplete({ score: rounds.length, total: rounds.length, stars })
     } else {
       setIdx(next)
       setTapped(new Map())
@@ -81,7 +94,22 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
 
   if (!round) return null
 
-  const objs = Array.from({ length: round.n }, (_, i) => i)
+  const objs = Array.from({ length: round.total }, (_, i) => i)
+
+  const checkCount = () => {
+    if (tapped.size === round.n) {
+      setCheckResult('ok')
+      return
+    }
+    setCheckResult('wrong')
+    setMisses(m => m + 1)
+    const tooMany = tapped.size > round.n
+    speak(tooMany
+      ? `Das sind zu viele. Zähle noch einmal bis ${round.n}.`
+      : `Das sind noch zu wenige. Zähle bis ${round.n}.`,
+      { rate: 0.8, pitch: 1.05, lang: 'de-DE' })
+    setTimeout(() => { setCheckResult(null); setTapped(new Map()) }, 1900)
+  }
 
   return (
     <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:18, padding:'clamp(12px,3vw,24px)', width:'100%' }}>
@@ -89,7 +117,7 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
       {/* Progress */}
       <div style={{ width:'100%', maxWidth:520, height:10, background:'rgba(0,0,0,0.08)', borderRadius:10, overflow:'hidden' }}>
         <motion.div
-          animate={{ width:`${(idx / rounds.length) * 100}%` }}
+          animate={{ width:`${((idx + (done ? 1 : 0)) / rounds.length) * 100}%` }}
           style={{ height:'100%', background:round.color, borderRadius:10 }}
           transition={{ duration:0.4 }}
         />
@@ -117,6 +145,27 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
           <div style={{fontFamily:'var(--font-heading)',fontSize:'clamp(42px,9vw,62px)',color:'var(--text-secondary)',marginTop:-4,letterSpacing:1}}>
             {NUMBER_WORDS[round.n]}
           </div>
+          {/* Ten frame for 7..10 — the dice pattern below only reaches six,
+              so exactly the numbers that are hardest to grasp at a glance had
+              no structure to lean on. Five per row makes "five and some more"
+              visible instead of forcing a one-by-one count. */}
+          {round.n >= 7 && (
+            <svg width={132} height={62} viewBox="0 0 220 100" style={{marginTop:6}}>
+              {Array.from({ length: 10 }, (_, i) => {
+                const col = i % 5, row = Math.floor(i / 5)
+                const x = 6 + col * 42, y = 6 + row * 44
+                return (
+                  <g key={i}>
+                    <rect x={x} y={y} width={38} height={40} rx={7}
+                      fill="white" stroke={`${round.color}55`} strokeWidth={2}/>
+                    {i < round.n && (
+                      <circle cx={x + 19} cy={y + 20} r={12} fill={round.color}/>
+                    )}
+                  </g>
+                )
+              })}
+            </svg>
+          )}
           {/* Dice pattern for n <= 6 */}
           {round.n <= 6 && (
             <svg width={80} height={80} viewBox="0 0 100 100" style={{marginTop:4}}>
@@ -197,12 +246,12 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
                       if (!isTapped) {
                         const newOrder = tapped.size + 1
                         setTapped(p => { const m = new Map(p); m.set(i, newOrder); return m })
-                        // Speak the count number
-                        // Plain digit text — genuinely language-neutral (the
-                        // synthesizer reads it as a number word in whichever
-                        // voice/language it's given), unlike the German-prose
-                        // TTS elsewhere, so no explicit lang pin needed here.
-                        speak(String(newOrder), { rate: 0.8, pitch: 1.2 })
+                        // Count along in the same recorded voice that
+                        // announces the round. This used to be speech
+                        // synthesis while the round number was a recording,
+                        // so the voice audibly changed mid-round.
+                        voice.play(`audio/zahlen-entdecken/${NUMBER_AUDIO[newOrder]}.mp3`,
+                                   NUMBER_WORDS[newOrder])
                       }
                     }}
                     style={{
@@ -252,20 +301,21 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
         )}
       </AnimatePresence>
 
-      {/* Dot counter */}
+      {/* Dot counter — one dot per wanted item, not per item on the board:
+          it shows how many are still to collect now that spares lie around. */}
       {!boom && (
         <div style={{ display:'flex', gap:10, flexWrap:'wrap', justifyContent:'center', minHeight:30 }}>
-          {objs.map(i => (
+          {Array.from({ length: round.n }, (_, i) => (
             <motion.div
               key={i}
               animate={{
-                scale: tapped.has(i) ? 1.2 : 0.75,
-                background: tapped.has(i) ? round.color : 'rgba(0,0,0,0.12)',
+                scale: i < tapped.size ? 1.2 : 0.75,
+                background: i < tapped.size ? round.color : 'rgba(0,0,0,0.12)',
               }}
               transition={{ type:'spring', stiffness:500, damping:18 }}
               style={{
                 width:22, height:22, borderRadius:'50%',
-                boxShadow: tapped.has(i) ? `0 0 12px ${round.color}99` : 'none',
+                boxShadow: i < tapped.size ? `0 0 12px ${round.color}99` : 'none',
               }}
             />
           ))}
@@ -285,8 +335,42 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
             textAlign:'center', margin:0,
           }}
         >
-          {round.n === 1 ? `Tippe das ${round.emoji} an! 👆` : `Tippe alle ${round.n} ${round.emoji} an! 👆`}
+          {round.n === 1 ? `Sammle genau 1 ${round.emoji} ein! 👆` : `Sammle genau ${round.n} ${round.emoji} ein! 👆`}
         </motion.p>
+      )}
+
+      {/* The child decides when the count is complete — that decision is the
+          whole assessment. Auto-finishing at n made every attempt correct. */}
+      {!boom && checkResult !== 'wrong' && (
+        <motion.button
+          animate={{ opacity: tapped.size > 0 ? 1 : 0.35, scale: tapped.size > 0 ? 1 : 0.96 }}
+          whileHover={tapped.size > 0 ? { scale: 1.06 } : {}}
+          whileTap={tapped.size > 0 ? { scale: 0.94 } : {}}
+          onClick={() => { if (tapped.size > 0) checkCount() }}
+          style={{
+            background: `linear-gradient(135deg, ${round.color}, ${round.color}cc)`,
+            color:'white', border:'none', borderRadius:20,
+            padding:'12px 40px', cursor: tapped.size > 0 ? 'pointer' : 'default',
+            fontFamily:'var(--font-heading)', fontSize:'clamp(17px,3.6vw,22px)',
+            fontWeight:800, boxShadow:`0 5px 20px ${round.color}66`,
+          }}
+        >✅ Fertig!</motion.button>
+      )}
+
+      {checkResult === 'wrong' && (
+        <motion.div
+          initial={{ scale:0.8, opacity:0 }} animate={{ scale:1, opacity:1 }}
+          style={{
+            background:'#FFE8E8', border:'3px solid #FF6B6B', borderRadius:20,
+            padding:'12px 26px', textAlign:'center',
+            fontFamily:'var(--font-heading)', fontSize:'clamp(15px,3.2vw,20px)',
+            color:'#C0392B', fontWeight:700,
+          }}
+        >
+          {tapped.size > round.n
+            ? `Das waren ${tapped.size} — das sind zu viele. Wir zählen nochmal! 🔁`
+            : `Das waren erst ${tapped.size}. Wir zählen nochmal! 🔁`}
+        </motion.div>
       )}
 
       {showWeiter && (

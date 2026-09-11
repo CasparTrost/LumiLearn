@@ -237,15 +237,15 @@ const LEVEL_SETS = [
       ],
     },
     {
-      categoryA: { label: 'Europa', emoji: '🇪🇺', color: '#2196F3', bg: '#E3F2FD', border: '#2196F3' },
-      categoryB: { label: 'Nicht Europa', emoji: '🌍', color: '#FF9F43', bg: '#FFF3E0', border: '#FF9F43' },
+      categoryA: { label: 'Schwimmt', emoji: '🛟', color: '#2196F3', bg: '#E3F2FD', border: '#2196F3' },
+      categoryB: { label: 'Geht unter', emoji: '🪨', color: '#795548', bg: '#EFEBE9', border: '#795548' },
       items: [
-        { id:1, emoji:'🗼', cat:'A' }, { id:2, emoji:'🗽', cat:'B' },
-        { id:3, emoji:'🏰', cat:'A' }, { id:4, emoji:'🏯', cat:'B' },
-        { id:5, emoji:'❄️', cat:'A' }, { id:6, emoji:'🏜️', cat:'B' },
-        { id:7, emoji:'🥐', cat:'A' }, { id:8, emoji:'🍜', cat:'B' },
-        { id:9, emoji:'⚽', cat:'A' }, { id:10, emoji:'🏏', cat:'B' },
-        { id:11, emoji:'🎻', cat:'A' }, { id:12, emoji:'🪘', cat:'B' },
+        { id:1, emoji:'🍃', cat:'A' }, { id:2, emoji:'🔑', cat:'B' },
+        { id:3, emoji:'🦈', cat:'A' }, { id:4, emoji:'🪙', cat:'B' },
+        { id:5, emoji:'🚤', cat:'A' }, { id:6, emoji:'🔨', cat:'B' },
+        { id:7, emoji:'🦆', cat:'A' }, { id:8, emoji:'⚙️', cat:'B' },
+        { id:9, emoji:'🎈', cat:'A' }, { id:10, emoji:'🗿', cat:'B' },
+        { id:11, emoji:'🧽', cat:'A' }, { id:12, emoji:'🔪', cat:'B' },
       ],
     },
     {
@@ -262,7 +262,19 @@ const LEVEL_SETS = [
     },
   ],
   // ── Tier 6 ─────────────────────────────────────────────────────────────────
+  // (the first set here has three baskets — see categoryC)
   [
+    {
+      categoryA: { label: 'Tiere', emoji: '🐾', color: '#6BCB77', bg: '#E8F8EE', border: '#6BCB77' },
+      categoryB: { label: 'Essen', emoji: '🍽️', color: '#FF9F43', bg: '#FFF3E0', border: '#FF9F43' },
+      categoryC: { label: 'Fahrzeuge', emoji: '🚗', color: '#6C63FF', bg: '#F0EEFF', border: '#6C63FF' },
+      items: [
+        { id:1, emoji:'🐕', cat:'A' }, { id:2, emoji:'🍕', cat:'B' }, { id:3, emoji:'🚕', cat:'C' },
+        { id:4, emoji:'🐱', cat:'A' }, { id:5, emoji:'🍎', cat:'B' }, { id:6, emoji:'✈️', cat:'C' },
+        { id:7, emoji:'🦁', cat:'A' }, { id:8, emoji:'🌮', cat:'B' }, { id:9, emoji:'🚂', cat:'C' },
+        { id:10, emoji:'🐸', cat:'A' }, { id:11, emoji:'🍩', cat:'B' }, { id:12, emoji:'🚀', cat:'C' },
+      ],
+    },
     {
       categoryA: { label: 'Warm / Heiß', emoji: '🔥', color: '#FF5722', bg: '#FBE9E7', border: '#FF5722' },
       categoryB: { label: 'Kalt / Kühl', emoji: '❄️', color: '#2196F3', bg: '#E3F2FD', border: '#2196F3' },
@@ -277,27 +289,27 @@ const LEVEL_SETS = [
       ],
     },
     {
-      categoryA: { label: 'Erneuerbar', emoji: '♻️', color: '#6BCB77', bg: '#E8F8EE', border: '#6BCB77' },
-      categoryB: { label: 'Nicht erneuerbar', emoji: '⛽', color: '#795548', bg: '#EFEBE9', border: '#795548' },
+      categoryA: { label: 'Aus Holz', emoji: '🪵', color: '#8D6E63', bg: '#EFEBE9', border: '#8D6E63' },
+      categoryB: { label: 'Aus Metall', emoji: '🔩', color: '#607D8B', bg: '#ECEFF1', border: '#607D8B' },
       items: [
-        { id:1, emoji:'☀️', cat:'A' }, { id:2, emoji:'⛽', cat:'B' },
-        { id:3, emoji:'💨', cat:'A' }, { id:4, emoji:'🏭', cat:'B' },
-        { id:5, emoji:'🌊', cat:'A' }, { id:6, emoji:'🚗', cat:'B' },
-        { id:7, emoji:'🌱', cat:'A' }, { id:8, emoji:'🔋', cat:'B' },
-        { id:9, emoji:'♻️', cat:'A' }, { id:10, emoji:'🗑️', cat:'B' },
-        { id:11, emoji:'🍃', cat:'A' }, { id:12, emoji:'🛢️', cat:'B' },
+        { id:1, emoji:'🪑', cat:'A' }, { id:2, emoji:'🔗', cat:'B' },
+        { id:3, emoji:'✏️', cat:'A' }, { id:4, emoji:'🗝️', cat:'B' },
+        { id:5, emoji:'🎯', cat:'A' }, { id:6, emoji:'🔪', cat:'B' },
+        { id:7, emoji:'🪓', cat:'A' }, { id:8, emoji:'⚓', cat:'B' },
+        { id:9, emoji:'🛶', cat:'A' }, { id:10, emoji:'🔧', cat:'B' },
+        { id:11, emoji:'🏘️', cat:'A' }, { id:12, emoji:'⚙️', cat:'B' },
       ],
     },
     {
-      categoryA: { label: 'Vergangen', emoji: '⏮️', color: '#6C63FF', bg: '#F0EEFF', border: '#6C63FF' },
-      categoryB: { label: 'Gegenwart', emoji: '▶️', color: '#FF9F43', bg: '#FFF3E0', border: '#FF9F43' },
+      categoryA: { label: 'Drinnen', emoji: '🏠', color: '#6C63FF', bg: '#F0EEFF', border: '#6C63FF' },
+      categoryB: { label: 'Draußen', emoji: '🌳', color: '#FF9F43', bg: '#FFF3E0', border: '#FF9F43' },
       items: [
-        { id:1, emoji:'🏰', cat:'A' }, { id:2, emoji:'🏙️', cat:'B' },
-        { id:3, emoji:'⚔️', cat:'A' }, { id:4, emoji:'📱', cat:'B' },
-        { id:5, emoji:'🦕', cat:'A' }, { id:6, emoji:'🚀', cat:'B' },
-        { id:7, emoji:'🕯️', cat:'A' }, { id:8, emoji:'💡', cat:'B' },
-        { id:9, emoji:'📜', cat:'A' }, { id:10, emoji:'💻', cat:'B' },
-        { id:11, emoji:'🐎', cat:'A' }, { id:12, emoji:'🚗', cat:'B' },
+        { id:1, emoji:'🛏️', cat:'A' }, { id:2, emoji:'🛝', cat:'B' },
+        { id:3, emoji:'🛁', cat:'A' }, { id:4, emoji:'⛲', cat:'B' },
+        { id:5, emoji:'📺', cat:'A' }, { id:6, emoji:'⛰️', cat:'B' },
+        { id:7, emoji:'🪑', cat:'A' }, { id:8, emoji:'🌳', cat:'B' },
+        { id:9, emoji:'🍳', cat:'A' }, { id:10, emoji:'🏖️', cat:'B' },
+        { id:11, emoji:'🚿', cat:'A' }, { id:12, emoji:'⛺', cat:'B' },
       ],
     },
   ],
@@ -324,7 +336,10 @@ export default function SortGame({ level = 1, onComplete }) {
   const [cfg]      = useState(() => pickLevelSet(level))
   const [items]    = useState(() => shuffleArr(cfg.items))
   const [curIdx,   setCurIdx]   = useState(0)
-  const [sorted,   setSorted]   = useState({ A: [], B: [] })
+  const [sorted,   setSorted]   = useState({ A: [], B: [], C: [] })
+  // Which basket the item actually belonged to, shown briefly after a
+  // mis-sort — the item used to just wobble back with no clue where it went.
+  const [revealCat, setRevealCat] = useState(null)
   const [flyDir,   setFlyDir]   = useState(null)   // 'A' | 'B' | null
   const [feedback, setFeedback] = useState(null)   // 'ok' | 'wrong'
   const [score,    setScore]    = useState(0)
@@ -363,12 +378,14 @@ export default function SortGame({ level = 1, onComplete }) {
       sfx.wrong()
       setFeedback('wrong')
       setMood('encouraging')
+      setRevealCat(current.cat)
       // fly to wrong basket then bounce back
       setTimeout(() => {
         setFlyDir(null)
         setFeedback(null)
+        setRevealCat(null)
         setMood('happy')
-      }, 700)
+      }, 1100)
     }
   }, [current, flyDir, score, curIdx, total, onComplete])
 
@@ -377,6 +394,7 @@ export default function SortGame({ level = 1, onComplete }) {
     const onKey = (e) => {
       if (e.key === 'ArrowLeft')  { e.preventDefault(); sortItem('A') }
       if (e.key === 'ArrowRight') { e.preventDefault(); sortItem('B') }
+      if (e.key === 'ArrowDown' && cfg.categoryC) { e.preventDefault(); sortItem('C') }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -384,10 +402,12 @@ export default function SortGame({ level = 1, onComplete }) {
 
   // Speak category names when game starts
   useEffect(() => {
-    setTimeout(() => speakDE('Sortiere! ' + cfg.categoryA.label + ' oder ' + cfg.categoryB.label), 400)
+    setTimeout(() => speakDE('Sortiere! ' + [cfg.categoryA, cfg.categoryB, cfg.categoryC]
+      .filter(Boolean).map(c => c.label).join(' oder ')), 400)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const catA = cfg.categoryA
+  const catC = cfg.categoryC ?? null
   const catB = cfg.categoryB
 
   return (
@@ -411,7 +431,9 @@ export default function SortGame({ level = 1, onComplete }) {
         <div style={{ flex:1, background:'white', borderRadius:'24px 24px 24px 6px', padding:'10px 16px', boxShadow:'0 4px 16px rgba(107,203,119,0.12)', fontFamily:'var(--font-heading)', fontSize:'clamp(14px,3vw,19px)', color:'var(--text-primary)' }}>
           {phase === 'done'
             ? '🎉 Super! Alles richtig sortiert!'
-            : 'Wohin gehört es? Pfeiltaste ← ' + catA.label + '  oder  ' + catB.label + ' →'}
+            : catC
+              ? 'Wohin gehört es? ← ' + catA.label + '  ·  ▼ ' + catC.label + '  ·  ' + catB.label + ' →'
+              : 'Wohin gehört es? Pfeiltaste ← ' + catA.label + '  oder  ' + catB.label + ' →'}
         </div>
       </div>
 
@@ -424,7 +446,9 @@ export default function SortGame({ level = 1, onComplete }) {
           background: catA.bg, border: '3px dashed ' + catA.border,
           borderRadius:22, display:'flex', flexDirection:'column', alignItems:'center', gap:6,
           padding:'clamp(8px,1.5vw,14px)',
-          boxShadow: flyDir === 'A' ? '0 0 0 5px ' + catA.border + '66, 0 4px 20px rgba(0,0,0,0.08)' : '0 3px 14px rgba(0,0,0,0.06)',
+          boxShadow: revealCat === 'A' ? '0 0 0 6px ' + catA.border + ', 0 4px 24px ' + catA.border + '88'
+                   : flyDir === 'A' ? '0 0 0 5px ' + catA.border + '66, 0 4px 20px rgba(0,0,0,0.08)'
+                   : '0 3px 14px rgba(0,0,0,0.06)',
           transition:'box-shadow 0.2s',
         }}>
           <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(18px,3.8vw,26px)', fontWeight:700, color:catA.color, display:'flex', alignItems:'center', gap:8 }}>
@@ -456,6 +480,7 @@ export default function SortGame({ level = 1, onComplete }) {
                 animate={
                   flyDir === 'A' && feedback === 'ok'    ? { x:'-45vw', y:'-8vh', scale:0.5, opacity:0 } :
                   flyDir === 'B' && feedback === 'ok'    ? { x: '45vw', y:'-8vh', scale:0.5, opacity:0 } :
+                  flyDir === 'C' && feedback === 'ok'    ? { x: 0, y:'32vh', scale:0.5, opacity:0 } :
                   feedback === 'wrong' ? { x:[0,-20,20,-16,16,-10,10,-5,5,0], y:0, scale:1, opacity:1 } :
                   { scale:1, opacity:1, x:0, y:0 }
                 }
@@ -491,7 +516,9 @@ export default function SortGame({ level = 1, onComplete }) {
           background: catB.bg, border: '3px dashed ' + catB.border,
           borderRadius:22, display:'flex', flexDirection:'column', alignItems:'center', gap:6,
           padding:'clamp(8px,1.5vw,14px)',
-          boxShadow: flyDir === 'B' ? '0 0 0 5px ' + catB.border + '66, 0 4px 20px rgba(0,0,0,0.08)' : '0 3px 14px rgba(0,0,0,0.06)',
+          boxShadow: revealCat === 'B' ? '0 0 0 6px ' + catB.border + ', 0 4px 24px ' + catB.border + '88'
+                   : flyDir === 'B' ? '0 0 0 5px ' + catB.border + '66, 0 4px 20px rgba(0,0,0,0.08)'
+                   : '0 3px 14px rgba(0,0,0,0.06)',
           transition:'box-shadow 0.2s',
         }}>
           <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(18px,3.8vw,26px)', fontWeight:700, color:catB.color, display:'flex', alignItems:'center', gap:8 }}>
@@ -514,6 +541,39 @@ export default function SortGame({ level = 1, onComplete }) {
         </div>
       </div>
 
+      {/* Basket C — placed below the pair so the existing left/right layout
+          stays untouched; the item flies down into it. */}
+      {catC && (
+        <div style={{
+          width:'100%', maxWidth:700, minHeight:'clamp(84px,14vw,120px)',
+          background: catC.bg, border: '3px dashed ' + catC.border,
+          borderRadius:22, display:'flex', flexDirection:'column', alignItems:'center', gap:6,
+          padding:'clamp(8px,1.5vw,14px)',
+          boxShadow: revealCat === 'C' ? '0 0 0 6px ' + catC.border + ', 0 4px 24px ' + catC.border + '88'
+                   : flyDir === 'C' ? '0 0 0 5px ' + catC.border + '66, 0 4px 20px rgba(0,0,0,0.08)'
+                   : '0 3px 14px rgba(0,0,0,0.06)',
+          transition:'box-shadow 0.2s',
+        }}>
+          <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(18px,3.8vw,26px)', fontWeight:700, color:catC.color, display:'flex', alignItems:'center', gap:8 }}>
+            <span style={{ fontSize:'clamp(28px,6vw,42px)' }}>{catC.emoji}</span>
+            {catC.label}
+          </div>
+          <div style={{ display:'flex', flexWrap:'wrap', gap:5, justifyContent:'center' }}>
+            <AnimatePresence>
+              {sorted.C.map(id => {
+                const it = cfg.items.find(x => x.id === id)
+                return (
+                  <motion.span key={id} initial={{ scale:0, y:-10 }} animate={{ scale:1, y:0 }} transition={{ type:'spring', stiffness:420, damping:18 }}
+                    style={{ fontSize:'clamp(26px,5.5vw,42px)', lineHeight:1 }}>
+                    {it?.emoji}
+                  </motion.span>
+                )
+              })}
+            </AnimatePresence>
+          </div>
+        </div>
+      )}
+
       {/* Arrow buttons */}
       <div style={{ display:'flex', gap:'clamp(16px,6vw,60px)', alignItems:'center', marginTop:4 }}>
         <motion.button
@@ -533,7 +593,7 @@ export default function SortGame({ level = 1, onComplete }) {
         </motion.button>
 
         <div style={{ fontFamily:'var(--font-heading)', fontSize:15, color:'var(--text-muted)', textAlign:'center', lineHeight:1.5 }}>
-          {'← / →\nPfeiltasten'}
+          {catC ? '← ↓ →\nPfeiltasten' : '← / →\nPfeiltasten'}
         </div>
 
         <motion.button
@@ -552,6 +612,24 @@ export default function SortGame({ level = 1, onComplete }) {
           <span style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(14px,2.8vw,20px)', color:catB.color, fontWeight:700 }}>{catB.label}</span>
         </motion.button>
       </div>
+
+      {catC && (
+        <motion.button
+          whileTap={{ scale:0.88 }}
+          onClick={() => sortItem('C')}
+          style={{
+            width:'clamp(150px,40vw,260px)', minHeight:'clamp(56px,11vw,78px)',
+            borderRadius:26, background: catC.bg,
+            border: '3px solid ' + catC.border,
+            boxShadow: '0 4px 18px ' + catC.border + '55',
+            display:'flex', alignItems:'center', justifyContent:'center',
+            cursor:'pointer', gap:10, marginTop:6,
+          }}
+        >
+          <span style={{ fontSize:'clamp(26px,5.5vw,38px)' }}>{'▼'}</span>
+          <span style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(14px,2.8vw,20px)', color:catC.color, fontWeight:700 }}>{catC.label}</span>
+        </motion.button>
+      )}
 
       {/* Done overlay */}
       <AnimatePresence>

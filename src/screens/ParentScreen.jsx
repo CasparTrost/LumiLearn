@@ -23,6 +23,13 @@ const MODULE_NAMES = {
   words2:         'Silben-Spaß',
   weight:         'Waage-Welt',
   coloring:        'Mal-Atelier',
+  'shape-build': 'Formen-Werkstatt',
+  'board': 'Lumis Spielbrett',
+  'empathy': 'Gefühlsdetektiv',
+  'initial-sound': 'Anlaut-Detektiv',
+  'rhyme': 'Reim-Rallye',
+  'shapes-land': 'Formen-Land',
+  'rocket-math': 'Rechen-Rakete',
 }
 
 function PinPad({ onSuccess, onCancel, correctPin = '1234' }) {

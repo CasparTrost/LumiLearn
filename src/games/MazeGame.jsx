@@ -23,15 +23,29 @@ const LEVEL_CONFIG = level => {
   const hasDragon   = level >= 2
   const cols        = level <= 2 ? 11 : level <= 4 ? 13 : level <= 7 ? 15 : 19
   const rows        = cols
-  const fogRadius   = level <= 3 ? null : level <= 6 ? 4.5 : 3.5
+  // Fog used to arrive as one hard step: level 3 still had full sight,
+  // level 4 dropped straight to a 4.5-cell radius while the grid grew to 13
+  // and the dragon was already there — three new difficulties in one level
+  // jump. A wide first veil sits in between now.
+  const fogRadius   = level <= 3 ? null
+                    : level === 4 ? 6.5
+                    : level <= 6 ? 5
+                    : level <= 8 ? 4 : 3.5
+  // Two tile sets for ten levels meant every level from 4 on looked exactly
+  // the same. The top levels re-tint the dungeon into a warm sandstone
+  // cavern — same tiles, clearly a different place, and no new art needed.
+  // (The dungeon tiles are bluish to begin with, so the rotation lands on
+  // sand rather than the ice it might sound like.)
   const theme       = level <= 3 ? 'forest' : 'dungeon'
+  const tint        = level >= 9 ? 'sand' : null
   // Dragon moves independently, once every `dragonSpeed` ms. Deliberately
   // slow and only ramps up gently with level — this is a kids' game, not
   // a reflex test. Combined with the short 5-cell patrol (mazeGen.js) and
   // long invincibility frames after a hit, a child has real time to watch
   // the pattern, judge a gap, and cross.
   const dragonSpeed = Math.max(650, 1300 - (level - 2) * 90)
-  return { hasDragon, cols, rows, fogRadius, theme, dragonSpeed }
+  const patrolLen   = level <= 4 ? 5 : level <= 7 ? 6 : 7
+  return { hasDragon, cols, rows, fogRadius, theme, tint, dragonSpeed, patrolLen }
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -82,7 +96,7 @@ const POTION_SPRITES = ['maze_potion1.png', 'maze_potion2.png', 'maze_potion3.pn
 // ──────────────────────────────────────────────────────────────────
 // MEMOISED BOARD — only re-renders when collected potions change
 // ──────────────────────────────────────────────────────────────────
-const Board = memo(function Board({ maze, cellSize, coll, theme }) {
+const Board = memo(function Board({ maze, cellSize, coll, theme, tint }) {
   const { g, rows, cols, potions, exit } = maze
 
   // Dual-grid overlay: one wang tile per intersection point between 4
@@ -103,8 +117,12 @@ const Board = memo(function Board({ maze, cellSize, coll, theme }) {
   // any future regeneration produces. Forest already has strong natural
   // contrast (bright grass vs. dark hedge) and doesn't need this.
   const isDungeon   = theme === 'dungeon'
-  const floorFilter = isDungeon ? 'brightness(1.2) saturate(1.05)' : 'brightness(0.88)'
-  const wallFilter  = isDungeon ? 'brightness(0.62)' : 'brightness(0.96)'
+  const sandFloor   = ' hue-rotate(165deg) saturate(1.5)'
+  const sandWall    = ' hue-rotate(165deg) saturate(1.35)'
+  const floorFilter = (isDungeon ? 'brightness(1.2) saturate(1.05)' : 'brightness(0.88)')
+                    + (tint === 'sand' ? sandFloor : '')
+  const wallFilter  = (isDungeon ? 'brightness(0.62)' : 'brightness(0.96)')
+                    + (tint === 'sand' ? sandWall : '')
 
   const wangOverlay = []
   for (let dy = 0; dy <= rows; dy++) {
@@ -425,7 +443,7 @@ function DPadButton({ label, onPress, size = 52, ariaLabel, style: styleOverride
 export default function MazeGame({ level = 1, onComplete }) {
   const cfg      = LEVEL_CONFIG(level)
   const mazeRef  = useRef(null)
-  if (!mazeRef.current) mazeRef.current = genMaze(cfg.cols, cfg.rows)
+  if (!mazeRef.current) mazeRef.current = genMaze(cfg.cols, cfg.rows, Date.now(), cfg.patrolLen)
 
   const [st, dispatch] = useReducer(mazeReducer, null, () => initState(mazeRef.current, cfg.hasDragon))
 
@@ -755,6 +773,7 @@ export default function MazeGame({ level = 1, onComplete }) {
               cellSize={cellSize}
               coll={st.coll}
               theme={theme}
+              tint={cfg.tint}
             />
 
             {/* Fog of war */}

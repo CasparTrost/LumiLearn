@@ -90,7 +90,7 @@ const WORD_BANK = [
   { word: 'Gitarre',       emoji: '🎸', wrong: ['🎹','🎺','🥁'] },
   { word: 'Koffer',        emoji: '🧳', wrong: ['💼','🛄','🎒'] },
   { word: 'Kerze',         emoji: '🕯️', wrong: ['👑','💡','🔦'] },
-  { word: 'Schloss',       emoji: '🔒', wrong: ['🗝️','🔑','🔓'] },
+  { word: 'Schlüssel',     emoji: '🔑', wrong: ['🔒','🗝️','🚪'] },
   { word: 'Trommel',       emoji: '🥁', wrong: ['🎸','🎺','🎻'] },
   { word: 'Anker',         emoji: '⚓', wrong: ['⛵','🚢','🏔️'] },
   { word: 'Zauberstab',    emoji: '🪄', wrong: ['😂','🎩','🌟'] },
@@ -98,10 +98,30 @@ const WORD_BANK = [
   { word: 'Regenwurm',     emoji: '🪱', wrong: ['🐍','🐛','🐜'] },
   { word: 'Traktor',       emoji: '🚜', wrong: ['🚗','🚚','🚑'] },
   { word: 'Hut',           emoji: '🎩', wrong: ['👒','⛑️','🪄'] },
-  { word: 'Lokomotive',    emoji: '🚂', wrong: ['🚇','🚌','🚗'] },
+  { word: 'Straßenbahn',   emoji: '🚊', wrong: ['🚂','🚌','🚗'] },
   { word: 'Wasserfall',    emoji: '💦', wrong: ['🌋','🏔️','🌇'] },
   { word: 'Eimer',         emoji: '🪣', wrong: ['🛒','🧴','🪙'] },
   { word: 'Kompass',       emoji: '🧭', wrong: ['🗺️','⏱️','🔭'] },
+]
+
+// Word pairs that differ in a single sound. Picking between these is the
+// one thing the module claimed to train (phonological awareness) but never
+// did — the ordinary rounds vary meaning, not sound, so a child can win them
+// on vocabulary alone without listening closely.
+const MINIMAL_PAIRS = [
+  [{ word: 'Haus',  emoji: '🏠' }, { word: 'Maus',  emoji: '🐭' }],
+  [{ word: 'Nase',  emoji: '👃' }, { word: 'Hase',  emoji: '🐰' }],
+  [{ word: 'Wand',  emoji: '🧱' }, { word: 'Hand',  emoji: '✋' }],
+  [{ word: 'Fisch', emoji: '🐟' }, { word: 'Tisch', emoji: '🪑' }],
+  [{ word: 'Rose',  emoji: '🌹' }, { word: 'Hose',  emoji: '👖' }],
+  [{ word: 'Kanne', emoji: '🫖' }, { word: 'Tanne', emoji: '🌲' }],
+  [{ word: 'Katze', emoji: '🐱' }, { word: 'Tatze', emoji: '🐾' }],
+  [{ word: 'Buch',  emoji: '📚' }, { word: 'Bauch', emoji: '🫃' }],
+  [{ word: 'Mond',  emoji: '🌙' }, { word: 'Mund',  emoji: '👄' }],
+  [{ word: 'Kuh',   emoji: '🐄' }, { word: 'Schuh', emoji: '👟' }],
+  [{ word: 'Sonne', emoji: '☀️' }, { word: 'Tonne', emoji: '🗑️' }],
+  [{ word: 'Tasse', emoji: '☕' }, { word: 'Tasche', emoji: '👜' }],
+  [{ word: 'Hose',  emoji: '👖' }, { word: 'Dose',  emoji: '🥫' }],
 ]
 
 function shuffle(a) { return [...a].sort(() => Math.random() - 0.5) }
@@ -114,9 +134,21 @@ export default function ListenGame({ level = 1, onComplete }) {
   const wordCount   = level <= 2 ? 7 : level <= 5 ? 9 : level <= 8 ? 11 : 13
   const optionCount = level <= 3 ? 3 : 4
   const poolEnd     = level <= 2 ? 28 : level <= 5 ? 55 : WORD_BANK.length
-  const isReverse   = level >= 6
+  // Reading written words used to start at level 6, a hard jump for a module
+  // that is otherwise about listening. Minimal pairs fill that middle ground
+  // now, and reading comes last.
+  const isReverse   = level >= 8
 
-  const [words]      = useState(() => shuffle(WORD_BANK.slice(0, poolEnd)).slice(0, wordCount))
+  const [words]      = useState(() => {
+    const base = shuffle(WORD_BANK.slice(0, poolEnd)).slice(0, wordCount)
+    if (level < 4) return base
+    const pairs = shuffle(MINIMAL_PAIRS)
+    return base.map((w, i) => {
+      if (i % 3 !== 2) return w
+      const [a, b] = shuffle(pairs[Math.floor(i / 3) % pairs.length])
+      return { word: a.word, emoji: a.emoji, wrong: [b.emoji], pair: true }
+    })
+  })
   const [idx,        setIdx]      = useState(0)
   const [options,    setOptions]  = useState([])
   const [selected,   setSelected] = useState(null)  // emoji for normal mode, word string for reverse
@@ -124,6 +156,8 @@ export default function ListenGame({ level = 1, onComplete }) {
   const [mood,       setMood]     = useState('happy')
   const [played,     setPlayed]   = useState(false)
   const [showWeiter, setShowWeiter] = useState(false)
+  const [wrongPicks, setWrongPicks] = useState([])  // this round's failed taps
+  const [misses,     setMisses]     = useState(0)   // whole level, for the star rating
 
   const current = words[idx]
 
@@ -135,8 +169,11 @@ export default function ListenGame({ level = 1, onComplete }) {
 
   useEffect(() => {
     if (!current) return
-    setOptions(shuffle([current.emoji, ...current.wrong.slice(0, optionCount - 1)]))
+    setOptions(current.pair
+      ? shuffle([current.emoji, current.wrong[0]])
+      : shuffle([current.emoji, ...current.wrong.slice(0, optionCount - 1)]))
     setSelected(null)
+    setWrongPicks([])
     setMood('happy')
     setPlayed(false)
     const t = setTimeout(() => { speak(current.word); setPlayed(true) }, 550)
@@ -153,45 +190,53 @@ export default function ListenGame({ level = 1, onComplete }) {
   const pick = useCallback((emoji) => {
     if (selected !== null || !current) return
     const ok = emoji === current.emoji
-    const nc = correct + (ok ? 1 : 0)
-    setSelected(emoji)
-    setMood(ok ? 'excited' : 'encouraging')
-    if (ok) {
-      setCorrect(nc)
-      setShowWeiter(true)
-      setTimeout(() => speak(current.word), 300)
-    } else {
-      setTimeout(() => speak(current.word, true), 600)
-      setTimeout(() => {
-        if (idx + 1 >= words.length) { onComplete({ score: nc, total: words.length }) }
-        else { setIdx(i => i + 1) }
-      }, 2200)
+    if (!ok) {
+      // A wrong tap used to end the question: the word was repeated once and
+      // the game moved on 2.2 seconds later, so the child could only watch the
+      // mistake, never correct it. Every other module here allows a retry.
+      setWrongPicks(w => w.includes(emoji) ? w : [...w, emoji])
+      setMisses(m => m + 1)
+      setMood('encouraging')
+      setTimeout(() => { speak(current.word, true); setMood('happy') }, 400)
+      return
     }
+    setSelected(emoji)
+    setCorrect(correct + 1)
+    setMood('excited')
+    setShowWeiter(true)
+    setTimeout(() => speak(current.word), 300)
   }, [selected, current, correct, idx, words, onComplete])
 
   // Reverse mode: pick word label
   const pickWord = useCallback((word) => {
     if (selected !== null || !current) return
     const ok = word === current.word
-    const nc = correct + (ok ? 1 : 0)
-    setSelected(word)
-    setMood(ok ? 'excited' : 'encouraging')
-    if (ok) {
-      setCorrect(nc)
-      setShowWeiter(true)
-      setTimeout(() => speak(current.word), 300)
-    } else {
-      setTimeout(() => speak(current.word, true), 600)
-      setTimeout(() => {
-        if (idx + 1 >= words.length) { onComplete({ score: nc, total: words.length }) }
-        else { setIdx(i => i + 1) }
-      }, 2200)
+    if (!ok) {
+      // A wrong tap used to end the question: the word was repeated once and
+      // the game moved on 2.2 seconds later, so the child could only watch the
+      // mistake, never correct it. Every other module here allows a retry.
+      setWrongPicks(w => w.includes(word) ? w : [...w, word])
+      setMisses(m => m + 1)
+      setMood('encouraging')
+      setTimeout(() => { speak(current.word, true); setMood('happy') }, 400)
+      return
     }
+    setSelected(word)
+    setCorrect(correct + 1)
+    setMood('excited')
+    setShowWeiter(true)
+    setTimeout(() => speak(current.word), 300)
   }, [selected, current, correct, idx, words, onComplete])
 
   const weiterClick = useCallback(() => {
     setShowWeiter(false)
-    if (idx + 1 >= words.length) { onComplete({ score: correct, total: words.length }) }
+    if (idx + 1 >= words.length) {
+      // Every question is now answered correctly in the end (a wrong tap can
+      // be retried), so score alone would always mean three stars. Rate the
+      // wrong taps instead, never below one — the level was completed.
+      const stars = misses <= 1 ? 3 : misses <= words.length ? 2 : 1
+      onComplete({ score: correct, total: words.length, stars })
+    }
     else { setIdx(i => i + 1) }
   }, [idx, words.length, correct, onComplete])
 
@@ -267,15 +312,17 @@ export default function ListenGame({ level = 1, onComplete }) {
           >{current.emoji}</motion.div>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:12, width:'100%' }}>
             {wordOptions.map((word) => {
-              const isAns  = word === current.word
-              const isChos = selected === word
-              const done   = selected !== null
+              const isAns   = word === current.word
+              const isChos  = selected === word
+              const done    = selected !== null
+              const isWrong = wrongPicks.includes(word)
               return (
                 <motion.button
                   key={word}
-                  whileHover={!done ? { scale:1.05 } : {}}
-                  whileTap={!done ? { scale:0.95 } : {}}
-                  onClick={() => pickWord(word)}
+                  whileHover={!done && !isWrong ? { scale:1.05 } : {}}
+                  whileTap={!done && !isWrong ? { scale:0.95 } : {}}
+                  animate={isWrong ? { opacity: 0.55 } : { opacity: 1 }}
+                  onClick={() => { if (!isWrong) pickWord(word) }}
                   style={{
                     padding:'14px 10px', borderRadius:18,
                     fontFamily:'var(--font-heading)', fontSize:'clamp(15px,3.2vw,20px)',
@@ -300,9 +347,10 @@ export default function ListenGame({ level = 1, onComplete }) {
           width:'100%', maxWidth:760,
         }}>
           {options.map((emoji, i) => {
-            const isAns  = emoji === current.emoji
-            const isChos = emoji === selected
-            const done   = selected !== null
+            const isAns   = emoji === current.emoji
+            const isChos  = emoji === selected
+            const done    = selected !== null
+            const isWrong = wrongPicks.includes(emoji)
 
             let bg     = 'white'
             let border = '3px solid #F0EEF8'
@@ -311,6 +359,8 @@ export default function ListenGame({ level = 1, onComplete }) {
             if (done) {
               if (isAns)        { bg='#E8F8EE'; border='3px solid #6BCB77'; shadow='0 8px 28px rgba(107,203,119,0.4)' }
               else if (isChos)  { bg='#FFE8E8'; border='3px solid #FF6B6B' }
+            } else if (isWrong) {
+              bg='#FFE8E8'; border='3px solid #FF6B6B'
             }
 
             return (
@@ -318,9 +368,10 @@ export default function ListenGame({ level = 1, onComplete }) {
                 initial={{ opacity:0, y:18 }}
                 animate={{ opacity:1, y:0 }}
                 transition={{ delay:i*0.07, type:'spring', stiffness:320 }}
-                whileHover={!done ? { scale:1.05 } : {}}
-                whileTap={!done ? { scale:0.95 } : {}}
-                onClick={() => pick(emoji)}
+                whileHover={!done && !isWrong ? { scale:1.05 } : {}}
+                whileTap={!done && !isWrong ? { scale:0.95 } : {}}
+                animate={isWrong ? { opacity: 0.55 } : { opacity: 1 }}
+                onClick={() => { if (!isWrong) pick(emoji) }}
                 style={{
                   padding:'clamp(20px,5vw,40px) 16px',
                   borderRadius:26, background:bg, border, boxShadow:shadow,

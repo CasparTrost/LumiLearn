@@ -21,6 +21,13 @@ export const MAX_LEVELS = {
   words2:         10,
   weight:         10,
   coloring:        10,
+  'rocket-math': 10,
+  'shapes-land': 10,
+  'rhyme': 10,
+  'initial-sound': 10,
+  'empathy': 10,
+  'board': 10,
+  'shape-build': 10,
 }
 
 function freshProgress() {

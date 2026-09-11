@@ -48,24 +48,39 @@ export const voice = {
    * same length as `srcs`) is spoken via TTS for any entry that fails.
    */
   chain(srcs, fallbackTexts) {
+    // An entry with no file but a fallback text is still something to say —
+    // it used to be dropped here, which silently swallowed the spoken
+    // substitute for tracks that were never recorded.
     const entries = srcs
       .map((src, i) => ({ src, fallback: fallbackTexts?.[i] }))
-      .filter(e => e.src)
+      .filter(e => e.src || e.fallback)
     if (!entries.length) return
     _stop()
     let i = 0
     const playNext = () => {
       if (i >= entries.length) { _current = null; return }
       const { src, fallback } = entries[i++]
+      // Spoken fallbacks now hand over on their own end event. Continuing
+      // immediately meant the next track started over the speech, and the
+      // next speak() call cancelled the previous one mid-sentence.
+      const speakThenNext = () => speak(fallback, { onEnd: playNext })
+      if (!src) { speakThenNext(); return }
       try {
         const a = new Audio(resolveAsset(src))
         _current = a
         let failed = false
-        const onFail = () => { failed = true; if (fallback) speak(fallback); playNext() }
+        const onFail = () => {
+          failed = true
+          if (fallback) speakThenNext()
+          else playNext()
+        }
         a.addEventListener('error', onFail, { once: true })
         a.addEventListener('ended', () => { if (!failed) playNext() }, { once: true })
         a.play().catch(onFail)
-      } catch { if (fallback) speak(fallback); playNext() }
+      } catch {
+        if (fallback) speakThenNext()
+        else playNext()
+      }
     }
     playNext()
   },

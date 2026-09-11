@@ -35,6 +35,13 @@ const MODULES = [
   { id:'clock',        title:'Uhren-Uhr',        sub:'Zeit lesen & stellen', emoji:'🕐', sciTag:'⏰ Zeitgefühl & Sequenzierung',    gradient:'linear-gradient(135deg,#FF9F43,#FF6B6B)', shadow:'rgba(255,159,67,0.45)'  },
   { id:'maze',         title:'Lumi-Labyrinth',   sub:'Weg durchs Labyrinth', emoji:'🌀', sciTag:'🧭 Räumliches Denken & Planung',   gradient:'linear-gradient(135deg,#4A00E0,#6C3FAC)', shadow:'rgba(74,0,224,0.45)'  },
   { id:'stories',      title:'Lumis Abenteuer',  sub:'Entscheide die Story', emoji:'📖', sciTag:'🧡 Moralisches Denken & Empathie', gradient:'linear-gradient(135deg,#44D498,#6C63FF)', shadow:'rgba(68,212,152,0.45)'  },
+  { id:'rocket-math', title:'Rechen-Rakete', sub:'Plus & Minus am Zahlenstrahl', emoji:'🚀', sciTag:'➕ Zahlenstrahl & Rechnen', gradient:'linear-gradient(135deg,#6C63FF,#00B894)', shadow:'rgba(108,99,255,0.45)' },
+  { id:'shapes-land', title:'Formen-Land', sub:'Formen, Größen & Muster', emoji:'🔷', sciTag:'📐 Geometrie & Seriation', gradient:'linear-gradient(135deg,#00B894,#74B9FF)', shadow:'rgba(0,184,148,0.45)' },
+  { id:'rhyme', title:'Reim-Rallye', sub:'Was reimt sich?', emoji:'🎵', sciTag:'🎶 Reimbewusstsein', gradient:'linear-gradient(135deg,#FD79A8,#FF9F43)', shadow:'rgba(253,121,168,0.45)' },
+  { id:'initial-sound', title:'Anlaut-Detektiv', sub:'Welcher Buchstabe klingt so?', emoji:'🕵️', sciTag:'🔤 Laut-Buchstaben-Zuordnung', gradient:'linear-gradient(135deg,#74B9FF,#44D498)', shadow:'rgba(116,185,255,0.45)' },
+  { id:'empathy', title:'Gefühlsdetektiv', sub:'Gefühle sehen & helfen', emoji:'🕵️‍♀️', sciTag:'💛 Perspektivübernahme & Empathie', gradient:'linear-gradient(135deg,#E84393,#A29BFE)', shadow:'rgba(232,67,147,0.45)' },
+  { id:'board', title:'Lumis Spielbrett', sub:'Würfeln & zählen', emoji:'🎲', sciTag:'🎲 Eins-zu-eins-Zuordnung', gradient:'linear-gradient(135deg,#FFD93D,#6BCB77)', shadow:'rgba(255,217,61,0.45)' },
+  { id:'shape-build', title:'Formen-Werkstatt', sub:'Aus Formen bauen', emoji:'🧩', sciTag:'🧱 Teil-Ganzes & Komposition', gradient:'linear-gradient(135deg,#FF9F43,#A29BFE)', shadow:'rgba(255,159,67,0.45)' },
   { id:'coloring',     title:'Mal-Atelier',       sub:'Ausmalen & Kreativ',   emoji:'🖍️', sciTag:'🎨 Kreativität & Feinmotorik',   gradient:'linear-gradient(135deg,#FD79A8,#E84393)', shadow:'rgba(253,121,168,0.45)' },
 ]
 
@@ -48,11 +55,11 @@ const CATEGORIES = [
 ]
 
 const CATEGORY_MAP = {
-  math:     ['numbers', 'number-intro', 'bubbles', 'weight', 'clock'],
-  language: ['letters', 'letter-intro', 'words', 'words2', 'listen', 'shadows'],
+  math:     ['board', 'shapes-land', 'rocket-math', 'numbers', 'number-intro', 'bubbles', 'weight', 'clock'],
+  language: ['initial-sound', 'rhyme', 'letters', 'letter-intro', 'words', 'words2', 'listen', 'shadows'],
   creative: ['shapes', 'coloring'],
-  think:    ['patterns', 'sort', 'maze'],
-  social:   ['emotions', 'stories'],
+  think:    ['shape-build', 'patterns', 'sort', 'maze'],
+  social:   ['empathy', 'emotions', 'stories'],
 }
 
 const cardVariants = {

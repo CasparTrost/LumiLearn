@@ -14,6 +14,26 @@ import { speak } from '../tts.js'
  *   • Theory of Mind (Baron-Cohen) — labeling emotions in others builds empathy.
  */
 
+// The module's own docstring names RULER — Recognizing, Understanding,
+// Labeling, Expressing, Regulating — but only the first three ever happened.
+// Nothing ever asked what to actually do with a feeling. None of these is
+// wrong; the point is having a repertoire, not picking a winner.
+const COPING = {
+  'Glücklich':   [{ i:'🗣️', t:'Davon erzählen' }, { i:'🤗', t:'Freude teilen' },     { i:'🎉', t:'Feiern' }],
+  'Traurig':     [{ i:'🤗', t:'Trost holen' },     { i:'🗣️', t:'Darüber reden' },     { i:'🧸', t:'Kuscheln' }],
+  'Wütend':      [{ i:'🌬️', t:'Tief durchatmen' }, { i:'🔢', t:'Bis zehn zählen' },   { i:'🗣️', t:'Sagen, was los ist' }],
+  'Ängstlich':   [{ i:'🤝', t:'Hilfe holen' },     { i:'🌬️', t:'Langsam atmen' },     { i:'💡', t:'Licht anmachen' }],
+  'Aufgeregt':   [{ i:'🌬️', t:'Tief durchatmen' }, { i:'🗣️', t:'Davon erzählen' },    { i:'🤸', t:'Herumhüpfen' }],
+  'Müde':        [{ i:'🛏️', t:'Ausruhen' },        { i:'💧', t:'Wasser trinken' },    { i:'🚶', t:'Kurz rausgehen' }],
+  'Verlegen':    [{ i:'🌬️', t:'Tief durchatmen' }, { i:'🙂', t:'Darüber lachen' },    { i:'🗣️', t:'Jemandem erzählen' }],
+  'Dankbar':     [{ i:'🗣️', t:'Danke sagen' },     { i:'🤗', t:'Umarmen' },           { i:'🎁', t:'Etwas zurückgeben' }],
+  'Überrascht':  [{ i:'🌬️', t:'Kurz durchatmen' }, { i:'🗣️', t:'Davon erzählen' },    { i:'🧐', t:'Genauer hinschauen' }],
+  'Stolz':       [{ i:'🗣️', t:'Davon erzählen' },  { i:'🎉', t:'Sich freuen' },       { i:'🏆', t:'Sich merken' }],
+  'Gelangweilt': [{ i:'🎨', t:'Etwas malen' },     { i:'📖', t:'Buch anschauen' },    { i:'🤸', t:'Bewegen' }],
+  'Eifersüchtig':[{ i:'🗣️', t:'Darüber reden' },   { i:'🌬️', t:'Tief durchatmen' },   { i:'🤝', t:'Mitspielen fragen' }],
+  'Neugierig':   [{ i:'❓', t:'Nachfragen' },      { i:'🔍', t:'Genauer hinschauen' },{ i:'📖', t:'Nachschauen' }],
+}
+
 const SCENARIOS = [
   // Glücklich
   { face:'😄', situation:'Lumi bekommt ein riesiges Geschenk! 🎁',                    emotion:'Glücklich',  lumiMood:'happy',      faceColor:'#FFD93D', decoys:['Traurig','Wütend','Ängstlich'],    explain:'Wenn wir etwas toll finden, fühlen wir uns glücklich! 🌟' },
@@ -255,9 +275,11 @@ export default function EmotionGame({ level = 1, onComplete }) {
 
     if (ok) {
       voice.chain([EMOTION_AUDIO[ch.emotion], ch.ea])
-      setShowWeiter(true)
+      // "Weiter" now waits for the regulation step below.
     } else {
-      // Wrong: show explanation 5s, then let them try again
+      // Wrong: show the explanation, then let them try again. The wait used
+      // to be a fixed five seconds with nothing to do — a long, blank block
+      // for a four-year-old — and is now tappable to move on sooner.
       setTimeout(() => {
         setShowInfo(false)
         setSelected(null)
@@ -267,6 +289,7 @@ export default function EmotionGame({ level = 1, onComplete }) {
 
   const [showSummary, setShowSummary] = useState(false)
   const [intensity, setIntensity] = useState(1)
+  const [coping,    setCoping]    = useState(null)
   const INTENSITY_MAP = {"Glücklich": ["ein bisschen glücklich 😊", "glücklich 😄", "sehr glücklich 🤩"], "Traurig": ["ein bisschen traurig 🙁", "traurig 😢", "sehr traurig 😭"], "Wütend": ["ein bisschen genervt 😒", "wütend 😡", "sehr wütend 🤬"], "Ängstlich": ["ein bisschen mulmig 😬", "ängstlich 😨", "sehr ängstlich 😱"], "Aufgeregt": ["ein bisschen aufgeregt 🙂", "aufgeregt 🤩", "sehr aufgeregt 🥳"], "Müde": ["ein bisschen müde 😑", "müde 😴", "sehr müde 🥱"], "Verlegen": ["ein bisschen verlegen 😳", "verlegen 🫣", "sehr verlegen 🙈"], "Dankbar": ["ein bisschen dankbar 🙂", "dankbar 🥰", "sehr dankbar 🫶"], "Überrascht": ["ein bisschen überrascht 😮", "überrascht 😲", "sehr überrascht 🤯"], "Stolz": ["ein bisschen stolz 😊", "stolz 🦁", "sehr stolz 🏆"], "Gelangweilt": ["ein bisschen gelangweilt 😑", "gelangweilt 😶", "sehr gelangweilt 🥱"], "Eifersüchtig": ["ein bisschen eifersüchtig 😒", "eifersüchtig 😤", "sehr eifersüchtig 😾"], "Neugierig": ["ein bisschen neugierig 🤔", "neugierig 🧐", "sehr neugierig 🔍"]}
 
   const weiterClick = useCallback(() => {
@@ -275,7 +298,7 @@ export default function EmotionGame({ level = 1, onComplete }) {
     if (idx + 1 >= challenges.length) {
       setShowSummary(true) // show emotion card before completing
     } else {
-      setIdx(i => i + 1); setSelected(null)
+      setIdx(i => i + 1); setSelected(null); setCoping(null); setIntensity(1)
     }
   }, [idx, challenges.length, correct, seenCorrect, onComplete])
 
@@ -371,15 +394,26 @@ export default function EmotionGame({ level = 1, onComplete }) {
           <AnimatePresence>
             {showInfo && (
               <motion.div initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:6 }}
+                onClick={() => {
+                  // After a wrong pick the panel sat there for a fixed five
+                  // seconds with nothing to do. Tapping moves on right away.
+                  if (selected !== ch.emotion) { setShowInfo(false); setSelected(null) }
+                }}
                 style={{
                   background: selected === ch.emotion ? '#E8F8EE' : '#FFF4E5',
                   border: `2px solid ${selected === ch.emotion ? '#6BCB77' : '#FFD93D'}`,
                   borderRadius:16, padding:'10px 16px',
                   fontFamily:'var(--font-body)', fontSize:'clamp(13px,2.8vw,16px)',
                   color:'var(--text-secondary)', maxWidth:360,
+                  cursor: selected !== ch.emotion ? 'pointer' : 'default',
                 }}
               >
                 {ch.explain}
+                {selected !== ch.emotion && (
+                  <span style={{ display:'block', marginTop:6, fontSize:12, opacity:0.7 }}>
+                    Tippe, um weiterzumachen 👆
+                  </span>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
@@ -435,8 +469,10 @@ export default function EmotionGame({ level = 1, onComplete }) {
         })}
       </div>
 
-      {/* Intensity slider — shown after correct answer */}
-      {showWeiter && selected === ch.emotion && (
+      {/* Named the feeling correctly — now name how strong it was and what
+          helps. Gated on the correct pick, not on the Weiter button, which
+          now only appears once a strategy has been chosen. */}
+      {selected === ch.emotion && (
         <motion.div
           initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
           style={{
@@ -464,6 +500,42 @@ export default function EmotionGame({ level = 1, onComplete }) {
               >{(INTENSITY_MAP[ch.emotion]||['gering','mittel','stark'])[i]}</motion.button>
             ))}
           </div>
+
+          {/* What now? The strategy step the module was missing. Picking one
+              also gives the intensity above a purpose — it was recorded and
+              then never used for anything at all. */}
+          <div style={{ height: 1, background: '#F0EEF8', width: '100%', margin: '4px 0' }} />
+          <div style={{ fontFamily: 'var(--font-heading)', fontSize: 15, color: 'var(--text-muted)' }}>
+            Was hilft Lumi jetzt?
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+            {(COPING[ch.emotion] || COPING['Traurig']).map((c, i) => (
+              <motion.button key={i}
+                whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.94 }}
+                onClick={() => {
+                  setCoping(i)
+                  const strength = (INTENSITY_MAP[ch.emotion] || ['', '', ''])[intensity]
+                    .replace(/[^\wäöüÄÖÜß ]/gu, '').trim()
+                  speakDE(`Lumi ist ${strength}. ${c.t} — das ist eine gute Idee!`)
+                  setShowWeiter(true)
+                }}
+                style={{
+                  background: coping === i ? (EMOTION_PASTEL[ch.emotion] || '#EEE') : 'white',
+                  border: `2px solid ${coping === i ? ch.faceColor : '#ECE8FF'}`,
+                  borderRadius: 14, padding: '10px 14px',
+                  fontFamily: 'var(--font-heading)', fontSize: 'clamp(12px,2.5vw,15px)',
+                  cursor: 'pointer', color: 'var(--text-primary)',
+                  display: 'flex', alignItems: 'center', gap: 7,
+                  transition: 'all 0.18s',
+                }}
+              ><span style={{ fontSize: 20 }}>{c.i}</span>{c.t}</motion.button>
+            ))}
+          </div>
+          {coping === null && (
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-muted)' }}>
+              Alles davon ist richtig — such dir eines aus. 💛
+            </div>
+          )}
         </motion.div>
       )}
       {/* Weiter button */}

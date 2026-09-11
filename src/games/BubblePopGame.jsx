@@ -46,17 +46,26 @@ function spawnRound(target, maxNum, count, minTargets, maxTargets) {
 
 // 10 difficulty tiers: maxNum, bubble count, timer, min/max target bubbles per round
 const ROUND_CFG = [
-  { maxNum: 3,  count:  7, timeS: 26, minT: 2, maxT: 3 }, // L1
-  { maxNum: 5,  count:  9, timeS: 23, minT: 2, maxT: 4 }, // L2
-  { maxNum: 7,  count: 10, timeS: 21, minT: 2, maxT: 4 }, // L3
-  { maxNum: 10, count: 11, timeS: 19, minT: 2, maxT: 5 }, // L4
-  { maxNum: 12, count: 12, timeS: 18, minT: 3, maxT: 5 }, // L5
-  { maxNum: 15, count: 13, timeS: 17, minT: 3, maxT: 5 }, // L6
-  { maxNum: 20, count: 14, timeS: 16, minT: 3, maxT: 6 }, // L7
-  { maxNum: 25, count: 15, timeS: 15, minT: 3, maxT: 6 }, // L8
-  { maxNum: 30, count: 17, timeS: 14, minT: 3, maxT: 6 }, // L9
-  { maxNum: 40, count: 20, timeS: 12, minT: 4, maxT: 7 }, // L10
-]
+  { maxNum: 3,  count:  7, minT: 2, maxT: 3 }, // L1
+  { maxNum: 5,  count:  9, minT: 2, maxT: 4 }, // L2
+  { maxNum: 7,  count: 10, minT: 2, maxT: 4 }, // L3
+  { maxNum: 10, count: 11, minT: 2, maxT: 5 }, // L4
+  { maxNum: 12, count: 12, minT: 3, maxT: 5 }, // L5
+  { maxNum: 15, count: 13, minT: 3, maxT: 5 }, // L6
+  { maxNum: 20, count: 14, minT: 3, maxT: 6 }, // L7
+  { maxNum: 25, count: 15, minT: 3, maxT: 6 }, // L8
+  { maxNum: 30, count: 17, minT: 3, maxT: 6 }, // L9
+  { maxNum: 40, count: 20, minT: 4, maxT: 7 }, // L10
+].map(c => ({
+  ...c,
+  // The clock used to run down as the board grew: level 10 gave twelve
+  // seconds to scan twenty drifting bubbles and read two-digit numbers,
+  // level 1 gave twenty-six for seven. That is a reaction test, and the
+  // module is about recognising quantities. The budget now grows with the
+  // board so the pressure per bubble stays roughly constant, and difficulty
+  // comes from the count and the number range instead.
+  timeS: Math.max(24, Math.round(c.count * 1.5 + 10)),
+}))
 
 const FISH = [
   { left:'8%',  top:'18%', flip:false, dur:8,  size:28 },
@@ -79,6 +88,7 @@ export default function BubblePopGame({ level = 1, onComplete }) {
   const roundsWonRef = useRef(0)
   const [timeLeft,  setTimeLeft]  = useState(cfg.timeS)
   const [mood,      setMood]      = useState('happy')
+  const [wrongMsg,  setWrongMsg]  = useState(null)
   const [phase,     setPhase]     = useState('playing')
   const lastTargetPopRef = useRef(0) // timestamp of last correct pop for chain detection
   const [chainBadge, setChainBadge] = useState(false)
@@ -124,11 +134,12 @@ export default function BubblePopGame({ level = 1, onComplete }) {
       setTimeLeft(t => {
         if (t <= 1) {
           clearInterval(iv)
-          const nl = livesRef.current - 1
-          livesRef.current = nl
-          setLives(nl)
+          // A timeout used to take a heart on top of losing the round, so
+          // slow-but-careful counting was punished twice and could end the
+          // whole game. Hearts are now only for wrong pops; running out of
+          // time simply costs this round.
           setMood('encouraging')
-          if (nl <= 0) {
+          if (roundIdx + 1 >= 3) {
             setPhase('done')
             setTimeout(() => onComplete({ score: roundsWonRef.current, total: 3, stars: roundsWonRef.current }), 1200)
           } else {
@@ -183,6 +194,9 @@ export default function BubblePopGame({ level = 1, onComplete }) {
       livesRef.current = nl
       setLives(nl)
       setMood('encouraging')
+      // Saying only "wrong" teaches nothing about which number was hit.
+      setWrongMsg(`Das war die ${bubble.value} — du suchst die ${target}!`)
+      setTimeout(() => setWrongMsg(null), 1800)
       setTimeout(() => setMood('happy'), 700)
       if (nl <= 0) {
         setPhase('done')
@@ -317,6 +331,7 @@ export default function BubblePopGame({ level = 1, onComplete }) {
           {phase==='roundWin'  ? `🎉 Runde ${roundIdx+1} geschafft! Weiter!`
          : phase==='roundFail' ? '⌛ Zeit! Nächste Runde…'
          : phase==='done'      ? (roundsWon>0 ? `🏆 ${roundsWon} von 3 Runden gewonnen!` : '😅 Probier es nochmal!')
+         : wrongMsg ? `🔎 ${wrongMsg}`
          : `Finde alle Blasen mit der Zahl ${target}!`}
         </div>
       </div>
