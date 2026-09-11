@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
 import { speak } from '../tts.js'
+import { hearable } from '../lib/hearable.js'
+import HearOptions from '../components/HearOptions.jsx'
 
 /**
  * Reim-Rallye — hören, was sich reimt
@@ -153,6 +155,9 @@ export default function RhymeGame({ level = 1, onComplete }) {
             ? <>⭐ <strong style={{ color: '#4A00E0' }}>{r.base.w}</strong> und <strong style={{ color: '#4A00E0' }}>{r.correct.w}</strong> reimen sich!</>
             : <>Was reimt sich auf <strong style={{ color: '#4A00E0' }}>{r.base.w}</strong>? 🎵</>}
         </div>
+        {/* Auf dem Tablet gibt es kein Darüberfahren — hier hört das Kind alle
+            Möglichkeiten nacheinander, ohne schon zu antworten. */}
+        <HearOptions items={r.options.map(o => o.w)} label="Alle Antworten vorlesen" />
       </div>
 
       {/* The word to rhyme with */}
@@ -190,6 +195,7 @@ export default function RhymeGame({ level = 1, onComplete }) {
               whileHover={!solved && !isWrong ? { scale: 1.05 } : {}}
               whileTap={!solved && !isWrong ? { scale: 0.95 } : {}}
               onClick={() => { if (!isWrong) pick(opt) }}
+              {...hearable(opt.w, { enabled: !solved })}
               aria-label={opt.w}
               style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,

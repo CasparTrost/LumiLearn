@@ -447,7 +447,7 @@ export default function MazeGame({ level = 1, onComplete }) {
 
   const [st, dispatch] = useReducer(mazeReducer, null, () => initState(mazeRef.current, cfg.hasDragon))
 
-  const { containerRef, cellSize } = useBoardSize(cfg.cols, cfg.rows, 52)
+  const { containerRef, cellSize } = useBoardSize(cfg.cols, cfg.rows, 76)
 
   const doneRef         = useRef(false)
   const onCompleteRef   = useRef(onComplete)

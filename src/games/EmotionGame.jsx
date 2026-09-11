@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { voice } from '../voice.js'
 import { speak } from '../tts.js'
+import { hearable } from '../lib/hearable.js'
+import HearOptions from '../components/HearOptions.jsx'
 
 /**
  * Gefühlswelt — Emotionale Intelligenz
@@ -443,6 +445,7 @@ export default function EmotionGame({ level = 1, onComplete }) {
               whileHover={!done ? { scale:1.04 } : {}}
               whileTap={!done ? { scale:0.97 } : {}}
               onClick={() => pick(emotion)}
+              {...hearable(emotion, { enabled: !done })}
               style={{
                 padding:'clamp(14px,3vw,22px) clamp(12px,2.5vw,20px)',
                 borderRadius:22, background:bg, border, boxShadow:shadow,

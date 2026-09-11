@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { asset } from '../lib/assets.js'
+import { onNarrationChange } from '../narrator.js'
 
 const LS_ENABLED = 'lumi_music_enabled'
 const LS_VOLUME  = 'lumi_music_volume'
@@ -16,6 +17,9 @@ export default function MusicControls() {
     return isNaN(v) ? 0.15 : v               // default quiet
   })
   const [showSlider, setShowSlider] = useState(false)
+  // Musik und Lumis Stimme liefen gleich laut übereinander. Solange geredet
+  // wird, geht die Musik in den Hintergrund.
+  const duckingRef = useRef(false)
 
   // Create audio element once
   useEffect(() => {
@@ -42,6 +46,13 @@ export default function MusicControls() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Duck the music while something is being narrated
+  useEffect(() => onNarrationChange(active => {
+    duckingRef.current = active
+    const audio = audioRef.current
+    if (audio) audio.volume = volume * (active ? 0.25 : 1)
+  }), [volume])
+
   // Sync enabled state
   useEffect(() => {
     const audio = audioRef.current
@@ -58,7 +69,7 @@ export default function MusicControls() {
   useEffect(() => {
     const audio = audioRef.current
     if (!audio) return
-    audio.volume = volume
+    audio.volume = volume * (duckingRef.current ? 0.25 : 1)
     localStorage.setItem(LS_VOLUME, String(volume))
   }, [volume])
 

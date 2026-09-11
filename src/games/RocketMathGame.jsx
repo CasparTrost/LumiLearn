@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
-import { speak } from '../tts.js'
+import { speak, sayNumber } from '../tts.js'
 
 /**
  * Rechen-Rakete — Addieren und Subtrahieren am Zahlenstrahl
@@ -100,9 +100,11 @@ export default function RocketMathGame({ level = 1, onComplete }) {
     setPicked(null)
     setWrong([])
     setMood('happy')
+    // Numbers are spelled out for the voice: a digit right before a period is
+    // read as an ordinal in German — "4 plus 2." came out as "vier plus zweite".
     const said = t.kind === 'missing'
-      ? `${t.from} plus wie viel ergibt ${t.target}?`
-      : `${t.from} ${t.op === '+' ? 'plus' : 'minus'} ${t.step}. Wo landet die Rakete?`
+      ? `${sayNumber(t.from)} plus wie viel ergibt ${sayNumber(t.target)}?`
+      : `${sayNumber(t.from)} ${t.op === '+' ? 'plus' : 'minus'} ${sayNumber(t.step)}. Wo landet die Rakete?`
     const id = setTimeout(() => speakDE(said), 450)
     return () => clearTimeout(id)
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -144,8 +146,8 @@ export default function RocketMathGame({ level = 1, onComplete }) {
       const ns = score + 1
       setScore(ns)
       speakDE(t.kind === 'missing'
-        ? `${t.from} plus ${t.step} ist ${t.target}.`
-        : `${t.from} ${t.op === '+' ? 'plus' : 'minus'} ${t.step} ist ${t.target}.`)
+        ? `${sayNumber(t.from)} plus ${sayNumber(t.step)} ist ${sayNumber(t.target)}.`
+        : `${sayNumber(t.from)} ${t.op === '+' ? 'plus' : 'minus'} ${sayNumber(t.step)} ist ${sayNumber(t.target)}.`)
       setShowWeiter(true)
     })
   }, [picked, hopping, t, score, hopTo])

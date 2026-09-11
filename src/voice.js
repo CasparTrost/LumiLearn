@@ -1,90 +1,23 @@
 /**
- * LumiLearn Voice — Narrator MP3 playback.
- * Singleton that cancels the current clip before starting a new one.
- * Works within existing user-gesture context (no AudioContext needed).
+ * LumiLearn Voice — aufgenommene Ansagen.
+ * Nur noch eine dünne Hülle um den Erzähler: der besitzt die Warteschlange und
+ * sorgt dafür, dass eine neue Ansage alles Laufende stoppt, statt daneben zu
+ * spielen.
  */
 
-import { asset, BASE } from './lib/assets.js'
-import { speak } from './tts.js'
-
-function resolveAsset(src) {
-  if (!src) return src
-  if (src.startsWith('http') || src.startsWith(BASE) || src.startsWith('/')) return src
-  return asset(src)
-}
-
-let _current = null
-
-function _stop() {
-  if (_current) {
-    try { _current.pause() } catch { /* ignore */ }
-    _current = null
-  }
-}
+import { narrate, stopNarration } from './narrator.js'
 
 export const voice = {
-  /**
-   * Play a single audio file. Cancels any currently playing narration.
-   * Pass `fallbackText` to fall back to browser speech synthesis if the
-   * file 404s or otherwise fails to play — recorded narration is nicer,
-   * but a silent failure (a missing file some content list didn't know
-   * about) is worse than a robotic voice reading the word.
-   */
+  /** Eine Aufnahme abspielen; `fallbackText` springt ein, wenn sie fehlt. */
   play(src, fallbackText) {
-    _stop()
-    if (!src) { if (fallbackText) speak(fallbackText); return }
-    try {
-      const a = new Audio(resolveAsset(src))
-      _current = a
-      const onFail = () => { if (fallbackText) speak(fallbackText) }
-      a.addEventListener('error', onFail, { once: true })
-      a.play().catch(onFail)
-    } catch { if (fallbackText) speak(fallbackText) }
+    narrate([{ src, text: fallbackText }])
   },
 
-  /**
-   * Play multiple audio files in sequence, each starting after the previous ends.
-   * Null/undefined entries are silently skipped. `fallbackTexts` (optional,
-   * same length as `srcs`) is spoken via TTS for any entry that fails.
-   */
+  /** Mehrere Aufnahmen nacheinander — jede startet, wenn die vorige endet. */
   chain(srcs, fallbackTexts) {
-    // An entry with no file but a fallback text is still something to say —
-    // it used to be dropped here, which silently swallowed the spoken
-    // substitute for tracks that were never recorded.
-    const entries = srcs
-      .map((src, i) => ({ src, fallback: fallbackTexts?.[i] }))
-      .filter(e => e.src || e.fallback)
-    if (!entries.length) return
-    _stop()
-    let i = 0
-    const playNext = () => {
-      if (i >= entries.length) { _current = null; return }
-      const { src, fallback } = entries[i++]
-      // Spoken fallbacks now hand over on their own end event. Continuing
-      // immediately meant the next track started over the speech, and the
-      // next speak() call cancelled the previous one mid-sentence.
-      const speakThenNext = () => speak(fallback, { onEnd: playNext })
-      if (!src) { speakThenNext(); return }
-      try {
-        const a = new Audio(resolveAsset(src))
-        _current = a
-        let failed = false
-        const onFail = () => {
-          failed = true
-          if (fallback) speakThenNext()
-          else playNext()
-        }
-        a.addEventListener('error', onFail, { once: true })
-        a.addEventListener('ended', () => { if (!failed) playNext() }, { once: true })
-        a.play().catch(onFail)
-      } catch {
-        if (fallback) speakThenNext()
-        else playNext()
-      }
-    }
-    playNext()
+    narrate(srcs.map((src, i) => ({ src, text: fallbackTexts?.[i] })))
   },
 
-  /** Stop any currently playing narration. */
-  stop: _stop,
+  /** Alles Gesprochene stoppen. */
+  stop: stopNarration,
 }

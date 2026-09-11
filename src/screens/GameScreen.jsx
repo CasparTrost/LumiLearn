@@ -1,10 +1,12 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowLeft } from 'lucide-react'
 import { useApp, MAX_LEVELS } from '../AppContext.jsx'
 import InfoButton from '../components/InfoButton.jsx'
 import ErrorBoundary from '../components/ErrorBoundary.jsx'
 import { useProfile } from '../hooks/useProfile.js'
+import { stopNarration } from '../narrator.js'
+import FitBox from '../components/FitBox.jsx'
 
 const ChoiceGame    = lazy(() => import('../games/ChoiceGame.jsx'))
 const TyperGame     = lazy(() => import('../games/TyperGame.jsx'))
@@ -25,7 +27,6 @@ const LetterIntroGame   = lazy(() => import('../games/LetterIntroGame.jsx'))
 const NumbersGame       = lazy(() => import('../games/NumbersGame.jsx'))
 const ColoringGame      = lazy(() => import('../games/ColoringGame.jsx'))
 const ShapeBuildGame = lazy(() => import('../games/ShapeBuildGame.jsx'))
-const BoardGame = lazy(() => import('../games/BoardGame.jsx'))
 const EmpathyGame = lazy(() => import('../games/EmpathyGame.jsx'))
 const InitialSoundGame = lazy(() => import('../games/InitialSoundGame.jsx'))
 const RhymeGame = lazy(() => import('../games/RhymeGame.jsx'))
@@ -73,13 +74,17 @@ const MODULE_META = {
   'letter-intro': { label: 'ABC-Abenteuer 🔡',       gradient: 'linear-gradient(135deg, #74B9FF, #6C63FF)' },
   coloring:       { label: 'Mal-Atelier 🖍️',           gradient: 'linear-gradient(135deg, #FD79A8, #E84393)' },
   'shape-build': { label: 'Formen-Werkstatt 🧩', gradient: 'linear-gradient(135deg,#FF9F43,#A29BFE)' },
-  'board': { label: 'Lumis Spielbrett 🎲', gradient: 'linear-gradient(135deg,#FFD93D,#6BCB77)' },
   'empathy': { label: 'Gefühlsdetektiv 🕵️‍♀️', gradient: 'linear-gradient(135deg,#E84393,#A29BFE)' },
   'initial-sound': { label: 'Anlaut-Detektiv 🕵️', gradient: 'linear-gradient(135deg,#74B9FF,#44D498)' },
   'rhyme': { label: 'Reim-Rallye 🎵', gradient: 'linear-gradient(135deg,#FD79A8,#FF9F43)' },
   'shapes-land': { label: 'Formen-Land 🔷', gradient: 'linear-gradient(135deg,#00B894,#74B9FF)' },
   'rocket-math': { label: 'Rechen-Rakete 🚀', gradient: 'linear-gradient(135deg,#6C63FF,#00B894)' },
 }
+
+// Diese Spiele rechnen mit echten Zeigerkoordinaten oder zeichnen auf eine
+// Leinwand — ein Maßstab würde dort Treffer verschieben oder Pixel verwaschen.
+// Sie bemessen sich stattdessen selbst an ihrem Container.
+const NO_SCALE = new Set(['bubbles', 'clock', 'coloring', 'numbers', 'shapes', 'shadows', 'maze'])
 
 const GAME_MAP = {
   numbers:  NumbersGame,
@@ -101,7 +106,6 @@ const GAME_MAP = {
   'letter-intro': LetterIntroGame,
   coloring:       ColoringGame,
   'shape-build': ShapeBuildGame,
-  'board': BoardGame,
   'empathy': EmpathyGame,
   'initial-sound': InitialSoundGame,
   'rhyme': RhymeGame,
@@ -117,6 +121,11 @@ export default function GameScreen() {
   const meta          = MODULE_META[moduleId] ?? MODULE_META.numbers
   const GameComponent = GAME_MAP[moduleId]    ?? ChoiceGame
 
+  // Ein Satz aus dem vorigen Spiel lief bisher weiter, während das nächste
+  // schon seine Ansage startete — zwei Stimmen übereinander. Beim Wechsel und
+  // beim Verlassen wird alles Gesprochene gestoppt.
+  useEffect(() => stopNarration, [moduleId, level])
+
   const handleComplete = ({ score, total, stars: providedStars }) => {
     // Some games (e.g. MemoryGame) compute their own star rating from a
     // metric other than score/total (move efficiency) and show it to the
@@ -128,7 +137,7 @@ export default function GameScreen() {
     dispatch({ type: 'FINISH_GAME', payload: { moduleId, level, stars, score, total } })
   }
 
-  const quit = () => dispatch({ type: 'NAVIGATE', payload: 'home' })
+  const quit = () => { stopNarration(); dispatch({ type: 'NAVIGATE', payload: 'home' }) }
 
   return (
     <div style={{ height: '100dvh', background: 'var(--bg)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -171,7 +180,9 @@ export default function GameScreen() {
       {/* Game */}
       <ErrorBoundary moduleId={moduleId} onHome={() => dispatch({ type: 'NAVIGATE', payload: 'home' })}>
         <Suspense fallback={<GameLoadingFallback gradient={meta.gradient} />}>
-          <GameComponent moduleId={moduleId} level={level} onComplete={handleComplete} />
+          {NO_SCALE.has(moduleId)
+            ? <GameComponent moduleId={moduleId} level={level} onComplete={handleComplete} />
+            : <FitBox><GameComponent moduleId={moduleId} level={level} onComplete={handleComplete} /></FitBox>}
         </Suspense>
       </ErrorBoundary>
     </div>

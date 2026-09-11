@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
 import { speak } from '../tts.js'
+import { hearable } from '../lib/hearable.js'
+import HearOptions from '../components/HearOptions.jsx'
 
 /**
  * Anlaut-Detektiv — welcher Buchstabe macht diesen Laut?
@@ -70,11 +72,13 @@ export default function InitialSoundGame({ level = 1, onComplete }) {
 
   const r = rounds[idx]
 
-  // Sound first, then the word — the child should reason from the phoneme.
+  // Nur das Wort und die Frage. Der Laut wurde vorher dreimal vorgesprochen
+  // ("W. W. W. Wolf") — das klingt nach Stottern, nicht nach einem Anlaut, und
+  // nimmt dem Kind genau die Denkarbeit ab, um die es hier geht: den Anfang
+  // des Wortes selbst heraushören.
   const sayTask = useCallback(() => {
     if (!r) return
-    const snd = SOUND[r.letter] ?? r.letter
-    speakDE(`${snd}. ${snd}. ${r.word}. Womit fängt ${r.word} an?`, true)
+    speakDE(`Womit fängt ${r.word} an?`, true)
   }, [r])
 
   useEffect(() => {
@@ -90,14 +94,14 @@ export default function InitialSoundGame({ level = 1, onComplete }) {
       setMisses(m => m + 1)
       setMood('encouraging')
       sfx.wrong()
-      speakDE(`${SOUND[L] ?? L}. Damit fängt ${r.word} nicht an.`)
+      speakDE(`${r.word} fängt nicht mit ${L} an.`)
       setTimeout(() => setMood('happy'), 1100)
       return
     }
     setSolved(true)
     setMood('excited')
     sfx.correct()
-    speakDE(`${SOUND[r.letter]}. ${r.word} fängt mit ${r.letter} an!`)
+    speakDE(`Richtig! ${r.word} fängt mit ${r.letter} an.`)
     setTimeout(() => setShowWeiter(true), 800)
   }, [solved, r])
 
@@ -137,6 +141,8 @@ export default function InitialSoundGame({ level = 1, onComplete }) {
             ? <><strong style={{ color: '#4A00E0' }}>{r.word}</strong> fängt mit <strong style={{ color: '#4A00E0' }}>{r.letter}</strong> an! 🕵️</>
             : <>Womit fängt <strong style={{ color: '#4A00E0' }}>{r.word}</strong> an? 🕵️</>}
         </div>
+        <HearOptions items={r.options.map(L => ({ text: SOUND[L] ?? L, rate: 0.5 }))}
+          label="Alle Laute vorlesen" />
       </div>
 
       {/* The word, as a picture */}
@@ -171,6 +177,7 @@ export default function InitialSoundGame({ level = 1, onComplete }) {
               whileHover={!solved && !isWrong ? { scale: 1.08 } : {}}
               whileTap={!solved && !isWrong ? { scale: 0.92 } : {}}
               onClick={() => { if (!isWrong) pick(L) }}
+              {...hearable(SOUND[L] ?? L, { rate: 0.5 })}
               aria-label={`Buchstabe ${L}`}
               style={{
                 width: 'clamp(58px,13vw,86px)', height: 'clamp(58px,13vw,86px)',

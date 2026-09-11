@@ -2,6 +2,8 @@ import { useState, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { speak } from '../tts.js'
+import { hearable } from '../lib/hearable.js'
+import HearOptions from '../components/HearOptions.jsx'
 
 function speakDE(text) {
   // tts.js's own cleaning (an emoji-range strip plus a strict word-
@@ -725,6 +727,7 @@ export default function StoryGame({ level = 1, onComplete }) {
             <motion.button key={opt.value}
               whileHover={{scale:1.03, x:4}} whileTap={{scale:0.97}}
               onClick={() => makeChoice(opt.value)}
+              {...hearable(opt.text)}
               style={{
                 background: 'linear-gradient(135deg,#6C63FF,#4A00E0)',
                 color:'white', borderRadius:22,

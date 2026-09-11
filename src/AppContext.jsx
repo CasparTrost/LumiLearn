@@ -26,7 +26,6 @@ export const MAX_LEVELS = {
   'rhyme': 10,
   'initial-sound': 10,
   'empathy': 10,
-  'board': 10,
   'shape-build': 10,
 }
 

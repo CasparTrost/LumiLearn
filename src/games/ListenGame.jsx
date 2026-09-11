@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { speak as ttsSpeak } from '../tts.js'
+import { hearable } from '../lib/hearable.js'
+import HearOptions from '../components/HearOptions.jsx'
 
 /**
  * Hörabenteuer — Phonologisches Bewusstsein
@@ -323,6 +325,7 @@ export default function ListenGame({ level = 1, onComplete }) {
                   whileTap={!done && !isWrong ? { scale:0.95 } : {}}
                   animate={isWrong ? { opacity: 0.55 } : { opacity: 1 }}
                   onClick={() => { if (!isWrong) pickWord(word) }}
+                  {...hearable(word)}
                   style={{
                     padding:'14px 10px', borderRadius:18,
                     fontFamily:'var(--font-heading)', fontSize:'clamp(15px,3.2vw,20px)',
