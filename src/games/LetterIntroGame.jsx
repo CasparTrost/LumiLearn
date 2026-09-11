@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { voice } from '../voice.js'
+import { speak } from '../tts.js'
 import { hearable } from '../lib/hearable.js'
 import HearOptions from '../components/HearOptions.jsx'
 import { lockPreviews } from '../narrator.js'
@@ -66,11 +67,6 @@ const LETTER_INFO_AUDIO = {
   C: null, Q: null, X: null, Y: null,
 }
 
-function wordAudio(word) {
-  let s = word.toLowerCase()
-  s = s.replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss')
-  return ABC + s + '.mp3'
-}
 
 const LEVEL_LETTERS = [
   ['A','E','I','O','U','M','B','S'],                            // L1 – Vokale + häufige
@@ -131,6 +127,10 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
   //
   // C, Q, X und Y haben keine Aufnahme für den Merksatz (sie waren früher
   // schlicht stumm); dort springt die Sprachausgabe mit demselben Satz ein.
+  // Wird vom Darüberfahren UND vom Anklicken benutzt — damit beides identisch
+  // klingt, und zwar nachweislich, weil es derselbe Aufruf ist.
+  const sayWord = useCallback((w) => speak(w), [])
+
   const sayRound = useCallback(() => {
     const q = questions[idx]
     if (!q) return
@@ -165,10 +165,17 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
   const pick = (opt) => {
     if (selected !== null) return
     if (opt === q.correct) {
-      // Some word-audio files are missing from public/audio/abc-abenteuer/
-      // (confirmed: 23 of them) — fall back to speaking the word itself
-      // rather than silently dropping the reward narration.
-      voice.play(wordAudio(opt.w), opt.w)
+      // Ein Wort, eine Stimme.
+      //
+      // Beim Darüberfahren sprach die Sprachsynthese, beim Anklicken lief eine
+      // Aufnahme — dasselbe Wort in zwei verschiedenen Stimmen. Und da nur 66
+      // der 91 Antwortwörter überhaupt eine Aufnahme haben, wechselte die
+      // Stimme sogar von Antwort zu Antwort. Jetzt kommt beides aus derselben
+      // Quelle, und zwar aus der, die besser klingt.
+      //
+      // Die Aufnahmen der Merksätze und der Frage bleiben: dort geht es um
+      // ganze Sätze, und da ist eine Aufnahme klar im Vorteil.
+      sayWord(opt.w)
       setSelected(opt)
       const nextScore = score + 1
       setScore(nextScore)
