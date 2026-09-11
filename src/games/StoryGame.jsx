@@ -4,6 +4,7 @@ import LumiCharacter from '../components/LumiCharacter.jsx'
 import { speak } from '../tts.js'
 import { hearable } from '../lib/hearable.js'
 import HearOptions from '../components/HearOptions.jsx'
+import { lockPreviews } from '../narrator.js'
 
 function speakDE(text) {
   // tts.js's own cleaning (an emoji-range strip plus a strict word-
@@ -563,7 +564,7 @@ export default function StoryGame({ level = 1, onComplete }) {
   useEffect(() => {
     if (phase === 'lesson') {
       const txt = story?.lesson || outcome?.lesson
-      if (txt) setTimeout(() => speakDE(txt.replace(/💡/g, '')), 300)
+      if (txt) { lockPreviews(); setTimeout(() => speakDE(txt.replace(/💡/g, '')), 300) }
     }
   }, [phase]) // eslint-disable-line react-hooks/exhaustive-deps
 

@@ -5,7 +5,7 @@ import { useApp, MAX_LEVELS } from '../AppContext.jsx'
 import InfoButton from '../components/InfoButton.jsx'
 import ErrorBoundary from '../components/ErrorBoundary.jsx'
 import { useProfile } from '../hooks/useProfile.js'
-import { stopNarration } from '../narrator.js'
+import { stopNarration, lockPreviews } from '../narrator.js'
 import FitBox from '../components/FitBox.jsx'
 import { lazyWithReload } from '../lib/lazyWithReload.js'
 
@@ -125,7 +125,9 @@ export default function GameScreen() {
   // Ein Satz aus dem vorigen Spiel lief bisher weiter, während das nächste
   // schon seine Ansage startete — zwei Stimmen übereinander. Beim Wechsel und
   // beim Verlassen wird alles Gesprochene gestoppt.
-  useEffect(() => stopNarration, [moduleId, level])
+  // Beim Betreten und beim Wechsel gilt dasselbe wie bei einer neuen Aufgabe:
+  // erst die Ansage, dann darf das Darüberfahren vorlesen.
+  useEffect(() => { lockPreviews(); return stopNarration }, [moduleId, level])
 
   const handleComplete = ({ score, total, stars: providedStars }) => {
     // Some games (e.g. MemoryGame) compute their own star rating from a

@@ -5,6 +5,7 @@ import { sfx } from '../sfx.js'
 import { speak } from '../tts.js'
 import { hearable } from '../lib/hearable.js'
 import HearOptions from '../components/HearOptions.jsx'
+import { lockPreviews } from '../narrator.js'
 
 /**
  * Formen-Land — Formen erkennen, Größen ordnen, Muster fortsetzen
@@ -122,6 +123,7 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
     const say = r.mode === 'match'  ? `Finde ${SHAPES[r.answer].art} ${SHAPES[r.answer].name}!`
               : r.mode === 'size'   ? 'Tippe die Formen von klein nach groß!'
               :                       'Was kommt als Nächstes?'
+    lockPreviews()
     const id = setTimeout(() => speakDE(say), 420)
     return () => clearTimeout(id)
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps

@@ -20,6 +20,16 @@ let audioEl  = null
 let lastKey  = null   // was gerade läuft — für skipIfSame (Hover-Vorlesen)
 let running  = false
 let level    = null   // Vorrang dessen, was gerade läuft
+let lockedAt = 0      // seit wann Vorschauen gesperrt sind (0 = frei)
+let cancelAt = 0      // wann zuletzt abgebrochen wurde
+
+// Nach einem Abbruch darf nicht sofort gesprochen werden: ruft man
+// speechSynthesis.speak() im selben Tick wie cancel(), verschluckt Chrome den
+// Wortanfang — aus "König" wird "…ig". Ein kurzer Abstand genügt.
+const CANCEL_GUARD_MS = 180
+// Sicherheitsnetz: kündigt ein Spiel eine Ansage an, die nie kommt, bleibt das
+// Vorlesen sonst für immer gesperrt.
+const LOCK_MAX_MS = 12000
 
 // Wer wissen will, ob gerade gesprochen wird (die Hintergrundmusik leiser
 // dreht, solange Lumi redet).
@@ -45,8 +55,23 @@ function cleanText(text) {
     .trim()
 }
 
+/**
+ * Sperrt das Vorlesen beim Darüberfahren, bis die nächste richtige Ansage
+ * durchgelaufen ist. Ein Spiel ruft das auf, sobald eine neue Aufgabe
+ * beginnt — also bevor die Ansage überhaupt startet.
+ *
+ * Ohne diese Sperre gibt es ein Zeitfenster zwischen "neue Aufgabe" und
+ * "Ansage beginnt" (Ladezeit der Aufnahme, kurze Verzögerung), in dem eine
+ * Vorschau durchrutscht. Das passiert sogar ungewollt: nach "Weiter" liegt die
+ * neue Antwort unter dem ruhenden Mauszeiger, und schon spricht sie los.
+ */
+export function lockPreviews() {
+  lockedAt = Date.now()
+}
+
 export function stopNarration() {
   seq++
+  if (running) cancelAt = Date.now()
   setRunning(false)
   lastKey = null
   level = null
@@ -82,7 +107,10 @@ export function narrate(parts, { onEnd, skipIfSame = false, priority = 'normal' 
   const key = list.map(p => p.src ?? p.text).join('|')
   if (skipIfSame && running && key === lastKey) return
   // Nebenbei ausgelöstes Vorlesen wartet nicht, es entfällt.
-  if (priority === 'preview' && running && level !== 'preview') return
+  if (priority === 'preview') {
+    if (running && level !== 'preview') return
+    if (lockedAt && Date.now() - lockedAt < LOCK_MAX_MS) return
+  }
 
   stopNarration()
   const mySeq = ++seq
@@ -95,6 +123,9 @@ export function narrate(parts, { onEnd, skipIfSame = false, priority = 'normal' 
     if (mySeq !== seq) return
     setRunning(false)
     lastKey = null
+    // Erst wenn eine richtige Ansage vollständig durch ist, wird das Vorlesen
+    // wieder frei. Ein Abbruch zählt nicht — dann kommt gleich etwas Neues.
+    if (level === 'normal') lockedAt = 0
     level = null
     onEnd?.()
   }
@@ -141,6 +172,14 @@ export function narrate(parts, { onEnd, skipIfSame = false, priority = 'normal' 
     if (typeof window === 'undefined' || !window.speechSynthesis) { done(); return }
     const clean = cleanText(p.text ?? '')
     if (!clean) { done(); return }
+    // Abstand zum letzten Abbruch einhalten, sonst fehlt der Wortanfang.
+    const wait = Math.max(0, CANCEL_GUARD_MS - (Date.now() - cancelAt))
+    if (wait > 0) { setTimeout(() => { if (s === seq) speakNow(p, done, s) }, wait); return }
+    speakNow(p, done, s)
+  }
+
+  const speakNow = (p, done, s) => {
+    const clean = cleanText(p.text ?? '')
     const rate = p.rate ?? 0.85
     // grobe Schätzung: ~13 Zeichen pro Sekunde bei Tempo 1, plus Puffer
     const hand = once(done, s, Math.min(20000, 900 + (clean.length / 13 / rate) * 1000 + 900))

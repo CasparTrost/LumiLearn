@@ -5,6 +5,7 @@ import { sfx } from '../sfx.js'
 import { speak } from '../tts.js'
 import { hearable } from '../lib/hearable.js'
 import HearOptions from '../components/HearOptions.jsx'
+import { lockPreviews } from '../narrator.js'
 
 /**
  * Anlaut-Detektiv — welcher Buchstabe macht diesen Laut?
@@ -83,6 +84,7 @@ export default function InitialSoundGame({ level = 1, onComplete }) {
 
   useEffect(() => {
     setWrong([]); setSolved(false); setMood('happy')
+    lockPreviews()
     const id = setTimeout(sayTask, 450)
     return () => clearTimeout(id)
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps

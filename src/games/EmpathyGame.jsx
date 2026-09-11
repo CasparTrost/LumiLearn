@@ -5,6 +5,7 @@ import { sfx } from '../sfx.js'
 import { speak } from '../tts.js'
 import { hearable } from '../lib/hearable.js'
 import HearOptions from '../components/HearOptions.jsx'
+import { lockPreviews } from '../narrator.js'
 
 /**
  * Gefühlsdetektiv — Gefühle an der Körperhaltung erkennen und helfen
@@ -251,6 +252,7 @@ export default function EmpathyGame({ level = 1, onComplete }) {
   useEffect(() => {
     if (!sc) return
     setPhase('feeling'); setWrong([]); setMood('thinking')
+    lockPreviews()
     const id = setTimeout(() => speakDE(`${sc.situation} Wie fühlt sich das Kind?`), 450)
     return () => clearTimeout(id)
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps

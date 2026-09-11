@@ -4,6 +4,7 @@ import LumiCharacter from '../components/LumiCharacter.jsx'
 import { speak as ttsSpeak } from '../tts.js'
 import { hearable } from '../lib/hearable.js'
 import HearOptions from '../components/HearOptions.jsx'
+import { lockPreviews } from '../narrator.js'
 
 /**
  * Hörabenteuer — Phonologisches Bewusstsein
@@ -178,6 +179,7 @@ export default function ListenGame({ level = 1, onComplete }) {
     setWrongPicks([])
     setMood('happy')
     setPlayed(false)
+    lockPreviews()
     const t = setTimeout(() => { speak(current.word); setPlayed(true) }, 550)
     return () => clearTimeout(t)
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
