@@ -19,7 +19,10 @@ import { narrate } from '../narrator.js'
  */
 export function hearable(text, { src, rate, pitch, enabled = true } = {}) {
   if (!enabled || (!text && !src)) return {}
-  const say = () => narrate([{ text, src, rate, pitch }], { skipIfSame: true })
+  // priority 'preview': unterbricht nie die laufende Frage. Dadurch wirkt das
+  // Vorlesen erst, wenn die Fragestellung durch ist — genau so, wie ein Kind
+  // es erwartet, und ohne dass jedes Spiel das selbst verwalten müsste.
+  const say = () => narrate([{ text, src, rate, pitch }], { skipIfSame: true, priority: 'preview' })
   return {
     // Auf Touch-Geräten löst pointerenter beim Tippen mit aus — dort ist der
     // Lautsprecher an der Frage der Weg, nicht dieser.

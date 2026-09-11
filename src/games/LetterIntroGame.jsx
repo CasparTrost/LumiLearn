@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { voice } from '../voice.js'
-import { speak } from '../tts.js'
 import { hearable } from '../lib/hearable.js'
 import HearOptions from '../components/HearOptions.jsx'
 
@@ -33,20 +32,6 @@ const LETTER_DATA = {
   Q: { color:'#6C5CE7', info:'Q ist der 17. Buchstabe. Q kommt fast immer mit U zusammen.',       opts:[{ e:'🪼', w:'Qualle' },  { e:'💨', w:'Qualm' },     { e:'🦆', w:'Quaken' }]},
   X: { color:'#00B894', info:'X ist der 24. Buchstabe. X macht ein „ks" Geräusch.',               opts:[{ e:'🎹', w:'Xylofon' }, { e:'❌', w:'X' },         { e:'🎼', w:'Xylophon' }]},
   Y: { color:'#FDCB6E', info:'Y ist der 25. Buchstabe. Y klingt wie ein „Ü" oder „J".',           opts:[{ e:'🧘', w:'Yoga' },    { e:'🛥️', w:'Yacht' },    { e:'🪀', w:'Yo-Yo' }]},
-}
-
-// The bare sound of each letter. The info sentences mention it only in
-// passing ("F ist der 6. Buchstabe. F klingt wie ein leises fff"), buried
-// mid-sentence where it is easy to miss — even though mapping a shape to its
-// sound is the whole point of the module. These are spoken on their own,
-// slowly, and anchored to a word the child knows, which is how phonics is
-// normally taught. Plosives cannot be voiced without a trailing vowel by any
-// speech synthesiser, so the anchor word carries the weight for those.
-const LETTER_SOUND = {
-  A:'Aaa',  B:'Bbb',  C:'Zzz',  D:'Ddd', E:'Eee', F:'Fff', G:'Ggg',
-  H:'Hhh',  I:'Iii',  J:'Jjj',  K:'Kkk', L:'Lll', M:'Mmm', N:'Nnn',
-  O:'Ooo',  P:'Ppp',  Q:'Kwkw', R:'Rrr', S:'Sss', T:'Ttt', U:'Uuu',
-  V:'Fff',  W:'Www',  X:'Kss',  Y:'Üüü', Z:'Zzz',
 }
 
 const ALL_LETTERS = Object.keys(LETTER_DATA)
@@ -133,29 +118,28 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
   // Stop narration when game unmounts
   useEffect(() => () => voice.stop(), [])
 
-  // Speak the letter's sound on its own, anchored to one of its own words.
-  const speakSound = useCallback(() => {
+  // Die Ansage der Runde: Merksatz, dann Frage — als EIN Aufruf.
+  //
+  // Vorher lief hier zuerst ein langsam gesprochenes "Eff. Eff. Wie in Fisch."
+  // und 2600 ms später per Zeitgeber der Rest. Bei Tempo 0,45 dauert der erste
+  // Satz aber deutlich länger als 2,6 Sekunden — der zweite Teil fiel dem
+  // ersten ins Wort. Genau daran krankte der Ton in diesem Spiel. Zeitgeber
+  // können nicht wissen, wie lange gesprochen wird; die Erzähl-Schicht weiß es,
+  // weil sie auf das echte Ende wartet. Also gibt es keinen Zeitgeber mehr,
+  // sondern eine Ansage aus zwei Teilen.
+  //
+  // C, Q, X und Y haben keine Aufnahme für den Merksatz (sie waren früher
+  // schlicht stumm); dort springt die Sprachausgabe mit demselben Satz ein.
+  const sayRound = useCallback(() => {
     const q = questions[idx]
     if (!q) return
-    const snd = LETTER_SOUND[q.letter]
-    if (!snd) return
-    voice.stop()
-    speak(`${snd}. ${snd}. Wie in ${q.correct.w}.`, { rate: 0.45, pitch: 1.1, lang: 'de-DE' })
+    const infoAudio = LETTER_INFO_AUDIO[q.letter]
+    const prompt = ABC + `welches-wort-beginnt-mit-${q.letter.toLowerCase()}.mp3`
+    voice.chain([infoAudio ?? null, prompt], [q.info, `Welches Wort beginnt mit ${q.letter}?`])
   }, [questions, idx])
 
-  // Sound first, then the fact sentence and the question. C, Q, X and Y have
-  // no recorded info track (they were simply silent before), so those fall
-  // back to reading the same sentence out.
   useEffect(() => {
-    const q = questions[idx]
-    if (!q) return
-    speakSound()
-    const t = setTimeout(() => {
-      const infoAudio = LETTER_INFO_AUDIO[q.letter]
-      const prompt = ABC + `welches-wort-beginnt-mit-${q.letter.toLowerCase()}.mp3`
-      if (infoAudio) voice.chain([infoAudio, prompt])
-      else voice.chain([null, prompt], [q.info, `Welches Wort beginnt mit ${q.letter}?`])
-    }, 2600)
+    const t = setTimeout(sayRound, 400)
     return () => clearTimeout(t)
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -246,11 +230,12 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
         </motion.div>
       </AnimatePresence>
 
-      {/* The sound on demand — a child who missed it had no way back to it */}
+      {/* Die Frage noch einmal — ein Kind, das sie überhört hat, kam sonst
+          nicht mehr an sie heran. */}
       <motion.button
         whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
-        onClick={speakSound}
-        aria-label={`So klingt ${q.letter}`}
+        onClick={sayRound}
+        aria-label="Frage noch einmal anhören"
         style={{
           display:'flex', alignItems:'center', gap:8,
           background:'white', border:`2.5px solid ${q.color}`, borderRadius:99,
@@ -259,7 +244,7 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
           fontWeight:700, color:q.color,
           boxShadow:`0 4px 16px ${q.color}33`,
         }}
-      >🔊 So klingt {q.letter}</motion.button>
+      >🔊 Nochmal</motion.button>
 
       {/* Info badge — outside AnimatePresence so it fades in calmly */}
       <AnimatePresence mode="wait">

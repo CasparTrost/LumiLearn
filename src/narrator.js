@@ -19,6 +19,7 @@ let seq      = 0      // wird bei jedem Abbruch erhöht; veraltete Schritte stei
 let audioEl  = null
 let lastKey  = null   // was gerade läuft — für skipIfSame (Hover-Vorlesen)
 let running  = false
+let level    = null   // Vorrang dessen, was gerade läuft
 
 // Wer wissen will, ob gerade gesprochen wird (die Hintergrundmusik leiser
 // dreht, solange Lumi redet).
@@ -48,6 +49,7 @@ export function stopNarration() {
   seq++
   setRunning(false)
   lastKey = null
+  level = null
   if (audioEl) { try { audioEl.pause() } catch { /* ignore */ } audioEl = null }
   if (typeof window !== 'undefined' && window.speechSynthesis) window.speechSynthesis.cancel()
 }
@@ -59,21 +61,33 @@ export function stopNarration() {
  *               `src` ist eine Aufnahme, `text` der gesprochene Ersatz, wenn
  *               die Datei fehlt oder gar keine hinterlegt ist. `gap` ist eine
  *               Pause in Millisekunden *vor* dem Abschnitt.
- * @param opts   { onEnd, skipIfSame }
+ * @param opts   { onEnd, skipIfSame, priority }
  *               skipIfSame verhindert das Neustarten derselben Ansage — damit
  *               das Vorlesen beim Darüberfahren nicht bei jeder Mausbewegung
  *               von vorne beginnt.
+ *
+ *               priority 'preview' ist für alles, was das Kind nebenbei
+ *               auslöst, ohne es zu wollen — vor allem das Vorlesen beim
+ *               Darüberfahren. Eine Vorschau unterbricht NIE eine laufende
+ *               Ansage; sie wird dann einfach verworfen. Damit wird das
+ *               Vorlesen faktisch erst nach der Fragestellung wirksam, ohne
+ *               dass ein Spiel dafür irgendetwas verwalten muss. Untereinander
+ *               dürfen Vorschauen sich ablösen: die Maus wandert weiter, und
+ *               das zuletzt berührte Wort gewinnt.
  */
-export function narrate(parts, { onEnd, skipIfSame = false } = {}) {
+export function narrate(parts, { onEnd, skipIfSame = false, priority = 'normal' } = {}) {
   const list = (Array.isArray(parts) ? parts : [parts]).filter(p => p && (p.src || p.text))
   if (!list.length) { onEnd?.(); return }
 
   const key = list.map(p => p.src ?? p.text).join('|')
   if (skipIfSame && running && key === lastKey) return
+  // Nebenbei ausgelöstes Vorlesen wartet nicht, es entfällt.
+  if (priority === 'preview' && running && level !== 'preview') return
 
   stopNarration()
   const mySeq = ++seq
   lastKey = key
+  level = priority
   setRunning(true)
 
   let i = 0
@@ -81,6 +95,7 @@ export function narrate(parts, { onEnd, skipIfSame = false } = {}) {
     if (mySeq !== seq) return
     setRunning(false)
     lastKey = null
+    level = null
     onEnd?.()
   }
 
