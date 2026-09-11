@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
 import { speak } from '../tts.js'
+import { afterNarration } from '../narrator.js'
 
 /**
  * Uhrzeiten-Meister — Uhrzeit lesen & stellen
@@ -533,7 +534,7 @@ export default function ClockGame({ level = 1, onComplete }) {
       setMood('happy')
       if (idx + 1 >= times.length) {
         sfx.complete()
-        setTimeout(() => onComplete({ score: ns, total: times.length }), 900)
+        afterNarration(() => onComplete({ score: ns, total: times.length }), { minMs: 900 })
       } else {
         setIdx(i => i + 1)
       }
@@ -577,7 +578,7 @@ export default function ClockGame({ level = 1, onComplete }) {
     setShowClockHint(false)
     if (idx + 1 >= times.length) {
       sfx.complete()
-      setTimeout(() => onComplete({ score, total: times.length }), 500)
+      afterNarration(() => onComplete({ score, total: times.length }), { minMs: 500 })
     } else {
       setIdx(i => i + 1)
     }

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
 import { speak } from '../tts.js'
+import { afterNarration } from '../narrator.js'
 
 /**
  * Formen-Werkstatt — aus Formen ein Bild zusammensetzen
@@ -195,7 +196,7 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
     if (idx + 1 >= rounds.length) {
       sfx.complete()
       const stars = misses <= 1 ? 3 : misses <= rounds.length ? 2 : 1
-      setTimeout(() => onComplete({ score: rounds.length, total: rounds.length, stars }), 300)
+      afterNarration(() => onComplete({ score: rounds.length, total: rounds.length, stars }), { minMs: 300 })
     } else setIdx(i => i + 1)
   }
 

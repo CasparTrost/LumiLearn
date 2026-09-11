@@ -8,7 +8,7 @@ import Button from '../components/Button.jsx'
 import Confetti from '../components/Confetti.jsx'
 import { sfx } from '../sfx.js'
 import { voice } from '../voice.js'
-import { speak } from '../tts.js'
+import { afterNarration } from '../narrator.js'
 import { useT } from '../i18n.js'
 import { useProfile } from '../hooks/useProfile.js'
 
@@ -48,19 +48,20 @@ export default function ResultsScreen() {
       if (stars >= 3)      sfx.complete()
       else if (stars >= 1) sfx.correct()
     }, 350)
-    const v = setTimeout(() => {
+    // Ein Lob, sonst nichts.
+    //
+    // Vorher liefen hier drei Ansagen gegeneinander: das Spiel sagte seinen
+    // Glückwunsch, der Bildschirmwechsel schnitt ihn ab, dieses Lob startete
+    // nach 900 ms — und wurde seinerseits nach 2200 ms von "Plus 18 Coins"
+    // zerschnitten. Die Münz-Ansage ist ersatzlos gestrichen (die Zahl steht
+    // ohnehin sichtbar auf dem Bildschirm), und das Lob wartet, bis der Satz
+    // aus dem Spiel wirklich zu Ende ist, statt ihn zu überfahren.
+    const stop = afterNarration(() => {
       if (stars >= 2)      voice.play('audio/allgemein/das-hast-du-super-gemacht.mp3')
       else if (stars >= 1) voice.play('audio/allgemein/ja-super.mp3')
       else                 voice.play('audio/allgemein/klasse-versuch-es-direkt-noch-einmal.mp3')
-    }, 900)
-    // TTS: announce coins if earned
-    const c = coinsEarned > 0 ? setTimeout(() => {
-      const txt = newMissionsCompleted.length > 0
-        ? `Plus ${coinsEarned} Coins und ${newMissionsCompleted.length} Aufgabe erledigt!`
-        : `Plus ${coinsEarned} Coins!`
-      speak(txt, { rate: 0.9, pitch: 1.1, lang: 'de-DE' })
-    }, 2200) : null
-    return () => { clearTimeout(t); clearTimeout(v); if (c) clearTimeout(c); voice.stop() }
+    }, { minMs: 900 })
+    return () => { clearTimeout(t); stop(); voice.stop() }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const messages = {

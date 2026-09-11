@@ -5,7 +5,7 @@ import { sfx } from '../sfx.js'
 import { speak } from '../tts.js'
 import { hearable } from '../lib/hearable.js'
 import HearOptions from '../components/HearOptions.jsx'
-import { lockPreviews } from '../narrator.js'
+import { lockPreviews, afterNarration } from '../narrator.js'
 
 /**
  * Reim-Rallye — hören, was sich reimt
@@ -126,7 +126,7 @@ export default function RhymeGame({ level = 1, onComplete }) {
     if (idx + 1 >= rounds.length) {
       sfx.complete()
       const stars = misses <= 1 ? 3 : misses <= rounds.length ? 2 : 1
-      setTimeout(() => onComplete({ score: rounds.length, total: rounds.length, stars }), 300)
+      afterNarration(() => onComplete({ score: rounds.length, total: rounds.length, stars }), { minMs: 300 })
     } else setIdx(i => i + 1)
   }
 

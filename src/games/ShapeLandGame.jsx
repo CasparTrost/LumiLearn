@@ -5,7 +5,7 @@ import { sfx } from '../sfx.js'
 import { speak } from '../tts.js'
 import { hearable } from '../lib/hearable.js'
 import HearOptions from '../components/HearOptions.jsx'
-import { lockPreviews } from '../narrator.js'
+import { lockPreviews, afterNarration } from '../narrator.js'
 
 /**
  * Formen-Land — Formen erkennen, Größen ordnen, Muster fortsetzen
@@ -173,7 +173,7 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
     if (idx + 1 >= TOTAL) {
       sfx.complete()
       const stars = misses <= 1 ? 3 : misses <= TOTAL ? 2 : 1
-      setTimeout(() => onComplete({ score: TOTAL, total: TOTAL, stars }), 300)
+      afterNarration(() => onComplete({ score: TOTAL, total: TOTAL, stars }), { minMs: 300 })
     } else setIdx(i => i + 1)
   }
 

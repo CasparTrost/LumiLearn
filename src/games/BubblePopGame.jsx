@@ -3,6 +3,7 @@ import { motion, AnimatePresence, useAnimationFrame, motionValue } from 'framer-
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
 import { speak } from '../tts.js'
+import { afterNarration } from '../narrator.js'
 
 /**
  * Blasen-Blitz — Subitizing & Inhibitorische Kontrolle
@@ -141,7 +142,7 @@ export default function BubblePopGame({ level = 1, onComplete }) {
           setMood('encouraging')
           if (roundIdx + 1 >= 3) {
             setPhase('done')
-            setTimeout(() => onComplete({ score: roundsWonRef.current, total: 3, stars: roundsWonRef.current }), 1200)
+            afterNarration(() => onComplete({ score: roundsWonRef.current, total: 3, stars: roundsWonRef.current }), { minMs: 1200 })
           } else {
             setPhase('roundFail')
             setTimeout(() => setRoundIdx(r => r + 1), 1500)
@@ -183,7 +184,7 @@ export default function BubblePopGame({ level = 1, onComplete }) {
           // GameScreen's default score/total percentage thresholds would
           // otherwise map exactly 1/3 rounds won to 0 stars (0.33 falls
           // just under the 0.35 cutoff for 1 star), same as 0/3.
-          setTimeout(() => onComplete({ score: nw, total: 3, stars: nw }), 1400)
+          afterNarration(() => onComplete({ score: nw, total: 3, stars: nw }), { minMs: 1400 })
         } else {
           setTimeout(() => setRoundIdx(r => r + 1), 1500)
         }
@@ -200,7 +201,7 @@ export default function BubblePopGame({ level = 1, onComplete }) {
       setTimeout(() => setMood('happy'), 700)
       if (nl <= 0) {
         setPhase('done')
-        setTimeout(() => onComplete({ score: roundsWonRef.current, total: 3, stars: roundsWonRef.current }), 1200)
+        afterNarration(() => onComplete({ score: roundsWonRef.current, total: 3, stars: roundsWonRef.current }), { minMs: 1200 })
       }
     }
   }, [phase, bubbles, target, roundIdx, onComplete])

@@ -7,6 +7,7 @@ import { useSwipe } from './maze/useSwipe.js'
 import { speak, cancelSpeech } from '../tts.js'
 import { sfx } from '../sfx.js'
 import './maze/maze.css'
+import { afterNarration } from '../narrator.js'
 
 // ──────────────────────────────────────────────────────────────────
 // ASSET HELPER
@@ -467,7 +468,7 @@ export default function MazeGame({ level = 1, onComplete }) {
   const finish = useCallback((score, total, delay = 1800) => {
     if (doneRef.current) return
     doneRef.current = true
-    setTimeout(() => onCompleteRef.current({ score, total }), delay)
+    afterNarration(() => onCompleteRef.current({ score, total }), { minMs: delay })
   }, [])
 
   // ── MOVE HELPER ─────────────────────────────────────────────────

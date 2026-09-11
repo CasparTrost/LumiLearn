@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
 import { speak, sayNumber } from '../tts.js'
+import { afterNarration } from '../narrator.js'
 
 /**
  * Rechen-Rakete — Addieren und Subtrahieren am Zahlenstrahl
@@ -157,7 +158,7 @@ export default function RocketMathGame({ level = 1, onComplete }) {
     if (idx + 1 >= tasks.length) {
       sfx.complete()
       const stars = misses === 0 ? 3 : misses <= tasks.length ? 2 : 1
-      setTimeout(() => onComplete({ score: score, total: tasks.length, stars }), 300)
+      afterNarration(() => onComplete({ score: score, total: tasks.length, stars }), { minMs: 300 })
     } else {
       setIdx(i => i + 1)
     }

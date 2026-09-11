@@ -5,7 +5,7 @@ import { sfx } from '../sfx.js'
 import { speak } from '../tts.js'
 import { hearable } from '../lib/hearable.js'
 import HearOptions from '../components/HearOptions.jsx'
-import { lockPreviews } from '../narrator.js'
+import { lockPreviews, afterNarration } from '../narrator.js'
 
 /**
  * Gefühlsdetektiv — Gefühle an der Körperhaltung erkennen und helfen
@@ -299,7 +299,7 @@ export default function EmpathyGame({ level = 1, onComplete }) {
     if (idx + 1 >= scenes.length) {
       sfx.complete()
       const stars = misses <= 2 ? 3 : misses <= scenes.length * 1.5 ? 2 : 1
-      setTimeout(() => onComplete({ score: scenes.length, total: scenes.length, stars }), 300)
+      afterNarration(() => onComplete({ score: scenes.length, total: scenes.length, stars }), { minMs: 300 })
     } else setIdx(i => i + 1)
   }
 
