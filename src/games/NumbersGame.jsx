@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { motion, AnimatePresence, useAnimation } from 'framer-motion'
 import { speak, sayCount } from '../tts.js'
+import { pxCard, pxPanel, pxBubble, pxButton, INK } from './px.js'
 
 function rnd(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min }
 function shuffle(arr)  { return [...arr].sort(() => Math.random() - 0.5) }
@@ -290,19 +291,21 @@ export default function NumbersGame({ level = 1, onComplete }) {
   if (!q) return null
   const { parts, customer, greeting } = q
   const accentColor = parts[0].item.color
+  // The lower bounds let two or three products plus the cart fit a 390px
+  // phone; with 80px/62px minimums the row ran ~60px past the screen edge.
   const productSize = parts.length === 1
-    ? 'clamp(110px,22vw,160px)'
+    ? 'clamp(96px,22vw,160px)'
     : parts.length === 2
-      ? 'clamp(80px,16vw,114px)'
-      : 'clamp(62px,12vw,88px)'
+      ? 'clamp(54px,16vw,114px)'
+      : 'clamp(40px,12vw,88px)'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24, padding: 'clamp(14px,3vw,28px)', width: '100%' }}>
 
       {/* Progress bar */}
-      <div style={{ width: '100%', maxWidth: 700, height: 14, background: 'rgba(0,0,0,0.08)', borderRadius: 10, overflow: 'hidden' }}>
+      <div style={{ width: '100%', maxWidth: 700, height: 14, background: 'rgba(42,27,61,0.12)', border: `2px solid ${INK}`, borderRadius: 4, overflow: 'hidden' }}>
         <motion.div animate={{ width: `${(idx / questions.length) * 100}%` }}
-          style={{ height: '100%', background: accentColor, borderRadius: 10 }}
+          style={{ height: '100%', background: accentColor, borderRadius: 2 }}
           transition={{ duration: 0.4 }} />
       </div>
 
@@ -313,9 +316,7 @@ export default function NumbersGame({ level = 1, onComplete }) {
           exit={{ opacity: 0, y: -24 }} transition={{ duration: 0.3 }}
           style={{
             width: '100%', maxWidth: 700,
-            background: 'white', borderRadius: 32,
-            boxShadow: '0 8px 40px rgba(0,0,0,0.11)',
-            border: `3px solid ${accentColor}44`,
+            ...pxPanel,
             padding: 'clamp(22px,4vw,40px)',
             position: 'relative', overflow: 'visible',
             display: 'flex', flexDirection: 'column', gap: 28,
@@ -355,9 +356,8 @@ export default function NumbersGame({ level = 1, onComplete }) {
                   exit={{ opacity: 0, x: -8, scale: 0.88 }}
                   transition={{ type: 'spring', stiffness: 380, damping: 22 }}
                   style={{
-                    background: phase === 'correct' ? '#E8F8EE' : '#FFE8E8',
-                    border: `2.5px solid ${phase === 'correct' ? '#6BCB77' : '#FF6B6B'}`,
-                    borderRadius: 18, padding: 'clamp(12px,2.5vw,20px) clamp(16px,3.5vw,28px)',
+                    ...pxCard(phase === 'correct' ? 'right' : 'wrong'),
+                    padding: 'clamp(12px,2.5vw,20px) clamp(16px,3.5vw,28px)',
                     fontFamily: 'var(--font-heading)', fontSize: 'clamp(20px,4vw,28px)',
                     color: phase === 'correct' ? '#2d7a3a' : '#c0392b',
                     fontWeight: 700, flex: 1,
@@ -370,9 +370,8 @@ export default function NumbersGame({ level = 1, onComplete }) {
                   initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.1, duration: 0.3 }}
                   style={{
-                    background: `${accentColor}14`,
-                    border: `2.5px solid ${accentColor}66`,
-                    borderRadius: 18, padding: 'clamp(12px,2.5vw,20px) clamp(16px,3.5vw,28px)',
+                    ...pxBubble,
+                    padding: 'clamp(12px,2.5vw,20px) clamp(16px,3.5vw,28px)',
                     fontFamily: 'var(--font-heading)', fontSize: 'clamp(18px,3.6vw,25px)',
                     color: 'var(--text-primary)', flex: 1, lineHeight: 1.6,
                   }}
@@ -398,11 +397,10 @@ export default function NumbersGame({ level = 1, onComplete }) {
                     onClick={speakOrder}
                     aria-label="Bestellung noch einmal anhören"
                     style={{
+                      ...pxButton('parch'),
                       marginLeft: 10, verticalAlign: 'middle',
-                      background: 'white', border: `2px solid ${accentColor}66`,
-                      borderRadius: 99, padding: '4px 12px', cursor: 'pointer',
-                      fontFamily: 'var(--font-heading)', fontSize: 13,
-                      color: accentColor, whiteSpace: 'nowrap',
+                      padding: '4px 12px', borderRadius: 10,
+                      fontSize: 13, whiteSpace: 'nowrap',
                     }}
                   >🔊 Nochmal</motion.button>
                 </motion.div>
@@ -437,7 +435,7 @@ export default function NumbersGame({ level = 1, onComplete }) {
                             cursor: phase === 'shopping' ? 'pointer' : 'default',
                             userSelect: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
                             filter: phase === 'shopping'
-                              ? `drop-shadow(0 6px 16px ${p.item.color}99)`
+                              ? 'drop-shadow(0 5px 0 rgba(42,27,61,0.22))'
                               : 'grayscale(0.5) opacity(0.6)',
                             WebkitTapHighlightColor: 'transparent',
                             transition: 'filter 0.2s',
@@ -458,7 +456,8 @@ export default function NumbersGame({ level = 1, onComplete }) {
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                               fontFamily: 'var(--font-heading)',
                               fontSize: 'clamp(14px,2.8vw,20px)', fontWeight: 800,
-                              boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                              border: `2px solid ${INK}`, textShadow: '0 1px 0 rgba(0,0,0,0.3)',
+                              boxShadow: `0 3px 0 ${INK}`,
                               pointerEvents: 'none',
                             }}
                           >
@@ -481,8 +480,8 @@ export default function NumbersGame({ level = 1, onComplete }) {
                   {parts.map((p, i) => (
                     <div key={i} style={{
                       display: 'flex', alignItems: 'center', gap: 6,
-                      background: `${p.item.color}22`, border: `2px dashed ${p.item.color}`,
-                      borderRadius: 12, padding: '5px 12px',
+                      background: '#FFFDF7', border: `2px dashed ${p.item.color}`,
+                      borderRadius: 10, padding: '5px 12px',
                       fontFamily: 'var(--font-heading)', fontSize: 'clamp(14px,2.8vw,18px)',
                       color: p.item.color, fontWeight: 700,
                     }}>
@@ -512,7 +511,7 @@ export default function NumbersGame({ level = 1, onComplete }) {
               <div ref={cartRef} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                 <motion.span
                   animate={cartControls}
-                  style={{ fontSize: 'clamp(110px,22vw,160px)', lineHeight: 1, userSelect: 'none', display: 'block' }}
+                  style={{ fontSize: 'clamp(84px,22vw,160px)', lineHeight: 1, userSelect: 'none', display: 'block' }}
                 >
                   🛒
                 </motion.span>
@@ -528,7 +527,8 @@ export default function NumbersGame({ level = 1, onComplete }) {
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontFamily: 'var(--font-heading)',
                       fontSize: 'clamp(17px,3.4vw,24px)', fontWeight: 800,
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                      border: `3px solid ${INK}`, textShadow: '0 1px 0 rgba(0,0,0,0.3)',
+                      boxShadow: `0 3px 0 ${INK}`,
                     }}
                   >
                     {totalCollected}
@@ -569,10 +569,9 @@ export default function NumbersGame({ level = 1, onComplete }) {
                 onClick={() => removeItem()}
                 disabled={flying.length > 0}
                 style={{
-                  background: '#FFE8E8', border: '2px solid #FF6B6B',
-                  borderRadius: 14, padding: 'clamp(10px,2.2vw,16px) clamp(20px,4vw,32px)',
-                  fontFamily: 'var(--font-heading)', fontSize: 'clamp(17px,3.5vw,23px)',
-                  color: '#c0392b', cursor: 'pointer',
+                  ...pxButton('parch'),
+                  padding: 'clamp(10px,2.2vw,16px) clamp(20px,4vw,32px)',
+                  fontSize: 'clamp(17px,3.5vw,23px)',
                   opacity: flying.length > 0 ? 0.5 : 1,
                 }}
               >
@@ -583,12 +582,9 @@ export default function NumbersGame({ level = 1, onComplete }) {
                 onClick={confirm}
                 disabled={flying.length > 0}
                 style={{
-                  background: 'linear-gradient(135deg, #6BCB77, #4caf50)',
-                  border: 'none',
-                  borderRadius: 16, padding: 'clamp(12px,2.5vw,20px) clamp(28px,5.5vw,48px)',
-                  fontFamily: 'var(--font-heading)', fontSize: 'clamp(20px,4vw,28px)',
-                  color: 'white', cursor: 'pointer', fontWeight: 800,
-                  boxShadow: '0 4px 14px rgba(76,175,80,0.35)',
+                  ...pxButton('green'),
+                  padding: 'clamp(12px,2.5vw,20px) clamp(28px,5.5vw,48px)',
+                  fontSize: 'clamp(20px,4vw,28px)', fontWeight: 800,
                   opacity: flying.length > 0 ? 0.5 : 1,
                 }}
               >
@@ -608,10 +604,8 @@ export default function NumbersGame({ level = 1, onComplete }) {
           initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }}
           onClick={weiterClick}
           style={{
-            marginTop:4, padding:'13px 40px', borderRadius:50,
-            background:'linear-gradient(135deg,#6BCB77,#44D498)',
-            color:'white', fontFamily:'var(--font-heading)', fontSize:19, fontWeight:700,
-            border:'none', cursor:'pointer', boxShadow:'0 4px 18px rgba(107,203,119,0.5)',
+            ...pxButton('green'),
+            marginTop:4, padding:'13px 40px', fontSize:19,
           }}
         >
           {idx + 1 >= questions.length ? '🏁 Fertig!' : 'Nächster Kunde! →'}

@@ -4,6 +4,28 @@ import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
 import { speak } from '../tts.js'
 import { afterNarration } from '../narrator.js'
+import { INK, pxCard, pxBubble, pxButton, pxSegment } from './px.js'
+
+const ZONE_DROP = '0 5px 0 rgba(42,27,61,0.35)'
+
+// Sort basket in the pixel look: the category's own tint inside an ink
+// frame. The basket the item flies into lights up in its category colour,
+// the one revealed after a mistake gets a solid colour ring.
+function zoneLook(cat, revealed, target) {
+  return {
+    background:   cat.bg,
+    border:       `3px solid ${INK}`,
+    borderRadius: 14,
+    boxShadow: revealed ? `inset 0 0 0 4px ${cat.border}, 0 0 0 4px ${cat.border}, ${ZONE_DROP}`
+             : target   ? `inset 0 0 0 4px ${cat.border}, ${ZONE_DROP}`
+             : `inset 0 -6px 0 ${cat.border}55, ${ZONE_DROP}`,
+  }
+}
+
+// Arrow button that sorts into a basket: chunky pixel button in the basket's tint.
+function arrowLook(cat) {
+  return { ...pxButton('parch'), background: cat.bg, borderRadius: 14 }
+}
 
 /**
  * Sortier-Spaß — Kategorisieren & Konzeptbildung
@@ -72,7 +94,7 @@ const LEVEL_SETS = [
   // ── Tier 2 ─────────────────────────────────────────────────────────────────
   [
     {
-      categoryA: { label: 'Fahrzeuge', emoji: '🚗', color: '#6C63FF', bg: '#F0EEFF', border: '#6C63FF' },
+      categoryA: { label: 'Fahrzeuge', emoji: '🚗', color: '#6C63FF', bg: '#E9E3FF', border: '#6C63FF' },
       categoryB: { label: 'Natur',     emoji: '🌿', color: '#44D498', bg: '#E6FBF3', border: '#44D498' },
       items: [
         { id:1, emoji:'🚕', cat:'A' }, { id:2, emoji:'🌲', cat:'B' },
@@ -84,7 +106,7 @@ const LEVEL_SETS = [
       ],
     },
     {
-      categoryA: { label: 'Fahrzeuge', emoji: '🚗', color: '#6C63FF', bg: '#F0EEFF', border: '#6C63FF' },
+      categoryA: { label: 'Fahrzeuge', emoji: '🚗', color: '#6C63FF', bg: '#E9E3FF', border: '#6C63FF' },
       categoryB: { label: 'Natur',     emoji: '🌿', color: '#44D498', bg: '#E6FBF3', border: '#44D498' },
       items: [
         { id:1, emoji:'🚲', cat:'A' }, { id:2, emoji:'🌴', cat:'B' },
@@ -97,7 +119,7 @@ const LEVEL_SETS = [
     },
     {
       categoryA: { label: 'Im Wasser', emoji: '🌊', color: '#74B9FF', bg: '#EBF6FF', border: '#74B9FF' },
-      categoryB: { label: 'In der Luft', emoji: '☁️', color: '#A29BFE', bg: '#F0EEFF', border: '#A29BFE' },
+      categoryB: { label: 'In der Luft', emoji: '☁️', color: '#A29BFE', bg: '#E9E3FF', border: '#A29BFE' },
       items: [
         { id:1, emoji:'🐟', cat:'A' }, { id:2, emoji:'🦅', cat:'B' },
         { id:3, emoji:'🐙', cat:'A' }, { id:4, emoji:'✈️', cat:'B' },
@@ -160,7 +182,7 @@ const LEVEL_SETS = [
     },
     {
       categoryA: { label: 'Tagsüber', emoji: '☀️', color: '#FFD93D', bg: '#FFFDE0', border: '#FFD93D' },
-      categoryB: { label: 'Nachts', emoji: '🌙', color: '#6C63FF', bg: '#F0EEFF', border: '#6C63FF' },
+      categoryB: { label: 'Nachts', emoji: '🌙', color: '#6C63FF', bg: '#E9E3FF', border: '#6C63FF' },
       items: [
         { id:1, emoji:'☀️', cat:'A' }, { id:2, emoji:'🌙', cat:'B' },
         { id:3, emoji:'🌈', cat:'A' }, { id:4, emoji:'⭐', cat:'B' },
@@ -210,7 +232,7 @@ const LEVEL_SETS = [
       ],
     },
     {
-      categoryA: { label: 'Rund', emoji: '⭕', color: '#A29BFE', bg: '#F0EEFF', border: '#A29BFE' },
+      categoryA: { label: 'Rund', emoji: '⭕', color: '#A29BFE', bg: '#E9E3FF', border: '#A29BFE' },
       categoryB: { label: 'Eckig', emoji: '⬛', color: '#636E72', bg: '#F0F0F0', border: '#636E72' },
       items: [
         { id:1, emoji:'🌕', cat:'A' }, { id:2, emoji:'📦', cat:'B' },
@@ -268,7 +290,7 @@ const LEVEL_SETS = [
     {
       categoryA: { label: 'Tiere', emoji: '🐾', color: '#6BCB77', bg: '#E8F8EE', border: '#6BCB77' },
       categoryB: { label: 'Essen', emoji: '🍽️', color: '#FF9F43', bg: '#FFF3E0', border: '#FF9F43' },
-      categoryC: { label: 'Fahrzeuge', emoji: '🚗', color: '#6C63FF', bg: '#F0EEFF', border: '#6C63FF' },
+      categoryC: { label: 'Fahrzeuge', emoji: '🚗', color: '#6C63FF', bg: '#E9E3FF', border: '#6C63FF' },
       items: [
         { id:1, emoji:'🐕', cat:'A' }, { id:2, emoji:'🍕', cat:'B' }, { id:3, emoji:'🚕', cat:'C' },
         { id:4, emoji:'🐱', cat:'A' }, { id:5, emoji:'🍎', cat:'B' }, { id:6, emoji:'✈️', cat:'C' },
@@ -302,7 +324,7 @@ const LEVEL_SETS = [
       ],
     },
     {
-      categoryA: { label: 'Drinnen', emoji: '🏠', color: '#6C63FF', bg: '#F0EEFF', border: '#6C63FF' },
+      categoryA: { label: 'Drinnen', emoji: '🏠', color: '#6C63FF', bg: '#E9E3FF', border: '#6C63FF' },
       categoryB: { label: 'Draußen', emoji: '🌳', color: '#FF9F43', bg: '#FFF3E0', border: '#FF9F43' },
       items: [
         { id:1, emoji:'🛏️', cat:'A' }, { id:2, emoji:'🛝', cat:'B' },
@@ -417,7 +439,7 @@ export default function SortGame({ level = 1, onComplete }) {
       {/* Progress bar */}
       <div style={{ display:'flex', gap:4, width:'100%', maxWidth:700 }}>
         {items.map((_, i) => (
-          <div key={i} style={{ flex:1, height:9, borderRadius:99, background: i < curIdx ? '#6BCB77' : i === curIdx ? '#FFD93D' : '#ECE8FF', transition:'background 0.3s' }} />
+          <div key={i} style={{ flex:1, ...pxSegment(i < curIdx ? 'done' : i === curIdx ? 'current' : 'todo'), transition:'background 0.3s' }} />
         ))}
       </div>
 
@@ -429,7 +451,7 @@ export default function SortGame({ level = 1, onComplete }) {
       {/* Lumi */}
       <div style={{ display:'flex', alignItems:'flex-end', gap:12, width:'100%', maxWidth:700 }}>
         <LumiCharacter mood={mood} size={66} />
-        <div style={{ flex:1, background:'white', borderRadius:'24px 24px 24px 6px', padding:'10px 16px', boxShadow:'0 4px 16px rgba(107,203,119,0.12)', fontFamily:'var(--font-heading)', fontSize:'clamp(14px,3vw,19px)', color:'var(--text-primary)' }}>
+        <div style={{ flex:1, ...pxBubble, padding:'10px 16px', fontFamily:'var(--font-heading)', fontSize:'clamp(14px,3vw,19px)', color:'var(--text-primary)' }}>
           {phase === 'done'
             ? '🎉 Super! Alles richtig sortiert!'
             : catC
@@ -444,12 +466,9 @@ export default function SortGame({ level = 1, onComplete }) {
         {/* Basket A (left) */}
         <div style={{
           flex:1, minHeight:'clamp(130px,22vw,190px)',
-          background: catA.bg, border: '3px dashed ' + catA.border,
-          borderRadius:22, display:'flex', flexDirection:'column', alignItems:'center', gap:6,
+          ...zoneLook(catA, revealCat === 'A', flyDir === 'A'),
+          display:'flex', flexDirection:'column', alignItems:'center', gap:6,
           padding:'clamp(8px,1.5vw,14px)',
-          boxShadow: revealCat === 'A' ? '0 0 0 6px ' + catA.border + ', 0 4px 24px ' + catA.border + '88'
-                   : flyDir === 'A' ? '0 0 0 5px ' + catA.border + '66, 0 4px 20px rgba(0,0,0,0.08)'
-                   : '0 3px 14px rgba(0,0,0,0.06)',
           transition:'box-shadow 0.2s',
         }}>
           <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(18px,3.8vw,26px)', fontWeight:700, color:catA.color, display:'flex', alignItems:'center', gap:8 }}>
@@ -493,14 +512,8 @@ export default function SortGame({ level = 1, onComplete }) {
                 }
                 style={{
                   width:'100%', height:'100%',
-                  borderRadius:24,
-                  background: feedback === 'wrong' ? '#FFCDD2'
-                            : feedback === 'ok'    ? '#E8F8EE'
-                            : 'white',
-                  border: '3.5px solid ' + (feedback === 'wrong' ? '#F44336' : feedback === 'ok' ? '#6BCB77' : '#ECE8FF'),
-                  boxShadow: feedback === 'wrong'
-                    ? '0 0 0 4px #F4433655, 0 8px 32px rgba(0,0,0,0.13)'
-                    : '0 8px 32px rgba(0,0,0,0.13)',
+                  ...pxCard(feedback === 'wrong' ? 'wrong' : feedback === 'ok' ? 'right' : undefined),
+                  borderRadius:14,
                   display:'flex', alignItems:'center', justifyContent:'center',
                   fontSize:'clamp(56px,13vw,96px)', lineHeight:1,
                 }}
@@ -514,12 +527,9 @@ export default function SortGame({ level = 1, onComplete }) {
         {/* Basket B (right) */}
         <div style={{
           flex:1, minHeight:'clamp(180px,30vw,280px)',
-          background: catB.bg, border: '3px dashed ' + catB.border,
-          borderRadius:22, display:'flex', flexDirection:'column', alignItems:'center', gap:6,
+          ...zoneLook(catB, revealCat === 'B', flyDir === 'B'),
+          display:'flex', flexDirection:'column', alignItems:'center', gap:6,
           padding:'clamp(8px,1.5vw,14px)',
-          boxShadow: revealCat === 'B' ? '0 0 0 6px ' + catB.border + ', 0 4px 24px ' + catB.border + '88'
-                   : flyDir === 'B' ? '0 0 0 5px ' + catB.border + '66, 0 4px 20px rgba(0,0,0,0.08)'
-                   : '0 3px 14px rgba(0,0,0,0.06)',
           transition:'box-shadow 0.2s',
         }}>
           <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(18px,3.8vw,26px)', fontWeight:700, color:catB.color, display:'flex', alignItems:'center', gap:8 }}>
@@ -547,12 +557,9 @@ export default function SortGame({ level = 1, onComplete }) {
       {catC && (
         <div style={{
           width:'100%', maxWidth:700, minHeight:'clamp(84px,14vw,120px)',
-          background: catC.bg, border: '3px dashed ' + catC.border,
-          borderRadius:22, display:'flex', flexDirection:'column', alignItems:'center', gap:6,
+          ...zoneLook(catC, revealCat === 'C', flyDir === 'C'),
+          display:'flex', flexDirection:'column', alignItems:'center', gap:6,
           padding:'clamp(8px,1.5vw,14px)',
-          boxShadow: revealCat === 'C' ? '0 0 0 6px ' + catC.border + ', 0 4px 24px ' + catC.border + '88'
-                   : flyDir === 'C' ? '0 0 0 5px ' + catC.border + '66, 0 4px 20px rgba(0,0,0,0.08)'
-                   : '0 3px 14px rgba(0,0,0,0.06)',
           transition:'box-shadow 0.2s',
         }}>
           <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(18px,3.8vw,26px)', fontWeight:700, color:catC.color, display:'flex', alignItems:'center', gap:8 }}>
@@ -582,9 +589,7 @@ export default function SortGame({ level = 1, onComplete }) {
           onClick={() => sortItem('A')}
           style={{
             width:'clamp(90px,19vw,130px)', height:'clamp(90px,19vw,130px)',
-            borderRadius:26, background: catA.bg,
-            border: '3px solid ' + catA.border,
-            boxShadow: '0 4px 18px ' + catA.border + '55',
+            ...arrowLook(catA),
             display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
             cursor:'pointer', gap:6,
           }}
@@ -602,9 +607,7 @@ export default function SortGame({ level = 1, onComplete }) {
           onClick={() => sortItem('B')}
           style={{
             width:'clamp(90px,19vw,130px)', height:'clamp(90px,19vw,130px)',
-            borderRadius:26, background: catB.bg,
-            border: '3px solid ' + catB.border,
-            boxShadow: '0 4px 18px ' + catB.border + '55',
+            ...arrowLook(catB),
             display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
             cursor:'pointer', gap:6,
           }}
@@ -620,9 +623,7 @@ export default function SortGame({ level = 1, onComplete }) {
           onClick={() => sortItem('C')}
           style={{
             width:'clamp(150px,40vw,260px)', minHeight:'clamp(56px,11vw,78px)',
-            borderRadius:26, background: catC.bg,
-            border: '3px solid ' + catC.border,
-            boxShadow: '0 4px 18px ' + catC.border + '55',
+            ...arrowLook(catC),
             display:'flex', alignItems:'center', justifyContent:'center',
             cursor:'pointer', gap:10, marginTop:6,
           }}
@@ -640,7 +641,7 @@ export default function SortGame({ level = 1, onComplete }) {
             style={{ position:'fixed', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(107,203,119,0.18)', backdropFilter:'blur(6px)', zIndex:50, flexDirection:'column', gap:16 }}
           >
             <div style={{ fontSize:72, lineHeight:1 }}>{'🎉'}</div>
-            <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(26px,7vw,48px)', fontWeight:800, color:'#2C8C50', textShadow:'0 3px 18px rgba(0,0,0,0.15)' }}>
+            <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(26px,7vw,48px)', fontWeight:800, color:'#2C8C50', textShadow:'0 4px 0 rgba(42,27,61,0.13)' }}>
               {'Alles richtig!'}
             </div>
           </motion.div>

@@ -6,6 +6,7 @@ import { speak } from '../tts.js'
 import { hearable } from '../lib/hearable.js'
 import HearOptions from '../components/HearOptions.jsx'
 import { lockPreviews, afterNarration } from '../narrator.js'
+import { pxCard, pxPanel, pxBubble, pxButton, pxSegment, ACCENT } from './px.js'
 
 /**
  * Anlaut-Detektiv — welcher Buchstabe macht diesen Laut?
@@ -119,8 +120,7 @@ export default function InitialSoundGame({ level = 1, onComplete }) {
       <div style={{ display: 'flex', gap: 5, width: '100%', maxWidth: 680 }}>
         {rounds.map((_, i) => (
           <div key={i} style={{
-            flex: 1, height: 10, borderRadius: 99,
-            background: i < idx ? '#6C63FF' : i === idx ? '#FFD93D' : '#ECE8FF',
+            flex: 1, ...pxSegment(i < idx ? 'done' : i === idx ? 'current' : 'todo'),
           }} />
         ))}
       </div>
@@ -128,13 +128,12 @@ export default function InitialSoundGame({ level = 1, onComplete }) {
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, width: '100%', maxWidth: 680 }}>
         <LumiCharacter mood={mood} size={68} />
         <div style={{
-          flex: 1, background: 'white', borderRadius: '22px 22px 22px 5px', padding: '12px 18px',
-          boxShadow: '0 4px 20px rgba(108,99,255,0.14)',
+          flex: 1, ...pxBubble, padding: '12px 18px',
           fontFamily: 'var(--font-heading)', fontSize: 'clamp(16px,3.4vw,22px)', color: 'var(--text-primary)',
         }}>
           {solved
-            ? <><strong style={{ color: '#4A00E0' }}>{r.word}</strong> fängt mit <strong style={{ color: '#4A00E0' }}>{r.letter}</strong> an! 🕵️</>
-            : <>Womit fängt <strong style={{ color: '#4A00E0' }}>{r.word}</strong> an? 🕵️</>}
+            ? <><strong style={{ color: ACCENT }}>{r.word}</strong> fängt mit <strong style={{ color: ACCENT }}>{r.letter}</strong> an! 🕵️</>
+            : <>Womit fängt <strong style={{ color: ACCENT }}>{r.word}</strong> an? 🕵️</>}
         </div>
         <HearOptions items={r.options} label="Alle Buchstaben vorlesen" />
       </div>
@@ -142,11 +141,10 @@ export default function InitialSoundGame({ level = 1, onComplete }) {
       {/* The word, as a picture */}
       <div style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-        background: 'white', borderRadius: 26, padding: 'clamp(12px,2.5vw,20px) clamp(26px,7vw,54px)',
-        boxShadow: '0 6px 26px rgba(74,0,224,0.14)',
+        ...pxPanel, padding: 'clamp(12px,2.5vw,20px) clamp(26px,7vw,54px)',
       }}>
         <div style={{ fontSize: 'clamp(58px,14vw,96px)', lineHeight: 1 }}>{r.emoji}</div>
-        <div style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(20px,4.5vw,30px)', fontWeight: 800, color: '#4A00E0' }}>
+        <div style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(20px,4.5vw,30px)', fontWeight: 800, color: ACCENT }}>
           {r.word}
         </div>
         <motion.button
@@ -154,9 +152,8 @@ export default function InitialSoundGame({ level = 1, onComplete }) {
           onClick={sayTask}
           aria-label="Laut noch einmal anhören"
           style={{
-            background: '#F0EEFF', border: '2px solid #A29BFE', borderRadius: 99,
-            padding: '5px 16px', cursor: 'pointer',
-            fontFamily: 'var(--font-heading)', fontSize: 13, color: '#6C63FF',
+            ...pxButton('parch'),
+            padding: '5px 16px', fontSize: 13,
           }}
         >🔊 Nochmal hören</motion.button>
       </div>
@@ -179,15 +176,12 @@ export default function InitialSoundGame({ level = 1, onComplete }) {
               aria-label={`Buchstabe ${L}`}
               style={{
                 width: 'clamp(58px,13vw,86px)', height: 'clamp(58px,13vw,86px)',
-                borderRadius: 20,
-                background: isRight ? '#E8F8EE' : isWrong ? '#FFE8E8' : 'white',
-                border: `3.5px solid ${isRight ? '#6BCB77' : isWrong ? '#FF6B6B' : '#ECE8FF'}`,
+                ...pxCard(isRight ? 'right' : isWrong ? 'wrong' : undefined),
                 fontFamily: 'var(--font-heading)', fontWeight: 800,
                 fontSize: 'clamp(28px,6.5vw,44px)',
-                color: isWrong ? '#C0392B' : '#4A00E0',
+                color: isWrong ? '#C0392B' : ACCENT,
                 cursor: solved || isWrong ? 'default' : 'pointer',
                 opacity: isWrong ? 0.55 : 1,
-                boxShadow: isRight ? '0 6px 24px rgba(107,203,119,0.4)' : '0 4px 16px rgba(0,0,0,0.06)',
               }}
             >{L}</motion.button>
           )
@@ -201,10 +195,8 @@ export default function InitialSoundGame({ level = 1, onComplete }) {
             whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
             onClick={weiterClick}
             style={{
-              background: 'linear-gradient(135deg,#6C63FF,#4A00E0)', color: 'white',
-              border: 'none', borderRadius: 20, padding: '12px 40px', cursor: 'pointer',
-              fontFamily: 'var(--font-heading)', fontSize: 'clamp(16px,3.4vw,21px)', fontWeight: 700,
-              boxShadow: '0 5px 20px rgba(74,0,224,0.38)',
+              ...pxButton('green'), padding: '12px 40px',
+              fontSize: 'clamp(16px,3.4vw,21px)',
             }}
           >Weiter! →</motion.button>
         )}

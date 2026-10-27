@@ -6,6 +6,7 @@ import { speak } from '../tts.js'
 import { hearable } from '../lib/hearable.js'
 import HearOptions from '../components/HearOptions.jsx'
 import { lockPreviews } from '../narrator.js'
+import { pxCard, pxPanel, pxBubble, pxButton, pxSegment } from './px.js'
 
 /**
  * Gefühlswelt — Emotionale Intelligenz
@@ -328,8 +329,8 @@ export default function EmotionGame({ level = 1, onComplete }) {
           <motion.div key={i}
             animate={{ scale: i === idx ? 1.4 : 1 }}
             style={{
-              width:13, height:13, borderRadius:'50%',
-              background: i < idx ? '#FD79A8' : i === idx ? '#FFD93D' : '#ECE8FF',
+              ...pxSegment(i < idx ? 'done' : i === idx ? 'current' : 'todo'),
+              width:14, height:14,
             }}
           />
         ))}
@@ -339,9 +340,8 @@ export default function EmotionGame({ level = 1, onComplete }) {
       <div style={{ display:'flex', alignItems:'flex-end', gap:14, width:'100%', maxWidth:760 }}>
         <LumiCharacter mood={selected ? ch.lumiMood : 'happy'} size={88} />
         <div style={{
-          flex:1, background:'white', borderRadius:'24px 24px 24px 6px',
+          flex:1, ...pxBubble,
           padding:'16px 22px',
-          boxShadow:'0 4px 24px rgba(253,121,168,0.12)',
           fontFamily:'var(--font-heading)',
           fontSize:'clamp(18px,3.8vw,26px)',
           color:'var(--text-primary)',
@@ -357,9 +357,8 @@ export default function EmotionGame({ level = 1, onComplete }) {
           exit={{ scale:0.82, opacity:0 }}
           transition={{ type:'spring', stiffness:280, damping:20 }}
           style={{
-            background:'white', borderRadius:30,
+            ...pxPanel,
             padding:'24px clamp(20px,5vw,44px)',
-            boxShadow:`0 10px 36px ${ch.faceColor}35`,
             textAlign:'center',
             display:'flex', flexDirection:'column', alignItems:'center', gap:14,
             width:'100%', maxWidth:520,
@@ -404,9 +403,8 @@ export default function EmotionGame({ level = 1, onComplete }) {
                   if (selected !== ch.emotion) { setShowInfo(false); setSelected(null) }
                 }}
                 style={{
-                  background: selected === ch.emotion ? '#E8F8EE' : '#FFF4E5',
-                  border: `2px solid ${selected === ch.emotion ? '#6BCB77' : '#FFD93D'}`,
-                  borderRadius:16, padding:'10px 16px',
+                  ...pxCard(selected === ch.emotion ? 'right' : 'selected'),
+                  padding:'10px 16px',
                   fontFamily:'var(--font-body)', fontSize:'clamp(13px,2.8vw,16px)',
                   color:'var(--text-secondary)', maxWidth:360,
                   cursor: selected !== ch.emotion ? 'pointer' : 'default',
@@ -435,12 +433,7 @@ export default function EmotionGame({ level = 1, onComplete }) {
           const isChosen  = emotion === selected
           const done      = selected !== null
 
-          let bg     = '#FAFAFF'
-          let border = '3px solid #ECE8FF'
-          let shadow = '0 4px 16px rgba(108,99,255,0.07)'
-
-          if (done && isCorrect)       { bg='#E8F8EE'; border='3px solid #6BCB77'; shadow='0 6px 24px rgba(107,203,119,0.35)' }
-          else if (done && isChosen)   { bg='#FFE8E8'; border='3px solid #FF6B6B' }
+          const state = done && isCorrect ? 'right' : done && isChosen ? 'wrong' : undefined
 
           return (
             <motion.button key={emotion}
@@ -450,7 +443,7 @@ export default function EmotionGame({ level = 1, onComplete }) {
               {...hearable(emotion, { enabled: !done })}
               style={{
                 padding:'clamp(14px,3vw,22px) clamp(12px,2.5vw,20px)',
-                borderRadius:22, background:bg, border, boxShadow:shadow,
+                ...pxCard(state),
                 display:'flex', alignItems:'center', gap:14,
                 cursor:done ? 'default' : 'pointer',
                 transition:'all 0.22s',
@@ -481,8 +474,7 @@ export default function EmotionGame({ level = 1, onComplete }) {
         <motion.div
           initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
           style={{
-            background: 'white', borderRadius: 20, padding: '14px 20px',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.09)',
+            ...pxPanel, padding: '14px 20px',
             width: '100%', maxWidth: 480,
             display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center',
           }}
@@ -495,9 +487,7 @@ export default function EmotionGame({ level = 1, onComplete }) {
                 whileTap={{ scale: 0.94 }}
                 onClick={() => setIntensity(i)}
                 style={{
-                  background: intensity === i ? (EMOTION_PASTEL[ch.emotion]||'#EEE') : 'white',
-                  border: `2px solid ${intensity === i ? ch.faceColor : '#ECE8FF'}`,
-                  borderRadius: 14, padding: '8px 14px',
+                  ...pxCard(intensity === i ? 'selected' : undefined), padding: '8px 14px',
                   fontFamily: 'var(--font-heading)', fontSize: 'clamp(12px,2.5vw,15px)',
                   cursor: 'pointer', color: 'var(--text-primary)',
                   transition: 'all 0.18s',
@@ -509,7 +499,7 @@ export default function EmotionGame({ level = 1, onComplete }) {
           {/* What now? The strategy step the module was missing. Picking one
               also gives the intensity above a purpose — it was recorded and
               then never used for anything at all. */}
-          <div style={{ height: 1, background: '#F0EEF8', width: '100%', margin: '4px 0' }} />
+          <div style={{ height: 1, background: 'var(--px-parch-dark)', width: '100%', margin: '4px 0' }} />
           <div style={{ fontFamily: 'var(--font-heading)', fontSize: 15, color: 'var(--text-muted)' }}>
             Was hilft Lumi jetzt?
           </div>
@@ -525,9 +515,7 @@ export default function EmotionGame({ level = 1, onComplete }) {
                   setShowWeiter(true)
                 }}
                 style={{
-                  background: coping === i ? (EMOTION_PASTEL[ch.emotion] || '#EEE') : 'white',
-                  border: `2px solid ${coping === i ? ch.faceColor : '#ECE8FF'}`,
-                  borderRadius: 14, padding: '10px 14px',
+                  ...pxCard(coping === i ? 'selected' : undefined), padding: '10px 14px',
                   fontFamily: 'var(--font-heading)', fontSize: 'clamp(12px,2.5vw,15px)',
                   cursor: 'pointer', color: 'var(--text-primary)',
                   display: 'flex', alignItems: 'center', gap: 7,
@@ -551,11 +539,8 @@ export default function EmotionGame({ level = 1, onComplete }) {
           whileHover={{ scale:1.06 }} whileTap={{ scale:0.94 }}
           onClick={weiterClick}
           style={{
-            background:'linear-gradient(135deg,#FD79A8,#e84393)',
-            color:'white', border:'none', borderRadius:20,
-            padding:'14px 40px',
-            fontFamily:'var(--font-heading)', fontSize:20, fontWeight:700,
-            cursor:'pointer', boxShadow:'0 5px 20px rgba(253,121,168,0.45)',
+            ...pxButton('green'),
+            padding:'14px 40px', fontSize:20,
           }}
         >Weiter! →</motion.button>
       )}
@@ -571,7 +556,7 @@ export default function EmotionGame({ level = 1, onComplete }) {
             initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             style={{
               position: 'fixed', inset: 0, zIndex: 400,
-              background: 'rgba(255,255,255,0.97)',
+              background: 'rgba(255,245,223,0.97)',
               display: 'flex', flexDirection: 'column', alignItems: 'center',
               justifyContent: 'center', gap: 18, padding: 'clamp(20px,4vw,40px)',
               overflowY: 'auto',
@@ -592,11 +577,10 @@ export default function EmotionGame({ level = 1, onComplete }) {
                   initial={{ scale: 0 }} animate={{ scale: 1 }}
                   transition={{ type: 'spring', stiffness: 380 }}
                   style={{
-                    background: EMOTION_PASTEL[emotion] || '#F5F5F5',
-                    borderRadius: 18, padding: '12px 20px',
+                    ...pxCard(),
+                    background: EMOTION_PASTEL[emotion] || '#FFFDF7',
+                    padding: '12px 20px',
                     display: 'flex', alignItems: 'center', gap: 10,
-                    boxShadow: '0 3px 12px rgba(0,0,0,0.08)',
-                    border: '2px solid rgba(0,0,0,0.07)',
                   }}
                 >
                   <span style={{ fontSize: 32 }}>{EMOTION_ICON[emotion]}</span>
@@ -609,12 +593,9 @@ export default function EmotionGame({ level = 1, onComplete }) {
               whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
               onClick={finishGame}
               style={{
-                background: 'linear-gradient(135deg,#FD79A8,#e84393)',
-                color: 'white', border: 'none', borderRadius: 20,
+                ...pxButton('green'),
                 padding: 'clamp(12px,2vw,16px) clamp(32px,6vw,56px)',
-                fontFamily: 'var(--font-heading)',
-                fontSize: 'clamp(17px,3.5vw,22px)', fontWeight: 700,
-                cursor: 'pointer', boxShadow: '0 5px 20px rgba(253,121,168,0.45)',
+                fontSize: 'clamp(17px,3.5vw,22px)',
                 marginTop: 8,
               }}
             >Fertig! 🌟</motion.button>

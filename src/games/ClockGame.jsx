@@ -4,6 +4,7 @@ import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
 import { speak, sayNumber } from '../tts.js'
 import { afterNarration } from '../narrator.js'
+import { pxCard, pxPanel, pxBubble, pxButton, pxSegment, ACCENT, INK } from './px.js'
 
 /**
  * Uhrzeiten-Meister — Uhrzeit lesen & stellen
@@ -173,12 +174,13 @@ function StepButton({ label, onPress, color, ariaLabel }) {
       onPointerCancel={stop}
       aria-label={ariaLabel}
       style={{
-        width: 38, height: 38, borderRadius: 12,
-        background: color, color: 'white', border: 'none',
+        width: 38, height: 38, borderRadius: 10,
+        background: color, color: 'white', border: `3px solid ${INK}`,
+        textShadow: '0 2px 0 rgba(0,0,0,0.3)',
         fontSize: 20, fontWeight: 800, lineHeight: 1,
         cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
         touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none',
-        boxShadow: `0 3px 10px ${color}66`,
+        boxShadow: `inset 0 2px 0 rgba(255,255,255,0.3), inset 0 -4px 0 rgba(0,0,0,0.22), 0 4px 0 ${INK}`,
       }}
     >{label}</motion.button>
   )
@@ -286,15 +288,15 @@ function ClockFace({ targetH, targetM, interactive, onAnswer, level = 1, highlig
           height: 'auto',
           display: 'block',
           borderRadius: '50%',
-          boxShadow: '0 8px 40px rgba(0,0,0,0.18)',
+          filter: 'drop-shadow(0 5px 0 rgba(42,27,61,0.35))',
           cursor: dragging ? 'grabbing' : interactive ? 'grab' : 'default',
           touchAction: 'none',
           userSelect: 'none',
         }}
       >
         {/* Clock face */}
-        <circle cx={CX} cy={CY} r={R} fill="white" stroke="#E0D5FF" strokeWidth={4} />
-        <circle cx={CX} cy={CY} r={R - 6} fill="none" stroke="#F3EEFF" strokeWidth={2} />
+        <circle cx={CX} cy={CY} r={R} fill="#FFFDF7" stroke="#2a1b3d" strokeWidth={5} />
+        <circle cx={CX} cy={CY} r={R - 6} fill="none" stroke="#ecd2a0" strokeWidth={3} />
 
         {/* Hour markers */}
         {Array.from({ length: 12 }, (_, i) => {
@@ -305,7 +307,7 @@ function ClockFace({ targetH, targetM, interactive, onAnswer, level = 1, highlig
             <line key={i}
               x1={CX + outer * Math.cos(ang)} y1={CY + outer * Math.sin(ang)}
               x2={CX + inner * Math.cos(ang)} y2={CY + inner * Math.sin(ang)}
-              stroke={i % 3 === 0 ? '#6C63FF' : '#C0B8E8'}
+              stroke={i % 3 === 0 ? '#2a1b3d' : '#b9a27e'}
               strokeWidth={i % 3 === 0 ? 3.5 : 2}
               strokeLinecap="round"
             />
@@ -323,7 +325,7 @@ function ClockFace({ targetH, targetM, interactive, onAnswer, level = 1, highlig
               textAnchor="middle"
               fontSize={i % 3 === 0 ? 17 : 13}
               fontWeight={i % 3 === 0 ? '700' : '500'}
-              fill={i % 3 === 0 ? '#4A00E0' : '#9B8FCC'}
+              fill={i % 3 === 0 ? '#2a1b3d' : '#6e5d80'}
               fontFamily="var(--font-heading, system-ui)"
               opacity={level <= 3 ? 1 : level <= 5 ? 0.7 : 0.4}
             >{n}</text>
@@ -342,7 +344,7 @@ function ClockFace({ targetH, targetM, interactive, onAnswer, level = 1, highlig
               y={CY + r3 * Math.sin(ang) + 4}
               textAnchor="middle"
               fontSize={9} fontWeight="600"
-              fill="#A29BFE" opacity={0.85}
+              fill="#a0703f" opacity={0.85}
               fontFamily="var(--font-heading, system-ui)"
             >{min}</text>
           )
@@ -408,9 +410,8 @@ function ClockFace({ targetH, targetM, interactive, onAnswer, level = 1, highlig
       {interactive && (
         <div style={{
           fontFamily: 'var(--font-heading)', fontSize: 22, fontWeight: 800,
-          color: '#4A00E0',
-          background: 'white', borderRadius: 14, padding: '6px 20px',
-          boxShadow: '0 3px 12px rgba(74,0,224,0.12)',
+          color: ACCENT,
+          ...pxCard(), padding: '3px 20px',
         }}>
           {fmt(displayH, displayM)}
         </div>
@@ -450,11 +451,8 @@ function ClockFace({ targetH, targetM, interactive, onAnswer, level = 1, highlig
           whileHover={{ scale: 1.07 }} whileTap={{ scale: 0.93 }}
           onClick={submit}
           style={{
-            background: 'linear-gradient(135deg,#6C63FF,#4A00E0)',
-            color: 'white', border: 'none', borderRadius: 18,
-            padding: '14px 40px',
-            fontFamily: 'var(--font-heading)', fontSize: 20, fontWeight: 700,
-            cursor: 'pointer', boxShadow: '0 5px 20px rgba(74,0,224,0.38)',
+            ...pxButton('green'),
+            padding: '11px 40px', fontSize: 20,
           }}
         >{'✅ Fertig!'}</motion.button>
       )}
@@ -639,8 +637,7 @@ export default function ClockGame({ level = 1, onComplete }) {
       <div style={{ display: 'flex', gap: 5, width: '100%', maxWidth: 680 }}>
         {times.map((_, i) => (
           <div key={i} style={{
-            flex: 1, height: 10, borderRadius: 99,
-            background: i < idx ? '#6C63FF' : i === idx ? '#FFD93D' : '#ECE8FF',
+            flex: 1, ...pxSegment(i < idx ? 'done' : i === idx ? 'current' : 'todo'),
             transition: 'background 0.3s',
           }} />
         ))}
@@ -652,9 +649,9 @@ export default function ClockGame({ level = 1, onComplete }) {
           {'✅ ' + score + ' / ' + times.length}
         </div>
         <div style={{
-          background: '#F0EEFF', borderRadius: 99, padding: '5px 14px',
-          fontFamily: 'var(--font-heading)', fontSize: 13, color: '#6C63FF',
-          border: '1.5px solid #A29BFE',
+          background: '#FFF1D6', borderRadius: 8, padding: '5px 14px',
+          fontFamily: 'var(--font-heading)', fontSize: 13, color: ACCENT,
+          border: `2px solid ${INK}`,
         }}>{'\u{1F550} ' + toleranceLabel}</div>
         {/* The task was spoken once on entry and there was no way back to it —
             hard on a child still holding "stelle die Uhr auf 7 Uhr 30" in mind. */}
@@ -663,9 +660,8 @@ export default function ClockGame({ level = 1, onComplete }) {
           onClick={speakTask}
           aria-label="Aufgabe noch einmal anhören"
           style={{
-            background: '#F0EEFF', border: '1.5px solid #A29BFE', borderRadius: 99,
-            padding: '5px 14px', cursor: 'pointer',
-            fontFamily: 'var(--font-heading)', fontSize: 13, color: '#6C63FF',
+            ...pxButton('parch'),
+            padding: '2px 14px', borderRadius: 10, fontSize: 13,
             display: 'flex', alignItems: 'center', gap: 5,
           }}
         >{'\u{1F50A} Nochmal'}</motion.button>
@@ -678,22 +674,21 @@ export default function ClockGame({ level = 1, onComplete }) {
           key={idx}
           initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }}
           style={{
-            flex: 1, background: 'white', borderRadius: '22px 22px 22px 5px',
+            flex: 1, ...pxBubble,
             padding: '13px 18px',
-            boxShadow: '0 4px 20px rgba(108,99,255,0.14)',
             fontFamily: 'var(--font-heading)', fontSize: 'clamp(16px,3.2vw,22px)',
             color: 'var(--text-primary)',
           }}
         >
           {feedback === 'ok'
-            ? (<>⭐ Richtig! Es war <strong style={{ color:'#4A00E0' }}>{toGermanTime(t.h, t.m)}</strong>!</>)
+            ? (<>⭐ Richtig! Es war <strong style={{ color:ACCENT }}>{toGermanTime(t.h, t.m)}</strong>!</>)
             : showClockHint
-              ? (<>💡 Tipp: Der kurze Zeiger = Stunden, der lange = Minuten. Es ist <strong style={{ color:'#4A00E0' }}>{toGermanTime(t.h, t.m)}</strong>!</>)
+              ? (<>💡 Tipp: Der kurze Zeiger = Stunden, der lange = Minuten. Es ist <strong style={{ color:ACCENT }}>{toGermanTime(t.h, t.m)}</strong>!</>)
               : mode === 'read'
                 ? (<>Welche Uhrzeit zeigt die Uhr? 🕐</>)
                 : mode === 'daily'
-                  ? (<>Es ist <strong style={{ color:'#4A00E0' }}>{toGermanTime(t.h, t.m)}</strong>. Was macht Lumi jetzt? 🤔</>)
-                  : (<>Stelle die Uhr auf <strong style={{ color: '#4A00E0' }}>{fmt(t.h, t.m)}</strong>! Ziehe die Zeiger oder tippe ➕➖! 🖐️</>)
+                  ? (<>Es ist <strong style={{ color:ACCENT }}>{toGermanTime(t.h, t.m)}</strong>. Was macht Lumi jetzt? 🤔</>)
+                  : (<>Stelle die Uhr auf <strong style={{ color: ACCENT }}>{fmt(t.h, t.m)}</strong>! Ziehe die Zeiger oder tippe ➕➖! 🖐️</>)
           }
         </motion.div>
       </div>
@@ -711,11 +706,11 @@ export default function ClockGame({ level = 1, onComplete }) {
             exit={{ scale: 0.8, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 22 }}
             style={{
-              background: feedback === 'ok' ? 'linear-gradient(135deg,#E8F8EE,#D0F4DE)'
-                        : feedback === 'wrong' ? 'linear-gradient(135deg,#FFE8E8,#ffd0d0)'
-                        : 'linear-gradient(135deg,#F0EEFF,#E8E4FF)',
-              borderRadius: 28, padding: 'clamp(16px,3vw,28px)',
-              boxShadow: '0 8px 36px rgba(74,0,224,0.14)',
+              ...pxPanel,
+              ...(feedback === 'ok'    ? { background: '#DDF6CF', borderColor: '#2F8F3A' }
+                : feedback === 'wrong' ? { background: '#FFDCD6', borderColor: '#C2412D' }
+                : {}),
+              padding: 'clamp(16px,3vw,28px)',
               transition: 'background 0.3s',
             }}
           >
@@ -746,12 +741,9 @@ export default function ClockGame({ level = 1, onComplete }) {
                   style={{
                     padding: '14px 10px',
                     minHeight: 80,
-                    borderRadius: 20,
+                    ...pxCard(done && correct ? 'right' : done && opt === picked && !correct ? 'wrong' : undefined),
                     fontFamily: 'var(--font-heading)', fontSize: 'clamp(17px,3.5vw,22px)',
                     fontWeight: 700,
-                    background: done && correct ? '#E8F8EE' : done && opt === picked && !correct ? '#FFE8E8' : 'white',
-                    border: `3px solid ${done && correct ? '#6BCB77' : done && opt === picked && !correct ? '#FF6B6B' : '#ECE8FF'}`,
-                    boxShadow: done && correct ? '0 6px 22px rgba(107,203,119,0.4)' : '0 4px 14px rgba(0,0,0,0.07)',
                     color: 'var(--text-primary)',
                     cursor: done ? 'default' : 'pointer',
                     transition: 'background 0.22s, border 0.22s, box-shadow 0.22s',
@@ -783,15 +775,11 @@ export default function ClockGame({ level = 1, onComplete }) {
                   whileTap={!done ? { scale: 0.95 } : {}}
                   onClick={() => pickActivity(act)}
                   style={{
-                    padding: '12px 16px', minHeight: 68, borderRadius: 20,
+                    ...pxCard(done && correct ? 'right'
+                            : done && act.id === picked && !correct ? 'wrong' : undefined),
+                    padding: '12px 16px', minHeight: 68,
                     fontFamily: 'var(--font-heading)', fontSize: 'clamp(15px,3vw,19px)',
                     fontWeight: 700,
-                    background: done && correct ? '#E8F8EE'
-                              : done && act.id === picked && !correct ? '#FFE8E8' : 'white',
-                    border: `3px solid ${done && correct ? '#6BCB77'
-                              : done && act.id === picked && !correct ? '#FF6B6B' : '#ECE8FF'}`,
-                    boxShadow: done && correct ? '0 6px 22px rgba(107,203,119,0.4)'
-                                               : '0 4px 14px rgba(0,0,0,0.07)',
                     color: 'var(--text-primary)',
                     cursor: done ? 'default' : 'pointer',
                     transition: 'background 0.22s, border 0.22s, box-shadow 0.22s',
@@ -813,21 +801,20 @@ export default function ClockGame({ level = 1, onComplete }) {
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
           }}>
             <div style={{
-              background: '#F0EEFF', borderRadius: 16, padding: '10px 22px',
+              background: '#FFF1D6', border: `2px solid ${INK}`, borderRadius: 10, padding: '8px 22px',
               fontFamily: 'var(--font-heading)', fontSize: 'clamp(14px,3vw,18px)',
-              color: '#9B8FCC',
+              color: 'var(--px-ink-soft)',
             }}>Ziel-Zeit:</div>
             <div style={{
-              background: 'white', borderRadius: 16, padding: '12px 28px',
+              ...pxPanel, padding: '9px 28px',
               fontFamily: 'var(--font-heading)',
               fontSize: 'clamp(28px,6vw,42px)', fontWeight: 800,
-              color: '#4A00E0',
-              boxShadow: '0 4px 20px rgba(74,0,224,0.15)',
+              color: ACCENT,
               letterSpacing: 2,
             }}>{fmt(t.h, t.m)}</div>
             <div style={{
               fontFamily: 'var(--font-heading)', fontSize: 'clamp(14px,2.8vw,18px)',
-              color: '#9B8FCC', textAlign: 'center',
+              color: 'var(--px-ink-soft)', textAlign: 'center',
             }}>{toGermanTime(t.h, t.m)}</div>
           </div>
         )}
@@ -860,13 +847,9 @@ export default function ClockGame({ level = 1, onComplete }) {
           whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
           onClick={weiterClick}
           style={{
-            background: 'linear-gradient(135deg,#6C63FF,#4A00E0)',
-            color: 'white', border: 'none', borderRadius: 20,
+            ...pxButton('green'),
             padding: 'clamp(12px,2vw,16px) clamp(28px,6vw,52px)',
-            fontFamily: 'var(--font-heading)',
-            fontSize: 'clamp(17px,3.5vw,22px)', fontWeight: 700,
-            cursor: 'pointer',
-            boxShadow: '0 5px 20px rgba(74,0,224,0.38)',
+            fontSize: 'clamp(17px,3.5vw,22px)',
           }}
         >Weiter! →</motion.button>
       )}

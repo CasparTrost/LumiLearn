@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
 import { speak } from '../tts.js'
+import { pxCard, pxPanel, pxBubble, pxSegment, INK } from './px.js'
 
 // ─── Brush constants ──────────────────────────────────────────────────────────
 const BRUSH_R    = 8                       // brush dot radius in SVG user-units (viewBox 200×200)
@@ -333,7 +334,7 @@ function PaintBucket({ color, name, selected, onClick }) {
         background: 'none', border: 'none', cursor: 'pointer',
         padding: 0, outline: 'none',
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-        filter: selected ? `drop-shadow(0 0 10px ${color})` : 'none',
+        filter: selected ? 'drop-shadow(0 4px 0 rgba(42,27,61,0.45))' : 'none',
         transition: 'filter 0.2s',
       }}
     >
@@ -351,12 +352,12 @@ function PaintBucket({ color, name, selected, onClick }) {
       <span style={{
         fontFamily: 'var(--font-heading)', fontSize: 11, fontWeight: 700,
         whiteSpace: 'nowrap',
-        background: selected ? color : 'rgba(255,255,255,0.82)',
+        background: selected ? color : '#FFFDF7',
         padding: '2px 6px', borderRadius: 6,
-        border: `1.5px solid ${selected ? color : 'transparent'}`,
+        border: `2px solid ${selected ? INK : 'rgba(42,27,61,0.25)'}`,
         color: selected ? (isLight(color) ? '#222' : 'white') : 'var(--text-primary)',
         transition: 'all 0.2s',
-        boxShadow: selected ? `0 2px 8px ${color}88` : 'none',
+        boxShadow: selected ? `0 2px 0 ${INK}` : 'none',
       }}>{name}</span>
     </motion.button>
   )
@@ -371,13 +372,11 @@ function ColorBadge({ group, isActive, progress, onClick }) {
       whileHover={allDone ? {} : { scale: 1.08 }}
       whileTap={allDone ? {} : { scale: 0.93 }}
       style={{
-        background: allDone ? '#E8F8EE' : isActive ? `${group.color.value}22` : 'rgba(255,255,255,0.9)',
-        border: `2px solid ${allDone ? '#6BCB77' : isActive ? group.color.value : '#DDD8F5'}`,
-        borderRadius: 10, padding: '5px 10px',
+        ...pxCard(allDone ? 'right' : isActive ? 'selected' : undefined),
+        borderRadius: 10, padding: '4px 9px',
         fontFamily: 'var(--font-heading)', fontSize: 12, fontWeight: 700,
         display: 'flex', alignItems: 'center', gap: 6,
         cursor: allDone ? 'default' : 'pointer', outline: 'none',
-        boxShadow: isActive ? `0 2px 12px ${group.color.value}55` : 'none',
         transition: 'all 0.2s', pointerEvents: allDone ? 'none' : 'auto',
         color: 'var(--text-primary)', position: 'relative', overflow: 'hidden',
       }}
@@ -396,7 +395,7 @@ function ColorBadge({ group, isActive, progress, onClick }) {
         ? <span>✅</span>
         : <span style={{
             width: 14, height: 14, borderRadius: '50%', flexShrink: 0,
-            background: group.color.value, border: '1.5px solid rgba(0,0,0,0.15)',
+            background: group.color.value, border: `2px solid ${INK}`,
             display: 'inline-block',
           }} />
       }
@@ -411,16 +410,17 @@ function PaintCanvas({ scene, strokes, completed, selectedColor, svgRef, onPoint
   const size = typeof window !== 'undefined' ? Math.min(window.innerWidth - 48, 460) : 320
 
   return (
+    <div style={{ ...pxPanel, overflow: 'hidden', lineHeight: 0 }}>
     <svg
       ref={svgRef}
-      width={size}
-      height={size}
+      // the frame's 3px border sits inside the old footprint (NO_SCALE game)
+      width={size - 6}
+      height={size - 6}
       viewBox={scene.viewBox}
       onPointerMove={onPointerMove}
       onPointerLeave={onPointerLeave}
       style={{
-        display: 'block', borderRadius: 20, background: '#FAFAFA',
-        boxShadow: '0 8px 36px rgba(108,99,255,0.13)',
+        display: 'block', borderRadius: 11, background: '#FAFAFA',
         touchAction: 'none',
         cursor: selectedColor ? 'none' : 'default',
         userSelect: 'none',
@@ -488,6 +488,7 @@ function PaintCanvas({ scene, strokes, completed, selectedColor, svgRef, onPoint
         )
       })}
     </svg>
+    </div>
   )
 }
 
@@ -739,8 +740,7 @@ export default function PainterGame({ level = 1, onComplete }) {
       <div style={{ display: 'flex', gap: 5, width: '100%', maxWidth: 660 }}>
         {scenes.map((_, i) => (
           <div key={i} style={{
-            flex: 1, height: 10, borderRadius: 99,
-            background: i < sceneIdx ? '#74B9FF' : i === sceneIdx ? '#FFD93D' : '#ECE8FF',
+            flex: 1, ...pxSegment(i < sceneIdx ? 'done' : i === sceneIdx ? 'current' : 'todo'), height: 10,
             transition: 'background 0.3s',
           }} />
         ))}
@@ -750,8 +750,8 @@ export default function PainterGame({ level = 1, onComplete }) {
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, width: '100%', maxWidth: 660 }}>
         <LumiCharacter mood={mood} size={68} />
         <div style={{
-          flex: 1, background: 'white', borderRadius: '22px 22px 22px 6px',
-          padding: '10px 16px', boxShadow: '0 4px 24px rgba(116,185,255,0.15)',
+          flex: 1, ...pxBubble,
+          padding: '7px 16px',
           fontFamily: 'var(--font-heading)', fontSize: 'clamp(13px,2.7vw,18px)',
           color: 'var(--text-primary)',
         }}>
@@ -795,10 +795,9 @@ export default function PainterGame({ level = 1, onComplete }) {
 
       {/* Paint buckets */}
       <div style={{
-        background: 'rgba(255,255,255,0.72)', borderRadius: 22,
-        padding: 'clamp(8px,1.2vw,14px) clamp(10px,2vw,18px)',
-        boxShadow: '0 4px 20px rgba(108,99,255,0.09)',
-        width: '100%', maxWidth: 660, backdropFilter: 'blur(8px)',
+        ...pxPanel,
+        padding: 'calc(clamp(8px,1.2vw,14px) - 3px) calc(clamp(10px,2vw,18px) - 3px)',
+        width: '100%', maxWidth: 660,
       }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'clamp(5px,1.2vw,10px)', justifyContent: 'center' }}>
           {palette.map(color => (
@@ -825,7 +824,7 @@ export default function PainterGame({ level = 1, onComplete }) {
           borderRadius: '50% 50% 50% 0',
           transform: 'rotate(-45deg)',
           background: selColor?.value ?? 'transparent',
-          border: '2.5px solid white',
+          border: `2.5px solid ${INK}`,
           boxShadow: selColor ? `0 3px 10px rgba(0,0,0,0.35), 0 0 0 3px ${selColor.value}44` : 'none',
           pointerEvents: 'none',
           zIndex: 9999,

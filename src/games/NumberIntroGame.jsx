@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { voice } from '../voice.js'
 import { speak, sayNumber } from '../tts.js'
+import { pxCard, pxPanel, pxButton, INK } from './px.js'
 
 const NUMBER_WORDS   = ['','eins','zwei','drei','vier','fünf','sechs','sieben','acht','neun','zehn']
 const NUMBER_AUDIO   = ['','eins','zwei','drei','vier','fuenf','sechs','sieben','acht','neun','zehn']
@@ -115,10 +116,10 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
     <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:18, padding:'clamp(12px,3vw,24px)', width:'100%' }}>
 
       {/* Progress */}
-      <div style={{ width:'100%', maxWidth:520, height:10, background:'rgba(0,0,0,0.08)', borderRadius:10, overflow:'hidden' }}>
+      <div style={{ width:'100%', maxWidth:520, height:12, background:'rgba(42,27,61,0.12)', border:`2px solid ${INK}`, borderRadius:4, overflow:'hidden' }}>
         <motion.div
           animate={{ width:`${((idx + (done ? 1 : 0)) / rounds.length) * 100}%` }}
-          style={{ height:'100%', background:round.color, borderRadius:10 }}
+          style={{ height:'100%', background:round.color, borderRadius:2 }}
           transition={{ duration:0.4 }}
         />
       </div>
@@ -138,7 +139,9 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
             fontSize:'clamp(182px,39vw,286px)',
             lineHeight:1, userSelect:'none',
             color: round.color,
-            filter:`drop-shadow(0 8px 32px ${round.color}77)`,
+            // Ink outline: a yellow or light numeral otherwise melts into
+            // the parchment background
+            textShadow:'-5px -5px 0 var(--px-ink), 5px -5px 0 var(--px-ink), -5px 5px 0 var(--px-ink), 5px 5px 0 var(--px-ink), 0 -5px 0 var(--px-ink), 0 5px 0 var(--px-ink), -5px 0 0 var(--px-ink), 5px 0 0 var(--px-ink), 0 11px 0 rgba(42,27,61,0.3)',
           }}>
             {round.n}
           </div>
@@ -156,8 +159,8 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
                 const x = 6 + col * 42, y = 6 + row * 44
                 return (
                   <g key={i}>
-                    <rect x={x} y={y} width={38} height={40} rx={7}
-                      fill="white" stroke={`${round.color}55`} strokeWidth={2}/>
+                    <rect x={x} y={y} width={38} height={40} rx={5}
+                      fill="#FFFDF7" stroke="#2a1b3d" strokeWidth={3}/>
                     {i < round.n && (
                       <circle cx={x + 19} cy={y + 20} r={12} fill={round.color}/>
                     )}
@@ -169,8 +172,8 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
           {/* Dice pattern for n <= 6 */}
           {round.n <= 6 && (
             <svg width={80} height={80} viewBox="0 0 100 100" style={{marginTop:4}}>
-              <rect x={2} y={2} width={96} height={96} rx={18}
-                fill="white" stroke={round.color} strokeWidth={3}/>
+              <rect x={3} y={3} width={94} height={94} rx={12}
+                fill="#FFFDF7" stroke="#2a1b3d" strokeWidth={5}/>
               {[
                 [],
                 [[50,50]],
@@ -198,9 +201,8 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
             transition={{ type:'spring', stiffness:400, damping:18 }}
             style={{
               display:'flex', flexDirection:'column', alignItems:'center', gap:12,
-              padding:'28px 52px', borderRadius:32,
-              background:'rgba(255,255,255,0.95)',
-              boxShadow:`0 0 0 4px ${round.color}55, 0 12px 40px ${round.color}33`,
+              padding:'28px 52px',
+              ...pxPanel,
             }}
           >
             <div style={{ fontSize:'clamp(48px,11vw,70px)', lineHeight:1 }}>🎉</div>
@@ -286,7 +288,9 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
                           width:'clamp(22px,4.5vw,30px)',
                           height:'clamp(22px,4.5vw,30px)',
                           display:'flex', alignItems:'center', justifyContent:'center',
-                          boxShadow:`0 2px 8px ${round.color}88`,
+                          border:`2px solid ${INK}`,
+                          boxShadow:`0 2px 0 ${INK}`,
+                          textShadow:'0 1px 0 rgba(0,0,0,0.3)',
                           pointerEvents:'none',
                         }}
                       >
@@ -315,7 +319,8 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
               transition={{ type:'spring', stiffness:500, damping:18 }}
               style={{
                 width:22, height:22, borderRadius:'50%',
-                boxShadow: i < tapped.size ? `0 0 12px ${round.color}99` : 'none',
+                border:`2px solid ${INK}`,
+                boxShadow: i < tapped.size ? `0 2px 0 ${INK}` : 'none',
               }}
             />
           ))}
@@ -348,11 +353,9 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
           whileTap={tapped.size > 0 ? { scale: 0.94 } : {}}
           onClick={() => { if (tapped.size > 0) checkCount() }}
           style={{
-            background: `linear-gradient(135deg, ${round.color}, ${round.color}cc)`,
-            color:'white', border:'none', borderRadius:20,
+            ...pxButton('green'),
             padding:'12px 40px', cursor: tapped.size > 0 ? 'pointer' : 'default',
-            fontFamily:'var(--font-heading)', fontSize:'clamp(17px,3.6vw,22px)',
-            fontWeight:800, boxShadow:`0 5px 20px ${round.color}66`,
+            fontSize:'clamp(17px,3.6vw,22px)', fontWeight:800,
           }}
         >✅ Fertig!</motion.button>
       )}
@@ -361,7 +364,7 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
         <motion.div
           initial={{ scale:0.8, opacity:0 }} animate={{ scale:1, opacity:1 }}
           style={{
-            background:'#FFE8E8', border:'3px solid #FF6B6B', borderRadius:20,
+            ...pxCard('wrong'),
             padding:'12px 26px', textAlign:'center',
             fontFamily:'var(--font-heading)', fontSize:'clamp(15px,3.2vw,20px)',
             color:'#C0392B', fontWeight:700,
@@ -378,10 +381,8 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
           initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }}
           onClick={weiterClick}
           style={{
-            padding:'13px 44px', borderRadius:50,
-            background:`linear-gradient(135deg,${round.color},${round.color}cc)`,
-            color:'white', fontFamily:'var(--font-heading)', fontSize:20, fontWeight:700,
-            border:'none', cursor:'pointer', boxShadow:`0 4px 18px ${round.color}66`,
+            ...pxButton('green'),
+            padding:'13px 44px', fontSize:20,
           }}
         >
           {idx + 1 >= rounds.length ? '🏁 Fertig!' : 'Weiter! →'}

@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { speak } from '../tts.js'
+import { pxCard, pxBubble, pxButton, pxSegment, INK } from './px.js'
 
 /**
  * Schattenrätsel — Visuelle Wahrnehmung & Kategorisierung
@@ -196,8 +197,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
       <div style={{ display:'flex', gap:6, width:'100%', maxWidth:700 }}>
         {challenges.map((_, i) => (
           <div key={i} style={{
-            flex:1, height:10, borderRadius:99,
-            background: i < idx ? '#A29BFE' : i === idx ? '#FFD93D' : '#ECE8FF',
+            flex:1, ...pxSegment(i < idx ? 'done' : i === idx ? 'current' : 'todo'),
             transition:'background 0.3s',
           }} />
         ))}
@@ -207,11 +207,10 @@ export default function ShadowGame({ level = 1, onComplete }) {
       <div style={{ display:'flex', alignItems:'flex-end', gap:12, width:'100%', maxWidth:760 }}>
         <LumiCharacter mood={mood} size={80} />
         <div style={{
-          flex:1, background:'white', borderRadius:'22px 22px 22px 6px',
+          flex:1, ...pxBubble,
           padding:'14px 20px',
           fontFamily:'var(--font-heading)', fontSize:'clamp(17px,3.5vw,24px)',
           color:'var(--text-primary)',
-          boxShadow:'0 4px 20px rgba(162,155,254,0.15)',
         }}>
           {selected === null ? 'Leuchte mit der Taschenlampe über den Schatten! 🔦' : showFact ? (selected === ch.shadow ? '✅ Richtig erkannt!' : `❌ Es war: ${ch.shadow} ${ch.name}`) : '...'}
         </div>
@@ -229,9 +228,10 @@ export default function ShadowGame({ level = 1, onComplete }) {
           style={{
             // FIX 1: pure white background so brightness(0) emoji is invisible behind overlay
             background: '#ffffff',
-            borderRadius:32,
+            border:`3px solid ${INK}`,
+            borderRadius:14,
             padding:0,
-            boxShadow:'0 12px 44px rgba(74,0,224,0.45)',
+            boxShadow:'0 5px 0 rgba(42,27,61,0.35)',
             width:'100%', maxWidth:820,
             height:'clamp(340px,52vw,560px)',
             position:'relative', overflow:'hidden',
@@ -279,7 +279,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
             <div
               ref={overlayRef}
               style={{
-                position:'absolute', inset:0, borderRadius:32,
+                position:'absolute', inset:0, borderRadius:11,
                 pointerEvents:'none', zIndex:10,
                 background:'rgba(6,0,15,0.97)',
               }}
@@ -315,8 +315,9 @@ export default function ShadowGame({ level = 1, onComplete }) {
                   textAlign:'center',
                   zIndex:12,
                   background: selected === ch.shadow ? 'rgba(30,70,30,0.95)' : 'rgba(80,20,20,0.95)',
-                  border:`2px solid ${selected === ch.shadow ? '#6BCB77' : '#FF6B6B'}`,
-                  borderRadius:16,
+                  border:`3px solid ${INK}`,
+                  borderRadius:12,
+                  boxShadow:`inset 0 0 0 2px ${selected === ch.shadow ? '#6BCB77' : '#FF6B6B'}, 0 5px 0 rgba(42,27,61,0.35)`,
                   padding:'12px 20px',
                   fontFamily:'var(--font-body)',
                   fontSize:'clamp(12px,2.5vw,15px)',
@@ -348,13 +349,10 @@ export default function ShadowGame({ level = 1, onComplete }) {
           const done      = selected !== null
           const isWrong   = wrongPicks.includes(emoji)
 
-          let bg     = 'white'
-          let border = '3px solid #ECE8FF'
-          let shadow = '0 4px 16px rgba(0,0,0,0.06)'
-
-          if (done && isCorrect)     { bg='#E8F8EE'; border='3px solid #6BCB77'; shadow='0 8px 28px rgba(107,203,119,0.4)' }
-          else if (done && isChosen) { bg='#FFE8E8'; border='3px solid #FF6B6B' }
-          else if (isWrong)          { bg='#FFE8E8'; border='3px solid #FF6B6B' }
+          let cardState
+          if (done && isCorrect)     cardState = 'right'
+          else if (done && isChosen) cardState = 'wrong'
+          else if (isWrong)          cardState = 'wrong'
 
           return (
             <motion.button key={`${idx}-${i}`}
@@ -366,7 +364,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
               onClick={() => { if (!isWrong) pick(emoji) }}
               style={{
                 padding:'clamp(16px,3.5vw,28px) 12px',
-                borderRadius:22, background:bg, border, boxShadow:shadow,
+                ...pxCard(cardState),
                 fontSize:'clamp(44px,10vw,72px)',
                 cursor:done ? 'default' : 'pointer',
                 transition:'all 0.22s', lineHeight:1,
@@ -393,10 +391,9 @@ export default function ShadowGame({ level = 1, onComplete }) {
           initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }}
           onClick={weiterClick}
           style={{
-            marginTop:8, padding:'14px 44px', borderRadius:50,
-            background:'linear-gradient(135deg,#6BCB77,#44D498)',
-            color:'white', fontFamily:'var(--font-heading)', fontSize:20, fontWeight:700,
-            border:'none', cursor:'pointer', boxShadow:'0 4px 18px rgba(107,203,119,0.5)',
+            ...pxButton('green'),
+            marginTop:8, padding:'14px 44px',
+            fontSize:20,
           }}
         >
           {idx + 1 >= challenges.length ? '🏁 Fertig!' : 'Weiter! →'}

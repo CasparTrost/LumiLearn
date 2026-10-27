@@ -6,6 +6,7 @@ import { speak } from '../tts.js'
 import { hearable } from '../lib/hearable.js'
 import HearOptions from '../components/HearOptions.jsx'
 import { lockPreviews, afterNarration } from '../narrator.js'
+import { pxCard, pxPanel, pxBubble, pxButton, pxSegment, ACCENT } from './px.js'
 
 /**
  * Formen-Land — Formen erkennen, Größen ordnen, Muster fortsetzen
@@ -180,10 +181,10 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
   if (!r) return null
 
   const prompt = r.mode === 'match'
-    ? <>Finde {SHAPES[r.answer].art} <strong style={{ color: '#4A00E0' }}>{SHAPES[r.answer].name}</strong>! 🔍</>
+    ? <>Finde {SHAPES[r.answer].art} <strong style={{ color: ACCENT }}>{SHAPES[r.answer].name}</strong>! 🔍</>
     : r.mode === 'size'
-      ? <>Tippe die Formen von <strong style={{ color: '#4A00E0' }}>klein nach groß</strong>! 📏</>
-      : <>Was kommt als <strong style={{ color: '#4A00E0' }}>Nächstes</strong>? 🔮</>
+      ? <>Tippe die Formen von <strong style={{ color: ACCENT }}>klein nach groß</strong>! 📏</>
+      : <>Was kommt als <strong style={{ color: ACCENT }}>Nächstes</strong>? 🔮</>
 
   return (
     <div style={{
@@ -193,8 +194,7 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
       <div style={{ display: 'flex', gap: 5, width: '100%', maxWidth: 680 }}>
         {rounds.map((_, i) => (
           <div key={i} style={{
-            flex: 1, height: 10, borderRadius: 99,
-            background: i < idx ? '#6C63FF' : i === idx ? '#FFD93D' : '#ECE8FF',
+            flex: 1, ...pxSegment(i < idx ? 'done' : i === idx ? 'current' : 'todo'),
           }} />
         ))}
       </div>
@@ -202,8 +202,7 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, width: '100%', maxWidth: 680 }}>
         <LumiCharacter mood={mood} size={68} />
         <div style={{
-          flex: 1, background: 'white', borderRadius: '22px 22px 22px 5px', padding: '12px 18px',
-          boxShadow: '0 4px 20px rgba(108,99,255,0.14)',
+          flex: 1, ...pxBubble, padding: '12px 18px',
           fontFamily: 'var(--font-heading)', fontSize: 'clamp(16px,3.4vw,22px)', color: 'var(--text-primary)',
         }}>
           {solved ? <>⭐ Richtig!</> : prompt}
@@ -225,11 +224,9 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
                 {...hearable(SHAPES[type].name)}
                 aria-label={SHAPES[type].name}
                 style={{
-                  background: isRight ? '#E8F8EE' : isWrong ? '#FFE8E8' : 'white',
-                  border: `3px solid ${isRight ? '#6BCB77' : isWrong ? '#FF6B6B' : '#ECE8FF'}`,
-                  borderRadius: 22, padding: 'clamp(12px,2.5vw,20px)', cursor: solved ? 'default' : 'pointer',
+                  ...pxCard(isRight ? 'right' : isWrong ? 'wrong' : undefined),
+                  padding: 'clamp(12px,2.5vw,20px)', cursor: solved ? 'default' : 'pointer',
                   opacity: isWrong ? 0.55 : 1,
-                  boxShadow: isRight ? '0 6px 24px rgba(107,203,119,0.4)' : '0 4px 16px rgba(0,0,0,0.06)',
                 }}
               >
                 <Shape type={type} color={r.color} size={72} />
@@ -263,7 +260,8 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
                 {taken && (
                   <span style={{
                     position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
-                    background: '#4A00E0', color: 'white', borderRadius: '50%',
+                    background: ACCENT, color: 'white', borderRadius: '50%',
+                    border: '2px solid var(--px-ink)', boxSizing: 'border-box',
                     width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontFamily: 'var(--font-heading)', fontSize: 13, fontWeight: 800,
                   }}>{order + 1}</span>
@@ -280,14 +278,13 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
           <div style={{
             display: 'flex', gap: 'clamp(4px,1.5vw,10px)', alignItems: 'center',
             flexWrap: 'wrap', justifyContent: 'center',
-            background: 'white', borderRadius: 20, padding: 'clamp(10px,2vw,16px)',
-            boxShadow: '0 4px 18px rgba(0,0,0,0.07)',
+            ...pxPanel, padding: 'clamp(10px,2vw,16px)',
           }}>
             {r.seq.map((s, i) => <Shape key={i} type={s.type} color={s.color} size={42} />)}
             <div style={{
-              width: 46, height: 46, borderRadius: 12, border: '3px dashed #A29BFE',
+              width: 46, height: 46, borderRadius: 10, border: '3px dashed var(--px-ink-soft)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: 'var(--font-heading)', fontSize: 24, color: '#A29BFE',
+              fontFamily: 'var(--font-heading)', fontSize: 24, color: 'var(--px-ink-soft)',
             }}>{solved ? <Shape type={r.correct.type} color={r.correct.color} size={38} /> : '?'}</div>
           </div>
           <div style={{ display: 'flex', gap: 'clamp(10px,3vw,20px)', flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -302,9 +299,8 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
                   {...hearable(SHAPES[opt.type].name)}
                   aria-label={SHAPES[opt.type].name}
                   style={{
-                    background: isRight ? '#E8F8EE' : isWrong ? '#FFE8E8' : 'white',
-                    border: `3px solid ${isRight ? '#6BCB77' : isWrong ? '#FF6B6B' : '#ECE8FF'}`,
-                    borderRadius: 20, padding: 'clamp(10px,2vw,16px)', cursor: solved ? 'default' : 'pointer',
+                    ...pxCard(isRight ? 'right' : isWrong ? 'wrong' : undefined),
+                    padding: 'clamp(10px,2vw,16px)', cursor: solved ? 'default' : 'pointer',
                     opacity: isWrong ? 0.55 : 1,
                   }}
                 >
@@ -323,10 +319,8 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
             whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
             onClick={weiterClick}
             style={{
-              background: 'linear-gradient(135deg,#6C63FF,#4A00E0)', color: 'white',
-              border: 'none', borderRadius: 20, padding: '12px 40px', cursor: 'pointer',
-              fontFamily: 'var(--font-heading)', fontSize: 'clamp(16px,3.4vw,21px)', fontWeight: 700,
-              boxShadow: '0 5px 20px rgba(74,0,224,0.38)',
+              ...pxButton('green'), padding: '12px 40px',
+              fontSize: 'clamp(16px,3.4vw,21px)',
             }}
           >Weiter! →</motion.button>
         )}

@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { pxCard, pxButton, INK } from './px.js'
 
 const BASE = import.meta.env.BASE_URL || '/LumiLearn/'
 
@@ -298,21 +299,21 @@ export default function ColoringGame({ level = 1, onComplete }) {
   }, [redraw])
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', flex:1, background:'#f0eeff', overflow:'hidden', userSelect:'none' }}>
+    <div style={{ display:'flex', flexDirection:'column', flex:1, background:'#FFF1D6', overflow:'hidden', userSelect:'none' }}>
 
       {/* Bild-Auswahl */}
-      <div style={{ display:'flex', gap:6, padding:'8px 10px', overflowX:'auto', flexShrink:0, background:'#fff', boxShadow:'0 2px 8px rgba(0,0,0,0.08)' }}>
+      <div style={{ display:'flex', gap:6, padding:'8px 10px', overflowX:'auto', flexShrink:0, background:'var(--px-parch)', borderBottom:`3px solid ${INK}` }}>
         {IMAGES.map((img, i) => {
           const locked = !img.free && i > unlockedCount
           return (
             <button key={img.id} onClick={() => goToImage(i)} disabled={locked} style={{
-              flexShrink:0, padding:'5px 12px', borderRadius:20,
+              ...pxCard(i===imgIdx ? 'selected' : undefined),
+              flexShrink:0, padding:'4px 12px', borderRadius:10,
+              boxShadow: i===imgIdx ? `0 3px 0 ${INK}` : '0 3px 0 rgba(42,27,61,0.35)',
               cursor: locked ? 'not-allowed' : 'pointer',
-              border: i===imgIdx ? '2px solid #8B5CF6' : '2px solid transparent',
-              background: i===imgIdx ? '#EDE9FE' : '#f0f0f0',
               fontFamily:'var(--font-body)', fontSize:13,
               fontWeight: i===imgIdx ? 700 : 400,
-              color: i===imgIdx ? '#6D28D9' : '#555',
+              color: i===imgIdx ? INK : '#555',
               whiteSpace:'nowrap',
               opacity: locked ? 0.45 : 1,
             }}>{locked ? '🔒' : img.emoji} {locked ? `Level ${i}` : img.label}</button>
@@ -321,14 +322,17 @@ export default function ColoringGame({ level = 1, onComplete }) {
       </div>
 
       {/* Zeichenfläche — EIN Canvas, kein Mismatch möglich */}
-      <div style={{ flex:1, minHeight:0, overflow:'hidden', background:'#ccc', display:'flex', alignItems:'center', justifyContent:'center', padding:8, touchAction:'none', position:'relative' }}>
+      <div style={{ flex:1, minHeight:0, overflow:'hidden', background:'var(--px-parch-dark)', display:'flex', alignItems:'center', justifyContent:'center', padding:'8px 8px 12px', touchAction:'none', position:'relative' }}>
         <canvas
           ref={displayRef}
           width={canvasSize.current.w}
           height={canvasSize.current.h}
           style={{
             maxWidth:'100%', maxHeight:'100%',
-            boxShadow:'0 2px 16px rgba(0,0,0,0.2)',
+            // ink frame as a shadow ring: getPos() maps via the bounding rect,
+            // which a real border would shift
+            borderRadius:4,
+            boxShadow:`0 0 0 3px ${INK}, 0 8px 0 3px rgba(42,27,61,0.35)`,
             cursor: tool==='eraser' ? 'cell' : 'crosshair',
             touchAction:'none',
             display: ready ? 'block' : 'none',
@@ -346,16 +350,18 @@ export default function ColoringGame({ level = 1, onComplete }) {
       </div>
 
       {/* Toolbar */}
-      <div style={{ background:'rgba(255,255,255,0.97)', boxShadow:'0 -2px 12px rgba(0,0,0,0.1)', padding:'8px 10px', flexShrink:0, display:'flex', flexDirection:'column', gap:8 }}>
+      <div style={{ background:'var(--px-parch)', borderTop:`3px solid ${INK}`, padding:'8px 10px', flexShrink:0, display:'flex', flexDirection:'column', gap:8 }}>
         {/* Farben */}
         <div style={{ display:'flex', gap:5, flexWrap:'wrap', justifyContent:'center' }}>
           {COLORS.map(c => (
             <button key={c} onClick={() => { setColor(c); if (tool==='eraser') setTool('brush') }} style={{
-              width:28, height:28, borderRadius:'50%', padding:0, background:c,
-              border: c==='#FFFFFF' ? '1.5px solid #ccc' : '1.5px solid rgba(0,0,0,0.12)',
-              outline: color===c && tool!=='eraser' ? '3px solid #6D28D9' : 'none',
+              // minHeight 0: the global 48px button minimum stretched the
+              // swatches into ovals
+              width:32, height:32, minHeight:0, borderRadius:'50%', padding:0, background:c,
+              border: `3px solid ${INK}`,
+              outline: color===c && tool!=='eraser' ? '3px solid var(--px-gold)' : 'none',
               outlineOffset:2, cursor:'pointer', flexShrink:0,
-              boxShadow:'0 1px 3px rgba(0,0,0,0.15)',
+              boxShadow:'0 2px 0 rgba(42,27,61,0.35)',
             }} />
           ))}
         </div>
@@ -363,10 +369,9 @@ export default function ColoringGame({ level = 1, onComplete }) {
         <div style={{ display:'flex', gap:8, alignItems:'center', justifyContent:'center', flexWrap:'wrap' }}>
           {[{id:'brush',label:'✏️ Pinsel'},{id:'fill',label:'🪣 Füllen'},{id:'eraser',label:'🩹 Radierer'},{id:'stamp',label:'⭐ Stempel'}].map(t => (
             <button key={t.id} onClick={() => setTool(t.id)} style={{
-              padding:'6px 14px', borderRadius:20, border:'none',
-              background: tool===t.id ? '#6D28D9' : '#e8e8e8',
-              color: tool===t.id ? '#fff' : '#555',
-              fontFamily:'var(--font-body)', fontSize:14, cursor:'pointer', fontWeight:600,
+              ...pxButton(tool===t.id ? 'purple' : 'parch'),
+              padding:'4px 12px',
+              fontFamily:'var(--font-body)', fontSize:14, fontWeight:600,
             }}>{t.label}</button>
           ))}
           {tool === 'stamp' && (
@@ -374,33 +379,32 @@ export default function ColoringGame({ level = 1, onComplete }) {
               {STAMPS.map(st => (
                 <button key={st} onClick={() => setStamp(st)} style={{
                   fontSize:20, lineHeight:1, padding:'3px 5px', borderRadius:10, cursor:'pointer',
-                  border: stamp===st ? '2px solid #6D28D9' : '2px solid transparent',
-                  background: stamp===st ? '#EDE9FE' : 'transparent',
+                  border: stamp===st ? `2px solid ${INK}` : '2px solid transparent',
+                  background: stamp===st ? '#FFF0B8' : 'transparent',
                 }}>{st}</button>
               ))}
             </div>
           )}
           {tool !== 'fill' && (
-            <div style={{ display:'flex', gap:6, alignItems:'center', background:'#f0f0f0', borderRadius:20, padding:'4px 12px' }}>
+            <div style={{ display:'flex', gap:6, alignItems:'center', background:'var(--px-parch-dark)', border:`2px solid ${INK}`, borderRadius:10, padding:'2px 10px' }}>
               {BRUSH_SIZES.map((r, i) => (
                 <button key={i} onClick={() => setBrushIdx(i)} style={{
-                  width:r*1.6+6, height:r*1.6+6, borderRadius:'50%', padding:0,
-                  background: brushIdx===i ? (tool==='eraser'?'#888':color) : '#bbb',
-                  border: brushIdx===i ? '2px solid #6D28D9' : '2px solid transparent',
+                  width:r*1.6+6, height:r*1.6+6, minHeight:0, borderRadius:'50%', padding:0,
+                  background: brushIdx===i ? (tool==='eraser'?'#888':color) : 'rgba(42,27,61,0.3)',
+                  border: brushIdx===i ? `2px solid ${INK}` : '2px solid transparent',
+                  outline: brushIdx===i ? '2px solid var(--px-gold)' : 'none', outlineOffset:1,
                   cursor:'pointer', flexShrink:0,
                 }} />
               ))}
             </div>
           )}
           <button onClick={clearPaint} style={{
-            padding:'6px 14px', borderRadius:20, border:'none',
-            background:'#FFE4E4', color:'#CC0000',
-            fontFamily:'var(--font-body)', fontSize:14, cursor:'pointer', fontWeight:600,
+            ...pxButton('red'), padding:'4px 12px',
+            fontFamily:'var(--font-body)', fontSize:14, fontWeight:600,
           }}>🗑️ Neu</button>
           <button onClick={saveToGallery} disabled={!hasPainted} style={{
-            padding:'6px 14px', borderRadius:20, border:'none',
-            background: hasPainted ? '#E8F8EE' : '#eee',
-            color: hasPainted ? '#2C8C50' : '#aaa',
+            ...pxButton('parch'), padding:'4px 12px',
+            opacity: hasPainted ? 1 : 0.5,
             fontFamily:'var(--font-body)', fontSize:14,
             cursor: hasPainted ? 'pointer' : 'default', fontWeight:600,
           }}>💾 Aufheben</button>
@@ -415,9 +419,8 @@ export default function ColoringGame({ level = 1, onComplete }) {
               disabled={!hasPainted}
               title={hasPainted ? '' : 'Male zuerst etwas!'}
               style={{
-                padding:'6px 14px', borderRadius:20, border:'none',
-                background: hasPainted ? 'linear-gradient(135deg,#6C63FF,#4A00E0)' : '#ddd',
-                color: hasPainted ? '#fff' : '#999',
+                ...pxButton('green'), padding:'4px 12px',
+                opacity: hasPainted ? 1 : 0.5,
                 fontFamily:'var(--font-body)', fontSize:14,
                 cursor: hasPainted ? 'pointer' : 'default', fontWeight:600,
               }}>✅ Fertig</button>
@@ -430,12 +433,12 @@ export default function ColoringGame({ level = 1, onComplete }) {
             <span style={{ fontFamily:'var(--font-body)', fontSize:13, color:'#777' }}>🖼️ Dein Album:</span>
             {gallery.map(g => (
               <img key={g.id} src={g.data} alt="Gemaltes Bild"
-                style={{ height:54, borderRadius:8, border:'2px solid #E5E0F5', background:'#fff' }} />
+                style={{ height:54, borderRadius:8, border:`2px solid ${INK}`, background:'#fff' }} />
             ))}
             <button onClick={() => { setGallery([]); localStorage.removeItem('lumilearn_gallery') }}
               style={{
-                padding:'4px 10px', borderRadius:14, border:'none', background:'#FFE4E4',
-                color:'#CC0000', fontFamily:'var(--font-body)', fontSize:12, cursor:'pointer',
+                ...pxButton('red'), padding:'2px 10px',
+                fontFamily:'var(--font-body)', fontSize:12,
               }}>Album leeren</button>
           </div>
         )}
