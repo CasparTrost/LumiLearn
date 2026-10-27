@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { generateQuestions } from './gameEngine.js'
 import { sfx } from '../sfx.js'
 import { sayNumber } from '../tts.js'
-import { lockPreviews, afterNarration } from '../narrator.js'
+import { narrate, lockPreviews, afterNarration } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { hearable } from '../lib/hearable.js'
 import { result } from '../lib/score.js'
@@ -150,12 +150,14 @@ function optionName(q, opt) {
 // "Genau! Immer wieder Frosch, Frosch, Hund."
 function praiseFor(q) {
   if (q.kind === 'grow') return `${q.counts.map(sayNumber).join(', ')}. Es wird immer eins mehr.`
+  if (q.kind === 'build') return `${q.fill.map(e => nameOf(q, e)).join(', ')}!`
   return `Immer wieder ${q.unit.map(e => nameOf(q, e)).join(', ')}.`
 }
 
 // After a miss the row is read out, so the child can hear the rhythm:
 // "Hör mal! Frosch, Hund, Frosch, Hund, Frosch – und dann?"
-function hintFor(q) {
+function hintFor(q, placed = []) {
+  if (q.kind === 'build') return `Hör mal! ${[...q.tokens.slice(0, q.gapAt), ...placed].map(e => nameOf(q, e)).join(', ')}, und dann?`
   if (q.kind === 'grow') return `Hör mal! ${q.counts.slice(0, 3).map(sayNumber).join(', ')}, und dann?`
   if (q.kind === 'gap') {
     const said = q.tokens.map(t => (t === '❓' ? 'und hier?' : nameOf(q, t)))
@@ -179,6 +181,11 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
   const [projectiles, setProjectiles] = useState([])
   const [puffIds,     setPuffIds]     = useState([])
   const [bursts,      setBursts]      = useState([])
+  // build rounds: the pieces laid so far, the piece bouncing back after a
+  // miss, and the misses on the current place
+  const [placed,      setPlaced]      = useState([])
+  const [bounce,      setBounce]      = useState(null)
+  const [missesHere,  setMissesHere]  = useState(0)
   const effectIdRef = useRef(0)
 
   // dino grows by 3% per answer right on the first try, max 1.3×
@@ -220,6 +227,44 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
     }
   }, [solved, q, wrong, idx])
 
+  // Build rounds: a tapped piece goes to the next empty place. Lumi says the
+  // pieces laid so far; a wrong one bounces back to the tray, and after two
+  // misses on one place the right piece lights up and is named.
+  const place = useCallback((opt) => {
+    if (solved || !q) return
+    const want = q.fill[placed.length]
+    if (opt === want) {
+      const next = [...placed, opt]
+      setPlaced(next)
+      setMissesHere(0)
+      setBounce(null)
+      if (next.length < q.fill.length) {
+        sfx.pop()
+        narrate([{ text: `${next.map(e => nameOf(q, e)).join(', ')}!` }])
+        return
+      }
+      setSolved(true)
+      if (!wrong.length) setFirstTry(n => n + 1)
+      setChomping(true)
+      setFlashId(n => n + 1)
+      setFlashType('ok')
+      setProjectiles(prev => [...prev, { id: ++effectIdRef.current, food: opt }])
+      setBursts(prev => [...prev, { id: ++effectIdRef.current }])
+      sfx.correct()
+      sayRight(praiseFor(q))
+      setTimeout(() => setChomping(false), 820)
+      setTimeout(() => setFlashType(null), 400)
+    } else {
+      const n = missesHere + 1
+      setMissesHere(n)
+      setWrong(w => [...w, opt])
+      setMissed(m => (m.includes(idx) ? m : [...m, idx]))
+      setBounce({ e: opt, id: ++effectIdRef.current })
+      sfx.mismatch()
+      sayWrong(n >= 2 ? `Als Nächstes kommt ${nameOf(q, want)}.` : hintFor(q, placed))
+    }
+  }, [solved, q, placed, wrong, missesHere, idx])
+
   const weiterClick = useCallback(() => {
     if (idx + 1 >= questions.length) {
       sfx.complete()
@@ -232,19 +277,21 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
   // New round: clear the board, then ask once the row has flown in
   useEffect(() => {
     setHighlighted(null); setWrong([]); setSolved(false)
+    setPlaced([]); setBounce(null); setMissesHere(0)
     if (!q) return
     lockPreviews()
-    const id = setTimeout(() => sayTask(q.prompt), (q.tokens.length * FLY_STEP + 0.35) * 1000)
+    const id = setTimeout(() => sayTask(q.say ?? q.prompt), (q.tokens.length * FLY_STEP + 0.35) * 1000)
     return () => clearTimeout(id)
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    const choose = q?.kind === 'build' ? place : pick
     const onKey = (e) => {
       if (solved || !q) return
       const opts = q.options
       const num  = parseInt(e.key)
       if (num >= 1 && num <= opts.length) {
-        pick(opts[num - 1])
+        choose(opts[num - 1])
       } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
         e.preventDefault()
         setHighlighted(h => h === null ? 0 : Math.min(h + 1, opts.length - 1))
@@ -253,12 +300,12 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
         setHighlighted(h => h === null ? opts.length - 1 : Math.max(h - 1, 0))
       } else if ((e.key === 'Enter' || e.key === ' ') && highlighted !== null) {
         e.preventDefault()
-        pick(opts[highlighted])
+        choose(opts[highlighted])
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [q, solved, highlighted, pick])
+  }, [q, solved, highlighted, pick, place])
 
   if (!q) return null
 
@@ -270,6 +317,9 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
   const maxOpt    = Math.max(...q.options.map(glyphs))
   const optSize   = maxOpt > 1 ? `min(44px, calc((min(100vw, 720px) - 120px) / ${maxOpt * 2}))` : 'clamp(48px, 11vw, 72px)'
   const isLast    = idx + 1 >= questions.length
+  const build     = q.kind === 'build'
+  // the right piece, lit up after two misses on one place
+  const showPiece = build && !solved && missesHere >= 2 ? q.fill[placed.length] : null
 
   return (
     <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', padding:'clamp(12px,2.2vw,24px) clamp(14px,3.5vw,36px)', gap:'clamp(10px,1.8vw,18px)' }}>
@@ -332,15 +382,19 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
           >
             {q.tokens.map((token, i) => {
               const isQuestion = token === '❓'
-              const filled     = isQuestion && solved
+              // build rounds fill their places one by one; the others all at once
+              const slot       = i - q.gapAt
+              const piece      = build ? placed[slot] : solved ? q.answer : null
+              const filled     = isQuestion && piece != null
+              const waiting    = isQuestion && !solved && (!build || slot === placed.length)
               return (
                 <motion.span
                   key={i}
                   initial={{ scale:0, opacity:0, y:16 }}
-                  animate={isQuestion && !solved
+                  animate={waiting
                     ? { scale:[1,1.15,1], opacity:1, y:0 }
                     : { scale:1, opacity:1, y:0 }}
-                  transition={isQuestion && !solved
+                  transition={waiting
                     ? { scale:{ delay: i * FLY_STEP, duration:1.1, repeat:Infinity, type:'tween' }, opacity:{ delay: i * FLY_STEP, duration:0.22 }, y:{ delay: i * FLY_STEP, type:'spring', stiffness:340, damping:20 } }
                     : filled ? { type:'spring', stiffness:340, damping:18 }
                     : { delay: i * FLY_STEP, type:'spring', stiffness:340, damping:20 }}
@@ -349,14 +403,25 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
                     lineHeight: 1.1,
                     display: 'inline-flex',
                     whiteSpace: 'nowrap',
-                    // the place asked for: a dashed slot, filled once solved
+                    position: 'relative',
+                    // the place asked for: a dashed slot, green once filled
                     ...(isQuestion ? {
-                      outline: `3px dashed ${solved ? '#2F8F3A' : INK}`, outlineOffset: 3, borderRadius: 8,
-                      background: solved ? '#DDF6CF' : 'var(--px-parch-light)',
+                      outline: `3px dashed ${filled ? '#2F8F3A' : INK}`, outlineOffset: 3, borderRadius: 8,
+                      background: filled ? '#DDF6CF' : 'var(--px-parch-light)',
                     } : {}),
                   }}
                 >
-                  {filled ? q.answer : token}
+                  {filled ? piece : token}
+                  {/* a wrong piece drops in and bounces back down to the tray */}
+                  {build && bounce && waiting && (
+                    <motion.span key={bounce.id} aria-hidden="true"
+                      initial={{ y:'-60%', opacity:0, scale:0.7 }}
+                      animate={{ y:['-60%','0%','-18%','140%'], opacity:[0,1,1,0], scale:[0.7,1,1,0.8] }}
+                      transition={{ duration:0.9, times:[0,0.3,0.5,1], ease:'easeInOut' }}
+                      onAnimationComplete={() => setBounce(b => (b?.id === bounce.id ? null : b))}
+                      style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'var(--px-parch-light)', borderRadius:8, pointerEvents:'none' }}
+                    >{bounce.e}</motion.span>
+                  )}
                 </motion.span>
               )
             })}
@@ -364,21 +429,24 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
         </AnimatePresence>
       </div>
 
-      {/* Answers — the pictures as big as in the row (they were 18–26 px) */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(' + Math.min(q.options.length, 2) + ',1fr)', gap:'clamp(10px,2vw,16px)', width:'100%', maxWidth:760, flexShrink:0 }}>
+      {/* Answers — the pictures as big as in the row (they were 18–26 px).
+          In build rounds this is the tray: one row, every piece can be used
+          again, a wrong one only wiggles. */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(' + (build ? q.options.length : Math.min(q.options.length, 2)) + ',1fr)', gap:'clamp(10px,2vw,16px)', width:'100%', maxWidth:760, flexShrink:0 }}>
         {q.options.map((opt, oi) => {
           const isCorrect     = opt === q.answer
-          const isWrong       = wrong.includes(opt)
-          const isHighlighted = !solved && highlighted === oi
+          const isWrong       = !build && wrong.includes(opt)
+          const isHighlighted = !solved && (highlighted === oi || opt === showPiece)
           const cardState = solved && isCorrect ? 'right' : isWrong ? 'wrong' : isHighlighted ? 'selected' : undefined
           const active = !solved && !isWrong
+          const bounced = build && bounce?.e === opt
           return (
             <motion.button key={idx + '-' + opt}
               whileHover={active ? { scale:1.04 } : {}}
               whileTap={active ? { scale:0.95 } : {}}
-              animate={isWrong ? { x:[0,-10,10,-6,6,0] } : { x:0 }}
+              animate={isWrong ? { x:[0,-10,10,-6,6,0] } : bounced ? { x:[0,-5,5,-3,0] } : { x:0 }}
               transition={{ duration:0.42 }}
-              onClick={() => pick(opt)}
+              onClick={() => (build ? place(opt) : pick(opt))}
               {...hearable(optionName(q, opt))}
               aria-label={optionName(q, opt)}
               disabled={isWrong}

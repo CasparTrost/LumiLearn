@@ -169,7 +169,7 @@ function Keyboard({ word, hint, onKey, onBack, pictures = false }) {
         whileTap={{ scale:0.88 }}
         onClick={() => (back ? onBack() : onKey(k))}
         {...(pic ? hearable(anlaut(k)) : null)}
-        aria-label={back ? 'Löschen' : pic ? anlaut(k) : k}
+        aria-label={back ? 'Löschen' : pic ? `${k}, ${anlaut(k)}` : k}
         animate={hinted ? { scale:[1,1.1,1], boxShadow:[KEY_RING[0],KEY_RING[1],KEY_RING[0]] } : {}}
         transition={hinted ? { duration:1.3, repeat:Infinity } : {}}
         style={{
@@ -191,7 +191,7 @@ function Keyboard({ word, hint, onKey, onBack, pictures = false }) {
   if (narrow) {
     // with pictures the keys grow a little, so letter and picture both stay
     // readable: five 58 px keys fit a 360 px phone
-    const size = pictures ? { width:58, height:66, fontSize:22, picSize:22 } : { width:52, height:52, fontSize:24 }
+    const size = pictures ? { width:58, height:74, fontSize:22, picSize:28 } : { width:52, height:52, fontSize:24 }
     return (
       <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'center', gap:8, width:'100%', maxWidth:420 }}>
         {keys.map(k => key(k, size))}
@@ -201,8 +201,8 @@ function Keyboard({ word, hint, onKey, onBack, pictures = false }) {
   }
 
   // eleven keys and ten gaps across the widest row
-  const size = { width:'min(56px, calc((100% - 50px) / 11))', height: pictures ? 66 : 56,
-                 fontSize:'clamp(17px,2.4vw,22px)', picSize:'clamp(19px,2.2vw,22px)' }
+  const size = { width:'min(56px, calc((100% - 50px) / 11))', height: pictures ? 74 : 56,
+                 fontSize:'clamp(17px,2.4vw,22px)', picSize:'clamp(22px,3.2vw,28px)' }
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:8, width:'100%', maxWidth:720 }}>
       {ROWS.map((row, ri) => (

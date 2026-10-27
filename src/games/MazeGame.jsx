@@ -52,6 +52,9 @@ const LEVEL_CONFIG = level => {
 // then the exit) earns the crown: extra praise for planning the way. It
 // never changes the stars, which go by the dragon's hits alone.
 const SHORT_WAY = 1.3
+// Where the stars twinkle round Lumi on a perfect win: the sides and the
+// top, never below, where the title follows
+const TWINKLE_ANGLES = [-150, -30, 170, 10, -115, -65]
 
 // ──────────────────────────────────────────────────────────────────
 // WALL TILE LOGIC — PixelLab-generated Wang (corner) tileset
@@ -1263,7 +1266,7 @@ export default function MazeGame({ level = 1, onComplete }) {
                           animate={{ y: 0, opacity: 1, rotate: -8 }}
                           transition={{ delay: 0.5, type: 'spring', stiffness: 260, damping: 11 }}
                           style={{
-                            position: 'absolute', top: '-24%', left: '50%', marginLeft: '-19%',
+                            position: 'absolute', top: '-19%', left: '50%', marginLeft: '-19%',
                             width: '38%', fontSize: 'min(48px, 9vh)', lineHeight: 1, textAlign: 'center',
                             filter: 'drop-shadow(0 0 10px rgba(255,215,0,0.9))',
                           }}
@@ -1272,16 +1275,16 @@ export default function MazeGame({ level = 1, onComplete }) {
                         </motion.div>
                       )}
                       {/* No hit and a short way: stars twinkle all round */}
-                      {bonus === 'perfect' && [0, 1, 2, 3, 4, 5].map(i => (
+                      {bonus === 'perfect' && TWINKLE_ANGLES.map((deg, i) => (
                         <motion.span
-                          key={i}
+                          key={deg}
                           aria-hidden
                           animate={{ scale: [0.4, 1.2, 0.4], opacity: [0.3, 1, 0.3] }}
                           transition={{ duration: 1.1, delay: 0.8 + i * 0.18, repeat: Infinity }}
                           style={{
                             position: 'absolute', lineHeight: 1, fontSize: 'min(26px, 5vh)',
-                            left: `${50 + Math.cos((i / 6) * Math.PI * 2) * 62}%`,
-                            top:  `${50 + Math.sin((i / 6) * Math.PI * 2) * 62}%`,
+                            left: `${50 + Math.cos(deg * Math.PI / 180) * 64}%`,
+                            top:  `${50 + Math.sin(deg * Math.PI / 180) * 56}%`,
                             marginLeft: -13, marginTop: -13,
                           }}
                         >

@@ -106,16 +106,19 @@ function tiltFor(level, type) {
   return [-30, -15, 15, 30, 180][rand(0, 4)]
 }
 
-// used: the things already shown this level, so none comes twice
+// used: the shapes already asked for in this level's "shapes around us"
 function buildRound(level, idx, used) {
   const mode = modeFor(level, idx)
   const pool = poolFor(level)
 
   if (mode === 'object') {
-    const things = pool.flatMap(type => (OBJECTS[type] ?? []).map(([emoji, name]) => ({ type, emoji, name })))
-    const fresh  = things.filter(t => !used.has(t.emoji))
-    const thing  = shuffle(fresh.length ? fresh : things)[0]
-    used.add(thing.emoji)
+    // a shape not asked yet first, so the circle doesn't win by having more things
+    const types  = pool.filter(t => OBJECTS[t])
+    const fresh  = types.filter(t => !used.has(t))
+    const type   = shuffle(fresh.length ? fresh : types)[0]
+    const [emoji, name] = shuffle(OBJECTS[type])[0]
+    const thing  = { type, emoji, name }
+    used.add(type)
     // A square is a rectangle too, so the window never meets the rectangle
     const others = pool.filter(t => t !== thing.type && t !== 'star' && t !== 'heart'
       && !(thing.type === 'square' && t === 'rectangle'))
