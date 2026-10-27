@@ -332,8 +332,10 @@ const FREE_TINT = [TINT.lilac, TINT.brown]
 const FREE_TASK = 'Jetzt bestimmst du! Sortiere die Sachen in die zwei Körbe, ganz wie du willst. Dann rät Lumi, wie du sortiert hast.'
 
 // The bonus round: tap a thing (the next one is already chosen), then a
-// basket; tap a thing in a basket to take it out again. "Fertig" lets Lumi
-// guess. Not rated — it ends the level with the result of the sorting before.
+// basket. Once all are in, tap a thing in a basket and then the other basket
+// to move it; before that, a tap on a basket's things counts as a tap on the
+// basket. "Fertig" lets Lumi guess. Not rated — the level ends with the
+// result of the sorting before.
 function FreeSort({ onDone }) {
   const [things] = useState(buildFree)
   const [where,  setWhere]  = useState(() => things.map(() => null))   // basket 0 | 1, or null
@@ -347,14 +349,6 @@ function FreeSort({ onDone }) {
     return () => clearTimeout(id)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const pick = (i, e) => {
-    e?.stopPropagation()
-    if (guess) return
-    if (where[i] !== null) setWhere(w => w.map((x, j) => (j === i ? null : x)))
-    setSel(i)
-    narrate([{ text: `${cap(things[i].name)}.` }], { skipIfSame: true })
-  }
-
   const put = useCallback((b) => {
     if (guess || sel === null) return
     const next = where.map((x, j) => (j === sel ? b : x))
@@ -364,6 +358,14 @@ function FreeSort({ onDone }) {
     sfx.pop()
     narrate([{ text: nextSel === -1 ? 'Fertig? Dann tippe auf den grünen Haken.' : `Und jetzt: ${things[nextSel].name}.` }])
   }, [guess, sel, where, things])
+
+  const pick = (i, e) => {
+    e?.stopPropagation()
+    if (guess) return
+    if (where[i] !== null && sel !== null && where[sel] === null) { put(where[i]); return }
+    setSel(i)
+    narrate([{ text: `${cap(things[i].name)}.` }], { skipIfSame: true })
+  }
 
   const check = () => {
     const g = guessRule([0, 1].map(b => things.filter((_, i) => where[i] === b)))
@@ -382,7 +384,7 @@ function FreeSort({ onDone }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [put])
 
-  const bubble = guess ?? (allIn ? 'Fertig? Tippe auf den Haken!' : 'Sortiere, wie du willst!')
+  const bubble = guess ?? (allIn && sel === null ? 'Fertig? Tippe auf den Haken!' : 'Sortiere, wie du willst!')
 
   return (
     <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', padding:'clamp(10px,2vw,20px) clamp(12px,3vw,28px)', gap:'clamp(10px,1.8vw,16px)', userSelect:'none' }}>
@@ -435,11 +437,12 @@ function FreeSort({ onDone }) {
             <span style={{ display:'flex', flexWrap:'wrap', gap:6, justifyContent:'center' }}>
               <AnimatePresence>
                 {things.map((t, i) => where[i] === b && (
-                  <motion.button key={t.emoji} onClick={e => pick(i, e)} aria-label={`${t.name} herausnehmen`}
+                  <motion.button key={t.emoji} onClick={e => pick(i, e)} aria-label={t.name}
                     initial={{ scale:0, y:-10 }} animate={{ scale:1, y:0 }} exit={{ scale:0 }}
                     transition={{ type:'spring', stiffness:420, damping:18 }}
                     disabled={!!guess}
-                    style={{ minWidth:44, minHeight:44, padding:2, background:'transparent', border:'none', cursor: guess ? 'default' : 'pointer',
+                    style={{ minWidth:44, minHeight:44, padding:2, borderRadius:10, cursor: guess ? 'default' : 'pointer',
+                      background: sel === i ? '#FFF0B8' : 'transparent', border: sel === i ? `3px solid ${INK}` : '3px solid transparent',
                       display:'flex', alignItems:'center', justifyContent:'center', fontSize:'clamp(28px,5.5vw,40px)', lineHeight:1 }}>
                     {t.emoji}
                   </motion.button>

@@ -319,7 +319,7 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
       // the whole row has to fit across: buttons, gaps and shelf (on a phone
       // it may wrap — the order is about size, not place)
       ? (narrow ? 'min(20dvh, 34vw, 220px)' : `min(26dvh, calc((min(100vw, 720px) - ${76 + 14 * r.items.length}px) / ${sumScale.toFixed(2)}), 220px)`)
-      : (narrow ? 'min(12dvh, 26vw, 150px)' : threeUp(150, 17))
+      : (narrow ? 'min(12dvh, 20vw, 150px)' : threeUp(150, 17))
   // the thing in "shapes around us", above its three answers
   const thingSize = narrow ? 'min(22dvh, 46vw, 200px)' : 'min(26dvh, 220px)'
   const rowSize = r.mode === 'pattern' ? `min(64px, calc((min(100vw, 720px) - ${60 + 4 * r.seq.length}px) / ${r.seq.length + 1}))` : null
