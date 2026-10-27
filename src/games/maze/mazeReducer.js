@@ -26,6 +26,9 @@ export function initState(maze, hasDragon = true) {
   return {
     maze,
     pos:        { ...maze.start },
+    // Cells Lumi has stood on, as "x,y" keys. In fog levels they stay
+    // faintly visible, so a child can see where they have already been.
+    seen:       { [`${maze.start.x},${maze.start.y}`]: true },
     dragon:     hasDragon ? (maze.dragonWps[0] ?? null) : null,
     coll:       [],           // collected potion ids
     lives:      3,
@@ -81,6 +84,7 @@ export function mazeReducer(s, a) {
       let n = {
         ...s,
         pos:    { x: nx, y: ny },
+        seen:   s.seen[`${nx},${ny}`] ? s.seen : { ...s.seen, [`${nx},${ny}`]: true },
         moves:  s.moves + 1,
         facing,
         moving: true,

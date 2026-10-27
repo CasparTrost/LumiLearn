@@ -8,6 +8,7 @@ import StarRow from '../components/StarRow.jsx'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import FarmProgress from '../components/FarmProgress.jsx'
 import ProfileSwitcher from '../components/ProfileSwitcher.jsx'
+import LevelPicker, { unlockedUpTo } from '../components/LevelPicker.jsx'
 import { useProfile } from '../hooks/useProfile.js'
 import { speak } from '../tts.js'
 import { lazyWithReload } from '../lib/lazyWithReload.js'
@@ -114,6 +115,7 @@ export default function HomeScreen() {
   const profile = activeProfile ?? { name: 'Lumi', avatar: '🦊' }
   const [showParent, setShowParent] = useState(false)
   const [showSwitcher, setShowSwitcher] = useState(false)
+  const [pickerMod, setPickerMod]       = useState(null)
   const [activeCategory, setActiveCategory] = useState('all')
   const completedCount = Object.values(progress).filter(p => p?.completed).length
 
@@ -179,6 +181,12 @@ export default function HomeScreen() {
   const startModule = (mod) => {
     const p = progress[mod.id] ?? { currentLevel:1 }
     dispatch({ type:'START_GAME', payload:{ moduleId: mod.id, level: p.currentLevel ?? 1 } })
+  }
+  // Kachel: sobald mehr als Level 1 freigespielt ist, erst die Levelauswahl;
+  // beim allerersten Spielen geht es ohne Umweg los.
+  const openModule = (mod) => {
+    if (unlockedUpTo(progress[mod.id], MAX_LEVELS[mod.id] ?? 10) > 1) setPickerMod(mod)
+    else startModule(mod)
   }
 
   return (
@@ -401,7 +409,7 @@ export default function HomeScreen() {
               variants={cardVariants}
               whileHover={{ scale:1.05, y:-9, rotate:0.7 }}
               whileTap={{ scale:0.96, rotate:0 }}
-              onClick={() => startModule(mod)}
+              onClick={() => openModule(mod)}
               style={{
                 background:'white', borderRadius:28, border:'none', cursor:'pointer',
                 boxShadow:`0 8px 28px ${mod.shadow}`, overflow:'hidden',
@@ -530,6 +538,19 @@ export default function HomeScreen() {
         </Suspense>
       )}
       {showSwitcher && <ProfileSwitcher onClose={() => setShowSwitcher(false)} />}
+      {pickerMod && (
+        <LevelPicker
+          mod={pickerMod}
+          title={getModuleTitle(pickerMod.id, pickerMod.title)}
+          progress={progress[pickerMod.id]}
+          maxLevel={MAX_LEVELS[pickerMod.id] ?? 10}
+          onPick={level => {
+            setPickerMod(null)
+            dispatch({ type:'START_GAME', payload:{ moduleId: pickerMod.id, level } })
+          }}
+          onClose={() => setPickerMod(null)}
+        />
+      )}
 
 </div>
   )
