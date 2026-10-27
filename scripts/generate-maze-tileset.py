@@ -39,9 +39,9 @@ What it does:
     2. Asks for a y/n confirmation before spending anything.
     3. Generates one Wang tileset per entry in TILESETS below via
        client.generate_tileset() — POST /v2/create-tileset. Currently
-       just the dungeon theme (used levels 4+) — the forest theme
-       (levels 1-3) already went through this and is wired in; re-add
-       a forest entry here only if it needs another redo. Each call
+       just the dungeon theme (used levels 4+). The Zauberwald set
+       (levels 1-3, wang/zauberwald) was made through the PixelLab MCP
+       server instead (see .mcp.json), no script run needed. Each call
        produces a full 16-tile (or 25-tile at transition_size=1.0)
        seamlessly-connecting set in one shot: you describe the "lower"
        (walkable floor) and "upper" (wall) terrain and it returns every

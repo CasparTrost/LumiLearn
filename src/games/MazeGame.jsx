@@ -37,7 +37,9 @@ const LEVEL_CONFIG = level => {
   // cavern — same tiles, clearly a different place, and no new art needed.
   // (The dungeon tiles are bluish to begin with, so the rotation lands on
   // sand rather than the ice it might sound like.)
-  const theme       = level <= 3 ? 'forest' : 'dungeon'
+  // Levels 1–3 play in the Zauberwald: bright path, dark hedge with
+  // glowing mushrooms (PixelLab tileset, wang/zauberwald).
+  const theme       = level <= 3 ? 'zauberwald' : 'dungeon'
   const tint        = level >= 9 ? 'sand' : null
   // Dragon moves independently, once every `dragonSpeed` ms. Deliberately
   // slow and only ramps up gently with level — this is a kids' game, not
@@ -78,21 +80,44 @@ function wangTileId(dx, dy, g, cols, rows) {
   return (nw ? 8 : 0) | (ne ? 4 : 0) | (sw ? 2 : 0) | (se ? 1 : 0)
 }
 
-function floorSprite(x, y, theme) {
-  if (theme === 'forest') {
-    // Vary forest floor tiles slightly
-    const n = (x * 7 + y * 13) % 5
-    if (n === 0) return 'forest_floor_flowers.png'
-    if (n === 1) return 'forest_floor_path.png'
-    return 'forest_floor_grass.png'
-  }
-  return 'mw_floor.png'
+// The Zauberwald set's all-floor tile (id 0) is the floor itself, so floor
+// and wall edges come from one generation and match in colour and texture.
+function floorSprite(theme) {
+  return theme === 'zauberwald' ? 'wang/zauberwald/wang_0.png' : 'mw_floor.png'
 }
 
 // ──────────────────────────────────────────────────────────────────
-// POTION CONFIG
+// SPRITES — PixelLab art
 // ──────────────────────────────────────────────────────────────────
-const POTION_SPRITES = ['maze_potion1.png', 'maze_potion2.png', 'maze_potion3.png']
+// Animated sprites are horizontal strips of square frames, played by
+// stepping background-position (mz-strip in maze.css).
+const LUMI_WALK   = { src: 'lumi_walk.png',   frames: 10, fps: 12 }
+const DRAGON_WALK = { src: 'dragon_walk.png', frames: 8,  fps: 9 }
+const PORTAL_GLOW = { src: 'portal_glow.png', frames: 8,  fps: 8 }
+
+function SpriteStrip({ sprite, size, className, style }) {
+  const { src, frames, fps } = sprite
+  return (
+    <div
+      className={className}
+      style={{
+        width:              size,
+        height:             size,
+        backgroundImage:    `url(${spr(src)})`,
+        backgroundSize:     `${frames * size}px ${size}px`,
+        backgroundRepeat:   'no-repeat',
+        imageRendering:     'pixelated',
+        '--strip-w':        `${frames * size}px`,
+        animation:          `mz-strip ${frames / fps}s steps(${frames}) infinite`,
+        ...style,
+      }}
+    />
+  )
+}
+
+// One potion sprite, three colours: pink, turquoise, gold.
+const POTION_HUES = [0, 190, 60]
+const potionFilter = type => (POTION_HUES[type] ? `hue-rotate(${POTION_HUES[type]}deg) ` : '')
 
 // ──────────────────────────────────────────────────────────────────
 // MEMOISED BOARD — only re-renders when collected potions change
@@ -118,11 +143,12 @@ const Board = memo(function Board({ maze, cellSize, coll, theme, tint }) {
   // any future regeneration produces. Forest already has strong natural
   // contrast (bright grass vs. dark hedge) and doesn't need this.
   const isDungeon   = theme === 'dungeon'
+  const isWood      = theme === 'zauberwald'
   const sandFloor   = ' hue-rotate(165deg) saturate(1.5)'
   const sandWall    = ' hue-rotate(165deg) saturate(1.35)'
-  const floorFilter = (isDungeon ? 'brightness(1.2) saturate(1.05)' : 'brightness(0.88)')
+  const floorFilter = (isDungeon ? 'brightness(1.2) saturate(1.05)' : 'none')
                     + (tint === 'sand' ? sandFloor : '')
-  const wallFilter  = (isDungeon ? 'brightness(0.62)' : 'brightness(0.96)')
+  const wallFilter  = (isDungeon ? 'brightness(0.62)' : 'none')
                     + (tint === 'sand' ? sandWall : '')
 
   const wangOverlay = []
@@ -149,7 +175,7 @@ const Board = memo(function Board({ maze, cellSize, coll, theme, tint }) {
         row.map((cell, x) => (
           <img
             key={`f-${x},${y}`}
-            src={spr(floorSprite(x, y, theme))}
+            src={spr(floorSprite(theme))}
             alt=""
             draggable={false}
             style={{
@@ -165,7 +191,7 @@ const Board = memo(function Board({ maze, cellSize, coll, theme, tint }) {
             }}
             onError={e => {
               e.target.style.display = 'none'
-              e.target.parentNode.style.background = theme === 'forest' ? '#2d6b1a' : '#120828'
+              e.target.parentNode.style.background = isWood ? '#8fd14f' : '#120828'
             }}
           />
         ))
@@ -222,8 +248,10 @@ const Board = memo(function Board({ maze, cellSize, coll, theme, tint }) {
           const potion   = potions.find(p => p.x === x && p.y === y)
           const potionOk = potion && !coll.includes(potion.id)
 
-          // Torch: wall that has floor directly below, sprinkled randomly
-          const hasTorch = isWall && g[y + 1]?.[x] === 0 && ((x * 3 + y * 7) % 8 === 0)
+          // Torch: wall that has floor directly below, sprinkled randomly.
+          // Dungeon only; the Zauberwald hedge brings its own glowing
+          // mushrooms and fireflies.
+          const hasTorch = isDungeon && isWall && g[y + 1]?.[x] === 0 && ((x * 3 + y * 7) % 8 === 0)
 
           if (!hasTorch && !(isExit && !isWall) && !potionOk) return null
 
@@ -268,6 +296,13 @@ const Board = memo(function Board({ maze, cellSize, coll, theme, tint }) {
                   justifyContent:  'center',
                   zIndex:          5,
                 }}>
+                  {isWood ? (
+                    <SpriteStrip
+                      sprite={PORTAL_GLOW}
+                      size={cellSize}
+                      style={{ filter: 'drop-shadow(0 0 6px #67e8f9)' }}
+                    />
+                  ) : (
                   <img
                     src={spr('maze_portal.png')}
                     alt="Ausgang"
@@ -284,6 +319,7 @@ const Board = memo(function Board({ maze, cellSize, coll, theme, tint }) {
                       e.target.parentNode.innerHTML += '<span style="font-size:' + Math.round(cellSize * 0.7) + 'px" class="mz-portal">🌀</span>'
                     }}
                   />
+                  )}
                 </div>
               )}
 
@@ -298,15 +334,15 @@ const Board = memo(function Board({ maze, cellSize, coll, theme, tint }) {
                   zIndex:         5,
                 }}>
                   <img
-                    src={spr(POTION_SPRITES[potion.type])}
+                    src={spr('potion.png')}
                     alt="Trank"
                     className="mz-coin"
                     draggable={false}
                     style={{
-                      width:          Math.round(cellSize * 0.6),
-                      height:         Math.round(cellSize * 0.6),
+                      width:          Math.round(cellSize * 0.66),
+                      height:         Math.round(cellSize * 0.66),
                       imageRendering: 'pixelated',
-                      filter:         'drop-shadow(0 0 5px #c084fc)',
+                      filter:         potionFilter(potion.type) + 'drop-shadow(0 0 5px rgba(255,255,255,0.8))',
                     }}
                     onError={e => {
                       e.target.style.display = 'none'
@@ -457,6 +493,9 @@ export default function MazeGame({ level = 1, onComplete }) {
   const prevDangerRef  = useRef(0)
   const dragonStepRef  = useRef(0)
   const dragonDirRef   = useRef(1)
+  // The dragon sprite faces east; it looks where it walks, and keeps that
+  // facing while it patrols up and down.
+  const dragonFaceRef  = useRef(1)
 
   const [sparkles, setSparkles]     = useState([]) // [{ id, x, y }]
   const [showOverlay, setShowOverlay] = useState(null) // 'won' | 'dead'
@@ -514,6 +553,8 @@ export default function MazeGame({ level = 1, onComplete }) {
       let dir = dragonDirRef.current
       if (i >= last) dir = -1
       else if (i <= 0) dir = 1
+      const dx = wps[i + dir].x - wps[i].x
+      if (dx) dragonFaceRef.current = Math.sign(dx)
       i += dir
       dragonStepRef.current = i
       dragonDirRef.current  = dir
@@ -614,11 +655,11 @@ export default function MazeGame({ level = 1, onComplete }) {
   const boardW = cols * cellSize
   const boardH = rows * cellSize
 
-  const isForest  = theme === 'forest'
-  const bgGrad    = isForest
-    ? 'radial-gradient(ellipse at 50% 30%, #1f6b2e 0%, #0b3d17 100%)'
+  const isWood    = theme === 'zauberwald'
+  const bgGrad    = isWood
+    ? 'radial-gradient(ellipse at 50% 30%, #2f8a3c 0%, #0b3d17 100%)'
     : 'radial-gradient(ellipse at 50% 30%, #1e0a3c 0%, #080412 100%)'
-  const glow      = isForest
+  const glow      = isWood
     ? '0 0 30px rgba(0,140,0,0.5), 0 12px 50px rgba(0,0,0,0.7)'
     : '0 0 40px rgba(74,0,224,0.45), 0 0 80px rgba(74,0,224,0.18), 0 12px 50px rgba(0,0,0,0.7)'
 
@@ -629,11 +670,9 @@ export default function MazeGame({ level = 1, onComplete }) {
 
   // Invincibility: blinking
   const isInvincible = st.invUntil > Date.now()
+  const lumiSize     = Math.round(cellSize * 1.05)
 
-  // Dragon facing direction
-  const dragonDir = st.dragon && st.pos
-    ? (st.dragon.x > st.pos.x ? -1 : 1)
-    : -1
+  const dragonDir = dragonFaceRef.current
 
   return (
     <div style={{
@@ -684,9 +723,9 @@ export default function MazeGame({ level = 1, onComplete }) {
                 transition={{ type: 'spring', stiffness: 350 }}
               >
                 <img
-                  src={spr(POTION_SPRITES[p.type])}
+                  src={spr('potion.png')}
                   alt=""
-                  style={{ width: 20, height: 20, imageRendering: 'pixelated', display: 'block' }}
+                  style={{ width: 22, height: 22, imageRendering: 'pixelated', display: 'block', filter: potionFilter(p.type) || undefined }}
                   onError={e => { e.target.style.display = 'none' }}
                 />
               </motion.div>
@@ -788,7 +827,7 @@ export default function MazeGame({ level = 1, onComplete }) {
                 zIndex:           10,
                 maskImage:        fogMaskImage,
                 WebkitMaskImage:  fogMaskImage,
-                background:       isForest ? '#071f0e' : '#050208',
+                background:       isWood ? '#071f0e' : '#050208',
               }} />
             )}
 
@@ -809,7 +848,7 @@ export default function MazeGame({ level = 1, onComplete }) {
               <Sparkles key={s.id} x={s.x} y={s.y} cellSize={cellSize} />
             ))}
 
-            {/* ── KNIGHT (player) ──────────────────────────────── */}
+            {/* ── LUMI (player) ───────────────────────────────── */}
             <motion.div
               animate={{ left: st.pos.x * cellSize, top: st.pos.y * cellSize }}
               transition={{ type: 'spring', stiffness: 600, damping: 35 }}
@@ -845,35 +884,34 @@ export default function MazeGame({ level = 1, onComplete }) {
                 transition={{ duration: 0.22 }}
                 style={{ position: 'absolute', inset: 0 }}
               >
-                <img
-                  src={spr(st.moving ? 'maze_knight_walk.gif' : 'maze_knight_idle.gif')}
-                  alt="Spieler"
+                <div
                   className={isInvincible ? 'mz-blink mz-bob' : 'mz-bob'}
-                  draggable={false}
                   style={{
-                    position:       'absolute',
-                    bottom:         '2%',
-                    left:           '50%',
-                    width:          Math.round(cellSize * 1.05),
-                    height:         Math.round(cellSize * 1.05),
-                    // The mz-bob CSS animation (className below) owns
-                    // `transform` while it runs and reads this custom
-                    // property to apply the flip — see maze.css. This
-                    // inline transform is only the fallback for when the
-                    // animation is off (prefers-reduced-motion).
-                    '--facing':     st.facing,
-                    transform:      `translateX(-50%) scaleX(${st.facing})`,
-                    imageRendering: 'pixelated',
-                    filter:         'drop-shadow(0 2px 5px rgba(0,0,0,0.75))',
+                    position:   'absolute',
+                    bottom:     '2%',
+                    left:       '50%',
+                    width:      lumiSize,
+                    height:     lumiSize,
+                    // The mz-bob CSS animation owns `transform` while it
+                    // runs and reads --facing for the flip (see maze.css).
+                    // This inline transform is only the fallback for when
+                    // the animation is off (prefers-reduced-motion).
+                    '--facing': st.facing,
+                    transform:  `translateX(-50%) scaleX(${st.facing})`,
+                    filter:     'drop-shadow(0 2px 5px rgba(0,0,0,0.75))',
                   }}
-                  onError={e => {
-                    e.target.style.display = 'none'
-                    const fb = document.createElement('span')
-                    fb.textContent = '🧙'
-                    fb.style.cssText = `position:absolute;bottom:2%;left:50%;transform:translateX(-50%) scaleX(${st.facing});font-size:${cellSize * 0.8}px`
-                    e.target.parentNode.appendChild(fb)
-                  }}
-                />
+                >
+                  {st.moving ? (
+                    <SpriteStrip sprite={LUMI_WALK} size={lumiSize} />
+                  ) : (
+                    <img
+                      src={spr('lumi_idle.png')}
+                      alt="Lumi"
+                      draggable={false}
+                      style={{ display: 'block', width: lumiSize, height: lumiSize, imageRendering: 'pixelated' }}
+                    />
+                  )}
+                </div>
               </motion.div>
             </motion.div>
 
@@ -898,14 +936,13 @@ export default function MazeGame({ level = 1, onComplete }) {
                     display:        'flex',
                     alignItems:     'center',
                     justifyContent: 'center',
-                    fontSize:       Math.round(cellSize * 0.85),
                     '--dragon-dir': dragonDir,
                     filter:         st.dangerLevel >= 1
                       ? 'drop-shadow(0 0 8px rgba(255,100,0,0.9))'
                       : 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))',
                   }}
                 >
-                  🐉
+                  <SpriteStrip sprite={DRAGON_WALK} size={Math.round(cellSize * 1.1)} />
                 </div>
               </motion.div>
             )}
@@ -932,9 +969,16 @@ export default function MazeGame({ level = 1, onComplete }) {
                     borderRadius:   8,
                   }}
                 >
-                  <div style={{ fontSize: 56 }}>
-                    {showOverlay === 'won' ? '🏆' : '💀'}
-                  </div>
+                  {showOverlay === 'won' ? (
+                    <img
+                      src={spr('lumi_happy.png')}
+                      alt=""
+                      className="mz-coin"
+                      style={{ width: 128, height: 128, imageRendering: 'pixelated' }}
+                    />
+                  ) : (
+                    <div style={{ fontSize: 56 }}>💀</div>
+                  )}
                   <div style={{
                     fontFamily: 'Fredoka, var(--font-heading), sans-serif',
                     fontSize:   26,
