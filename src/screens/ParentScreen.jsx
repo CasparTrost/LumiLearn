@@ -10,6 +10,7 @@ import { AVATARS, AGES, avatarName } from './ProfileScreen.jsx'
 import { MODULES, moduleTitle } from '../modules.js'
 import { ENGLISH_ENABLED } from '../i18n.js'
 import { readStore, removeStore } from '../hooks/safeStorage.js'
+import { useFocusTrap } from '../hooks/useFocusTrap.js'
 
 // ── Styles of the parent area: pixel panels, ink text, ≥4.5:1 contrast ──
 const H2 = { fontFamily:'var(--font-heading)', fontSize:19, fontWeight:700, color:'var(--px-ink)', margin:'0 0 10px' }
@@ -43,7 +44,13 @@ function NumberPad({ value, onChange, length, onEnter }) {
     const onKey = e => {
       if (/^\d$/.test(e.key) && value.length < length) onChange(value + e.key)
       else if (e.key === 'Backspace') onChange(value.slice(0, -1))
-      else if (e.key === 'Enter') onEnter?.()
+      else if (e.key === 'Enter') {
+        // Enter on another focused button (OK, Abbrechen) is that button's;
+        // on a digit it sends, and doesn't type the digit as well
+        if (e.target.closest?.('button') && !e.target.closest('[data-pad]')) return
+        e.preventDefault()
+        onEnter?.()
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -54,7 +61,7 @@ function NumberPad({ value, onChange, length, onEnter }) {
     else if (value.length < length) onChange(value + n)
   }
   return (
-    <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 64px)', gap:10, justifyContent:'center' }}>
+    <div data-pad style={{ display:'grid', gridTemplateColumns:'repeat(3, 64px)', gap:10, justifyContent:'center' }}>
       {[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map((n, i) => n === '' ? <span key={i} /> : (
         <button key={i} className="px-btn px-btn--parch" onClick={() => press(String(n))}
           aria-label={n === '⌫' ? 'Löschen' : String(n)}
@@ -225,11 +232,10 @@ export default function ParentScreen({ onClose }) {
   const showToast = (msg) => { setToast(msg); clearTimeout(toastTimer.current); toastTimer.current = setTimeout(() => setToast(null), 2400) }
   useEffect(() => () => clearTimeout(toastTimer.current), [])
 
-  useEffect(() => {
-    const onKey = e => { if (e.key === 'Escape' && unlocked && !confirm) onClose() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [unlocked, confirm, onClose])
+  // PIN gate, then the parent area: Tab stays inside, Escape closes, and the
+  // focus goes back to the ⚙️ button (a confirm on top takes the keys first)
+  const gateRef  = useFocusTrap(!unlocked, { onEscape: onClose })
+  const panelRef = useFocusTrap(unlocked, { onEscape: onClose })
 
   const name = view?.name ?? 'Kind'
 
@@ -240,6 +246,14 @@ export default function ParentScreen({ onClose }) {
     yesLabel: 'Zurücksetzen',
     onYes: () => { dispatch({ type: 'RESET_MODULE', payload: { id, profileId: view.id } }); showToast(`${moduleTitle(id)} zurückgesetzt`) },
   })
+
+  // Switched-off games disappear from the child's home screen and missions
+  const hiddenGames = view?.hiddenGames ?? []
+  const shownCount = MODULES.length - MODULES.filter(m => hiddenGames.includes(m.id)).length
+  const setGameShown = (id, shown) => {
+    dispatch({ type: 'SET_GAME_HIDDEN', payload: { id, hidden: !shown, profileId: view.id } })
+    showToast(shown ? `${moduleTitle(id)} wird wieder gezeigt` : `${moduleTitle(id)} ausgeblendet`)
+  }
 
   const setModuleLevel = (id, level) => {
     dispatch({ type: 'SET_MODULE_LEVEL', payload: { id, level, profileId: view.id } })
@@ -309,6 +323,7 @@ export default function ParentScreen({ onClose }) {
     const last = p.lastPlayed?.ts ? new Date(p.lastPlayed.ts) : null
     return {
       p, stars, mastered, struggling,
+      hidden: MODULES.filter(m => (p.hiddenGames ?? []).includes(m.id)).length,
       today: minutes(p.playLog?.[todayStr()]?.ms), gamesToday: p.playLog?.[todayStr()]?.games ?? 0,
       week: minutes(weekMs(p)),
       last: last ? `${last.toLocaleDateString('de-DE')} · ${moduleTitle(p.lastPlayed.moduleId)}` : 'noch nicht gespielt',
@@ -319,8 +334,10 @@ export default function ParentScreen({ onClose }) {
 
   if (!unlocked) {
     return createPortal(
-      <div className="px-backdrop" onClick={onClose}>
-        <motion.div initial={{scale:0.85,y:20}} animate={{scale:1,y:0}}
+      // keyed: gate and parent area are different dialogs, not one reused
+      // element (its ref would stay with the gate's focus trap)
+      <div key="gate" className="px-backdrop" onClick={onClose}>
+        <motion.div ref={gateRef} initial={{scale:0.85,y:20}} animate={{scale:1,y:0}}
           role="dialog" aria-modal="true" aria-label="Elternbereich öffnen"
           onClick={e => e.stopPropagation()}
           className="px-panel"
@@ -335,8 +352,8 @@ export default function ParentScreen({ onClose }) {
   }
 
   return createPortal(
-    <div className="px-backdrop" style={{ alignItems:'flex-start', overflowY:'auto', padding:'16px 12px' }}>
-      <motion.div initial={{scale:0.95,y:20}} animate={{scale:1,y:0}}
+    <div key="panel" className="px-backdrop" style={{ alignItems:'flex-start', overflowY:'auto', padding:'16px 12px' }}>
+      <motion.div ref={panelRef} initial={{scale:0.95,y:20}} animate={{scale:1,y:0}}
         role="dialog" aria-modal="true" aria-label="Elternbereich"
         style={{ width:'100%', maxWidth:640, margin:'0 auto' }}>
 
@@ -379,6 +396,7 @@ export default function ParentScreen({ onClose }) {
                   <span>🏆 {o.mastered} von {MODULES.length} gemeistert</span>
                   <span>🔥 {tage(o.streak)}</span>
                   <span>🌾 {o.farm}</span>
+                  {o.hidden > 0 && <span>🙈 {o.hidden} {o.hidden === 1 ? 'Spiel' : 'Spiele'} ausgeblendet</span>}
                 </div>
                 {o.struggling.length > 0 && (
                   <div style={{ ...SMALL, marginTop:6 }}>Fällt gerade schwer: {o.struggling.join(', ')}</div>
@@ -440,34 +458,51 @@ export default function ParentScreen({ onClose }) {
         {view && (
           <div className="px-panel" style={SECTION}>
             <div style={H2}>Spiele von {name}</div>
-            <div style={{ ...SMALL, marginBottom:10 }}>Die Zahl ist das Level, mit dem das Spiel beginnt; Sterne bleiben dabei erhalten. 🔄 setzt ein Spiel ganz zurück.</div>
+            <div style={{ ...SMALL, marginBottom:10 }}>
+              An oder Aus: ob {name} das Spiel auf der Startseite sieht. Mindestens ein Spiel bleibt an.
+              Die Zahl ist das Level, mit dem das Spiel beginnt; Sterne bleiben dabei erhalten. 🔄 setzt ein Spiel ganz zurück.
+            </div>
             <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
               {MODULES.map(({ id, title }) => {
                 const prog = progress[id]
                 const curLv = prog?.currentLevel ?? 1
                 const maxLv = MAX_LEVELS[id] ?? 10
                 const stars = Object.values(prog?.levelStars ?? {}).reduce((a,b) => a+b, 0)
+                const shown = !hiddenGames.includes(id)
+                const last = shown && shownCount <= 1
                 return (
+                  // wraps on a phone: switch and name on top, level and reset below
                   <div key={id} style={{
-                    display:'grid', gridTemplateColumns:'minmax(0,1fr) auto auto', alignItems:'center', gap:8,
-                    padding:'8px 10px', borderRadius:8, border:'2px solid var(--px-parch-dark)', background:'var(--px-parch-light)',
+                    display:'flex', flexWrap:'wrap', alignItems:'center', gap:8,
+                    padding:'8px 10px', borderRadius:8, border:'2px solid var(--px-parch-dark)',
+                    background: shown ? 'var(--px-parch-light)' : 'var(--px-parch-dark)',
                   }}>
-                    <div style={{ minWidth:0 }}>
+                    <button className={`px-btn px-btn--sm ${shown ? 'px-btn--green' : 'px-btn--parch'}`}
+                      role="switch" aria-checked={shown} aria-label={`${title} anzeigen`}
+                      disabled={last} title={last ? 'Ein Spiel bleibt immer an' : undefined}
+                      onClick={() => setGameShown(id, !shown)} style={{ width:64, flexShrink:0 }}>
+                      {shown ? 'An' : 'Aus'}
+                    </button>
+                    <div style={{ flex:'1 1 140px', minWidth:0 }}>
                       <div style={{ fontFamily:'var(--font-heading)', fontSize:16, fontWeight:700, color:'var(--px-ink)', overflowWrap:'anywhere' }}>
                         {title}{prog?.completed ? ' 🏆' : ''}
                       </div>
-                      <div style={{ ...SMALL, fontSize:14 }}>Level {curLv} von {maxLv} · {stars} ⭐</div>
+                      <div style={{ ...SMALL, fontSize:14, color: shown ? SMALL.color : 'var(--px-ink)' }}>
+                        {shown ? '' : 'Ausgeblendet · '}Level {curLv} von {maxLv} · {stars} ⭐
+                      </div>
                     </div>
-                    {/* numbers only: "Level 1" options squeezed the game's name */}
-                    <select value={curLv} aria-label={`${title}: Start-Level`} title="Start-Level"
-                      onChange={e => setModuleLevel(id, parseInt(e.target.value, 10))} style={{ ...INPUT, minHeight:44, width:64 }}>
-                      {Array.from({length: maxLv}, (_,i) => i+1).map(l => (
-                        <option key={l} value={l}>{l}</option>
-                      ))}
-                    </select>
-                    <button className="px-btn px-btn--parch px-btn--sm" onClick={() => resetModule(id)} aria-label={`${title} zurücksetzen`}>
-                      🔄
-                    </button>
+                    <div style={{ display:'flex', gap:8, marginLeft:'auto' }}>
+                      {/* numbers only: "Level 1" options squeezed the game's name */}
+                      <select value={curLv} aria-label={`${title}: Start-Level`} title="Start-Level"
+                        onChange={e => setModuleLevel(id, parseInt(e.target.value, 10))} style={{ ...INPUT, minHeight:44, width:64 }}>
+                        {Array.from({length: maxLv}, (_,i) => i+1).map(l => (
+                          <option key={l} value={l}>{l}</option>
+                        ))}
+                      </select>
+                      <button className="px-btn px-btn--parch px-btn--sm" onClick={() => resetModule(id)} aria-label={`${title} zurücksetzen`}>
+                        🔄
+                      </button>
+                    </div>
                   </div>
                 )
               })}

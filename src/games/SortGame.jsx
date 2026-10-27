@@ -7,7 +7,7 @@ import { narrate, afterNarration, lockPreviews } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { hearable } from '../lib/hearable.js'
 import { result } from '../lib/score.js'
-import { INK, pxCard, pxPanel, pxBubble, pxSegment } from './px.js'
+import { INK, pxCard, pxPanel, pxBubble, pxButton, pxSegment } from './px.js'
 
 /**
  * Sortier-Spaß — Kategorisieren & Konzeptbildung
@@ -19,6 +19,9 @@ import { INK, pxCard, pxPanel, pxBubble, pxSegment } from './px.js'
  *     and the concept together instead of only matching pictures.
  *   • Executive Function — sorting requires inhibitory control and cognitive flexibility
  *     (Diamond, 2013).
+ *   • Inventing the rule — after a level the child may sort six things any way it likes
+ *     and Lumi guesses the rule. Choosing a criterion yourself is the step beyond applying
+ *     one (Bruner's concept attainment); it is not rated, there is no wrong answer.
  */
 
 const ZONE_DROP = '0 5px 0 rgba(42,27,61,0.35)'
@@ -241,6 +244,79 @@ const LEVEL_PLAN = [
 function shuffleArr(a) { return [...a].sort(() => Math.random() - 0.5) }
 const cap = s => s[0].toUpperCase() + s.slice(1)
 
+// ── Free sorting: the child invents the rule ────────────────────────────
+// Things whose sprite shows one clear colour, each with the properties Lumi
+// knows: animal, food, flies, vehicle. Nothing with an "it depends" (a fish
+// is an animal and food, a chick may or may not fly), so a guess is fair.
+const thing = (emoji, name, color, props = '') => ({
+  emoji, name, color, tier: props.includes('t'), essen: props.includes('e'),
+  fliegt: props.includes('f'), faehrt: props.includes('v'),
+})
+const FREE_THINGS = [
+  thing('🍎', 'der Apfel', 'rot', 'e'), thing('🍓', 'die Erdbeere', 'rot', 'e'), thing('🍒', 'die Kirschen', 'rot', 'e'),
+  thing('🍅', 'die Tomate', 'rot', 'e'), thing('🐞', 'der Marienkäfer', 'rot', 'tf'), thing('🎈', 'der Luftballon', 'rot', 'f'),
+  thing('🚗', 'das Auto', 'rot', 'v'), thing('🚒', 'das Feuerwehrauto', 'rot', 'v'),
+  thing('🥦', 'der Brokkoli', 'grün', 'e'), thing('🥒', 'die Gurke', 'grün', 'e'), thing('🫑', 'die Paprika', 'grün', 'e'),
+  thing('🐸', 'der Frosch', 'grün', 't'), thing('🐢', 'die Schildkröte', 'grün', 't'), thing('🦎', 'die Eidechse', 'grün', 't'),
+  thing('🐛', 'die Raupe', 'grün', 't'), thing('🐊', 'das Krokodil', 'grün', 't'), thing('🌵', 'der Kaktus', 'grün'),
+  thing('🍀', 'das Kleeblatt', 'grün'),
+  thing('🍌', 'die Banane', 'gelb', 'e'), thing('🍋', 'die Zitrone', 'gelb', 'e'), thing('🧀', 'der Käse', 'gelb', 'e'),
+  thing('🐝', 'die Biene', 'gelb', 'tf'), thing('🌻', 'die Sonnenblume', 'gelb'), thing('🚕', 'das Taxi', 'gelb', 'v'),
+  thing('🚌', 'der Bus', 'gelb', 'v'),
+  thing('🫐', 'die Heidelbeeren', 'blau', 'e'), thing('🐳', 'der Wal', 'blau', 't'), thing('🐬', 'der Delfin', 'blau', 't'),
+  thing('🐦', 'der Vogel', 'blau', 'tf'), thing('🦋', 'der Schmetterling', 'blau', 'tf'), thing('🧢', 'die Mütze', 'blau'),
+  thing('👕', 'das T-Shirt', 'blau'),
+]
+
+// What Lumi can recognise, in this order. `says` is the guess.
+const RULES = [
+  { key: 'tier',   says: 'Ich glaube, du hast nach Tieren sortiert! In einem Korb sind die Tiere.' },
+  { key: 'essen',  says: 'Ich glaube, du hast nach Essen sortiert! In einem Korb ist alles, was man essen kann.' },
+  { key: 'fliegt', says: 'Ich glaube, du hast sortiert, was fliegen kann! In einem Korb ist alles, was fliegt.' },
+  { key: 'faehrt', says: 'Ich glaube, du hast nach Fahrzeugen sortiert! In einem Korb ist alles, was fährt.' },
+  { key: 'color',  says: ([a, b]) => {
+    const ca = new Set(a.map(t => t.color)), cb = new Set(b.map(t => t.color))
+    return ca.size === 1 && cb.size === 1
+      ? `Ich glaube, du hast nach Farben sortiert! In einem Korb ist alles ${[...ca][0]}, im anderen alles ${[...cb][0]}.`
+      : 'Ich glaube, du hast nach Farben sortiert!'
+  } },
+]
+
+// The split a rule makes of the things, the same whichever basket is which
+const splitBy = (things, key) => {
+  const first = things[0][key]
+  return things.map(t => (t[key] === first ? 'a' : 'b')).join('')
+}
+
+// Six things, three in each of two colours, chosen so that animals and food
+// both split them and every rule splits them differently: whatever the child
+// does matches at most one rule.
+function buildFree() {
+  for (let n = 0; n < 300; n++) {
+    const [c1, c2] = shuffleArr(['rot', 'grün', 'gelb', 'blau'])
+    const things = shuffleArr([
+      ...shuffleArr(FREE_THINGS.filter(t => t.color === c1)).slice(0, 3),
+      ...shuffleArr(FREE_THINGS.filter(t => t.color === c2)).slice(0, 3),
+    ])
+    const splits = RULES.map(r => splitBy(things, r.key)).filter(s => s.includes('b'))
+    const count = key => things.filter(t => t[key]).length
+    if (count('tier') >= 2 && count('tier') <= 4 && count('essen') >= 2 && count('essen') <= 4
+        && new Set(splits).size === splits.length) return things
+  }
+  return ['🍎', '🍓', '🐞', '🐸', '🥦', '🍀'].map(e => FREE_THINGS.find(t => t.emoji === e))
+}
+
+// Lumi's guess for the child's two baskets
+function guessRule(baskets) {
+  if (!baskets[0].length || !baskets[1].length) return 'Alles in einen Korb! Das ist auch eine Idee.'
+  const fits = RULES.find(({ key }) => {
+    const a = new Set(baskets[0].map(t => t[key]))
+    return baskets[1].every(t => !a.has(t[key]))
+  })
+  if (fits) return typeof fits.says === 'function' ? fits.says(baskets) : fits.says
+  return 'Spannend! Wie hast du sortiert? Erzähl es mal!'
+}
+
 // A round draws its things from the set's larger pool, so the same level
 // played again shows different things: 4 per basket on odd levels, 5 on
 // even ones, 3 per basket with three baskets.
@@ -251,6 +327,152 @@ function buildRound(level) {
   const items = cats.flatMap((c, ci) => shuffleArr(c.items).slice(0, per)
     .map(([emoji, name]) => ({ id: `${ci}-${emoji}`, emoji, name, cat: ci })))
   return { cats, items: shuffleArr(items) }
+}
+
+const FREE_TINT = [TINT.lilac, TINT.brown]
+const FREE_TASK = 'Jetzt bestimmst du! Sortiere die Sachen in die zwei Körbe, ganz wie du willst. Dann rät Lumi, wie du sortiert hast.'
+
+// The bonus round: tap a thing (the next one is already chosen), then a
+// basket. Once all are in, tap a thing in a basket and then the other basket
+// to move it; before that, a tap on a basket's things counts as a tap on the
+// basket. "Fertig" lets Lumi guess. Not rated — the level ends with the
+// result of the sorting before.
+function FreeSort({ onDone }) {
+  const [things] = useState(buildFree)
+  const [where,  setWhere]  = useState(() => things.map(() => null))   // basket 0 | 1, or null
+  const [sel,    setSel]    = useState(0)
+  const [guess,  setGuess]  = useState(null)
+  const allIn = where.every(w => w !== null)
+
+  useEffect(() => {
+    lockPreviews()
+    const id = setTimeout(() => sayTask(`${FREE_TASK} Zuerst: ${things[0].name}.`), 400)
+    return () => clearTimeout(id)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const put = useCallback((b) => {
+    if (guess || sel === null) return
+    const next = where.map((x, j) => (j === sel ? b : x))
+    const nextSel = next.indexOf(null)
+    setWhere(next)
+    setSel(nextSel === -1 ? null : nextSel)
+    sfx.pop()
+    narrate([{ text: nextSel === -1 ? 'Fertig? Dann tippe auf den grünen Haken.' : `Und jetzt: ${things[nextSel].name}.` }])
+  }, [guess, sel, where, things])
+
+  const pick = (i, e) => {
+    e?.stopPropagation()
+    if (guess) return
+    if (where[i] !== null && sel !== null && where[sel] === null) { put(where[i]); return }
+    setSel(i)
+    narrate([{ text: `${cap(things[i].name)}.` }], { skipIfSame: true })
+  }
+
+  const check = () => {
+    const g = guessRule([0, 1].map(b => things.filter((_, i) => where[i] === b)))
+    setGuess(g)
+    sfx.match()
+    lockPreviews()
+    narrate([{ text: g }])
+  }
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'ArrowLeft')  { e.preventDefault(); put(0) }
+      if (e.key === 'ArrowRight') { e.preventDefault(); put(1) }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [put])
+
+  const bubble = guess ?? (allIn && sel === null ? 'Fertig? Tippe auf den Haken!' : 'Sortiere, wie du willst!')
+
+  return (
+    <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', padding:'clamp(10px,2vw,20px) clamp(12px,3vw,28px)', gap:'clamp(10px,1.8vw,16px)', userSelect:'none' }}>
+      <div style={{ display:'flex', alignItems:'center', gap:12, width:'100%', maxWidth:700 }}>
+        <LumiCharacter mood={guess ? 'excited' : 'happy'} size={66} />
+        <div style={{ flex:1, ...pxBubble, padding:'10px 16px', fontFamily:'var(--font-heading)', fontSize:'clamp(15px,3vw,20px)', color:'var(--text-primary)' }}>
+          {bubble}
+        </div>
+        <HearOptions items={[guess ?? FREE_TASK]} label="Vorlesen" size={48} />
+      </div>
+
+      {/* The six things; a placed one leaves an empty slot */}
+      <div style={{ width:'100%', maxWidth:700, display:'grid', gridTemplateColumns:'repeat(6, minmax(0, 1fr))', gap:'clamp(6px,1.4vw,12px)' }}>
+        {things.map((t, i) => (
+          where[i] === null ? (
+            <motion.button key={t.emoji} onClick={e => pick(i, e)} aria-label={t.name}
+              whileTap={{ scale:0.94 }}
+              animate={{ scale: sel === i ? 1.08 : 1 }}
+              style={{
+                aspectRatio:'1', minWidth:44, padding:0, cursor:'pointer',
+                ...pxCard(sel === i ? 'selected' : undefined),
+                ...(sel === i ? { boxShadow:`inset 0 0 0 3px ${INK}, ${ZONE_DROP}` } : {}),
+                display:'flex', alignItems:'center', justifyContent:'center',
+                fontSize:'clamp(28px,7vw,60px)', lineHeight:1,
+              }}>
+              {t.emoji}
+            </motion.button>
+          ) : (
+            <div key={t.emoji} style={{ aspectRatio:'1', borderRadius:12, border:'3px dashed rgba(42,27,61,0.25)' }} />
+          )
+        ))}
+      </div>
+
+      {/* Two baskets, no names: the child decides what goes where */}
+      <div style={{ width:'100%', maxWidth:700, display:'grid', gridTemplateColumns:'1fr 1fr', gap:'clamp(8px,2.4vw,20px)' }}>
+        {FREE_TINT.map((c, b) => (
+          <motion.div key={b} role="button" tabIndex={0}
+            aria-label={b === 0 ? 'Linker Korb' : 'Rechter Korb'}
+            onClick={() => put(b)}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); put(b) } }}
+            whileTap={!guess && sel !== null ? { scale:0.97 } : {}}
+            style={{
+              minHeight:'clamp(150px,26vw,220px)', minWidth:0, cursor: guess || sel === null ? 'default' : 'pointer',
+              background:c.bg, border:`3px solid ${INK}`, borderRadius:14,
+              boxShadow:`inset 0 -6px 0 ${c.ring}33, ${ZONE_DROP}`,
+              display:'flex', flexDirection:'column', alignItems:'center', gap:8,
+              padding:'clamp(8px,1.5vw,14px) 6px',
+            }}>
+            <span style={{ fontSize:'clamp(34px,6.5vw,48px)', lineHeight:1 }}>{'🧺'}</span>
+            <span style={{ display:'flex', flexWrap:'wrap', gap:6, justifyContent:'center' }}>
+              <AnimatePresence>
+                {things.map((t, i) => where[i] === b && (
+                  <motion.button key={t.emoji} onClick={e => pick(i, e)} aria-label={t.name}
+                    initial={{ scale:0, y:-10 }} animate={{ scale:1, y:0 }} exit={{ scale:0 }}
+                    transition={{ type:'spring', stiffness:420, damping:18 }}
+                    disabled={!!guess}
+                    style={{ minWidth:44, minHeight:44, padding:2, borderRadius:10, cursor: guess ? 'default' : 'pointer',
+                      background: sel === i ? '#FFF0B8' : 'transparent', border: sel === i ? `3px solid ${INK}` : '3px solid transparent',
+                      display:'flex', alignItems:'center', justifyContent:'center', fontSize:'clamp(28px,5.5vw,40px)', lineHeight:1 }}>
+                    {t.emoji}
+                  </motion.button>
+                ))}
+              </AnimatePresence>
+            </span>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Fixed slot: "Fertig" when everything is in a basket, then "Weiter" */}
+      <div style={{ height:62, display:'flex', alignItems:'center', justifyContent:'center' }}>
+        {allIn && !guess && (
+          <motion.button key="check" initial={{ scale:0 }} animate={{ scale:1 }} whileTap={{ scale:0.94 }}
+            onClick={check} {...hearable('Fertig')} aria-label="Fertig"
+            style={{ ...pxButton('green'), padding:'10px 34px', minHeight:52, fontSize:'clamp(17px,3.4vw,21px)' }}>
+            {'✅ Fertig!'}
+          </motion.button>
+        )}
+        {guess && (
+          <motion.button key="next" initial={{ scale:0 }} animate={{ scale:1 }} transition={{ delay:0.4 }} whileTap={{ scale:0.94 }}
+            onClick={onDone} {...hearable('Weiter')} aria-label="Weiter"
+            style={{ ...pxButton('green'), padding:'10px 40px', minHeight:52, fontSize:'clamp(17px,3.4vw,21px)' }}>
+            {'Weiter! ➡️'}
+          </motion.button>
+        )}
+      </div>
+    </div>
+  )
 }
 
 export default function SortGame({ level = 1, onComplete }) {
@@ -264,6 +486,7 @@ export default function SortGame({ level = 1, onComplete }) {
   const [mood,     setMood]     = useState('happy')
   const [phase,    setPhase]    = useState('playing')
   const missed     = useRef(new Set())               // items that needed more than one try
+  const final      = useRef(null)                     // the level's result, kept through the bonus round
   const itemRef    = useRef(null)
   const basketRefs = useRef([])
   const busy       = useRef(false)
@@ -298,12 +521,11 @@ export default function SortGame({ level = 1, onComplete }) {
         setMood('happy')
         busy.current = false
         if (!next) {
+          final.current = result(total - missed.current.size, total)
           setPhase('done')
           sfx.complete()
           afterNarration(() => {
-            narrate([{ text: 'Geschafft! Alles ist sortiert.' }], {
-              onEnd: () => onComplete(result(total - missed.current.size, total)),
-            })
+            narrate([{ text: 'Geschafft! Alles ist sortiert. Möchtest du jetzt selbst sortieren, ganz wie du willst? Dann tippe auf den Korb. Sonst tippe auf den Pfeil.' }])
           }, { minMs: 300 })
         } else {
           setCurIdx(curIdx + 1)
@@ -325,7 +547,7 @@ export default function SortGame({ level = 1, onComplete }) {
         busy.current = false
       }, 1300)
     }
-  }, [current, cats, items, curIdx, phase, total, onComplete])
+  }, [current, cats, items, curIdx, phase, total])
 
   // Keyboard for desktop: ← first basket, → last, ↓ the middle one
   useEffect(() => {
@@ -347,6 +569,8 @@ export default function SortGame({ level = 1, onComplete }) {
 
   const sayItem = () => current && narrate([{ text: `${cap(current.name)}.` }], { skipIfSame: true })
   const three = cats.length === 3
+
+  if (phase === 'free') return <FreeSort onDone={() => onComplete(final.current)} />
 
   return (
     <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', padding:'clamp(10px,2vw,20px) clamp(12px,3vw,28px)', gap:'clamp(10px,1.8vw,16px)', userSelect:'none' }}>
@@ -452,10 +676,23 @@ export default function SortGame({ level = 1, onComplete }) {
             style={{ position:'fixed', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(42,27,61,0.25)', zIndex:50 }}
           >
             <motion.div initial={{ scale:0.7 }} animate={{ scale:1 }}
-              style={{ ...pxPanel, padding:'24px 36px', display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
+              style={{ ...pxPanel, padding:'24px clamp(16px,4vw,36px)', margin:16, display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
               <div style={{ fontSize:72, lineHeight:1 }}>{'🎉'}</div>
               <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(26px,7vw,44px)', fontWeight:800, color:INK }}>
                 {'Geschafft!'}
+              </div>
+              {/* Bonus: sort any way you like (not rated) — or on to the stars */}
+              <div style={{ display:'flex', gap:12, flexWrap:'wrap', justifyContent:'center', marginTop:6 }}>
+                <motion.button whileTap={{ scale:0.94 }} onClick={() => setPhase('free')}
+                  {...hearable('Selbst sortieren')} aria-label="Selbst sortieren"
+                  style={{ ...pxButton('gold'), padding:'10px 20px', minHeight:52, fontSize:'clamp(16px,3.2vw,20px)' }}>
+                  {'🧺 Selbst sortieren'}
+                </motion.button>
+                <motion.button whileTap={{ scale:0.94 }} onClick={() => onComplete(final.current)}
+                  {...hearable('Weiter')} aria-label="Weiter"
+                  style={{ ...pxButton('green'), padding:'10px 28px', minHeight:52, fontSize:'clamp(16px,3.2vw,20px)' }}>
+                  {'Weiter ➡️'}
+                </motion.button>
               </div>
             </motion.div>
           </motion.div>

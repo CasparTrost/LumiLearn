@@ -1,6 +1,6 @@
 import { useReducer, useEffect, useRef, useState, useCallback, useMemo, useId, memo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { genMaze } from './maze/mazeGen.js'
+import { genMaze, shortestTour } from './maze/mazeGen.js'
 import { mazeReducer, initState } from './maze/mazeReducer.js'
 import { useBoardSize } from './maze/useBoardSize.js'
 import { useSwipe } from './maze/useSwipe.js'
@@ -47,6 +47,14 @@ const LEVEL_CONFIG = level => {
   const patrolLen   = level <= 4 ? 5 : level <= 7 ? 6 : 7
   return { hasDragon, cols, rows, fogRadius, theme, tint, dragonSpeed, patrolLen }
 }
+
+// A win in at most this many times the fewest possible steps (all potions,
+// then the exit) earns the crown: extra praise for planning the way. It
+// never changes the stars, which go by the dragon's hits alone.
+const SHORT_WAY = 1.3
+// Where the stars twinkle round Lumi on a perfect win: the sides and the
+// top, never below, where the title follows
+const TWINKLE_ANGLES = [-150, -30, 170, 10, -115, -65]
 
 // ──────────────────────────────────────────────────────────────────
 // WALL TILE LOGIC — PixelLab-generated Wang (corner) tileset
@@ -642,6 +650,10 @@ export default function MazeGame({ level = 1, onComplete }) {
 
   const [sparkles, setSparkles]     = useState([]) // [{ id, x, y }]
   const [showOverlay, setShowOverlay] = useState(null) // 'won' | 'dead'
+  // The fewest steps for this maze, and the bonus earned at the win:
+  // null, 'short' (crown) or 'perfect' (short way and the dragon never hit)
+  const shortest = useMemo(() => shortestTour(mazeRef.current), [])
+  const [bonus, setBonus] = useState(null)
 
   // Every time the dragon caught Lumi, over all tries: the stars go by it
   // (none → 3, one → 2, more → 1). A win used to give three stars however
@@ -782,13 +794,21 @@ export default function MazeGame({ level = 1, onComplete }) {
         }, 3200)
         break
 
-      case 'won':
+      case 'won': {
+        const short   = ev.moves <= shortest * SHORT_WAY
+        // "No hits" only means something where there is a dragon
+        const perfect = short && cfg.hasDragon && hitsRef.current === 0
         try { sfx.complete() } catch { /* ignore */ }
-        speak('Super! Du hast das Labyrinth gemeistert!', { lang: 'de-DE' })
+        speak('Super! Du hast das Labyrinth gemeistert!'
+          + (short ? ' Du hast einen ganz kurzen Weg gefunden!' : '')
+          + (perfect ? ' Und der Drache hat dich kein einziges Mal erwischt. Du bist ein echter Labyrinth-Profi!' : ''),
+          { lang: 'de-DE' })
         navigator.vibrate?.([50, 30, 50, 30, 100])
+        setBonus(perfect ? 'perfect' : short ? 'short' : null)
         setShowOverlay('won')
-        finish(Math.max(0, 3 - hitsRef.current), 3, 2200)
+        finish(Math.max(0, 3 - hitsRef.current), 3, short ? 3200 : 2200)
         break
+      }
 
       default:
         break
@@ -1232,12 +1252,46 @@ export default function MazeGame({ level = 1, onComplete }) {
                   }}
                 >
                   {showOverlay === 'won' ? (
-                    <img
-                      src={spr('lumi_happy.png')}
-                      alt=""
-                      className="mz-coin"
-                      style={{ width: 128, height: 128, imageRendering: 'pixelated' }}
-                    />
+                    <div style={{ position: 'relative', width: 'min(128px, 24vh)', aspectRatio: '1' }}>
+                      <img
+                        src={spr('lumi_happy.png')}
+                        alt=""
+                        className="mz-coin"
+                        style={{ width: '100%', height: '100%', imageRendering: 'pixelated', display: 'block' }}
+                      />
+                      {/* The crown for a short way drops onto Lumi's head */}
+                      {bonus && (
+                        <motion.div
+                          initial={{ y: -70, opacity: 0, rotate: -25 }}
+                          animate={{ y: 0, opacity: 1, rotate: -8 }}
+                          transition={{ delay: 0.5, type: 'spring', stiffness: 260, damping: 11 }}
+                          style={{
+                            position: 'absolute', top: '-19%', left: '50%', marginLeft: '-19%',
+                            width: '38%', fontSize: 'min(48px, 9vh)', lineHeight: 1, textAlign: 'center',
+                            filter: 'drop-shadow(0 0 10px rgba(255,215,0,0.9))',
+                          }}
+                        >
+                          👑
+                        </motion.div>
+                      )}
+                      {/* No hit and a short way: stars twinkle all round */}
+                      {bonus === 'perfect' && TWINKLE_ANGLES.map((deg, i) => (
+                        <motion.span
+                          key={deg}
+                          aria-hidden
+                          animate={{ scale: [0.4, 1.2, 0.4], opacity: [0.3, 1, 0.3] }}
+                          transition={{ duration: 1.1, delay: 0.8 + i * 0.18, repeat: Infinity }}
+                          style={{
+                            position: 'absolute', lineHeight: 1, fontSize: 'min(26px, 5vh)',
+                            left: `${50 + Math.cos(deg * Math.PI / 180) * 64}%`,
+                            top:  `${50 + Math.sin(deg * Math.PI / 180) * 56}%`,
+                            marginLeft: -13, marginTop: -13,
+                          }}
+                        >
+                          ✨
+                        </motion.span>
+                      ))}
+                    </div>
                   ) : (
                     <div style={{ fontSize: 56 }}>💀</div>
                   )}
@@ -1247,11 +1301,33 @@ export default function MazeGame({ level = 1, onComplete }) {
                     fontWeight: 700,
                     color:      'white',
                   }}>
-                    {showOverlay === 'won' ? 'Labyrinth gemeistert!' : 'Der Drache war zu schnell!'}
-                  </div>
-                  <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 15 }}>
                     {showOverlay === 'won'
-                      ? `In ${st.moves} Zügen! 🎉`
+                      ? (bonus === 'perfect' ? 'Labyrinth-Profi!' : 'Labyrinth gemeistert!')
+                      : 'Der Drache war zu schnell!'}
+                  </div>
+                  {showOverlay === 'won' && bonus && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.6 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.9, type: 'spring', stiffness: 300 }}
+                      style={{
+                        background:   'var(--px-gold)',
+                        color:        'var(--px-ink)',
+                        border:       '3px solid var(--px-ink)',
+                        borderRadius: 10,
+                        boxShadow:    '0 4px 0 var(--px-ink)',
+                        padding:      '4px 16px',
+                        fontFamily:   'Fredoka, var(--font-heading), sans-serif',
+                        fontSize:     17,
+                        fontWeight:   700,
+                      }}
+                    >
+                      {bonus === 'perfect' ? 'Kurzer Weg, kein Treffer!' : 'Ganz kurzer Weg!'}
+                    </motion.div>
+                  )}
+                  <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: 15 }}>
+                    {showOverlay === 'won'
+                      ? `👣 ${st.moves} Schritte`
                       : 'Versuche es nochmal…'}
                   </div>
                 </motion.div>

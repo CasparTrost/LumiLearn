@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
+import { narrate } from '../narrator.js'
 import { hearable } from '../lib/hearable.js'
 import { result } from '../lib/score.js'
 import { pxCard, pxBubble, pxButton, pxSegment, INK } from './px.js'
@@ -30,72 +31,130 @@ import { pxCard, pxBubble, pxButton, pxSegment, INK } from './px.js'
 // small plane a plane: a child who read the shadow correctly was told it was
 // wrong. Animals are full-body pictures where possible (a face is a round
 // blob in silhouette). Facts are short, true, and without numbers a child of
-// five cannot picture.
+// five cannot picture. The clue is the sound joker: what the thing sounds
+// like or what it is for, without its name.
 const CHALLENGES = [
   // Tiere
-  { shadow: '🐘', name: 'Elefant',       decoys: ['🐪','🦘','🐢'], fact: 'Mit seinem langen Rüssel kann der Elefant trinken und duschen!' },
-  { shadow: '🐪', name: 'Kamel',         decoys: ['🐘','🐢','🐍'], fact: 'Das Kamel kann viele Tage ohne Wasser auskommen!' },
-  { shadow: '🐎', name: 'Pferd',         decoys: ['🐢','🦘','🐿️'], fact: 'Pferde können sogar im Stehen schlafen!' },
-  { shadow: '🦘', name: 'Känguru',       decoys: ['🐘','🐢','🐊'], fact: 'Das Känguru-Baby wohnt im Beutel seiner Mama!' },
-  { shadow: '🐇', name: 'Hase',          decoys: ['🐢','🦔','🐌'], fact: 'Hasen haben lange Ohren und hören sehr gut!' },
-  { shadow: '🐿️', name: 'Eichhörnchen',  decoys: ['🦔','🐢','🐌'], fact: 'Eichhörnchen verstecken im Herbst Nüsse für den Winter!' },
-  { shadow: '🦔', name: 'Igel',          decoys: ['🐿️','🐇','🐊'], fact: 'Bei Gefahr rollt sich der Igel zu einer stacheligen Kugel zusammen!' },
-  { shadow: '🐢', name: 'Schildkröte',   decoys: ['🐊','🐇','🐍'], fact: 'Die Schildkröte trägt ihren Panzer immer mit sich herum!' },
-  { shadow: '🐊', name: 'Krokodil',      decoys: ['🐢','🐍','🐘'], fact: 'Krokodile gibt es schon seit der Zeit der Dinosaurier!' },
-  { shadow: '🐍', name: 'Schlange',      decoys: ['🐊','🐌','🐢'], fact: 'Schlangen haben keine Beine und schlängeln sich vorwärts!' },
-  { shadow: '🦕', name: 'Dinosaurier',   decoys: ['🐊','🐘','🐢'], fact: 'Dinosaurier lebten vor sehr, sehr langer Zeit!' },
-  { shadow: '🦈', name: 'Hai',           decoys: ['🐙','🦀','🐢'], fact: 'Haie verlieren ständig Zähne, und es wachsen immer neue nach!' },
-  { shadow: '🐬', name: 'Delfin',        decoys: ['🐳','🦀','🐙'], fact: 'Delfine sind sehr klug und schwimmen sehr schnell!' },
-  { shadow: '🐳', name: 'Wal',           decoys: ['🐙','🦀','🐢'], fact: 'Wale sind die größten Tiere der Welt!' },
-  { shadow: '🦀', name: 'Krabbe',        decoys: ['🐙','🐌','🐢'], fact: 'Krabben laufen seitwärts!' },
-  { shadow: '🐙', name: 'Krake',         decoys: ['🦀','🐌','🐢'], fact: 'Eine Krake hat acht Arme!' },
-  { shadow: '🦋', name: 'Schmetterling', decoys: ['🐝','🐌','🐢'], fact: 'Bevor er fliegen kann, ist der Schmetterling eine Raupe!' },
-  { shadow: '🐝', name: 'Biene',         decoys: ['🦋','🐌','🐢'], fact: 'Bienen machen Honig und bestäuben Blumen!' },
-  { shadow: '🐌', name: 'Schnecke',      decoys: ['🦋','🐍','🐇'], fact: 'Schnecken kriechen ganz langsam und tragen ihr Haus auf dem Rücken!' },
-  { shadow: '🐧', name: 'Pinguin',       decoys: ['🦢','🐓','🦜'], fact: 'Pinguine können nicht fliegen, aber super schwimmen!' },
-  { shadow: '🦢', name: 'Schwan',        decoys: ['🐧','🐓','🦜'], fact: 'Schwäne haben einen langen, gebogenen Hals!' },
-  { shadow: '🐓', name: 'Hahn',          decoys: ['🐧','🦢','🐿️'], fact: 'Der Hahn kräht am Morgen: Kikeriki!' },
-  { shadow: '🦜', name: 'Papagei',       decoys: ['🐧','🦢','🦋'], fact: 'Papageien können Wörter nachsprechen!' },
-  { shadow: '🦅', name: 'Adler',         decoys: ['🐧','🦢','🐓'], fact: 'Adler sehen ganz weit, viel weiter als wir!' },
-  { shadow: '🐅', name: 'Tiger',         decoys: ['🐘','🦘','🐢'], fact: 'Tiger sind die größten Katzen der Welt!' },
-  { shadow: '🐒', name: 'Affe',          decoys: ['🐘','🐢','🐊'], fact: 'Affen klettern geschickt von Baum zu Baum!' },
-  { shadow: '🦏', name: 'Nashorn',       decoys: ['🐇','🐢','🐊'], fact: 'Das Nashorn hat ein Horn auf der Nase!' },
+  { shadow: '🐘', name: 'Elefant',       decoys: ['🐪','🦘','🐢'], fact: 'Mit seinem langen Rüssel kann der Elefant trinken und duschen!',
+    clue: 'Es hat eine ganz lange Nase und trompetet: Töröö!' },
+  { shadow: '🐪', name: 'Kamel',         decoys: ['🐘','🐢','🐍'], fact: 'Das Kamel kann viele Tage ohne Wasser auskommen!',
+    clue: 'Es hat Höcker auf dem Rücken und läuft durch die Wüste.' },
+  { shadow: '🐎', name: 'Pferd',         decoys: ['🐢','🦘','🐿️'], fact: 'Pferde können sogar im Stehen schlafen!',
+    clue: 'Es wiehert laut, und man kann darauf reiten.' },
+  { shadow: '🦘', name: 'Känguru',       decoys: ['🐘','🐢','🐊'], fact: 'Das Känguru-Baby wohnt im Beutel seiner Mama!',
+    clue: 'Es hüpft auf zwei großen Beinen ganz weit.' },
+  { shadow: '🐇', name: 'Hase',          decoys: ['🐢','🦔','🐌'], fact: 'Hasen haben lange Ohren und hören sehr gut!',
+    clue: 'Es hoppelt über die Wiese und knabbert gern Möhren.' },
+  { shadow: '🐿️', name: 'Eichhörnchen',  decoys: ['🦔','🐢','🐌'], fact: 'Eichhörnchen verstecken im Herbst Nüsse für den Winter!',
+    clue: 'Es klettert flink auf Bäume und sammelt Nüsse.' },
+  { shadow: '🦔', name: 'Igel',          decoys: ['🐿️','🐇','🐊'], fact: 'Bei Gefahr rollt sich der Igel zu einer stacheligen Kugel zusammen!',
+    clue: 'Es hat Stacheln auf dem Rücken und schnüffelt im Laub.' },
+  { shadow: '🐢', name: 'Schildkröte',   decoys: ['🐊','🐇','🐍'], fact: 'Die Schildkröte trägt ihren Panzer immer mit sich herum!',
+    clue: 'Es trägt einen harten Panzer und ist ganz langsam.' },
+  { shadow: '🐊', name: 'Krokodil',      decoys: ['🐢','🐍','🐘'], fact: 'Krokodile gibt es schon seit der Zeit der Dinosaurier!',
+    clue: 'Es schwimmt im Fluss und hat ein riesiges Maul voller Zähne.' },
+  { shadow: '🐍', name: 'Schlange',      decoys: ['🐊','🐌','🐢'], fact: 'Schlangen haben keine Beine und schlängeln sich vorwärts!',
+    clue: 'Es zischt und kriecht ohne Beine über den Boden.' },
+  { shadow: '🦕', name: 'Dinosaurier',   decoys: ['🐊','🐘','🐢'], fact: 'Dinosaurier lebten vor sehr, sehr langer Zeit!',
+    clue: 'Es brüllt laut und lebte vor ganz langer Zeit.' },
+  { shadow: '🦈', name: 'Hai',           decoys: ['🐙','🦀','🐢'], fact: 'Haie verlieren ständig Zähne, und es wachsen immer neue nach!',
+    clue: 'Es schwimmt im Meer und hat eine spitze Flosse auf dem Rücken.' },
+  { shadow: '🐬', name: 'Delfin',        decoys: ['🐳','🦀','🐙'], fact: 'Delfine sind sehr klug und schwimmen sehr schnell!',
+    clue: 'Es pfeift und klickt und springt hoch aus dem Wasser.' },
+  { shadow: '🐳', name: 'Wal',           decoys: ['🐙','🦀','🐢'], fact: 'Wale sind die größten Tiere der Welt!',
+    clue: 'Es ist riesengroß und spritzt Wasser aus dem Kopf in die Luft.' },
+  { shadow: '🦀', name: 'Krabbe',        decoys: ['🐙','🐌','🐢'], fact: 'Krabben laufen seitwärts!',
+    clue: 'Es hat zwei Scheren und krabbelt am Strand.' },
+  { shadow: '🐙', name: 'Krake',         decoys: ['🦀','🐌','🐢'], fact: 'Eine Krake hat acht Arme!',
+    clue: 'Es lebt im Meer und hat ganz viele Arme.' },
+  { shadow: '🦋', name: 'Schmetterling', decoys: ['🐝','🐌','🐢'], fact: 'Bevor er fliegen kann, ist der Schmetterling eine Raupe!',
+    clue: 'Es hat bunte Flügel und flattert von Blume zu Blume.' },
+  { shadow: '🐝', name: 'Biene',         decoys: ['🦋','🐌','🐢'], fact: 'Bienen machen Honig und bestäuben Blumen!',
+    clue: 'Es sammelt süßen Saft aus den Blumen und macht: Summ, summ!' },
+  { shadow: '🐌', name: 'Schnecke',      decoys: ['🦋','🐍','🐇'], fact: 'Schnecken kriechen ganz langsam und tragen ihr Haus auf dem Rücken!',
+    clue: 'Es trägt sein Haus auf dem Rücken und kriecht ganz langsam.' },
+  { shadow: '🐧', name: 'Pinguin',       decoys: ['🦢','🐓','🦜'], fact: 'Pinguine können nicht fliegen, aber super schwimmen!',
+    clue: 'Es watschelt über das Eis und kann nicht fliegen.' },
+  { shadow: '🦢', name: 'Schwan',        decoys: ['🐧','🐓','🦜'], fact: 'Schwäne haben einen langen, gebogenen Hals!',
+    clue: 'Es schwimmt auf dem See und hat einen langen Hals.' },
+  { shadow: '🐓', name: 'Hahn',          decoys: ['🐧','🦢','🐿️'], fact: 'Der Hahn kräht am Morgen: Kikeriki!',
+    clue: 'Es ruft am Morgen: Kikeriki!' },
+  { shadow: '🦜', name: 'Papagei',       decoys: ['🐧','🦢','🦋'], fact: 'Papageien können Wörter nachsprechen!',
+    clue: 'Es ist ganz bunt und kann sprechen: Hallo, hallo!' },
+  { shadow: '🦅', name: 'Adler',         decoys: ['🐧','🦢','🐓'], fact: 'Adler sehen ganz weit, viel weiter als wir!',
+    clue: 'Es kreist hoch am Himmel und hat scharfe Augen.' },
+  { shadow: '🐅', name: 'Tiger',         decoys: ['🐘','🦘','🐢'], fact: 'Tiger sind die größten Katzen der Welt!',
+    clue: 'Es brüllt laut und hat Streifen im Fell.' },
+  { shadow: '🐒', name: 'Affe',          decoys: ['🐘','🐢','🐊'], fact: 'Affen klettern geschickt von Baum zu Baum!',
+    clue: 'Es klettert von Ast zu Ast und ruft: Uh-uh-ah-ah!' },
+  { shadow: '🦏', name: 'Nashorn',       decoys: ['🐇','🐢','🐊'], fact: 'Das Nashorn hat ein Horn auf der Nase!',
+    clue: 'Es ist groß und schwer und hat ein spitzes Horn auf der Nase.' },
   // Fahrzeuge
-  { shadow: '🚀', name: 'Rakete',        decoys: ['🚁','🚲','⛵'], fact: 'Raketen fliegen bis ins Weltall!' },
-  { shadow: '✈️', name: 'Flugzeug',      decoys: ['🚀','🚁','🚲'], fact: 'Flugzeuge fliegen hoch über den Wolken!' },
-  { shadow: '🚁', name: 'Hubschrauber',  decoys: ['🚀','⛵','🚲'], fact: 'Hubschrauber können auf der Stelle fliegen!' },
-  { shadow: '🚂', name: 'Lokomotive',    decoys: ['🚁','🚲','⛵'], fact: 'Früher fuhren Lokomotiven mit Dampf: tschu-tschu!' },
-  { shadow: '⛵', name: 'Segelboot',     decoys: ['🚂','🚲','🚁'], fact: 'Ein Segelboot fährt mit der Kraft des Windes!' },
-  { shadow: '🚲', name: 'Fahrrad',       decoys: ['🛴','🚁','⛵'], fact: 'Beim Fahrradfahren trittst du in die Pedale!' },
-  { shadow: '🛴', name: 'Roller',        decoys: ['🚲','🚁','⛵'], fact: 'Mit dem Roller stößt du dich mit einem Fuß ab!' },
-  { shadow: '🚜', name: 'Traktor',       decoys: ['🚲','⛵','🚁'], fact: 'Der Traktor zieht schwere Sachen auf dem Bauernhof!' },
+  { shadow: '🚀', name: 'Rakete',        decoys: ['🚁','🚲','⛵'], fact: 'Raketen fliegen bis ins Weltall!',
+    clue: 'Damit kann man bis zum Mond fliegen.' },
+  { shadow: '✈️', name: 'Flugzeug',      decoys: ['🚀','🚁','🚲'], fact: 'Flugzeuge fliegen hoch über den Wolken!',
+    clue: 'Damit kann man fliegen. Es hat zwei lange Flügel und bringt viele Leute in den Urlaub.' },
+  { shadow: '🚁', name: 'Hubschrauber',  decoys: ['🚀','⛵','🚲'], fact: 'Hubschrauber können auf der Stelle fliegen!',
+    clue: 'Damit kann man fliegen. Oben dreht sich ein großer Propeller: flapp, flapp, flapp!' },
+  { shadow: '🚂', name: 'Lokomotive',    decoys: ['🚁','🚲','⛵'], fact: 'Früher fuhren Lokomotiven mit Dampf: tschu-tschu!',
+    clue: 'Es fährt auf Schienen und macht: Tschu-tschu!' },
+  { shadow: '⛵', name: 'Segelboot',     decoys: ['🚂','🚲','🚁'], fact: 'Ein Segelboot fährt mit der Kraft des Windes!',
+    clue: 'Damit fährt man über das Wasser, und der Wind schiebt es an.' },
+  { shadow: '🚲', name: 'Fahrrad',       decoys: ['🛴','🚁','⛵'], fact: 'Beim Fahrradfahren trittst du in die Pedale!',
+    clue: 'Es klingelt: Kling, kling! Man tritt in die Pedale.' },
+  { shadow: '🛴', name: 'Roller',        decoys: ['🚲','🚁','⛵'], fact: 'Mit dem Roller stößt du dich mit einem Fuß ab!',
+    clue: 'Damit fährt man, und man stößt sich mit einem Fuß ab.' },
+  { shadow: '🚜', name: 'Traktor',       decoys: ['🚲','⛵','🚁'], fact: 'Der Traktor zieht schwere Sachen auf dem Bauernhof!',
+    clue: 'Es tuckert beim Bauern über das Feld.' },
   // Natur
-  { shadow: '🌵', name: 'Kaktus',        decoys: ['🌴','🍄','🏠'], fact: 'Kakteen speichern Wasser in der Wüste!' },
-  { shadow: '🍄', name: 'Pilz',          decoys: ['🌵','🌴','🌲'], fact: 'Manche Pilze sind giftig, darum nie einfach einen essen!' },
-  { shadow: '🌴', name: 'Palme',         decoys: ['🌲','🌵','🍄'], fact: 'Palmen wachsen in warmen Ländern!' },
-  { shadow: '🌲', name: 'Tanne',         decoys: ['🌴','🍄','🌵'], fact: 'Die Tanne bleibt auch im Winter grün!' },
-  { shadow: '🌋', name: 'Vulkan',        decoys: ['🍄','🏠','🌴'], fact: 'Ein Vulkan kann sehr heiße Lava ausspucken!' },
+  { shadow: '🌵', name: 'Kaktus',        decoys: ['🌴','🍄','🏠'], fact: 'Kakteen speichern Wasser in der Wüste!',
+    clue: 'Es wächst in der Wüste und hat spitze Stacheln.' },
+  { shadow: '🍄', name: 'Pilz',          decoys: ['🌵','🌴','🌲'], fact: 'Manche Pilze sind giftig, darum nie einfach einen essen!',
+    clue: 'Es wächst im Wald und hat einen Hut.' },
+  { shadow: '🌴', name: 'Palme',         decoys: ['🌲','🌵','🍄'], fact: 'Palmen wachsen in warmen Ländern!',
+    clue: 'Es ist ein Baum am Strand, an dem Kokosnüsse wachsen.' },
+  { shadow: '🌲', name: 'Tanne',         decoys: ['🌴','🍄','🌵'], fact: 'Die Tanne bleibt auch im Winter grün!',
+    clue: 'Es ist ein Baum mit Nadeln, den man zu Weihnachten schmückt.' },
+  { shadow: '🌋', name: 'Vulkan',        decoys: ['🍄','🏠','🌴'], fact: 'Ein Vulkan kann sehr heiße Lava ausspucken!',
+    clue: 'Es ist ein Berg, der rumpelt und heiße Lava spuckt.' },
   // Gebäude
-  { shadow: '⛺', name: 'Zelt',          decoys: ['🏰','🗼','🌴'], fact: 'Im Zelt schläft man draußen in der Natur!' },
-  { shadow: '🏰', name: 'Schloss',       decoys: ['🏠','⛺','🗼'], fact: 'In einem Schloss wohnten früher Könige und Königinnen!' },
-  { shadow: '🗼', name: 'Turm',          decoys: ['🏠','🏰','⛺'], fact: 'Von einem hohen Turm kann man ganz weit schauen!' },
+  { shadow: '⛺', name: 'Zelt',          decoys: ['🏰','🗼','🌴'], fact: 'Im Zelt schläft man draußen in der Natur!',
+    clue: 'Darin schläft man im Urlaub draußen auf der Wiese.' },
+  { shadow: '🏰', name: 'Schloss',       decoys: ['🏠','⛺','🗼'], fact: 'In einem Schloss wohnten früher Könige und Königinnen!',
+    clue: 'Darin wohnen der König und die Königin.' },
+  { shadow: '🗼', name: 'Turm',          decoys: ['🏠','🏰','⛺'], fact: 'Von einem hohen Turm kann man ganz weit schauen!',
+    clue: 'Es ist ganz hoch und schmal. Von oben sieht man ganz weit.' },
   // Instrumente
-  { shadow: '🎸', name: 'Gitarre',       decoys: ['🎺','🥁','☂️'], fact: 'Eine Gitarre hat Saiten, an denen man zupft!' },
-  { shadow: '🎺', name: 'Trompete',      decoys: ['🎸','🥁','✂️'], fact: 'Die Trompete klingt sehr hell und laut!' },
-  { shadow: '🎻', name: 'Geige',         decoys: ['🎺','🥁','🔑'], fact: 'Die Geige spielt man mit einem Bogen!' },
-  { shadow: '🥁', name: 'Trommel',       decoys: ['🎸','🎺','🎻'], fact: 'Auf einer Trommel kann man laut und leise spielen!' },
+  { shadow: '🎸', name: 'Gitarre',       decoys: ['🎺','🥁','☂️'], fact: 'Eine Gitarre hat Saiten, an denen man zupft!',
+    clue: 'Damit macht man Musik: Man zupft an den Saiten.' },
+  { shadow: '🎺', name: 'Trompete',      decoys: ['🎸','🥁','✂️'], fact: 'Die Trompete klingt sehr hell und laut!',
+    clue: 'Da bläst man hinein, und es macht Tätärätä!' },
+  { shadow: '🎻', name: 'Geige',         decoys: ['🎺','🥁','🔑'], fact: 'Die Geige spielt man mit einem Bogen!',
+    clue: 'Damit macht man Musik: Man streicht mit einem Bogen über die Saiten.' },
+  { shadow: '🥁', name: 'Trommel',       decoys: ['🎸','🎺','🎻'], fact: 'Auf einer Trommel kann man laut und leise spielen!',
+    clue: 'Es macht Bumm, bumm, bumm!' },
   // Dinge
-  { shadow: '🔭', name: 'Fernrohr',      decoys: ['🔑','✂️','☂️'], fact: 'Mit einem Fernrohr kann man die Sterne sehen!' },
-  { shadow: '☂️', name: 'Regenschirm',   decoys: ['🔑','✂️','🎸'], fact: 'Der Regenschirm hält dich bei Regen trocken!' },
-  { shadow: '🔑', name: 'Schlüssel',     decoys: ['✂️','☂️','🔭'], fact: 'Mit einem Schlüssel schließt man die Tür auf!' },
-  { shadow: '✂️', name: 'Schere',        decoys: ['🔑','☂️','🎺'], fact: 'Mit einer Schere schneidet man Papier!' },
-  { shadow: '⚓', name: 'Anker',         decoys: ['🔑','✂️','☂️'], fact: 'Der Anker hält das Schiff fest!' },
-  { shadow: '🪁', name: 'Drachen',       decoys: ['🎈','☂️','⛵'], fact: 'Im Herbst lässt man Drachen im Wind steigen!' },
-  { shadow: '🎈', name: 'Luftballon',    decoys: ['🪁','☂️','⚓'], fact: 'Ein Luftballon mit Gas fliegt nach oben!' },
+  { shadow: '🔭', name: 'Fernrohr',      decoys: ['🔑','✂️','☂️'], fact: 'Mit einem Fernrohr kann man die Sterne sehen!',
+    clue: 'Damit kann man ganz weit weg schauen, bis zu den Sternen.' },
+  { shadow: '☂️', name: 'Regenschirm',   decoys: ['🔑','✂️','🎸'], fact: 'Der Regenschirm hält dich bei Regen trocken!',
+    clue: 'Damit bleibt man trocken, wenn es regnet.' },
+  { shadow: '🔑', name: 'Schlüssel',     decoys: ['✂️','☂️','🔭'], fact: 'Mit einem Schlüssel schließt man die Tür auf!',
+    clue: 'Damit schließt man die Tür auf.' },
+  { shadow: '✂️', name: 'Schere',        decoys: ['🔑','☂️','🎺'], fact: 'Mit einer Schere schneidet man Papier!',
+    clue: 'Damit schneidet man Papier: schnipp, schnapp!' },
+  { shadow: '⚓', name: 'Anker',         decoys: ['🔑','✂️','☂️'], fact: 'Der Anker hält das Schiff fest!',
+    clue: 'Es hält das Schiff fest, damit es nicht wegtreibt.' },
+  { shadow: '🪁', name: 'Drachen',       decoys: ['🎈','☂️','⛵'], fact: 'Im Herbst lässt man Drachen im Wind steigen!',
+    clue: 'Es hat einen langen Schwanz und tanzt an einer Schnur im Wind.' },
+  { shadow: '🎈', name: 'Luftballon',    decoys: ['🪁','☂️','⚓'], fact: 'Ein Luftballon mit Gas fliegt nach oben!',
+    clue: 'Man pustet es ganz dick auf, und wenn es platzt, macht es Peng!' },
   // Obst und Gemüse
-  { shadow: '🍌', name: 'Banane',        decoys: ['🍎','🍐','🍦'], fact: 'Bananen wachsen in warmen Ländern!' },
-  { shadow: '🍐', name: 'Birne',         decoys: ['🍌','🥕','🍦'], fact: 'Eine Birne ist unten dick und oben schmal!' },
-  { shadow: '🥕', name: 'Möhre',         decoys: ['🍌','🍐','🍎'], fact: 'Möhren wachsen unter der Erde!' },
+  { shadow: '🍌', name: 'Banane',        decoys: ['🍎','🍐','🍦'], fact: 'Bananen wachsen in warmen Ländern!',
+    clue: 'Es ist gelb und krumm, und Affen essen es gern.' },
+  { shadow: '🍐', name: 'Birne',         decoys: ['🍌','🥕','🍦'], fact: 'Eine Birne ist unten dick und oben schmal!',
+    clue: 'Es ist ein saftiges Obst, unten dick und oben schmal.' },
+  { shadow: '🥕', name: 'Möhre',         decoys: ['🍌','🍐','🍎'], fact: 'Möhren wachsen unter der Erde!',
+    clue: 'Es ist orange, wächst unter der Erde, und Hasen knabbern es gern.' },
 ]
 
 function shuffle(a) { return [...a].sort(() => Math.random() - 0.5) }
@@ -119,6 +178,8 @@ export default function ShadowGame({ level = 1, onComplete }) {
   const [fullLight,    setFullLight]   = useState(false)
   // the hand that shows how to move the torch, until the child does
   const [moved,        setMoved]       = useState(false)
+  // the sound joker, once a round
+  const [hintUsed,     setHintUsed]    = useState(false)
   const firstTryRef = useRef(0)
 
   const ch      = challenges[idx]
@@ -206,6 +267,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
       setWrongPicks([])
       setFullLight(false)
       setMoved(false)
+      setHintUsed(false)
       setMood('thinking')
       setRevealed(false)
       setColorRevealed(false)
@@ -231,7 +293,9 @@ export default function ShadowGame({ level = 1, onComplete }) {
       setTimeout(() => setMood('thinking'), 1200)
       return
     }
-    if (wrongPicks.length === 0) firstTryRef.current += 1
+    // A round solved with the joker is not counted as first try, without a
+    // word about it
+    if (wrongPicks.length === 0 && !hintUsed) firstTryRef.current += 1
     setSelected(emoji)
     setMood('excited')
     setRevealed(true)
@@ -239,7 +303,15 @@ export default function ShadowGame({ level = 1, onComplete }) {
     sayRight(`${ch.name}! ${ch.fact}`)
     setShowFact(true)
     setTimeout(() => setShowWeiter(true), 800)
-  }, [selected, ch, wrongPicks])
+  }, [selected, ch, wrongPicks, hintUsed])
+
+  // The sound joker: Lumi gives a clue without naming the thing. Once a
+  // round; pressing it again does nothing.
+  const giveHint = useCallback(() => {
+    if (hintUsed || selected !== null || !ch) return
+    setHintUsed(true)
+    narrate([{ text: `Hör mal! ${ch.clue}` }])
+  }, [hintUsed, selected, ch])
 
   if (!ch) return null
   const solved = selected !== null
@@ -272,8 +344,28 @@ export default function ShadowGame({ level = 1, onComplete }) {
           fontFamily:'var(--font-heading)', fontSize:'clamp(16px,3.2vw,22px)',
           color:'var(--text-primary)',
         }}>
-          {solved ? `Richtig! Das ist: ${ch.name}` : 'Leuchte mit der Taschenlampe über den Schatten! 🔦'}
+          {solved ? `Richtig! Das ist: ${ch.name}`
+            : hintUsed ? ch.clue
+            : 'Leuchte mit der Taschenlampe über den Schatten! 🔦'}
         </div>
+        <motion.button
+          onClick={giveHint}
+          disabled={hintUsed || solved}
+          whileTap={hintUsed || solved ? {} : { scale: 0.92 }}
+          {...hearable('Tipp', { enabled: !hintUsed && !solved })}
+          aria-label="Tipp anhören"
+          style={{
+            ...pxButton('gold'),
+            flexShrink:0, width:64, minHeight:60, padding:'4px 0',
+            display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:2,
+            fontSize:15, lineHeight:1,
+            opacity: hintUsed || solved ? 0.45 : 1,
+            cursor: hintUsed || solved ? 'default' : 'pointer',
+          }}
+        >
+          <span style={{ fontSize:28, lineHeight:1 }}>🔊</span>
+          Tipp
+        </motion.button>
       </div>
 
       {/* Shadow display — dark room with flashlight. It takes the height

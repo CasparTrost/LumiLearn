@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
 import { narrate } from '../narrator.js'
 import { PixelLumi, PxIcon } from './PixelUI.jsx'
+import { useFocusTrap } from '../hooks/useFocusTrap.js'
 
 /**
  * A question with two big answers, in the pixel style.
@@ -18,14 +19,14 @@ export default function ConfirmDialog({
 }) {
   useEffect(() => {
     if (say) narrate([{ text: say }])
-    const onKey = e => { if (e.key === 'Escape') onNo?.() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // the safe answer (the first button) gets the focus; Escape means "no"
+  const trapRef = useFocusTrap(true, { onEscape: onNo })
 
   return createPortal(
     <div className="px-backdrop" onClick={onNo} style={{ zIndex: 3000 }}>
       <motion.div
+        ref={trapRef}
         role="alertdialog" aria-modal="true" aria-label={title}
         initial={{ scale: 0.85, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 380, damping: 26 }}
@@ -48,7 +49,7 @@ export default function ConfirmDialog({
         <div style={{ display: 'flex', gap: 12, width: '100%', flexDirection: 'column' }}>
           {/* The safe answer is the big, first one */}
           <button className={`px-btn px-btn--green ${kid ? 'px-btn--lg' : 'px-btn--md'}`} onClick={onNo}
-            autoFocus style={{ whiteSpace: 'normal', padding: '10px 16px' }}>
+            style={{ whiteSpace: 'normal', padding: '10px 16px' }}>
             {kid && <PxIcon name="play" size={22} />} {noLabel}
           </button>
           <button className={`px-btn ${danger ? 'px-btn--red' : 'px-btn--parch'} ${kid ? 'px-btn--lg' : 'px-btn--md'}`} onClick={onYes}

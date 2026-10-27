@@ -244,3 +244,19 @@ export function bfsDistance(g, from, to) {
   }
   return 999
 }
+
+// The fewest steps that collect every potion and then reach the exit: the
+// BFS distances between start, potions and exit, tried in every potion
+// order (three potions at most, so six orders). The win compares the steps
+// actually walked against this for the "short way" bonus.
+export function shortestTour({ g, start, exit, potions }) {
+  const orders = list => list.length <= 1 ? [list]
+    : list.flatMap((p, i) => orders([...list.slice(0, i), ...list.slice(i + 1)]).map(rest => [p, ...rest]))
+  let best = Infinity
+  for (const order of orders(potions)) {
+    let steps = 0, cur = start
+    for (const next of [...order, exit]) { steps += bfsDistance(g, cur, next); cur = next }
+    best = Math.min(best, steps)
+  }
+  return best
+}

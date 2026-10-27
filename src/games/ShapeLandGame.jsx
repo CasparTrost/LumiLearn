@@ -4,13 +4,14 @@ import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
 import { hearable } from '../lib/hearable.js'
 import HearOptions from '../components/HearOptions.jsx'
-import { lockPreviews, afterNarration } from '../narrator.js'
+import { narrate, lockPreviews, afterNarration } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
 import { pxCard, pxPanel, pxBubble, pxButton, pxSegment, ACCENT, INK } from './px.js'
 
 /**
- * Formen-Land — Formen erkennen, Größen ordnen, Muster fortsetzen
+ * Formen-Land — Formen erkennen, Größen ordnen, Muster fortsetzen,
+ * Formen im Alltag finden
  *
  * Geometry and seriation had no home in the app at all: the closest thing,
  * "Farbenreich", paints prepared regions and never names a shape. Both are
@@ -49,6 +50,25 @@ const COLORS = ['#E8503F', '#F2B705', '#3FA34D', '#3D8BE0', '#8E6CF0', '#E0509A'
 
 // "ein Kreis", "eine Raute"
 const indef = (type) => (SHAPES[type].art === 'die' ? 'eine' : 'ein')
+// "von einem Kreis", "von einer Raute"
+const dat   = (type) => (SHAPES[type].art === 'die' ? 'einer' : 'einem')
+
+// Shapes around us: things whose picture shows the shape plainly, checked
+// against the sprites in public/sprites/emoji (outline measured: the
+// picture is 1:1, the door 7:10) — the open book, the cake slice, the gift
+// and the waffle (drawn round) stay out, their outline is not one shape.
+// Names with their article in the nominative.
+const OBJECTS = {
+  circle:    [['🕐', 'die Uhr'], ['🍪', 'der Keks'], ['🌕', 'der Vollmond'], ['🪙', 'die Münze'], ['🎯', 'die Zielscheibe']],
+  square:    [['🖼️', 'das Bild'], ['🪟', 'das Fenster']],
+  triangle:  [['🍕', 'das Pizzastück'], ['⚠️', 'das Warnschild'], ['🚩', 'die Fahne'], ['⛺', 'das Zelt']],
+  rectangle: [['🚪', 'die Tür'], ['📱', 'das Handy'], ['💌', 'der Brief']],
+  oval:      [['🥚', 'das Ei'], ['🪞', 'der Spiegel'], ['🥔', 'die Kartoffel']],
+  rhombus:   [['🪁', 'der Drachen']],
+}
+// "um den Drachen herum"
+const akk = (name) => name.replace(/^der /, 'den ')
+const cap = (s) => s[0].toUpperCase() + s.slice(1)
 
 function Shape({ type, color, size = 72, rotate = 0 }) {
   const s = SHAPES[type]
@@ -60,13 +80,14 @@ function Shape({ type, color, size = 72, rotate = 0 }) {
   )
 }
 
-// L1-2 recognise · L3 + a first AB pattern · L4-6 + order by size ·
-// L7-10 all three
+// L1-2 recognise · L3 + a first AB pattern · L4 + order by size ·
+// L5-6 + shapes around us · L7-10 all four
 function modeFor(level, idx) {
   if (level <= 2) return 'match'
   if (level === 3) return idx % 3 === 2 ? 'pattern' : 'match'
-  if (level <= 6) return idx % 2 === 0 ? 'match' : 'size'
-  return idx % 3 === 2 ? 'size' : idx % 3 === 1 ? 'pattern' : 'match'
+  if (level === 4) return idx % 2 === 0 ? 'match' : 'size'
+  if (level <= 6) return ['match', 'object', 'size'][idx % 3]
+  return ['match', 'object', 'pattern', 'size'][idx % 4]
 }
 
 function poolFor(level) {
@@ -86,9 +107,28 @@ function tiltFor(level, type) {
   return [-30, -15, 15, 30, 180][rand(0, 4)]
 }
 
-function buildRound(level, idx) {
+// used: the shapes already asked for in this level's "shapes around us"
+function buildRound(level, idx, used) {
   const mode = modeFor(level, idx)
   const pool = poolFor(level)
+
+  if (mode === 'object') {
+    // a shape not asked yet first, so the circle doesn't win by having more things
+    const types  = pool.filter(t => OBJECTS[t])
+    const fresh  = types.filter(t => !used.has(t))
+    const type   = shuffle(fresh.length ? fresh : types)[0]
+    const [emoji, name] = shuffle(OBJECTS[type])[0]
+    const thing  = { type, emoji, name }
+    used.add(type)
+    // A square is a rectangle too, so the window never meets the rectangle
+    const others = pool.filter(t => t !== thing.type && t !== 'star' && t !== 'heart'
+      && !(thing.type === 'square' && t === 'rectangle'))
+    return {
+      mode, thing, answer: thing.type,
+      options: shuffle([thing.type, ...shuffle(others).slice(0, 2)]),
+      color: COLORS[rand(0, COLORS.length - 1)],
+    }
+  }
 
   if (mode === 'match') {
     const [answer, ...rest] = shuffle(pool)
@@ -152,12 +192,16 @@ function useNarrow() {
 
 const taskFor = (r) =>
   r.mode === 'match' ? `Finde ${SHAPES[r.answer].art} ${SHAPES[r.answer].name}!`
+  : r.mode === 'object' ? `Welche Form hat ${r.thing.name}?`
   : r.mode === 'size' ? (r.down ? 'Tippe die Formen von groß nach klein!' : 'Tippe die Formen von klein nach groß!')
   : 'Was kommt als Nächstes?'
 
 export default function ShapeLandGame({ level = 1, onComplete }) {
   const TOTAL = 8
-  const rounds = useState(() => Array.from({ length: TOTAL }, (_, i) => buildRound(level, i)))[0]
+  const rounds = useState(() => {
+    const used = new Set()
+    return Array.from({ length: TOTAL }, (_, i) => buildRound(level, i, used))
+  })[0]
 
   const [idx,      setIdx]      = useState(0)
   const [picked,   setPicked]   = useState([])       // size mode: tap order
@@ -205,6 +249,16 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
     finish(`Das ist ${indef(type)} ${want.name}.`)
   }, [solved, r, miss, finish])
 
+  const pickObjectShape = useCallback((type) => {
+    if (solved || !r) return
+    const { name } = r.thing
+    if (type !== r.answer) {
+      miss(type, `Das ist ${indef(type)} ${SHAPES[type].name}. Fahr mit dem Finger einmal um ${akk(name)} herum.`)
+      return
+    }
+    finish(`${cap(name)} hat die Form von ${dat(type)} ${SHAPES[type].name}.`)
+  }, [solved, r, miss, finish])
+
   const pickSize = useCallback((item) => {
     if (solved || !r || picked.includes(item.id)) return
     const order = [...r.sizes].sort((a, b) => (r.down ? b - a : a - b))
@@ -244,12 +298,14 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
 
   const prompt = r.mode === 'match'
     ? <>Finde {SHAPES[r.answer].art} <strong style={{ color: ACCENT }}>{SHAPES[r.answer].name}</strong>! 🔍</>
+    : r.mode === 'object'
+      ? <>Welche <strong style={{ color: ACCENT }}>Form</strong> hat {r.thing.name}? 🔍</>
     : r.mode === 'size'
       ? <>Tippe die Formen von <strong style={{ color: ACCENT }}>{r.down ? 'groß nach klein' : 'klein nach groß'}</strong>! 📏</>
       : <>Was kommt als <strong style={{ color: ACCENT }}>Nächstes</strong>? 🔮</>
 
   const hearItems = [taskFor(r), ...(
-    r.mode === 'match'   ? r.options.map(t => SHAPES[t].name)
+    r.mode === 'match' || r.mode === 'object' ? r.options.map(t => SHAPES[t].name)
     : r.mode === 'pattern' ? r.options.map(o => SHAPES[o.type].name)
     : [])]
 
@@ -264,7 +320,9 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
       // the whole row has to fit across: buttons, gaps and shelf (on a phone
       // it may wrap — the order is about size, not place)
       ? (narrow ? 'min(20dvh, 34vw, 220px)' : `min(26dvh, calc((min(100vw, 720px) - ${76 + 14 * r.items.length}px) / ${sumScale.toFixed(2)}), 220px)`)
-      : (narrow ? 'min(12dvh, 26vw, 150px)' : threeUp(150, 17))
+      : (narrow ? 'min(12dvh, 20vw, 150px)' : threeUp(150, 17))
+  // the thing in "shapes around us", above its three answers
+  const thingSize = narrow ? 'min(22dvh, 46vw, 200px)' : 'min(26dvh, 220px)'
   const rowSize = r.mode === 'pattern' ? `min(64px, calc((min(100vw, 720px) - ${60 + 4 * r.seq.length}px) / ${r.seq.length + 1}))` : null
 
   return (
@@ -330,6 +388,48 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
               )
             })}
           </div>
+        )}
+
+        {/* SHAPES AROUND US — the thing, then three shapes. Tap the thing to
+            hear its name again. */}
+        {r.mode === 'object' && (
+          <>
+            <motion.button
+              key={r.thing.emoji}
+              initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+              onClick={() => narrate([{ text: `${cap(r.thing.name)}.` }], { skipIfSame: true })}
+              aria-label={r.thing.name}
+              style={{
+                ...pxPanel, width: thingSize, height: thingSize, padding: 0, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: `calc(${thingSize} * 0.7)`, lineHeight: 1,
+              }}
+            >{r.thing.emoji}</motion.button>
+            <div style={{ display: 'flex', gap: 'clamp(12px,3vw,24px)', flexWrap: 'nowrap', justifyContent: 'center' }}>
+              {r.options.map(type => {
+                const isWrong = wrong.includes(type)
+                const isRight = solved && type === r.answer
+                return (
+                  <motion.button key={type}
+                    whileHover={!solved && !isWrong ? { scale: 1.05 } : {}}
+                    whileTap={!solved && !isWrong ? { scale: 0.94 } : {}}
+                    onClick={() => { if (!isWrong) pickObjectShape(type) }}
+                    {...hearable(SHAPES[type].name)}
+                    aria-label={SHAPES[type].name}
+                    style={{
+                      ...pxCard(isRight ? 'right' : isWrong ? 'wrong' : undefined),
+                      padding: 'clamp(10px,2vw,18px)', cursor: solved ? 'default' : 'pointer',
+                      opacity: isWrong ? 0.5 : 1,
+                    }}
+                  >
+                    <div style={{ width: cardSize, height: cardSize }}>
+                      <Shape type={type} color={r.color} size="100%" />
+                    </div>
+                  </motion.button>
+                )
+              })}
+            </div>
+          </>
         )}
 
         {/* SIZE ORDER */}

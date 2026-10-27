@@ -14,7 +14,8 @@
 import { narrate } from '../narrator.js'
 
 const RIGHT = ['Super!', 'Richtig!', 'Toll gemacht!', 'Genau!', 'Klasse!', 'Prima!', 'Ja, richtig!']
-const WRONG = ['Hm, noch nicht.', 'Fast!', 'Versuch es nochmal.', 'Nicht ganz.', 'Schau noch einmal genau.']
+// No "try again" here: some games move on to the next task after a miss
+const WRONG = ['Hm, noch nicht.', 'Fast!', 'Nicht ganz.', 'Hm, das war es nicht.', 'Schau mal genau.']
 
 let lastRight = -1, lastWrong = -1
 const pick = (list, last) => {

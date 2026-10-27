@@ -6,6 +6,8 @@ import { narrate, afterNarration } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
+import { hearable } from '../lib/hearable.js'
+import { soundOf } from './letterSounds.js'
 import { INK, pxCard, pxPanel, pxBubble, pxSegment } from './px.js'
 
 // Keyboard key in the pixel look: parchment key, gold when it is the hinted
@@ -105,6 +107,24 @@ const ROWS = [
 ]
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ'.split('')
 
+// Anlauttabelle for the typing levels: every key shows a word that starts
+// with its sound, and says it — "Mmm wie Maus". A child who cannot read yet
+// hears the first sound of "Haus" and looks for the key with the dog. One
+// clear picture per letter, all different; C, Q, V, X and Y take the sound
+// they most often start a word with (letterSounds.js), the umlauts the few
+// words a child knows that start with them.
+const ANLAUT = {
+  A:['Apfel','🍎'],   B:['Banane','🍌'],  C:['Clown','🤡'],  D:['Dino','🦖'],     E:['Ente','🦆'],
+  F:['Fisch','🐟'],   G:['Giraffe','🦒'], H:['Hund','🐕'],   I:['Igel','🦔'],     J:['Jacke','🧥'],
+  K:['Katze','🐱'],   L:['Löwe','🦁'],    M:['Maus','🐭'],   N:['Nase','👃'],     O:['Ohr','👂'],
+  P:['Pilz','🍄'],    Q:['Qualle','🪼'],  R:['Rakete','🚀'], S:['Sonne','☀️'],    T:['Tiger','🐯'],
+  U:['Ufo','🛸'],     V:['Vogel','🐦'],   W:['Wal','🐋'],    X:['Xylofon',':px-xylofon:'],
+  Y:['Yoga','🧘'],    Z:['Zebra','🦓'],   Ä:['Ähre','🌾'],   Ö:['Ölkanne',':px-oelkanne:'],
+  Ü:['überrascht','😮'],
+}
+// "Mmm wie Maus"
+const anlaut = c => `${soundOf(c)} wie ${ANLAUT[c][0]}`
+
 function shuffle(a) { return [...a].sort(() => Math.random() - 0.5) }
 
 // A full QWERTZ row has eleven keys; on a phone they came out 28–33 px wide,
@@ -130,35 +150,48 @@ function compactKeys(word) {
   return [...own, ...others.slice(0, extra)].sort((a, b) => a.localeCompare(b, 'de'))
 }
 
-/** The on-screen keyboard. `hint` is the letter that pulses, `onBack` adds ⌫. */
-function Keyboard({ word, hint, onKey, onBack }) {
+/**
+ * The on-screen keyboard. `hint` is the letter that pulses, `onBack` adds ⌫,
+ * `pictures` turns it into the Anlauttabelle: each key with its picture,
+ * saying its sound on hover and keyboard focus.
+ */
+function Keyboard({ word, hint, onKey, onBack, pictures = false }) {
   const narrow = useNarrow()
   const keys = useMemo(() => compactKeys(word), [word])
 
   const key = (k, size) => {
     const hinted = k === hint
     const back = k === '⌫'
+    const pic = pictures && !back
+    const { picSize, ...box } = size
     return (
       <motion.button key={k}
         whileTap={{ scale:0.88 }}
         onClick={() => (back ? onBack() : onKey(k))}
-        aria-label={back ? 'Löschen' : k}
+        {...(pic ? hearable(anlaut(k)) : null)}
+        aria-label={back ? 'Löschen' : pic ? `${k}, ${anlaut(k)}` : k}
         animate={hinted ? { scale:[1,1.1,1], boxShadow:[KEY_RING[0],KEY_RING[1],KEY_RING[0]] } : {}}
         transition={hinted ? { duration:1.3, repeat:Infinity } : {}}
         style={{
-          ...size,
+          ...box,
           ...keyLook(hinted, back),
           color: hinted ? INK : back ? 'white' : 'var(--text-primary)',
           fontFamily:'var(--font-heading)', fontWeight:700,
-          cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
-          padding:0, flexShrink:0,
+          cursor:'pointer', display:'flex', flexDirection:'column', gap:2,
+          alignItems:'center', justifyContent:'center',
+          padding:0, flexShrink:0, lineHeight:1,
         }}
-      >{k}</motion.button>
+      >
+        {k}
+        {pic && <span aria-hidden="true" style={{ fontSize:picSize, lineHeight:1 }}>{ANLAUT[k][1]}</span>}
+      </motion.button>
     )
   }
 
   if (narrow) {
-    const size = { width:52, height:52, fontSize:24 }
+    // with pictures the keys grow a little, so letter and picture both stay
+    // readable: five 58 px keys fit a 360 px phone
+    const size = pictures ? { width:58, height:74, fontSize:22, picSize:28 } : { width:52, height:52, fontSize:24 }
     return (
       <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'center', gap:8, width:'100%', maxWidth:420 }}>
         {keys.map(k => key(k, size))}
@@ -168,7 +201,8 @@ function Keyboard({ word, hint, onKey, onBack }) {
   }
 
   // eleven keys and ten gaps across the widest row
-  const size = { width:'min(56px, calc((100% - 50px) / 11))', height:56, fontSize:'clamp(17px,2.4vw,22px)' }
+  const size = { width:'min(56px, calc((100% - 50px) / 11))', height: pictures ? 74 : 56,
+                 fontSize:'clamp(17px,2.4vw,22px)', picSize:'clamp(22px,3.2vw,28px)' }
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:8, width:'100%', maxWidth:720 }}>
       {ROWS.map((row, ri) => (
@@ -181,7 +215,8 @@ function Keyboard({ word, hint, onKey, onBack }) {
 }
 
 // What to say when the child is looking for a letter: the first letter also
-// gets its word ("Z wie Zug"), the rest just the letter name.
+// gets its word ("Z wie Zug"), the rest just the letter name. The typing
+// levels say the key's sound and picture instead (anlaut).
 function lookFor(char, word, pos) {
   return pos === 0 ? `das ${char}, ${char} wie ${nameOf(word)}` : `das ${char}`
 }
@@ -476,7 +511,7 @@ function StaticTyperGame({ level, onComplete }) {
     if (finished || hintOn || paused) return
     const id = setTimeout(() => {
       setHintOn(true)
-      narrate([{ text: `Such ${lookFor(nextChar, word, typed.length)}!` }])
+      narrate([{ text: `Such ${anlaut(nextChar)}!` }])
     }, 10000)
     return () => clearTimeout(id)
   }, [typed.length, wIdx, finished, hintOn, paused]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -486,7 +521,7 @@ function StaticTyperGame({ level, onComplete }) {
     if (k === nextChar) {
       sfx.correct()
       setTyped(t => t + k)
-      if (typed.length + 1 < word.length) narrate([{ text: k, rate: 0.9 }])
+      if (typed.length + 1 < word.length) narrate([{ text: anlaut(k), rate: 0.9 }])
     } else {
       sfx.wrong()
       setShake(true)
@@ -496,7 +531,7 @@ function StaticTyperGame({ level, onComplete }) {
       setMisses(n)
       helpedRef.current = true
       if (n >= 2) setHintOn(true)
-      sayWrong(`Das ist das ${k}. Wir suchen ${lookFor(nextChar, word, typed.length)}.`)
+      sayWrong(`Das ist ${anlaut(k)}. Wir suchen ${anlaut(nextChar)}.`)
     }
   }, [finished, nextChar, typed, word, misses])
 
@@ -567,7 +602,7 @@ function StaticTyperGame({ level, onComplete }) {
           fontSize:'clamp(18px,3.8vw,26px)',
           color:'var(--text-primary)',
         }}>
-          {hintOn ? `💡 Such das ${nextChar} auf der Tastatur!` : 'Schreib das Wort! 🔤'}
+          {hintOn && nextChar ? `💡 Such das ${nextChar} ${ANLAUT[nextChar][1]}` : 'Schreib das Wort! 🔤'}
         </div>
       </div>
 
@@ -616,7 +651,7 @@ function StaticTyperGame({ level, onComplete }) {
       </AnimatePresence>
 
       {/* Keyboard */}
-      <Keyboard word={word} hint={hintOn && !finished ? nextChar : null} onKey={handleKey} onBack={backspace} />
+      <Keyboard word={word} hint={hintOn && !finished ? nextChar : null} onKey={handleKey} onBack={backspace} pictures />
 
       <p style={{ fontFamily:'var(--font-heading)', fontSize:17, color:'var(--px-ink-soft)' }}>
         ✅ {correct} von {words.length} Wörtern geschafft

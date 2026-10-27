@@ -49,6 +49,17 @@ export const MODULES = [
 export const MODULE_BY_ID = Object.fromEntries(MODULES.map(m => [m.id, m]))
 export const moduleTitle = id => MODULE_BY_ID[id]?.title ?? id
 
+/**
+ * The games a child sees. Parents can switch single games off in the parent
+ * area (profile.hiddenGames); one always stays, so a broken save can't leave
+ * an empty home screen.
+ */
+export function visibleModules(profile) {
+  const hidden = new Set(Array.isArray(profile?.hiddenGames) ? profile.hiddenGames : [])
+  const shown = MODULES.filter(m => !hidden.has(m.id))
+  return shown.length ? shown : MODULES
+}
+
 // The order in which a child new to the app meets the games: first
 // counting, letters and feelings, the clock and the number line last.
 const PATH = [
@@ -74,7 +85,8 @@ export function sortForAge(mods, profile) {
  * Three to six games for the top of the home screen ("Für dich"), instead of
  * all 24 at once: the game the child played last, games it has started and
  * not finished, then new games that suit its age — at most two from the
- * same world, so the row stays varied.
+ * same world, so the row stays varied. Games the parents switched off are
+ * left out.
  */
 export function recommend({ progress = {}, profile, lastPlayed, playedToday = [], count = 4 }) {
   const age = ageOf(profile)
@@ -84,6 +96,7 @@ export function recommend({ progress = {}, profile, lastPlayed, playedToday = []
   // how close a game is to the age (a 7-year-old gets the 6+ games first)
   const nearness = m => Math.abs(age - (m.minAge + 1))
   const byPath = (a, b) => pathIndex(a.id) - pathIndex(b.id)
+  const mods = visibleModules(profile)
 
   const picked = []
   const perWorld = {}
@@ -94,19 +107,19 @@ export function recommend({ progress = {}, profile, lastPlayed, playedToday = []
     picked.push({ mod: m, why })
   }
 
-  const last = MODULE_BY_ID[lastPlayed?.moduleId]
+  const last = mods.find(m => m.id === lastPlayed?.moduleId)
   if (last && !done(last)) take(last, 'continue')
 
-  MODULES.filter(m => fits(m) && started(m) && !done(m) && !playedToday.includes(m.id))
+  mods.filter(m => fits(m) && started(m) && !done(m) && !playedToday.includes(m.id))
     .sort(byPath).forEach(m => picked.length < Math.ceil(count / 2) && take(m, 'started'))
 
-  MODULES.filter(m => fits(m) && !started(m))
+  mods.filter(m => fits(m) && !started(m))
     .sort((a, b) => nearness(a) - nearness(b) || byPath(a, b))
     .forEach(m => picked.length < count && take(m, 'new'))
 
   // Few new games left (an older child who has tried everything): whatever
   // is not mastered yet, then anything.
-  ;[...MODULES].sort(byPath).forEach(m => picked.length < count && !done(m) && take(m, 'started', 9))
-  ;[...MODULES].sort(byPath).forEach(m => picked.length < count && take(m, 'again', 9))
+  ;[...mods].sort(byPath).forEach(m => picked.length < count && !done(m) && take(m, 'started', 9))
+  ;[...mods].sort(byPath).forEach(m => picked.length < count && take(m, 'again', 9))
   return picked
 }

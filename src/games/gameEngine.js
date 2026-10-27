@@ -5,10 +5,17 @@
 //   tokens  the row, one entry per place; '❓' marks the place asked for
 //   unit    the repeating part, for the spoken feedback ("Frosch, Hund")
 //   names   emoji → spoken name, for every symbol in the row and the options
+// A 'build' question has several empty places: `fill` holds what belongs in
+// them, `options` is the tray the child lays them from, `answer` is null.
 
 export function generateQuestions(moduleId, level, count = 10) {
-  if (moduleId === 'patterns') return Array.from({ length: count }, () => patternsQ(level))
-  return []
+  if (moduleId !== 'patterns') return []
+  // From level 6 some rounds are built instead of chosen. They take the place
+  // of other rounds, so a level stays at `count` rounds, and they are spread
+  // out, never the first: the first rounds show what the pattern is.
+  const builds = BUILD_ROUNDS[level] ?? 0
+  const at = new Set(Array.from({ length: builds }, (_, i) => Math.round((i + 1) * count / (builds + 1))))
+  return Array.from({ length: count }, (_, i) => (at.has(i) ? buildQ(level) : patternsQ(level)))
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -136,15 +143,19 @@ function namesOf(syms) {
   return Object.fromEntries(syms.map(s => [s.e, s.n]))
 }
 
+// n fresh symbols that are not in the row and not of a family in it
+function strangers(rowSyms, n) {
+  const fams = new Set(rowSyms.map(s => s.fam).filter(Boolean))
+  return shuffle(PATTERN_POOL)
+    .filter(s => !rowSyms.some(r => r.e === s.e) && !(s.fam && fams.has(s.fam)))
+    .slice(0, n)
+}
+
 // Wrong options: the other symbols of the row, padded with fresh ones from
 // other families, three in all.
 function wrongOptions(answer, rowSyms) {
   const others = rowSyms.filter(s => s.e !== answer)
-  const fams = new Set(rowSyms.map(s => s.fam).filter(Boolean))
-  const pad = shuffle(PATTERN_POOL)
-    .filter(s => !rowSyms.some(r => r.e === s.e) && !(s.fam && fams.has(s.fam)))
-    .slice(0, Math.max(0, 3 - others.length))
-  return [...others, ...pad].slice(0, 3)
+  return [...others, ...strangers(rowSyms, Math.max(0, 3 - others.length))].slice(0, 3)
 }
 
 function patternsQ(level) {
@@ -219,5 +230,39 @@ function growQ(level) {
     names:   {},
     counts:  [...steps, next],
     sym:     sym.e,
+  }
+}
+
+// ─── Build the pattern on ────────────────────────────────────────────────────
+// Choosing the next picture is recognising a pattern; laying it on, piece by
+// piece, is producing it. The child sees two rounds of the unit and fills
+// three or four empty places from a tray.
+const BUILD_ROUNDS = { 6: 2, 7: 2, 8: 3, 9: 3, 10: 3 }
+// Short units only: two rounds of the unit and the empty places (8 or 9 in
+// all) still fit one line on a phone, like the longest rows of the other
+// rounds.
+const BUILD_UNITS = level => (level <= 7 ? ['AB', 'ABB', 'AAB'] : ['AB', 'ABB', 'AAB', 'ABC'])
+
+function buildQ(level) {
+  const units = BUILD_UNITS(level)
+  const uType = units[rand(0, units.length - 1)]
+  const syms  = pickSymbols(new Set(uType).size)
+  const unit  = unitOf(uType, syms)
+  const shown = unit.length * 2
+  const slots = unit.length === 2 ? 4 : 3
+  const row   = Array.from({ length: shown + slots }, (_, i) => unit[i % unit.length])
+  // The row's symbols and one that does not belong
+  const tray  = [...syms, ...strangers(syms, 1)]
+  return {
+    kind:    'build',
+    prompt:  'Leg die Reihe weiter!',
+    say:     'Leg die Reihe weiter! Tipp die Bilder unten der Reihe nach an.',
+    tokens:  [...row.slice(0, shown), ...Array(slots).fill('❓')],
+    gapAt:   shown,
+    fill:    row.slice(shown),
+    options: shuffle(tray.map(s => s.e)),
+    answer:  null,
+    unit,
+    names:   namesOf(tray),
   }
 }

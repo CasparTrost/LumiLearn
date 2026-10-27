@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { narrate, stopNarration } from '../narrator.js'
 import { MODULE_BY_ID } from '../modules.js'
+import { useFocusTrap } from '../hooks/useFocusTrap.js'
 
 // Help per game. Read aloud when the dialog opens (most children who play
 // can't read yet), so the texts are written to be heard: short sentences,
@@ -13,15 +14,15 @@ const INFO = {
   'initial-sound': { emoji: '🕵️', title: 'Anlaut-Detektiv', text: 'Du siehst ein Bild und hörst das Wort. Hör genau auf den ersten Laut! Dann tippe auf den Buchstaben, mit dem das Wort anfängt.' },
   rhyme:           { emoji: '🎵', title: 'Reim-Rallye', text: 'Lumi sagt dir ein Wort. Welches Bild reimt sich darauf? Wörter reimen sich, wenn sie am Ende gleich klingen, so wie Maus und Haus. Später sagst du Ja oder Nein, findest das Wort, das sich nicht reimt, oder ergänzt einen kleinen Reim.' },
   numbers:         { emoji: '🛒', title: 'Zahlenland', text: 'Ein Kunde kommt in den Laden und sagt, was er möchte. Tippe die Sachen an, dann wandern sie in den Einkaufswagen. Zähle gut mit und tippe auf den grünen Haken, wenn es genau stimmt.' },
-  letters:         { emoji: '⌨️', title: 'Buchstabenwald', text: 'Du siehst ein Bild und hörst das Wort. Tippe die Buchstaben auf der Tastatur in der richtigen Reihenfolge. Der leuchtende Platz zeigt dir, welcher Buchstabe als Nächstes dran ist. Später fallen die Buchstaben herunter: Tippe sie auf der Tastatur, bevor sie unten sind.' },
+  letters:         { emoji: '⌨️', title: 'Buchstabenwald', text: 'Du siehst ein Bild und hörst das Wort. Tippe die Buchstaben auf der Tastatur in der richtigen Reihenfolge. Der leuchtende Platz zeigt dir, welcher Buchstabe als Nächstes dran ist. Auf jeder Taste ist ein Bild: M wie Maus. So findest du den richtigen Laut. Später fallen die Buchstaben herunter: Tippe sie auf der Tastatur, bevor sie unten sind.' },
   listen:          { emoji: '👂', title: 'Hörabenteuer', text: 'Hör genau hin! Lumi sagt ein Wort. Tippe auf das Bild, das dazu passt. Mit dem Lautsprecher hörst du das Wort noch einmal. In den letzten Leveln siehst du ein Bild und liest, welches Wort dazu passt.' },
   words:           { emoji: '🃏', title: 'Memo-Welt', text: 'Merk dir die Karten, bevor sie sich umdrehen. Dann deckst du immer zwei Karten auf. Findest du zwei, die zusammengehören, bleiben sie liegen.' },
-  patterns:        { emoji: '🔮', title: 'Musterpark', text: 'Schau dir die Reihe genau an. Sie wiederholt sich immer gleich. Was kommt als Nächstes? Manchmal fehlt ein Bild mitten in der Reihe, oder die Reihe wird immer länger. Tippe auf das Bild, das passt.' },
+  patterns:        { emoji: '🔮', title: 'Musterpark', text: 'Schau dir die Reihe genau an. Sie wiederholt sich immer gleich. Was kommt als Nächstes? Manchmal fehlt ein Bild mitten in der Reihe, oder die Reihe wird immer länger. Tippe auf das Bild, das passt. Manchmal sind mehrere Plätze leer: Dann legst du die Reihe selbst weiter, Bild für Bild.' },
   shapes:          { emoji: '🎨', title: 'Farbenreich', text: 'Lumi sagt dir, welche Farbe wohin gehört. Tippe zuerst auf den Farbeimer und dann auf die Fläche im Bild, die leuchtet.' },
   emotions:        { emoji: '😊', title: 'Gefühlswelt', text: 'Lumi erzählt dir, was passiert ist. Wie fühlt sich Lumi wohl dabei? Tippe auf das Gesicht, das dazu passt. Mit dem Lautsprecher hörst du alle Gefühle.' },
   empathy:         { emoji: '🕵️‍♀️', title: 'Gefühlsdetektiv', text: 'Schau dir das Kind genau an: sein Gesicht und seine Haltung. Wie fühlt es sich? Und dann: Was kannst du tun, damit es ihm besser geht?' },
-  maze:            { emoji: '🌀', title: 'Lumi-Labyrinth', text: 'Hilf Lumi durch das Labyrinth! Sammle alle Zaubertränke und lauf dann zum leuchtenden Ausgang. Wische oder benutze die Pfeile. Pass auf den Drachen auf! Wenn du stehen bleibst, kann der Drache dir nichts tun.' },
-  shadows:         { emoji: '🌑', title: 'Schattenrätsel', text: 'Im Dunkeln versteckt sich etwas. Fahre mit der Taschenlampe über das Bild. Was ist es? Tippe auf das richtige Bild.' },
+  maze:            { emoji: '🌀', title: 'Lumi-Labyrinth', text: 'Hilf Lumi durch das Labyrinth! Sammle alle Zaubertränke und lauf dann zum leuchtenden Ausgang. Wische oder benutze die Pfeile. Pass auf den Drachen auf! Wenn du stehen bleibst, kann der Drache dir nichts tun. Findest du einen ganz kurzen Weg, bekommt Lumi eine Krone!' },
+  shadows:         { emoji: '🌑', title: 'Schattenrätsel', text: 'Im Dunkeln versteckt sich etwas. Fahre mit der Taschenlampe über das Bild. Was ist es? Tippe auf das richtige Bild. Tippe auf den Tipp-Knopf, dann verrät Lumi dir etwas über das Versteckte.' },
   bubbles:         { emoji: '🫧', title: 'Blasen-Blitz', text: 'Lumi sagt dir eine Zahl. Tippe alle Blasen an, auf denen so viele Punkte sind oder die diese Zahl zeigen. Lass dir Zeit und schau genau hin.' },
   stories:         { emoji: '📖', title: 'Lumis Abenteuer', text: 'Lumi erlebt eine Geschichte, und Lumi liest sie dir vor. Am Ende entscheidest du: Was soll Lumi tun? Danach erfährst du, wie es weitergeht.' },
   sort:            { emoji: '🧺', title: 'Sortier-Spaß', text: 'Lumi zeigt dir ein Ding und sagt dir, was es ist. In welchen Korb gehört es? Tippe auf den richtigen Korb.' },
@@ -48,13 +49,9 @@ export default function InfoButton({ moduleId, onOpenChange }) {
   // the name as on the tiles (modules.js), one spelling everywhere
   const info = { ...help, title: MODULE_BY_ID[moduleId]?.title ?? help.title }
 
-  // Escape closes the help, like a tap outside it
-  useEffect(() => {
-    if (!open) return
-    const onKey = e => { if (e.key === 'Escape') setOpen(false) }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Escape closes the help, like a tap outside it; the focus stays inside
+  // while it is open and goes back to the ? button afterwards
+  const trapRef = useFocusTrap(open, { onEscape: () => setOpen(false) })
 
   return (
     <>
@@ -86,6 +83,7 @@ export default function InfoButton({ moduleId, onOpenChange }) {
             }}
           >
             <motion.div
+              ref={trapRef}
               initial={{ scale: 0.72, opacity: 0, y: 32 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.82, opacity: 0, y: 18 }}
