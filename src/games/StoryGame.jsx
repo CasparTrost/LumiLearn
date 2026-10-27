@@ -691,13 +691,12 @@ export default function StoryGame({ level = 1, onComplete }) {
       {/* Story card — fades in place: sliding in from the side cut it off at
           the right edge for a moment */}
       <AnimatePresence mode="wait">
-        <motion.div key={stepKey}
+        {phase !== 'choice' && <motion.div key={stepKey}
           initial={{ opacity:0, scale:0.96 }} animate={{ opacity:1, scale:1 }}
           exit={{ opacity:0, scale:0.96 }}
           transition={{ duration:0.2 }}
           style={{
-            // the choice phase leaves this card empty: keep its space, hide the frame
-            ...(currentPanel || phase === 'lesson' ? pxPanel : { background:'transparent' }),
+            ...pxPanel,
             padding:'clamp(18px,4vw,32px)',
             width:'100%', maxWidth:680,
             display:'flex', flexDirection:'column', alignItems:'center', gap:16,
@@ -771,11 +770,13 @@ export default function StoryGame({ level = 1, onComplete }) {
               )}
             </div>
           )}
-        </motion.div>
+        </motion.div>}
       </AnimatePresence>
 
       {/* Lumi herself, not a fox emoji */}
-      {currentPanel && <LumiCharacter mood={currentPanel.mood ?? 'happy'} size={72} />}
+      {(currentPanel || phase === 'choice') && (
+        <LumiCharacter mood={currentPanel?.mood ?? 'thinking'} size={phase === 'choice' ? 96 : 72} />
+      )}
 
       {/* A feeling question at a turn of the story */}
       {ask && (
