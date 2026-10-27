@@ -496,7 +496,8 @@ export default function EmotionGame({ level = 1, onComplete }) {
                 initial={{ scale:0, rotate:-15, opacity:0 }}
                 animate={{ scale:1, rotate:0, opacity:1 }}
                 transition={{ type:'spring', stiffness:320, damping:18 }}
-                style={{ fontSize:'clamp(64px,14vw,96px)', lineHeight:1 }}
+                // smaller once the next steps need the room
+                style={{ fontSize: phase === 'feedback' ? 'clamp(64px,14vw,96px)' : 52, lineHeight:1 }}
               >
                 {FEELING_ICON[ch.emotion]}
               </motion.div>
@@ -517,7 +518,7 @@ export default function EmotionGame({ level = 1, onComplete }) {
             {ch.situation}
           </p>
 
-          {answered && (
+          {phase === 'feedback' && (
             <motion.div initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }}
               style={{
                 ...pxCard('selected'),
@@ -587,31 +588,36 @@ export default function EmotionGame({ level = 1, onComplete }) {
             display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center',
           }}
         >
-          <StepTitle hear={strengths}>Wie stark ist das Gefühl?</StepTitle>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
-            {strengths.map((s, i) => (
-              <motion.button key={i}
-                whileTap={phase === 'strength' ? { scale: 0.94 } : {}}
-                onClick={() => pickStrength(i)}
-                {...hearable(plain(s), { enabled: phase === 'strength' })}
-                style={{
-                  ...pxCard(intensity === i ? 'selected' : undefined), padding: '8px 14px', minHeight: 52,
-                  fontFamily: 'var(--font-heading)', fontSize: 'clamp(14px,2.8vw,17px)',
-                  cursor: phase === 'strength' ? 'pointer' : 'default', color: 'var(--text-primary)',
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  opacity: phase !== 'strength' && intensity !== i ? 0.55 : 1,
-                }}
-              >
-                {/* the face grows with the strength */}
-                <span style={{ fontSize: 18 + i * 7, lineHeight: 1 }}>{s.split(' ').pop()}</span>
-                {plain(s)}
-              </motion.button>
-            ))}
-          </div>
-
-          {phase !== 'strength' && (
+          {phase === 'strength' ? (
             <>
-              <div style={{ height: 2, background: 'var(--px-parch-dark)', width: '100%', margin: '4px 0' }} />
+              <StepTitle hear={strengths}>Wie stark ist das Gefühl?</StepTitle>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+                {strengths.map((s, i) => (
+                  <motion.button key={i}
+                    whileTap={{ scale: 0.94 }}
+                    onClick={() => pickStrength(i)}
+                    {...hearable(plain(s))}
+                    style={{
+                      ...pxCard(), padding: '8px 14px', minHeight: 52,
+                      fontFamily: 'var(--font-heading)', fontSize: 'clamp(14px,2.8vw,17px)',
+                      cursor: 'pointer', color: 'var(--text-primary)',
+                      display: 'flex', alignItems: 'center', gap: 6,
+                    }}
+                  >
+                    {/* the face grows with the strength */}
+                    <span style={{ fontSize: 18 + i * 7, lineHeight: 1 }}>{s.split(' ').pop()}</span>
+                    {plain(s)}
+                  </motion.button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              {/* the strength just picked, as a line — the row of three
+                  would make the screen too tall for a phone */}
+              <div style={{ fontFamily: 'var(--font-heading)', fontSize: 17, color: 'var(--text-secondary)' }}>
+                Lumi ist {strengths[intensity]}
+              </div>
               <StepTitle hear={helps.map(c => c.t)}>Was hilft Lumi jetzt?</StepTitle>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
                 {helps.map((c, i) => (
@@ -715,7 +721,7 @@ function StepTitle({ hear, children }) {
       <div style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(16px,3.2vw,19px)', color: 'var(--text-primary)' }}>
         {children}
       </div>
-      <HearOptions items={[children, ...hear.map(plain)]} label="Frage und Antworten vorlesen" size={44} />
+      <HearOptions items={[children, ...hear.map(plain)]} label="Frage und Antworten vorlesen" size={48} />
     </div>
   )
 }

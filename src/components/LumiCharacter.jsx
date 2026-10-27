@@ -21,7 +21,8 @@ export default function LumiCharacter({ mood = 'happy', size = 120 }) {
         draggable={false}
         style={{
           width: size, height: size, display: 'block', imageRendering: 'pixelated',
-          filter: mood === 'sleepy' ? 'saturate(0.6) brightness(0.92)' : 'drop-shadow(0 3px 0 rgba(42,27,61,0.3))',
+          // sleepy: only a little paler — saturate(0.6) made Lumi look olive and ill
+          filter: mood === 'sleepy' ? 'saturate(0.85) brightness(0.96) drop-shadow(0 3px 0 rgba(42,27,61,0.3))' : 'drop-shadow(0 3px 0 rgba(42,27,61,0.3))',
         }}
       />
     </motion.div>

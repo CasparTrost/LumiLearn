@@ -150,9 +150,9 @@ const initialState = {
   _saveFailed:     false,
 }
 
-// Helper to update the active profile
-function updateActiveProfile(state, updater) {
-  const id = state.activeProfileId
+// Helper to update the active profile (or the one the parent area names)
+function updateActiveProfile(state, updater, profileId) {
+  const id = profileId ?? state.activeProfileId
   if (!id || !state.profiles[id]) return state
   return {
     ...state,
@@ -176,11 +176,11 @@ function reducer(state, action) {
       return { ...initialState, language: state.language, settings: state.settings }
 
     case 'RESET_MODULE': {
-      const id = action.payload
+      const id = action.payload?.id ?? action.payload
       return updateActiveProfile(state, p => ({
         ...p,
         progress: { ...p.progress, [id]: freshProgress() },
-      }))
+      }), action.payload?.profileId)
     }
 
     // Setting the level from the parent area only moves the starting point.
@@ -188,14 +188,14 @@ function reducer(state, action) {
     // trophy and the farm its animal, and the next round celebrated the
     // "first" mastery again.
     case 'SET_MODULE_LEVEL': {
-      const { id, level } = action.payload
+      const { id, level, profileId } = action.payload
       return updateActiveProfile(state, p => {
         const prev = p.progress[id] ?? freshProgress()
         return {
           ...p,
           progress: { ...p.progress, [id]: { ...prev, currentLevel: level } },
         }
-      })
+      }, profileId)
     }
 
     case 'SET_LANGUAGE':

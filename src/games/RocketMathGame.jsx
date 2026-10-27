@@ -57,7 +57,8 @@ function makeTask(p, i) {
   }
   if (kind === 'missing') {
     const from = rand(p.max > 10 ? 4 : 0, p.max - 2)
-    const step = rand(1, Math.min(p.maxStep, p.max - from))
+    const room = Math.min(p.maxStep, p.max - from)
+    const step = rand(Math.min(2, room), room)
     return { from, step, target: from + step, op: '+', kind }
   }
   const step = rand(cross ? 2 : 1, p.maxStep)

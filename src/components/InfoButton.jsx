@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { narrate, stopNarration } from '../narrator.js'
+import { MODULE_BY_ID } from '../modules.js'
 
 // Help per game. Read aloud when the dialog opens (most children who play
 // can't read yet), so the texts are written to be heard: short sentences,
@@ -42,7 +44,17 @@ export default function InfoButton({ moduleId, onOpenChange }) {
     if (v) narrate([{ text: `${info.title}. ${info.text}` }])
     else stopNarration()
   }
-  const info = INFO[moduleId] ?? { emoji: '❓', title: 'Wie geht das?', text: 'Schau dir die Aufgabe an und tippe auf die richtige Antwort!' }
+  const help = INFO[moduleId] ?? { emoji: '❓', title: 'Wie geht das?', text: 'Schau dir die Aufgabe an und tippe auf die richtige Antwort!' }
+  // the name as on the tiles (modules.js), one spelling everywhere
+  const info = { ...help, title: MODULE_BY_ID[moduleId]?.title ?? help.title }
+
+  // Escape closes the help, like a tap outside it
+  useEffect(() => {
+    if (!open) return
+    const onKey = e => { if (e.key === 'Escape') setOpen(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <>
@@ -55,7 +67,9 @@ export default function InfoButton({ moduleId, onOpenChange }) {
         ?
       </button>
 
-      <AnimatePresence>
+      {/* In a portal on <body>: inside the screen's animated container a
+          fixed overlay is positioned against that container, not the window */}
+      {createPortal(<AnimatePresence>
         {open && (
           <motion.div
             key="info-overlay"
@@ -66,8 +80,7 @@ export default function InfoButton({ moduleId, onOpenChange }) {
             onClick={() => setOpen(false)}
             style={{
               position: 'fixed', inset: 0, zIndex: 900,
-              background: 'rgba(20, 5, 50, 0.60)',
-              backdropFilter: 'blur(8px)',
+              background: 'rgba(42, 27, 61, 0.60)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               padding: 24,
             }}
@@ -78,6 +91,9 @@ export default function InfoButton({ moduleId, onOpenChange }) {
               exit={{ scale: 0.82, opacity: 0, y: 18 }}
               transition={{ type: 'spring', stiffness: 420, damping: 30 }}
               onClick={e => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-label={info.title}
               className="px-panel"
               style={{
                 padding: '36px 28px 28px',
@@ -95,7 +111,8 @@ export default function InfoButton({ moduleId, onOpenChange }) {
                 transition={{ type: 'spring', stiffness: 500, damping: 22, delay: 0.08 }}
                 style={{
                   fontSize: 72, lineHeight: 1, zIndex: 1,
-                  filter: 'drop-shadow(0 6px 18px rgba(0,0,0,0.15))',
+                  // a hard pixel shadow, like Lumi's (no soft glow)
+                  filter: 'drop-shadow(0 4px 0 rgba(42,27,61,0.35))',
                 }}
               >
                 {info.emoji}
@@ -135,7 +152,7 @@ export default function InfoButton({ moduleId, onOpenChange }) {
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>, document.body)}
     </>
   )
 }

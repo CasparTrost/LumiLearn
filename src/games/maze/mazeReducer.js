@@ -29,6 +29,8 @@ export function initState(maze, hasDragon = true) {
     // Cells Lumi has stood on, as "x,y" keys. In fog levels they stay
     // faintly visible, so a child can see where they have already been.
     seen:       { [`${maze.start.x},${maze.start.y}`]: true },
+    // The last cells walked, most recent last — where a hit puts Lumi back to
+    trail:      [],
     dragon:     hasDragon ? (maze.dragonWps[0] ?? null) : null,
     coll:       [],           // collected potion ids
     lives:      3,
@@ -50,18 +52,35 @@ function computeDanger(g, pos, dragon) {
   return dist <= 2 ? 1 : dist <= 5 ? 0.5 : 0
 }
 
+// How far a hit sets Lumi back along the way just walked. It used to be all
+// the way to the start — on the big fogged levels some fifty steps, very
+// hard on a five-year-old.
+const KNOCK_BACK = 4
+
+function knockBackPos(s) {
+  const onPatrol = p => s.maze.dragonWps.some(w => w.x === p.x && w.y === p.y)
+  const t = s.trail
+  for (let back = KNOCK_BACK; back <= t.length; back++) {
+    const p = t[t.length - back]
+    if (!onPatrol(p)) return { pos: p, trail: t.slice(0, t.length - back) }
+  }
+  return { pos: { ...s.maze.start }, trail: [] }
+}
+
 function checkCollision(s, now) {
   if (!s.dragon) return s
   if (s.dragon.x !== s.pos.x || s.dragon.y !== s.pos.y) return s
   if (now < s.invUntil) return s              // invincible — ignore
   const lives = s.lives - 1
+  const back  = knockBackPos(s)
   return {
     ...s,
     lives,
-    pos:       { ...s.maze.start },
+    pos:       back.pos,
+    trail:     back.trail,
     invUntil:  now + 1800,
     dead:      lives <= 0,
-    dragon:    s.maze.dragonWps[0] ?? s.dragon,
+    dangerLevel: computeDanger(s.maze.g, back.pos, s.dragon),
     event:     { type: lives <= 0 ? 'dead' : 'hit', lives },
   }
 }
@@ -84,6 +103,7 @@ export function mazeReducer(s, a) {
       let n = {
         ...s,
         pos:    { x: nx, y: ny },
+        trail:  [...s.trail.slice(-11), s.pos],
         seen:   s.seen[`${nx},${ny}`] ? s.seen : { ...s.seen, [`${nx},${ny}`]: true },
         moves:  s.moves + 1,
         facing,
@@ -99,14 +119,12 @@ export function mazeReducer(s, a) {
         n = { ...n, coll: [...s.coll, potion.id], event: { type: 'potion', id: potion.id, x: nx, y: ny } }
       }
 
-      // Check exit (need all potions first)
-      const collAfter = n.coll
-      if (
-        collAfter.length >= s.maze.potions.length &&
-        nx === s.maze.exit.x &&
-        ny === s.maze.exit.y
-      ) {
-        return { ...n, won: true, event: { type: 'won', moves: n.moves } }
+      // Check exit (need all potions first). Standing on a closed exit
+      // used to do nothing at all, and the child could not tell why.
+      if (nx === s.maze.exit.x && ny === s.maze.exit.y) {
+        const missing = s.maze.potions.length - n.coll.length
+        if (missing <= 0) return { ...n, won: true, event: { type: 'won', moves: n.moves } }
+        n = { ...n, event: { type: 'needPotions', missing } }
       }
 
       n = { ...n, dangerLevel: computeDanger(s.maze.g, n.pos, n.dragon) }
@@ -137,6 +155,10 @@ export function mazeReducer(s, a) {
 
     case 'SET_MOVING':
       return { ...s, moving: a.value }
+
+    // After the last heart: the same maze once more, from the start
+    case 'RESTART':
+      return initState(s.maze, s.dragon !== null)
 
     case 'CLEAR_EVENT':
       return s.event ? { ...s, event: null } : s

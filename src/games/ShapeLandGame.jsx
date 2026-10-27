@@ -137,6 +137,19 @@ function buildRound(level, idx) {
   }
 }
 
+// Phones held upright: three answers go below each other, so they can be
+// big — side by side they had to shrink to a third of the width.
+function useNarrow() {
+  const get = () => typeof window !== 'undefined' && window.innerWidth < 520
+  const [narrow, setNarrow] = useState(get)
+  useEffect(() => {
+    const on = () => setNarrow(get())
+    window.addEventListener('resize', on)
+    return () => window.removeEventListener('resize', on)
+  }, [])
+  return narrow
+}
+
 const taskFor = (r) =>
   r.mode === 'match' ? `Finde ${SHAPES[r.answer].art} ${SHAPES[r.answer].name}!`
   : r.mode === 'size' ? (r.down ? 'Tippe die Formen von groß nach klein!' : 'Tippe die Formen von klein nach groß!')
@@ -155,6 +168,7 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
   const [mood,     setMood]     = useState('happy')
 
   const r = rounds[idx]
+  const narrow = useNarrow()
 
   useEffect(() => {
     if (!r) return
@@ -213,7 +227,7 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
   const pickPattern = useCallback((opt, i) => {
     if (solved || !r) return
     if (opt.type !== r.correct.type) {
-      miss(`p${i}`, `Hör mal: ${r.seq.map(s => SHAPES[s.type].name).join(', ')}, und dann?`)
+      miss(`p${i}`, `Hör mal! ${r.seq.map(s => SHAPES[s.type].name).join(', ')}, und dann?`)
       return
     }
     finish('So geht das Muster weiter.')
@@ -242,13 +256,15 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
   // The shapes grow with the screen: they were 100 px cards under the
   // question with 60 % of the screen empty below.
   const sumScale = r.mode === 'size' ? r.sizes.reduce((a, b) => a + b, 0) : 0
+  // Every size leaves room for the cards' padding and the gaps between them
+  const threeUp  = (cap, vh) => (narrow ? `min(${vh - 4}dvh, 40vw, ${cap}px)` : `min(${vh}dvh, calc((min(100vw, 720px) - 130px - 11vw) / 3), ${cap}px)`)
   const cardSize = r.mode === 'match'
-    ? (r.options.length === 4 ? 'min(19dvh, 34vw, 190px)' : 'min(22dvh, 24vw, 200px)')
+    ? (r.options.length === 4 ? 'min(19dvh, calc((min(100vw, 720px) - 100px - 8vw) / 2), 190px)' : threeUp(200, 22))
     : r.mode === 'size'
       // the whole row has to fit across a phone: buttons, gaps and shelf
-      ? `min(26dvh, calc((min(100vw, 900px) - ${58 + 14 * r.items.length}px) / ${sumScale.toFixed(2)}), 220px)`
-      : 'min(17dvh, 22vw, 150px)'
-  const rowSize = r.mode === 'pattern' ? `min(64px, calc((min(100vw, 760px) - ${60 + 4 * r.seq.length}px) / ${r.seq.length + 1}))` : null
+      ? `min(26dvh, calc((min(100vw, 720px) - ${58 + 14 * r.items.length}px) / ${sumScale.toFixed(2)}), 220px)`
+      : (narrow ? 'min(12dvh, 26vw, 150px)' : threeUp(150, 17))
+  const rowSize = r.mode === 'pattern' ? `min(64px, calc((min(100vw, 720px) - ${60 + 4 * r.seq.length}px) / ${r.seq.length + 1}))` : null
 
   return (
     <div style={{
@@ -262,7 +278,7 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
             <div key={i} style={{
               flex: 1, ...pxSegment(done ? 'done' : i === idx ? 'current' : 'todo'),
               // solved, but not on the first try
-              ...(done && missed.includes(i) ? { background: 'var(--px-parch-dark)' } : {}),
+              ...(done && missed.includes(i) ? { background: '#F3A091' } : {}),
             }} />
           )
         })}
@@ -286,7 +302,7 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
         {/* MATCH — four shapes as 2×2, three in one row */}
         {r.mode === 'match' && (
           <div style={{
-            display: 'grid', gridTemplateColumns: `repeat(${r.options.length === 4 ? 2 : 3}, auto)`,
+            display: 'grid', gridTemplateColumns: `repeat(${r.options.length === 4 ? 2 : narrow ? 1 : 3}, auto)`,
             gap: 'clamp(12px,3vw,26px)', justifyContent: 'center',
           }}>
             {r.options.map(type => {

@@ -280,11 +280,13 @@ export default function SortGame({ level = 1, onComplete }) {
       sfx.correct()
       setFeedback('ok')
       setMood('excited')
-      // fly into the basket that was tapped
+      // fly into the basket that was tapped; `k` undoes the FitBox scale,
+      // the measured rects are on screen, the motion is in the game's units
       const from = itemRef.current?.getBoundingClientRect()
       const to   = basketRefs.current[target]?.getBoundingClientRect()
+      const k    = from?.width ? itemRef.current.offsetWidth / from.width : 1
       setFly(from && to
-        ? { cat: target, dx: to.left + to.width / 2 - (from.left + from.width / 2), dy: to.top + to.height / 2 - (from.top + from.height / 2) }
+        ? { cat: target, dx: (to.left + to.width / 2 - (from.left + from.width / 2)) * k, dy: (to.top + to.height / 2 - (from.top + from.height / 2)) * k }
         : { cat: target, dx: 0, dy: 120 })
       const next = items[curIdx + 1]
       lockPreviews()

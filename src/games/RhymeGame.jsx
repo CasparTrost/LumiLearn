@@ -103,7 +103,8 @@ const wordOf  = w => groupOf(w).words.find(x => x.w === w)
 /** Words that do not rhyme with `g` (and don't start like `first`). */
 function nonRhymes(g, n, { near, first }) {
   const others = RHYME_GROUPS.filter(x => x !== g)
-  const pickFrom = list => shuffle(list.flatMap(x => x.words)).filter(o => o.w[0] !== first)
+  // one word per group, so no two wrong answers rhyme with each other
+  const pickFrom = list => shuffle(list).map(x => shuffle(x.words)[0]).filter(o => o.w[0] !== first)
   const alike = pickFrom(others.filter(x => x.v === g.v))
   const rest  = pickFrom(others.filter(x => x.v !== g.v))
   // with `near`, one of them sounds almost like a rhyme — that is the step up
@@ -138,8 +139,8 @@ function buildRounds(level, count = 8) {
 }
 
 function taskOf(r) {
-  if (r.mode === 'yesno') return [{ text: `Hör gut zu: ${r.base.w} und ${r.other.w}. Reimt sich das?`, rate: 0.8 }]
-  if (r.mode === 'odd')   return [{ text: `Hör gut zu: ${r.options.map(o => o.w).join(', ')}. Welches Wort reimt sich nicht?`, rate: 0.8 }]
+  if (r.mode === 'yesno') return [{ text: `Hör gut zu, ${r.base.w} und ${r.other.w}. Reimt sich das?`, rate: 0.8 }]
+  if (r.mode === 'odd')   return [{ text: `Hör gut zu, ${r.options.map(o => o.w).join(', ')}. Welches Wort reimt sich nicht?`, rate: 0.8 }]
   if (r.mode === 'verse') return [
     { text: r.verse.line, rate: 0.8 },
     { text: `Was reimt sich auf ${r.base.w}?`, rate: 0.8, gap: 450 },
@@ -217,15 +218,15 @@ export default function RhymeGame({ level = 1, onComplete }) {
     }
     const done = r.mode === 'verse' ? `${r.verse.line.replace(' …', '')} ${r.correct.w}.` : `${r.base.w} und ${r.correct.w} reimen sich.`
     if (opt === r.correct) win(done)
-    else miss(opt, `${r.base.w} und ${opt.w}, das klingt am Ende anders. Hör noch mal: ${r.base.w}.`,
-      `Hör mal: ${done}`)
+    else miss(opt, `${r.base.w} und ${opt.w}, das klingt am Ende anders. Hör noch mal, ${r.base.w}.`,
+      `Hör mal, ${done}`)
   }
 
   const answerYesNo = (yes) => {
     if (solved) return
     const what = `${r.base.w} und ${r.other.w} reimen sich${r.rhymes ? '' : ' nicht'}.`
     if (yes === r.rhymes) win(what)
-    else miss(yes, '', `${what} Hör mal: ${r.base.w}, ${r.other.w}.`)
+    else miss(yes, '', `${what} Hör mal, ${r.base.w}, ${r.other.w}.`)
   }
 
   const weiterClick = () => {

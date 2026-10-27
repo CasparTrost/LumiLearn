@@ -33,7 +33,7 @@ export default function TileArt({ mod, size = 64, bare = false }) {
   return (
     <div style={{
       width: size, height: size, flexShrink: 0,
-      background: mod.gradient,
+      background: mod.color ?? 'var(--px-parch-dark)',
       border: '3px solid var(--px-ink)', borderRadius: 8,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       boxShadow: 'inset 0 -4px 0 rgba(0,0,0,0.2)',

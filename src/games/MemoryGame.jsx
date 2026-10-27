@@ -1,14 +1,11 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
-import { speak } from '../tts.js'
-import { afterNarration } from '../narrator.js'
+import { narrate, afterNarration } from '../narrator.js'
+import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
+import { usePaused } from '../lib/pause.js'
 import { INK, pxCard, pxPanel, pxBubble } from './px.js'
-
-function speakDE(text) {
-  speak(text, { rate: 0.85, pitch: 1.1, lang: 'de-DE' })
-}
 
 // Sparkle burst that fires when a pair is found
 function SparkBurst({ id }) {
@@ -46,59 +43,107 @@ function SparkBurst({ id }) {
  *   • Episodic Memory (Tulving, 1972) — visual context (emoji) creates rich episodic traces.
  */
 
-const EMOJI_PAIRS = [
-  // Tier 1 — simple animals
-  '🐕','🐱','🐟','🦋','🦁','🐸','🦊','🐼','🦄','🐬',
-  '🐮','🐷','🐑','🐔','🐧','🦜','🦉','🐦','🐝','🐢',
-  // Tier 2 — more animals & nature
-  '🐨','🦖','🐋','🦍','🐆','🦒','🦓','🦛','🦏','🐙',
-  '🦀','🦑','🐡','🦈','🦞','🐊','🐍','🦎','🦔','🐿️',
-  '🌸','🌻','🌴','🌵','🍄','🌾','🎋','🍁','🌿','🌺',
-  // Tier 3 — food
-  '🍎','🍕','🍔','🌮','🍩','🍰','🎂','🍦','🍫','🍿',
-  '🍌','🍇','🍓','🍒','🥝','🍍','🥭','🫐','🍑','🥥',
-  '🥕','🌽','🥦','🍅','🫑','🧄','🧅','🥬','🫛','🥑',
-  // Tier 4 — objects & vehicles
-  '🚀','🚗','✈️','🚂','🚢','🚁','🛸','🚲','🛴','⛵',
-  '🎨','🏆','🎩','🔭','🌊','🎸','🥁','🎹','🎺','🎻',
-  '📚','🧪','💡','🔬','📡','🎯','🧲','⚙️','🔑','🪄',
-  // Tier 5 — symbols & advanced
-  '⭐','🌈','❤️','🔥','💎','🌙','☀️','⚡','❄️','🌊',
-  '🎁','🎈','🎊','🎠','🏰','🗼','⛺','🏄','🤿','🎡',
+// Picture pairs by theme, one theme per level: before, the pool was simply
+// the first 8–26 entries of one long list, so the later 104 pictures never
+// appeared. Every picture has its name (said when the card is turned over)
+// and its plural ("Zwei Hunde!").
+const ANIMALS = [
+  ['🐕','Hund','Hunde'], ['🐱','Katze','Katzen'], ['🐟','Fisch','Fische'], ['🦋','Schmetterling','Schmetterlinge'],
+  ['🐸','Frosch','Frösche'], ['🐮','Kuh','Kühe'], ['🐷','Schwein','Schweine'], ['🐑','Schaf','Schafe'],
+  ['🐔','Huhn','Hühner'], ['🐧','Pinguin','Pinguine'], ['🦉','Eule','Eulen'], ['🐝','Biene','Bienen'],
+  ['🐢','Schildkröte','Schildkröten'], ['🐘','Elefant','Elefanten'], ['🦁','Löwe','Löwen'], ['🐒','Affe','Affen'],
+  ['🐰','Hase','Hasen'], ['🐭','Maus','Mäuse'], ['🦆','Ente','Enten'], ['🐌','Schnecke','Schnecken'],
 ]
+const FOOD = [
+  ['🍎','Apfel','Äpfel'], ['🍌','Banane','Bananen'], ['🍓','Erdbeere','Erdbeeren'], ['🍇','Traube','Trauben'],
+  ['🍐','Birne','Birnen'], ['🍒','Kirsche','Kirschen'], ['🥕','Möhre','Möhren'], ['🍕','Pizza','Pizzas'],
+  ['🍦','Eis','Eis'], ['🍪','Keks','Kekse'], ['🥨','Brezel','Brezeln'], ['🍋','Zitrone','Zitronen'],
+  ['🥒','Gurke','Gurken'], ['🍅','Tomate','Tomaten'], ['🥚','Ei','Eier'], ['🍞','Brot','Brote'],
+]
+const THINGS = [
+  ['🚗','Auto','Autos'], ['🚂','Lok','Loks'], ['✈️','Flugzeug','Flugzeuge'], ['🚀','Rakete','Raketen'],
+  ['🚁','Hubschrauber','Hubschrauber'], ['🚲','Fahrrad','Fahrräder'], ['⛵','Segelboot','Segelboote'], ['🚜','Traktor','Traktoren'],
+  ['🚌','Bus','Busse'], ['🛴','Roller','Roller'], ['🎈','Luftballon','Luftballons'], ['⚽','Ball','Bälle'],
+  ['🧸','Teddy','Teddys'], ['🎁','Geschenk','Geschenke'], ['⭐','Stern','Sterne'], ['🌙','Mond','Monde'],
+  ['☂️','Schirm','Schirme'], ['🔑','Schlüssel','Schlüssel'], ['🎸','Gitarre','Gitarren'], ['🥁','Trommel','Trommeln'],
+  ['👑','Krone','Kronen'], ['🏠','Haus','Häuser'],
+]
+const PICTURE_POOLS = { 1: ANIMALS, 2: FOOD, 3: THINGS, 4: [...ANIMALS, ...FOOD, ...THINGS] }
 
-// Pairs that belong together without looking alike. From the middle levels
-// on these replace the identical pairs, which turns the task from pure
-// visual recall into recall plus "what goes with what" — the same concept
-// forming that Sortier-Spaß trains, but held in memory.
+// Pairs that belong together without looking alike. From level 5 on these
+// replace the identical pairs, which turns the task from pure visual recall
+// into recall plus "what goes with what" — the same concept forming that
+// Sortier-Spaß trains, but held in memory. Each pair says why it belongs
+// together, and no card fits a second pair (the sun went with the sunflower
+// as well as with the sunglasses; the candle already showed a flame; the
+// "nerd" face next to the books was a cliché, not a connection).
 const ASSOCIATION_PAIRS = [
-  ['🐄','🥛'], ['🐝','🍯'], ['🌧️','☂️'], ['🐔','🥚'], ['🌰','🐿️'],
-  ['🖌️','🎨'], ['🔑','🔒'], ['🧦','👟'], ['📚','🤓'], ['🌱','🌻'],
-  ['🪥','🦷'], ['✏️','📓'], ['🍞','🧈'], ['🐟','🎣'], ['⚽','🥅'],
-  ['🕯️','🔥'], ['❄️','⛄'], ['🎻','🎵'], ['🌙','🛏️'], ['☀️','🕶️'],
+  { a: ['🐄','Kuh'],         b: ['🥛','Milch'],        say: 'Die Kuh gibt Milch!' },
+  { a: ['🐝','Biene'],       b: ['🍯','Honig'],        say: 'Die Biene macht Honig!' },
+  { a: ['🌧️','Regen'],       b: ['☂️','Schirm'],       say: 'Bei Regen hält der Schirm dich trocken!' },
+  { a: ['🐔','Huhn'],        b: ['🥚','Ei'],           say: 'Das Huhn legt Eier!' },
+  { a: ['🐰','Hase'],        b: ['🥕','Möhre'],        say: 'Der Hase knabbert gern Möhren!' },
+  { a: ['🖌️','Pinsel'],      b: ['🎨','Farben'],       say: 'Mit dem Pinsel malst du mit Farbe!' },
+  { a: ['🔑','Schlüssel'],   b: ['🔒','Schloss'],      say: 'Der Schlüssel schließt das Schloss auf!' },
+  { a: ['🧦','Socke'],       b: ['👟','Schuh'],        say: 'Erst die Socke, dann der Schuh!' },
+  { a: ['🐕','Hund'],        b: ['🦴','Knochen'],      say: 'Der Hund kaut gern einen Knochen!' },
+  { a: ['🐒','Affe'],        b: ['🍌','Banane'],       say: 'Der Affe isst gern Bananen!' },
+  { a: ['🪥','Zahnbürste'],  b: ['🦷','Zahn'],         say: 'Mit der Zahnbürste putzt du die Zähne!' },
+  { a: ['🐿️','Eichhörnchen'], b: ['🥜','Nuss'],        say: 'Das Eichhörnchen sammelt Nüsse!' },
+  { a: ['🚒','Feuerwehr'],   b: ['🔥','Feuer'],        say: 'Die Feuerwehr löscht das Feuer!' },
+  { a: ['🎣','Angel'],       b: ['🐟','Fisch'],        say: 'Mit der Angel fängt man Fische!' },
+  { a: ['⚽','Ball'],         b: ['🥅','Tor'],          say: 'Der Ball soll ins Tor!' },
+  { a: ['🎂','Torte'],       b: ['🎁','Geschenk'],     say: 'Zum Geburtstag gibt es Torte und Geschenke!' },
+  { a: ['❄️','Schnee'],      b: ['⛄','Schneemann'],   say: 'Aus Schnee baut man einen Schneemann!' },
+  { a: ['🎻','Geige'],       b: ['🎵','Musik'],        say: 'Die Geige macht Musik!' },
+  { a: ['☀️','Sonne'],       b: ['🕶️','Sonnenbrille'], say: 'Bei Sonne trägt man eine Sonnenbrille!' },
 ]
 
+const shuffle = a => [...a].sort(() => Math.random() - 0.5)
+
+// pairKey instead of comparing the emoji itself, so a pair can be two
+// different pictures that belong together.
 function buildCards(count, pool) {
-  const pairs   = [...pool].sort(() => Math.random() - 0.5).slice(0, count)
-  const doubled = [...pairs, ...pairs].sort(() => Math.random() - 0.5)
-  // pairKey instead of comparing the emoji itself, so a pair can be two
-  // different pictures that belong together.
-  return doubled.map((emoji, id) => ({ id, emoji, pairKey: emoji, flipped: false, matched: false }))
+  const chosen = shuffle(pool).slice(0, count)
+  const flat = chosen.flatMap(([emoji, name, plural], i) => [0, 1].map(() =>
+    ({ emoji, name, pairKey: `p${i}`, found: [emoji], say: `Zwei ${plural}!` })))
+  return shuffle(flat).map((c, id) => ({ id, ...c, flipped: false, matched: false }))
 }
 
 function buildAssociationCards(count) {
-  const chosen = [...ASSOCIATION_PAIRS].sort(() => Math.random() - 0.5).slice(0, count)
-  const flat = chosen.flatMap(([a, b], i) => [
-    { emoji: a, pairKey: `p${i}` },
-    { emoji: b, pairKey: `p${i}` },
-  ]).sort(() => Math.random() - 0.5)
-  return flat.map((c, id) => ({ id, ...c, flipped: false, matched: false }))
+  const chosen = shuffle(ASSOCIATION_PAIRS).slice(0, count)
+  const flat = chosen.flatMap(({ a, b, say }, i) => [a, b].map(([emoji, name]) =>
+    ({ emoji, name, pairKey: `p${i}`, found: [a[0], b[0]], say })))
+  return shuffle(flat).map((c, id) => ({ id, ...c, flipped: false, matched: false }))
 }
 
+// A wrong pair is part of playing memory, not a mistake: a light word, never
+// the same one twice in a row.
+const NO_PAIR = ['Kein Paar.', 'Das passt nicht.', 'Nicht gleich. Merk sie dir!']
+const NO_MATCH = ['Das gehört nicht zusammen.', 'Das passt nicht zusammen.', 'Hm, die gehören nicht zusammen.']
+let lastMiss = -1
+function missLine(list) {
+  lastMiss = (lastMiss + 1 + Math.floor(Math.random() * (list.length - 1))) % list.length
+  return list[lastMiss]
+}
+
+// Keyboard help only where there is a keyboard
+const FINE_POINTER = typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (pointer: fine)').matches
+
 export default function MemoryGame({ level = 1, onComplete }) {
+  const paused = usePaused()
   // Scale difficulty across 10 levels
   const pairCount   = level <= 2 ? 4 : level <= 4 ? 6 : level <= 6 ? 8 : level <= 8 ? 10 : 12
-  const gridCols    = pairCount <= 4 ? 4 : pairCount <= 6 ? 4 : pairCount <= 8 ? 4 : pairCount <= 10 ? 5 : 6
+  // On a phone six columns made 48-px cards; four columns keep them large
+  // (the board grows taller, and the frame scales it to fit). A landscape
+  // screen gets a wider board instead of a tall one that would be shrunk.
+  const [screen]    = useState(() => ({
+    narrow:    window.matchMedia('(max-width: 600px)').matches,
+    landscape: window.innerWidth > window.innerHeight,
+  }))
+  const gridCols    = screen.narrow ? 4
+    : screen.landscape ? Math.ceil(Math.sqrt(pairCount * 2 * 1.6))
+    : pairCount <= 8 ? 4 : pairCount <= 10 ? 5 : 6
   // The preview used to shrink with the level while the board grew: one
   // single second for twelve pairs, i.e. twenty-four cards. Nobody can encode
   // that, so the phase became decorative and the game turned into pure trial
@@ -106,14 +151,11 @@ export default function MemoryGame({ level = 1, onComplete }) {
   // the number of cards (a constant glance per card), which keeps higher
   // levels harder — there is simply more to hold — without being impossible.
   const previewSecs = Math.round(Math.min(8, Math.max(3, pairCount * 2 * 0.3)))
-  // Association pairs (cow/milk) instead of identical ones from the middle
-  // levels on.
+  // Association pairs (cow/milk) instead of identical ones from level 5 on.
   const useAssociations = level >= 5
-  // Use deeper emoji tiers at higher levels
-  const emojiPool   = EMOJI_PAIRS.slice(0, Math.min(8 + (level - 1) * 6, EMOJI_PAIRS.length))
 
   const [cards,    setCards]    = useState(() =>
-    useAssociations ? buildAssociationCards(pairCount) : buildCards(pairCount, emojiPool))
+    useAssociations ? buildAssociationCards(pairCount) : buildCards(pairCount, PICTURE_POOLS[level] ?? PICTURE_POOLS[4]))
   const [flipped,  setFlipped]  = useState([])
   const [locked,   setLocked]   = useState(false)
   const [moves,    setMoves]    = useState(0)
@@ -121,15 +163,30 @@ export default function MemoryGame({ level = 1, onComplete }) {
   const [mood,     setMood]     = useState('happy')
   const [trophies,       setTrophies]       = useState([])
   const [sparkKey,       setSparkKey]       = useState(null)
-  const [endStars,       setEndStars]       = useState(0)
   const [justMatched,    setJustMatched]    = useState(() => new Set())
   const [justMismatched, setJustMismatched] = useState(() => new Set())
   const [mismatchCount,  setMismatchCount]  = useState(0)
   const [matchPopup,     setMatchPopup]     = useState({ visible: false, text: '' })
   const [cursor,         setCursor]         = useState(0)
-  // Preview phase: show all cards briefly at start
+  const [usingKeys,      setUsingKeys]      = useState(false)
+  // Preview phase: all cards face up. The countdown starts once the task has
+  // been said, so the child gets the whole time to look.
   const [phase,          setPhase]          = useState('preview') // 'preview' | 'playing'
+  const [counting,       setCounting]       = useState(false)
   const [countdown,      setCountdown]      = useState(previewSecs)
+  const doneRef = useRef(false)
+  // pairs one of whose cards was part of a wrong pair before it was found
+  const missedRef = useRef(new Set())
+
+  // The task. From level 5 on the rule changes, so it is explained with an
+  // example — before, the bubble still said "Finde alle Paare" and a child
+  // turning over a cow and a glass of milk could not know they belong.
+  useEffect(() => {
+    sayTask(useAssociations
+      ? `${level === 5 ? 'Jetzt wird es knifflig! ' : ''}Finde zwei Karten, die zusammengehören, wie die Kuh und die Milch. Merk dir, wo die Bilder liegen!`
+      : 'Merk dir, wo die Bilder liegen! Gleich drehen sich die Karten um.')
+    return afterNarration(() => setCounting(true), { minMs: 300, maxMs: 10000 })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const flip = useCallback((id) => {
     if (locked || phase !== 'playing') return
@@ -141,12 +198,15 @@ export default function MemoryGame({ level = 1, onComplete }) {
     const newFlipped = [...flipped, id]
     setCards(next)
     setFlipped(newFlipped)
+    // Name what is on the card: words to go with the pictures
+    narrate([{ text: card.name }])
 
     if (newFlipped.length < 2) return
 
     // Two cards flipped
     setLocked(true)
-    setMoves(m => m + 1)
+    const finalMoves = moves + 1
+    setMoves(finalMoves)
 
     const [a, b] = newFlipped
     const match  = next[a].pairKey === next[b].pairKey
@@ -162,38 +222,34 @@ export default function MemoryGame({ level = 1, onComplete }) {
         setCards(prev => prev.map(c => (c.id === a || c.id === b) ? { ...c, matched: true } : c))
         setJustMatched(new Set([a, b]))
         setTimeout(() => setJustMatched(new Set()), 700)
-        const foundEmoji = next[a].emoji
-        setMatchPopup({ visible: true, text: foundEmoji + ' MATCH! 🎉' })
+        const found = next[a].found
+        setMatchPopup({ visible: true, text: found.join(' ') + ' Paar! 🎉' })
         setTimeout(() => setMatchPopup({ visible: false, text: '' }), 950)
-        setTrophies(prev => [...prev, foundEmoji])
+        setTrophies(prev => [...prev, found.join('')])
         setSparkKey(k => (k ?? 0) + 1)
-        speakDE('Super! Paar gefunden!')
-
-        if (newMatches >= pairCount) {
-          sfx.complete()
-          // Perfect play is exactly pairCount moves, so the slack has to grow
-          // with the board. The old fixed "+2" meant three stars at twelve
-          // pairs required fourteen moves for twenty-four cards — flawless
-          // recall — which made the rating unreachable rather than motivating.
-          // Note: moves+1 because setMoves(m=>m+1) above hasn't flushed yet
-          const finalMoves = moves + 1
-          const starCount = finalMoves <= Math.round(pairCount * 1.5) ? 3
-                          : finalMoves <= Math.round(pairCount * 2.5) ? 2 : 1
-          setEndStars(starCount)
-          afterNarration(() => onComplete({ score: pairCount, total: pairCount, bonus: finalMoves, stars: starCount }), { minMs: 400 })
-        } else {
-          setTimeout(() => setMood('happy'), 800)
-        }
+        const last = newMatches >= pairCount && !doneRef.current
+        if (last) { doneRef.current = true; sfx.complete() }
+        // the name of the second card first, then why they are a pair
+        afterNarration(() => {
+          sayRight(next[a].say)
+          if (!last) return
+          // Memo keeps its own rating, by moves: perfect play is exactly
+          // pairCount moves, so the slack grows with the board. The score is
+          // the pairs found without a wrong try on either of their cards.
+          const stars = finalMoves <= Math.round(pairCount * 1.5) ? 3
+                      : finalMoves <= Math.round(pairCount * 2.5) ? 2 : 1
+          const firstTry = pairCount - missedRef.current.size
+          afterNarration(() => onComplete({ score: firstTry, total: pairCount, stars }), { minMs: 900 })
+        }, { maxMs: 1500 })
+        if (!last) setTimeout(() => setMood('happy'), 800)
       } else {
         sfx.mismatch()
-        setMismatchCount(c => {
-          const newCount = c + 1
-          if (newCount === 4) {
-            // Give child a helpful spoken hint after 4 mismatches
-            setTimeout(() => speakDE('Schau noch mal genau hin! Du schaffst das!'), 200)
-          }
-          return newCount
-        })
+        missedRef.current.add(next[a].pairKey).add(next[b].pairKey)
+        const newCount = mismatchCount + 1
+        setMismatchCount(newCount)
+        afterNarration(() => (newCount === 4
+          ? sayWrong('Schau noch mal genau hin! Du schaffst das!')
+          : narrate([{ text: missLine(useAssociations ? NO_MATCH : NO_PAIR) }])), { maxMs: 1500 })
         setMood('encouraging')
         setCards(prev => prev.map(c => (c.id === a || c.id === b) ? { ...c, flipped: false } : c))
         setJustMismatched(new Set([a, b]))
@@ -203,34 +259,46 @@ export default function MemoryGame({ level = 1, onComplete }) {
       setFlipped([])
       setLocked(false)
     }, delay)
-  }, [locked, cards, flipped, matches, moves, pairCount, onComplete])
+  }, [locked, phase, cards, flipped, matches, moves, mismatchCount, pairCount, useAssociations, onComplete])
 
-  // Preview phase countdown
+  // Preview phase countdown (held while the help is open)
   useEffect(() => {
-    if (phase !== 'preview') return
+    if (phase !== 'preview' || !counting || paused) return
     if (countdown <= 0) {
       setCards(prev => prev.map(c => ({ ...c, flipped: false })))
       setPhase('playing')
+      narrate([{ text: useAssociations ? 'Los! Finde, was zusammengehört.' : 'Los! Finde die Paare.' }])
       return
     }
     const t = setTimeout(() => setCountdown(n => n - 1), 1000)
     return () => clearTimeout(t)
-  }, [phase, countdown])
+  }, [phase, counting, countdown, paused, useAssociations])
 
   // Arrow key navigation + Enter/Space to flip
   useEffect(() => {
     const COLS  = gridCols
     const total = cards.length
     const onKey = (e) => {
-      if      (e.key === 'ArrowRight') { e.preventDefault(); setCursor(c => Math.min(c + 1,    total - 1)) }
-      else if (e.key === 'ArrowLeft')  { e.preventDefault(); setCursor(c => Math.max(c - 1,    0)) }
-      else if (e.key === 'ArrowDown')  { e.preventDefault(); setCursor(c => Math.min(c + COLS, total - 1)) }
-      else if (e.key === 'ArrowUp')    { e.preventDefault(); setCursor(c => Math.max(c - COLS, 0)) }
-      else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip(cursor) }
+      const arrow = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: COLS, ArrowUp: -COLS }[e.key]
+      if (arrow) {
+        e.preventDefault()
+        setUsingKeys(true)
+        setCursor(c => Math.min(total - 1, Math.max(0, c + arrow)))
+      } else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setUsingKeys(true); flip(cursor) }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [cursor, flip, cards.length, gridCols])
+
+  const bubble = phase === 'preview'
+    ? (useAssociations ? 'Finde, was zusammengehört: 🐄 + 🥛. Merk dir die Bilder! 👀' : 'Merk dir, wo die Bilder liegen! 👀')
+    : mismatchCount >= 5
+      ? 'Kein Stress! Schau genau hin — du schaffst das! 💪'
+      : mismatchCount >= 3
+        ? 'Fast! Versuch es nochmal! 🔍'
+        : useAssociations
+          ? 'Finde, was zusammengehört! 🧠'
+          : 'Finde zwei gleiche Bilder! 🧠'
 
   return (
     <div style={{
@@ -239,7 +307,7 @@ export default function MemoryGame({ level = 1, onComplete }) {
       gap:'clamp(14px,2vw,22px)',
     }}>
 
-      {/* Floating MATCH popup */}
+      {/* Floating "Paar!" popup */}
       <AnimatePresence>
         {matchPopup.visible && (
           <motion.div
@@ -264,36 +332,6 @@ export default function MemoryGame({ level = 1, onComplete }) {
       {/* Sparkle burst on match */}
       <AnimatePresence>{sparkKey && <SparkBurst key={sparkKey} id={sparkKey} />}</AnimatePresence>
 
-      {/* End stars overlay */}
-      <AnimatePresence>
-        {endStars > 0 && (
-          <motion.div
-            initial={{opacity:0,scale:0.5}} animate={{opacity:1,scale:1}} exit={{opacity:0}}
-            transition={{type:'spring',stiffness:300,delay:0.1}}
-            style={{
-              position:'fixed',top:'50%',left:'50%',transform:'translate(-50%,-50%)',
-              zIndex:500,...pxPanel,
-              padding:'32px 48px',textAlign:'center',
-              display:'flex',flexDirection:'column',alignItems:'center',gap:12,
-            }}
-          >
-            <div style={{fontFamily:'var(--font-heading)',fontSize:'clamp(20px,4vw,28px)',color:'var(--text-primary)',fontWeight:700}}>
-              {endStars === 3 ? '🏆 Perfekt!' : endStars === 2 ? '🥈 Super!' : '🥉 Gut gemacht!'}
-            </div>
-            <div style={{display:'flex',gap:8}}>
-              {[1,2,3].map(s => (
-                <motion.span key={s}
-                  initial={{scale:0,rotate:-30}} animate={{scale:1,rotate:0}}
-                  transition={{type:'spring',stiffness:400,delay:s*0.15}}
-                  style={{fontSize:48,filter:s<=endStars?'none':'grayscale(1) opacity(0.25)'}}>⭐</motion.span>
-              ))}
-            </div>
-            <div style={{fontFamily:'var(--font-heading)',fontSize:16,color:'var(--text-muted)'}}>
-              {moves} Versuche · {endStars === 3 ? 'Unschlagbar! 🎉' : endStars === 2 ? 'Toll gespielt!' : 'Weiter üben!'}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
       {/* Trophy shelf */}
       <div style={{
         width:'100%', maxWidth:780,
@@ -302,7 +340,7 @@ export default function MemoryGame({ level = 1, onComplete }) {
         padding:'8px 16px',
         display:'flex', alignItems:'center', gap:8, flexWrap:'wrap',
       }}>
-        <span style={{ fontFamily:'var(--font-heading)', fontSize:14, color:'#9B7700', whiteSpace:'nowrap' }}>🏆 Gefunden:</span>
+        <span style={{ fontFamily:'var(--font-heading)', fontSize:15, color:INK, whiteSpace:'nowrap' }}>🏆 Gefunden:</span>
         <AnimatePresence>
           {trophies.map((emoji, i) => (
             <motion.span
@@ -310,32 +348,33 @@ export default function MemoryGame({ level = 1, onComplete }) {
               initial={{ scale:0, rotate:-30, y:-20 }}
               animate={{ scale:1, rotate:0, y:0 }}
               transition={{ type:'spring', stiffness:420, damping:16 }}
-              style={{ fontSize:28, lineHeight:1, filter:'drop-shadow(0 2px 4px rgba(0,0,0,0.15))' }}
+              style={{ fontSize:28, lineHeight:1, filter:'drop-shadow(0 2px 0 rgba(42,27,61,0.25))' }}
             >{emoji}</motion.span>
           ))}
         </AnimatePresence>
         {trophies.length === 0 && (
-          <span style={{ fontFamily:'var(--font-heading)', fontSize:13, color:'#C9A820', fontStyle:'italic' }}>Noch keine Paare…</span>
+          <span style={{ fontFamily:'var(--font-heading)', fontSize:15, color:'#6b5640' }}>Noch keine Paare</span>
         )}
       </div>
 
       {/* Stats row */}
-      <div style={{ display:'flex', gap:20, alignItems:'center' }}>
+      <div style={{ display:'flex', gap:'clamp(10px,3vw,20px)', alignItems:'center', flexWrap:'wrap', justifyContent:'center' }}>
         <div style={{
           ...pxCard(), padding:'8px 20px',
-          fontFamily:'var(--font-heading)', fontSize:17, color:'var(--text-secondary)',
+          fontFamily:'var(--font-heading)', fontSize:17, color:INK,
         }}>
-          🃏 {matches}/{pairCount} Paare
+          ✨ {matches} von {pairCount} Paaren
         </div>
         <div style={{
           ...pxCard(), padding:'8px 20px',
-          fontFamily:'var(--font-heading)', fontSize:17, color:'var(--text-secondary)',
+          fontFamily:'var(--font-heading)', fontSize:17, color:INK,
         }}>
           👆 {moves} Versuche
         </div>
       </div>
 
-      {/* Lumi callout */}
+      {/* Lumi callout — during the preview it holds the countdown, so
+          nothing covers the cards the child is meant to memorise */}
       <div style={{ display:'flex', alignItems:'flex-end', gap:12, width:'100%', maxWidth:760 }}>
         <LumiCharacter mood={mood} size={80} />
         <div style={{
@@ -344,14 +383,23 @@ export default function MemoryGame({ level = 1, onComplete }) {
           fontFamily:'var(--font-heading)',
           fontSize:'clamp(16px,3.5vw,24px)',
           color:'var(--text-primary)',
+          display:'flex', alignItems:'center', gap:14,
         }}>
-          {phase === 'preview'
-            ? 'Schau genau hin — gleich werden die Karten umgedreht! 👀'
-            : mismatchCount >= 5
-              ? 'Kein Stress! Schau genau hin — du schaffst das! 💪'
-              : mismatchCount >= 3
-                ? 'Fast! Versuch es nochmal! 🔍'
-                : 'Finde alle Paare — merkst du dir wo sie sind? 🧠'}
+          <span style={{ flex:1 }}>{bubble}</span>
+          {phase === 'preview' && counting && (
+            <motion.span
+              key={countdown}
+              initial={{ scale:1.5, opacity:0 }} animate={{ scale:1, opacity:1 }}
+              aria-label={`noch ${countdown} Sekunden`}
+              style={{
+                fontFamily:'var(--font-heading)', fontSize:'clamp(30px,6vw,44px)', fontWeight:800, lineHeight:1,
+                color:INK, background:'var(--px-gold)', border:`3px solid ${INK}`, borderRadius:12,
+                minWidth:56, padding:'6px 10px', textAlign:'center',
+              }}
+            >
+              {countdown}
+            </motion.span>
+          )}
         </div>
       </div>
 
@@ -360,35 +408,8 @@ export default function MemoryGame({ level = 1, onComplete }) {
         display:'grid',
         gridTemplateColumns:`repeat(${gridCols},1fr)`,
         gap:'clamp(10px,2vw,18px)',
-        width:'100%', maxWidth:780,
-        position:'relative',
+        width:'100%', maxWidth: screen.landscape && gridCols > 4 ? 960 : 780,
       }}>
-        {/* Preview countdown overlay */}
-        <AnimatePresence>
-          {phase === 'preview' && (
-            <motion.div
-              key="preview-overlay"
-              initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0, scale:0.9 }}
-              style={{
-                position:'absolute', inset:-8, zIndex:20, borderRadius:14,
-                background:'rgba(42,27,61,0.55)', border:`3px solid ${INK}`, backdropFilter:'blur(3px)',
-                display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
-                gap:10, pointerEvents:'none',
-              }}
-            >
-              <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(16px,3.5vw,24px)', color:'white', textAlign:'center', textShadow:'0 2px 8px rgba(0,0,0,0.4)' }}>
-                {'Merke dir alle Paare!'}
-              </div>
-              <motion.div
-                key={countdown}
-                initial={{ scale:1.5, opacity:0 }} animate={{ scale:1, opacity:1 }}
-                style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(48px,10vw,80px)', fontWeight:800, color:'var(--px-gold)', lineHeight:1, textShadow:`0 5px 0 ${INK}` }}
-              >
-                {countdown}
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
         {cards.map((card) => (
           <motion.div key={card.id}
             onClick={() => flip(card.id)}
@@ -400,7 +421,7 @@ export default function MemoryGame({ level = 1, onComplete }) {
             }
             transition={{ duration: 0.50 }}
             style={{ cursor: card.matched ? 'default' : 'pointer', perspective:700,
-                     outline: card.id === cursor ? '3px solid #FFD93D' : 'none',
+                     outline: usingKeys && card.id === cursor ? `3px solid ${INK}` : 'none',
                      outlineOffset: 4, borderRadius: 14 }}
           >
             <motion.div
@@ -408,12 +429,12 @@ export default function MemoryGame({ level = 1, onComplete }) {
               transition={{ type:'spring', stiffness:260, damping:22 }}
               style={{ position:'relative', transformStyle:'preserve-3d', width:'100%', aspectRatio:'1' }}
             >
-              {/* Front */}
+              {/* Front — the picture sized by the card, not the window */}
               <div style={{
                 position:'absolute', inset:0, backfaceVisibility:'hidden',
                 ...pxCard(card.matched ? 'right' : undefined),
                 display:'flex', alignItems:'center', justifyContent:'center',
-                fontSize:'clamp(28px,6.5vw,50px)',
+                containerType:'inline-size', fontSize:'52cqw',
               }}>
                 {card.emoji}
               </div>
@@ -442,9 +463,11 @@ export default function MemoryGame({ level = 1, onComplete }) {
         ))}
       </div>
 
-      <p style={{ fontFamily:'var(--font-heading)', fontSize:12, color:'var(--text-muted)', opacity:0.7 }}>
-        ⌨️ Pfeiltasten navigieren · Enter / Leertaste umdrehen
-      </p>
+      {FINE_POINTER && (
+        <p style={{ fontFamily:'var(--font-heading)', fontSize:14, color:'#6b5640' }}>
+          ⌨️ Pfeiltasten: wählen · Enter oder Leertaste: umdrehen
+        </p>
+      )}
     </div>
   )
 }

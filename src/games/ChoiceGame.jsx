@@ -145,21 +145,21 @@ function optionName(q, opt) {
   return q.kind === 'grow' ? sayNumber(countOf(q, opt)) : nameOf(q, opt)
 }
 
-// "Genau! Das Muster geht: Frosch, Frosch, Hund."
+// "Genau! Immer wieder Frosch, Frosch, Hund."
 function praiseFor(q) {
   if (q.kind === 'grow') return `${q.counts.map(sayNumber).join(', ')}. Es wird immer eins mehr.`
-  return `Das Muster geht: ${q.unit.map(e => nameOf(q, e)).join(', ')}.`
+  return `Immer wieder ${q.unit.map(e => nameOf(q, e)).join(', ')}.`
 }
 
 // After a miss the row is read out, so the child can hear the rhythm:
-// "Hör mal: Frosch, Hund, Frosch, Hund, Frosch – und dann?"
+// "Hör mal! Frosch, Hund, Frosch, Hund, Frosch – und dann?"
 function hintFor(q) {
-  if (q.kind === 'grow') return `Hör mal: ${q.counts.slice(0, 3).map(sayNumber).join(', ')}, und dann?`
+  if (q.kind === 'grow') return `Hör mal! ${q.counts.slice(0, 3).map(sayNumber).join(', ')}, und dann?`
   if (q.kind === 'gap') {
     const said = q.tokens.map(t => (t === '❓' ? 'und hier?' : nameOf(q, t)))
-    return `Hör mal: ${said.join(', ')}.`
+    return `Hör mal! ${said.join(', ')}.`
   }
-  return `Hör mal: ${q.tokens.slice(0, -1).map(e => nameOf(q, e)).join(', ')}, und dann?`
+  return `Hör mal! ${q.tokens.slice(0, -1).map(e => nameOf(q, e)).join(', ')}, und dann?`
 }
 
 const glyphs = s => [...s].filter(ch => ch !== '️').length
@@ -266,9 +266,9 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
   // of breaking the pattern over two or three lines on a phone.
   const rowGlyphs = q.tokens.reduce((n, t) => n + glyphs(t), 0)
   const rowGap    = q.kind === 'grow' ? 18 : 6
-  const symSize   = `min(76px, calc((min(100vw, 760px) - ${40 + rowGap * q.tokens.length}px) / ${rowGlyphs}))`
+  const symSize   = `min(76px, calc((min(100vw, 720px) - 7vw - ${16 + rowGap * q.tokens.length}px) / ${rowGlyphs}))`
   const maxOpt    = Math.max(...q.options.map(glyphs))
-  const optSize   = maxOpt > 1 ? `min(44px, calc((min(100vw, 760px) - 120px) / ${maxOpt * 2}))` : 'clamp(48px, 11vw, 72px)'
+  const optSize   = maxOpt > 1 ? `min(44px, calc((min(100vw, 720px) - 120px) / ${maxOpt * 2}))` : 'clamp(48px, 11vw, 72px)'
   const isLast    = idx + 1 >= questions.length
 
   return (
@@ -294,7 +294,7 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
             flex:1,
             ...pxSegment(i < idx || (i === idx && solved) ? 'done' : i === idx ? 'current' : 'todo'),
             // answered, but not on the first try
-            ...((i < idx || (i === idx && solved)) && missed.includes(i) ? { background: 'var(--px-parch-dark)' } : {}),
+            ...((i < idx || (i === idx && solved)) && missed.includes(i) ? { background: '#F3A091' } : {}),
             transition:'background 0.3s',
           }} />
         ))}

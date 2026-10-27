@@ -101,11 +101,11 @@ function makeQuestions(level) {
   })
 }
 
-/** What the round says first: "B wie Ball. Hör mal: Bö, Ball." */
+/** What the round says first: "B wie Ball. Hör mal, Bö, Ball." */
 function infoOf(l) {
   const d = LETTER_DATA[l]
   if (d.note) return { show: d.note, say: d.say ?? d.note }
-  return { show: `${l} wie ${d.ex}`, say: `${l} wie ${d.ex}. Hör mal: ${soundOf(l)}, ${d.ex}.` }
+  return { show: `${l} wie ${d.ex}`, say: `${l} wie ${d.ex}. Hör mal, ${soundOf(l)}, ${d.ex}.` }
 }
 
 const ABC = 'audio/abc-abenteuer/'
@@ -166,7 +166,7 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
     setWrong(misses)
     if (misses.length >= 2) {
       // Nach zwei Fehlern zeigt Lumi die Lösung, statt raten zu lassen.
-      narrate([{ text: `Schau mal: ${q.correct.w} beginnt mit ${q.letter}.` }])
+      narrate([{ text: `Schau mal, ${q.correct.w} beginnt mit ${q.letter}.` }])
       setSolved(true)
     } else {
       sayWrong(`${opt.w} beginnt mit ${opt.w[0].toUpperCase()}. Such ein Wort mit ${q.letter}!`)

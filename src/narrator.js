@@ -22,6 +22,7 @@ let running  = false
 let level    = null   // Vorrang dessen, was gerade läuft
 let lockedAt = 0      // seit wann Vorschauen gesperrt sind (0 = frei)
 let cancelAt = 0      // wann zuletzt abgebrochen wurde
+let voiceVolume = 1   // Lautstärke der Sprache, im Elternbereich einstellbar
 
 // Nach einem Abbruch darf nicht sofort gesprochen werden: ruft man
 // speechSynthesis.speak() im selben Tick wie cancel(), verschluckt Chrome den
@@ -122,6 +123,8 @@ export function afterNarration(cb, { minMs = 0, maxMs = 9000 } = {}) {
  * Vorschau durchrutscht. Das passiert sogar ungewollt: nach "Weiter" liegt die
  * neue Antwort unter dem ruhenden Mauszeiger, und schon spricht sie los.
  */
+export function setVoiceVolume(v) { voiceVolume = Math.max(0, Math.min(1, v)) }
+
 export function lockPreviews() {
   lockedAt = Date.now()
 }
@@ -209,6 +212,7 @@ export function narrate(parts, { onEnd, skipIfSame = false, priority = 'normal' 
   const playClip = (p, done, s) => {
     try {
       const a = new Audio(resolveAsset(p.src))
+      a.volume = voiceVolume
       audioEl = a
       let failed = false
       const hand = once(done, s, 15000)
@@ -245,6 +249,7 @@ export function narrate(parts, { onEnd, skipIfSame = false, priority = 'normal' 
     const hand = once(done, s, Math.min(20000, 900 + (clean.length / 13 / rate) * 1000 + 900))
     const u = new SpeechSynthesisUtterance(clean)
     u.rate  = rate
+    u.volume = voiceVolume
     u.pitch = p.pitch ?? 1.05
     u.lang  = p.lang || (typeof document !== 'undefined' && document.documentElement.lang === 'en' ? 'en-GB' : 'de-DE')
     u.addEventListener('end', hand, { once: true })

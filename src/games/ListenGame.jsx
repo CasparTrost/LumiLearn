@@ -1,11 +1,13 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
-import { speak as ttsSpeak } from '../tts.js'
+import { sfx } from '../sfx.js'
 import { hearable } from '../lib/hearable.js'
-import HearOptions from '../components/HearOptions.jsx'
-import { lockPreviews } from '../narrator.js'
-import { pxCard, pxPanel, pxBubble, pxButton, pxSegment } from './px.js'
+import { narrate, lockPreviews, afterNarration, stopNarration } from '../narrator.js'
+import { sayRight, sayWrong } from '../lib/feedback.js'
+import { result } from '../lib/score.js'
+import { usePaused } from '../lib/pause.js'
+import { pxCard, pxPanel, pxBubble, pxButton, pxSegment, INK } from './px.js'
 
 /**
  * Hörabenteuer — Phonologisches Bewusstsein
@@ -20,250 +22,217 @@ import { pxCard, pxPanel, pxBubble, pxButton, pxSegment } from './px.js'
 // gold ring, instead of the old soft coral glow.
 const PLAY_SHADOW       = pxButton('gold').boxShadow
 const PLAY_SHADOW_PULSE = `${PLAY_SHADOW}, 0 0 0 6px rgba(255,201,60,0.55)`
+const NEXT_BTN          = { ...pxButton('green'), color: INK, textShadow: '0 1px 0 rgba(255,255,255,0.4)' }
 
-const WORD_BANK = [
-  // Tiere
-  { word: 'Hund',          emoji: '🐕', wrong: ['🐱','🐟','🦁'] },
-  { word: 'Katze',         emoji: '🐱', wrong: ['🐕','🐟','🐸'] },
-  { word: 'Vogel',         emoji: '🐦', wrong: ['🐕','🐟','🐱'] },
-  { word: 'Fisch',         emoji: '🐟', wrong: ['🐕','🐦','🐸'] },
-  { word: 'Pferd',         emoji: '🐴', wrong: ['🐄','🐑','🐖'] },
-  { word: 'Kuh',           emoji: '🐄', wrong: ['🐖','🐑','🐴'] },
-  { word: 'Schaf',         emoji: '🐑', wrong: ['🐄','🐐','🐖'] },
-  { word: 'Schwein',       emoji: '🐖', wrong: ['🐄','🐑','🐴'] },
-  { word: 'Löwe',          emoji: '🦁', wrong: ['🐯','🐻','🦊'] },
-  { word: 'Tiger',         emoji: '🐯', wrong: ['🦁','🐻','🐆'] },
-  { word: 'Bär',           emoji: '🐻', wrong: ['🦁','🐯','🦊'] },
-  { word: 'Fuchs',         emoji: '🦊', wrong: ['🐺','🐻','🐱'] },
-  { word: 'Elefant',       emoji: '🐘', wrong: ['🦒','🦏','🦛'] },
-  { word: 'Giraffe',       emoji: '🦒', wrong: ['🐘','🦓','🦏'] },
-  { word: 'Affe',          emoji: '🐒', wrong: ['🦁','🐘','🦜'] },
-  { word: 'Pinguin',       emoji: '🐧', wrong: ['🦆','🦢','🐦'] },
-  { word: 'Eule',          emoji: '🦉', wrong: ['🐦','🦜','🦆'] },
-  { word: 'Frosch',        emoji: '🐸', wrong: ['🐢','🦎','🦗'] },
-  { word: 'Schildkröte',   emoji: '🐢', wrong: ['🐸','🦎','🐊'] },
-  { word: 'Biene',         emoji: '🐝', wrong: ['🦋','🐞','🦗'] },
-  { word: 'Schmetterling', emoji: '🦋', wrong: ['🐝','🐞','🦗'] },
-  { word: 'Schnecke',      emoji: '🐌', wrong: ['🐛','🐞','🦗'] },
-  { word: 'Krokodil',      emoji: '🐊', wrong: ['🐢','🦎','🐍'] },
-  { word: 'Delfin',        emoji: '🐬', wrong: ['🐟','🐳','🦈'] },
-  { word: 'Hai',           emoji: '🦈', wrong: ['🐬','🐳','🐟'] },
-  // Essen & Trinken
-  { word: 'Apfel',         emoji: '🍎', wrong: ['🍊','🍌','🍇'] },
-  { word: 'Banane',        emoji: '🍌', wrong: ['🍎','🍊','🍇'] },
-  { word: 'Erdbeere',      emoji: '🍓', wrong: ['🍎','🍒','🍇'] },
-  { word: 'Pizza',         emoji: '🍕', wrong: ['🍔','🌮','🍜'] },
-  { word: 'Kuchen',        emoji: '🎂', wrong: ['🍕','🍩','🍪'] },
-  { word: 'Eis',           emoji: '🍦', wrong: ['🍰','🍩','🧁'] },
-  { word: 'Brot',          emoji: '🍞', wrong: ['🥐','🥨','🧀'] },
-  { word: 'Keks',          emoji: '🍪', wrong: ['🎂','🍩','🧁'] },
-  { word: 'Milch',         emoji: '🥛', wrong: ['🧃','🍵','🥤'] },
-  { word: 'Saft',          emoji: '🧃', wrong: ['🥛','🍵','🥤'] },
-  { word: 'Karotte',       emoji: '🥕', wrong: ['🌽','🥦','🥬'] },
-  { word: 'Mais',          emoji: '🌽', wrong: ['🥕','🍅','🥦'] },
-  { word: 'Tomate',        emoji: '🍅', wrong: ['🍎','🌽','🫑'] },
-  // Gegenstände & Spielzeug
-  { word: 'Ball',          emoji: '⚽', wrong: ['🎈','🎂','🎮'] },
-  { word: 'Drachen',       emoji: '🐉', wrong: ['🦁','🐬','🦋'] },
-  { word: 'Rakete',        emoji: '🚀', wrong: ['✈️','🚗','🚂'] },
-  { word: 'Zug',           emoji: '🚂', wrong: ['🚗','✈️','🚢'] },
-  { word: 'Auto',          emoji: '🚗', wrong: ['🚂','✈️','🚢'] },
-  { word: 'Flugzeug',      emoji: '✈️', wrong: ['🚀','🚁','🛸'] },
-  { word: 'Schiff',        emoji: '🚢', wrong: ['⛵','🚤','🛶'] },
-  { word: 'Fahrrad',       emoji: '🚲', wrong: ['🛴','🚗','🛵'] },
-  { word: 'Buch',          emoji: '📚', wrong: ['📓','📰','📋'] },
-  { word: 'Schere',        emoji: '✂️', wrong: ['🖊️','📌','🔧'] },
-  // Natur & Himmel
-  { word: 'Sonne',         emoji: '☀️', wrong: ['🌙','⭐','🌈'] },
-  { word: 'Mond',          emoji: '🌙', wrong: ['☀️','⭐','🌈'] },
-  { word: 'Stern',         emoji: '⭐', wrong: ['🌙','☀️','💫'] },
-  { word: 'Regenbogen',    emoji: '🌈', wrong: ['☀️','🌧️','⛅'] },
-  { word: 'Blume',         emoji: '🌸', wrong: ['🌳','🍎','⭐'] },
-  { word: 'Baum',          emoji: '🌳', wrong: ['🌸','🍎','🌿'] },
-  { word: 'Pilz',          emoji: '🍄', wrong: ['🌳','🌸','🌿'] },
-  { word: 'Welle',         emoji: '🌊', wrong: ['💧','🌧️','⛈️'] },
-  { word: 'Vulkan',        emoji: '🌋', wrong: ['⛰️','🏔️','🗻'] },
-  // Zuhause & Alltag
-  { word: 'Haus',          emoji: '🏠', wrong: ['⛺','🏰','🏛️'] },
-  { word: 'Schloss',       emoji: '🏰', wrong: ['🏠','⛺','🏛️'] },
-  { word: 'Stuhl',         emoji: '🪑', wrong: ['🛋️','🛏️','🚪'] },
-  { word: 'Bett',          emoji: '🛏️', wrong: ['🪑','🛋️','🛁'] },
-  { word: 'Schuhe',        emoji: '👟', wrong: ['🧤','🧢','🧣'] },
-  { word: 'Krone',         emoji: '👑', wrong: ['💎','🎩','💍'] },
-  { word: 'Zelt',          emoji: '⛺', wrong: ['🏠','🏚️','🛖'] },
-  { word: 'Lampe',         emoji: '💡', wrong: ['🕯️','🔦','🪔'] },
-  { word: 'Geschenk',      emoji: '🎁', wrong: ['🎈','🎀','🎊'] },
-  { word: 'Ballon',        emoji: '🎈', wrong: ['🎁','🎀','💨'] },
-  { word: 'Igel',          emoji: '🦔', wrong: ['🐇','🐿️','🦊'] },
-  { word: 'Brille',        emoji: '👓', wrong: ['👁️','🔭','🥽'] },
-  { word: 'Gitarre',       emoji: '🎸', wrong: ['🎹','🎺','🥁'] },
-  { word: 'Koffer',        emoji: '🧳', wrong: ['💼','🛄','🎒'] },
-  { word: 'Kerze',         emoji: '🕯️', wrong: ['👑','💡','🔦'] },
-  { word: 'Schlüssel',     emoji: '🔑', wrong: ['🔒','🗝️','🚪'] },
-  { word: 'Trommel',       emoji: '🥁', wrong: ['🎸','🎺','🎻'] },
-  { word: 'Anker',         emoji: '⚓', wrong: ['⛵','🚢','🏔️'] },
-  { word: 'Zauberstab',    emoji: '🪄', wrong: ['😂','🎩','🌟'] },
-  { word: 'Diamant',       emoji: '💎', wrong: ['👑','⭐','💠'] },
-  { word: 'Regenwurm',     emoji: '🪱', wrong: ['🐍','🐛','🐜'] },
-  { word: 'Traktor',       emoji: '🚜', wrong: ['🚗','🚚','🚑'] },
-  { word: 'Hut',           emoji: '🎩', wrong: ['👒','⛑️','🪄'] },
-  { word: 'Straßenbahn',   emoji: '🚊', wrong: ['🚂','🚌','🚗'] },
-  { word: 'Wasserfall',    emoji: '💦', wrong: ['🌋','🏔️','🌇'] },
-  { word: 'Eimer',         emoji: '🪣', wrong: ['🛒','🧴','🪙'] },
-  { word: 'Kompass',       emoji: '🧭', wrong: ['🗺️','⏱️','🔭'] },
-]
+// [article, word, picture]. Every picture shows one thing a child names the
+// same way; the wrong answers are other words of this list, so each one has
+// a name Lumi can say after a wrong tap ("Das ist der Hai.").
+const BANK = {
+  tier: [
+    ['der','Hund','🐕'], ['die','Katze','🐱'], ['das','Pferd','🐴'], ['die','Kuh','🐄'], ['das','Schaf','🐑'],
+    ['das','Schwein','🐖'], ['der','Löwe','🦁'], ['der','Tiger','🐯'], ['der','Bär','🐻'], ['der','Fuchs','🦊'],
+    ['der','Elefant','🐘'], ['die','Giraffe','🦒'], ['der','Affe','🐒'], ['der','Pinguin','🐧'], ['die','Eule','🦉'],
+    ['der','Frosch','🐸'], ['die','Schildkröte','🐢'], ['die','Biene','🐝'], ['der','Schmetterling','🦋'],
+    ['die','Schnecke','🐌'], ['das','Krokodil','🐊'], ['der','Delfin','🐬'], ['der','Hai','🦈'], ['der','Fisch','🐟'],
+    ['der','Igel','🦔'], ['der','Regenwurm','🪱'],
+  ],
+  essen: [
+    ['der','Apfel','🍎'], ['die','Banane','🍌'], ['die','Erdbeere','🍓'], ['die','Pizza','🍕'], ['der','Kuchen','🎂'],
+    ['das','Eis','🍦'], ['das','Brot','🍞'], ['der','Keks','🍪'], ['die','Milch','🥛'], ['der','Saft','🧃'],
+    ['die','Karotte','🥕'], ['die','Tomate','🍅'],
+  ],
+  ding: [
+    ['der','Ball','⚽'], ['das','Buch','📚'], ['die','Schere','✂️'], ['der','Stuhl','🪑'], ['das','Bett','🛏️'],
+    ['die','Krone','👑'], ['das','Geschenk','🎁'], ['die','Brille','👓'], ['die','Gitarre','🎸'], ['der','Koffer','🧳'],
+    ['die','Kerze','🕯️'], ['der','Schlüssel','🔑'], ['die','Trommel','🥁'], ['der','Anker','⚓'], ['der','Zauberstab','🪄'],
+    ['der','Diamant','💎'], ['der','Hut','🎩'], ['der','Eimer','🪣'], ['der','Kompass','🧭'], ['der','Drache','🐉'],
+  ],
+  fahrzeug: [
+    ['die','Rakete','🚀'], ['der','Zug','🚂'], ['das','Auto','🚗'], ['das','Flugzeug','✈️'], ['das','Schiff','🚢'],
+    ['das','Fahrrad','🚲'], ['der','Traktor','🚜'], ['die','Straßenbahn','🚊'], ['der','Hubschrauber','🚁'], ['der','Bus','🚌'],
+  ],
+  natur: [
+    ['die','Sonne','☀️'], ['der','Mond','🌙'], ['der','Stern','⭐'], ['der','Regenbogen','🌈'], ['die','Blume','🌸'],
+    ['der','Baum','🌳'], ['der','Pilz','🍄'], ['die','Welle','🌊'], ['der','Vulkan','🌋'], ['das','Haus','🏠'],
+    ['das','Schloss','🏰'], ['das','Zelt','⛺'],
+  ],
+}
+const item = (cat) => ([art, word, emoji]) => ({ art, word, emoji, cat })
+const WORD_BANK = Object.entries(BANK).flatMap(([cat, list]) => list.map(item(cat)))
 
-// Word pairs that differ in a single sound. Picking between these is the
-// one thing the module claimed to train (phonological awareness) but never
-// did — the ordinary rounds vary meaning, not sound, so a child can win them
-// on vocabulary alone without listening closely.
-const MINIMAL_PAIRS = [
-  [{ word: 'Haus',  emoji: '🏠' }, { word: 'Maus',  emoji: '🐭' }],
-  [{ word: 'Nase',  emoji: '👃' }, { word: 'Hase',  emoji: '🐰' }],
-  [{ word: 'Wand',  emoji: '🧱' }, { word: 'Hand',  emoji: '✋' }],
-  [{ word: 'Fisch', emoji: '🐟' }, { word: 'Tisch', emoji: '🪑' }],
-  [{ word: 'Rose',  emoji: '🌹' }, { word: 'Hose',  emoji: '👖' }],
-  [{ word: 'Kanne', emoji: '🫖' }, { word: 'Tanne', emoji: '🌲' }],
-  [{ word: 'Katze', emoji: '🐱' }, { word: 'Tatze', emoji: '🐾' }],
-  [{ word: 'Buch',  emoji: '📚' }, { word: 'Bauch', emoji: '🫃' }],
-  [{ word: 'Mond',  emoji: '🌙' }, { word: 'Mund',  emoji: '👄' }],
-  [{ word: 'Kuh',   emoji: '🐄' }, { word: 'Schuh', emoji: '👟' }],
-  [{ word: 'Sonne', emoji: '☀️' }, { word: 'Tonne', emoji: '🗑️' }],
-  [{ word: 'Tasse', emoji: '☕' }, { word: 'Tasche', emoji: '👜' }],
-  [{ word: 'Hose',  emoji: '👖' }, { word: 'Dose',  emoji: '🥫' }],
+// Never wrong answers for each other: a shark is a fish, too, and a child
+// may well call a cake a biscuit.
+const CLOSE = [['Fisch','Hai','Delfin'], ['Kuchen','Keks'], ['Milch','Saft'], ['Haus','Schloss','Zelt'], ['Zug','Straßenbahn']]
+const isClose = (a, b) => CLOSE.some(g => g.includes(a) && g.includes(b))
+
+// Words that differ in a single sound. Picking between these is the one
+// thing that really needs close listening — the ordinary rounds vary
+// meaning, not sound, and can be won on vocabulary alone.
+const MINIMAL_SETS = [
+  [['das','Haus','🏠'], ['die','Maus','🐭'], ['der','Mais','🌽']],
+  [['die','Nase','👃'], ['der','Hase','🐰'], ['die','Vase','🏺']],
+  [['die','Rose','🌹'], ['die','Hose','👖'], ['die','Dose','🥫']],
+  [['die','Kanne','🫖'], ['die','Tanne','🌲'], ['die','Pfanne','🍳']],
+  [['der','Mond','🌙'], ['der','Mund','👄'], ['der','Hund','🐕']],
+  [['das','Bein','🦵'], ['das','Schwein','🐖'], ['der','Stein','🪨']],
+  [['die','Katze','🐱'], ['die','Tatze',':px-tatze:']],
+  [['die','Kuh','🐄'], ['der','Schuh','👟']],
+  [['der','Fisch','🐟'], ['der','Tisch',':px-tisch:']],
+  [['der','Hahn','🐓'], ['der','Zahn','🦷']],
+  [['die','Tasse','☕'], ['die','Tasche','👜']],
+  [['der','Wal','🐋'], ['der','Schal','🧣']],
+].map(set => set.map(item('paar')))
+const PAIR_WORDS = new Set(MINIMAL_SETS.flat().map(w => w.word))
+
+// The steps: pictures from different areas, then from the same area (Hund
+// or Katze?), then words that differ in a single sound (Haus, Maus, Mais),
+// at last reading — the picture is shown, the word must be read.
+// `minimal`: every third round (some) or two of three (most).
+const LEVELS = [
+  { options:3 },
+  { options:4 },
+  { options:4, sameCat:true },
+  { options:4, sameCat:true, minimal:'some' },
+  { options:4, sameCat:true, minimal:'some' },
+  { options:3, sameCat:true, minimal:'most' },
+  { options:3, sameCat:true, minimal:'most' },
+  { options:4, read:true },
+  { options:4, read:true, sameCat:true },
+  { options:3, read:true, minimal:'all' },
 ]
+const ROUNDS = 8
 
 function shuffle(a) { return [...a].sort(() => Math.random() - 0.5) }
 
-function speak(text, slow = false) {
-  ttsSpeak(text, { rate: slow ? 0.45 : 0.72, pitch: 1.1, lang: 'de-DE' })
+function buildRounds(level) {
+  const cfg = LEVELS[Math.max(0, Math.min(level - 1, LEVELS.length - 1))]
+  // With sound-pair rounds in play, their words stay out of the others, so
+  // no word comes up twice in one level.
+  const base = shuffle(WORD_BANK.filter(w => !cfg.minimal || !PAIR_WORDS.has(w.word)))
+  const sets = shuffle(MINIMAL_SETS)
+  const isMinimal = i => cfg.minimal === 'all' || (cfg.minimal === 'most' ? i % 3 !== 0 : cfg.minimal === 'some' && i % 3 === 2)
+
+  const fill = (target, taken, n) => {
+    const free = WORD_BANK.filter(w => w.word !== target.word && !(cfg.minimal && PAIR_WORDS.has(w.word))
+      && !isClose(w.word, target.word) && !taken.some(t => t.word === w.word || isClose(t.word, w.word)))
+    const same  = free.filter(w => w.cat === target.cat)
+    const other = free.filter(w => w.cat !== target.cat)
+    return (cfg.sameCat ? [...shuffle(same), ...shuffle(other)] : shuffle(other)).slice(0, n)
+  }
+
+  let next = 0
+  return Array.from({ length: ROUNDS }, (_, i) => {
+    if (isMinimal(i)) {
+      const set = sets[i % sets.length]
+      const target = shuffle(set)[0]
+      const extra = cfg.options > set.length ? fill(target, set, cfg.options - set.length) : []
+      return { target, options: shuffle([...set, ...extra]), pair: true }
+    }
+    const target = base[next++ % base.length]
+    return { target, options: shuffle([target, ...fill(target, [target], cfg.options - 1)]) }
+  })
 }
 
+const the = w => `${w.art} ${w.word}`
+const The = w => the(w)[0].toUpperCase() + the(w).slice(1)
+
 export default function ListenGame({ level = 1, onComplete }) {
-  const wordCount   = level <= 2 ? 7 : level <= 5 ? 9 : level <= 8 ? 11 : 13
-  const optionCount = level <= 3 ? 3 : 4
-  const poolEnd     = level <= 2 ? 28 : level <= 5 ? 55 : WORD_BANK.length
-  // Reading written words used to start at level 6, a hard jump for a module
-  // that is otherwise about listening. Minimal pairs fill that middle ground
-  // now, and reading comes last.
-  const isReverse   = level >= 8
+  const isReading = !!LEVELS[Math.max(0, Math.min(level - 1, LEVELS.length - 1))].read
+  const paused = usePaused()
 
-  const [words]      = useState(() => {
-    const base = shuffle(WORD_BANK.slice(0, poolEnd)).slice(0, wordCount)
-    if (level < 4) return base
-    const pairs = shuffle(MINIMAL_PAIRS)
-    return base.map((w, i) => {
-      if (i % 3 !== 2) return w
-      const [a, b] = shuffle(pairs[Math.floor(i / 3) % pairs.length])
-      return { word: a.word, emoji: a.emoji, wrong: [b.emoji], pair: true }
-    })
-  })
-  const [idx,        setIdx]      = useState(0)
-  const [options,    setOptions]  = useState([])
-  const [selected,   setSelected] = useState(null)  // emoji for normal mode, word string for reverse
-  const [correct,    setCorrect]  = useState(0)
-  const [mood,       setMood]     = useState('happy')
-  const [played,     setPlayed]   = useState(false)
-  const [showWeiter, setShowWeiter] = useState(false)
+  const [rounds]     = useState(() => buildRounds(level))
+  const [idx,        setIdx]        = useState(0)
+  const [solved,     setSolved]     = useState(false)
   const [wrongPicks, setWrongPicks] = useState([])  // this round's failed taps
-  const [misses,     setMisses]     = useState(0)   // whole level, for the star rating
+  const [mood,       setMood]       = useState('happy')
+  const [played,     setPlayed]     = useState(false)
+  const [firstTry,   setFirstTry]   = useState(0)
+  const [leaving,    setLeaving]    = useState(false)
 
-  const current = words[idx]
+  const round   = rounds[idx]
+  const current = round?.target
 
-  // Word options for reverse mode — shuffled list of 4 word labels
-  const wordOptions = (current && isReverse) ? (() => {
-    const pool = WORD_BANK.filter(w => w.word !== current.word)
-    return shuffle([current.word, ...shuffle(pool).slice(0, 3).map(w => w.word)])
-  })() : []
-
-  useEffect(() => {
+  const sayWord = useCallback(() => {
     if (!current) return
-    setOptions(current.pair
-      ? shuffle([current.emoji, current.wrong[0]])
-      : shuffle([current.emoji, ...current.wrong.slice(0, optionCount - 1)]))
-    setSelected(null)
-    setWrongPicks([])
-    setMood('happy')
-    setPlayed(false)
-    lockPreviews()
-    const t = setTimeout(() => { speak(current.word); setPlayed(true) }, 550)
-    return () => clearTimeout(t)
-  }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const replay = useCallback(() => {
-    if (!current) return
-    speak(current.word)
+    narrate([{ text: current.word, rate: 0.72, pitch: 1.1 }])
     setPlayed(true)
   }, [current])
 
-  // Normal mode: pick emoji
-  const pick = useCallback((emoji) => {
-    if (selected !== null || !current) return
-    const ok = emoji === current.emoji
-    if (!ok) {
-      // A wrong tap used to end the question: the word was repeated once and
-      // the game moved on 2.2 seconds later, so the child could only watch the
-      // mistake, never correct it. Every other module here allows a retry.
-      setWrongPicks(w => w.includes(emoji) ? w : [...w, emoji])
-      setMisses(m => m + 1)
-      setMood('encouraging')
-      setTimeout(() => { speak(current.word, true); setMood('happy') }, 400)
+  // Reading levels never say the word before it is answered — otherwise
+  // they would be one more listening task, not reading.
+  const sayTask = useCallback(() => {
+    if (!current) return
+    if (isReading) narrate([{ text: 'Welches Wort passt zum Bild? Lies genau.' }])
+    else narrate([
+      { text: idx === 0 ? 'Hör gut zu und tippe auf das Bild.' : 'Tippe auf das Bild.' },
+      { text: current.word, rate: 0.72, pitch: 1.1, gap: 200 },
+    ])
+    setPlayed(true)
+  }, [current, idx, isReading])
+
+  useEffect(() => { lockPreviews(); return () => stopNarration() }, [])
+
+  // Round start, and again after the help dialog was closed.
+  useEffect(() => {
+    if (paused || solved) return
+    const t = setTimeout(sayTask, 550)
+    return () => clearTimeout(t)
+  }, [idx, paused]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const pick = (opt) => {
+    if (solved || !current || wrongPicks.includes(opt.word)) return
+    if (opt.word === current.word) {
+      if (!wrongPicks.length) setFirstTry(n => n + 1)
+      setSolved(true)
+      setMood('excited')
+      sfx.correct()
+      sayRight(`${The(current)}.`)
       return
     }
-    setSelected(emoji)
-    setCorrect(correct + 1)
-    setMood('excited')
-    setShowWeiter(true)
-    setTimeout(() => speak(current.word), 300)
-  }, [selected, current, correct, idx, words, onComplete])
-
-  // Reverse mode: pick word label
-  const pickWord = useCallback((word) => {
-    if (selected !== null || !current) return
-    const ok = word === current.word
-    if (!ok) {
-      // A wrong tap used to end the question: the word was repeated once and
-      // the game moved on 2.2 seconds later, so the child could only watch the
-      // mistake, never correct it. Every other module here allows a retry.
-      setWrongPicks(w => w.includes(word) ? w : [...w, word])
-      setMisses(m => m + 1)
-      setMood('encouraging')
-      setTimeout(() => { speak(current.word, true); setMood('happy') }, 400)
-      return
+    // A wrong tap can be corrected; after the second one Lumi shows the
+    // right picture instead of letting the child guess on.
+    const misses = [...wrongPicks, opt.word]
+    setWrongPicks(misses)
+    setMood('encouraging')
+    sfx.wrong()
+    if (misses.length >= 2) {
+      narrate([{ text: isReading ? `Schau mal, hier steht ${current.word}.` : `Schau mal, das ist ${the(current)}.` }])
+      setSolved(true)
+    } else {
+      sayWrong(isReading ? `Da steht ${opt.word}.` : `Das ist ${the(opt)}. Hör noch mal, ${current.word}.`)
+      setTimeout(() => setMood('happy'), 1100)
     }
-    setSelected(word)
-    setCorrect(correct + 1)
-    setMood('excited')
-    setShowWeiter(true)
-    setTimeout(() => speak(current.word), 300)
-  }, [selected, current, correct, idx, words, onComplete])
+  }
 
-  const weiterClick = useCallback(() => {
-    setShowWeiter(false)
-    if (idx + 1 >= words.length) {
-      // Every question is now answered correctly in the end (a wrong tap can
-      // be retried), so score alone would always mean three stars. Rate the
-      // wrong taps instead, never below one — the level was completed.
-      const stars = misses <= 1 ? 3 : misses <= words.length ? 2 : 1
-      onComplete({ score: correct, total: words.length, stars })
+  const weiterClick = () => {
+    if (leaving) return
+    if (idx + 1 >= rounds.length) {
+      setLeaving(true)
+      sfx.complete()
+      afterNarration(() => onComplete(result(firstTry, rounds.length)), { minMs: 300 })
+    } else {
+      lockPreviews()
+      setSolved(false); setWrongPicks([]); setMood('happy'); setPlayed(false)
+      setIdx(i => i + 1)
     }
-    else { setIdx(i => i + 1) }
-  }, [idx, words.length, correct, onComplete])
+  }
 
   if (!current) return null
+  const options = round.options
+  const cols = options.length === 4 ? 2 : options.length
 
   return (
     <div style={{
-      flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+      flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-evenly',
       padding: 'clamp(16px,3vw,32px) clamp(16px,4vw,40px)',
-      gap: 'clamp(14px,2.5vw,26px)',
+      gap: 'clamp(12px,2vh,22px)',
     }}>
 
       {/* Progress */}
       <div style={{ display:'flex', gap:6, width:'100%', maxWidth:680 }}>
-        {words.map((_, i) => (
+        {rounds.map((_, i) => (
           <div key={i} style={{
-            flex:1, ...pxSegment(i < idx ? 'done' : i === idx ? 'current' : 'todo'),
+            flex:1, ...pxSegment(i < idx || (i === idx && solved) ? 'done' : i === idx ? 'current' : 'todo'),
             transition:'background 0.3s',
           }} />
         ))}
@@ -271,156 +240,132 @@ export default function ListenGame({ level = 1, onComplete }) {
 
       {/* Lumi + bubble */}
       <div style={{ display:'flex', alignItems:'flex-end', gap:14, width:'100%', maxWidth:760 }}>
-        <LumiCharacter mood={mood} size={88} />
+        <LumiCharacter mood={mood} size={80} />
         <div style={{
           flex:1, ...pxBubble,
-          padding:'16px 22px',
+          padding:'14px 22px',
           fontFamily:'var(--font-heading)',
           fontSize:'clamp(18px,3.8vw,26px)',
-          color:'var(--text-primary)',
+          color:INK,
         }}>
-          {isReverse ? 'Welches Wort passt zum Bild? 📝' : 'Welches Bild passt zum Wort? 🖼️'}
+          {isReading ? 'Welches Wort passt zum Bild? 📝' : 'Welches Bild passt zum Wort? 🖼️'}
         </div>
       </div>
 
-      {/* Play button */}
+      {/* Play button: the word (pictures), the task again (reading) */}
       <motion.button
         whileHover={{ scale:1.06 }} whileTap={{ scale:0.93 }}
-        onClick={replay}
+        onClick={isReading ? sayTask : sayWord}
         animate={!played
           ? { scale:[1,1.08,1], boxShadow:[PLAY_SHADOW, PLAY_SHADOW_PULSE, PLAY_SHADOW] }
           : {}}
         transition={!played ? { duration:1.4, repeat:Infinity } : {}}
+        aria-label={isReading ? 'Aufgabe noch einmal anhören' : 'Wort anhören'}
         style={{
           ...pxButton('gold'),
-          padding:'16px clamp(28px,5vw,56px)',
+          padding:'14px clamp(28px,5vw,56px)', minHeight:60,
           fontSize:'clamp(20px,4.5vw,30px)',
           fontWeight:600,
           display:'flex', alignItems:'center', gap:14,
         }}
       >
-        🔊 Anhören!
+        🔊 {isReading ? 'Nochmal' : 'Anhören!'}
       </motion.button>
 
-      {/* REVERSE MODE: show big emoji + word buttons */}
-      {isReverse && (
-        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:16, width:'100%', maxWidth:520 }}>
+      {/* READING: big picture + word buttons */}
+      {isReading && (
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:16, width:'100%', maxWidth:560 }}>
           <motion.div
             key={idx}
             initial={{ scale:0.8, opacity:0 }} animate={{ scale:1, opacity:1 }}
             style={{
-              fontSize:'clamp(80px,18vw,130px)', lineHeight:1,
-              ...pxPanel, padding:'24px 40px',
+              fontSize:'clamp(90px,18vw,140px)', lineHeight:1, minHeight:'1em',
+              ...pxPanel, padding:'22px 44px',
             }}
           >{current.emoji}</motion.div>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:12, width:'100%' }}>
-            {wordOptions.map((word) => {
-              const isAns   = word === current.word
-              const isChos  = selected === word
-              const done    = selected !== null
-              const isWrong = wrongPicks.includes(word)
+          <div style={{ display:'grid', gridTemplateColumns:`repeat(${cols}, minmax(0, 1fr))`, gap:12, width:'100%' }}>
+            {options.map(opt => {
+              const isAns   = opt.word === current.word
+              const isWrong = wrongPicks.includes(opt.word)
+              const live    = !solved && !isWrong
               return (
                 <motion.button
-                  key={word}
-                  whileHover={!done && !isWrong ? { scale:1.05 } : {}}
-                  whileTap={!done && !isWrong ? { scale:0.95 } : {}}
-                  animate={isWrong ? { opacity: 0.55 } : { opacity: 1 }}
-                  onClick={() => { if (!isWrong) pickWord(word) }}
-                  {...hearable(word)}
+                  key={opt.word}
+                  whileHover={live ? { scale:1.05 } : {}}
+                  whileTap={live ? { scale:0.95 } : {}}
+                  animate={{ opacity: isWrong && !solved ? 0.6 : 1 }}
+                  onClick={() => pick(opt)}
                   style={{
-                    ...pxCard(done&&isAns ? 'right' : done&&isChos ? 'wrong' : undefined),
-                    padding:'14px 10px',
-                    fontFamily:'var(--font-heading)', fontSize:'clamp(15px,3.2vw,20px)',
-                    fontWeight:700, cursor:done?'default':'pointer', color:'var(--text-primary)',
-                    transition:'all 0.2s',
+                    ...pxCard(solved && isAns ? 'right' : isWrong ? 'wrong' : undefined),
+                    padding:'14px 10px', minHeight:64,
+                    fontFamily:'var(--font-heading)', fontSize:'clamp(18px,3.4vw,24px)',
+                    fontWeight:700, cursor:live ? 'pointer' : 'default', color:INK,
+                    overflowWrap:'anywhere',
                   }}
-                >{word}{done&&isAns?' ✅':''}</motion.button>
+                >{opt.word}{solved && isAns ? ' ✅' : ''}</motion.button>
               )
             })}
           </div>
         </div>
       )}
 
-      {/* NORMAL MODE: 2×2 picture grid */}
-      {!isReverse && (
+      {/* LISTENING: picture grid — two in a row, three in a row, four as 2×2 */}
+      {!isReading && (
         <div style={{
-          display:'grid', gridTemplateColumns:'repeat(2,1fr)',
+          display:'grid', gridTemplateColumns:`repeat(${cols}, minmax(0, 1fr))`,
           gap:'clamp(12px,2.5vw,22px)',
-          width:'100%', maxWidth:760,
+          width:'100%', maxWidth: cols === 3 ? 760 : 600,
         }}>
-          {options.map((emoji, i) => {
-            const isAns   = emoji === current.emoji
-            const isChos  = emoji === selected
-            const done    = selected !== null
-            const isWrong = wrongPicks.includes(emoji)
-
-            let cardState
-            if (done) {
-              if (isAns)        cardState = 'right'
-              else if (isChos)  cardState = 'wrong'
-            } else if (isWrong) {
-              cardState = 'wrong'
-            }
-
+          {options.map((opt, i) => {
+            const isAns   = opt.word === current.word
+            const isWrong = wrongPicks.includes(opt.word)
+            const live    = !solved && !isWrong
             return (
-              <motion.button key={`${idx}-${i}`}
+              <motion.button key={`${idx}-${opt.word}`}
                 initial={{ opacity:0, y:18 }}
-                animate={{ opacity:1, y:0 }}
+                animate={{ opacity: isWrong && !solved ? 0.6 : 1, y:0 }}
                 transition={{ delay:i*0.07, type:'spring', stiffness:320 }}
-                whileHover={!done && !isWrong ? { scale:1.05 } : {}}
-                whileTap={!done && !isWrong ? { scale:0.95 } : {}}
-                animate={isWrong ? { opacity: 0.55 } : { opacity: 1 }}
-                onClick={() => { if (!isWrong) pick(emoji) }}
+                whileHover={live ? { scale:1.05 } : {}}
+                whileTap={live ? { scale:0.95 } : {}}
+                onClick={() => pick(opt)}
+                aria-label={`Bild ${i + 1}`}
                 style={{
-                  padding:'clamp(20px,5vw,40px) 16px',
-                  ...pxCard(cardState),
-                  fontSize:'clamp(56px,14vw,92px)',
-                  display:'flex', alignItems:'center', justifyContent:'center',
-                  cursor:done ? 'default' : 'pointer',
-                  transition:'all 0.22s', lineHeight:1,
+                  padding:'clamp(16px,3.5vw,30px) 12px',
+                  ...pxCard(solved && isAns ? 'right' : isWrong ? 'wrong' : undefined),
+                  display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:6,
+                  cursor:live ? 'pointer' : 'default',
+                  lineHeight:1, minWidth:0,
                 }}
               >
-                <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:4 }}>
-                  <motion.span
-                    animate={done && isAns ? { scale:[1,1.35,1], rotate:[0,12,-12,0] } : {}}
-                    transition={{ duration:0.55 }}
-                  >
-                    {emoji}
-                  </motion.span>
-                  {done && isAns && (
-                    <motion.span
-                      initial={{opacity:0,y:4}} animate={{opacity:1,y:0}}
-                      style={{
-                        fontFamily:'var(--font-heading)',
-                        fontSize:'clamp(13px,2.8vw,17px)',
-                        fontWeight:700, color:'#2d7a3a',
-                      }}
-                    >{current.word}</motion.span>
-                  )}
-                </div>
+                <motion.span
+                  animate={solved && isAns ? { scale:[1,1.35,1], rotate:[0,12,-12,0] } : {}}
+                  transition={{ duration:0.55 }}
+                  style={{ fontSize:'clamp(64px,14vw,100px)', minHeight:'1em' }}
+                >
+                  {opt.emoji}
+                </motion.span>
+                <span style={{
+                  fontFamily:'var(--font-heading)', fontSize:'clamp(15px,2.9vw,19px)', fontWeight:700, color:'#256B2E',
+                  visibility: solved && isAns ? 'visible' : 'hidden',
+                }}>{current.word}</span>
               </motion.button>
             )
           })}
         </div>
       )}
 
-      {showWeiter && (
-        <motion.button
-          initial={{ scale:0, opacity:0 }} animate={{ scale:1, opacity:1 }}
-          transition={{ type:'spring', stiffness:300, delay:0.2 }}
-          whileHover={{ scale:1.06 }} whileTap={{ scale:0.94 }}
-          onClick={weiterClick}
-          style={{
-            ...pxButton('green'),
-            padding:'14px 40px',
-            fontSize:20,
-          }}
-        >Weiter! →</motion.button>
-      )}
-
-      <p style={{ fontFamily:'var(--font-heading)', fontSize:17, color:'var(--text-muted)' }}>
-        ✅ {correct} von {Math.min(idx + (selected !== null ? 1 : 0), words.length)} richtig
-      </p>
+      <div style={{ minHeight:64, display:'flex', alignItems:'center' }}>
+        {solved && (
+          <motion.button
+            initial={{ scale:0, opacity:0 }} animate={{ scale:1, opacity:1 }}
+            transition={{ type:'spring', stiffness:300, delay:0.4 }}
+            whileHover={{ scale:1.06 }} whileTap={{ scale:0.94 }}
+            onClick={weiterClick}
+            {...hearable('Weiter')}
+            style={{ ...NEXT_BTN, padding:'14px 40px', minHeight:56, fontSize:20 }}
+          >Weiter! →</motion.button>
+        )}
+      </div>
     </div>
   )
 }

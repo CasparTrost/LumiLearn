@@ -49,7 +49,8 @@ function spawnRound(target, cfg, W, H) {
       if (near.length && Math.random() < 0.5) value = near[rand(0, near.length - 1)]
       else do { value = rand(1, cfg.maxNum) } while (value === target)
     }
-    const size = rand(cfg.dots ? 66 : 58, cfg.dots ? 92 : 88)
+    // a little smaller in a phone-sized pond, never below a fingertip
+    const size = Math.round(rand(cfg.dots ? 66 : 58, cfg.dots ? 92 : 88) * Math.max(0.8, Math.min(1, W / 520)))
     const r = size / 2 + 4
     // Inside the water by at least the radius: bubbles at the edge used to
     // be cut off by up to two thirds.
@@ -104,8 +105,8 @@ const DICE = [
 
 function Dots({ n }) {
   return (
-    <svg viewBox="0 0 100 100" width="74%" height="74%" style={{ pointerEvents: 'none' }}>
-      {DICE[n].map(([cx, cy], i) => <circle key={i} cx={cx} cy={cy} r={11} fill="#FFFDF7" stroke="#2a1b3d" strokeWidth={4} />)}
+    <svg viewBox="0 0 100 100" width="86%" height="86%" style={{ pointerEvents: 'none' }}>
+      {DICE[n].map(([cx, cy], i) => <circle key={i} cx={cx} cy={cy} r={13} fill="#FFFDF7" stroke="#2a1b3d" strokeWidth={4} />)}
     </svg>
   )
 }
@@ -362,8 +363,15 @@ export default function BubblePopGame({ level = 1, onComplete }) {
   const timeFraction = timeLeft / cfg.timeS
   const repeatTask = () => sayTask(taskText(target, cfg.dots))
 
+  // Reading the help cut off the task; once it closes, say the task again.
+  const wasPaused = useRef(false)
+  useEffect(() => {
+    if (wasPaused.current && !paused && phase === 'playing') repeatTask()
+    wasPaused.current = paused
+  }, [paused]) // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
-    <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column', alignItems:'center', padding:'clamp(8px,1.5vw,16px) clamp(10px,2.5vw,24px) 64px', gap:'clamp(8px,1.2vw,14px)', userSelect:'none' }}>
+    <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column', alignItems:'center', padding:'clamp(8px,1.5vw,16px) clamp(10px,2.5vw,24px)', gap:'clamp(8px,1.2vw,14px)', userSelect:'none' }}>
 
       {/* Status: hearts of this round, the target, rounds, the calm clock */}
       <div style={{ display:'flex', gap:10, alignItems:'center', width:'100%', maxWidth:750, flexWrap:'wrap', justifyContent:'center', flexShrink:0 }}>

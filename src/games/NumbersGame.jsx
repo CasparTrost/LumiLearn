@@ -447,8 +447,7 @@ export default function NumbersGame({ level = 1, onComplete }) {
       flex: 1, minHeight: 0, width: '100%', overflowY: 'auto',
       display: 'flex', flexDirection: 'column', alignItems: 'center',
       gap: narrow ? 10 : 'clamp(12px,2.4vh,24px)',
-      // room at the bottom right for the music button
-      padding: narrow ? '10px 10px 64px' : 'clamp(14px,2.4vh,28px) clamp(14px,3vw,28px) 64px',
+      padding: narrow ? 10 : 'clamp(14px,2.4vh,28px) clamp(14px,3vw,28px)',
     }}>
 
       {/* Progress bar */}

@@ -98,7 +98,8 @@
     inset 0 -2px 0 rgba(0, 0, 0, 0.18),
     0 1px 0 var(--px-ink);
 }
-.px-btn:disabled { filter: grayscale(0.6) opacity(0.55); cursor: default; }
+/* greyed, but the label stays readable (at 0.55 it was 1.5:1) */
+.px-btn:disabled { filter: grayscale(0.85) opacity(0.75); cursor: default; }
 .px-btn:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 
 /* Ink on the bright faces, like on gold: white on --px-green was 2.2:1,

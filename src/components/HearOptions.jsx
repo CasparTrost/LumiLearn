@@ -8,7 +8,8 @@ import { narrate } from '../narrator.js'
  * Option wäre schon die Antwort. `items` ist [{ text, src }] oder eine Liste
  * von Zeichenketten.
  */
-export default function HearOptions({ items, label = 'Antworten vorlesen', size = 38, style }) {
+// 48 px: a child's fingertip (the 38 px it had were too small)
+export default function HearOptions({ items, label = 'Antworten vorlesen', size = 48, style }) {
   const parts = (items ?? [])
     .map(it => (typeof it === 'string' ? { text: it } : it))
     .filter(p => p && (p.text || p.src))

@@ -1,87 +1,77 @@
-import { Suspense, useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
-import { ArrowLeft } from 'lucide-react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { useApp, MAX_LEVELS } from '../AppContext.jsx'
-import { HudBar } from '../components/PixelUI.jsx'
+import { HudBar, PxIcon, PixelLumi } from '../components/PixelUI.jsx'
 import InfoButton from '../components/InfoButton.jsx'
 import ErrorBoundary from '../components/ErrorBoundary.jsx'
+import ConfirmDialog from '../components/ConfirmDialog.jsx'
+import MusicButton from '../components/MusicControls.jsx'
+import TileArt from '../components/TileArt.jsx'
 import { stopNarration, lockPreviews } from '../narrator.js'
 import FitBox from '../components/FitBox.jsx'
 import { lazyWithReload } from '../lib/lazyWithReload.js'
 import { PauseContext } from '../lib/pause.js'
 import { result } from '../lib/score.js'
+import { MODULE_BY_ID } from '../modules.js'
 
-const ChoiceGame    = lazyWithReload(() => import('../games/ChoiceGame.jsx'))
-const TyperGame     = lazyWithReload(() => import('../games/TyperGame.jsx'))
-const MemoryGame    = lazyWithReload(() => import('../games/MemoryGame.jsx'))
-const PainterGame   = lazyWithReload(() => import('../games/PainterGame.jsx'))
-const ListenGame    = lazyWithReload(() => import('../games/ListenGame.jsx'))
-const EmotionGame   = lazyWithReload(() => import('../games/EmotionGame.jsx'))
-const MazeGame      = lazyWithReload(() => import('../games/MazeGame.jsx'))
-const ShadowGame    = lazyWithReload(() => import('../games/ShadowGame.jsx'))
-const BubblePopGame = lazyWithReload(() => import('../games/BubblePopGame.jsx'))
-const StoryGame     = lazyWithReload(() => import('../games/StoryGame.jsx'))
-const SortGame        = lazyWithReload(() => import('../games/SortGame.jsx'))
-const ClockGame       = lazyWithReload(() => import('../games/ClockGame.jsx'))
-const WordBuilderGame = lazyWithReload(() => import('../games/WordBuilderGame.jsx'))
-const WeightGame        = lazyWithReload(() => import('../games/WeightGame.jsx'))
-const NumberIntroGame   = lazyWithReload(() => import('../games/NumberIntroGame.jsx'))
-const LetterIntroGame   = lazyWithReload(() => import('../games/LetterIntroGame.jsx'))
-const NumbersGame       = lazyWithReload(() => import('../games/NumbersGame.jsx'))
-const ColoringGame      = lazyWithReload(() => import('../games/ColoringGame.jsx'))
-const ShapeBuildGame = lazyWithReload(() => import('../games/ShapeBuildGame.jsx'))
-const EmpathyGame = lazyWithReload(() => import('../games/EmpathyGame.jsx'))
-const InitialSoundGame = lazyWithReload(() => import('../games/InitialSoundGame.jsx'))
-const RhymeGame = lazyWithReload(() => import('../games/RhymeGame.jsx'))
-const ShapeLandGame = lazyWithReload(() => import('../games/ShapeLandGame.jsx'))
-const RocketMathGame = lazyWithReload(() => import('../games/RocketMathGame.jsx'))
+const LOADERS = {
+  numbers:         () => import('../games/NumbersGame.jsx'),
+  letters:         () => import('../games/TyperGame.jsx'),
+  listen:          () => import('../games/ListenGame.jsx'),
+  words:           () => import('../games/MemoryGame.jsx'),
+  patterns:        () => import('../games/ChoiceGame.jsx'),
+  shapes:          () => import('../games/PainterGame.jsx'),
+  emotions:        () => import('../games/EmotionGame.jsx'),
+  maze:            () => import('../games/MazeGame.jsx'),
+  shadows:         () => import('../games/ShadowGame.jsx'),
+  bubbles:         () => import('../games/BubblePopGame.jsx'),
+  stories:         () => import('../games/StoryGame.jsx'),
+  sort:            () => import('../games/SortGame.jsx'),
+  clock:           () => import('../games/ClockGame.jsx'),
+  words2:          () => import('../games/WordBuilderGame.jsx'),
+  weight:          () => import('../games/WeightGame.jsx'),
+  'number-intro':  () => import('../games/NumberIntroGame.jsx'),
+  'letter-intro':  () => import('../games/LetterIntroGame.jsx'),
+  coloring:        () => import('../games/ColoringGame.jsx'),
+  'shape-build':   () => import('../games/ShapeBuildGame.jsx'),
+  'empathy':       () => import('../games/EmpathyGame.jsx'),
+  'initial-sound': () => import('../games/InitialSoundGame.jsx'),
+  'rhyme':         () => import('../games/RhymeGame.jsx'),
+  'shapes-land':   () => import('../games/ShapeLandGame.jsx'),
+  'rocket-math':   () => import('../games/RocketMathGame.jsx'),
+}
 
-function GameLoadingFallback({ gradient }) {
+// Games whose code is in the browser already: they start without a
+// connection, too.
+const loaded = new Set()
+const load = id => (LOADERS[id] ?? LOADERS.patterns)().then(m => { loaded.add(id); return m })
+export const isGameLoaded = id => loaded.has(id)
+
+// A lazy component remembers a failed load for good, so "Nochmal" after a
+// lost connection needs a fresh one: one per game and attempt.
+const lazyCache = {}
+function gameComponent(id, attempt) {
+  const key = `${id}:${attempt}`
+  return lazyCache[key] ??= lazyWithReload(() => load(id))
+}
+
+/** Fetch a game's code ahead (tile hover, recommendations), quietly. */
+export function prefetchGame(id) {
+  if (loaded.has(id) || (typeof navigator !== 'undefined' && navigator.onLine === false)) return
+  load(id).catch(() => {})
+}
+
+function GameLoadingFallback() {
   return (
     <div style={{
       flex:1, display:'flex', alignItems:'center', justifyContent:'center',
-      flexDirection:'column', gap:16,
-      background: gradient ?? 'var(--bg)',
+      flexDirection:'column', gap:16, background:'var(--bg)',
     }}>
-      <div style={{
-        width:52, height:52, borderRadius:'50%',
-        border:'4px solid rgba(255,255,255,0.3)',
-        borderTopColor:'white',
-        animation:'spin 0.8s linear infinite',
-      }} />
-      <div style={{
-        fontFamily:'var(--font-heading)', fontSize:18, color:'white',
-        textShadow:'0 1px 8px rgba(0,0,0,0.3)',
-      }}>Spiel wird geladen…</div>
+      <PixelLumi size={96} />
+      <div style={{ fontFamily:'var(--font-heading)', fontSize:20, fontWeight:700, color:'var(--px-ink)' }}>
+        Spiel wird geladen …
+      </div>
     </div>
   )
-}
-
-const MODULE_META = {
-  numbers:  { label: 'Zahlenland 🔢',         gradient: 'linear-gradient(135deg, #6BCB77, #44D498)' },
-  letters:  { label: 'Buchstabenwald ⌨️',      gradient: 'linear-gradient(135deg, #6C63FF, #A78BFA)' },
-  listen:   { label: 'Hörabenteuer 🔊',        gradient: 'linear-gradient(135deg, #FF6B6B, #FF8E53)' },
-  words:    { label: 'Memo-Welt 🃏',           gradient: 'linear-gradient(135deg, #FD79A8, #E84393)' },
-  patterns: { label: 'Musterpark 🔮',          gradient: 'linear-gradient(135deg, #FF9F43, #EE5A24)' },
-  shapes:   { label: 'Farbenreich 🎨',         gradient: 'linear-gradient(135deg, #74B9FF, #0984E3)' },
-  emotions: { label: 'Gefühlswelt 😊',         gradient: 'linear-gradient(135deg, #A29BFE, #6C63FF)' },
-  maze:     { label: 'Lumi-Labyrinth 🌀',      gradient: 'linear-gradient(135deg, #4A00E0, #6C3FAC)' },
-  shadows:  { label: 'Schattenrätsel 🌑',      gradient: 'linear-gradient(135deg, #1a0533, #4A00E0)' },
-  bubbles:  { label: 'Blasen-Blitz 🫧',        gradient: 'linear-gradient(135deg, #FF6B6B, #FFD93D)' },
-  stories:  { label: 'Lumis Abenteuer 📖',     gradient: 'linear-gradient(135deg, #44D498, #6C63FF)' },
-  sort:     { label: 'Sortier-Spaß 🧺',          gradient: 'linear-gradient(135deg, #FF9F43, #6BCB77)' },
-  clock:    { label: 'Uhren-Uhr 🕐',               gradient: 'linear-gradient(135deg, #FF9F43, #FF6B6B)' },
-  words2:   { label: 'Silben-Spaß 🔤',             gradient: 'linear-gradient(135deg, #6BCB77, #0984E3)' },
-  weight:        { label: 'Waage-Welt ⚖️',          gradient: 'linear-gradient(135deg, #A29BFE, #FF9F43)' },
-  'number-intro': { label: 'Zahlen entdecken 🧮',    gradient: 'linear-gradient(135deg, #FFD93D, #FF9F43)' },
-  'letter-intro': { label: 'ABC-Abenteuer 🔡',       gradient: 'linear-gradient(135deg, #74B9FF, #6C63FF)' },
-  coloring:       { label: 'Mal-Atelier 🖍️',           gradient: 'linear-gradient(135deg, #FD79A8, #E84393)' },
-  'shape-build': { label: 'Formen-Werkstatt 🧩', gradient: 'linear-gradient(135deg,#FF9F43,#A29BFE)' },
-  'empathy': { label: 'Gefühlsdetektiv 🕵️‍♀️', gradient: 'linear-gradient(135deg,#E84393,#A29BFE)' },
-  'initial-sound': { label: 'Anlaut-Detektiv 🕵️', gradient: 'linear-gradient(135deg,#74B9FF,#44D498)' },
-  'rhyme': { label: 'Reim-Rallye 🎵', gradient: 'linear-gradient(135deg,#FD79A8,#FF9F43)' },
-  'shapes-land': { label: 'Formen-Land 🔷', gradient: 'linear-gradient(135deg,#00B894,#74B9FF)' },
-  'rocket-math': { label: 'Rechen-Rakete 🚀', gradient: 'linear-gradient(135deg,#6C63FF,#00B894)' },
 }
 
 // Diese Spiele rechnen mit echten Zeigerkoordinaten oder zeichnen auf eine
@@ -89,39 +79,13 @@ const MODULE_META = {
 // Sie bemessen sich stattdessen selbst an ihrem Container.
 const NO_SCALE = new Set(['bubbles', 'clock', 'coloring', 'numbers', 'shapes', 'shadows', 'maze'])
 
-const GAME_MAP = {
-  numbers:  NumbersGame,
-  letters:  TyperGame,
-  listen:   ListenGame,
-  words:    MemoryGame,
-  patterns: ChoiceGame,
-  shapes:   PainterGame,
-  emotions: EmotionGame,
-  maze:     MazeGame,
-  shadows:  ShadowGame,
-  bubbles:  BubblePopGame,
-  stories:  StoryGame,
-  sort:     SortGame,
-  clock:    ClockGame,
-  words2:   WordBuilderGame,
-  weight:        WeightGame,
-  'number-intro': NumberIntroGame,
-  'letter-intro': LetterIntroGame,
-  coloring:       ColoringGame,
-  'shape-build': ShapeBuildGame,
-  'empathy': EmpathyGame,
-  'initial-sound': InitialSoundGame,
-  'rhyme': RhymeGame,
-  'shapes-land': ShapeLandGame,
-  'rocket-math': RocketMathGame,
-}
+const SAY_QUIT = 'Möchtest du wirklich aufhören? Tippe auf den grünen Knopf, dann spielst du weiter.'
 
 export default function GameScreen() {
   const { state, dispatch } = useApp()
   const { moduleId, level } = state.currentGame ?? { moduleId: 'numbers', level: 1 }
-
-  const meta          = MODULE_META[moduleId] ?? MODULE_META.numbers
-  const GameComponent = GAME_MAP[moduleId]    ?? ChoiceGame
+  const mod = MODULE_BY_ID[moduleId] ?? MODULE_BY_ID.numbers
+  const maxLevel = MAX_LEVELS[moduleId] ?? 5
 
   // Ein Satz aus dem vorigen Spiel lief bisher weiter, während das nächste
   // schon seine Ansage startete — zwei Stimmen übereinander. Beim Wechsel und
@@ -130,10 +94,29 @@ export default function GameScreen() {
   // erst die Ansage, dann darf das Darüberfahren vorlesen.
   useEffect(() => { lockPreviews(); return stopNarration }, [moduleId, level])
 
-  // While the help is open the game is paused (timers, spawning, the
-  // dragon …): games read it with usePaused() from lib/pause.js.
+  // Time in the game, for the parent area and the daily time limit
+  const startedAt = useRef(Date.now())
+  useEffect(() => {
+    startedAt.current = Date.now()
+    return () => dispatch({ type: 'ADD_PLAYTIME', payload: { ms: Date.now() - startedAt.current } })
+  }, [moduleId, level, dispatch])
+
+  // While the help or the "really stop?" question is open the game is
+  // paused (timers, spawning, the dragon …): games read it with usePaused()
+  // from lib/pause.js.
   const [helpOpen, setHelpOpen] = useState(false)
-  useEffect(() => setHelpOpen(false), [moduleId, level])
+  const [askQuit, setAskQuit] = useState(false)
+  const [attempt, setAttempt] = useState(0)
+  useEffect(() => { setHelpOpen(false); setAskQuit(false) }, [moduleId, level])
+
+  // The system back button asks too (App.jsx)
+  useEffect(() => {
+    const onBack = () => setAskQuit(true)
+    window.addEventListener('lumi:back', onBack)
+    return () => window.removeEventListener('lumi:back', onBack)
+  }, [])
+
+  const GameComponent = gameComponent(moduleId, attempt)
 
   const handleComplete = ({ score, total, stars: providedStars }) => {
     // Games that rate by something other than first-try answers (Memo by
@@ -153,29 +136,36 @@ export default function GameScreen() {
       backgroundImage: 'linear-gradient(rgba(138,79,34,0.05) 2px, transparent 2px), linear-gradient(90deg, rgba(138,79,34,0.05) 2px, transparent 2px)',
       backgroundSize: '32px 32px',
     }}>
-      {/* HUD */}
+      {/* HUD. On a phone the game's picture stands for its name: the title
+          was cut off in 22 of 24 games ("Zahlen entdec…") */}
       <HudBar>
         <button
           className="px-btn px-btn--wood px-btn--icon"
-          onClick={quit}
+          onClick={() => setAskQuit(true)}
           aria-label="Spiel verlassen"
           style={{ flexShrink: 0 }}
         >
-          <ArrowLeft size={24} color="white" strokeWidth={3} />
+          <PxIcon name="back" size={20} color="#fff" />
         </button>
-        <span className="px-title" style={{ fontSize: 'clamp(19px,3.6vw,28px)', flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {meta.label}
+        <TileArt mod={mod} size={44} />
+        <span className="px-title hud-hide-sm" style={{ fontSize: 'clamp(16px,3vw,28px)', flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {mod.title}
         </span>
-        <span className="px-chip" style={{ fontFamily: 'var(--font-heading)', fontSize: 17 }}>
-          Level {level}/{MAX_LEVELS[moduleId] ?? 5}
+        <span className="hud-only-sm" style={{ flex: 1 }} />
+        <span className="px-chip" style={{ fontFamily: 'var(--font-heading)', fontSize: 17, flexShrink: 0 }}
+          aria-label={`Level ${level} von ${maxLevel}`}>
+          <span className="hud-hide-sm">Level&nbsp;</span>{level}/{maxLevel}
         </span>
+        <MusicButton />
         <InfoButton moduleId={moduleId} onOpenChange={setHelpOpen} />
       </HudBar>
 
       {/* Game */}
-      <ErrorBoundary moduleId={moduleId} onHome={() => dispatch({ type: 'NAVIGATE', payload: 'home' })}>
-        <PauseContext.Provider value={helpOpen}>
-        <Suspense fallback={<GameLoadingFallback gradient={meta.gradient} />}>
+      <ErrorBoundary key={`${moduleId}-${attempt}`} moduleId={moduleId}
+        onRetry={() => setAttempt(a => a + 1)}
+        onHome={() => dispatch({ type: 'NAVIGATE', payload: 'home' })}>
+        <PauseContext.Provider value={helpOpen || askQuit}>
+        <Suspense fallback={<GameLoadingFallback />}>
           {NO_SCALE.has(moduleId)
             ? <GameComponent moduleId={moduleId} level={level} onComplete={handleComplete} />
             // key: jedes Spiel misst seine nötige Höhe neu, statt die des
@@ -186,6 +176,19 @@ export default function GameScreen() {
         </Suspense>
         </PauseContext.Provider>
       </ErrorBoundary>
+
+      {/* The back arrow sits where small hands hold a tablet: it asks first
+          instead of ending the round at once */}
+      {askQuit && (
+        <ConfirmDialog kid
+          title="Wirklich aufhören?"
+          say={SAY_QUIT}
+          noLabel="Weiterspielen"
+          yesLabel="Aufhören"
+          onNo={() => { stopNarration(); setAskQuit(false) }}
+          onYes={quit}
+        />
+      )}
     </div>
   )
 }

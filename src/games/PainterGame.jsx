@@ -328,7 +328,7 @@ function PaintBucket({ color, name, selected, onClick }) {
       aria-pressed={selected}
       style={{
         background: 'none', border: 'none', cursor: 'pointer',
-        padding: '2px 0', outline: 'none', minWidth: 56, minHeight: 56,
+        padding: '2px 0', outline: 'none', width: 58, minHeight: 56,
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
       }}
     >
@@ -342,8 +342,8 @@ function PaintBucket({ color, name, selected, onClick }) {
         {selected && <path d="M33.5 9 L36 11.5 L40.5 6.5" stroke="white" strokeWidth="2.2" strokeLinecap="round" fill="none" />}
       </svg>
       <span style={{
-        fontFamily: 'var(--font-heading)', fontSize: 13, fontWeight: 700, lineHeight: 1.2,
-        whiteSpace: 'nowrap', color: INK,
+        fontFamily: 'var(--font-heading)', fontSize: 12, fontWeight: 700, lineHeight: 1.2,
+        whiteSpace: 'nowrap', color: INK, letterSpacing: -0.2,
         background: selected ? 'var(--px-gold)' : 'transparent',
         padding: '1px 6px', borderRadius: 6,
         border: `2px solid ${selected ? INK : 'transparent'}`,
@@ -352,22 +352,20 @@ function PaintBucket({ color, name, selected, onClick }) {
   )
 }
 
-// ─── What still needs painting: one chip per colour ──────────────────────────
+// ─── What still needs painting: one dot per colour, ticked when done ─────────
 function ColorChip({ group, active }) {
   const allDone = group.done === group.total
   return (
-    <div style={{
+    <div title={group.target} style={{
       ...pxCard(allDone ? 'right' : active ? 'selected' : undefined),
-      borderRadius: 10, padding: '3px 10px', minHeight: 32,
-      fontFamily: 'var(--font-heading)', fontSize: 14, fontWeight: 700,
-      display: 'flex', alignItems: 'center', gap: 6, color: INK,
+      borderRadius: 10, width: 40, height: 32,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative',
     }}>
       <span style={{
-        width: 16, height: 16, borderRadius: '50%', flexShrink: 0,
+        width: 20, height: 20, borderRadius: '50%',
         background: group.color.value, border: `2px solid ${INK}`,
       }} />
-      {group.target}
-      {allDone && <span>✅</span>}
+      {allDone && <span style={{ position: 'absolute', right: -8, top: -8, fontSize: 16, lineHeight: 1 }}>✅</span>}
     </div>
   )
 }
@@ -557,6 +555,7 @@ export default function PainterGame({ level = 1, onComplete }) {
       setFlash({ id: region.id, n: Date.now() })
       setMood('encouraging')
       setTimeout(() => setMood('happy'), 1300)
+      sfx.mismatch()
       sayWrong(wants)
       return
     }
@@ -640,7 +639,7 @@ export default function PainterGame({ level = 1, onComplete }) {
       </div>
 
       {/* Colours the picture needs */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center', width: '100%', maxWidth: 660, flexShrink: 0 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', width: '100%', maxWidth: 660, flexShrink: 0, paddingTop: 4 }}>
         {colorGroups.map(group => (
           <ColorChip key={group.target} group={group} active={selected === group.target} />
         ))}
@@ -678,7 +677,7 @@ export default function PainterGame({ level = 1, onComplete }) {
         padding: '6px 8px',
         width: '100%', maxWidth: 660,
       }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px clamp(2px,1vw,10px)', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px clamp(2px,0.8vw,10px)', justifyContent: 'center' }}>
           {palette.map(color => (
             <PaintBucket
               key={color.name}

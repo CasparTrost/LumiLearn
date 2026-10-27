@@ -72,7 +72,7 @@ const LEVELS = [
   { targets:'MSF',                              options:3 },
   { targets:'MSFLNR',                           options:3 },
   { targets:'MSFLNRWH',                         options:4 },
-  { targets:'AOU',      extra:'MSFL',           options:3 },
+  { targets:'AEO',      extra:'MSFL',           options:3 },
   { targets:'AEIOU',    extra:'MSFLNR',         options:4 },
   { targets:'AEIOUMSFLNRWH',                    options:4 },
   { targets:'BDGKPT',   extra:'MSFLNR',         options:4 },
@@ -140,10 +140,10 @@ export default function InitialSoundGame({ level = 1, onComplete }) {
       if (misses.length >= 2) {
         // After two misses Lumi shows the answer instead of letting the
         // child guess through the rest.
-        narrate([{ text: `Hör mal: ${answer}` }])
+        narrate([{ text: `Hör mal, ${answer}` }])
         setSolved(true)
       } else {
-        sayWrong(`Das klingt so: ${soundOf(L)}. Hör noch mal: ${r.word}.`)
+        sayWrong(`Das ist ${soundOf(L)}. Hör noch mal, ${r.word}.`)
         setTimeout(() => setMood('happy'), 1100)
       }
       return
@@ -206,10 +206,11 @@ export default function InitialSoundGame({ level = 1, onComplete }) {
         <motion.div key={idx} initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
           style={{ fontSize: 'clamp(100px,22vw,160px)', lineHeight: 1 }}>{r.emoji}</motion.div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 52 }}>
-          <div style={{
-            fontFamily: 'var(--font-heading)', fontSize: 'clamp(24px,5vw,34px)', fontWeight: 800, color: INK,
-            visibility: solved ? 'visible' : 'hidden',
-          }}>{spelled}</div>
+          {solved && (
+            <div style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(24px,5vw,34px)', fontWeight: 800, color: INK }}>
+              {spelled}
+            </div>
+          )}
           <motion.button
             whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }}
             onClick={sayTask}

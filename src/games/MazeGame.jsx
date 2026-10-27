@@ -8,6 +8,7 @@ import { speak, cancelSpeech, sayNumber } from '../tts.js'
 import { sfx } from '../sfx.js'
 import './maze/maze.css'
 import { afterNarration } from '../narrator.js'
+import { usePaused } from '../lib/pause.js'
 
 // ──────────────────────────────────────────────────────────────────
 // ASSET HELPER
@@ -172,6 +173,8 @@ const potionFilter = type => (POTION_HUES[type] ? `hue-rotate(${POTION_HUES[type
 // ──────────────────────────────────────────────────────────────────
 const Board = memo(function Board({ maze, cellSize, coll, theme, tint, lights }) {
   const { g, rows, cols, potions, exit } = maze
+  // The exit stays grey with a lock until every potion is collected
+  const open = coll.length >= potions.length
 
   // Dual-grid overlay: one wang tile per intersection point between 4
   // diagonally-adjacent cells, i.e. a (cols+1) x (rows+1) grid offset by
@@ -318,7 +321,15 @@ const Board = memo(function Board({ maze, cellSize, coll, theme, tint, lights })
                   alignItems:      'center',
                   justifyContent:  'center',
                   zIndex:          5,
+                  filter:          open ? undefined : 'grayscale(0.85) brightness(0.75)',
+                  transition:      'filter 0.6s',
                 }}>
+                  {!open && (
+                    <span style={{
+                      position: 'absolute', zIndex: 2, lineHeight: 1,
+                      fontSize: Math.round(cellSize * 0.42),
+                    }}>🔒</span>
+                  )}
                   {theme !== 'kerker' ? (
                     <SpriteStrip
                       sprite={PORTAL_GLOW}
@@ -424,7 +435,7 @@ function Sparkles({ x, y, cellSize }) {
 // The fog used to be one radial CSS mask around Lumi: everything else was
 // black, torches included, so they decorated nothing. Now the fog is an
 // SVG mask (white = fog, black = clear) that several lights cut into:
-//   • Lumi glows and lights the cells around her,
+//   • Lumi glows and lights the cells around,
 //   • torches / crystals light their own patch of corridor, so they work
 //     as landmarks even far away,
 //   • the exit and any potion still lying around shine a little,
@@ -473,7 +484,7 @@ function Lighting({ maze, cellSize, pos, seen, lights, coll, radius, fogColor })
             {spots.map(sp => (
               <circle key={sp.key} cx={sp.x} cy={sp.y} r={sp.r * cellSize} fill={`url(#${id}-hole)`} />
             ))}
-            {/* Lumi's own light glides along with her instead of jumping */}
+            {/* Lumi's own light glides along instead of jumping */}
             <circle
               cx={0}
               cy={0}
@@ -602,8 +613,20 @@ export default function MazeGame({ level = 1, onComplete }) {
   if (!mazeRef.current) mazeRef.current = genMaze(cfg.cols, cfg.rows, Date.now(), cfg.patrolLen)
 
   const [st, dispatch] = useReducer(mazeReducer, null, () => initState(mazeRef.current, cfg.hasDragon))
+  const stRef = useRef(st)
+  stRef.current = st
 
-  const { containerRef, cellSize } = useBoardSize(cfg.cols, cfg.rows, 76)
+  // While the help is open the dragon, the preview and Lumi hold still
+  const paused    = usePaused()
+  const pausedRef = useRef(paused)
+  pausedRef.current = paused
+
+  // Fog levels first show the whole map for a moment: "Merk dir den Weg!"
+  // — a chance to plan before the fog closes in.
+  const [preview, setPreview] = useState(!!cfg.fogRadius)
+  const previewLeftRef = useRef(4500)
+
+  const { containerRef, cellSize: camCell, fitCell, viewCols, viewRows } = useBoardSize(cfg.cols, cfg.rows, 76)
   const lights = useMemo(() => lightSources(mazeRef.current, cfg.theme), [cfg.theme])
 
   const doneRef         = useRef(false)
@@ -620,6 +643,15 @@ export default function MazeGame({ level = 1, onComplete }) {
   const [sparkles, setSparkles]     = useState([]) // [{ id, x, y }]
   const [showOverlay, setShowOverlay] = useState(null) // 'won' | 'dead'
 
+  // Every time the dragon caught Lumi, over all tries: the stars go by it
+  // (none → 3, one → 2, more → 1). A win used to give three stars however
+  // many hearts were lost on the way.
+  const hitsRef      = useRef(0)
+  const lastWarnRef  = useRef(0)
+  const restartRef   = useRef(null)
+  // Camera position (top-left cell) when only a part of the maze fits
+  const camRef       = useRef({ x: 0, y: 0 })
+
   // Moving timer — clear the "moving" flag after animation settles
   const moveTimerRef = useRef(null)
 
@@ -632,6 +664,7 @@ export default function MazeGame({ level = 1, onComplete }) {
 
   // ── MOVE HELPER ─────────────────────────────────────────────────
   const doMove = useCallback((dx, dy) => {
+    if (pausedRef.current) return
     dispatch({ type: 'MOVE', dx, dy, now: Date.now() })
     // Clear moving flag after spring animation
     clearTimeout(moveTimerRef.current)
@@ -665,7 +698,7 @@ export default function MazeGame({ level = 1, onComplete }) {
   // level, so a child has real time to watch the pattern and react.
   useEffect(() => {
     const wps = mazeRef.current.dragonWps
-    if (!cfg.hasDragon || !wps || wps.length < 2 || st.won || st.dead) return
+    if (!cfg.hasDragon || !wps || wps.length < 2 || st.won || st.dead || paused) return
 
     const last = wps.length - 1
     const iv = setInterval(() => {
@@ -682,7 +715,15 @@ export default function MazeGame({ level = 1, onComplete }) {
     }, cfg.dragonSpeed)
 
     return () => clearInterval(iv)
-  }, [cfg.hasDragon, cfg.dragonSpeed, st.won, st.dead])
+  }, [cfg.hasDragon, cfg.dragonSpeed, st.won, st.dead, paused])
+
+  // ── PREVIEW — the whole map, then the fog ─────────────────────────
+  useEffect(() => {
+    if (!preview || paused) return
+    const t0 = Date.now()
+    const id = setTimeout(() => setPreview(false), previewLeftRef.current)
+    return () => { clearTimeout(id); previewLeftRef.current -= Date.now() - t0 }
+  }, [preview, paused])
 
   // ── SIDE EFFECTS — consume events from reducer ───────────────────
   useEffect(() => {
@@ -697,27 +738,48 @@ export default function MazeGame({ level = 1, onComplete }) {
 
       case 'potion': {
         try { sfx.potion() } catch { /* ignore */ }
+        // "Zaubertrank 1 von 3!" was read with digits
         const count  = st.coll.length
-        const total  = mazeRef.current.potions.length
-        speak(`Zaubertrank ${count} von ${total}!`, { lang: 'de-DE' })
+        const left   = mazeRef.current.potions.length - count
+        const word   = sayNumber(count)
+        const got    = count === 1 ? 'Ein Zaubertrank!' : `${word[0].toUpperCase()}${word.slice(1)} Zaubertränke!`
+        speak(left === 0
+          ? `${got} Jetzt schnell zum Tor!`
+          : `${got} Noch ${left === 1 ? 'einer' : sayNumber(left)}.`, { lang: 'de-DE' })
         const sid = Date.now()
         setSparkles(prev => [...prev, { id: sid, x: ev.x, y: ev.y }])
         setTimeout(() => setSparkles(prev => prev.filter(s => s.id !== sid)), 700)
         break
       }
 
+      case 'needPotions': {
+        const n = ev.missing
+        speak(`Du brauchst noch ${n === 1 ? 'einen Zaubertrank' : `${sayNumber(n)} Zaubertränke`}, dann öffnet sich das Tor!`, { lang: 'de-DE' })
+        break
+      }
+
       case 'hit':
+        hitsRef.current++
         try { sfx.hitPlayer() } catch { /* ignore */ }
-        speak('Vorsicht! Der Drache hat dich erwischt!', { lang: 'de-DE' })
+        speak('Autsch, der Drache hat dich erwischt! Ein paar Schritte zurück.', { lang: 'de-DE' })
         navigator.vibrate?.([60, 40, 60])
         break
 
+      // The last heart is gone: the same maze once more from the start,
+      // instead of ending the game with no stars.
       case 'dead':
+        hitsRef.current++
         try { sfx.wrong() } catch { /* ignore */ }
-        speak('Oh nein! Der Drache war zu schnell. Versuch es nochmal!', { lang: 'de-DE' })
+        speak('Oh nein! Der Drache war zu schnell. Wir versuchen es noch einmal!', { lang: 'de-DE' })
         navigator.vibrate?.([80, 40, 80, 40, 80])
         setShowOverlay('dead')
-        finish(0, Math.max(1, mazeRef.current.potions.length), 2200)
+        clearTimeout(restartRef.current)
+        restartRef.current = setTimeout(() => {
+          dragonStepRef.current = 0
+          dragonDirRef.current  = 1
+          dispatch({ type: 'RESTART' })
+          setShowOverlay(null)
+        }, 3200)
         break
 
       case 'won':
@@ -725,7 +787,7 @@ export default function MazeGame({ level = 1, onComplete }) {
         speak('Super! Du hast das Labyrinth gemeistert!', { lang: 'de-DE' })
         navigator.vibrate?.([50, 30, 50, 30, 100])
         setShowOverlay('won')
-        finish(mazeRef.current.potions.length, mazeRef.current.potions.length, 2200)
+        finish(Math.max(0, 3 - hitsRef.current), 3, 2200)
         break
 
       default:
@@ -736,9 +798,15 @@ export default function MazeGame({ level = 1, onComplete }) {
   }, [st.event, st.coll.length, finish]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── DANGER WARNING SOUND ─────────────────────────────────────────
+  // The warning used to be shown only as text. Said once (and again only
+  // after a while), with the rule that keeps Lumi safe.
   useEffect(() => {
     if (st.dangerLevel >= 1 && prevDangerRef.current < 1) {
       try { sfx.dragonNear() } catch { /* ignore */ }
+      if (Date.now() - lastWarnRef.current > 25000) {
+        lastWarnRef.current = Date.now()
+        speak('Psst, der Drache ist ganz nah! Wenn du stehen bleibst, kann er dir nichts tun.', { lang: 'de-DE' })
+      }
     }
     prevDangerRef.current = st.dangerLevel
   }, [st.dangerLevel])
@@ -752,19 +820,37 @@ export default function MazeGame({ level = 1, onComplete }) {
       // "einen", nicht "eins": vorher "Sammle 3 Zaubertranke".
       ? `Sammle ${n === 1 ? 'einen Zaubertrank' : `${sayNumber(n)} Zaubertränke`} und finde den Ausgang${dragonWarning}`
       : `Finde den Ausgang des Labyrinths${dragonWarning}`
-    const tid = setTimeout(() => speak(msg, { lang: 'de-DE' }), 700)
+    const look = cfg.fogRadius ? ' Schau gut hin und merk dir den Weg!' : ''
+    const tid = setTimeout(() => speak(msg + look, { lang: 'de-DE' }), 700)
     return () => clearTimeout(tid)
-  }, [cfg.hasDragon])
+  }, [cfg.hasDragon, cfg.fogRadius])
 
   // ── CLEANUP ───────────────────────────────────────────────────────
   useEffect(() => () => {
     cancelSpeech()
     clearTimeout(moveTimerRef.current)
+    clearTimeout(restartRef.current)
   }, [])
 
   // ── SWIPE ────────────────────────────────────────────────────────
+  // Holding the finger after a swipe keeps Lumi walking — up to the next
+  // fork, a wall, or the dragon.
+  const canRun = useCallback((dx, dy) => {
+    const { pos, dragon, won, dead } = stRef.current
+    const g = mazeRef.current.g
+    if (pausedRef.current || won || dead) return false
+    const nx = pos.x + dx, ny = pos.y + dy
+    if (g[ny]?.[nx] !== 0) return false
+    if (dragon && dragon.x === nx && dragon.y === ny) return false
+    const sides = dx !== 0 ? [[0, 1], [0, -1]] : [[1, 0], [-1, 0]]
+    return !sides.some(([sx, sy]) => g[pos.y + sy]?.[pos.x + sx] === 0)
+  }, [])
   const swipeHandlers = useSwipe(
-    (dx, dy) => doMove(dx, dy),
+    (dx, dy, repeat) => {
+      if (repeat && !canRun(dx, dy)) return false
+      doMove(dx, dy)
+      return true
+    },
     { threshold: 18 }
   )
 
@@ -772,8 +858,28 @@ export default function MazeGame({ level = 1, onComplete }) {
   // RENDER
   // ──────────────────────────────────────────────────────────────────
   const { cols, rows, theme, fogRadius, hasDragon } = cfg
+  // The preview shows the whole maze; after it, a part around Lumi when the
+  // whole one would make the cells too small
+  const cellSize = preview ? fitCell : camCell
+  const vCols    = preview ? cols : viewCols
+  const vRows    = preview ? rows : viewRows
   const boardW = cols * cellSize
   const boardH = rows * cellSize
+
+  // The camera only moves once Lumi comes within three cells of its edge
+  {
+    const margin = 3
+    let { x: cx, y: cy } = camRef.current
+    if (st.pos.x < cx + margin) cx = st.pos.x - margin
+    if (st.pos.x > cx + vCols - 1 - margin) cx = st.pos.x - (vCols - 1 - margin)
+    if (st.pos.y < cy + margin) cy = st.pos.y - margin
+    if (st.pos.y > cy + vRows - 1 - margin) cy = st.pos.y - (vRows - 1 - margin)
+    camRef.current = {
+      x: Math.max(0, Math.min(cols - vCols, cx)),
+      y: Math.max(0, Math.min(rows - vRows, cy)),
+    }
+  }
+  const cam = camRef.current
 
   const { bg: bgGrad, glow } = WORLD_LOOK[theme]
 
@@ -847,8 +953,8 @@ export default function MazeGame({ level = 1, onComplete }) {
 
         {/* Moves counter */}
         <div style={{
-          color:       'rgba(255,255,255,0.6)',
-          fontSize:    13,
+          color:       'rgba(255,255,255,0.85)',
+          fontSize:    15,
           fontFamily:  'Fredoka, var(--font-heading), sans-serif',
           whiteSpace:  'nowrap',
         }}>
@@ -873,8 +979,28 @@ export default function MazeGame({ level = 1, onComplete }) {
         width:       '100%',
       }}>
         <AnimatePresence>
-          {st.dangerLevel > 0 && !st.won && !st.dead && (
+          {preview && (
             <motion.div
+              key="preview"
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              style={{
+                background:  'rgba(42,27,61,0.8)',
+                color:       'white',
+                padding:     '4px 18px',
+                borderRadius: 20,
+                fontFamily:  'Fredoka, var(--font-heading), sans-serif',
+                fontSize:    15,
+                fontWeight:  600,
+              }}
+            >
+              👀 Merk dir den Weg!
+            </motion.div>
+          )}
+          {!preview && st.dangerLevel > 0 && !st.won && !st.dead && (
+            <motion.div
+              key="danger"
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
@@ -911,8 +1037,8 @@ export default function MazeGame({ level = 1, onComplete }) {
             {...swipeHandlers}
             style={{
               position:    'relative',
-              width:       boardW,
-              height:      boardH,
+              width:       vCols * cellSize,
+              height:      vRows * cellSize,
               borderRadius: 8,
               overflow:    'hidden',
               boxShadow:   glow,
@@ -921,6 +1047,16 @@ export default function MazeGame({ level = 1, onComplete }) {
               flexShrink:  0,
             }}
           >
+           {/* The whole maze, slid so that Lumi stays in view */}
+           <div style={{
+             position:   'absolute',
+             left:       0,
+             top:        0,
+             width:      boardW,
+             height:     boardH,
+             transform:  `translate(${-cam.x * cellSize}px, ${-cam.y * cellSize}px)`,
+             transition: 'transform 0.3s ease-out',
+           }}>
             {/* Tiles */}
             <Board
               maze={mazeRef.current}
@@ -932,7 +1068,7 @@ export default function MazeGame({ level = 1, onComplete }) {
             />
 
             {/* Fog of war + light sources */}
-            {fogRadius && (
+            {fogRadius && !preview && (
               <Lighting
                 maze={mazeRef.current}
                 cellSize={cellSize}
@@ -943,18 +1079,6 @@ export default function MazeGame({ level = 1, onComplete }) {
                 radius={fogRadius}
                 fogColor={FOG_COLOR[theme]}
               />
-            )}
-
-            {/* Danger vignette */}
-            {st.dangerLevel > 0 && (
-              <div style={{
-                position:      'absolute',
-                inset:         0,
-                pointerEvents: 'none',
-                zIndex:        11,
-                background:    `radial-gradient(ellipse at center, transparent 35%, rgba(220,38,38,${st.dangerLevel * 0.38}) 100%)`,
-                animation:     st.dangerLevel >= 1 ? 'mz-danger-pulse 0.7s ease-in-out infinite' : undefined,
-              }} />
             )}
 
             {/* Sparkle effects */}
@@ -1070,6 +1194,19 @@ export default function MazeGame({ level = 1, onComplete }) {
                   <SpriteStrip sprite={DRAGON_WALK} size={Math.round(cellSize * 1.1)} />
                 </div>
               </motion.div>
+            )}
+           </div>
+
+            {/* Danger vignette */}
+            {st.dangerLevel > 0 && (
+              <div style={{
+                position:      'absolute',
+                inset:         0,
+                pointerEvents: 'none',
+                zIndex:        11,
+                background:    `radial-gradient(ellipse at center, transparent 35%, rgba(220,38,38,${st.dangerLevel * 0.38}) 100%)`,
+                animation:     st.dangerLevel >= 1 ? 'mz-danger-pulse 0.7s ease-in-out infinite' : undefined,
+              }} />
             )}
 
             {/* ── WIN / DEAD overlay ───────────────────────────── */}
