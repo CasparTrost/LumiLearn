@@ -917,7 +917,7 @@ export default function MazeGame({ level = 1, onComplete }) {
               overflow:    'hidden',
               boxShadow:   glow,
               touchAction: 'none',
-              cursor:      'pointer',
+              cursor:      'default',
               flexShrink:  0,
             }}
           >
