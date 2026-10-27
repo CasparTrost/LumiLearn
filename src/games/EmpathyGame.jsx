@@ -500,7 +500,7 @@ export default function EmpathyGame({ level = 1, onComplete }) {
       setMissed(true)
       setMood('encouraging')
       sfx.mismatch()
-      sayWrong(`Schau noch einmal genau hin. ${CUE[sc.feeling]}`)
+      sayWrong(CUE[sc.feeling])
       return
     }
     sfx.correct()

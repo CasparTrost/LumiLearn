@@ -432,7 +432,10 @@ export default function EmotionGame({ level = 1, onComplete }) {
   if (!ch) return null
 
   const answered = phase !== 'ask'
-  const cols = ch.options.length === 4 ? 2 : ch.options.length
+  // After the answer only the chosen and the fitting feeling stay — room for
+  // the explanation without shrinking the whole screen
+  const shown = answered ? ch.options.filter(e => e === ch.emotion || e === picked) : ch.options
+  const cols = shown.length === 4 ? 2 : shown.length
   const bubble = !answered ? 'Wie fühlt sich Lumi wohl? 🤔'
     : picked === ch.emotion ? `Genau! Lumi ist ${word(ch.emotion)}. 🌟`
     : `Lumi ist hier eher ${word(ch.emotion)}.`
@@ -496,8 +499,9 @@ export default function EmotionGame({ level = 1, onComplete }) {
                 initial={{ scale:0, rotate:-15, opacity:0 }}
                 animate={{ scale:1, rotate:0, opacity:1 }}
                 transition={{ type:'spring', stiffness:320, damping:18 }}
-                // smaller once the next steps need the room
-                style={{ fontSize: phase === 'feedback' ? 'clamp(64px,14vw,96px)' : 52, lineHeight:1 }}
+                // smaller than the blank face: the explanation and the next
+                // steps need the room
+                style={{ fontSize:56, lineHeight:1 }}
               >
                 {FEELING_ICON[ch.emotion]}
               </motion.div>
@@ -538,9 +542,9 @@ export default function EmotionGame({ level = 1, onComplete }) {
         <div style={{
           display:'grid', gridTemplateColumns:`repeat(${cols},1fr)`,
           gap:'clamp(10px,2vw,16px)',
-          width:'100%', maxWidth: cols === 2 && ch.options.length === 2 ? 480 : 640,
+          width:'100%', maxWidth: shown.length <= 2 ? 480 : 640,
         }}>
-          {ch.options.map((emotion) => {
+          {shown.map((emotion) => {
             const isRight  = answered && emotion === ch.emotion
             const isChosen = answered && emotion === picked && !isRight
             return (
@@ -554,11 +558,9 @@ export default function EmotionGame({ level = 1, onComplete }) {
                   // A feeling is never "wrong": the chosen one stays gold, the
                   // one that fits best turns green
                   ...pxCard(isRight ? 'right' : isChosen ? 'selected' : undefined),
-                  padding:'clamp(10px,2vw,16px) 8px', minHeight:96,
+                  padding:'clamp(8px,1.6vw,14px) 8px', minHeight:88,
                   display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:6,
                   cursor: answered ? 'default' : 'pointer',
-                  opacity: answered && !isRight && !isChosen ? 0.55 : 1,
-                  transition:'opacity 0.22s',
                 }}
               >
                 <span style={{ fontSize:'clamp(36px,7vw,48px)', lineHeight:1 }}>

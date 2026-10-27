@@ -19,7 +19,7 @@ const INFO = {
   patterns:        { emoji: '🔮', title: 'Musterpark', text: 'Schau dir die Reihe genau an. Sie wiederholt sich immer gleich. Was kommt als Nächstes? Manchmal fehlt ein Bild mitten in der Reihe, oder die Reihe wird immer länger. Tippe auf das Bild, das passt.' },
   shapes:          { emoji: '🎨', title: 'Farbenreich', text: 'Lumi sagt dir, welche Farbe wohin gehört. Tippe zuerst auf den Farbeimer und dann auf die Fläche im Bild, die leuchtet.' },
   emotions:        { emoji: '😊', title: 'Gefühlswelt', text: 'Lumi erzählt dir, was passiert ist. Wie fühlt sich Lumi wohl dabei? Tippe auf das Gesicht, das dazu passt. Mit dem Lautsprecher hörst du alle Gefühle.' },
-  empathy:         { emoji: '🕵️‍♀️', title: 'Gefühlsdetektiv', text: 'Schau dir das Kind genau an: sein Gesicht und wie es dasteht. Wie fühlt es sich? Und dann: Was kannst du tun, damit es ihm besser geht?' },
+  empathy:         { emoji: '🕵️‍♀️', title: 'Gefühlsdetektiv', text: 'Schau dir das Kind genau an: sein Gesicht und seine Haltung. Wie fühlt es sich? Und dann: Was kannst du tun, damit es ihm besser geht?' },
   maze:            { emoji: '🌀', title: 'Lumi-Labyrinth', text: 'Hilf Lumi durch das Labyrinth! Sammle alle Zaubertränke und lauf dann zum leuchtenden Ausgang. Wische oder benutze die Pfeile. Pass auf den Drachen auf! Wenn du stehen bleibst, kann der Drache dir nichts tun.' },
   shadows:         { emoji: '🌑', title: 'Schattenrätsel', text: 'Im Dunkeln versteckt sich etwas. Fahre mit der Taschenlampe über das Bild. Was ist es? Tippe auf das richtige Bild.' },
   bubbles:         { emoji: '🫧', title: 'Blasen-Blitz', text: 'Lumi sagt dir eine Zahl. Tippe alle Blasen an, auf denen so viele Punkte sind oder die diese Zahl zeigen. Lass dir Zeit und schau genau hin.' },

@@ -723,7 +723,7 @@ export default function StoryGame({ level = 1, onComplete }) {
 
           {phase === 'lesson' && (
             <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:14, width:'100%' }}>
-              <LumiCharacter mood="happy" size={80} />
+              <LumiCharacter mood="happy" size={showAlt ? 56 : 80} />
               <div style={{
                 background:'#FFF1D6',
                 border:`3px solid ${INK}`, boxShadow:'inset 0 -4px 0 var(--px-parch-dark)',
@@ -733,7 +733,7 @@ export default function StoryGame({ level = 1, onComplete }) {
                 display:'flex', alignItems:'center', gap:12,
               }}>
                 <span>💡 {outcome.lesson}</span>
-                <HearOptions items={[outcome.lesson]} label="Nochmal vorlesen" size={44} />
+                <HearOptions items={[outcome.lesson]} label="Nochmal vorlesen" />
               </div>
 
               {/* The other path, side by side with the chosen one — and read
