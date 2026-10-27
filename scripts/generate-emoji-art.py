@@ -137,8 +137,13 @@ def prompt(batch, cols, rows):
 
 def generate(batches, everything=False):
     os.makedirs(WORK, exist_ok=True)
-    todo = scan(everything)
-    json.dump(todo, open(os.path.join(WORK, 'todo.json'), 'w'), ensure_ascii=False)
+    saved = os.path.join(WORK, 'todo.json')
+    if batches and os.path.exists(saved):
+        # resuming a run: the same list, or the batches would shift
+        todo = json.load(open(saved))
+    else:
+        todo = scan(everything)
+        json.dump(todo, open(saved, 'w'), ensure_ascii=False)
     nums = batches or range((len(todo) + PER_SHEET - 1) // PER_SHEET)
     for b in nums:
         batch = todo[b * PER_SHEET:(b + 1) * PER_SHEET]
@@ -148,7 +153,10 @@ def generate(batches, everything=False):
         # only five emoji, the model laid them out in five columns instead.
         cols = min(COLS, len(batch)); rows = (len(batch) + cols - 1) // cols
         print(f'sheet {b}: {len(batch)} emoji, {cols} x {rows}', flush=True)
-        sheet = tiles.key_magenta(tiles.request_image(prompt(batch, cols, rows), '2048x2048'))
+        try:
+            sheet = tiles.key_magenta(tiles.request_image(prompt(batch, cols, rows), '2048x2048'))
+        except SystemExit:                      # the service gave up; the other sheets can still go
+            print(f'sheet {b} failed, run `generate {b}` again', flush=True); continue
         sheet.save(os.path.join(WORK, f'sheet_{b}.png'))
         json.dump({'cols': cols, 'rows': rows, 'items': batch},
                   open(os.path.join(WORK, f'sheet_{b}.json'), 'w'), ensure_ascii=False)
