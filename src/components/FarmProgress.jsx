@@ -500,36 +500,38 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
   }, [level])
 
   return (
-    <div className="farm-progress-wrapper" style={{ width:'100%', maxWidth:860, margin:'0 auto', userSelect:'none' }}>
+    <div className="farm-progress-wrapper" style={{
+      width:'100%', maxWidth:860, margin:'0 auto', userSelect:'none',
+      // Pixel frame like every panel (styles/pixel.css)
+      border:'3px solid var(--px-ink)', borderRadius:'var(--px-radius)', overflow:'hidden',
+      boxShadow:'0 5px 0 var(--px-ink-soft)',
+    }}>
 
       {/* Header */}
-      <div style={{
+      <div className="px-wood" style={{
         display:'flex', justifyContent:'space-between', alignItems:'center',
-        padding:'10px 16px 8px',
-        background:'linear-gradient(135deg,#1a2e0d,#2d5a1a)',
-        borderRadius:'20px 20px 0 0',
+        padding:'8px 14px 8px',
+        borderBottom:'3px solid var(--px-ink)',
       }}>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
           <span style={{fontSize:22}}>🌾</span>
           <div>
-            <div style={{color:'#FFE082',fontSize:13,fontWeight:700,fontFamily:'var(--font-heading)'}}>
+            <div className="px-title" style={{fontSize:16}}>
               {LABELS[level]}
             </div>
-            <div style={{color:'rgba(255,255,200,.6)',fontSize:10,fontFamily:'var(--font-body)'}}>
+            <div style={{color:'rgba(255,255,255,.9)',fontSize:11,fontWeight:700,fontFamily:'var(--font-body)',textShadow:'0 1px 0 rgba(0,0,0,.4)'}}>
               {nextUnlock}
             </div>
           </div>
         </div>
         <div style={{textAlign:'right'}}>
-          <div style={{color:'#FFE082',fontSize:11,fontFamily:'var(--font-heading)',fontWeight:700}}>
+          <div style={{color:'#fff',fontSize:13,fontFamily:'var(--font-heading)',fontWeight:700,textShadow:'0 2px 0 rgba(0,0,0,.4)'}}>
             Level {level} / 6
           </div>
           <div style={{display:'flex',gap:4,marginTop:3,justifyContent:'flex-end'}}>
             {[1,2,3,4,5,6].map(l=>(
-              <div key={l} style={{width:10,height:10,borderRadius:'50%',
-                background:l<=level?'#FFD93D':'rgba(255,255,255,.2)',
-                boxShadow:l<=level?'0 0 6px #FFD93D':undefined,
-                transition:'all .3s'}}/>
+              <div key={l} className={`px-pip${l<=level?' px-pip--gold':''}`} style={{width:11,height:11,
+                background:l<=level?undefined:'rgba(255,255,255,.35)'}}/>
             ))}
           </div>
         </div>
@@ -537,7 +539,6 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
 
       {/* Farm — full width, no sidebar */}
       <div ref={farmRef} className="farm-scene" style={{ position:'relative', overflow:'hidden', width:'100%',
-        boxShadow:'0 8px 32px rgba(0,0,0,.3)',
         cursor:'url(' + BASE + 'sprites/farm/cursor_fork.png) 4 4, crosshair' }}>
         <img src={asset('farm_final.png')} alt="Farm" style={{width:'100%', display:'block'}}/>
         <div style={{position:'absolute',inset:0}}>
@@ -551,21 +552,19 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
       </div>
 
       {/* Progress Bar */}
-      <div style={{
-        background:'linear-gradient(135deg,#1a2e0d,#2d5a1a)',
-        borderRadius:'0 0 20px 20px',
-        padding:'8px 16px 12px',
-        boxShadow:'0 6px 20px rgba(0,0,0,.2)',
+      <div className="px-wood" style={{
+        padding:'8px 14px 10px',
+        borderTop:'3px solid var(--px-ink)', borderBottom:'none', boxShadow:'none',
       }}>
-        <div style={{background:'rgba(0,0,0,.35)',borderRadius:8,height:12,overflow:'hidden',
-          border:'1.5px solid rgba(255,255,255,.12)'}}>
+        <div style={{background:'rgba(42,27,61,.55)',borderRadius:4,height:14,overflow:'hidden',
+          border:'2px solid var(--px-ink)'}}>
           <motion.div initial={{width:0}} animate={{width:`${pct}%`}}
             transition={{duration:1.2,ease:'easeOut'}}
-            style={{height:'100%',background:'linear-gradient(90deg,#4caf50,#8bc34a,#cddc39)',
-              borderRadius:6,boxShadow:'0 0 8px rgba(100,200,50,.4)'}}/>
+            style={{height:'100%',background:'linear-gradient(180deg,#8be36a,#4caf50)',
+              boxShadow:'inset 0 2px 0 rgba(255,255,255,.4)'}}/>
         </div>
         <div style={{display:'flex',justifyContent:'space-between',marginTop:5,
-          fontSize:10,color:'rgba(255,255,255,.5)',fontFamily:'var(--font-body)'}}>
+          fontSize:12,fontWeight:700,color:'#fff',textShadow:'0 1px 0 rgba(0,0,0,.4)',fontFamily:'var(--font-body)'}}>
           <span>{completedCount} / {totalModules} Module</span>
           <span>{pct}%</span>
         </div>

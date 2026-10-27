@@ -132,12 +132,8 @@ export default function MusicControls() {
             transition={{ type: 'spring', stiffness: 320, damping: 26 }}
             style={{ overflow: 'hidden' }}
           >
-            <div style={{
-              background: 'rgba(255,255,255,0.92)',
-              backdropFilter: 'blur(8px)',
-              borderRadius: 20,
-              padding: '6px 12px',
-              boxShadow: '0 4px 18px rgba(0,0,0,0.14)',
+            <div className="px-panel" style={{
+              padding: '4px 10px',
               display: 'flex',
               alignItems: 'center',
               gap: 6,
@@ -153,7 +149,7 @@ export default function MusicControls() {
                 onChange={e => setVolume(parseFloat(e.target.value))}
                 style={{
                   width: 64,
-                  accentColor: 'var(--primary, #6C63FF)',
+                  accentColor: 'var(--px-purple)',
                   cursor: 'pointer',
                 }}
               />
@@ -164,7 +160,8 @@ export default function MusicControls() {
       </AnimatePresence>
 
       {/* Toggle button */}
-      <motion.button
+      <button
+        className={`px-btn px-btn--icon ${enabled ? 'px-btn--purple' : 'px-btn--parch'}`}
         onClick={() => {
           if (enabled) {
             setEnabled(false)
@@ -176,27 +173,7 @@ export default function MusicControls() {
         }}
         title={enabled ? 'Musik an – Klick zum Ausschalten' : 'Musik einschalten'}
         aria-label={enabled ? 'Musik ausschalten' : 'Musik einschalten'}
-        whileHover={{ scale: 1.12 }}
-        whileTap={{ scale: 0.93 }}
-        style={{
-          width: 44,
-          height: 44,
-          borderRadius: '50%',
-          border: 'none',
-          cursor: 'pointer',
-          fontSize: 20,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: enabled
-            ? 'linear-gradient(135deg, #a28bfa, #6C63FF)'
-            : 'rgba(200,200,220,0.7)',
-          backdropFilter: 'blur(6px)',
-          boxShadow: enabled
-            ? '0 4px 18px rgba(108,99,255,0.38)'
-            : '0 2px 8px rgba(0,0,0,0.12)',
-          transition: 'background 0.3s, box-shadow 0.3s',
-        }}
+        style={{ fontSize: 22 }}
       >
         <motion.span
           key={enabled ? 'on' : 'off'}
@@ -206,7 +183,7 @@ export default function MusicControls() {
         >
           {enabled ? '🎵' : '🔇'}
         </motion.span>
-      </motion.button>
+      </button>
     </div>
   )
 }

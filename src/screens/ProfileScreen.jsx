@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useApp } from '../AppContext.jsx'
 import { useT } from '../i18n.js'
-import LumiCharacter from '../components/LumiCharacter.jsx'
+import { PixelLumi, uiSpr } from '../components/PixelUI.jsx'
 
 export const AVATARS = ['🐻','🐼','🦁','🐨','🦊','🐧','🦋','🐬','🦄','🐸','🐙','🐯','🐮','🐷','🐔','🦉']
 export const AGES = [3, 4, 5, 6, 7]
@@ -213,7 +213,9 @@ export default function ProfileScreen() {
   return (
     <div style={{
       minHeight:'100dvh',
-      background:'linear-gradient(160deg,#1A0050 0%,#4A00E0 50%,#8E2DE2 100%)',
+      backgroundColor: '#2a1b3d',
+      backgroundImage: `linear-gradient(rgba(42,27,61,0.62), rgba(42,27,61,0.62)), url(${uiSpr('landscape.png')})`,
+      backgroundSize: 'cover', backgroundPosition: 'center 70%', imageRendering: 'pixelated',
       display:'flex', flexDirection:'column', alignItems:'center',
       justifyContent: mode === 'create' ? 'flex-start' : 'center',
       padding:'32px 24px 48px', position:'relative', overflow:'hidden',
@@ -235,8 +237,8 @@ export default function ProfileScreen() {
               style={{ display:'flex', flexDirection:'column', gap:16 }}
             >
               <div style={{ textAlign:'center', marginBottom:8 }}>
-                <LumiCharacter mood="happy" size={90} />
-                <h1 style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(24px,6vw,36px)', color:'white', marginTop:12, marginBottom:4 }}>
+                <PixelLumi size={96} style={{ margin: "0 auto" }} />
+                <h1 className="px-title" style={{ fontSize:'clamp(24px,6vw,36px)', marginTop:12, marginBottom:8 }}>
                   {t('profile.who')}
                 </h1>
                 <p style={{ color:'rgba(255,255,255,0.65)', fontSize:15 }}>
@@ -281,8 +283,8 @@ export default function ProfileScreen() {
               initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-20 }}
             >
               <div style={{ textAlign:'center', marginBottom:28 }}>
-                <LumiCharacter mood="encouraging" size={80} />
-                <h1 style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(22px,5vw,32px)', color:'white', marginTop:10, marginBottom:4 }}>
+                <PixelLumi size={84} style={{ margin: "0 auto" }} />
+                <h1 className="px-title" style={{ fontSize:'clamp(22px,5vw,32px)', marginTop:10, marginBottom:8 }}>
                   {t('profile.create')}
                 </h1>
               </div>
