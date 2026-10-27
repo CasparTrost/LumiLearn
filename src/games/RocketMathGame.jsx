@@ -52,7 +52,7 @@ function makeTask(p, i) {
   const cross = p.cross && i % 2 === 0
   if (kind === 'sub') {
     const step = rand(cross ? 2 : 1, p.maxStep)
-    const from = cross ? rand(11, Math.min(p.max, 9 + step)) : rand(step + (p.max > 10 ? 1 : 0), p.max)
+    const from = cross ? rand(11, Math.min(p.max, 9 + step)) : rand(step + (p.max > 10 ? 10 : 0), p.max)
     return { from, step, target: from - step, op: '−', kind }
   }
   if (kind === 'missing') {
