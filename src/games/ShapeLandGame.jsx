@@ -54,16 +54,17 @@ const indef = (type) => (SHAPES[type].art === 'die' ? 'eine' : 'ein')
 const dat   = (type) => (SHAPES[type].art === 'die' ? 'einer' : 'einem')
 
 // Shapes around us: things whose picture shows the shape plainly, checked
-// against the sprites in public/sprites/emoji (outline measured: the
-// picture is 1:1, the door 7:10) — the open book, the cake slice, the gift
-// and the waffle (drawn round) stay out, their outline is not one shape.
+// against the pictures in public/sprites/emoji (outline measured: the
+// window 1:1, the door 2:3) — the open book, the cake slice, the gift, the
+// waffle (drawn round), the framed picture (not square) and the potato
+// (drawn lying at a slant) stay out, their outline is not one shape.
 // Names with their article in the nominative.
 const OBJECTS = {
   circle:    [['🕐', 'die Uhr'], ['🍪', 'der Keks'], ['🌕', 'der Vollmond'], ['🪙', 'die Münze'], ['🎯', 'die Zielscheibe']],
-  square:    [['🖼️', 'das Bild'], ['🪟', 'das Fenster']],
+  square:    [['🪟', 'das Fenster']],
   triangle:  [['🍕', 'das Pizzastück'], ['⚠️', 'das Warnschild'], ['🚩', 'die Fahne'], ['⛺', 'das Zelt']],
   rectangle: [['🚪', 'die Tür'], ['📱', 'das Handy'], ['💌', 'der Brief']],
-  oval:      [['🥚', 'das Ei'], ['🪞', 'der Spiegel'], ['🥔', 'die Kartoffel']],
+  oval:      [['🥚', 'das Ei'], ['🪞', 'der Spiegel']],
   rhombus:   [['🪁', 'der Drachen']],
 }
 // "um den Drachen herum"

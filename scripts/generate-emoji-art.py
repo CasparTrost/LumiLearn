@@ -67,6 +67,18 @@ FIX = {
     '⛑': 'rescue helmet', '⛩': 'shinto shrine gate', '⛪': 'church', '⛰': 'mountain', '⛲': 'fountain',
     '⛵': 'sailboat', '⛷': 'skier', '⛺': 'tent', '⌛': 'hourglass', '⏳': 'hourglass with flowing sand',
     '⏰': 'alarm clock', '⏱': 'stopwatch', '⌨': 'computer keyboard', '🖤': 'black heart', '💛': 'yellow heart',
+    # animal-face emoji: the whole animal, or its shadow is a round blob
+    '🐱': 'a whole cat sitting, full body, side view', '🦁': 'a whole lion with its mane, full body, side view',
+    '🐸': 'a whole frog sitting, full body', '🐭': 'a whole little mouse with a long tail, full body, side view',
+    '🐰': 'a whole rabbit sitting with long ears, full body, side view', '🐯': 'a whole tiger walking, full body, side view',
+    '🦒': 'a whole giraffe standing with its long neck, full body, side view',
+    '🐻': 'a whole brown bear standing on four legs, full body, side view',
+    '🦓': 'a whole zebra standing, full body, side view', '🐷': 'a whole pink pig standing, full body, side view',
+    '🐼': 'a whole panda sitting, full body', '🐮': 'a whole cow standing, black and white, full body, side view',
+    '🐴': 'a whole horse standing, full body, side view', '🐺': 'a whole grey wolf standing, full body, side view',
+    '🦊': 'a whole orange fox with a bushy tail, full body, side view',
+    '🦄': 'a whole white unicorn with a horn, full body, side view',
+    '🐶': 'a whole dog standing, full body, side view', '🐹': 'a whole hamster sitting, full body, side view',
 }
 
 
@@ -174,7 +186,33 @@ def finish():
             if pic is None:
                 print('  nothing drawn for', e, it['name']); continue
             save_small(pic, os.path.join(OUT, name_of(e) + '.webp'))
+    derive()
     write_list()
+
+
+# Purple on a magenta sheet goes with the background when it is keyed out
+# (💜 and 🟣 came out hollow), and the model skipped ❌ once: these are
+# made from a drawn sibling instead, by turning its hue or tinting it.
+DERIVED = {'💜': ('💙', 'hue', 0.15), '🟣': ('🔴', 'hue', 0.80), '❌': ('✕', 'tint', (226, 54, 54))}
+
+
+def derive():
+    for e, (src, how, arg) in DERIVED.items():
+        path = os.path.join(OUT, name_of(src) + '.webp')
+        if not os.path.exists(path):
+            continue
+        im = Image.open(path).convert('RGBA')
+        alpha = im.getchannel('A')
+        if how == 'hue':
+            h, sat, v = im.convert('RGB').convert('HSV').split()
+            h = h.point(lambda x: int((x + arg * 255) % 256))
+            out = Image.merge('HSV', (h, sat, v)).convert('RGB')
+        else:
+            # dark parts become the colour, light highlights stay light
+            grey = np.asarray(im.convert('L')).astype(float)[..., None] / 255
+            out = Image.fromarray((np.array(arg) * (0.9 + 0.3 * grey)).clip(0, 255).astype('uint8'))
+        out.putalpha(alpha)
+        out.save(os.path.join(OUT, name_of(e) + '.webp'), 'WEBP', quality=88, method=6)
 
 
 def cut(sheet, cols, rows):
