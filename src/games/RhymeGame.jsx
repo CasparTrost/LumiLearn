@@ -355,7 +355,7 @@ export default function RhymeGame({ level = 1, onComplete }) {
                     opacity: isWrong && !solved ? 0.6 : 1,
                   }}
                 >
-                  <span style={{ fontSize: 'clamp(52px,10vw,76px)', lineHeight: 1, minHeight: '1em' }}>{opt.e}</span>
+                  <span style={{ fontSize: r.mode === 'odd' ? 'clamp(72px,14vw,112px)' : 'clamp(52px,10vw,76px)', lineHeight: 1, minHeight: '1em' }}>{opt.e}</span>
                   <span style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(15px,2.9vw,19px)', fontWeight: 700, color: INK }}>
                     {opt.w}
                   </span>
