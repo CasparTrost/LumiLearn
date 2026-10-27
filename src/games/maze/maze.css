@@ -49,3 +49,10 @@
 .mz-portal { animation: mz-portal-spin 3s linear infinite; display: inline-block; }
 .mz-coin   { animation: mz-coin-bob 1.2s ease-in-out infinite; display: inline-block; }
 .mz-dragon { animation: mz-dragon-hover 1.4s ease-in-out infinite; }
+
+/* Sprite-strip playback (SpriteStrip in MazeGame.jsx): --strip-w is the
+   strip's full rendered width, steps() lands exactly on each frame. */
+@keyframes mz-strip {
+  from { background-position: 0 0; }
+  to   { background-position: calc(-1 * var(--strip-w)) 0; }
+}
