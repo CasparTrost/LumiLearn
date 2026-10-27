@@ -17,14 +17,15 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* overscroll-behavior on html and body: pull-to-refresh on a phone ended
-   the round a child was playing */
 html, body {
   touch-action: manipulation;
   -webkit-user-select: none;
   user-select: none;
-  overscroll-behavior: none;
 }
+/* Pull-to-refresh on a phone ended the round a child was playing. Only on
+   html, the page's scroller: on body too (a scroll container of its own,
+   because of overflow-x below) it swallowed every mouse-wheel scroll. */
+html { overscroll-behavior: none; }
 
 input, textarea {
   -webkit-user-select: text;

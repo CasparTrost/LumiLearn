@@ -388,6 +388,11 @@ export default function HomeScreen() {
         </div>
       )}
 
+      {/* ── Farm Progress ── */}
+      <div style={{ padding:'0 clamp(16px,4vw,40px)', marginBottom:18, maxWidth:1240, width:'100%', alignSelf:'center' }}>
+        <FarmProgress points={points} />
+      </div>
+
       {/* ── Für dich ── */}
       <section aria-label="Für dich" style={{ padding:'0 clamp(16px,4vw,40px)', marginBottom:18, maxWidth:1240, width:'100%', alignSelf:'center' }}>
         <div className="px-ribbon" style={{ fontSize:18, padding:'4px 16px 6px', marginBottom:10 }}>⭐ Für dich</div>
@@ -404,13 +409,6 @@ export default function HomeScreen() {
           ))}
         </div>
       </section>
-
-      {/* ── Farm Progress (compact) ── */}
-      <div style={{ padding:'0 16px', marginBottom:18, display:'flex', justifyContent:'center' }}>
-        <div style={{ width:'100%', maxWidth:560 }}>
-          <FarmProgress points={points} />
-        </div>
-      </div>
 
       {/* ── Themenwelten ── */}
       <section aria-label="Alle Spiele" style={{ padding:'0 clamp(16px,4vw,40px)', maxWidth:1240, width:'100%', alignSelf:'center' }}>
