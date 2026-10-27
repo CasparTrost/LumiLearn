@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { narrate, stopNarration } from '../narrator.js'
 import { MODULE_BY_ID } from '../modules.js'
+import { useFocusTrap } from '../hooks/useFocusTrap.js'
 
 // Help per game. Read aloud when the dialog opens (most children who play
 // can't read yet), so the texts are written to be heard: short sentences,
@@ -48,13 +49,9 @@ export default function InfoButton({ moduleId, onOpenChange }) {
   // the name as on the tiles (modules.js), one spelling everywhere
   const info = { ...help, title: MODULE_BY_ID[moduleId]?.title ?? help.title }
 
-  // Escape closes the help, like a tap outside it
-  useEffect(() => {
-    if (!open) return
-    const onKey = e => { if (e.key === 'Escape') setOpen(false) }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Escape closes the help, like a tap outside it; the focus stays inside
+  // while it is open and goes back to the ? button afterwards
+  const trapRef = useFocusTrap(open, { onEscape: () => setOpen(false) })
 
   return (
     <>
@@ -86,6 +83,7 @@ export default function InfoButton({ moduleId, onOpenChange }) {
             }}
           >
             <motion.div
+              ref={trapRef}
               initial={{ scale: 0.72, opacity: 0, y: 32 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.82, opacity: 0, y: 18 }}

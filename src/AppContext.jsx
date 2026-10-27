@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react'
 import * as narrator from './narrator.js'
-import { MODULE_BY_ID } from './modules.js'
+import { MODULES, MODULE_BY_ID, visibleModules } from './modules.js'
 import { ENGLISH_ENABLED } from './i18n.js'
 
 export const AppContext = createContext(null)
@@ -73,35 +73,49 @@ export const ALL_MISSIONS = [
   { id: 'level3',           icon: '🎯', kind: 'levels',  goal: 3, count: d => d.levels ?? 0 },
   { id: 'stars3',           icon: '⭐', kind: 'stars',   goal: 1, count: d => (d.got3Stars ? 1 : 0) },
   { id: 'newgame',          icon: '✨', kind: 'new',     goal: 1, count: d => (d.newIds ?? []).length ? 1 : 0 },
-  { id: 'world-zahlen',     icon: '🔢', kind: 'world',   goal: 1, count: worldCount('zahlen') },
-  { id: 'world-buchstaben', icon: '🔤', kind: 'world',   goal: 1, count: worldCount('buchstaben') },
+  { id: 'world-zahlen',     icon: '🔢', kind: 'world',   goal: 1, count: worldCount('zahlen'),     world: 'zahlen' },
+  { id: 'world-buchstaben', icon: '🔤', kind: 'world',   goal: 1, count: worldCount('buchstaben'), world: 'buchstaben' },
   // no longer handed out (it doubled "3 Level"), kept for days already saved
   { id: 'level5',           icon: '🏅', kind: 'levels',  goal: 5, count: d => d.levels ?? 0, retired: true },
 ]
 export const missionDef = id => ALL_MISSIONS.find(m => m.id === id)
 
-// Every child gets its own three, different from day to day.
-function pickMissions(dateStr, profileId = '') {
+// A mission the child can't do with the games it sees is not handed out:
+// parents can switch games off (a world without games, no new game left).
+const hasPlayed = (profile, id) => (profile?.progress?.[id]?.plays ?? 0) > 0
+  || Object.keys(profile?.progress?.[id]?.levelStars ?? {}).length > 0
+function missionPossible(m, profile) {
+  if (!m) return false
+  const mods = visibleModules(profile)
+  if (m.kind === 'world')   return mods.some(x => x.world === m.world)
+  if (m.kind === 'variety') return mods.length >= 2
+  if (m.kind === 'new')     return mods.some(x => !hasPlayed(profile, x.id))
+  return true
+}
+
+// Every child gets its own three, different from day to day. `keep`: the
+// missions of today that stay when the games change (parent area).
+function pickMissions(dateStr, profile, keep = []) {
   let hash = 0
-  for (const c of dateStr + profileId) hash = (hash * 31 + c.charCodeAt(0)) >>> 0
-  const pool = ALL_MISSIONS.filter(m => !m.retired)
-  const picked = []
+  for (const c of dateStr + (profile?.id ?? '')) hash = (hash * 31 + c.charCodeAt(0)) >>> 0
+  const pool = ALL_MISSIONS.filter(m => !m.retired && !keep.some(k => k.id === m.id) && missionPossible(m, profile))
+  const picked = [...keep]
   while (picked.length < 3 && pool.length) {
     const [m] = pool.splice(hash % pool.length, 1)
     hash = (hash * 1103515245 + 12345) >>> 0
-    if (picked.some(p => missionDef(p.id).kind === m.kind)) continue
+    if (picked.some(p => missionDef(p.id)?.kind === m.kind)) continue
     picked.push({ id: m.id, icon: m.icon })
   }
   return picked
 }
 
-function freshDay(date, profileId) {
-  return { date, missions: pickMissions(date, profileId), completedIds: [], plays: 0, levels: 0, playedIds: [], newIds: [], got3Stars: false }
+function freshDay(date, profile) {
+  return { date, missions: pickMissions(date, profile), completedIds: [], plays: 0, levels: 0, playedIds: [], newIds: [], got3Stars: false }
 }
-function ensureDay(dm, profileId) {
+function ensureDay(dm, profile) {
   const today = todayStr()
   if (dm?.date === today) return { plays: 0, levels: 0, playedIds: [], newIds: [], got3Stars: false, ...dm }
-  return freshDay(today, profileId)
+  return freshDay(today, profile)
 }
 
 // ── Hof ──────────────────────────────────────────────────────────────────────
@@ -132,6 +146,8 @@ function freshProfile(overrides = {}) {
     dailyMission: { date: null, missions: [], completedIds: [] },
     playLog: {},
     lastPlayed: null,
+    // games the parents switched off for this child (parent area)
+    hiddenGames: [],
     ...overrides,
   }
 }
@@ -210,7 +226,7 @@ function reducer(state, action) {
         age: action.payload.age ?? null,
         avatar: action.payload.emoji || action.payload.avatar || '😊',
       })
-      newProfile.dailyMission = freshDay(todayStr(), id)
+      newProfile.dailyMission = freshDay(todayStr(), newProfile)
       return {
         ...state,
         profiles: { ...state.profiles, [id]: newProfile },
@@ -253,22 +269,36 @@ function reducer(state, action) {
     case 'RESET_PROFILE': {
       const id = action.payload || state.activeProfileId
       if (!id || !state.profiles[id]) return state
-      return {
-        ...state,
-        profiles: {
-          ...state.profiles,
-          [id]: {
-            ...state.profiles[id],
-            progress: Object.fromEntries(ALL_MODULE_IDS.map(mid => [mid, freshProgress()])),
-            farmLevel: 1,
-            farmBonus: 0,
-            streak: { count: 0, lastDate: null },
-            dailyMission: freshDay(todayStr(), id),
-            // the "Weiterspielen" card pointed at a game whose progress is gone
-            lastPlayed: null,
-          },
-        },
+      const reset = {
+        ...state.profiles[id],
+        progress: Object.fromEntries(ALL_MODULE_IDS.map(mid => [mid, freshProgress()])),
+        farmLevel: 1,
+        farmBonus: 0,
+        streak: { count: 0, lastDate: null },
+        // the "Weiterspielen" card pointed at a game whose progress is gone
+        lastPlayed: null,
       }
+      reset.dailyMission = freshDay(todayStr(), reset)
+      return { ...state, profiles: { ...state.profiles, [id]: reset } }
+    }
+
+    // Parent area: switch a game off (or on again) for one child. The last
+    // game that is still on stays on. Open missions of today that can't be
+    // done with the games left are swapped for others.
+    case 'SET_GAME_HIDDEN': {
+      const { id, hidden, profileId } = action.payload
+      if (!MODULE_BY_ID[id]) return state
+      return updateActiveProfile(state, p => {
+        const was = p.hiddenGames ?? []
+        const next = hidden ? Array.from(new Set([...was, id])) : was.filter(x => x !== id)
+        if (MODULES.every(m => next.includes(m.id))) return p
+        const q = { ...p, hiddenGames: next }
+        const dm = q.dailyMission
+        if (dm?.date !== todayStr()) return q
+        const missions = dm.missions ?? []
+        const keep = missions.filter(m => (dm.completedIds ?? []).includes(m.id) || missionPossible(missionDef(m.id), q))
+        return keep.length === missions.length ? q : { ...q, dailyMission: { ...dm, missions: pickMissions(dm.date, q, keep) } }
+      }, profileId)
     }
 
     case 'NAVIGATE':
@@ -280,7 +310,7 @@ function reducer(state, action) {
     case 'ENSURE_DAILY_MISSION': {
       const dm = state.profiles[state.activeProfileId]?.dailyMission
       if (!state.profiles[state.activeProfileId] || (dm?.date === todayStr() && (dm.missions ?? []).length)) return state
-      return updateActiveProfile(state, p => ({ ...p, dailyMission: ensureDay(dm, p.id) }))
+      return updateActiveProfile(state, p => ({ ...p, dailyMission: ensureDay(dm, p) }))
     }
 
     // Time spent in a game, for the parent area and the daily time limit.
@@ -335,7 +365,7 @@ function reducer(state, action) {
         : { count: st.lastDate === yesterdayStr() ? (st.count ?? 0) + 1 : 1, lastDate: today }
 
       // ── Tagesaufgaben ──
-      const day = ensureDay(profile.dailyMission, profile.id)
+      const day = ensureDay(profile.dailyMission, profile)
       const counted = {
         ...day,
         plays:     (day.plays ?? 0) + 1,
@@ -456,6 +486,13 @@ function migrateProgress(rawProgress) {
 // andere bleibt unangetastet. Der Lade-Pfad ist die Stelle, an der ein Fehler
 // echte Profildaten kosten würde.
 const RETIRED_FIELDS = ['coins', 'streakLastBonus']
+
+// Switched-off games (parent area): known games only, and never all of them.
+// Saves from before the switch have none — every game stays visible.
+function cleanHidden(list) {
+  const ids = Array.isArray(list) ? Array.from(new Set(list.filter(id => MODULE_BY_ID[id]))) : []
+  return ids.length < MODULES.length ? ids : []
+}
 function dropRetired(profile) {
   const out = { ...profile }
   for (const k of RETIRED_FIELDS) delete out[k]
@@ -477,6 +514,7 @@ function migrateToV2(data) {
         ...freshProfile({ id }),
         ...p,
         progress: { ...Object.fromEntries(ALL_MODULE_IDS.map(mid => [mid, freshProgress()])), ...migrateProgress(p.progress) },
+        hiddenGames: cleanHidden(p.hiddenGames),
       })
     }
     return {

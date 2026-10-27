@@ -7,6 +7,7 @@ import { useT } from '../i18n.js'
 import { PxIcon } from './PixelUI.jsx'
 import { narrate } from '../narrator.js'
 import { hearable } from '../lib/hearable.js'
+import { useFocusTrap } from '../hooks/useFocusTrap.js'
 
 // The children's switcher: tap your picture to play. Editing and deleting
 // profiles moved into the PIN-protected parent area — here a tap on 🗑️
@@ -19,6 +20,8 @@ export default function ProfileSwitcher({ onClose }) {
   const profiles = Object.values(state.profiles ?? {})
 
   useEffect(() => { narrate([{ text: 'Wer spielt? Tippe auf dein Bild.' }]) }, [])
+  // Tab stays in the sheet, Escape closes it
+  const trapRef = useFocusTrap(true, { onEscape: onClose })
 
   const switchTo = (id) => {
     dispatch({ type: 'SET_ACTIVE_PROFILE', payload: id })
@@ -49,7 +52,9 @@ export default function ProfileSwitcher({ onClose }) {
       {/* Sheet */}
       <motion.div
         key="sheet"
+        ref={trapRef}
         role="dialog"
+        aria-modal="true"
         aria-label="Profil wechseln"
         initial={{ y: '100%' }}
         animate={{ y: 0 }}

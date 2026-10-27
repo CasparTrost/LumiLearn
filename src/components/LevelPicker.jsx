@@ -6,6 +6,7 @@ import TileArt from './TileArt.jsx'
 import { hearable } from '../lib/hearable.js'
 import { narrate, lockPreviews } from '../narrator.js'
 import { sayNumber } from '../tts.js'
+import { useFocusTrap } from '../hooks/useFocusTrap.js'
 
 /**
  * Levelauswahl für ein Spiel.
@@ -36,6 +37,9 @@ export default function LevelPicker({ mod, title, progress, maxLevel, onPick, on
     narrate([{ text: `${title}. Welches Level möchtest du spielen? Der grüne Knopf spielt Level ${sayNumber(current)}.` }])
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Tab stays in the sheet, Escape closes it
+  const trapRef = useFocusTrap(true, { onEscape: onClose })
+
   // A click focuses the button, and focus starts the hover preview, which
   // then ran into the game's first task — so no previews from here on.
   const pick = lv => { lockPreviews(); onPick(lv) }
@@ -57,7 +61,9 @@ export default function LevelPicker({ mod, title, progress, maxLevel, onPick, on
 
       <motion.div
         key="sheet"
+        ref={trapRef}
         role="dialog"
+        aria-modal="true"
         aria-label={`${title}: Level wählen`}
         initial={{ y: '100%' }}
         animate={{ y: 0 }}

@@ -7,11 +7,11 @@ import { result } from '../lib/score.js'
 import { hearable } from '../lib/hearable.js'
 import { pxCard, pxPanel, pxButton, INK } from './px.js'
 
-const NUMBER_WORDS   = ['','eins','zwei','drei','vier','fünf','sechs','sieben','acht','neun','zehn']
+const NUMBER_WORDS   = ['null','eins','zwei','drei','vier','fünf','sechs','sieben','acht','neun','zehn']
 const NUMBER_AUDIO   = ['','eins','zwei','drei','vier','fuenf','sechs','sieben','acht','neun','zehn']
 // Content colours for the numerals; the ink outline keeps even the light ones
 // readable on parchment.
-const NUM_COLORS   = ['','#FF6B5B','#FF9F43','#FFC93C','#5CC45A','#4AA3FF','#8E6CF0','#FD79A8','#2FB8A6','#E8663A','#3E7BD6']
+const NUM_COLORS   = ['#9AB0CC','#FF6B5B','#FF9F43','#FFC93C','#5CC45A','#4AA3FF','#8E6CF0','#FD79A8','#2FB8A6','#E8663A','#3E7BD6']
 // Every thing has its noun, so the task can be said: "Tippe genau sechs Sterne an".
 const THINGS = [
   { emoji: '⭐', one: 'Stern',         many: 'Sterne',         g: 'm' },
@@ -49,18 +49,28 @@ const countAcc = (n, t) => n === 1
   : `${sayNumber(n)} ${t.many}`
 // Counting along: recordings up to ten, the voice from eleven on (a board
 // holds up to thirteen things, and "undefined.mp3" used to fall silent).
-const countPart = n => (n <= 10 ? { src: `audio/zahlen-entdecken/${NUMBER_AUDIO[n]}.mp3`, text: NUMBER_WORDS[n] } : { text: sayNumber(n) })
+const countPart = n => (n >= 1 && n <= 10 ? { src: `audio/zahlen-entdecken/${NUMBER_AUDIO[n]}.mp3`, text: NUMBER_WORDS[n] } : { text: sayNumber(n) })
 
 function rnd(arr) { return [...arr].sort(() => Math.random() - 0.5) }
+
+// The zero round: nothing to tap, Fertig straight away. Said in full, because
+// "null Sterne" alone would leave a child waiting for something to count.
+const ZERO_TASK = 'Null heißt: gar keins! Tippe auf Fertig, ohne etwas anzutippen.'
+const taskParts = (n, thing) => n === 0
+  ? [{ text: 'Null.' }, { text: ZERO_TASK, gap: 250 }]
+  : [countPart(n), { text: `Tippe genau ${countAcc(n, thing)} an.`, gap: 250 }]
+
+// Zero comes in once the counting is familiar, never as the opening round.
+const withZero = seq => { const at = 2 + Math.floor(Math.random() * (seq.length - 1)); return [...seq.slice(0, at), 0, ...seq.slice(at)] }
 
 function buildRounds(level) {
   let seq
   if (level <= 1)      seq = rnd([1, 1, 2, 2, 3, 3])
   else if (level <= 2) seq = rnd([1, 2, 3, 4, 5])
-  else if (level <= 3) seq = rnd([1, 2, 3, 4, 5, 6, 7])
-  // The last level is about the hard numbers: all of six to ten, and three
-  // smaller ones in between — eight rounds instead of ten long ones.
-  else seq = rnd([6, 7, 8, 9, 10, ...rnd([2, 3, 4, 5]).slice(0, 3)])
+  else if (level <= 3) seq = withZero(rnd([1, 2, 3, 4, 5, 6, 7]))
+  // The last level is about the hard numbers: all of six to ten, two smaller
+  // ones and the zero in between — eight rounds instead of ten long ones.
+  else seq = withZero(rnd([6, 7, 8, 9, 10, ...rnd([2, 3, 4, 5]).slice(0, 2)]))
   const pool = rnd(THINGS)
   // Extra objects beyond the target count. The board used to hold exactly n
   // items, so tapping everything was always right and the round could not be
@@ -99,10 +109,9 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
   useEffect(() => {
     if (!round) return
     lockPreviews()
-    narrate([
-      countPart(round.n),
-      { text: `Tippe genau ${countAcc(round.n, round.thing)} an. Dann drück auf Fertig!`, gap: 250 },
-    ])
+    narrate(round.n === 0
+      ? taskParts(0)
+      : [countPart(round.n), { text: `Tippe genau ${countAcc(round.n, round.thing)} an. Dann drück auf Fertig!`, gap: 250 }])
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Taking a thing back renumbers the later ones, so the badges always read
@@ -117,8 +126,13 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
       for (const [k, o] of m) if (o > order) m.set(k, o - 1)
     }
     setTapped(m)
+    // In the zero round a tap is not counted along but gently taken back to
+    // the task; it is no mistake until Fertig is pressed.
+    if (round.n === 0) narrate([{ text: m.size > 0
+      ? 'Null heißt: gar keins! Tippe es noch einmal an, dann ist es wieder weg.'
+      : 'Gut, jetzt ist wieder keins angetippt. Tippe auf Fertig!' }])
     // Count along in the same recorded voice that announces the round.
-    if (m.size > 0) narrate([countPart(m.size)])
+    else if (m.size > 0) narrate([countPart(m.size)])
     else stopNarration()
   }
 
@@ -165,13 +179,16 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
     if (k === n) {
       setCheckResult('ok')
       if (roundMisses === 0) setFirstTry(f => f + 1)
-      sayRight(n === 1 ? `Das ist genau ${sayCount(1, thing.one, thing.g)}.` : `Das sind genau ${sayNumber(n)} ${thing.many}.`)
+      sayRight(n === 0 ? 'Null heißt gar keins, und du hast gar keins angetippt.'
+        : n === 1 ? `Das ist genau ${sayCount(1, thing.one, thing.g)}.` : `Das sind genau ${sayNumber(n)} ${thing.many}.`)
       return
     }
     setCheckResult('wrong')
     setRoundMisses(m => m + 1)
     sayWrong(k > n
-      ? (n === 1
+      ? (n === 0
+          ? `Null heißt: gar keins. Wir lassen alle liegen und tippen nur auf Fertig!`
+        : n === 1
           ? `Das sind zu viele. Wir brauchen nur ${countAcc(1, thing)}.`
           : `Das waren ${sayNumber(k)}. Wir brauchen nur ${sayNumber(n)}. Wir zählen nochmal!`)
       : `Das ${k === 1 ? 'war erst eins' : `waren erst ${sayNumber(k)}`}. Wir brauchen ${sayNumber(n)}. Wir zählen nochmal!`)
@@ -183,6 +200,8 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
   // After two miscounts the row of dots shows how many are wanted. Shown from
   // the start it gave the end away: tap until every dot is full.
   const showDots = roundMisses >= 2
+  // Fertig waits for a first tap — except for zero, where no tap is the answer.
+  const canCheck = tapped.size > 0 || n === 0
 
   return (
     <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:16, padding:'clamp(12px,3vw,24px)', width:'100%' }}>
@@ -204,7 +223,7 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
           animate={{ y:0, scale:1, opacity:1 }}
           exit={{ y:-40, scale:0.5, opacity:0 }}
           transition={{ type:'spring', stiffness:380, damping:20 }}
-          onClick={() => narrate([countPart(n), { text: `Tippe genau ${countAcc(n, thing)} an.`, gap: 250 }])}
+          onClick={() => narrate(taskParts(n, thing))}
           aria-label={`Aufgabe noch einmal hören: ${NUMBER_WORDS[n]}`}
           style={{ textAlign:'center', lineHeight:1, background:'none', border:'none', padding:0, cursor:'pointer', color:'inherit' }}
         >
@@ -399,7 +418,7 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
           color:'var(--text-secondary)',
           textAlign:'center', margin:0,
         }}>
-          Tippe genau {n} {thing.emoji} an! 👆
+          {n === 0 ? <>Null heißt: gar keins! Tippe nur auf Fertig. ✅</> : <>Tippe genau {n} {thing.emoji} an! 👆</>}
         </p>
       )}
 
@@ -407,14 +426,14 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
           whole assessment. Auto-finishing at n made every attempt correct. */}
       {!boom && checkResult !== 'wrong' && (
         <motion.button
-          animate={{ opacity: tapped.size > 0 ? 1 : 0.45, scale: tapped.size > 0 ? 1 : 0.96 }}
-          whileHover={tapped.size > 0 ? { scale: 1.06 } : {}}
-          whileTap={tapped.size > 0 ? { scale: 0.94 } : {}}
-          onClick={() => { if (tapped.size > 0) checkCount() }}
+          animate={{ opacity: canCheck ? 1 : 0.45, scale: canCheck ? 1 : 0.96 }}
+          whileHover={canCheck ? { scale: 1.06 } : {}}
+          whileTap={canCheck ? { scale: 0.94 } : {}}
+          onClick={() => { if (canCheck) checkCount() }}
           {...hearable('Fertig')}
           style={{
             ...pxButton('green'), color:INK, textShadow:'none',
-            padding:'12px 40px', minHeight:52, cursor: tapped.size > 0 ? 'pointer' : 'default',
+            padding:'12px 40px', minHeight:52, cursor: canCheck ? 'pointer' : 'default',
             fontSize:'clamp(18px,3.6vw,22px)', fontWeight:800,
           }}
         >✅ Fertig!</motion.button>
@@ -430,7 +449,9 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
             color:'#A93226', fontWeight:700,
           }}
         >
-          {tapped.size > n
+          {n === 0
+            ? 'Null heißt: gar keins. Nur auf Fertig tippen! 🔁'
+            : tapped.size > n
             ? `Das waren ${tapped.size} — das sind zu viele. Wir zählen nochmal! 🔁`
             : `Das waren erst ${tapped.size}. Wir zählen nochmal! 🔁`}
         </motion.div>

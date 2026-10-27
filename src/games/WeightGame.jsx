@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useCallback, useEffect, useRef } from 'react'
+import { motion, AnimatePresence, animate, useMotionValue, useTransform, useReducedMotion } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
 import { sayNumber } from '../tts.js'
@@ -8,6 +8,7 @@ import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
 import { hearable } from '../lib/hearable.js'
 import { emojiSrc, hasEmojiArt } from '../lib/emojiArt.jsx'
+import { usePaused } from '../lib/pause.js'
 import { pxPanel, pxBubble, pxButton, pxSegment, ACCENT, INK } from './px.js'
 
 /**
@@ -190,15 +191,17 @@ function Pic({ e, x, y, size }) {
 // ── Balance Scale — beam, chains and pans ───────────────────────────────────
 const W = 400, CX = 200, PIVOT_Y = 70, ARM = 150, CHAIN = 90, PAN_W = 96
 
-function Pan({ side, x, item, size, label, blocks, heavy, answered, onPick, tilt }) {
+function Pan({ side, x, item, size, label, blocks, heavy, answered, onPick, beam, drop, fall }) {
   // The pans hang straight down from the ends of the beam instead of turning
-  // with it, so picture and label stay upright.
-  const a = (tilt * Math.PI) / 180, s = side === 'left' ? -1 : 1
-  const dx = s * ARM * Math.cos(a) - s * ARM, dy = s * ARM * Math.sin(a)
+  // with it, so picture and label stay upright. They follow the beam's angle
+  // frame by frame, so they stay on its ends even while it swings.
+  const s = side === 'left' ? -1 : 1
+  const dx = useTransform(beam, t => s * ARM * Math.cos((t * Math.PI) / 180) - s * ARM)
+  const dy = useTransform([beam, drop], ([t, d]) => s * ARM * Math.sin((t * Math.PI) / 180) + d)
   const won = answered && heavy === side
   const py = PIVOT_Y + CHAIN
   return (
-    <motion.g animate={{ x: dx, y: dy }} transition={{ type: 'spring', stiffness: 50, damping: 11 }}>
+    <motion.g style={{ x: dx, y: dy }}>
       {Array.from({ length: 5 }, (_, i) => (
         <line key={i} x1={x} y1={PIVOT_Y + 9 + i * 16} x2={x} y2={PIVOT_Y + 9 + (i + 1) * 16}
           stroke="#5b4a6e" strokeWidth={3} strokeLinecap="round" />
@@ -206,7 +209,9 @@ function Pan({ side, x, item, size, label, blocks, heavy, answered, onPick, tilt
       <ellipse cx={x} cy={py} rx={PAN_W / 2} ry={10} fill="#ffe08a" stroke="#2a1b3d" strokeWidth={3} />
       <path d={`M${x - PAN_W / 2} ${py} Q${x} ${py + 28} ${x + PAN_W / 2} ${py}`} fill="#ffc93c" stroke="#2a1b3d" strokeWidth={3} />
       {won && <circle cx={x} cy={py - 24} r={40} fill="none" stroke="#2F8F3A" strokeWidth={4} strokeDasharray="8 6" />}
-      <Pic e={item.e} x={x} y={py - 12 - (blocks ? 16 : 0)} size={size} />
+      <motion.g style={{ y: fall }}>
+        <Pic e={item.e} x={x} y={py - 12 - (blocks ? 16 : 0)} size={size} />
+      </motion.g>
       {/* 1-kg blocks laid on the right pan in level 10 */}
       {Array.from({ length: blocks ?? 0 }, (_, i) => (
         <g key={i}>
@@ -232,7 +237,44 @@ function Pan({ side, x, item, size, label, blocks, heavy, answered, onPick, tilt
   )
 }
 
+// One scale per question: it mounts when the pair lands and keeps its own
+// tilt while it fades out.
 function BalanceScale({ tiltDeg, q, sizes, answered, heavy, onPick, blocks }) {
+  const paused = usePaused()
+  const reduceMotion = useReducedMotion()
+  const beam = useMotionValue(tiltDeg)   // beam angle in degrees
+  const drop = useMotionValue(0)         // both pans dip by the same amount
+  const fall = useMotionValue(reduceMotion ? 0 : -46)  // the things dropping onto the pans
+  // The running animation of each value, so the help dialog can hold them.
+  // Finished ones leave the list — play() would start them over.
+  const running = useRef({})
+  const play = (key, mv, to, opts) => {
+    running.current[key]?.stop()
+    const c = animate(mv, to, opts)
+    if (paused) c.pause()
+    running.current[key] = c
+    c.then(() => { if (running.current[key] === c) delete running.current[key] })
+  }
+  useEffect(() => {
+    Object.values(running.current).forEach(c => (paused ? c.pause() : c.play()))
+  }, [paused])
+
+  // The pair lands: both things drop in and both pans bounce once, exactly
+  // alike — the scale comes alive without giving the answer away.
+  useEffect(() => {
+    if (reduceMotion) return
+    play('fall', fall, 0, { duration: 0.32, ease: 'easeIn', delay: 0.3 })
+    play('drop', drop, [0, 9, -3, 0], { duration: 0.7, times: [0, 0.3, 0.65, 1], ease: 'easeOut', delay: 0.62 })
+    return () => Object.values(running.current).forEach(c => c.stop())
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // After the answer (and in level 10 with the blocks) the beam tips for real.
+  useEffect(() => {
+    if (beam.get() === tiltDeg) return
+    if (reduceMotion) beam.jump(tiltDeg)
+    else play('beam', beam, tiltDeg, TIP)
+  }, [tiltDeg]) // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <svg width="100%" viewBox={`0 0 ${W} 300`}
       style={{ maxWidth: 460, display: 'block', overflow: 'visible' }}>
@@ -261,11 +303,7 @@ function BalanceScale({ tiltDeg, q, sizes, answered, heavy, onPick, blocks }) {
       ))}
 
       {/* Beam */}
-      <motion.g
-        animate={{ rotate: tiltDeg }}
-        transition={{ type:'spring', stiffness:50, damping:11 }}
-        style={{ transformOrigin:`${CX}px ${PIVOT_Y}px` }}
-      >
+      <motion.g style={{ rotate: beam, transformOrigin:`${CX}px ${PIVOT_Y}px` }}>
         <rect x={CX-ARM-8} y={PIVOT_Y-7} width={ARM*2+16} height={14} rx={3}
           fill="url(#bBeam)" stroke="#2a1b3d" strokeWidth={3} filter="url(#bShadow)"/>
         <circle cx={CX-ARM} cy={PIVOT_Y} r={9} fill="#ffc93c" stroke="#2a1b3d" strokeWidth={3}/>
@@ -273,10 +311,10 @@ function BalanceScale({ tiltDeg, q, sizes, answered, heavy, onPick, blocks }) {
       </motion.g>
 
       <Pan side="left"  x={CX-ARM} item={q.left}  size={sizes[0]} label={sideLabel(q.left)}
-        heavy={heavy} answered={answered} tilt={tiltDeg} onPick={onPick && (() => onPick('left'))} />
+        heavy={heavy} answered={answered} beam={beam} drop={drop} fall={fall} onPick={onPick && (() => onPick('left'))} />
       <Pan side="right" x={CX+ARM} item={q.right} size={sizes[1]} blocks={blocks}
         label={blocks != null ? `${q.right.w} kg + ${blocks} kg` : sideLabel(q.right)}
-        heavy={heavy} answered={answered} tilt={tiltDeg} onPick={onPick && (() => onPick('right'))} />
+        heavy={heavy} answered={answered} beam={beam} drop={drop} fall={fall} onPick={onPick && (() => onPick('right'))} />
 
       {/* Pivot cap */}
       <circle cx={CX} cy={PIVOT_Y} r={14} fill="#2a1b3d" filter="url(#bShadow)"/>
@@ -288,6 +326,9 @@ function BalanceScale({ tiltDeg, q, sizes, answered, heavy, onPick, blocks }) {
 
 const TILT = 18
 const tiltFor = (l, r) => (l > r ? -TILT : r > l ? TILT : 0)
+// The beam tips like something heavy just settled: slow, a swing past the
+// end and back, then still.
+const TIP = { type: 'spring', stiffness: 60, damping: 7, mass: 1.6 }
 
 export default function WeightGame({ level = 1, onComplete }) {
   const [questions] = useState(() => buildQuestions(level))
@@ -319,8 +360,6 @@ export default function WeightGame({ level = 1, onComplete }) {
   // schwerer?" was said, and the numbers never were.
   useEffect(() => {
     if (!q) return
-    setBlocks(0)
-    setTries(0)
     lockPreviews()
     const id = setTimeout(() => sayTask(taskSpeech(q, ties)), 300)
     return () => clearTimeout(id)
@@ -385,6 +424,9 @@ export default function WeightGame({ level = 1, onComplete }) {
       sfx.complete()
       onComplete(result(firstTry, questions.length))
     } else {
+      // Reset with the new question, so the beam never sees the old blocks
+      setBlocks(0)
+      setTries(0)
       setIdx(i => i + 1)
     }
   }

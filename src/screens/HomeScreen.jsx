@@ -12,11 +12,12 @@ import LumiCharacter from '../components/LumiCharacter.jsx'
 import ErrorBoundary from '../components/ErrorBoundary.jsx'
 import { useProfile } from '../hooks/useProfile.js'
 import { readStore, writeStore } from '../hooks/safeStorage.js'
+import { useFocusTrap } from '../hooks/useFocusTrap.js'
 import { narrate, stopNarration } from '../narrator.js'
 import { sayNumber } from '../tts.js'
 import { hearable } from '../lib/hearable.js'
 import { lazyWithReload } from '../lib/lazyWithReload.js'
-import { MODULES, WORLDS, MODULE_BY_ID, recommend, sortForAge } from '../modules.js'
+import { WORLDS, recommend, sortForAge, visibleModules } from '../modules.js'
 import { prefetchGame, isGameLoaded } from './GameScreen.jsx'
 
 // Rarely opened (only via the settings gear) and pulls in its own sizeable
@@ -53,7 +54,8 @@ function greetingParts({ t, profile, streak, lastPlayed, openMission, animals })
   }
   const n = parseInt(readStore('lumi_greet_n', '0'), 10) || 0
   writeStore('lumi_greet_n', n + 1)
-  const lastTitle = MODULE_BY_ID[lastPlayed.moduleId]?.title
+  // not a game the parents have switched off since
+  const lastTitle = visibleModules(profile).find(m => m.id === lastPlayed.moduleId)?.title
   const options = [
     // the recording "Hallo du, willkommen zurück zu Lumi! …"
     [{ src: WELCOME_BACK, text: `Hallo ${name}, willkommen zurück! Mach direkt da weiter, wo wir aufgehört haben, oder versuche etwas Neues.` }],
@@ -216,6 +218,7 @@ export default function HomeScreen() {
   const [pickerMod, setPickerMod]       = useState(null)
   const [activeWorld, setActiveWorld]   = useState('all')
   const [offline, setOffline]           = useState(false)
+  const offlineRef = useFocusTrap(offline, { onEscape: () => setOffline(false) })
 
   const points  = farmPoints(activeProfile)
   const animals = animalsFor(points)
@@ -225,16 +228,23 @@ export default function HomeScreen() {
   const day = dailyMission ?? {}
   const openMission = (day.missions ?? []).find(m => !(day.completedIds ?? []).includes(m.id))
 
+  // Games the parents switched off don't show anywhere here
+  const hiddenKey = (activeProfile?.hiddenGames ?? []).join()
+  const shown = useMemo(() => visibleModules(activeProfile), [hiddenKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Three to six games first, chosen by age and progress, instead of all
   // 24 at once (the age was asked and never used)
   const picks = useMemo(() => recommend({
     progress, profile: activeProfile, lastPlayed,
     playedToday: day.playedIds ?? [],
-  }), [activeProfile?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  }), [activeProfile?.id, hiddenKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // only worlds with a game left in them
+  const worlds = WORLDS.filter(w => shown.some(m => m.world === w.id))
+  const world  = worlds.some(w => w.id === activeWorld) ? activeWorld : 'all'
   const worldModules = useMemo(() => sortForAge(
-    activeWorld === 'all' ? MODULES : MODULES.filter(m => m.world === activeWorld), activeProfile,
-  ), [activeWorld, activeProfile?.age]) // eslint-disable-line react-hooks/exhaustive-deps
+    world === 'all' ? shown : shown.filter(m => m.world === world), activeProfile,
+  ), [world, shown, activeProfile?.age]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Daily time limit (parent area)
   const limitMin = state.settings?.dailyLimitMin ?? 0
@@ -415,8 +425,8 @@ export default function HomeScreen() {
         <div className="px-ribbon" style={{ fontSize:18, padding:'4px 16px 6px', marginBottom:10 }}>🗺️ Alle Spiele</div>
         {/* wraps instead of scrolling sideways out of sight */}
         <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:14 }}>
-          {[{ id:'all', label:'Alle', emoji:'⭐' }, ...WORLDS].map(w => {
-            const active = activeWorld === w.id
+          {[{ id:'all', label:'Alle', emoji:'⭐' }, ...worlds].map(w => {
+            const active = world === w.id
             return (
               <button
                 key={w.id}
@@ -449,7 +459,7 @@ export default function HomeScreen() {
 
       {offline && (
         <div className="px-backdrop" onClick={() => setOffline(false)}>
-          <div className="px-panel" role="alertdialog" aria-label="Keine Internetverbindung" onClick={e => e.stopPropagation()}
+          <div ref={offlineRef} className="px-panel" role="alertdialog" aria-modal="true" aria-label="Keine Internetverbindung" onClick={e => e.stopPropagation()}
             style={{ maxWidth:400, width:'100%', padding:'22px 18px', textAlign:'center', display:'flex', flexDirection:'column', alignItems:'center', gap:12 }}>
             <LumiCharacter mood="thinking" size={96} />
             <div style={{ fontFamily:'var(--font-heading)', fontSize:24, fontWeight:700, color:'var(--px-ink)' }}>Keine Internetverbindung</div>
