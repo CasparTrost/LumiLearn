@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
+import { PxIcon } from '../components/PixelUI.jsx'
 import { hearable } from '../lib/hearable.js'
 import HearOptions from '../components/HearOptions.jsx'
 import { narrate, lockPreviews, afterNarration, stopNarration } from '../narrator.js'
@@ -823,7 +824,7 @@ export default function StoryGame({ level = 1, onComplete }) {
           {...hearable('Weiter')}
           style={{ ...GO, ...bigBtn }}
         >
-          Weiter ▶
+          Weiter <PxIcon name="play" size={18} />
         </motion.button>
       )}
 

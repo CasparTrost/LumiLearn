@@ -46,9 +46,10 @@ PAGES = {
     'garten':    f'{LUMI} in a garden with big flowers, two butterflies, a snail and a smiling sun',
 }
 # Figures that still leaked after step 2 (box x0, y0, x1, y1 inside them)
-SEEDS = {'bauernhof': [(270, 330, 420, 480)]}
+SEEDS = {'bauernhof': [(270, 330, 420, 480), (200, 900, 380, 1000)]}
 # Line pieces the model left out and no automatic step finds
-LINES = {'bauernhof': [[(258, 325), (282, 316), (300, 311), (330, 301), (360, 299), (395, 301)],
+LINES = {'bauernhof': [[(482, 906), (502, 890), (526, 872)],          # Lumi's wing
+                       [(258, 325), (282, 316), (300, 311), (330, 301), (360, 299), (395, 301)],
                        [(250, 336), (245, 380), (246, 420), (250, 470)]]}
 
 W_OUT, H_OUT, MARGIN = 1000, 1164, 40
