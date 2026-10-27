@@ -76,13 +76,13 @@ def sheet_prompt(ids, cols, rows):
     )
 
 
-def request_image(prompt, size):
+def request_image(prompt, size, quality='low'):
     headers = ['-H', 'Content-Type: application/json']
     if os.environ.get('COMETAPI_KEY'):
         headers += ['-H', 'Authorization: Bearer ' + os.environ['COMETAPI_KEY']]
     for model in ('gpt-image-2', 'gpt-image-2', 'gpt-image-1.5'):
-        body = json.dumps({'model': model, 'prompt': prompt, 'size': size, 'n': 1, 'quality': 'low'})
-        r = subprocess.run(['curl', '-s', '--max-time', '300', *headers, '-d', body, API],
+        body = json.dumps({'model': model, 'prompt': prompt, 'size': size, 'n': 1, 'quality': quality})
+        r = subprocess.run(['curl', '-s', '--max-time', '600', *headers, '-d', body, API],
                            capture_output=True, text=True)
         try:
             data = json.loads(r.stdout)['data'][0]['b64_json']

@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 """
-Pixel-art pictures for every emoji the app shows
-(public/sprites/emoji/<codepoints>.png, 192 x 192) and the list
-src/lib/emojiArtList.js the app uses to know which ones exist. Check every
+Pictures for every emoji the app shows (public/sprites/emoji/<codepoints>.webp,
+256 x 256) and the list src/lib/emojiArtList.js the app uses to know which
+ones exist. Smooth cartoon illustrations, not pixel art: pixel art's
+stepped edges made the outlines in the shadow riddle hard to recognise.
+Animals and things are drawn whole (the giraffe, not the giraffe-face
+emoji) for the same reason. The frame, buttons, Lumi and the maze keep
+the pixel look. Check every
 finished sheet by eye before `finish` — the model sometimes lays a sheet
 out differently than asked.
 
@@ -47,9 +51,10 @@ EMOJI = re.compile(
     r'(?:‍[\U0001F300-\U0001FAFF☀-➿♀♂⚕⚖✈❤]️?[\U0001F3FB-\U0001F3FF]?)*'
 )
 SKIP = set('✦✧〰↔⌫')     # typographic marks, not pictures
+TOKEN = re.compile(r':px-[a-z0-9-]+:')
 COLS = ROWS = 6
 PER_SHEET = COLS * ROWS
-SIZE = 192
+SIZE = 256
 
 FIX = {
     '❤': 'red heart', '⭐': 'shiny yellow star', '☀': 'bright yellow sun with rays', '☁': 'white fluffy cloud',
@@ -69,7 +74,20 @@ def code(e):
     return '-'.join(f'{ord(c):x}' for c in e if c not in '‍️')
 
 
+# Things no emoji shows, written as :px-name: in the code
+CUSTOM = {
+    'tisch': 'a simple wooden kitchen table with four legs, seen from the front-side, nothing on it, clearly a table and not a chair',
+    'xylofon': "a children's xylophone with rainbow-coloured bars from long to short and two mallets with round heads",
+    'tatze': "one big fluffy cat's paw, a single paw seen from below with pink toe pads, not footprints",
+    'schaukel': 'a wooden playground swing hanging on two ropes from a simple wooden frame, seen from the front',
+    'portemonnaie': 'a small brown leather wallet for coins and notes, slightly open, seen from the front',
+    'oelkanne': 'a small old-fashioned metal oil can with a long thin spout, seen from the side',
+}
+
+
 def describe(e):
+    if e.startswith(':px-'):
+        return CUSTOM.get(e[4:-1], e[4:-1])
     if e in FIX:
         return FIX[e]
     if len(e) == 2 and all(0x1F1E6 <= ord(c) <= 0x1F1FF for c in e):
@@ -82,24 +100,37 @@ def scan(everything=False):
     for base, _, files in os.walk(os.path.join(ROOT, 'src')):
         for f in files:
             if f.endswith(('.js', '.jsx')) and f != 'emojiArtList.js':
-                for m in EMOJI.findall(open(os.path.join(base, f), encoding='utf-8').read()):
+                text = open(os.path.join(base, f), encoding='utf-8').read()
+                for m in TOKEN.findall(text):
+                    seen[m] += 1
+                for m in EMOJI.findall(text):
                     e = m.replace('️', '')
                     if e not in SKIP:
                         seen[e] += 1
-    have = {f[:-4] for f in os.listdir(OUT)} if os.path.isdir(OUT) else set()
-    return [{'e': e, 'name': describe(e)} for e, _ in seen.most_common() if everything or code(e) not in have]
+    have = {f[:-5] for f in os.listdir(OUT) if f.endswith('.webp')} if os.path.isdir(OUT) else set()
+    cdir = os.path.join(OUT, 'custom')
+    have |= {'custom/' + f[:-5] for f in os.listdir(cdir) if f.endswith('.webp')} if os.path.isdir(cdir) else set()
+    return [{'e': e, 'name': describe(e)} for e, _ in seen.most_common() if everything or name_of(e) not in have]
+
+
+def name_of(e):
+    """File name below public/sprites/emoji, without extension."""
+    return 'custom/' + e[4:-1] if e.startswith(':px-') else code(e)
 
 
 def prompt(batch, cols, rows):
     cells = [f"{i // cols + 1}/{i % cols + 1}: {it['e']} ({it['name']})" for i, it in enumerate(batch)]
     return (
-        f"A sprite sheet of {len(batch)} separate pixel art versions of emoji, arranged in a strict evenly spaced grid "
+        f"A sheet of {len(batch)} separate pictures for the emoji listed below, arranged in a strict evenly spaced grid "
         f"of {cols} columns and {rows} rows (row/column listed below). Each picture shows exactly what its emoji shows, "
         "centered in its own equal-size cell and filling about two thirds of it, with clear empty space all around; "
         "every picture stays completely inside its cell and never touches or overlaps a neighbour. "
         "No grid lines, no frames, no labels, no text unless the emoji itself contains it. Consistent style for all: "
-        "cute chunky 32-bit pixel art, thick dark purple outline, bright cheerful colors, soft shading, simple readable "
-        "shapes. The whole background is one flat solid pure magenta color (#FF00FF), no gradient, and no magenta "
+        "cute children's app illustration, smooth clean vector-like cartoon, crisp smooth dark purple outlines, bright "
+        "cheerful colours with soft shading, high resolution, NOT pixel art. Animals and objects are shown whole, from "
+        "their most recognisable side, with a clear distinctive silhouette; for an animal-face emoji draw the whole "
+        "animal. Faces and hand gestures stay faces and hands. Keep the colours the emoji has. "
+        "The whole background is one flat solid pure magenta color (#FF00FF), no gradient, and no magenta "
         "inside the pictures. Cells: " + '; '.join(cells)
     )
 
@@ -134,8 +165,7 @@ def finish():
             e = it['e']
             if pic is None:
                 print('  nothing drawn for', e, it['name']); continue
-            name = os.path.join('custom', e[4:-1]) if e.startswith(':px-') else code(e)
-            save_small(pic, os.path.join(OUT, name + '.png'))
+            save_small(pic, os.path.join(OUT, name_of(e) + '.webp'))
     write_list()
 
 
@@ -183,17 +213,18 @@ def cut(sheet, cols, rows):
 
 
 def save_small(im, path):
-    """Square with a small margin, SIZE px, palette PNG without dithering."""
+    """Square with a small margin, SIZE px, WebP with alpha (~10 KB; a PNG
+    of a smooth picture this size is 4-5 times larger)."""
     w, h = im.size; side = int(max(w, h) * 1.08)
     sq = Image.new('RGBA', (side, side)); sq.paste(im, ((side - w) // 2, (side - h) // 2))
-    sq = sq.resize((SIZE, SIZE), Image.LANCZOS)
-    sq.quantize(colors=256, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE).save(path, optimize=True)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    sq.resize((SIZE, SIZE), Image.LANCZOS).save(path, 'WEBP', quality=88, method=6)
 
 
 def write_list():
-    codes = sorted(f[:-4] for f in os.listdir(OUT) if f.endswith('.png'))
+    codes = sorted(f[:-5] for f in os.listdir(OUT) if f.endswith('.webp'))
     cdir = os.path.join(OUT, 'custom')
-    custom = sorted(f[:-4] for f in os.listdir(cdir) if f.endswith('.png')) if os.path.isdir(cdir) else []
+    custom = sorted(f[:-5] for f in os.listdir(cdir) if f.endswith('.webp')) if os.path.isdir(cdir) else []
     with open(LIST, 'w') as fh:
         fh.write('// Generated from public/sprites/emoji by scripts/generate-emoji-art.py — do not edit.\n')
         for name, items in (('EMOJI_ART', codes), ('CUSTOM_ART', custom)):
