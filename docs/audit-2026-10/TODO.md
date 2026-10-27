@@ -16,22 +16,27 @@ Aufwand: **S** = Stunden, **M** = ein Arbeitstag, **L** = mehrere Tage.
 
 ## Stand (27.10.2026)
 
-Phasen 0–6 sind umgesetzt: alle Aufgaben unten abgehakt. Offen oder nur teilweise erledigt:
+Alle Phasen und Ideen sind umgesetzt. Offen bleibt nur das Anhören auf einem echten Gerät: Die Testumgebung hat keine Stimmen, deshalb sind diese Aussprachen nur nach Schrift geprüft:
 
-- **Aussprache auf einem echten Gerät anhören.** Die Testumgebung hat keine Stimmen. Die Silben-Umschreibungen in `WordBuilderGame.jsx` und die Laute in `src/games/letterSounds.js` sind nur nach Schrift geprüft.
-- **Zwei Stimmen** (Aufnahme oder TTS) bleiben wie vereinbart. Die Lautstärke der Sprache ist jetzt im Elternbereich einstellbar.
-- **Nicht gebaut:**
-  - Einzelne Spiele im Elternbereich ausblenden.
-  - Fokus-Falle in Dialogen.
-  - Null-Runde in „Zahlen entdecken“.
-  - Wackeln der Waage vor der Antwort.
-  - Bonus-Stern für kurze Wege im Labyrinth.
-  - Klang-Joker im Schattenrätsel.
-  - Anlauttabelle im Buchstabenwald.
-- **Ideen** (unten):
-  - Umgesetzt: Gefühlswelt mit großen Gesichtern, freies Bauen in der Formen-Werkstatt, Lumi kommentiert die Farben im Mal-Atelier, selbst wiegen in der Waage-Welt (Level 10), Zahlen-Paare mit Verwechslungsgefahr im Blasen-Blitz.
-  - Offen: Muster selbst legen, Sortier-Regel erfinden, Formen in der Umgebung.
-- **Alte Aufnahmen**, deren Text nicht mehr passt (Gefühlswelt, ABC-Merksätze), liegen noch in `public/audio`. Sie werden nicht mehr abgespielt.
+- die Silben-Umschreibungen in `WordBuilderGame.jsx`
+- die Laute in `src/games/letterSounds.js`, darunter die neuen für Ä, Ö, Ü, C, Q, V, X und Y
+
+Zwei Stimmen (Aufnahme und Sprachausgabe) bleiben wie vereinbart. Die Lautstärke der Sprache ist im Elternbereich einstellbar.
+
+Nachgeholt nach #36:
+
+- **Elternbereich:** Spiele pro Kind ausblenden; Tastatur-Fokus bleibt in Dialogen.
+- **Spiele:**
+  - Zahlen entdecken: Null-Runde
+  - Waage-Welt: federt vor der Antwort, ohne etwas zu verraten
+  - Labyrinth: Krone für einen kurzen Weg
+  - Schattenrätsel: Tipp-Knopf
+  - Buchstabenwald: Anlauttabelle auf der Tastatur
+  - Musterpark: Muster selbst legen
+  - Sortier-Spaß: eigene Regel erfinden
+  - Formen-Land: Formen im Alltag
+- **Pixel-Bilder:** neu gezeichnet, 192 px, ganz statt am Raster abgeschnitten. 154 ungenutzte Bilder gelöscht.
+- **Aufnahmen:** 70 Aufnahmen gelöscht, die nicht mehr abgespielt wurden.
 
 ---
 

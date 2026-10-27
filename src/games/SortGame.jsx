@@ -256,15 +256,16 @@ const FREE_THINGS = [
   thing('🍎', 'der Apfel', 'rot', 'e'), thing('🍓', 'die Erdbeere', 'rot', 'e'), thing('🍒', 'die Kirschen', 'rot', 'e'),
   thing('🍅', 'die Tomate', 'rot', 'e'), thing('🐞', 'der Marienkäfer', 'rot', 'tf'), thing('🎈', 'der Luftballon', 'rot', 'f'),
   thing('🚗', 'das Auto', 'rot', 'v'), thing('🚒', 'das Feuerwehrauto', 'rot', 'v'),
-  thing('🥦', 'der Brokkoli', 'grün', 'e'), thing('🥒', 'die Gurke', 'grün', 'e'), thing('🍐', 'die Birne', 'grün', 'e'),
-  thing('🫑', 'die Paprika', 'grün', 'e'), thing('🐸', 'der Frosch', 'grün', 't'), thing('🐢', 'die Schildkröte', 'grün', 't'),
-  thing('🦎', 'die Eidechse', 'grün', 't'), thing('🐛', 'die Raupe', 'grün', 't'), thing('🐊', 'das Krokodil', 'grün', 't'),
-  thing('🌵', 'der Kaktus', 'grün'), thing('🍀', 'das Kleeblatt', 'grün'),
+  thing('🥦', 'der Brokkoli', 'grün', 'e'), thing('🥒', 'die Gurke', 'grün', 'e'), thing('🫑', 'die Paprika', 'grün', 'e'),
+  thing('🐸', 'der Frosch', 'grün', 't'), thing('🐢', 'die Schildkröte', 'grün', 't'), thing('🦎', 'die Eidechse', 'grün', 't'),
+  thing('🐛', 'die Raupe', 'grün', 't'), thing('🐊', 'das Krokodil', 'grün', 't'), thing('🌵', 'der Kaktus', 'grün'),
+  thing('🍀', 'das Kleeblatt', 'grün'),
   thing('🍌', 'die Banane', 'gelb', 'e'), thing('🍋', 'die Zitrone', 'gelb', 'e'), thing('🧀', 'der Käse', 'gelb', 'e'),
   thing('🐝', 'die Biene', 'gelb', 'tf'), thing('🌻', 'die Sonnenblume', 'gelb'), thing('🚕', 'das Taxi', 'gelb', 'v'),
+  thing('🚌', 'der Bus', 'gelb', 'v'),
   thing('🫐', 'die Heidelbeeren', 'blau', 'e'), thing('🐳', 'der Wal', 'blau', 't'), thing('🐬', 'der Delfin', 'blau', 't'),
   thing('🐦', 'der Vogel', 'blau', 'tf'), thing('🦋', 'der Schmetterling', 'blau', 'tf'), thing('🧢', 'die Mütze', 'blau'),
-  thing('👕', 'das T-Shirt', 'blau'), thing('🚌', 'der Bus', 'blau', 'v'),
+  thing('👕', 'das T-Shirt', 'blau'),
 ]
 
 // What Lumi can recognise, in this order. `says` is the guess.
@@ -345,7 +346,7 @@ function FreeSort({ onDone }) {
 
   useEffect(() => {
     lockPreviews()
-    const id = setTimeout(() => sayTask(`${FREE_TASK} Das ist ${things[0].name}.`), 400)
+    const id = setTimeout(() => sayTask(`${FREE_TASK} Zuerst: ${things[0].name}.`), 400)
     return () => clearTimeout(id)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
