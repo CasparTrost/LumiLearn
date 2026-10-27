@@ -20,12 +20,12 @@ const IMAGES = [
   { id: 'blank', src: null, label: 'Kritzel-Leinwand', emoji: '🖍️', free: true },
   // Own pages with Lumi (scripts/generate-coloring-pages.py); ids stay
   // stable, the album remembers them for "Weitermalen"
-  { id: 'lumi-wald',      src: `${BASE}images/coloring/lumi-wald.png`,      label: 'Lumi im Zauberwald',   emoji: '🍄' },
-  { id: 'lumi-bauernhof', src: `${BASE}images/coloring/lumi-bauernhof.png`, label: 'Lumi auf dem Bauernhof', emoji: '🐮' },
-  { id: 'lumi-weltraum',  src: `${BASE}images/coloring/lumi-weltraum.png`,  label: 'Lumi im Weltraum',     emoji: '🚀' },
-  { id: 'lumi-meer',      src: `${BASE}images/coloring/lumi-meer.png`,      label: 'Lumi im Meer',         emoji: '🐠' },
-  { id: 'lumi-schloss',   src: `${BASE}images/coloring/lumi-schloss.png`,   label: 'Lumi und der kleine Drache', emoji: '🏰' },
-  { id: 'lumi-garten',    src: `${BASE}images/coloring/lumi-garten.png`,    label: 'Lumi im Garten',       emoji: '🌻' },
+  { id: 'lumi-wald',      src: `${BASE}images/coloring/lumi-wald.png`,      label: 'Zauberwald',     emoji: '🍄' },
+  { id: 'lumi-bauernhof', src: `${BASE}images/coloring/lumi-bauernhof.png`, label: 'Bauernhof',      emoji: '🐮' },
+  { id: 'lumi-weltraum',  src: `${BASE}images/coloring/lumi-weltraum.png`,  label: 'Weltraum',       emoji: '🚀' },
+  { id: 'lumi-meer',      src: `${BASE}images/coloring/lumi-meer.png`,      label: 'Meer',           emoji: '🐠' },
+  { id: 'lumi-schloss',   src: `${BASE}images/coloring/lumi-schloss.png`,   label: 'Drachenschloss', emoji: '🏰' },
+  { id: 'lumi-garten',    src: `${BASE}images/coloring/lumi-garten.png`,    label: 'Garten',         emoji: '🌻' },
 ]
 
 // 14 colours a child can tell apart, each with its name (Lumi says it). There

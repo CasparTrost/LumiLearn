@@ -700,11 +700,12 @@ export default function StoryGame({ level = 1, onComplete }) {
             padding:'clamp(18px,4vw,32px)',
             width:'100%', maxWidth:680,
             display:'flex', flexDirection:'column', alignItems:'center', gap:16,
+            position:'relative',
           }}
         >
           {currentPanel && (
             <>
-              <div style={{ fontSize:'clamp(56px,14vw,88px)', lineHeight:1, textAlign:'center', minHeight:'1em' }}>
+              <div style={{ fontSize: ask ? 'clamp(52px,11vw,72px)' : 'clamp(56px,14vw,88px)', lineHeight:1, textAlign:'center', minHeight:'1em' }}>
                 {currentPanel.emoji}
               </div>
               <p style={{
@@ -714,7 +715,9 @@ export default function StoryGame({ level = 1, onComplete }) {
               }}>
                 {currentPanel.text}
               </p>
-              <HearOptions items={[currentPanel.text, ...(ask ? [ask.q, ...askFaces] : [])]} label="Nochmal vorlesen" size={48} />
+              {/* in the corner, so it costs the card no height */}
+              <HearOptions items={[currentPanel.text, ...(ask ? [ask.q, ...askFaces] : [])]} label="Nochmal vorlesen"
+                style={{ position:'absolute', top:10, right:10 }} />
             </>
           )}
 
@@ -774,16 +777,19 @@ export default function StoryGame({ level = 1, onComplete }) {
       </AnimatePresence>
 
       {/* Lumi herself, not a fox emoji */}
-      {(currentPanel || phase === 'choice') && (
+      {((currentPanel && !ask) || phase === 'choice') && (
         <LumiCharacter mood={currentPanel?.mood ?? 'thinking'} size={phase === 'choice' ? 96 : 72} />
       )}
 
       {/* A feeling question at a turn of the story */}
       {ask && (
         <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:12, width:'100%', maxWidth:600 }}>
-          <p style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(18px,4vw,24px)', color:ACCENT, textAlign:'center' }}>
-            {ask.q}
-          </p>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:10 }}>
+            <LumiCharacter mood="thinking" size={56} />
+            <p style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(18px,4vw,24px)', color:ACCENT, textAlign:'center' }}>
+              {ask.q}
+            </p>
+          </div>
           <div style={{ display:'grid', gridTemplateColumns:`repeat(${askFaces.length},1fr)`, gap:'clamp(8px,2vw,14px)', width:'100%' }}>
             {askFaces.map(f => {
               const isRight  = answer && f === ask.feeling
