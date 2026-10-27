@@ -51,7 +51,17 @@ function resolveAsset(src) {
 function cleanText(text) {
   return String(text)
     .replace(/[\u{1F300}-\u{1FFFF}]/gu, '')
+    // Ein Gedankenstrich ist eine Atempause. Er wurde vorher ersatzlos
+    // gelöscht, und die Stimme las "Hilfe holen das ist eine gute Idee" in
+    // einem Zug durch.
+    .replace(/\s*[—–]\s*/g, ', ')
     .replace(/[^\w\säöüÄÖÜß.,!?-]/g, '')
+    // Wörter in Großbuchstaben buchstabieren deutsche Stimmen gern — aus der
+    // Silbe "KRO" wird "K-R-O". In den Spielen stehen Silben und Wörter oft
+    // groß da; gesprochen werden sollen sie als Wort. Ein einzelner
+    // Großbuchstabe bleibt, der ist als Buchstabenname gemeint.
+    .replace(/[A-ZÄÖÜ]{2,}/g, w => w[0] + w.slice(1).toLowerCase())
+    .replace(/\s{2,}/g, ' ')
     .trim()
 }
 

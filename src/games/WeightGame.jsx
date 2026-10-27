@@ -331,11 +331,16 @@ export default function WeightGame({ level = 1, onComplete }) {
     return Math.round(24 + Math.sqrt(Math.min(w, 60) / 60) * 34)
   }
 
-  // Speak item labels when question changes
+  // Die Frage vorlesen. Vorher hieß es nur "Schwimmer oder Fisch" — was zu tun
+  // ist, stand allein auf dem Bildschirm, und ab Level 3 wurde gar nichts mehr
+  // gesagt. Ein Kind, das nicht liest, wusste nicht, worum es geht.
   useEffect(() => {
-    if (q && q.leftLabel && q.rightLabel && level <= 2) {
-      setTimeout(() => speakDE(q.leftLabel + ' oder ' + q.rightLabel), 300)
-    }
+    if (!q) return
+    const say = q.leftLabel && q.rightLabel && level <= 2
+      ? `Was ist schwerer? ${q.leftLabel} oder ${q.rightLabel}?`
+      : 'Rechne. Welche Seite ist schwerer?'
+    const id = setTimeout(() => speakDE(say), 300)
+    return () => clearTimeout(id)
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
   const correctSide   = q.leftW > q.rightW ? 'left' : q.rightW > q.leftW ? 'right' : 'equal'
   const heavierLabel  = q.leftW >= q.rightW ? q.leftLabel : q.rightLabel

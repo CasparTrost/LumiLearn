@@ -43,13 +43,6 @@ const WORDS = [
   ['T','Tiger','🐯'], ['U','Uhr','⏰'], ['V','Vogel','🐦'], ['W','Wolke','☁️'],
   ['W','Wolf','🐺'],  ['Z','Zebra','🦓'], ['Z','Zahn','🦷'],
 ]
-
-// The bare sound, spoken on its own — same convention as ABC-Abenteuer.
-const SOUND = {
-  A:'Aaa', B:'Bbb', D:'Ddd', E:'Eee', F:'Fff', G:'Ggg', H:'Hhh', I:'Iii',
-  J:'Jjj', K:'Kkk', L:'Lll', M:'Mmm', N:'Nnn', O:'Ooo', P:'Ppp', R:'Rrr',
-  S:'Sss', T:'Ttt', U:'Uuu', V:'Fff', W:'Www', Z:'Zzz',
-}
 const LETTERS = [...new Set(WORDS.map(w => w[0]))]
 
 function buildRounds(level, count = 8) {
@@ -143,8 +136,7 @@ export default function InitialSoundGame({ level = 1, onComplete }) {
             ? <><strong style={{ color: '#4A00E0' }}>{r.word}</strong> fängt mit <strong style={{ color: '#4A00E0' }}>{r.letter}</strong> an! 🕵️</>
             : <>Womit fängt <strong style={{ color: '#4A00E0' }}>{r.word}</strong> an? 🕵️</>}
         </div>
-        <HearOptions items={r.options.map(L => ({ text: SOUND[L] ?? L, rate: 0.5 }))}
-          label="Alle Laute vorlesen" />
+        <HearOptions items={r.options} label="Alle Buchstaben vorlesen" />
       </div>
 
       {/* The word, as a picture */}
@@ -179,7 +171,11 @@ export default function InitialSoundGame({ level = 1, onComplete }) {
               whileHover={!solved && !isWrong ? { scale: 1.08 } : {}}
               whileTap={!solved && !isWrong ? { scale: 0.92 } : {}}
               onClick={() => { if (!isWrong) pick(L) }}
-              {...hearable(SOUND[L] ?? L, { rate: 0.5 })}
+              // Der Buchstabenname, genau wie in der Rückmeldung ("…fängt mit
+              // R an"). Vorher der gedehnte Laut "Ggg", "Ttt": bei einem
+              // Verschlusslaut lässt sich nichts dehnen, die Stimme stottert —
+              // dasselbe Muster wie das schon gestrichene "W. W. W. Wolf".
+              {...hearable(L)}
               aria-label={`Buchstabe ${L}`}
               style={{
                 width: 'clamp(58px,13vw,86px)', height: 'clamp(58px,13vw,86px)',
