@@ -78,7 +78,6 @@ function freshProfile(overrides = {}) {
     progress: Object.fromEntries(ALL_MODULE_IDS.map(id => [id, freshProgress()])),
     farmLevel: 1,
     streak: { count: 0, lastDate: null },
-    streakLastBonus: null,
     dailyMission: { date: null, missions: [], completedIds: [] },
     lastPlayed: null,
     ...overrides,
@@ -197,7 +196,6 @@ function reducer(state, action) {
             progress: Object.fromEntries(ALL_MODULE_IDS.map(mid => [mid, freshProgress()])),
             farmLevel: 1,
             streak: { count: 0, lastDate: null },
-            streakLastBonus: null,
             dailyMission: { date: null, missions: [], completedIds: [] },
           },
         },
@@ -361,21 +359,36 @@ function migrateProgress(rawProgress) {
   return migrated
 }
 
+// Felder, die es nicht mehr gibt: die Münzen und der Merker, der den
+// Münz-Bonus für Tagesserien einmalig machte. Sie werden beim Laden verworfen;
+// weil der Speicher-Effekt den geladenen Zustand zurückschreibt, verschwinden
+// sie damit beim nächsten Speichern auch aus dem Browser.
+//
+// Bewusst nur ein Entfernen von Schlüsseln — Fortschritt, Serie und alles
+// andere bleibt unangetastet. Der Lade-Pfad ist die Stelle, an der ein Fehler
+// echte Profildaten kosten würde.
+const RETIRED_FIELDS = ['coins', 'streakLastBonus']
+function dropRetired(profile) {
+  const out = { ...profile }
+  for (const k of RETIRED_FIELDS) delete out[k]
+  return out
+}
+
 function migrateToV2(data) {
   if (data.version === 2) {
     // Ensure all profiles have all module progress keys
     const profiles = {}
     for (const [id, p] of Object.entries(data.profiles || {})) {
-      profiles[id] = {
+      profiles[id] = dropRetired({
         ...freshProfile({ id }),
         ...p,
         progress: { ...Object.fromEntries(ALL_MODULE_IDS.map(mid => [mid, freshProgress()])), ...migrateProgress(p.progress) },
-      }
+      })
     }
     return { ...data, profiles }
   }
 
-  // v1 → v2: old format had profiles[] array + global progress/coins/streak
+  // v1 → v2: old format had profiles[] array + global progress/streak
   const profiles = {}
   const oldProfilesArr = data.profiles && Array.isArray(data.profiles) ? data.profiles : []
   const globalProgress = migrateProgress(data.progress)
@@ -394,7 +407,6 @@ function migrateToV2(data) {
         progress: isFirst ? globalProgress : Object.fromEntries(ALL_MODULE_IDS.map(mid => [mid, freshProgress()])),
         farmLevel: isFirst ? (data.farmLevel || 1) : 1,
         streak: isFirst ? (data.streak || { count: 0, lastDate: null }) : { count: 0, lastDate: null },
-        streakLastBonus: isFirst ? (data.streakLastBonus || null) : null,
         dailyMission: isFirst ? (data.dailyMission
           ? {
               date: data.dailyMission.date,
@@ -416,7 +428,6 @@ function migrateToV2(data) {
       progress: globalProgress,
       farmLevel: data.farmLevel || 1,
       streak: data.streak || { count: 0, lastDate: null },
-      streakLastBonus: data.streakLastBonus || null,
       dailyMission: data.dailyMission
         ? {
             date: data.dailyMission.date,
