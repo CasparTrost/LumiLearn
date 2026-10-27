@@ -22,6 +22,7 @@ let running  = false
 let level    = null   // Vorrang dessen, was gerade läuft
 let lockedAt = 0      // seit wann Vorschauen gesperrt sind (0 = frei)
 let cancelAt = 0      // wann zuletzt abgebrochen wurde
+let voiceVolume = 1   // Lautstärke der Sprache, im Elternbereich einstellbar
 
 // Nach einem Abbruch darf nicht sofort gesprochen werden: ruft man
 // speechSynthesis.speak() im selben Tick wie cancel(), verschluckt Chrome den
@@ -50,7 +51,17 @@ function resolveAsset(src) {
 // Emojis und Sonderzeichen raus, sonst buchstabiert die Stimme sie aus.
 function cleanText(text) {
   return String(text)
+    // eigene Bilder (:px-tisch:, siehe lib/emojiArt.jsx) sind nur zum Ansehen
+    .replace(/:px-[a-z0-9-]+:/g, '')
     .replace(/[\u{1F300}-\u{1FFFF}]/gu, '')
+    // Rechen- und Maßzeichen in Wörter, bevor der Zeichenfilter sie löscht:
+    // aus "20× ihre Körpergröße" wurde sonst "20 ihre Körpergröße"
+    .replace(/\s*[×✕]\s*/g, ' mal ')
+    .replace(/km\/h/g, 'Kilometer pro Stunde')
+    .replace(/(\d)\s*\+\s*(\d)/g, '$1 plus $2')
+    .replace(/(\d)\s*[−]\s*(\d)/g, '$1 minus $2')
+    .replace(/(\d)\s*=\s*/g, '$1 ist ')
+    .replace(/(\d)\s*%/g, '$1 Prozent')
     // Ein Gedankenstrich ist eine Atempause. Er wurde vorher ersatzlos
     // gelöscht, und die Stimme las "Hilfe holen das ist eine gute Idee" in
     // einem Zug durch.
@@ -112,6 +123,8 @@ export function afterNarration(cb, { minMs = 0, maxMs = 9000 } = {}) {
  * Vorschau durchrutscht. Das passiert sogar ungewollt: nach "Weiter" liegt die
  * neue Antwort unter dem ruhenden Mauszeiger, und schon spricht sie los.
  */
+export function setVoiceVolume(v) { voiceVolume = Math.max(0, Math.min(1, v)) }
+
 export function lockPreviews() {
   lockedAt = Date.now()
 }
@@ -199,10 +212,14 @@ export function narrate(parts, { onEnd, skipIfSame = false, priority = 'normal' 
   const playClip = (p, done, s) => {
     try {
       const a = new Audio(resolveAsset(p.src))
+      a.volume = voiceVolume
       audioEl = a
       let failed = false
       const hand = once(done, s, 15000)
       const onFail = () => {
+        // error-Ereignis und abgelehntes play() kommen beide — nur einmal
+        // ersatzweise sprechen, sonst sagt die Stimme alles doppelt
+        if (failed) return
         failed = true
         if (s !== seq) return
         // Fehlt die Aufnahme, springt die Sprachsynthese ein — lieber eine
@@ -232,6 +249,7 @@ export function narrate(parts, { onEnd, skipIfSame = false, priority = 'normal' 
     const hand = once(done, s, Math.min(20000, 900 + (clean.length / 13 / rate) * 1000 + 900))
     const u = new SpeechSynthesisUtterance(clean)
     u.rate  = rate
+    u.volume = voiceVolume
     u.pitch = p.pitch ?? 1.05
     u.lang  = p.lang || (typeof document !== 'undefined' && document.documentElement.lang === 'en' ? 'en-GB' : 'de-DE')
     u.addEventListener('end', hand, { once: true })

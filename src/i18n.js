@@ -5,32 +5,39 @@
 
 import { useApp } from './AppContext.jsx'
 
+// English was only a facade: the home screen, every game, the results and
+// the parent area stayed German. It is hidden (and every saved "en" reads
+// as German) until the games are translated; the English strings stay
+// here, and setting this to true brings the language choice back.
+export const ENGLISH_ENABLED = false
+export const LANGUAGES_OFFERED = ENGLISH_ENABLED ? ['de', 'en'] : ['de']
+
 export const translations = {
   de: {
     'welcome.tagline': '✨ Lernen macht Spaß ✨',
-    'welcome.subtitle': 'Dein persönlicher Lernbegleiter für Kinder von 3–7 Jahren',
-    'welcome.cta': 'Jetzt starten 🚀',
+    'welcome.subtitle': 'Spielen und lernen mit Lumi – für Kinder von 4 bis 7 Jahren',
+    'welcome.cta': 'Los geht’s!',
 
     'language.title': 'Wähle deine Sprache',
     'language.subtitle': 'Choose your language',
     'language.selected': '✓ Ausgewählt',
     'language.continue': 'Weiter →',
 
-    'profile.who': 'Wer spielt? 👋',
-    'profile.tapName': 'Tippe deinen Namen um zu starten',
-    'profile.addLearner': 'Neuen Lerner hinzufügen',
-    'profile.create': 'Profil erstellen',
-    'profile.ageLabel': 'Jahre · Bereit zum Lernen! ⭐',
-    'profile.pickCharacter': 'Wähle deinen Charakter',
-    'profile.whoDoYouWant': 'Wer möchtest du sein?',
-    'profile.whatsName': 'Wie heißt du?',
-    'profile.namePlaceholder': 'Deinen Namen eingeben...',
+    'profile.who': 'Wer spielt heute?',
+    'profile.tapName': 'Tippe auf dein Bild, um loszulegen.',
+    'profile.addLearner': 'Neues Kind',
+    'profile.create': 'Hallo! Ich bin Lumi.',
+    'profile.ageLabel': 'Jahre',
+    'profile.pickCharacter': 'Welches Tier möchtest du sein?',
+    'profile.whoDoYouWant': 'Tippe auf ein Bild.',
+    'profile.whatsName': 'Name (für Eltern, freiwillig)',
+    'profile.namePlaceholder': 'Name eintippen',
     'profile.howOld': 'Wie alt bist du?',
-    'profile.almostThere': 'Fast geschafft!',
-    'profile.tellUs': 'Erzähl uns von dir',
-    'profile.next': 'Weiter →',
-    'profile.letsGo': "Los geht's! 🎉",
-    'profile.back': '← Zurück',
+    'profile.almostThere': 'Wie alt bist du?',
+    'profile.tellUs': 'Tippe auf die Zahl.',
+    'profile.next': 'Weiter',
+    'profile.letsGo': 'Los geht’s!',
+    'profile.back': 'Anderes Tier',
     'profile.cancel': 'Abbrechen',
 
     'home.new': 'Neu',
@@ -74,11 +81,23 @@ export const translations = {
     'module.rocket-math': 'Rechen-Rakete',
     'module.coloring.sub': 'Ausmalen & Kreativ',
 
-    'mission.play3': '3 Spiele spielen',
-    'mission.level5': '5 Level abschließen',
-    'mission.stars3': '3 Sterne holen',
+    'mission.play3': '3 Runden spielen',
+    'mission.level5': '5 Level schaffen',
+    'mission.stars3': '3 Sterne in einem Spiel',
     'mission.play2diff': '2 verschiedene Spiele',
     'mission.level3': '3 Level schaffen',
+    'mission.newgame': 'Ein neues Spiel ausprobieren',
+    'mission.world-zahlen': 'Ein Spiel aus der Zahlen-Welt',
+    'mission.world-buchstaben': 'Ein Spiel aus der Buchstaben-Welt',
+    // gesprochen beim Antippen der Aufgabe
+    'mission.say.play3': 'Spiel heute drei Runden.',
+    'mission.say.level5': 'Schaffe heute fünf Level.',
+    'mission.say.stars3': 'Hol drei Sterne in einem Spiel.',
+    'mission.say.play2diff': 'Spiel heute zwei verschiedene Spiele.',
+    'mission.say.level3': 'Schaffe heute drei Level.',
+    'mission.say.newgame': 'Probier ein Spiel aus, das du noch nicht kennst.',
+    'mission.say.world-zahlen': 'Spiel etwas aus der Zahlen-Welt.',
+    'mission.say.world-buchstaben': 'Spiel etwas aus der Buchstaben-Welt.',
 
     'home.morning': 'Guten Morgen',
     'home.afternoon': 'Guten Nachmittag',
@@ -159,7 +178,10 @@ export const translations = {
     'module.rocket-math': 'Math Rocket',
     'module.coloring.sub': 'Color & Create',
 
-    'mission.play3': 'Play 3 games',
+    'mission.play3': 'Play 3 rounds',
+    'mission.newgame': 'Try a new game',
+    'mission.world-zahlen': 'A game from the number world',
+    'mission.world-buchstaben': 'A game from the letter world',
     'mission.level5': 'Complete 5 levels',
     'mission.stars3': 'Get 3 stars',
     'mission.play2diff': '2 different games',
@@ -179,7 +201,7 @@ export const translations = {
 
 export function useT() {
   const { state } = useApp()
-  const lang = state?.language ?? 'de'
+  const lang = (ENGLISH_ENABLED && state?.language) || 'de'
   const dict = translations[lang] ?? translations.de
   return (key, fallback) => dict[key] ?? fallback ?? key
 }

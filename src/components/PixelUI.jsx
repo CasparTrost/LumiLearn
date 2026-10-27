@@ -59,3 +59,87 @@ export function HudBar({ children, style }) {
     </div>
   )
 }
+
+// Pixel icons, drawn on a small grid (X = filled). They replace the thin
+// lucide line icons and the ▶/▼ characters, which came from a fallback font
+// and had a different size on every device.
+const ICONS = {
+  play: [
+    'X......',
+    'XXX....',
+    'XXXXX..',
+    'XXXXXXX',
+    'XXXXXXX',
+    'XXXXX..',
+    'XXX....',
+    'X......',
+  ],
+  back: [
+    '...X....',
+    '..XX....',
+    '.XXXXXXX',
+    'XXXXXXXX',
+    '.XXXXXXX',
+    '..XX....',
+    '...X....',
+  ],
+  close: [
+    'XX...XX',
+    'XXX.XXX',
+    '.XXXXX.',
+    '..XXX..',
+    '.XXXXX.',
+    'XXX.XXX',
+    'XX...XX',
+  ],
+  down: [
+    'XXXXXXXX',
+    'XXXXXXXX',
+    '.XXXXXX.',
+    '..XXXX..',
+    '...XX...',
+  ],
+  check: [
+    '.......XX',
+    '......XXX',
+    '.....XXX.',
+    'XX..XXX..',
+    'XXXXXX...',
+    '.XXXX....',
+    '..XX.....',
+  ],
+  lock: [
+    '..XXXX..',
+    '.XX..XX.',
+    '.X....X.',
+    'XXXXXXXX',
+    'XXX..XXX',
+    'XXX..XXX',
+    'XXXXXXXX',
+    'XXXXXXXX',
+  ],
+}
+
+/** A pixel icon in the current text colour; `size` is its height in px. */
+export function PxIcon({ name, size = 18, color = 'currentColor', style, title }) {
+  const rows = ICONS[name]
+  if (!rows) return null
+  const w = rows[0].length, h = rows.length
+  const rects = []
+  rows.forEach((row, y) => {
+    for (let x = 0; x < w; x++) {
+      if (row[x] !== 'X') continue
+      let x2 = x
+      while (row[x2 + 1] === 'X') x2++
+      rects.push(<rect key={`${x}-${y}`} x={x} y={y} width={x2 - x + 1} height={1} />)
+      x = x2
+    }
+  })
+  return (
+    <svg className="px-icon" viewBox={`0 0 ${w} ${h}`} width={Math.round(size * w / h)} height={size}
+      fill={color} aria-hidden={title ? undefined : true} role={title ? 'img' : undefined} style={style}>
+      {title && <title>{title}</title>}
+      {rects}
+    </svg>
+  )
+}

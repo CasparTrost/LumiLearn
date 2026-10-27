@@ -1,12 +1,32 @@
+import { useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useApp } from '../AppContext.jsx'
-import { useT } from '../i18n.js'
+import { useT, LANGUAGES_OFFERED } from '../i18n.js'
 import Button from '../components/Button.jsx'
 import { PixelLumi, uiSpr } from '../components/PixelUI.jsx'
+import { narrate } from '../narrator.js'
+
+const HELLO = 'Hallo, ich bin Lumi! Tippe auf den gelben Knopf, dann geht es los.'
 
 export default function WelcomeScreen() {
   const { dispatch } = useApp()
   const t = useT()
+
+  // Most children who start the app can't read: Lumi says what to do.
+  // Browsers may hold speech back until the first touch, so tapping Lumi
+  // says it (again).
+  useEffect(() => {
+    const id = setTimeout(() => narrate([{ text: HELLO }]), 700)
+    return () => clearTimeout(id)
+  }, [])
+
+  // With only one language offered (English is hidden, i18n.js) the
+  // language step is skipped: one decision less, and one a parent makes.
+  const start = () => {
+    if (LANGUAGES_OFFERED.length > 1) { dispatch({ type: 'NAVIGATE', payload: 'language' }); return }
+    dispatch({ type: 'SET_LANGUAGE', payload: LANGUAGES_OFFERED[0] })
+    dispatch({ type: 'NAVIGATE', payload: 'profile' })
+  }
 
   return (
     <div style={{
@@ -38,7 +58,10 @@ export default function WelcomeScreen() {
           {t('welcome.tagline')}
         </div>
 
-        <PixelLumi size={176} happy />
+        <button onClick={() => narrate([{ text: HELLO }])} aria-label="Lumi sprechen lassen"
+          style={{ padding: 0, background: 'none', border: 'none' }}>
+          <PixelLumi size={176} happy />
+        </button>
 
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -52,7 +75,7 @@ export default function WelcomeScreen() {
           }}>
             {t('welcome.subtitle')}
           </div>
-          <Button size="lg" variant="gold" onClick={() => dispatch({ type: 'NAVIGATE', payload: 'language' })}>
+          <Button size="lg" variant="gold" onClick={start}>
             {t('welcome.cta')}
           </Button>
         </motion.div>

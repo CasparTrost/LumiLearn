@@ -1,9 +1,13 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { useState, useCallback, useEffect, useLayoutEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
+import HearOptions from '../components/HearOptions.jsx'
 import { sfx } from '../sfx.js'
-import { speak, sayNumber } from '../tts.js'
-import { afterNarration } from '../narrator.js'
+import { sayNumber } from '../tts.js'
+import { afterNarration, lockPreviews } from '../narrator.js'
+import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
+import { hearable } from '../lib/hearable.js'
+import { result } from '../lib/score.js'
 import { pxCard, pxPanel, pxBubble, pxButton, pxSegment, ACCENT, INK } from './px.js'
 
 /**
@@ -18,85 +22,85 @@ import { pxCard, pxPanel, pxBubble, pxButton, pxSegment, ACCENT, INK } from './p
  */
 
 // ── Question banks per level ─────────────────────────────────────────────────
-// L1-2: full hours · L3-4: + half hours · L5-6: quarter hours
-// L7-8: 5-minute steps · L9-10: any minute
-// (toleranceFor and difficultyLabel below follow exactly these tiers)
+// L1-3: full hours · L4-6: + half hours · L7-9: quarter hours · L10: 5-minute
+// steps. Levels 7–10 used to ask for 5-minute steps and any minute ("drei Uhr
+// neunundfünfzig") — second/third-grade material in an app for four- to
+// seven-year-olds.
+function tierFor(level) {
+  if (level <= 3) return 'hour'
+  if (level <= 6) return 'half'
+  if (level <= 9) return 'quarter'
+  return 'five'
+}
+const MINUTES = { hour: [0], half: [0, 30], quarter: [0, 15, 30, 45], five: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55] }
+// The new step of a tier comes up more often than the old one
+const NEW_MINUTES = { hour: [0], half: [30], quarter: [15, 45], five: [5, 10, 20, 25, 35, 40, 50, 55] }
+
+// Roughly half a step of the tier: precise enough to force the right notch,
+// forgiving enough that dragging a hand isn't a pixel exercise.
+const TOLERANCE = { hour: 8, half: 8, quarter: 5, five: 2 }
+
+// From level 7 the times are also written digitally ("4:30 Uhr"); before,
+// only the way they are said ("halb 5") — a digital readout let the child
+// match digits instead of looking at the hands.
+const showDigital = level => level >= 7
 
 function rand(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a }
 function shuffle(a) { return [...a].sort(() => Math.random() - 0.5) }
+const pickOne = a => a[rand(0, a.length - 1)]
 
-function generateTimes(level, count = level <= 4 ? 8 : level <= 7 ? 10 : 12) {
-  const times = []
-  const seen  = new Set()
-  let attempts = 0
-  while (times.length < count && attempts < 500) {
-    attempts++
-    let h, m
-    if (level <= 2) {
-      h = rand(1, 12); m = 0
-    } else if (level <= 4) {
-      h = rand(1, 12); m = [0, 30][rand(0, 1)]
-    } else if (level <= 6) {
-      h = rand(1, 12); m = [0, 15, 30, 45][rand(0, 3)]
-    } else if (level <= 8) {
-      h = rand(1, 12); m = rand(0, 11) * 5
-    } else {
-      h = rand(1, 12); m = rand(0, 59)
-    }
-    const key = `${h}:${m}`
-    if (!seen.has(key)) { seen.add(key); times.push({ h, m }) }
-  }
-  return times
+function randomTime(tier) {
+  const m = Math.random() < 0.6 ? pickOne(NEW_MINUTES[tier]) : pickOne(MINUTES[tier])
+  return { h: rand(1, 12), m }
 }
 
-// Both of these used to drift away from generateTimes' own tiers.
-//
-// Tolerance was outright inverted: level 3 introduces half hours and accepted
-// a 14-minute error (anything from 3:16 to 3:44 passed as "half past three"),
-// while every later level — including level 4, which asks for exactly the same
-// half-hour targets — demanded 4 minutes. Now it follows the granularity the
-// level actually asks for, roughly half a step: precise enough to force the
-// right notch, forgiving enough that dragging a hand by hand isn't a pixel
-// exercise. The floor of 3 at the top exists because the tap steppers move the
-// minute hand in 5-minute jumps, so a free-minute target can sit up to 2.5
-// minutes away from anything reachable that way.
-function toleranceFor(level) {
-  if (level <= 2) return 8   // full hours
-  if (level <= 4) return 8   // half hours
-  if (level <= 6) return 5   // quarter hours
-  if (level <= 8) return 2   // 5-minute steps — reachable exactly
-  return 3                   // any minute
-}
-
-// The badge the child sees was one tier ahead of reality: level 2 announced
-// "halbe Stunden" while still only generating full hours, level 3 announced
-// "Viertelstunden" while generating half hours.
-function difficultyLabel(level) {
-  if (level <= 2) return 'ganze Stunden'
-  if (level <= 4) return 'halbe Stunden'
-  if (level <= 6) return 'Viertelstunden'
-  if (level <= 8) return '5-Minuten-Schritte'
-  return 'jede Minute'
-}
-
-// Times of day a preschooler recognises, far enough apart that the matching
-// activity is unambiguous on a 12-hour face.
+// Times of day a preschooler recognises, each at its own place on the
+// 12-hour face. The half-hour ones join from level 4. `does` finishes the
+// sentence "Um sieben Uhr …". Soft hyphens (\u00AD) let the long words
+// break on a narrow card; speech drops them.
 const DAILY_ACTIVITIES = [
-  { id: 'aufstehen',    icon: '\u{1F305}', label: 'Aufstehen',     h: 7,  m: 0 },
-  { id: 'kindergarten', icon: '\u{1F3EB}', label: 'Kindergarten',  h: 9,  m: 0 },
-  { id: 'mittagessen',  icon: '\u{1F37D}\uFE0F', label: 'Mittagessen', h: 12, m: 0 },
-  { id: 'spielplatz',   icon: '\u{1F6DD}', label: 'Spielplatz',    h: 3,  m: 0 },
-  { id: 'abendessen',   icon: '\u{1F372}', label: 'Abendessen',    h: 6,  m: 0 },
-  { id: 'schlafen',     icon: '\u{1F6CF}\uFE0F', label: 'Schlafengehen', h: 8, m: 0 },
+  { id: 'aufstehen',    icon: '⏰',  label: 'Aufstehen',     does: 'steht Lumi auf',             h: 7,  m: 0 },
+  { id: 'kindergarten', icon: '🏫',  label: 'Kinder\u00ADgarten',  does: 'geht Lumi in den Kindergarten', h: 9, m: 0 },
+  { id: 'mittagessen',  icon: '🍽️', label: 'Mittag\u00ADessen',   does: 'isst Lumi zu Mittag',        h: 12, m: 0 },
+  { id: 'spielplatz',   icon: '🛝',  label: 'Spiel\u00ADplatz',    does: 'geht Lumi auf den Spielplatz', h: 3, m: 0 },
+  { id: 'abendessen',   icon: '🍲',  label: 'Abend\u00ADessen',    does: 'isst Lumi zu Abend',         h: 6,  m: 0 },
+  { id: 'schlafen',     icon: '🛏️', label: 'Schlafen\u00ADgehen', does: 'geht Lumi schlafen',         h: 8,  m: 0 },
+  { id: 'obst',         icon: '🍎',  label: 'Obst essen',    does: 'isst Lumi Obst',             h: 4,  m: 30 },
+  { id: 'baden',        icon: '🛁',  label: 'Baden',         does: 'badet Lumi',                 h: 5,  m: 30 },
+  { id: 'zaehne',       icon: '🪥',  label: 'Zähne putzen',  does: 'putzt Lumi die Zähne',       h: 7,  m: 30 },
 ]
+const plain = text => text.replace(/\u00AD/g, '')
+const activitiesFor = level => DAILY_ACTIVITIES.filter(a => level >= 4 || a.m === 0)
+
+// Every third round asks what happens at a time instead of reading or
+// setting it, so the face connects to the child's own day. The activity is
+// drawn at random and never twice in a level: it used to be the same four in
+// the same order every time, and Abendessen/Schlafengehen never came up.
+function generateRounds(level) {
+  const tier  = tierFor(level)
+  const count = level <= 5 ? 8 : 10
+  const acts  = shuffle(activitiesFor(level))
+  const seen  = new Set()
+  const rounds = []
+  for (let i = 0; i < count; i++) {
+    if (i % 3 === 2 && acts.length) {
+      const act = acts.pop()
+      seen.add(`${act.h}:${act.m}`)
+      rounds.push({ h: act.h, m: act.m, activity: act })
+      continue
+    }
+    let t, tries = 0
+    do { t = randomTime(tier) } while (seen.has(`${t.h}:${t.m}`) && ++tries < 50)
+    seen.add(`${t.h}:${t.m}`)
+    rounds.push(t)
+  }
+  return rounds
+}
 
 // Uhrzeit so, wie man sie einem Kind sagt — für eine Zeigeruhr.
 //
-// Die Ansage lautete vorher "Stelle die Uhr auf 2 Uhr 30": Digitaluhr-Sprache.
 // Im Kindergarten heißt das "halb drei", und genau diese Brücke zwischen
-// Zeigerstellung und Wort soll das Spiel bauen. Der alte Helfer kannte nur
-// volle, halbe und Viertelstunden und fiel sonst auf "2:05 Uhr" zurück,
-// obwohl das Spiel in 5-Minuten-Schritten fragt.
+// Zeigerstellung und Wort soll das Spiel bauen.
 //
 // spoken: Stunden als Wort, für die Sprachausgabe. Volle Stunde 1 heißt
 // "ein Uhr", sonst steht die Eins allein: "halb eins", "fünf nach eins".
@@ -113,12 +117,43 @@ function toGermanTime(h, m, { spoken = false } = {}) {
   if (m === 35) return `fünf nach halb ${H(nxt)}`
   if (m < 30 && MIN_WORD[m])      return `${MIN_WORD[m]} nach ${H(cur)}`
   if (m > 30 && MIN_WORD[60 - m]) return `${MIN_WORD[60 - m]} vor ${H(nxt)}`
-  // keine 5-Minuten-Zeit: dann eben genau
   return spoken ? `${H(cur)} Uhr ${sayNumber(m)}` : `${cur}:${String(m).padStart(2, '0')} Uhr`
 }
+const say = (t) => toGermanTime(t.h, t.m, { spoken: true })
 
 function fmt(h, m) {
   return `${h}:${String(m).padStart(2, '0')} Uhr`
+}
+
+// What the child reads on a card: the spoken form up to level 6, the
+// digital one from level 7.
+const label = (t, level) => (showDigital(level) ? fmt(t.h, t.m) : toGermanTime(t.h, t.m))
+
+// "die Vier", "der Zwölf"
+const numberNoun = n => { const w = sayNumber(n); return w[0].toUpperCase() + w.slice(1) }
+
+// Where the hands are, in words — for the explanation after two misses:
+// "Der kurze Zeiger steht genau zwischen der Vier und der Fünf, der lange
+// Zeiger zeigt auf die Sechs."
+function describeHands(h, m) {
+  const cur = h % 12 === 0 ? 12 : h % 12
+  const nxt = cur % 12 + 1
+  const short = m === 0  ? `der kurze Zeiger zeigt auf die ${numberNoun(cur)}`
+              : m === 30 ? `der kurze Zeiger steht genau zwischen der ${numberNoun(cur)} und der ${numberNoun(nxt)}`
+              : m < 30   ? `der kurze Zeiger steht kurz nach der ${numberNoun(cur)}`
+              :            `der kurze Zeiger steht kurz vor der ${numberNoun(nxt)}`
+  const long  = m === 0 ? 'der lange Zeiger steht oben auf der Zwölf'
+              : `der lange Zeiger zeigt auf die ${numberNoun(m / 5)}`
+  return `${short[0].toUpperCase()}${short.slice(1)}, ${long}.`
+}
+
+// A first hint when reading: how to read the long hand, without the answer.
+function readHint(m) {
+  if (m === 0)  return 'Der lange Zeiger steht oben auf der Zwölf, das ist eine volle Stunde. Wohin zeigt der kurze Zeiger?'
+  if (m === 30) return 'Der lange Zeiger steht unten auf der Sechs, dann ist es halb. Der kurze Zeiger ist schon auf dem Weg zur nächsten Zahl.'
+  if (m === 15) return 'Der lange Zeiger steht auf der Drei, dann ist es Viertel nach.'
+  if (m === 45) return 'Der lange Zeiger steht auf der Neun, dann ist es Viertel vor.'
+  return 'Der lange Zeiger zeigt die Minuten. Zähle in Fünferschritten: fünf, zehn, fünfzehn.'
 }
 
 function timeDiffMin(h1, m1, h2, m2) {
@@ -129,12 +164,46 @@ function timeDiffMin(h1, m1, h2, m2) {
   return Math.min(raw, 720 - raw)
 }
 
+// The hands are one value, minutes since 12:00 (0–719), like a real clock:
+// turning the minute hand past the 12 moves the hour hand on.
+const toHM   = T => ({ h: Math.floor(T / 60) || 12, m: T % 60 })
+const fromHM = (h, m) => ((h % 12) * 60 + m) % 720
+
+// Wrong options from the level's own tier, built from the mistakes children
+// really make. They used to be random times in 5-minute steps, so on level
+// 9 ("jede Minute") the only time that wasn't a multiple of five was the
+// answer, and level 2 (full hours) offered half hours.
+function readOptions(t, level) {
+  const tier = tierFor(level)
+  const ok = (c) => MINUTES[tier].includes(c.m) && !(c.h === t.h && c.m === t.m)
+  const norm = (h) => ((h - 1 + 12) % 12) + 1
+  const typical = [
+    { h: norm(t.h + 1), m: t.m },                     // "halb vier" read as 4:30
+    { h: norm(t.h - 1), m: t.m },
+    { h: norm(12 - t.h - (t.m ? 1 : 0)), m: (60 - t.m) % 60 },   // mirrored
+    t.m % 5 === 0 && t.m ? { h: t.m / 5, m: (t.h % 12) * 5 } : null, // hands swapped
+  ].filter(Boolean).filter(ok)
+  const seen = new Set([`${t.h}:${t.m}`])
+  const wrongs = []
+  for (const c of [...shuffle(typical), ...Array.from({ length: 60 }, () => randomTime(tier))]) {
+    const k = `${c.h}:${c.m}`
+    if (wrongs.length >= 3 || seen.has(k) || !ok(c)) continue
+    seen.add(k); wrongs.push(c)
+  }
+  return shuffle([t, ...wrongs])
+}
+
+// Hand colours: hour hand blue, minute hand red — the same in every round,
+// and on the ± buttons. (They used to be the old lilac #4A00E0/#6C63FF.)
+const HOUR_C = '#2F6FC4'
+const MIN_C  = '#C2412D'
+
 // ── Tap-to-step button (with hold-repeat) ───────────────────────────────────
 // Non-drag alternative to grabbing a clock hand — same pattern as MazeGame's
 // D-Pad buttons (pointer capture + a window-level fallback, so the repeat
 // reliably stops even if the pointerup lands on a different element after
 // the whileTap scale shrinks the hit area).
-function StepButton({ label, onPress, color, ariaLabel }) {
+function StepButton({ label, onPress, color, ariaLabel, disabled }) {
   const repeatRef = useRef(null)
   const activeRef = useRef(false)
 
@@ -146,12 +215,13 @@ function StepButton({ label, onPress, color, ariaLabel }) {
   }, [])
 
   const start = useCallback(e => {
+    if (disabled) return
     activeRef.current = true
     try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* ignore */ }
     onPress()
     clearInterval(repeatRef.current)
-    repeatRef.current = setInterval(onPress, 220)
-  }, [onPress])
+    repeatRef.current = setInterval(onPress, 260)
+  }, [onPress, disabled])
 
   useEffect(() => {
     window.addEventListener('pointerup', stop)
@@ -167,18 +237,20 @@ function StepButton({ label, onPress, color, ariaLabel }) {
 
   return (
     <motion.button
-      whileTap={{ scale: 0.88 }}
+      whileTap={disabled ? {} : { scale: 0.88 }}
       onPointerDown={start}
       onPointerUp={stop}
       onPointerLeave={stop}
       onPointerCancel={stop}
       aria-label={ariaLabel}
+      disabled={disabled}
       style={{
-        width: 38, height: 38, borderRadius: 10,
+        width: 52, height: 52, borderRadius: 12,
         background: color, color: 'white', border: `3px solid ${INK}`,
         textShadow: '0 2px 0 rgba(0,0,0,0.3)',
-        fontSize: 20, fontWeight: 800, lineHeight: 1,
-        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 26, fontWeight: 800, lineHeight: 1,
+        cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.5 : 1,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
         touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none',
         boxShadow: `inset 0 2px 0 rgba(255,255,255,0.3), inset 0 -4px 0 rgba(0,0,0,0.22), 0 4px 0 ${INK}`,
       }}
@@ -186,520 +258,471 @@ function StepButton({ label, onPress, color, ariaLabel }) {
   )
 }
 
+// A little clock with only the one hand, instead of the words "Stunde" /
+// "Minute" a non-reader cannot use.
+function HandIcon({ kind }) {
+  const long = kind === 'minute'
+  return (
+    <svg width={40} height={40} viewBox="0 0 34 34" aria-hidden="true" style={{ flexShrink: 0 }}>
+      <circle cx="17" cy="17" r="15" fill="#FFFDF7" stroke={INK} strokeWidth="2.5" />
+      <line x1="17" y1="17" x2={long ? 17 : 24} y2={long ? 4 : 12}
+        stroke={long ? MIN_C : HOUR_C} strokeWidth={long ? 3 : 4.5} strokeLinecap="round" />
+      <circle cx="17" cy="17" r="2.5" fill={INK} />
+    </svg>
+  )
+}
+
 // ── Analog Clock SVG ─────────────────────────────────────────────────────────
 const CX = 120, CY = 120, R = 108
+const HOUR_LEN = R * 0.52, MIN_LEN = R * 0.86
 
-function ClockFace({ targetH, targetM, interactive, onAnswer, level = 1, highlightHands = false }) {
-  // Current hand positions (for interactive mode) — start at a random position
-  const [hours,   setHours]   = useState(() => Math.floor(Math.random() * 12) + 1)
-  const [minutes, setMinutes] = useState(() => Math.floor(Math.random() * 12) * 5)
-  const [dragging, setDragging] = useState(null) // 'hour' | 'minute' | null
-  const svgRef = useRef(null)
+function handEnd(angleDeg, length) {
+  const rad = angleDeg * Math.PI / 180
+  return { x: CX + length * Math.sin(rad), y: CY - length * Math.cos(rad) }
+}
 
-  // For display-only mode, show target time directly
-  const displayH = interactive ? hours   : targetH
-  const displayM = interactive ? minutes : targetM
+// value: minutes since 12:00. In interactive mode the whole face is the
+// handle: a finger near the middle turns the short hand, further out the
+// long one. The grips used to sit right on the 11/12 and 7/8 and carried
+// the letters "S" and "M".
+function ClockFace({ value, onChange, interactive, level, highlightHands, size }) {
+  const svgRef  = useRef(null)
+  const dragRef = useRef(null)          // 'hour' | 'minute' | null
+  const [dragging, setDragging] = useState(null)
+  const { h, m } = toHM(value)
 
-  const getAngle = useCallback((e) => {
-    const svg = svgRef.current
-    if (!svg) return 0
-    const rect    = svg.getBoundingClientRect()
-    const cx      = rect.left + rect.width  / 2
-    const cy      = rect.top  + rect.height / 2
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY
+  const pointer = useCallback((e) => {
+    const rect = svgRef.current.getBoundingClientRect()
+    const dx = e.clientX - (rect.left + rect.width / 2)
+    const dy = e.clientY - (rect.top + rect.height / 2)
     // atan2(dx, -dy): 0° at top (12 o'clock), positive clockwise
-    return (Math.atan2(clientX - cx, -(clientY - cy)) * 180 / Math.PI + 360) % 360
+    return {
+      angle: (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360,
+      dist:  Math.hypot(dx, dy) / (rect.width / 2) * R,
+    }
   }, [])
 
-  const onPointerDown = useCallback((hand, e) => {
+  const moveHand = useCallback((hand, angle) => {
+    if (hand === 'minute') {
+      // in 5-minute notches; past the 12 the hour moves on, like a real clock
+      const nm = Math.round(angle / 30) * 5 % 60
+      const curM = value % 60
+      let hour = Math.floor(value / 60)
+      if (curM >= 45 && nm < 15) hour += 1
+      else if (curM < 15 && nm >= 45) hour -= 1
+      onChange((((hour * 60 + nm) % 720) + 720) % 720)
+    } else {
+      // The hour hand stands between two numbers at :30 or :45 — drawn at
+      // hours·30° + minutes·0.5°. Rounding the raw angle to the nearest hour
+      // set "halb fünf" to 5:30 exactly when the child put the hand in the
+      // right place, between the 4 and the 5. Take the minute share off first.
+      const curM = value % 60
+      const nh = Math.floor((((angle - curM * 0.5) % 360 + 360) % 360) / 30 + 0.5) % 12
+      onChange(nh * 60 + curM)
+    }
+  }, [value, onChange])
+
+  const onPointerDown = useCallback((e) => {
     if (!interactive) return
     e.preventDefault()
+    const { angle, dist } = pointer(e)
+    const hand = dist < R * 0.5 ? 'hour' : 'minute'
+    dragRef.current = hand
     setDragging(hand)
-  }, [interactive])
+    try { svgRef.current.setPointerCapture(e.pointerId) } catch { /* ignore */ }
+    moveHand(hand, angle)
+  }, [interactive, pointer, moveHand])
 
-  // Window-level drag: doesn't break when pointer leaves SVG bounds
-  useEffect(() => {
-    if (!dragging) return
-    const handleMove = (e) => {
-      e.preventDefault()
-      const angle = getAngle(e)
-      if (dragging === 'minute') {
-        setMinutes(Math.round(angle / 6) % 60)
-      } else {
-        setHours(Math.round(angle / 30) % 12 || 12)
-      }
-    }
-    const handleUp = () => setDragging(null)
-    window.addEventListener('mousemove', handleMove, { passive: false })
-    window.addEventListener('mouseup',   handleUp)
-    window.addEventListener('touchmove', handleMove, { passive: false })
-    window.addEventListener('touchend',  handleUp)
-    return () => {
-      window.removeEventListener('mousemove', handleMove)
-      window.removeEventListener('mouseup',   handleUp)
-      window.removeEventListener('touchmove', handleMove)
-      window.removeEventListener('touchend',  handleUp)
-    }
-  }, [dragging, getAngle])
+  const onPointerMove = useCallback((e) => {
+    if (!dragRef.current) return
+    e.preventDefault()
+    moveHand(dragRef.current, pointer(e).angle)
+  }, [pointer, moveHand])
 
-  // Tap alternative to dragging — steps the hour hand by ±1 (wraps 1–12)
-  // and the minute hand by ±5 (wraps 0–55). A 5-minute step still lands
-  // well within every level's matching tolerance (min. 4 minutes), since
-  // the farthest any target minute can be from the nearest multiple of 5
-  // is 2.5 minutes.
-  const stepHour = useCallback((delta) => {
-    setHours(h => (((h - 1 + delta) % 12) + 12) % 12 + 1)
-  }, [])
-  const stepMinute = useCallback((delta) => {
-    setMinutes(m => (((m + delta) % 60) + 60) % 60)
-  }, [])
-
-  // Submit answer
-  const submit = useCallback(() => {
-    if (!interactive || !onAnswer) return
-    onAnswer(hours, minutes)
-  }, [interactive, hours, minutes, onAnswer])
+  const endDrag = useCallback(() => { dragRef.current = null; setDragging(null) }, [])
 
   // Hour hand: 360°/12h = 30° per hour + 0.5° per minute
-  const hourAngle   = (displayH % 12) * 30 + displayM * 0.5
-  // Minute hand: 360°/60min = 6° per minute
-  const minuteAngle = displayM * 6
-
-  // Correct clock-angle → SVG coordinate: 0° = 12 o'clock, clockwise
-  function handEnd(angleDeg, length) {
-    const rad = angleDeg * Math.PI / 180
-    return {
-      x: CX + length * Math.sin(rad),
-      y: CY - length * Math.cos(rad),
-    }
-  }
-
-  const hourEnd   = handEnd(hourAngle,   R * 0.54)
-  const minuteEnd = handEnd(minuteAngle, R * 0.76)
+  const hourAngle   = (h % 12) * 30 + m * 0.5
+  const minuteAngle = m * 6
+  const hourEnd     = handEnd(hourAngle, HOUR_LEN)
+  const minuteEnd   = handEnd(minuteAngle, MIN_LEN)
+  const hourGrip    = handEnd(hourAngle, HOUR_LEN * 0.72)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-      <svg
-        ref={svgRef}
-        viewBox="0 0 240 240"
-        style={{
-          width: 'min(76vw, 340px)',
-          height: 'auto',
-          display: 'block',
-          borderRadius: '50%',
-          filter: 'drop-shadow(0 5px 0 rgba(42,27,61,0.35))',
-          cursor: dragging ? 'grabbing' : interactive ? 'grab' : 'default',
-          touchAction: 'none',
-          userSelect: 'none',
-        }}
-      >
-        {/* Clock face */}
-        <circle cx={CX} cy={CY} r={R} fill="#FFFDF7" stroke="#2a1b3d" strokeWidth={5} />
-        <circle cx={CX} cy={CY} r={R - 6} fill="none" stroke="#ecd2a0" strokeWidth={3} />
+    <svg
+      ref={svgRef}
+      viewBox="0 0 240 240"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
+      role="img"
+      aria-label={interactive ? 'Uhr zum Stellen' : 'Uhr'}
+      style={{
+        width: size, height: size,
+        display: 'block',
+        borderRadius: '50%',
+        filter: 'drop-shadow(0 5px 0 rgba(42,27,61,0.35))',
+        cursor: dragging ? 'grabbing' : interactive ? 'grab' : 'default',
+        touchAction: 'none',
+        userSelect: 'none',
+      }}
+    >
+      {/* Clock face */}
+      <circle cx={CX} cy={CY} r={R} fill="#FFFDF7" stroke={INK} strokeWidth={5} />
+      <circle cx={CX} cy={CY} r={R - 6} fill="none" stroke="#ecd2a0" strokeWidth={3} />
 
-        {/* Hour markers */}
-        {Array.from({ length: 12 }, (_, i) => {
-          const ang = (i / 12) * Math.PI * 2 - Math.PI / 2
-          const outer = R - 8
-          const inner = i % 3 === 0 ? R - 22 : R - 16
-          return (
-            <line key={i}
-              x1={CX + outer * Math.cos(ang)} y1={CY + outer * Math.sin(ang)}
-              x2={CX + inner * Math.cos(ang)} y2={CY + inner * Math.sin(ang)}
-              stroke={i % 3 === 0 ? '#2a1b3d' : '#b9a27e'}
-              strokeWidth={i % 3 === 0 ? 3.5 : 2}
-              strokeLinecap="round"
-            />
-          )
-        })}
-
-        {/* Hour numbers */}
-        {[12,1,2,3,4,5,6,7,8,9,10,11].map((n, i) => {
-          const ang = (i / 12) * Math.PI * 2 - Math.PI / 2
-          const r2  = R - 34
-          return (
-            <text key={n}
-              x={CX + r2 * Math.cos(ang)}
-              y={CY + r2 * Math.sin(ang) + 5}
-              textAnchor="middle"
-              fontSize={i % 3 === 0 ? 17 : 13}
-              fontWeight={i % 3 === 0 ? '700' : '500'}
-              fill={i % 3 === 0 ? '#2a1b3d' : '#6e5d80'}
-              fontFamily="var(--font-heading, system-ui)"
-              opacity={level <= 3 ? 1 : level <= 5 ? 0.7 : 0.4}
-            >{n}</text>
-          )
-        })}
-
-        {/* 5-minute labels — only at level >= 4 */}
-        {level >= 4 && Array.from({ length: 12 }, (_, i) => {
-          const min = i * 5
-          if (min === 0) return null // 12 already shown as hour number
-          const ang = (i / 12) * Math.PI * 2 - Math.PI / 2
-          const r3 = R - 52
-          return (
-            <text key={'m'+i}
-              x={CX + r3 * Math.cos(ang)}
-              y={CY + r3 * Math.sin(ang) + 4}
-              textAnchor="middle"
-              fontSize={9} fontWeight="600"
-              fill="#a0703f" opacity={0.85}
-              fontFamily="var(--font-heading, system-ui)"
-            >{min}</text>
-          )
-        })}
-        {/* Hour hand — pulses while the "short hand = hours" tip is showing,
-            so the child's eye is sent to the thing the tip talks about. */}
-        <motion.line
-          x1={CX} y1={CY}
-          x2={hourEnd.x} y2={hourEnd.y}
-          stroke={interactive ? '#4A00E0' : '#333'}
-          strokeLinecap="round"
-          animate={highlightHands
-            ? { strokeWidth: [interactive ? 8 : 7, 14, interactive ? 8 : 7] }
-            : { strokeWidth: interactive ? 8 : 7 }}
-          transition={highlightHands ? { duration: 1.1, repeat: Infinity } : { duration: 0.2 }}
-          style={{ cursor: 'default', pointerEvents: 'none' }}
-        />
-        {/* Minute hand — pulses on the offbeat so the two are told apart */}
-        <motion.line
-          x1={CX} y1={CY}
-          x2={minuteEnd.x} y2={minuteEnd.y}
-          stroke={interactive ? '#FF6B6B' : '#6C63FF'}
-          strokeLinecap="round"
-          animate={highlightHands
-            ? { strokeWidth: [interactive ? 5 : 4, 10, interactive ? 5 : 4] }
-            : { strokeWidth: interactive ? 5 : 4 }}
-          transition={highlightHands ? { duration: 1.1, repeat: Infinity, delay: 0.55 } : { duration: 0.2 }}
-          style={{ cursor: 'default', pointerEvents: 'none' }}
-        />
-        {/* Center cap */}
-        <circle cx={CX} cy={CY} r={7} fill="#4A00E0" style={{ pointerEvents: 'none' }} />
-        <circle cx={CX} cy={CY} r={4} fill="white" style={{ pointerEvents: 'none' }} />
-
-        {/* Tip handles — grab these to drag each hand */}
-        {interactive && (<>
-          {/* Hour tip: blue circle */}
-          <circle
-            cx={hourEnd.x} cy={hourEnd.y} r={26}
-            fill="#4A00E0" opacity={dragging === 'hour' ? 1 : 0.82}
-            stroke="white" strokeWidth={3}
-            style={{ cursor: dragging === 'hour' ? 'grabbing' : 'grab', filter: 'drop-shadow(0 2px 6px rgba(74,0,224,0.5))' }}
-            onMouseDown={(e) => { e.stopPropagation(); onPointerDown('hour', e) }}
-            onTouchStart={(e) => { e.stopPropagation(); onPointerDown('hour', e) }}
+      {/* Hour markers */}
+      {Array.from({ length: 12 }, (_, i) => {
+        const ang = (i / 12) * Math.PI * 2 - Math.PI / 2
+        const outer = R - 8
+        const inner = i % 3 === 0 ? R - 22 : R - 16
+        return (
+          <line key={i}
+            x1={CX + outer * Math.cos(ang)} y1={CY + outer * Math.sin(ang)}
+            x2={CX + inner * Math.cos(ang)} y2={CY + inner * Math.sin(ang)}
+            stroke={i % 3 === 0 ? INK : '#b9a27e'}
+            strokeWidth={i % 3 === 0 ? 3.5 : 2}
+            strokeLinecap="round"
           />
-          <text x={hourEnd.x} y={hourEnd.y + 5} textAnchor="middle" fontSize={11}
-            fill="white" fontWeight="800" style={{ pointerEvents: 'none', userSelect: 'none' }}>S</text>
+        )
+      })}
 
-          {/* Minute tip: red circle */}
-          <circle
-            cx={minuteEnd.x} cy={minuteEnd.y} r={24}
-            fill="#FF6B6B" opacity={dragging === 'minute' ? 1 : 0.82}
-            stroke="white" strokeWidth={3}
-            style={{ cursor: dragging === 'minute' ? 'grabbing' : 'grab', filter: 'drop-shadow(0 2px 6px rgba(255,107,107,0.5))' }}
-            onMouseDown={(e) => { e.stopPropagation(); onPointerDown('minute', e) }}
-            onTouchStart={(e) => { e.stopPropagation(); onPointerDown('minute', e) }}
-          />
-          <text x={minuteEnd.x} y={minuteEnd.y + 5} textAnchor="middle" fontSize={11}
-            fill="white" fontWeight="800" style={{ pointerEvents: 'none', userSelect: 'none' }}>M</text>
-        </>)}
-      </svg>
+      {/* Hands under the numbers: the long hand reaches across the number
+          ring, and the digits keep a light outline so they stay readable.
+          The hour hand pulses while a hint is showing, so the child's eye
+          is sent to the thing the hint talks about. */}
+      <motion.line
+        x1={CX} y1={CY}
+        x2={hourEnd.x} y2={hourEnd.y}
+        stroke={HOUR_C}
+        strokeLinecap="round"
+        animate={highlightHands ? { strokeWidth: [9, 15, 9] } : { strokeWidth: 9 }}
+        transition={highlightHands ? { duration: 1.1, repeat: Infinity } : { duration: 0.2 }}
+        style={{ pointerEvents: 'none' }}
+      />
+      {/* Minute hand — pulses on the offbeat so the two are told apart */}
+      <motion.line
+        x1={CX} y1={CY}
+        x2={minuteEnd.x} y2={minuteEnd.y}
+        stroke={MIN_C}
+        strokeLinecap="round"
+        animate={highlightHands ? { strokeWidth: [5, 10, 5] } : { strokeWidth: 5 }}
+        transition={highlightHands ? { duration: 1.1, repeat: Infinity, delay: 0.55 } : { duration: 0.2 }}
+        style={{ pointerEvents: 'none' }}
+      />
+      {/* Hour numbers — always fully visible: they used to fade to 40 % from
+          level 6, just when minute numbers were added */}
+      {[12,1,2,3,4,5,6,7,8,9,10,11].map((n, i) => {
+        const ang = (i / 12) * Math.PI * 2 - Math.PI / 2
+        const r2  = R - 34
+        return (
+          <text key={n}
+            x={CX + r2 * Math.cos(ang)}
+            y={CY + r2 * Math.sin(ang) + 6}
+            textAnchor="middle"
+            fontSize={i % 3 === 0 ? 19 : 16}
+            fontWeight={i % 3 === 0 ? '700' : '600'}
+            fill="#2a1b3d"
+            stroke="#FFFDF7" strokeWidth={4} paintOrder="stroke"
+            fontFamily="var(--font-heading, system-ui)"
+            style={{ pointerEvents: 'none' }}
+          >{n}</text>
+        )
+      })}
 
-      {/* Digital readout — only visible when child is setting the time */}
-      {interactive && (
-        <div style={{
-          fontFamily: 'var(--font-heading)', fontSize: 22, fontWeight: 800,
-          color: ACCENT,
-          ...pxCard(), padding: '3px 20px',
-        }}>
-          {fmt(displayH, displayM)}
-        </div>
-      )}
+      {/* 5-minute labels — only once times are also shown digitally */}
+      {showDigital(level) && Array.from({ length: 12 }, (_, i) => {
+        const min = i * 5
+        if (min === 0) return null // 12 already shown as hour number
+        const ang = (i / 12) * Math.PI * 2 - Math.PI / 2
+        const r3 = R - 54
+        return (
+          <text key={'m'+i}
+            x={CX + r3 * Math.cos(ang)}
+            y={CY + r3 * Math.sin(ang) + 4}
+            textAnchor="middle"
+            fontSize={10} fontWeight="700"
+            fill="#8a4f22"
+            stroke="#FFFDF7" strokeWidth={3} paintOrder="stroke"
+            fontFamily="var(--font-heading, system-ui)"
+            style={{ pointerEvents: 'none' }}
+          >{min}</text>
+        )
+      })}
 
-      {/* Legend + tap controls — dragging the hands works, but tapping the
-          ± buttons is the non-drag alternative for kids (or input devices)
-          that can't reliably drag. */}
-      {interactive && (
-        <div style={{
-          display: 'flex', gap: 'clamp(14px,4vw,28px)', justifyContent: 'center',
-          flexWrap: 'wrap',
-        }}>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontFamily: 'var(--font-heading)', fontSize: 14, fontWeight: 700, color: '#4A00E0' }}>
-              🔵 Stunde
-            </span>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <StepButton label="−" color="#4A00E0" onPress={() => stepHour(-1)} ariaLabel="Stundenzeiger zurück" />
-              <StepButton label="+" color="#4A00E0" onPress={() => stepHour(1)}  ariaLabel="Stundenzeiger vor" />
-            </div>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontFamily: 'var(--font-heading)', fontSize: 14, fontWeight: 700, color: '#FF6B6B' }}>
-              🔴 Minute
-            </span>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <StepButton label="−" color="#FF6B6B" onPress={() => stepMinute(-5)} ariaLabel="Minutenzeiger zurück" />
-              <StepButton label="+" color="#FF6B6B" onPress={() => stepMinute(5)}  ariaLabel="Minutenzeiger vor" />
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Grips — see-through, so the numbers under them stay readable */}
+      {interactive && (<>
+        <circle cx={hourGrip.x} cy={hourGrip.y} r={17}
+          fill={HOUR_C} fillOpacity={dragging === 'hour' ? 0.4 : 0.2} stroke={HOUR_C} strokeWidth={2.5}
+          style={{ pointerEvents: 'none' }} />
+        <circle cx={minuteEnd.x} cy={minuteEnd.y} r={12}
+          fill={MIN_C} fillOpacity={dragging === 'minute' ? 0.4 : 0.2} stroke={MIN_C} strokeWidth={2.5}
+          style={{ pointerEvents: 'none' }} />
+      </>)}
 
-      {interactive && (
-        <motion.button
-          whileHover={{ scale: 1.07 }} whileTap={{ scale: 0.93 }}
-          onClick={submit}
-          style={{
-            ...pxButton('green'),
-            padding: '11px 40px', fontSize: 20,
-          }}
-        >{'✅ Fertig!'}</motion.button>
-      )}
-    </div>
+      {/* Center cap */}
+      <circle cx={CX} cy={CY} r={7} fill={INK} style={{ pointerEvents: 'none' }} />
+      <circle cx={CX} cy={CY} r={3} fill="white" style={{ pointerEvents: 'none' }} />
+    </svg>
   )
+}
+
+// Size of an element, for laying the clock out against the real height.
+function useSize(ref) {
+  const [size, setSize] = useState({ w: 0, h: 0 })
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const calc = () => {
+      const r = el.getBoundingClientRect()
+      setSize(s => (s.w === Math.round(r.width) && s.h === Math.round(r.height) ? s : { w: Math.round(r.width), h: Math.round(r.height) }))
+    }
+    calc()
+    const ro = new ResizeObserver(calc)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [ref])
+  return size
 }
 
 // ── Main Game ─────────────────────────────────────────────────────────────────
 export default function ClockGame({ level = 1, onComplete }) {
-  const [times]     = useState(() => generateTimes(level).map((time, i) => {
-    // Every third round asks what happens at this time instead of just
-    // reading or setting it, so the face connects to the child's own day.
-    // Those rounds need a time an activity actually happens at, so they
-    // replace the generated one.
-    if (i % 3 !== 2) return time
-    const act = DAILY_ACTIVITIES[Math.floor(i / 3) % DAILY_ACTIVITIES.length]
-    return { h: act.h, m: act.m, activity: act }
-  }))
-  const [idx,       setIdx]       = useState(0)
-  const [feedback,  setFeedback]  = useState(null)     // 'ok' | 'wrong'
-  const [picked,    setPicked]    = useState(null)     // the option the user actually selected
-  const [score,     setScore]     = useState(0)
-  const [mood,      setMood]      = useState('happy')
-  const [flashKey,  setFlashKey]  = useState(0)
-  const [streak,    setStreak]    = useState(0)
-  const [showWeiter, setShowWeiter] = useState(false)
-  const [wrongStreak, setWrongStreak] = useState(0)  // consecutive wrong answers on same question
-  const [showClockHint, setShowClockHint] = useState(false)
+  const [times]   = useState(() => generateRounds(level))
+  const tier      = tierFor(level)
+  const [idx,     setIdx]     = useState(0)
+  // null · 'hint' after a first miss · 'right' · 'shown' after a second miss
+  const [status,  setStatus]  = useState(null)
+  const [tried,   setTried]   = useState([])       // options already tapped this round
+  const [missed,  setMissed]  = useState([])       // rounds with a miss
+  const [mood,    setMood]    = useState('happy')
+  const [flash,   setFlash]   = useState(null)     // { kind, key }
+  const [hands,   setHands]   = useState(0)        // the set-mode hands, minutes since 12:00
+  const tweenRef  = useRef(null)
 
   const t = times[idx]
-  // 'read' = pick the digital time · 'set' = put the hands there ·
+  // 'read' = pick the time · 'set' = put the hands there ·
   // 'daily' = say what happens at this time of day
   const mode = t?.activity ? 'daily' : (idx % 3 === 0 ? 'read' : 'set')
+  const resolved = status === 'right' || status === 'shown'
 
-  // The read-mode prompt used to speak the correct answer out loud
-  // ("Wie viel Uhr ist es? 3 Uhr"), which handed the child the solution to
-  // the very question being asked. Only the setting task names a time.
-  const speakTask = useCallback(() => {
-    if (!t) return
-    const task = mode === 'read'  ? 'Schau auf die Uhr. Wie viel Uhr ist es?'
-               : mode === 'daily' ? 'Schau auf die Uhr. Was macht Lumi um diese Zeit?'
-               :                    `Stelle die Uhr auf ${toGermanTime(t.h, t.m, { spoken: true })}.`
-    speak(task, { rate: 0.8, pitch: 1.05, lang: 'de-DE' })
-  }, [t, mode])
+  const task = !t ? ''
+    : mode === 'read'  ? 'Schau auf die Uhr. Wie viel Uhr ist es?'
+    : mode === 'daily' ? 'Was macht Lumi, wenn die Uhr so aussieht?'
+    :                    `Stelle die Uhr auf ${say(t)}.`
 
-  useEffect(() => {
-    const id = setTimeout(speakTask, 500)
-    return () => clearTimeout(id)
-  }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Wrong-answer options — stable via useMemo
-  const options = useMemo(() => {
-    if (!t) return []
-    const correct = fmt(t.h, t.m)
-    const wrongs  = []
-    const seen    = new Set([correct])
-    let tries     = 0
-    while (wrongs.length < 3 && tries < 200) {
-      tries++
-      let wh = rand(1, 12)
-      let wm
-      if (level <= 1)      wm = 0
-      else if (level <= 2) wm = [0, 30][rand(0, 1)]
-      else if (level <= 3) wm = [0, 15, 30, 45][rand(0, 3)]
-      else                 wm = rand(0, 11) * 5
-      const s = fmt(wh, wm)
-      if (!seen.has(s) && !(wh === t.h && wm === t.m)) { seen.add(s); wrongs.push(s) }
-    }
-    return shuffle([correct, ...wrongs])
-  }, [idx, level])
-
-  const advance = useCallback((ok) => {
-    const ns = score + (ok ? 1 : 0)
-    if (ok) setScore(ns)
-    setFeedback(ok ? 'ok' : 'wrong')
-    setMood(ok ? 'excited' : 'encouraging')
-    setFlashKey(k => k + 1)
-    if (ok) { sfx.correct(); setShowWeiter(true); setStreak(s => s + 1); setWrongStreak(0); setShowClockHint(false) } else {
-      sfx.wrong(); setStreak(0)
-      setWrongStreak(w => {
-        const nw = w + 1
-        if (nw >= 2) setShowClockHint(true)
-        return nw
-      })
-    }
-    if (!ok) setTimeout(() => {
-      setFeedback(null)
-      setMood('happy')
-      if (idx + 1 >= times.length) {
-        sfx.complete()
-        afterNarration(() => onComplete({ score: ns, total: times.length }), { minMs: 900 })
-      } else {
-        setIdx(i => i + 1)
-      }
-    }, 1100) // end if(!ok)
-  }, [score, idx, times.length, onComplete])
-
-  // Three activity cards for a daily round: the right one plus two others
-  // far enough away on the face that the answer is decidable from the hands.
+  const options      = useMemo(() => (t && mode === 'read' ? readOptions(t, level) : []), [idx]) // eslint-disable-line react-hooks/exhaustive-deps
   const dailyOptions = useMemo(() => {
     if (!t?.activity) return []
-    const others = shuffle(DAILY_ACTIVITIES.filter(a => a.id !== t.activity.id)).slice(0, 2)
+    const others = shuffle(activitiesFor(level).filter(a => a.id !== t.activity.id)).slice(0, 2)
     return shuffle([t.activity, ...others])
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const pickActivity = useCallback((act) => {
-    if (feedback) return
-    setPicked(act.id)
-    advance(act.id === t.activity.id)
-  }, [feedback, t, advance])
+  // New round: hands somewhere clearly wrong, then the task
+  useEffect(() => {
+    if (!t) return
+    setStatus(null); setTried([]); setMood('happy')
+    cancelAnimationFrame(tweenRef.current)
+    let start
+    do { start = fromHM(rand(1, 12), rand(0, 11) * 5) }
+    while (timeDiffMin(toHM(start).h, toHM(start).m, t.h, t.m) <= 60)
+    setHands(start)
+    lockPreviews()
+    const id = setTimeout(() => sayTask(task), 450)
+    return () => clearTimeout(id)
+  }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => () => cancelAnimationFrame(tweenRef.current), [])
+
+  // After a second miss in set mode the hands glide to the right place
+  const showOnClock = useCallback(() => {
+    const from = hands, to = fromHM(t.h, t.m)
+    let delta = ((to - from) % 720 + 720) % 720
+    if (delta > 360) delta -= 720
+    const t0 = performance.now(), dur = 1100
+    const step = (now) => {
+      const k = Math.min(1, (now - t0) / dur)
+      const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2
+      setHands(((Math.round(from + delta * e) % 720) + 720) % 720)
+      if (k < 1) tweenRef.current = requestAnimationFrame(step)
+    }
+    tweenRef.current = requestAnimationFrame(step)
+  }, [hands, t])
+
+  const right = useCallback((praise) => {
+    setStatus('right')
+    setMood('excited')
+    setFlash({ kind: 'ok', key: Date.now() })
+    sfx.correct()
+    sayRight(praise)
+  }, [])
+
+  // First miss: a hint and another try. Second miss: show and say the answer.
+  const wrong = useCallback((hint, reveal) => {
+    setMissed(ms => (ms.includes(idx) ? ms : [...ms, idx]))
+    setMood('encouraging')
+    setFlash({ kind: 'wrong', key: Date.now() })
+    sfx.wrong()
+    if (status === 'hint') {
+      setStatus('shown')
+      sayWrong(reveal)
+    } else {
+      setStatus('hint')
+      sayWrong(hint)
+    }
+  }, [idx, status])
 
   const pickDigital = useCallback((opt) => {
-    if (feedback) return
-    const correct = fmt(t.h, t.m)
-    setPicked(opt)
-    advance(opt === correct)
-  }, [feedback, t, advance])
+    if (resolved || tried.includes(opt)) return
+    setTried(tr => [...tr, opt])
+    if (opt === t) right(`Es ist ${say(t)}.`)
+    else wrong(readHint(t.m), `Es ist ${say(t)}. ${describeHands(t.h, t.m)}`)
+  }, [resolved, tried, t, right, wrong])
 
-  const submitAnalog = useCallback((h, m) => {
-    if (feedback) return
-    const diff = timeDiffMin(h, m, t.h, t.m)
-    const tolerance = toleranceFor(level)
-    advance(diff <= tolerance)
-  }, [feedback, t, level, advance])
+  const pickActivity = useCallback((act) => {
+    if (resolved || tried.includes(act.id)) return
+    setTried(tr => [...tr, act.id])
+    if (act.id === t.activity.id) right(`Um ${say(t)} ${act.does}.`)
+    else wrong(`Es ist ${say(t)}. Was macht Lumi da?`, `Um ${say(t)} ${t.activity.does}.`)
+  }, [resolved, tried, t, right, wrong])
+
+  const submitAnalog = useCallback(() => {
+    if (resolved) return
+    const cur = toHM(hands)
+    if (timeDiffMin(cur.h, cur.m, t.h, t.m) <= TOLERANCE[tier]) { right(`Es ist ${say(t)}.`); return }
+    // Which hand is off? The minute hand alone decides "halb", "Viertel" …
+    const minuteOk = Math.min(Math.abs(cur.m - t.m), 60 - Math.abs(cur.m - t.m)) <= TOLERANCE[tier]
+    const hint = minuteOk
+      ? 'Der lange Zeiger stimmt schon. Schau noch einmal auf den kurzen Zeiger.'
+      : cur.h % 12 === t.h % 12
+        ? 'Der kurze Zeiger stimmt schon. Schau noch einmal auf den langen Zeiger.'
+        : 'Der kurze Zeiger zeigt die Stunde, der lange Zeiger die Minuten. Versuch es noch einmal.'
+    if (status === 'hint') showOnClock()
+    wrong(hint, `Schau, so sieht ${say(t)} aus. ${describeHands(t.h, t.m)}`)
+  }, [resolved, hands, t, tier, status, right, wrong, showOnClock])
 
   const weiterClick = () => {
-    setShowWeiter(false)
-    setFeedback(null)
-    setPicked(null)
-    setMood('happy')
-    setWrongStreak(0)
-    setShowClockHint(false)
     if (idx + 1 >= times.length) {
       sfx.complete()
-      afterNarration(() => onComplete({ score, total: times.length }), { minMs: 500 })
+      afterNarration(() => onComplete(result(times.length - missed.length, times.length)), { minMs: 500 })
     } else {
       setIdx(i => i + 1)
     }
   }
 
+  // ── Layout: the clock takes what is left of the height ───────────────────
+  const areaRef = useRef(null)
+  const area    = useSize(areaRef)
+  const wide    = area.w > area.h * 1.2 && area.w >= 560
+  const side    = mode === 'read'  ? (wide ? { w: 360, h: 0 } : { w: 0, h: 150 })
+                : mode === 'daily' ? (wide ? { w: 250, h: 0 } : { w: 0, h: 108 })
+                :                    (wide ? { w: 150, h: 0 } : { w: 0, h: 64 })
+  const gap     = 16
+  const panelPad = 12
+  const clockPx = Math.max(150, Math.floor(Math.min(
+    wide ? area.h : area.h - side.h - gap,
+    wide ? area.w - side.w - gap : area.w,
+    560,
+  ) - panelPad * 2 - 6))
+
   if (!t) return null
 
-  const toleranceLabel = difficultyLabel(level)
+  const hearItems = [task, ...(
+    mode === 'read'  ? options.map(o => say(o))
+    : mode === 'daily' ? dailyOptions.map(a => plain(a.label))
+    : [])]
+
+  const target = showDigital(level)
+    ? <><strong style={{ color: ACCENT }}>{fmt(t.h, t.m)}</strong> ({toGermanTime(t.h, t.m)})</>
+    : <strong style={{ color: ACCENT }}>{toGermanTime(t.h, t.m)}</strong>
+
+  const bubble = status === 'right'
+    ? <>⭐ Richtig! Es ist <strong style={{ color: ACCENT }}>{toGermanTime(t.h, t.m)}</strong>.</>
+    : status === 'shown'
+      ? (mode === 'daily'
+          ? <>👀 Um <strong style={{ color: ACCENT }}>{toGermanTime(t.h, t.m)}</strong>: {t.activity.label}.</>
+          : <>👀 So sieht <strong style={{ color: ACCENT }}>{toGermanTime(t.h, t.m)}</strong> aus.</>)
+      : status === 'hint'
+        ? (mode === 'daily'
+            ? <>💡 Es ist <strong style={{ color: ACCENT }}>{toGermanTime(t.h, t.m)}</strong>. Was macht Lumi da?</>
+            : <>💡 Schau auf die Zeiger: der kurze zeigt die Stunde, der lange die Minuten.</>)
+        : mode === 'read'
+          ? <>Wie viel Uhr ist es? 🕐</>
+          : mode === 'daily'
+            ? <>Was macht Lumi, wenn die Uhr so aussieht? 🤔</>
+            : <>Stelle die Uhr auf {target}!</>
+
+  const doneSeg = (i) => i < idx || (i === idx && resolved)
 
   return (
     <div style={{
-      flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-      padding: 'clamp(14px,2.5vw,28px) clamp(14px,3vw,32px)',
-      gap: 'clamp(12px,2vw,20px)',
+      flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center',
+      padding: 'clamp(10px,2vw,22px) clamp(12px,3vw,32px)',
+      gap: 'clamp(8px,1.6dvh,16px)', overflow: 'hidden',
     }}>
 
       {/* Confetti on correct */}
       <AnimatePresence>
-        {feedback === 'ok' && (
-          <motion.div key={'confetti-'+flashKey}
-            initial={{opacity:1}} animate={{opacity:0}} transition={{delay:0.8,duration:0.3}}
-            style={{position:'fixed',inset:0,zIndex:160,pointerEvents:'none',
-              display:'flex',alignItems:'center',justifyContent:'center',fontSize:60}}>
-            {['🌟','✨','⭐','🎉','🌟','✨'].map((e,i) => (
+        {flash?.kind === 'ok' && (
+          <motion.div key={'confetti-' + flash.key}
+            initial={{ opacity: 1 }} animate={{ opacity: 0 }} transition={{ delay: 0.8, duration: 0.3 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 160, pointerEvents: 'none',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 60 }}>
+            {['🌟','✨','⭐','🎉','🌟','✨'].map((e, i) => (
               <motion.span key={i}
-                initial={{y:0,x:0,scale:0,opacity:1}}
-                animate={{y:-(80+i*25),x:(i%2===0?1:-1)*(40+i*30),scale:[0,1.3,0],opacity:[1,1,0]}}
-                transition={{duration:0.7,delay:i*0.06}}
-                style={{position:'absolute'}}>{e}</motion.span>
+                initial={{ y: 0, x: 0, scale: 0, opacity: 1 }}
+                animate={{ y: -(80 + i * 25), x: (i % 2 === 0 ? 1 : -1) * (40 + i * 30), scale: [0, 1.3, 0], opacity: [1, 1, 0] }}
+                transition={{ duration: 0.7, delay: i * 0.06 }}
+                style={{ position: 'absolute' }}>{e}</motion.span>
             ))}
           </motion.div>
         )}
       </AnimatePresence>
       {/* Flash overlay */}
       <AnimatePresence>
-        {feedback && (
-          <motion.div key={flashKey}
-            initial={{ opacity: 0.35 }} animate={{ opacity: 0 }}
+        {flash && (
+          <motion.div key={flash.key}
+            initial={{ opacity: flash.kind === 'ok' ? 0.35 : 0.22 }} animate={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
             style={{ position: 'fixed', inset: 0, zIndex: 150, pointerEvents: 'none',
-                     background: feedback === 'ok' ? '#6BCB77' : '#FF6B6B' }}
+                     background: flash.kind === 'ok' ? '#6BCB77' : '#FF6B6B' }}
           />
         )}
       </AnimatePresence>
 
-      {/* Progress */}
-      <div style={{ display: 'flex', gap: 5, width: '100%', maxWidth: 680 }}>
+      {/* Progress — a round solved only on a later try turns light red */}
+      <div style={{ display: 'flex', gap: 5, width: '100%', maxWidth: 680, flexShrink: 0 }}>
         {times.map((_, i) => (
           <div key={i} style={{
-            flex: 1, ...pxSegment(i < idx ? 'done' : i === idx ? 'current' : 'todo'),
+            flex: 1, ...pxSegment(doneSeg(i) ? 'done' : i === idx ? 'current' : 'todo'),
+            ...(doneSeg(i) && missed.includes(i) ? { background: '#F3A091' } : {}),
             transition: 'background 0.3s',
           }} />
         ))}
       </div>
 
-      {/* Score + difficulty label */}
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
-        <div style={{ fontFamily: 'var(--font-heading)', fontSize: 15, color: 'var(--text-muted)' }}>
-          {'✅ ' + score + ' / ' + times.length}
-        </div>
-        <div style={{
-          background: '#FFF1D6', borderRadius: 8, padding: '5px 14px',
-          fontFamily: 'var(--font-heading)', fontSize: 13, color: ACCENT,
-          border: `2px solid ${INK}`,
-        }}>{'\u{1F550} ' + toleranceLabel}</div>
-        {/* The task was spoken once on entry and there was no way back to it —
-            hard on a child still holding "stelle die Uhr auf 7 Uhr 30" in mind. */}
-        <motion.button
-          whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }}
-          onClick={speakTask}
-          aria-label="Aufgabe noch einmal anhören"
-          style={{
-            ...pxButton('parch'),
-            padding: '2px 14px', borderRadius: 10, fontSize: 13,
-            display: 'flex', alignItems: 'center', gap: 5,
-          }}
-        >{'\u{1F50A} Nochmal'}</motion.button>
-      </div>
-
-      {/* Lumi */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, width: '100%', maxWidth: 680 }}>
-        <LumiCharacter mood={mood} size={72} />
+      {/* Lumi + task; the speaker reads the task and every answer */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, width: '100%', maxWidth: 680, flexShrink: 0 }}>
+        <LumiCharacter mood={mood} size={60} />
         <motion.div
           key={idx}
           initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }}
           style={{
             flex: 1, ...pxBubble,
-            padding: '13px 18px',
+            padding: '10px 16px',
             fontFamily: 'var(--font-heading)', fontSize: 'clamp(16px,3.2vw,22px)',
             color: 'var(--text-primary)',
           }}
-        >
-          {feedback === 'ok'
-            ? (<>⭐ Richtig! Es war <strong style={{ color:ACCENT }}>{toGermanTime(t.h, t.m)}</strong>!</>)
-            : showClockHint
-              ? (<>💡 Tipp: Der kurze Zeiger = Stunden, der lange = Minuten. Es ist <strong style={{ color:ACCENT }}>{toGermanTime(t.h, t.m)}</strong>!</>)
-              : mode === 'read'
-                ? (<>Welche Uhrzeit zeigt die Uhr? 🕐</>)
-                : mode === 'daily'
-                  ? (<>Es ist <strong style={{ color:ACCENT }}>{toGermanTime(t.h, t.m)}</strong>. Was macht Lumi jetzt? 🤔</>)
-                  : (<>Stelle die Uhr auf <strong style={{ color: ACCENT }}>{fmt(t.h, t.m)}</strong>! Ziehe die Zeiger oder tippe ➕➖! 🖐️</>)
-          }
-        </motion.div>
+        >{bubble}</motion.div>
+        <HearOptions items={hearItems} size={52} label="Aufgabe und Antworten vorlesen" style={{ alignSelf: 'center' }} />
       </div>
 
       {/* Main interaction area */}
-      <div style={{
-        display: 'flex', flexWrap: 'wrap', gap: 'clamp(16px,4vw,40px)',
-        alignItems: 'center', justifyContent: 'center', width: '100%',
+      <div ref={areaRef} style={{
+        flex: 1, minHeight: 0, width: '100%', maxWidth: 1100,
+        display: 'flex', flexDirection: wide ? 'row' : 'column',
+        alignItems: 'center', justifyContent: 'center', gap,
       }}>
-
-        {/* Clock display */}
         <AnimatePresence mode="wait">
           <motion.div key={idx}
             initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
@@ -707,54 +730,49 @@ export default function ClockGame({ level = 1, onComplete }) {
             transition={{ type: 'spring', stiffness: 300, damping: 22 }}
             style={{
               ...pxPanel,
-              ...(feedback === 'ok'    ? { background: '#DDF6CF', borderColor: '#2F8F3A' }
-                : feedback === 'wrong' ? { background: '#FFDCD6', borderColor: '#C2412D' }
-                : {}),
-              padding: 'clamp(16px,3vw,28px)',
+              ...(status === 'right' ? { background: '#DDF6CF', borderColor: '#2F8F3A' } : {}),
+              padding: panelPad, flexShrink: 0,
               transition: 'background 0.3s',
             }}
           >
             <ClockFace
-              targetH={t.h} targetM={t.m}
-              interactive={mode === 'set'}
-              onAnswer={submitAnalog}
+              value={mode === 'set' ? hands : fromHM(t.h, t.m)}
+              onChange={setHands}
+              interactive={mode === 'set' && !resolved}
               level={level}
-              highlightHands={showClockHint}
+              highlightHands={status === 'hint'}
+              size={clockPx}
             />
           </motion.div>
         </AnimatePresence>
 
-        {/* READ MODE: pick the digital time */}
+        {/* READ MODE: pick the time */}
         {mode === 'read' && (
           <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(2,1fr)',
-            gap: 'clamp(10px,2vw,16px)', width: 280,
+            display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)',
+            gap: 12, width: wide ? side.w : 'min(100%, 420px)', flexShrink: 0,
           }}>
             {options.map(opt => {
-              const correct = opt === fmt(t.h, t.m)
-              const done    = feedback !== null
+              const isAnswer = opt === t
+              const isTried  = tried.includes(opt)
+              const st = resolved && isAnswer ? 'right' : isTried && !isAnswer ? 'wrong' : undefined
               return (
-                <motion.button key={opt}
-                  whileHover={!done ? { scale: 1.06 } : {}}
-                  whileTap={!done ? { scale: 0.94 } : {}}
+                <motion.button key={`${opt.h}:${opt.m}`}
+                  whileHover={!resolved && !isTried ? { scale: 1.05 } : {}}
+                  whileTap={!resolved && !isTried ? { scale: 0.95 } : {}}
                   onClick={() => pickDigital(opt)}
+                  {...hearable(say(opt))}
+                  aria-label={say(opt)}
                   style={{
-                    padding: '14px 10px',
-                    minHeight: 80,
-                    ...pxCard(done && correct ? 'right' : done && opt === picked && !correct ? 'wrong' : undefined),
-                    fontFamily: 'var(--font-heading)', fontSize: 'clamp(17px,3.5vw,22px)',
-                    fontWeight: 700,
-                    color: 'var(--text-primary)',
-                    cursor: done ? 'default' : 'pointer',
-                    transition: 'background 0.22s, border 0.22s, box-shadow 0.22s',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center',
-                    justifyContent: 'center', gap: 4,
+                    ...pxCard(st),
+                    minHeight: wide ? 88 : 64, padding: '8px 10px',
+                    fontFamily: 'var(--font-heading)', fontSize: wide ? 26 : 'clamp(18px,3.4vw,24px)',
+                    fontWeight: 700, color: 'var(--text-primary)',
+                    cursor: resolved || isTried ? 'default' : 'pointer',
+                    opacity: isTried && !isAnswer ? 0.5 : 1,
+                    transition: 'background 0.22s, border 0.22s, box-shadow 0.22s, opacity 0.2s',
                   }}
-                >
-                  <span>{opt}</span>
-                  {/* pre-reserved space — no reflow when ✅ appears */}
-                  <span style={{ fontSize: 18, opacity: done && correct ? 1 : 0, transition: 'opacity 0.2s' }}>{'✅'}</span>
-                </motion.button>
+                >{label(opt, level)}</motion.button>
               )
             })}
           </div>
@@ -763,96 +781,92 @@ export default function ClockGame({ level = 1, onComplete }) {
         {/* DAILY MODE: what happens at this time of day? */}
         {mode === 'daily' && (
           <div style={{
-            display: 'flex', flexDirection: 'column',
-            gap: 'clamp(10px,2vw,14px)', width: 240,
+            display: 'flex', flexDirection: wide ? 'column' : 'row',
+            gap: 12, width: wide ? side.w : 'min(100%, 480px)', flexShrink: 0,
           }}>
             {dailyOptions.map(act => {
-              const correct = act.id === t.activity.id
-              const done    = feedback !== null
+              const isAnswer = act.id === t.activity.id
+              const isTried  = tried.includes(act.id)
+              const st = resolved && isAnswer ? 'right' : isTried && !isAnswer ? 'wrong' : undefined
               return (
                 <motion.button key={act.id}
-                  whileHover={!done ? { scale: 1.05 } : {}}
-                  whileTap={!done ? { scale: 0.95 } : {}}
+                  whileHover={!resolved && !isTried ? { scale: 1.05 } : {}}
+                  whileTap={!resolved && !isTried ? { scale: 0.95 } : {}}
                   onClick={() => pickActivity(act)}
+                  {...hearable(plain(act.label))}
+                  aria-label={plain(act.label)}
                   style={{
-                    ...pxCard(done && correct ? 'right'
-                            : done && act.id === picked && !correct ? 'wrong' : undefined),
-                    padding: '12px 16px', minHeight: 68,
-                    fontFamily: 'var(--font-heading)', fontSize: 'clamp(15px,3vw,19px)',
-                    fontWeight: 700,
-                    color: 'var(--text-primary)',
-                    cursor: done ? 'default' : 'pointer',
-                    transition: 'background 0.22s, border 0.22s, box-shadow 0.22s',
-                    display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left',
+                    ...pxCard(st),
+                    flex: 1, minWidth: 0, minHeight: wide ? 88 : 96, padding: '8px 10px',
+                    fontFamily: 'var(--font-heading)', fontSize: wide ? 20 : 'clamp(14px,2.8vw,18px)',
+                    fontWeight: 700, color: 'var(--text-primary)',
+                    cursor: resolved || isTried ? 'default' : 'pointer',
+                    opacity: isTried && !isAnswer ? 0.5 : 1,
+                    transition: 'background 0.22s, border 0.22s, box-shadow 0.22s, opacity 0.2s',
+                    display: 'flex', flexDirection: wide ? 'row' : 'column',
+                    alignItems: 'center', justifyContent: 'center', gap: wide ? 12 : 4,
                   }}
                 >
-                  <span style={{ fontSize: 30, lineHeight: 1, flexShrink: 0 }}>{act.icon}</span>
-                  <span style={{ flex: 1 }}>{act.label}</span>
-                  <span style={{ fontSize: 18, opacity: done && correct ? 1 : 0, transition: 'opacity 0.2s' }}>{'\u2705'}</span>
+                  <span style={{ fontSize: wide ? 48 : 38, lineHeight: 1, flexShrink: 0 }}>{act.icon}</span>
+                  <span style={{ textAlign: 'center', hyphens: 'manual', overflowWrap: 'anywhere' }}>{act.label}</span>
                 </motion.button>
               )
             })}
           </div>
         )}
 
-        {/* SET MODE: show target time prominently */}
-        {mode === 'set' && !feedback && (
+        {/* SET MODE: ± for each hand — the non-drag way to set the clock */}
+        {mode === 'set' && (
           <div style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+            display: 'flex', flexDirection: wide ? 'column' : 'row',
+            gap: wide ? 20 : 'clamp(14px,5vw,36px)', flexShrink: 0, alignItems: 'center',
           }}>
-            <div style={{
-              background: '#FFF1D6', border: `2px solid ${INK}`, borderRadius: 10, padding: '8px 22px',
-              fontFamily: 'var(--font-heading)', fontSize: 'clamp(14px,3vw,18px)',
-              color: 'var(--px-ink-soft)',
-            }}>Ziel-Zeit:</div>
-            <div style={{
-              ...pxPanel, padding: '9px 28px',
-              fontFamily: 'var(--font-heading)',
-              fontSize: 'clamp(28px,6vw,42px)', fontWeight: 800,
-              color: ACCENT,
-              letterSpacing: 2,
-            }}>{fmt(t.h, t.m)}</div>
-            <div style={{
-              fontFamily: 'var(--font-heading)', fontSize: 'clamp(14px,2.8vw,18px)',
-              color: 'var(--px-ink-soft)', textAlign: 'center',
-            }}>{toGermanTime(t.h, t.m)}</div>
+            {[['hour', 'Stundenzeiger', 60, HOUR_C], ['minute', 'Minutenzeiger', 5, MIN_C]].map(([kind, name, stepBy, color]) => (
+              <div key={kind} {...hearable(kind === 'hour' ? 'Der kurze Zeiger' : 'Der lange Zeiger')}
+                style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <HandIcon kind={kind} />
+                <StepButton label="−" color={color} disabled={resolved}
+                  onPress={() => setHands(v => (v - stepBy + 720) % 720)} ariaLabel={`${name} zurück`} />
+                <StepButton label="+" color={color} disabled={resolved}
+                  onPress={() => setHands(v => (v + stepBy) % 720)} ariaLabel={`${name} vor`} />
+              </div>
+            ))}
           </div>
-        )}
-        {/* SET MODE feedback badge */}
-        {mode === 'set' && feedback === 'ok' && (
-          <motion.div
-            initial={{ scale: 0, rotate: -180 }} animate={{ scale: 1, rotate: 0 }}
-            transition={{ type: 'spring', stiffness: 260, damping: 14 }}
-            style={{ fontSize: 80, lineHeight: 1, filter: 'drop-shadow(0 4px 14px rgba(107,203,119,0.5))' }}
-          >🎉</motion.div>
-        )}
-        {mode === 'set' && feedback === 'wrong' && (
-          <motion.div
-            initial={{ scale: 0 }} animate={{ scale: 1 }}
-            style={{
-              fontSize: 72, lineHeight: 1,
-              filter: 'drop-shadow(0 4px 14px rgba(0,0,0,0.2))',
-            }}
-          >
-            ❌
-          </motion.div>
         )}
       </div>
 
-      {/* Weiter button */}
-      {showWeiter && (
-        <motion.button
-          initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: 'spring', stiffness: 300, delay: 0.3 }}
-          whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
-          onClick={weiterClick}
-          style={{
-            ...pxButton('green'),
-            padding: 'clamp(12px,2vw,16px) clamp(28px,6vw,52px)',
-            fontSize: 'clamp(17px,3.5vw,22px)',
-          }}
-        >Weiter! →</motion.button>
-      )}
+      {/* Fixed slot for "Fertig" / "Weiter", so nothing jumps */}
+      <div style={{ height: 60, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {resolved ? (
+          <motion.button
+            key="weiter"
+            initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 300, delay: 0.3 }}
+            whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
+            onClick={weiterClick}
+            {...hearable('Weiter')}
+            style={{
+              ...pxButton('green'),
+              // ink on green: white text reached only 2.2:1
+              color: INK, textShadow: '0 1px 0 rgba(255,255,255,0.35)',
+              padding: '10px 44px', minHeight: 52,
+              fontSize: 'clamp(18px,3.5vw,22px)',
+            }}
+          >Weiter! ➡️</motion.button>
+        ) : mode === 'set' ? (
+          <motion.button
+            key="fertig"
+            whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
+            onClick={submitAnalog}
+            {...hearable('Fertig')}
+            style={{
+              ...pxButton('green'),
+              color: INK, textShadow: '0 1px 0 rgba(255,255,255,0.35)',
+              padding: '10px 40px', minHeight: 52, fontSize: 20,
+            }}
+          >{'✅ Fertig!'}</motion.button>
+        ) : null}
+      </div>
     </div>
   )
 }

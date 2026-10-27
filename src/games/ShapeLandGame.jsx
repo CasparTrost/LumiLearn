@@ -1,12 +1,13 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
-import { speak } from '../tts.js'
 import { hearable } from '../lib/hearable.js'
 import HearOptions from '../components/HearOptions.jsx'
 import { lockPreviews, afterNarration } from '../narrator.js'
-import { pxCard, pxPanel, pxBubble, pxButton, pxSegment, ACCENT } from './px.js'
+import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
+import { result } from '../lib/score.js'
+import { pxCard, pxPanel, pxBubble, pxButton, pxSegment, ACCENT, INK } from './px.js'
 
 /**
  * Formen-Land — Formen erkennen, Größen ordnen, Muster fortsetzen
@@ -26,49 +27,77 @@ import { pxCard, pxPanel, pxBubble, pxButton, pxSegment, ACCENT } from './px.js'
  *     is early algebraic thinking.
  */
 
-function speakDE(text) { speak(text, { rate: 0.85, pitch: 1.05, lang: 'de-DE' }) }
 function rand(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a }
 function shuffle(a) { return [...a].sort(() => Math.random() - 0.5) }
 
+// art: the article after "Finde …" (accusative). Oval and Raute sit next to
+// Kreis and Quadrat on purpose: telling them apart is the real step of
+// naming shapes by their look.
 const SHAPES = {
   circle:    { name: 'Kreis',     art: 'den', draw: (c) => <circle cx="50" cy="50" r="42" fill={c} /> },
   square:    { name: 'Quadrat',   art: 'das', draw: (c) => <rect x="10" y="10" width="80" height="80" rx="6" fill={c} /> },
   triangle:  { name: 'Dreieck',   art: 'das', draw: (c) => <polygon points="50,8 94,88 6,88" fill={c} /> },
   rectangle: { name: 'Rechteck',  art: 'das', draw: (c) => <rect x="6" y="26" width="88" height="48" rx="6" fill={c} /> },
+  oval:      { name: 'Oval',      art: 'das', draw: (c) => <ellipse cx="50" cy="50" rx="46" ry="30" fill={c} /> },
+  rhombus:   { name: 'Raute',     art: 'die', draw: (c) => <polygon points="50,4 84,50 50,96 16,50" fill={c} /> },
   star:      { name: 'Stern',     art: 'den', draw: (c) => <polygon points="50,5 61,38 96,38 68,59 79,92 50,71 21,92 32,59 4,38 39,38" fill={c} /> },
   heart:     { name: 'Herz',      art: 'das', draw: (c) => <path d="M50 88 C10 58 10 22 32 18 C42 16 50 26 50 32 C50 26 58 16 68 18 C90 22 90 58 50 88Z" fill={c} /> },
 }
 const SHAPE_IDS = Object.keys(SHAPES)
-const COLORS = ['#FF6B6B', '#FFD93D', '#6BCB77', '#74B9FF', '#A29BFE', '#FD79A8']
+// Shape colours, all dark enough to stand out on parchment
+const COLORS = ['#E8503F', '#F2B705', '#3FA34D', '#3D8BE0', '#8E6CF0', '#E0509A']
 
-function Shape({ type, color, size = 72 }) {
+// "ein Kreis", "eine Raute"
+const indef = (type) => (SHAPES[type].art === 'die' ? 'eine' : 'ein')
+
+function Shape({ type, color, size = 72, rotate = 0 }) {
   const s = SHAPES[type]
   if (!s) return null
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" style={{ display: 'block', overflow: 'visible' }}>
-      {s.draw(color)}
+      <g transform={rotate ? `rotate(${rotate} 50 50)` : undefined}>{s.draw(color)}</g>
     </svg>
   )
 }
 
-// L1-3 recognise · L4-6 order by size · L7-10 continue the pattern
+// L1-2 recognise · L3 + a first AB pattern · L4-6 + order by size ·
+// L7-10 all three
 function modeFor(level, idx) {
-  if (level <= 3) return 'match'
+  if (level <= 2) return 'match'
+  if (level === 3) return idx % 3 === 2 ? 'pattern' : 'match'
   if (level <= 6) return idx % 2 === 0 ? 'match' : 'size'
   return idx % 3 === 2 ? 'size' : idx % 3 === 1 ? 'pattern' : 'match'
 }
 
+function poolFor(level) {
+  return level <= 2 ? SHAPE_IDS.slice(0, 3)     // Kreis, Quadrat, Dreieck
+       : level === 3 ? SHAPE_IDS.slice(0, 4)    // + Rechteck
+       : level <= 5 ? SHAPE_IDS.slice(0, 6)     // + Oval, Raute
+       : SHAPE_IDS
+}
+
+// From level 2 the shapes stand at a slant now and then: a tilted triangle
+// is still a triangle. Square and Raute are only turned a little, so the
+// one never turns into the other.
+function tiltFor(level, type) {
+  if (level < 2 || Math.random() < 0.4) return 0
+  if (type === 'square' || type === 'rhombus') return [-15, 15][rand(0, 1)]
+  if (type === 'circle') return 0
+  return [-30, -15, 15, 30, 180][rand(0, 4)]
+}
+
 function buildRound(level, idx) {
   const mode = modeFor(level, idx)
-  const pool = level <= 2 ? SHAPE_IDS.slice(0, 3) : level <= 5 ? SHAPE_IDS.slice(0, 5) : SHAPE_IDS
+  const pool = poolFor(level)
 
   if (mode === 'match') {
     const [answer, ...rest] = shuffle(pool)
     const optCount = level <= 2 ? 3 : 4
+    const options = shuffle([answer, ...rest.slice(0, optCount - 1)])
     return {
-      mode, answer,
+      mode, answer, options,
       color: COLORS[rand(0, COLORS.length - 1)],
-      options: shuffle([answer, ...rest.slice(0, optCount - 1)]),
+      tilt: Object.fromEntries(options.map(t => [t, tiltFor(level, t)])),
     }
   }
 
@@ -76,24 +105,28 @@ function buildRound(level, idx) {
     const count = level <= 5 ? 3 : level <= 8 ? 4 : 5
     const type  = pool[rand(0, pool.length - 1)]
     const color = COLORS[rand(0, COLORS.length - 1)]
-    // Sizes far enough apart that the order is decidable at a glance
-    const sizes = Array.from({ length: count }, (_, i) => 34 + i * 18)
-    return { mode, type, color, items: shuffle(sizes.map((s, i) => ({ id: i, size: s }))), sizes }
+    // From level 6 the order is sometimes the other way round
+    const down  = level >= 6 && Math.random() < 0.5
+    // Sizes far enough apart that the order is decidable at a glance;
+    // scale is the share of the card's full size
+    const sizes = Array.from({ length: count }, (_, i) => 0.4 + i * (0.6 / (count - 1)))
+    return { mode, type, color, down, items: shuffle(sizes.map((s, i) => ({ id: i, size: s }))), sizes }
   }
 
-  // pattern: AB, ABC or AAB, continued by one element
-  const kinds = level <= 8 ? [['A','B'], ['A','B','C']] : [['A','B'], ['A','B','C'], ['A','A','B']]
+  // pattern: AB, ABC or AAB, continued by one element. The row's length
+  // varies: with a fixed six the next element was always the row's first.
+  const kinds = level <= 3 ? [['A','B']] : level <= 8 ? [['A','B'], ['A','B','C']] : [['A','B'], ['A','B','C'], ['A','A','B']]
   const unit  = kinds[rand(0, kinds.length - 1)]
   const picks = shuffle(pool).slice(0, 3)
   const cols  = shuffle(COLORS).slice(0, 3)
   const map   = { A: 0, B: 1, C: 2 }
+  const len   = unit.length * 2 + rand(0, unit.length - 1)
   const seq   = []
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < len; i++) {
     const k = unit[i % unit.length]
     seq.push({ type: picks[map[k]], color: cols[map[k]] })
   }
-  const answer = seq[6 % unit.length === 0 ? 0 : 6 % unit.length]
-  const nextKey = unit[6 % unit.length]
+  const nextKey = unit[len % unit.length]
   const correct = { type: picks[map[nextKey]], color: cols[map[nextKey]] }
   const wrongs  = picks
     .map((p, i) => ({ type: p, color: cols[i] }))
@@ -104,77 +137,106 @@ function buildRound(level, idx) {
   }
 }
 
+// Phones held upright: three answers go below each other, so they can be
+// big — side by side they had to shrink to a third of the width.
+function useNarrow() {
+  const get = () => typeof window !== 'undefined' && window.innerWidth < 520
+  const [narrow, setNarrow] = useState(get)
+  useEffect(() => {
+    const on = () => setNarrow(get())
+    window.addEventListener('resize', on)
+    return () => window.removeEventListener('resize', on)
+  }, [])
+  return narrow
+}
+
+const taskFor = (r) =>
+  r.mode === 'match' ? `Finde ${SHAPES[r.answer].art} ${SHAPES[r.answer].name}!`
+  : r.mode === 'size' ? (r.down ? 'Tippe die Formen von groß nach klein!' : 'Tippe die Formen von klein nach groß!')
+  : 'Was kommt als Nächstes?'
+
 export default function ShapeLandGame({ level = 1, onComplete }) {
   const TOTAL = 8
   const rounds = useState(() => Array.from({ length: TOTAL }, (_, i) => buildRound(level, i)))[0]
 
-  const [idx,    setIdx]    = useState(0)
-  const [picked, setPicked] = useState([])       // size mode: tap order
-  const [wrong,  setWrong]  = useState([])
-  const [misses, setMisses] = useState(0)
-  const [solved, setSolved] = useState(false)
-  const [mood,   setMood]   = useState('happy')
-  const [showWeiter, setShowWeiter] = useState(false)
+  const [idx,      setIdx]      = useState(0)
+  const [picked,   setPicked]   = useState([])       // size mode: tap order
+  const [wrong,    setWrong]    = useState([])
+  const [shakeKey, setShakeKey] = useState(0)
+  const [missed,   setMissed]   = useState([])       // rounds with a miss
+  const [solved,   setSolved]   = useState(false)
+  const [mood,     setMood]     = useState('happy')
 
   const r = rounds[idx]
+  const narrow = useNarrow()
 
   useEffect(() => {
     if (!r) return
     setPicked([]); setWrong([]); setSolved(false); setMood('happy')
-    const say = r.mode === 'match'  ? `Finde ${SHAPES[r.answer].art} ${SHAPES[r.answer].name}!`
-              : r.mode === 'size'   ? 'Tippe die Formen von klein nach groß!'
-              :                       'Was kommt als Nächstes?'
     lockPreviews()
-    const id = setTimeout(() => speakDE(say), 420)
+    const id = setTimeout(() => sayTask(taskFor(r)), 420)
     return () => clearTimeout(id)
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const finish = useCallback(() => {
+  const finish = useCallback((praise) => {
     setSolved(true)
     setMood('excited')
     sfx.correct()
-    setTimeout(() => setShowWeiter(true), 500)
+    sayRight(praise)
   }, [])
 
-  const miss = useCallback((key, msg) => {
+  const miss = useCallback((key, hint) => {
     setWrong(w => w.includes(key) ? w : [...w, key])
-    setMisses(m => m + 1)
+    setShakeKey(k => k + 1)
+    setMissed(m => (m.includes(idx) ? m : [...m, idx]))
     setMood('encouraging')
     sfx.wrong()
-    speakDE(msg)
+    sayWrong(hint)
     setTimeout(() => setMood('happy'), 900)
-  }, [])
+  }, [idx])
 
   const pickShape = useCallback((type) => {
     if (solved || !r) return
-    if (type !== r.answer) { miss(type, `Das ist ${SHAPES[type].art === 'den' ? 'ein' : 'ein'} ${SHAPES[type].name}.`); return }
-    speakDE(`${SHAPES[type].name}! Richtig.`)
-    finish()
+    const want = SHAPES[r.answer]
+    if (type !== r.answer) {
+      miss(type, `Das ist ${indef(type)} ${SHAPES[type].name}. Wir suchen ${want.art} ${want.name}.`)
+      return
+    }
+    finish(`Das ist ${indef(type)} ${want.name}.`)
   }, [solved, r, miss, finish])
 
   const pickSize = useCallback((item) => {
-    if (solved || !r) return
-    const expected = [...r.sizes].sort((a, b) => a - b)[picked.length]
-    if (item.size !== expected) { miss(`s${item.id}`, 'Fang mit der kleinsten an!'); return }
+    if (solved || !r || picked.includes(item.id)) return
+    const order = [...r.sizes].sort((a, b) => (r.down ? b - a : a - b))
+    const expected = order[picked.length]
+    if (item.size !== expected) {
+      // The hint used to be "Fang mit der kleinsten an!" for every miss,
+      // even when the smallest was already taken and the child was at step 3.
+      const hint = picked.length === 0
+        ? (r.down ? 'Fang mit der größten an!' : 'Fang mit der kleinsten an!')
+        : (r.down ? 'Welche ist die nächstkleinere?' : 'Welche ist die nächstgrößere?')
+      miss(`s${item.id}`, hint)
+      return
+    }
     const next = [...picked, item.id]
     setPicked(next)
     sfx.pop?.()
-    if (next.length === r.items.length) { speakDE('Von klein nach groß. Super!'); finish() }
+    if (next.length === r.items.length) finish(r.down ? 'Von groß nach klein.' : 'Von klein nach groß.')
   }, [solved, r, picked, miss, finish])
 
   const pickPattern = useCallback((opt, i) => {
     if (solved || !r) return
-    if (opt.type !== r.correct.type) { miss(`p${i}`, 'Schau dir das Muster nochmal an.'); return }
-    speakDE('Genau, so geht das Muster weiter!')
-    finish()
+    if (opt.type !== r.correct.type) {
+      miss(`p${i}`, `Hör mal! ${r.seq.map(s => SHAPES[s.type].name).join(', ')}, und dann?`)
+      return
+    }
+    finish('So geht das Muster weiter.')
   }, [solved, r, miss, finish])
 
   const weiterClick = () => {
-    setShowWeiter(false)
     if (idx + 1 >= TOTAL) {
       sfx.complete()
-      const stars = misses <= 1 ? 3 : misses <= TOTAL ? 2 : 1
-      afterNarration(() => onComplete({ score: TOTAL, total: TOTAL, stars }), { minMs: 300 })
+      afterNarration(() => onComplete(result(TOTAL - missed.length, TOTAL)), { minMs: 300 })
     } else setIdx(i => i + 1)
   }
 
@@ -183,148 +245,205 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
   const prompt = r.mode === 'match'
     ? <>Finde {SHAPES[r.answer].art} <strong style={{ color: ACCENT }}>{SHAPES[r.answer].name}</strong>! 🔍</>
     : r.mode === 'size'
-      ? <>Tippe die Formen von <strong style={{ color: ACCENT }}>klein nach groß</strong>! 📏</>
+      ? <>Tippe die Formen von <strong style={{ color: ACCENT }}>{r.down ? 'groß nach klein' : 'klein nach groß'}</strong>! 📏</>
       : <>Was kommt als <strong style={{ color: ACCENT }}>Nächstes</strong>? 🔮</>
+
+  const hearItems = [taskFor(r), ...(
+    r.mode === 'match'   ? r.options.map(t => SHAPES[t].name)
+    : r.mode === 'pattern' ? r.options.map(o => SHAPES[o.type].name)
+    : [])]
+
+  // The shapes grow with the screen: they were 100 px cards under the
+  // question with 60 % of the screen empty below.
+  const sumScale = r.mode === 'size' ? r.sizes.reduce((a, b) => a + b, 0) : 0
+  // Every size leaves room for the cards' padding and the gaps between them
+  const threeUp  = (cap, vh) => (narrow ? `min(${vh - 4}dvh, 40vw, ${cap}px)` : `min(${vh}dvh, calc((min(100vw, 720px) - 130px - 11vw) / 3), ${cap}px)`)
+  const cardSize = r.mode === 'match'
+    ? (r.options.length === 4 ? 'min(19dvh, calc((min(100vw, 720px) - 100px - 8vw) / 2), 190px)' : threeUp(200, 22))
+    : r.mode === 'size'
+      // the whole row has to fit across: buttons, gaps and shelf (on a phone
+      // it may wrap — the order is about size, not place)
+      ? (narrow ? 'min(20dvh, 34vw, 220px)' : `min(26dvh, calc((min(100vw, 720px) - ${76 + 14 * r.items.length}px) / ${sumScale.toFixed(2)}), 220px)`)
+      : (narrow ? 'min(12dvh, 26vw, 150px)' : threeUp(150, 17))
+  const rowSize = r.mode === 'pattern' ? `min(64px, calc((min(100vw, 720px) - ${60 + 4 * r.seq.length}px) / ${r.seq.length + 1}))` : null
 
   return (
     <div style={{
       flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
       padding: 'clamp(14px,2.5vw,28px) clamp(14px,3vw,32px)', gap: 'clamp(12px,2vw,20px)',
     }}>
-      <div style={{ display: 'flex', gap: 5, width: '100%', maxWidth: 680 }}>
-        {rounds.map((_, i) => (
-          <div key={i} style={{
-            flex: 1, ...pxSegment(i < idx ? 'done' : i === idx ? 'current' : 'todo'),
-          }} />
-        ))}
+      <div style={{ display: 'flex', gap: 5, width: '100%', maxWidth: 680, flexShrink: 0 }}>
+        {rounds.map((_, i) => {
+          const done = i < idx || (i === idx && solved)
+          return (
+            <div key={i} style={{
+              flex: 1, ...pxSegment(done ? 'done' : i === idx ? 'current' : 'todo'),
+              // solved, but not on the first try
+              ...(done && missed.includes(i) ? { background: '#F3A091' } : {}),
+            }} />
+          )
+        })}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, width: '100%', maxWidth: 680 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, width: '100%', maxWidth: 680, flexShrink: 0 }}>
         <LumiCharacter mood={mood} size={68} />
         <div style={{
           flex: 1, ...pxBubble, padding: '12px 18px',
-          fontFamily: 'var(--font-heading)', fontSize: 'clamp(16px,3.4vw,22px)', color: 'var(--text-primary)',
+          fontFamily: 'var(--font-heading)', fontSize: 'clamp(17px,3.4vw,24px)', color: 'var(--text-primary)',
         }}>
           {solved ? <>⭐ Richtig!</> : prompt}
         </div>
-        {r.mode === 'match' && <HearOptions items={r.options.map(t => SHAPES[t].name)} label="Alle Antworten vorlesen" />}
+        <HearOptions items={hearItems} size={52} label="Aufgabe und Antworten vorlesen" style={{ alignSelf: 'center' }} />
       </div>
 
-      {/* MATCH */}
-      {r.mode === 'match' && (
-        <div style={{ display: 'flex', gap: 'clamp(10px,3vw,22px)', flexWrap: 'wrap', justifyContent: 'center' }}>
-          {r.options.map(type => {
-            const isWrong = wrong.includes(type)
-            const isRight = solved && type === r.answer
-            return (
-              <motion.button key={type}
-                whileHover={!solved && !isWrong ? { scale: 1.07 } : {}}
-                whileTap={!solved && !isWrong ? { scale: 0.94 } : {}}
-                onClick={() => { if (!isWrong) pickShape(type) }}
-                {...hearable(SHAPES[type].name)}
-                aria-label={SHAPES[type].name}
-                style={{
-                  ...pxCard(isRight ? 'right' : isWrong ? 'wrong' : undefined),
-                  padding: 'clamp(12px,2.5vw,20px)', cursor: solved ? 'default' : 'pointer',
-                  opacity: isWrong ? 0.55 : 1,
-                }}
-              >
-                <Shape type={type} color={r.color} size={72} />
-              </motion.button>
-            )
-          })}
-        </div>
-      )}
-
-      {/* SIZE ORDER */}
-      {r.mode === 'size' && (
-        <div style={{ display: 'flex', gap: 'clamp(8px,2.5vw,18px)', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'flex-end' }}>
-          {r.items.map(item => {
-            const order = picked.indexOf(item.id)
-            const taken = order !== -1
-            const isWrong = wrong.includes(`s${item.id}`)
-            return (
-              <motion.button key={item.id}
-                whileHover={!taken && !solved ? { scale: 1.07 } : {}}
-                whileTap={!taken && !solved ? { scale: 0.94 } : {}}
-                onClick={() => pickSize(item)}
-                aria-label={`Form Größe ${item.size}`}
-                animate={isWrong ? { x: [0, -8, 8, -6, 6, 0] } : { x: 0 }}
-                style={{
-                  position: 'relative', background: 'transparent', border: 'none',
-                  padding: 6, cursor: taken || solved ? 'default' : 'pointer',
-                  opacity: taken ? 0.45 : 1,
-                }}
-              >
-                <Shape type={r.type} color={r.color} size={item.size} />
-                {taken && (
-                  <span style={{
-                    position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
-                    background: ACCENT, color: 'white', borderRadius: '50%',
-                    border: '2px solid var(--px-ink)', boxSizing: 'border-box',
-                    width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontFamily: 'var(--font-heading)', fontSize: 13, fontWeight: 800,
-                  }}>{order + 1}</span>
-                )}
-              </motion.button>
-            )
-          })}
-        </div>
-      )}
-
-      {/* PATTERN */}
-      {r.mode === 'pattern' && (
-        <>
+      <div style={{
+        flex: 1, minHeight: 0, width: '100%', display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', gap: 'clamp(14px,3dvh,28px)',
+      }}>
+        {/* MATCH — four shapes as 2×2, three in one row */}
+        {r.mode === 'match' && (
           <div style={{
-            display: 'flex', gap: 'clamp(4px,1.5vw,10px)', alignItems: 'center',
-            flexWrap: 'wrap', justifyContent: 'center',
-            ...pxPanel, padding: 'clamp(10px,2vw,16px)',
+            display: 'grid', gridTemplateColumns: `repeat(${r.options.length === 4 ? 2 : narrow ? 1 : 3}, auto)`,
+            gap: 'clamp(12px,3vw,26px)', justifyContent: 'center',
           }}>
-            {r.seq.map((s, i) => <Shape key={i} type={s.type} color={s.color} size={42} />)}
-            <div style={{
-              width: 46, height: 46, borderRadius: 10, border: '3px dashed var(--px-ink-soft)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: 'var(--font-heading)', fontSize: 24, color: 'var(--px-ink-soft)',
-            }}>{solved ? <Shape type={r.correct.type} color={r.correct.color} size={38} /> : '?'}</div>
-          </div>
-          <div style={{ display: 'flex', gap: 'clamp(10px,3vw,20px)', flexWrap: 'wrap', justifyContent: 'center' }}>
-            {r.options.map((opt, i) => {
-              const isWrong = wrong.includes(`p${i}`)
-              const isRight = solved && opt.type === r.correct.type
+            {r.options.map(type => {
+              const isWrong = wrong.includes(type)
+              const isRight = solved && type === r.answer
               return (
-                <motion.button key={i}
-                  whileHover={!solved && !isWrong ? { scale: 1.07 } : {}}
+                <motion.button key={type}
+                  whileHover={!solved && !isWrong ? { scale: 1.05 } : {}}
                   whileTap={!solved && !isWrong ? { scale: 0.94 } : {}}
-                  onClick={() => { if (!isWrong) pickPattern(opt, i) }}
-                  {...hearable(SHAPES[opt.type].name)}
-                  aria-label={SHAPES[opt.type].name}
+                  onClick={() => { if (!isWrong) pickShape(type) }}
+                  {...hearable(SHAPES[type].name)}
+                  aria-label={SHAPES[type].name}
                   style={{
                     ...pxCard(isRight ? 'right' : isWrong ? 'wrong' : undefined),
-                    padding: 'clamp(10px,2vw,16px)', cursor: solved ? 'default' : 'pointer',
-                    opacity: isWrong ? 0.55 : 1,
+                    padding: 'clamp(12px,2.2vw,20px)', cursor: solved ? 'default' : 'pointer',
+                    opacity: isWrong ? 0.5 : 1,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}
                 >
-                  <Shape type={opt.type} color={opt.color} size={56} />
+                  <div style={{ width: cardSize, height: cardSize }}>
+                    <Shape type={type} color={r.color} size="100%" rotate={r.tilt[type]} />
+                  </div>
                 </motion.button>
               )
             })}
           </div>
-        </>
-      )}
-
-      <AnimatePresence>
-        {showWeiter && (
-          <motion.button
-            initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ opacity: 0 }}
-            whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
-            onClick={weiterClick}
-            style={{
-              ...pxButton('green'), padding: '12px 40px',
-              fontSize: 'clamp(16px,3.4vw,21px)',
-            }}
-          >Weiter! →</motion.button>
         )}
-      </AnimatePresence>
+
+        {/* SIZE ORDER */}
+        {r.mode === 'size' && (
+          <div style={{
+            display: 'flex', gap: 'clamp(6px,1.5vw,16px)', justifyContent: 'center', alignItems: 'flex-end',
+            flexWrap: narrow ? 'wrap' : 'nowrap', rowGap: 14,
+            ...pxPanel, padding: 10,
+          }}>
+            {r.items.map(item => {
+              const order = picked.indexOf(item.id)
+              const taken = order !== -1
+              const isWrong = wrong.includes(`s${item.id}`)
+              return (
+                <motion.button key={`${item.id}-${isWrong ? shakeKey : 0}`}
+                  whileHover={!taken && !solved ? { scale: 1.06 } : {}}
+                  whileTap={!taken && !solved ? { scale: 0.94 } : {}}
+                  onClick={() => pickSize(item)}
+                  aria-label={`Form ${r.sizes.slice().sort((a, b) => a - b).indexOf(item.size) + 1} von ${r.sizes.length}`}
+                  animate={isWrong ? { x: [0, -8, 8, -6, 6, 0] } : { x: 0 }}
+                  style={{
+                    position: 'relative', background: 'transparent', border: 'none',
+                    padding: 4, minWidth: 48, minHeight: 48,
+                    display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+                    cursor: taken || solved ? 'default' : 'pointer',
+                    opacity: taken ? 0.45 : 1,
+                  }}
+                >
+                  <div style={{ width: `calc(${cardSize} * ${item.size.toFixed(3)})`, height: `calc(${cardSize} * ${item.size.toFixed(3)})` }}>
+                    <Shape type={r.type} color={r.color} size="100%" />
+                  </div>
+                  {taken && (
+                    <span style={{
+                      position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
+                      background: ACCENT, color: 'white', borderRadius: '50%',
+                      border: `2px solid ${INK}`, boxSizing: 'border-box',
+                      width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontFamily: 'var(--font-heading)', fontSize: 15, fontWeight: 800,
+                    }}>{order + 1}</span>
+                  )}
+                </motion.button>
+              )
+            })}
+          </div>
+        )}
+
+        {/* PATTERN */}
+        {r.mode === 'pattern' && (
+          <>
+            <div style={{
+              display: 'flex', gap: 4, alignItems: 'center',
+              flexWrap: 'nowrap', justifyContent: 'center',
+              ...pxPanel, padding: 10,
+            }}>
+              {r.seq.map((s, i) => (
+                <div key={i} style={{ width: rowSize, height: rowSize }}>
+                  <Shape type={s.type} color={s.color} size="100%" />
+                </div>
+              ))}
+              <div style={{
+                width: rowSize, height: rowSize, borderRadius: 10, border: `3px dashed ${INK}`, boxSizing: 'border-box',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 3,
+                fontFamily: 'var(--font-heading)', fontSize: 24, color: INK,
+              }}>{solved ? <Shape type={r.correct.type} color={r.correct.color} size="100%" /> : '?'}</div>
+            </div>
+            <div style={{ display: 'flex', gap: 'clamp(12px,3vw,24px)', flexWrap: 'nowrap', justifyContent: 'center' }}>
+              {r.options.map((opt, i) => {
+                const isWrong = wrong.includes(`p${i}`)
+                const isRight = solved && opt.type === r.correct.type
+                return (
+                  <motion.button key={i}
+                    whileHover={!solved && !isWrong ? { scale: 1.05 } : {}}
+                    whileTap={!solved && !isWrong ? { scale: 0.94 } : {}}
+                    onClick={() => { if (!isWrong) pickPattern(opt, i) }}
+                    {...hearable(SHAPES[opt.type].name)}
+                    aria-label={SHAPES[opt.type].name}
+                    style={{
+                      ...pxCard(isRight ? 'right' : isWrong ? 'wrong' : undefined),
+                      padding: 'clamp(10px,2vw,18px)', cursor: solved ? 'default' : 'pointer',
+                      opacity: isWrong ? 0.5 : 1,
+                    }}
+                  >
+                    <div style={{ width: cardSize, height: cardSize }}>
+                      <Shape type={opt.type} color={opt.color} size="100%" />
+                    </div>
+                  </motion.button>
+                )
+              })}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Fixed slot for "Weiter", so nothing jumps when it appears */}
+      <div style={{ height: 62, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <AnimatePresence>
+          {solved && (
+            <motion.button
+              initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ opacity: 0 }}
+              transition={{ delay: 0.4 }}
+              whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
+              onClick={weiterClick}
+              {...hearable('Weiter')}
+              style={{
+                ...pxButton('green'),
+                // ink on green: white text reached only 2.2:1
+                color: INK, textShadow: '0 1px 0 rgba(255,255,255,0.35)',
+                padding: '12px 40px', minHeight: 52,
+                fontSize: 'clamp(17px,3.4vw,21px)',
+              }}
+            >Weiter! ➡️</motion.button>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   )
 }

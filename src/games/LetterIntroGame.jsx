@@ -1,201 +1,205 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { voice } from '../voice.js'
-import { speak } from '../tts.js'
+import { sfx } from '../sfx.js'
 import { hearable } from '../lib/hearable.js'
 import HearOptions from '../components/HearOptions.jsx'
-import { lockPreviews } from '../narrator.js'
+import { narrate, lockPreviews, afterNarration, stopNarration } from '../narrator.js'
+import { sayRight, sayWrong } from '../lib/feedback.js'
+import { result } from '../lib/score.js'
+import { usePaused } from '../lib/pause.js'
+import { soundOf } from './letterSounds.js'
 import { pxCard, pxButton, INK } from './px.js'
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
+// Jedes Bild zeigt eindeutig sein Wort, und jedes Wort fängt mit dem Laut
+// seines Buchstabens an: kein "Stern" unter S (das ist "scht"), kein "Ei"
+// oder "Eule" unter E, keine Glühbirne als "Lampe", kein Igel-Bild für das
+// Eichhörnchen. Kein Bild kommt zweimal vor.
+//
+// `ex` ist das Beispiel im Merksatz ("B wie Ball"). Es steht bewusst nicht
+// unter den Antworten, sonst wäre die Antwort schon vorgesagt.
+// `note` ersetzt den Merksatz bei den Buchstaben, deren Laut nicht ihr
+// eigener ist; `say` ist dann die Fassung für die Stimme.
 const LETTER_DATA = {
-  A: { color:'#FF6B6B', info:'A ist der 1. Buchstabe des Alphabets – und ein Vokal.',         opts:[{ e:'🍎', w:'Apfel' },   { e:'🐒', w:'Affe' },      { e:'🚗', w:'Auto' },    { e:'🐊', w:'Alligator' }, { e:'🍆', w:'Aubergine' }, { e:'🦅', w:'Adler' }]},
-  B: { color:'#FF9F43', info:'B ist der 2. Buchstabe des Alphabets.',                          opts:[{ e:'🌸', w:'Blume' },   { e:'🐝', w:'Biene' },     { e:'🎈', w:'Ballon' }]},
-  D: { color:'#c8a500', info:'D ist der 4. Buchstabe – nach C kommt D.',                       opts:[{ e:'🦖', w:'Dino' },    { e:'🐉', w:'Drache' },    { e:'🥫', w:'Dose' }]},
-  E: { color:'#5DB85D', info:'E ist der 5. Buchstabe des Alphabets – und ein Vokal.',          opts:[{ e:'🥚', w:'Ei' },      { e:'🐘', w:'Elefant' },   { e:'🦆', w:'Ente' },    { e:'🦔', w:'Eichhörnchen' }, { e:'🍓', w:'Erdbeere' }, { e:'🦉', w:'Eule' }]},
-  F: { color:'#74B9FF', info:'F ist der 6. Buchstabe. F klingt wie ein leises „fff".',         opts:[{ e:'🐟', w:'Fisch' },   { e:'🐸', w:'Frosch' },    { e:'🦊', w:'Fuchs' }]},
-  G: { color:'#A29BFE', info:'G ist der 7. Buchstabe des Alphabets.',                          opts:[{ e:'🦒', w:'Giraffe' }, { e:'👻', w:'Geist' },     { e:'🎁', w:'Geschenk' }]},
-  H: { color:'#E84393', info:'H ist der 8. Buchstabe. H haucht ganz leise.',                   opts:[{ e:'🐶', w:'Hund' },    { e:'🐰', w:'Hase' },      { e:'🏠', w:'Haus' }]},
-  I: { color:'#44D498', info:'I ist der 9. Buchstabe des Alphabets – und ein Vokal.',          opts:[{ e:'🦔', w:'Igel' },    { e:'🏝️', w:'Insel' },    { e:'🦗', w:'Insekt' }]},
-  J: { color:'#FF6B9A', info:'J ist der 10. Buchstabe des Alphabets.',                         opts:[{ e:'🐆', w:'Jaguar' },  { e:'🧥', w:'Jacke' },     { e:'🥛', w:'Joghurt' }]},
-  K: { color:'#6C63FF', info:'K ist der 11. Buchstabe des Alphabets.',                         opts:[{ e:'🐱', w:'Katze' },   { e:'👑', w:'König' },     { e:'🐨', w:'Koala' }]},
-  L: { color:'#FF6B6B', info:'L ist der 12. Buchstabe. L klingt wie ein weiches „lll".',       opts:[{ e:'🦁', w:'Löwe' },    { e:'💡', w:'Lampe' },     { e:'🦙', w:'Lama' }]},
-  M: { color:'#FF9F43', info:'M ist der 13. Buchstabe. M klingt wie ein Summen.',              opts:[{ e:'🐭', w:'Maus' },    { e:'🌙', w:'Mond' },      { e:'🎵', w:'Musik' }]},
-  N: { color:'#5DB85D', info:'N ist der 14. Buchstabe des Alphabets.',                         opts:[{ e:'👃', w:'Nase' },    { e:'🌰', w:'Nuss' },      { e:'🪺', w:'Nest' }]},
-  O: { color:'#74B9FF', info:'O ist der 15. Buchstabe des Alphabets – und ein Vokal.',         opts:[{ e:'👂', w:'Ohr' },     { e:'🍊', w:'Orange' },    { e:'🐙', w:'Oktopus' }]},
-  P: { color:'#A29BFE', info:'P ist der 16. Buchstabe des Alphabets.',                         opts:[{ e:'🐧', w:'Pinguin' }, { e:'🍄', w:'Pilz' },      { e:'🐴', w:'Pferd' }]},
-  R: { color:'#E84393', info:'R ist der 18. Buchstabe. R kann man rollen lassen.',             opts:[{ e:'🚀', w:'Rakete' },  { e:'🤖', w:'Roboter' },   { e:'🌹', w:'Rose' }]},
-  S: { color:'#44D498', info:'S ist der 19. Buchstabe. S zischt wie eine Schlange.',           opts:[{ e:'☀️', w:'Sonne' },   { e:'⭐', w:'Stern' },     { e:'🐌', w:'Schnecke' }, { e:'🦋', w:'Schmetterling' }, { e:'🐍', w:'Schlange' }, { e:'🧸', w:'Spielzeug' }]},
-  T: { color:'#FF6B9A', info:'T ist der 20. Buchstabe des Alphabets.',                         opts:[{ e:'🐯', w:'Tiger' },   { e:'🚜', w:'Traktor' },   { e:'🥁', w:'Trommel' }]},
-  U: { color:'#6C63FF', info:'U ist der 21. Buchstabe des Alphabets – und ein Vokal.',         opts:[{ e:'⏰', w:'Uhr' },     { e:'🦉', w:'Uhu' },       { e:'🛸', w:'Ufo' }]},
-  V: { color:'#FF6B6B', info:'V ist der 22. Buchstabe. V klingt ähnlich wie F.',              opts:[{ e:'🐦', w:'Vogel' },   { e:'🌋', w:'Vulkan' },    { e:'🏺', w:'Vase' }]},
-  W: { color:'#FF9F43', info:'W ist der 23. Buchstabe des Alphabets.',                         opts:[{ e:'🐺', w:'Wolf' },    { e:'☁️', w:'Wolke' },     { e:'🐋', w:'Wal' }]},
-  Z: { color:'#5DB85D', info:'Z ist der 26. und letzte Buchstabe des Alphabets.',              opts:[{ e:'🦓', w:'Zebra' },   { e:'🦷', w:'Zahn' },      { e:'🚂', w:'Zug' },     { e:'🎯', w:'Ziel' },    { e:'🧱', w:'Ziegel' }]},
-  C: { color:'#E17055', info:'C ist der 3. Buchstabe. C klingt oft wie K oder Z.',                opts:[{ e:'🤡', w:'Clown' },   { e:'💻', w:'Computer' },  { e:'🥐', w:'Croissant' }]},
-  Q: { color:'#6C5CE7', info:'Q ist der 17. Buchstabe. Q kommt fast immer mit U zusammen.',       opts:[{ e:'🪼', w:'Qualle' },  { e:'💨', w:'Qualm' },     { e:'🦆', w:'Quaken' }]},
-  X: { color:'#00B894', info:'X ist der 24. Buchstabe. X macht ein „ks" Geräusch.',               opts:[{ e:'🎹', w:'Xylofon' }, { e:'❌', w:'X' },         { e:'🎼', w:'Xylophon' }]},
-  Y: { color:'#FDCB6E', info:'Y ist der 25. Buchstabe. Y klingt wie ein „Ü" oder „J".',           opts:[{ e:'🧘', w:'Yoga' },    { e:'🛥️', w:'Yacht' },    { e:'🪀', w:'Yo-Yo' }]},
+  A: { ex:'Arm',    opts:[{ e:'🍎', w:'Apfel' },   { e:'🐒', w:'Affe' },     { e:'🐜', w:'Ameise' },  { e:'🍍', w:'Ananas' },  { e:'🦅', w:'Adler' }]},
+  B: { ex:'Ball',   opts:[{ e:'🌸', w:'Blume' },   { e:'🐝', w:'Biene' },    { e:'🍌', w:'Banane' },  { e:'🐻', w:'Bär' }]},
+  C: { note:'C klingt meistens wie K – wie in Cowboy.',
+                    opts:[{ e:'🤡', w:'Clown' },   { e:'💻', w:'Computer' }, { e:'🥐', w:'Croissant' }]},
+  D: { ex:'Dach',   opts:[{ e:'🦖', w:'Dino' },    { e:'🐉', w:'Drache' },   { e:'🥫', w:'Dose' }]},
+  E: { ex:'Ecke',   opts:[{ e:'🦆', w:'Ente' },    { e:'🐘', w:'Elefant' },  { e:'🍓', w:'Erdbeere' }, { e:'🫏', w:'Esel' }]},
+  F: { ex:'Fuß',    opts:[{ e:'🐟', w:'Fisch' },   { e:'🐸', w:'Frosch' },   { e:'🦊', w:'Fuchs' },   { e:'🪶', w:'Feder' }]},
+  G: { ex:'Gabel',  opts:[{ e:'🦒', w:'Giraffe' }, { e:'👻', w:'Geist' },    { e:'🎁', w:'Geschenk' }, { e:'🥒', w:'Gurke' }]},
+  H: { ex:'Hut',    opts:[{ e:'🐶', w:'Hund' },    { e:'🐰', w:'Hase' },     { e:'🏠', w:'Haus' },    { e:'🐓', w:'Hahn' }]},
+  I: { ex:'Iglu',   opts:[{ e:'🦔', w:'Igel' },    { e:'🏝️', w:'Insel' }]},
+  J: { ex:'Junge',  opts:[{ e:'🧥', w:'Jacke' },   { e:'🪀', w:'Jo-Jo' }]},
+  K: { ex:'Kuh',    opts:[{ e:'🐱', w:'Katze' },   { e:'👑', w:'König' },    { e:'🐨', w:'Koala' },   { e:'🧀', w:'Käse' }]},
+  L: { ex:'Licht',  opts:[{ e:'🦁', w:'Löwe' },    { e:'🦙', w:'Lama' },     { e:'🪜', w:'Leiter' }]},
+  M: { ex:'Mama',   opts:[{ e:'🐭', w:'Maus' },    { e:'🌙', w:'Mond' },     { e:'🥛', w:'Milch' }]},
+  N: { ex:'Nacht',  opts:[{ e:'👃', w:'Nase' },    { e:'🪺', w:'Nest' },     { e:'🍝', w:'Nudeln' }]},
+  O: { ex:'Ofen',   opts:[{ e:'👂', w:'Ohr' },     { e:'🍊', w:'Orange' },   { e:'👵', w:'Oma' }]},
+  P: { ex:'Papa',   opts:[{ e:'🐧', w:'Pinguin' }, { e:'🍄', w:'Pilz' },     { e:'🐼', w:'Panda' },   { e:'🦜', w:'Papagei' }]},
+  Q: { note:'Q kommt fast immer mit U – Qu wie in Quatsch.',
+       say:'Q kommt fast immer mit U. Zusammen klingen sie wie in Quatsch.',
+                    opts:[{ e:'🪼', w:'Qualle' },  { e:'🟥', w:'Quadrat' }]},
+  R: { ex:'Regen',  opts:[{ e:'🚀', w:'Rakete' },  { e:'🤖', w:'Roboter' },  { e:'🌹', w:'Rose' }]},
+  S: { ex:'Sand',   opts:[{ e:'☀️', w:'Sonne' },   { e:'🛋️', w:'Sofa' },     { e:'🧦', w:'Socke' },   { e:'🥗', w:'Salat' },   { e:'🧼', w:'Seife' }]},
+  T: { ex:'Tor',    opts:[{ e:'🐯', w:'Tiger' },   { e:'🚜', w:'Traktor' },  { e:'🥁', w:'Trommel' }, { e:'🍅', w:'Tomate' }]},
+  U: { ex:'Uhr',    opts:[{ e:'🛸', w:'Ufo' },     { e:'🦉', w:'Uhu' }]},
+  V: { note:'V klingt meistens wie F – wie in Vater. Manchmal wie W – wie in Video.',
+                    opts:[{ e:'🐦', w:'Vogel' },   { e:'🌋', w:'Vulkan' },   { e:'🏺', w:'Vase' }]},
+  W: { ex:'Wasser', opts:[{ e:'🐺', w:'Wolf' },    { e:'☁️', w:'Wolke' },    { e:'🐋', w:'Wal' },     { e:'🪱', w:'Wurm' }]},
+  X: { note:'X klingt wie ks – wie in Hexe und Taxi.',
+       say:'X klingt so wie in Hexe und in Taxi.',
+                    opts:[{ e:':px-xylofon:', w:'Xylofon' }]},
+  Y: { note:'Y klingt oft wie J – wie in Yeti.',
+                    opts:[{ e:'🧘', w:'Yoga' }]},
+  Z: { ex:'Zoo',    opts:[{ e:'🦓', w:'Zebra' },   { e:'🦷', w:'Zahn' },     { e:'🚂', w:'Zug' },     { e:'🍋', w:'Zitrone' }, { e:'⛺', w:'Zelt' }]},
 }
 
 const ALL_LETTERS = Object.keys(LETTER_DATA)
-const VOWELS = new Set(['A','E','I','O','U'])
 
-// ─── Voice audio ─────────────────────────────────────────────────────────────
-const ABC = 'audio/abc-abenteuer/'
-const LETTER_INFO_AUDIO = {
-  A: ABC + 'a-ist-der-1-buchstabe-des-alphabets-und-ein-vokal.mp3',
-  B: ABC + 'b-ist-der-2-buchstabe-des-alphabets.mp3',
-  D: ABC + 'd-ist-der-4-buchstabe-nach-c-kommt-d.mp3',
-  E: ABC + 'e-ist-der-5-buchstabe-des-alphabets-und-ein-vokal.mp3',
-  F: ABC + 'f-ist-der-6-buchstabe.mp3',
-  G: ABC + 'g-ist-der-7-buchstabe-des-alphabets.mp3',
-  H: ABC + 'h-ist-der-8-buchstabe-h-haucht-ganz-leise.mp3',
-  I: ABC + 'i-ist-der-9-buchstabe-des-alphabets-und-ein-vokal.mp3',
-  J: ABC + 'j-ist-der-10-buchstabe-des-alphabets.mp3',
-  K: ABC + 'k-ist-der-11-buchstabe-des-alphabets.mp3',
-  L: ABC + 'l-ist-der-12-buchstabe.mp3',
-  M: ABC + 'm-ist-der-13-buchstabe-m-klingt-wie-ein-summen.mp3',
-  N: ABC + 'n-ist-der-14-buchstabe-des-alphabets.mp3',
-  O: ABC + 'o-ist-der-15-buchstabe-des-alphabets-und-ein-vokal.mp3',
-  P: ABC + 'p-ist-der-16-buchstabe-des-alphabets.mp3',
-  R: ABC + 'r-ist-der-18-buchstabe-r-kann-man-rollen-lassen.mp3',
-  S: ABC + 's-ist-der-19-buchstabe-s-zischt-wie-eine-schlange.mp3',
-  T: ABC + 't-ist-der-20-buchstabe-des-alphabets.mp3',
-  U: ABC + 'u-ist-der-21-buchstabe-des-alphabets-und-ein-vokal.mp3',
-  V: ABC + 'v-ist-der-22-buchstabe-v-klingt-aehnlich-wie-f.mp3',
-  W: ABC + 'w-ist-der-23-buchstabe-des-alphabets.mp3',
-  Z: ABC + 'z-ist-der-26-und-letzte-buchstabe-des-alphabets.mp3',
-  C: null, Q: null, X: null, Y: null,
+// Buchstaben, die gleich klingen können. Ihre Wörter sind nie die falsche
+// Antwort: wer bei F nach dem Laut geht und "Vogel" tippt, hat richtig gehört.
+const SAME_SOUND = {
+  F:['V'], V:['F','W'], W:['V'], K:['C','Q'], C:['K','Q','Z'], Q:['K','C'], Z:['C'], J:['Y'], Y:['J'],
 }
 
+// Kräftige Farben, jede mit dunkler Kontur — auf Pergament gut zu sehen.
+const COLORS = ['#E8483B', '#E07A10', '#2F8F3A', '#2F7FD8', '#8A4FD0', '#D63A7C', '#13968C', '#B8860B']
+const colorOf = l => COLORS[ALL_LETTERS.indexOf(l) % COLORS.length]
 
-const LEVEL_LETTERS = [
-  ['A','E','I','O','U','M','B','S'],                            // L1 – Vokale + häufige
-  ['H','D','F','K','L','N','R','T'],                            // L2
-  ['G','J','P','W','Z','V','C','Q'],                            // L3 – inkl. C und Q
-  ['A','B','D','E','F','G','H','I','J','K','L','M','X','Y'],    // L4 – inkl. X und Y
-  ALL_LETTERS,                                                   // L5 – alle
+// Höchstens zehn Runden je Level. Level 5 hatte alle 26 Buchstaben am Stück,
+// mit Ansage über fünf Minuten — zu lang für ein Kind. Die Schritte: erst
+// Laute, die man lange halten kann, dann kurze, dann die seltenen mit
+// eigenem Merksatz, dann gemischt, zuletzt der kleine Buchstabe.
+const LEVELS = [
+  { letters:['A','M','O','L','S','E','I','U'], options:3 },
+  { letters:['B','D','F','H','K','N','R','T'], options:3 },
+  { letters:['G','J','P','W','Z','V','C','Q'], options:4 },
+  { letters:['X','Y'], review:8,               options:4 },
+  { review:10,                                 options:4, lower:true },
 ]
 
 function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5) }
 
-function makeQuestions(letters) {
-  return letters.filter(l => LETTER_DATA[l]).map(l => {
-    const { color, info, opts } = LETTER_DATA[l]
-    // Pick random correct answer from all opts for this letter
-    const correct = shuffle(opts)[0]
-    // Distractors: pick from other letters, ensure they start with different letter
-    const otherLetters = shuffle(ALL_LETTERS.filter(k => k !== l))
-    const distractorPool = otherLetters.flatMap(k => LETTER_DATA[k].opts)
-    const [d1, d2] = shuffle(distractorPool).filter(o => !o.w.startsWith(l)).slice(0, 2)
-    return {
-      letter: l,
-      color,
-      info,
-      correct,
-      options: shuffle([correct, d1 || distractorPool[0], d2 || distractorPool[1]]),
-    }
+function makeQuestions(level) {
+  const cfg = LEVELS[Math.max(0, Math.min(level - 1, LEVELS.length - 1))]
+  const known = cfg.letters ?? []
+  const review = shuffle(ALL_LETTERS.filter(l => !known.includes(l))).slice(0, cfg.review ?? 0)
+  const letters = shuffle([...known, ...review])
+
+  return letters.map(l => {
+    const correct = shuffle(LETTER_DATA[l].opts)[0]
+    const blocked = new Set([l, ...(SAME_SOUND[l] ?? [])])
+    // Falsche Antworten aus anderen Buchstaben, je eine pro Buchstabe — nie
+    // ein gleich klingender, nie dasselbe Bild wie die richtige Antwort.
+    const distractors = shuffle(ALL_LETTERS.filter(k => !blocked.has(k)))
+      .map(k => shuffle(LETTER_DATA[k].opts)[0])
+      .filter(o => o.e !== correct.e)
+      .slice(0, cfg.options - 1)
+    return { letter: l, correct, options: shuffle([correct, ...distractors]) }
   })
 }
 
+/** What the round says first: "B wie Ball. Hör mal, Bö, Ball." */
+function infoOf(l) {
+  const d = LETTER_DATA[l]
+  if (d.note) return { show: d.note, say: d.say ?? d.note }
+  return { show: `${l} wie ${d.ex}`, say: `${l} wie ${d.ex}. Hör mal, ${soundOf(l)}, ${d.ex}.` }
+}
+
+const ABC = 'audio/abc-abenteuer/'
+const NEXT_BTN = { ...pxButton('green'), color: INK, textShadow: '0 1px 0 rgba(255,255,255,0.4)' }
+
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function LetterIntroGame({ level = 1, onComplete }) {
-  const questions = useMemo(() => {
-    const lvl      = Math.max(0, Math.min(level - 1, LEVEL_LETTERS.length - 1))
-    const letters  = LEVEL_LETTERS[lvl]
-    return makeQuestions(shuffle(letters))
-  }, [level])
+  const questions = useMemo(() => makeQuestions(level), [level])
+  const lower = !!LEVELS[Math.min(level, LEVELS.length) - 1]?.lower
+  const paused = usePaused()
 
   const [idx,      setIdx]      = useState(0)
-  const [selected, setSelected] = useState(null)
-  const [score,    setScore]    = useState(0)
+  const [solved,   setSolved]   = useState(false)
+  const [wrong,    setWrong]    = useState([])     // this round's wrong taps
   const [shakeOpt, setShakeOpt] = useState(null)
-  const [showWeiter, setShowWeiter] = useState(false)
-  const [misses,   setMisses]   = useState(0)
-
-  // Stop narration when game unmounts
-  useEffect(() => () => voice.stop(), [])
-
-  // Die Ansage der Runde: Merksatz, dann Frage — als EIN Aufruf.
-  //
-  // Vorher lief hier zuerst ein langsam gesprochenes "Eff. Eff. Wie in Fisch."
-  // und 2600 ms später per Zeitgeber der Rest. Bei Tempo 0,45 dauert der erste
-  // Satz aber deutlich länger als 2,6 Sekunden — der zweite Teil fiel dem
-  // ersten ins Wort. Genau daran krankte der Ton in diesem Spiel. Zeitgeber
-  // können nicht wissen, wie lange gesprochen wird; die Erzähl-Schicht weiß es,
-  // weil sie auf das echte Ende wartet. Also gibt es keinen Zeitgeber mehr,
-  // sondern eine Ansage aus zwei Teilen.
-  //
-  // C, Q, X und Y haben keine Aufnahme für den Merksatz (sie waren früher
-  // schlicht stumm); dort springt die Sprachausgabe mit demselben Satz ein.
-  // Wird vom Darüberfahren UND vom Anklicken benutzt — damit beides identisch
-  // klingt, und zwar nachweislich, weil es derselbe Aufruf ist.
-  const sayWord = useCallback((w) => speak(w), [])
-
-  const sayRound = useCallback(() => {
-    const q = questions[idx]
-    if (!q) return
-    const infoAudio = LETTER_INFO_AUDIO[q.letter]
-    const prompt = ABC + `welches-wort-beginnt-mit-${q.letter.toLowerCase()}.mp3`
-    voice.chain([infoAudio ?? null, prompt], [q.info, `Welches Wort beginnt mit ${q.letter}?`])
-  }, [questions, idx])
-
-  useEffect(() => {
-    lockPreviews()
-    const t = setTimeout(sayRound, 400)
-    return () => clearTimeout(t)
-  }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const weiterClick = useCallback(() => {
-    setShowWeiter(false)
-    const next = idx + 1
-    if (next >= questions.length) {
-      // A wrong pick can simply be retried, so every question ends up correct
-      // and score alone would always award three stars. Rate the wrong taps.
-      const stars = misses <= 1 ? 3 : misses <= questions.length ? 2 : 1
-      onComplete({ score, total: questions.length, stars })
-    } else {
-      setIdx(next)
-      setSelected(null)
-    }
-  }, [idx, questions.length, score, misses, onComplete])
+  const [ready,    setReady]    = useState(false)  // the task has been said
+  const [firstTry, setFirstTry] = useState(0)
+  const [leaving,  setLeaving]  = useState(false)
 
   const q = questions[idx]
-  if (!q) return null
+  const info = q && infoOf(q.letter)
+  const shown = q && (lower ? q.letter.toLowerCase() : q.letter)
+
+  useEffect(() => { lockPreviews(); return () => stopNarration() }, [])
+
+  // Merksatz, dann die Frage, als eine Ansage. Bis sie durch ist, zählen die
+  // Karten noch nicht: wer sofort tippte, brach den Merksatz ab und hörte die
+  // eigentliche Frage nie.
+  const sayRound = useCallback(() => {
+    if (!q) return
+    narrate([
+      { text: info.say },
+      { src: ABC + `welches-wort-beginnt-mit-${q.letter.toLowerCase()}.mp3`, text: `Welches Wort beginnt mit ${q.letter}?`, gap: 250 },
+    ])
+    afterNarration(() => setReady(true), { maxMs: 12000 })
+  }, [q, info])
+
+  // Auch nach dem Schließen der Hilfe noch einmal, solange die Runde läuft.
+  useEffect(() => {
+    if (paused || solved) return
+    const t = setTimeout(sayRound, 400)
+    return () => clearTimeout(t)
+  }, [idx, paused]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const pick = (opt) => {
-    if (selected !== null) return
+    if (solved || !ready || wrong.includes(opt)) return
     if (opt === q.correct) {
-      // Ein Wort, eine Stimme.
-      //
-      // Beim Darüberfahren sprach die Sprachsynthese, beim Anklicken lief eine
-      // Aufnahme — dasselbe Wort in zwei verschiedenen Stimmen. Und da nur 66
-      // der 91 Antwortwörter überhaupt eine Aufnahme haben, wechselte die
-      // Stimme sogar von Antwort zu Antwort. Jetzt kommt beides aus derselben
-      // Quelle, und zwar aus der, die besser klingt.
-      //
-      // Die Aufnahmen der Merksätze und der Frage bleiben: dort geht es um
-      // ganze Sätze, und da ist eine Aufnahme klar im Vorteil.
-      sayWord(opt.w)
-      setSelected(opt)
-      const nextScore = score + 1
-      setScore(nextScore)
-      setShowWeiter(true)
+      sfx.correct()
+      if (!wrong.length) setFirstTry(n => n + 1)
+      sayRight(`${opt.w} beginnt mit ${q.letter}.`)
+      setSolved(true)
+      return
+    }
+    sfx.wrong()
+    setShakeOpt(opt)
+    setTimeout(() => setShakeOpt(null), 600)
+    const misses = [...wrong, opt]
+    setWrong(misses)
+    if (misses.length >= 2) {
+      // Nach zwei Fehlern zeigt Lumi die Lösung, statt raten zu lassen.
+      narrate([{ text: `Schau mal, ${q.correct.w} beginnt mit ${q.letter}.` }])
+      setSolved(true)
     } else {
-      setShakeOpt(opt)
-      setMisses(m => m + 1)
-      setTimeout(() => setShakeOpt(null), 600)
+      sayWrong(`${opt.w} beginnt mit ${opt.w[0].toUpperCase()}. Such ein Wort mit ${q.letter}!`)
     }
   }
 
+  const weiterClick = () => {
+    if (leaving) return
+    if (idx + 1 >= questions.length) {
+      setLeaving(true)
+      sfx.complete()
+      afterNarration(() => onComplete(result(firstTry, questions.length)), { minMs: 300 })
+    } else {
+      lockPreviews()
+      setSolved(false); setWrong([]); setReady(false)
+      setIdx(idx + 1)
+    }
+  }
+
+  if (!q) return null
+  const color = colorOf(q.letter)
+
   return (
-    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:20, padding:'clamp(12px,3vw,24px)', width:'100%' }}>
+    <div style={{
+      flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'space-evenly',
+      gap:'clamp(10px,2vh,18px)', padding:'clamp(12px,3vw,24px)', width:'100%', boxSizing:'border-box',
+    }}>
 
       {/* Progress */}
       <div style={{ width:'100%', maxWidth:520, height:14, background:'rgba(42,27,61,0.12)', border:`2px solid ${INK}`, borderRadius:4, overflow:'hidden', boxSizing:'border-box' }}>
         <motion.div
-          animate={{ width:`${((idx + (selected ? 1 : 0)) / questions.length) * 100}%` }}
-          style={{ height:'100%', background:q.color, borderRadius:2, boxShadow:'inset 0 -3px 0 rgba(0,0,0,0.18)' }}
+          animate={{ width:`${((idx + (solved ? 1 : 0)) / questions.length) * 100}%` }}
+          style={{ height:'100%', background:'var(--px-green)', borderRadius:2, boxShadow:'inset 0 -3px 0 rgba(0,0,0,0.18)' }}
           transition={{ duration:0.4 }}
         />
       </div>
@@ -208,169 +212,139 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
           animate={{ scale:1, rotate:0, opacity:1 }}
           exit={{ scale:0.4, rotate:15, opacity:0 }}
           transition={{ type:'spring', stiffness:360, damping:20 }}
-          style={{ textAlign:'center', display:'flex', flexDirection:'row', alignItems:'center', justifyContent:'center', gap:'clamp(12px,3vw,28px)', position:'relative' }}
+          style={{ textAlign:'center', display:'flex', flexDirection:'row', alignItems:'baseline', justifyContent:'center', gap:'clamp(12px,3vw,28px)' }}
         >
-          {/* Uppercase */}
+          {/* Ab Level 5 ist der kleine Buchstabe der große */}
           <div style={{
             fontFamily:'var(--font-heading)',
-            fontSize:'clamp(150px,28vw,240px)',
+            fontSize:'clamp(130px,24vw,210px)',
             lineHeight:1, userSelect:'none',
-            color: q.color,
+            color,
             WebkitTextStroke:`5px ${INK}`, paintOrder:'stroke fill',
             filter:'drop-shadow(0 6px 0 rgba(42,27,61,0.35))',
           }}>
-            {q.letter}
+            {shown}
           </div>
-          {/* Lowercase */}
           <div style={{
             fontFamily:'var(--font-heading)',
-            fontSize:'clamp(110px,20vw,176px)',
-            lineHeight:1, color:`${q.color}77`,
-            WebkitTextStroke:'4px rgba(42,27,61,0.35)', paintOrder:'stroke fill',
+            fontSize:'clamp(80px,15vw,130px)',
+            lineHeight:1, userSelect:'none',
+            color, opacity:0.85,
+            WebkitTextStroke:`3px ${INK}`, paintOrder:'stroke fill',
           }}>
-            {q.letter.toLowerCase()}
+            {lower ? q.letter : q.letter.toLowerCase()}
           </div>
-          {VOWELS.has(q.letter) && (
-            <div style={{
-              position:'absolute', top:-8, right:-8,
-              background:'var(--px-gold)', color:INK,
-              border:`2px solid ${INK}`, borderRadius:6, padding:'2px 10px',
-              fontFamily:'var(--font-heading)', fontSize:12, fontWeight:700,
-              boxShadow:'0 3px 0 rgba(42,27,61,0.35)',
-            }}>Vokal</div>
-          )}
         </motion.div>
       </AnimatePresence>
 
-      {/* Die Frage noch einmal — ein Kind, das sie überhört hat, kam sonst
-          nicht mehr an sie heran. */}
-      <motion.button
-        whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
-        onClick={sayRound}
-        aria-label="Frage noch einmal anhören"
-        style={{
-          ...pxButton('parch'),
-          display:'flex', alignItems:'center', gap:8,
-          padding:'8px 20px',
-          fontSize:'clamp(14px,3vw,17px)',
-        }}
-      >🔊 Nochmal</motion.button>
-
-      {/* Info badge — outside AnimatePresence so it fades in calmly */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={'info-' + idx}
-          initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }}
-          transition={{ delay:0.3, duration:0.35 }}
-          style={{
-            background:`linear-gradient(${q.color}22, ${q.color}22), var(--px-parch-light)`,
-            border:`3px solid ${INK}`,
-            borderRadius:12,
-            boxShadow:'0 5px 0 rgba(42,27,61,0.35)',
-            padding:'10px 22px',
-            fontFamily:'var(--font-heading)',
-            fontSize:'clamp(14px,3vw,20px)',
-            color:'var(--text-secondary)',
-            textAlign:'center',
-            maxWidth:440,
-            width:'100%',
-          }}
-        >
-          {q.info}
-        </motion.div>
-      </AnimatePresence>
+      {/* Merksatz, und die ganze Ansage noch einmal — ein Kind, das sie
+          überhört hat, kam sonst nicht mehr an sie heran. */}
+      <div style={{ display:'flex', alignItems:'center', gap:12, maxWidth:520, width:'100%' }}>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={'info-' + idx}
+            initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }}
+            transition={{ delay:0.3, duration:0.35 }}
+            style={{
+              flex:1,
+              background:`linear-gradient(${color}1f, ${color}1f), var(--px-parch-light)`,
+              border:`3px solid ${INK}`,
+              borderRadius:12,
+              boxShadow:'0 5px 0 rgba(42,27,61,0.35)',
+              padding:'10px 18px',
+              fontFamily:'var(--font-heading)',
+              fontSize:'clamp(16px,3.2vw,21px)',
+              color:INK,
+              textAlign:'center',
+            }}
+          >
+            {info.show}
+          </motion.div>
+        </AnimatePresence>
+        <motion.button
+          whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }}
+          onClick={sayRound}
+          aria-label="Frage noch einmal anhören"
+          style={{ ...pxButton('parch'), width:52, height:52, flexShrink:0, fontSize:24, lineHeight:1, padding:0 }}
+        >🔊</motion.button>
+      </div>
 
       {/* Question */}
-      <div style={{
-        fontFamily:'var(--font-heading)',
-        fontSize:'clamp(16px,3.5vw,22px)',
-        color:'var(--text-secondary)',
-        textAlign:'center',
-      }}>
-        Welches Wort beginnt mit <strong style={{ color:q.color }}>{q.letter}</strong>?
+      <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+        <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(17px,3.5vw,23px)', color:INK, textAlign:'center' }}>
+          Welches Wort beginnt mit <strong style={{ borderBottom:`4px solid ${color}` }}>{shown}</strong>?
+        </div>
+        <HearOptions items={q.options.map(o => o.w)} label="Alle Wörter vorlesen" size={48} />
       </div>
 
       {/* Options */}
       <div style={{
-        display:'flex', gap:'clamp(10px,2.5vw,20px)',
-        flexWrap:'wrap', justifyContent:'center',
-        width:'100%', maxWidth:580,
+        display:'grid', gridTemplateColumns:`repeat(${q.options.length}, minmax(0, 1fr))`,
+        gap:'clamp(10px,2.5vw,20px)', width:'100%', maxWidth: q.options.length * 170,
+        opacity: ready || solved ? 1 : 0.7, transition:'opacity 0.3s',
       }}>
         {q.options.map((opt, i) => {
           const isCorrect = opt === q.correct
-          const isChosen  = opt === selected
-          const isWrong   = opt === shakeOpt
-
-          const cardState = isChosen && isCorrect ? 'right' : isWrong ? 'wrong' : undefined
+          const isWrong   = wrong.includes(opt)
+          const cardState = solved && isCorrect ? 'right' : isWrong ? 'wrong' : undefined
+          const live      = ready && !solved && !isWrong
 
           return (
             <motion.button
               key={`${idx}-${i}`}
-              animate={isWrong
-                ? { x:[0,-10,10,-7,7,-3,3,0], opacity:[1,0.6,1,0.6,1,0.6,1,1] }
-                : {}}
+              animate={opt === shakeOpt
+                ? { x:[0,-10,10,-7,7,-3,3,0] }
+                : { scale: solved && isCorrect ? [1, 1.08, 1] : 1 }}
               transition={{ duration:0.45 }}
-              whileHover={!selected ? { scale:1.07, y:-3 } : {}}
-              whileTap={!selected ? { scale:0.93 } : {}}
+              whileHover={live ? { scale:1.06, y:-3 } : {}}
+              whileTap={live ? { scale:0.94 } : {}}
               onClick={() => pick(opt)}
-              {...hearable(opt.w, { enabled: !selected })}
+              {...hearable(opt.w, { enabled: !solved })}
               style={{
                 ...pxCard(cardState),
-                padding:'clamp(14px,3.2vw,24px) clamp(16px,3.5vw,30px)',
-                cursor: selected ? 'default' : 'pointer',
+                padding:'clamp(12px,2.6vw,20px) 6px',
+                cursor: live ? 'pointer' : 'default',
                 display:'flex', flexDirection:'column', alignItems:'center', gap:8,
-                transition:'background 0.2s, border 0.2s, box-shadow 0.2s',
-                minWidth:'clamp(100px,26vw,165px)',
-                position:'relative',
+                position:'relative', minWidth:0,
+                opacity: isWrong && !solved ? 0.6 : 1,
               }}
             >
-              <span style={{ fontSize:'clamp(44px,9.5vw,66px)', lineHeight:1 }}>
+              <span style={{ fontSize:'clamp(48px,10vw,72px)', lineHeight:1, minHeight:'1em' }}>
                 {opt.e}
               </span>
               <span style={{
                 fontFamily:'var(--font-heading)',
-                fontSize:'clamp(14px,3vw,20px)',
-                color:'var(--text-primary)', fontWeight:700,
-                textAlign:'center',
+                fontSize:'clamp(14px,2.8vw,19px)',
+                color:INK, fontWeight:700,
+                textAlign:'center', overflowWrap:'anywhere',
               }}>
                 {opt.w}
               </span>
-              {isChosen && isCorrect && (
+              {solved && isCorrect && (
                 <motion.span
                   initial={{ scale:0 }} animate={{ scale:1 }}
                   transition={{ type:'spring', stiffness:500 }}
-                  style={{ fontSize:22, position:'absolute', top:-10, right:-10 }}
-                >
-                  ✅
-                </motion.span>
-              )}
-              {isWrong && (
-                <span style={{ fontSize:22, position:'absolute', top:-10, right:-10 }}>❌</span>
+                  style={{ fontSize:24, position:'absolute', top:-12, right:-10 }}
+                >✅</motion.span>
               )}
             </motion.button>
           )
         })}
       </div>
 
-      {/* Weiter button */}
-      {showWeiter && (
-        <motion.button
-          initial={{ scale:0 }} animate={{ scale:1 }}
-          transition={{ type:'spring', stiffness:300, delay:0.2 }}
-          whileHover={{ scale:1.06 }} whileTap={{ scale:0.94 }}
-          onClick={weiterClick}
-          style={{
-            ...pxButton('green'),
-            padding:'14px 40px',
-            fontSize:20,
-          }}
-        >Weiter! →</motion.button>
-      )}
-
-      {/* Score */}
-      <p style={{ fontFamily:'var(--font-heading)', fontSize:15, color:'var(--text-muted)', margin:0 }}>
-        {score} von {Math.min(idx + (selected ? 1 : 0), questions.length)} richtig
-      </p>
+      {/* Weiter — der Platz ist immer da, damit nichts springt */}
+      <div style={{ minHeight:64, display:'flex', alignItems:'center' }}>
+        {solved && (
+          <motion.button
+            initial={{ scale:0 }} animate={{ scale:1 }}
+            transition={{ type:'spring', stiffness:300, delay:0.2 }}
+            whileHover={{ scale:1.06 }} whileTap={{ scale:0.94 }}
+            onClick={weiterClick}
+            {...hearable('Weiter')}
+            style={{ ...NEXT_BTN, padding:'14px 40px', fontSize:20, minHeight:56 }}
+          >Weiter! →</motion.button>
+        )}
+      </div>
     </div>
   )
 }

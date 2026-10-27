@@ -25,6 +25,15 @@
   --px-blue:   #4aa3ff;
   --px-red:    #ff6b5b;
   --px-purple: #8e6cf0;
+  /* white text needs a darker face: white on --px-purple is only 3.8:1 */
+  --px-purple-deep: #6f4fd8;
+
+  /* more flat colours for picture areas (tile heads); never behind text */
+  --px-sky:    #9ad8ff;
+  --px-pink:   #ff8fb8;
+  --px-orange: #ff9a3c;
+  --px-teal:   #3fc1a8;
+  --px-night:  #3b3266;
 
   --px-border: 3px solid var(--px-ink);
   --px-radius: 10px;
@@ -89,18 +98,23 @@
     inset 0 -2px 0 rgba(0, 0, 0, 0.18),
     0 1px 0 var(--px-ink);
 }
-.px-btn:disabled { filter: grayscale(0.6) opacity(0.55); cursor: default; }
+/* greyed, but the label stays readable (at 0.55 it was 1.5:1) */
+.px-btn:disabled { filter: grayscale(0.85) opacity(0.75); cursor: default; }
 .px-btn:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 
+/* Ink on the bright faces, like on gold: white on --px-green was 2.2:1,
+   on --px-red 2.8:1 and on --px-blue 2.6:1. Ink reaches 5.7–7.2:1 and the
+   buttons keep their colour. */
 .px-btn--gold   { --btn: var(--px-gold); }
-.px-btn--green  { --btn: var(--px-green);  --btn-text: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.3); }
-.px-btn--blue   { --btn: var(--px-blue);   --btn-text: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.3); }
-.px-btn--red    { --btn: var(--px-red);    --btn-text: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.3); }
-.px-btn--purple { --btn: var(--px-purple); --btn-text: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.3); }
-.px-btn--wood   { --btn: var(--px-wood);   --btn-text: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.3); }
+.px-btn--green  { --btn: var(--px-green); }
+.px-btn--blue   { --btn: var(--px-blue); }
+.px-btn--red    { --btn: var(--px-red); }
+.px-btn--purple { --btn: var(--px-purple-deep); --btn-text: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.3); }
+.px-btn--wood   { --btn: var(--px-wood);   --btn-text: #fff; text-shadow: -1px -1px 0 var(--px-ink), 1px -1px 0 var(--px-ink), -1px 1px 0 var(--px-ink), 1px 2px 0 var(--px-ink); }
 .px-btn--parch  { --btn: var(--px-parch); }
 
-.px-btn--sm { font-size: 15px; padding: 6px 14px;  min-height: 42px; }
+/* 44 px at the least: the size of a child's fingertip */
+.px-btn--sm { font-size: 16px; padding: 6px 14px;  min-height: 44px; }
 .px-btn--md { font-size: 19px; padding: 10px 24px; min-height: 52px; }
 .px-btn--lg { font-size: 24px; padding: 14px 34px; min-height: 62px; }
 .px-btn--icon { width: 48px; height: 48px; padding: 0; }
@@ -176,6 +190,26 @@
 /* HUD counters that give way first on narrow phones */
 @media (max-width: 520px) {
   .hud-hide-sm { display: none; }
+}
+@media (min-width: 521px) {
+  .hud-only-sm { display: none; }
+}
+
+/* Hints about keys are no use on a tablet */
+@media (hover: none), (pointer: coarse) {
+  .px-keys-hint { display: none; }
+}
+
+/* Small pixel icons drawn on a grid (PxIcon in components/PixelUI.jsx),
+   instead of thin line icons and the ▶ glyph from a fallback font. */
+.px-icon { display: inline-block; flex-shrink: 0; shape-rendering: crispEdges; vertical-align: -0.15em; }
+
+/* A dialog in the pixel style, over everything */
+.px-backdrop {
+  position: fixed; inset: 0; z-index: 2000;
+  background: rgba(42, 27, 61, 0.6);
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
 }
 
 /* Emoji pictures (src/lib/emojiArt.jsx): sized by the surrounding font, so

@@ -1,10 +1,12 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
-import { speak } from '../tts.js'
-import { afterNarration } from '../narrator.js'
-import { pxCard, pxPanel, pxBubble, pxButton, pxSegment, ACCENT } from './px.js'
+import { narrate, afterNarration, lockPreviews } from '../narrator.js'
+import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
+import { sayNumber } from '../tts.js'
+import { result } from '../lib/score.js'
+import { pxCard, pxPanel, pxBubble, pxButton, pxSegment, ACCENT, INK } from './px.js'
 
 /**
  * Formen-Werkstatt — aus Formen ein Bild zusammensetzen
@@ -17,34 +19,43 @@ import { pxCard, pxPanel, pxBubble, pxButton, pxSegment, ACCENT } from './px.js'
  * Scientific basis:
  *   • Spatial composition (Clements & Sarama) — combining shapes into larger
  *     figures is its own developmental progression, separate from naming.
+ *     The levels follow it: matching outlined places first, then a piece that
+ *     does not belong, then pieces that have to be turned, and at the top
+ *     only the silhouette of the whole figure, with no lines between parts.
  *   • Tap-to-place instead of dragging: the same reason ClockGame and SortGame
  *     offer tap controls — a four-year-old's drag is imprecise, and a missed
  *     drag would look like a wrong answer when it is only a slipped finger.
  */
 
-function speakDE(text) { speak(text, { rate: 0.85, pitch: 1.05, lang: 'de-DE' }) }
 function shuffle(a) { return [...a].sort(() => Math.random() - 0.5) }
 
 // Names carry their article: "Das Kreis passt da nicht" is exactly the kind of
-// sentence a five-year-old should never hear from a learning app.
+// sentence a five-year-old should never hear from a learning app. `pro` is
+// the pronoun for "Wohin gehört er/es?".
 const SHAPE = {
-  circle:    { name: 'Kreis',    art: 'Der' },
-  square:    { name: 'Quadrat',  art: 'Das' },
-  triangle:  { name: 'Dreieck',  art: 'Das' },
-  rectangle: { name: 'Rechteck', art: 'Das' },
+  circle:    { name: 'Kreis',    art: 'Der', pro: 'er' },
+  square:    { name: 'Quadrat',  art: 'Das', pro: 'es' },
+  triangle:  { name: 'Dreieck',  art: 'Das', pro: 'es' },
+  rtriangle: { name: 'Dreieck',  art: 'Das', pro: 'es' },
+  rectangle: { name: 'Rechteck', art: 'Das', pro: 'es' },
 }
 
-function ShapePath({ shape, x, y, w, h, rot = 0, fill, stroke, dashed, sw }) {
-  const common = {
-    fill: fill ?? 'none',
-    stroke: stroke ?? 'none',
-    strokeWidth: sw ?? (dashed ? 2.5 : 0),
-    strokeDasharray: dashed ? '6 5' : undefined,
-    transform: rot ? `rotate(${rot} ${x + w / 2} ${y + h / 2})` : undefined,
-  }
-  if (shape === 'circle')   return <ellipse cx={x + w / 2} cy={y + h / 2} rx={w / 2} ry={h / 2} {...common} />
-  if (shape === 'triangle') return <polygon points={`${x + w / 2},${y} ${x + w},${y + h} ${x},${y + h}`} {...common} />
-  return <rect x={x} y={y} width={w} height={h} rx={shape === 'square' ? 3 : 3} {...common} />
+// Turning a circle changes nothing, a square looks the same every quarter
+// turn and a rectangle every half turn — only the turns that look different
+// count.
+function sameTurn(shape, a = 0, b = 0) {
+  const period = shape === 'circle' ? 1 : shape === 'square' ? 90 : shape === 'rectangle' ? 180 : 360
+  const n = r => ((r % period) + period) % period
+  return period === 1 || n(a) === n(b)
+}
+
+function ShapePath({ shape, x, y, w, h, rot = 0, ...paint }) {
+  const transform = rot ? `rotate(${rot} ${x + w / 2} ${y + h / 2})` : undefined
+  if (shape === 'circle')    return <ellipse cx={x + w / 2} cy={y + h / 2} rx={w / 2} ry={h / 2} transform={transform} {...paint} />
+  if (shape === 'triangle')  return <polygon points={`${x + w / 2},${y} ${x + w},${y + h} ${x},${y + h}`} transform={transform} {...paint} />
+  // right angle bottom left: the upright side can sit flush against a body
+  if (shape === 'rtriangle') return <polygon points={`${x},${y} ${x},${y + h} ${x + w},${y + h}`} transform={transform} {...paint} />
+  return <rect x={x} y={y} width={w} height={h} rx={3} transform={transform} {...paint} />
 }
 
 // Jede Figur ist eine kleine Teileliste — der Umriss, den das Kind füllt.
@@ -55,45 +66,58 @@ function ShapePath({ shape, x, y, w, h, rot = 0, fill, stroke, dashed, sw }) {
 // nebeneinander, und das Ergebnis sah nach Formen aus statt nach einem Haus.
 //
 // `g` ist das Geschlecht für den Artikel: "Baue einen Baum", nicht "Baue Baum".
+// `part` sagt, was das Teil im Bild ist: "Das Dreieck ist das Dach!"
 const FIGURES = [
   { name: 'Haus', g: 'n', parts: [
-    { shape: 'triangle',  x: 22, y: 18, w: 56, h: 28, color: '#FF6B6B' },   // Dach sitzt auf …
-    { shape: 'square',    x: 30, y: 46, w: 40, h: 40, color: '#FFD93D' }] },// … der Wand ab y46
+    { shape: 'triangle',  x: 22, y: 18, w: 56, h: 28, color: '#FF6B6B', part: 'das Dach' },    // Dach sitzt auf …
+    { shape: 'square',    x: 30, y: 46, w: 40, h: 40, color: '#FFD93D', part: 'die Wand' }] }, // … der Wand ab y46
   { name: 'Baum', g: 'm', parts: [
-    { shape: 'triangle',  x: 20, y: 14, w: 60, h: 48, color: '#6BCB77' },   // Krone endet bei y62
-    { shape: 'rectangle', x: 46, y: 62, w: 12, h: 26, color: '#8D6E63' }] },// Stamm beginnt dort
+    { shape: 'triangle',  x: 20, y: 14, w: 60, h: 48, color: '#6BCB77', part: 'die Krone' },   // Krone endet bei y62
+    { shape: 'rectangle', x: 43, y: 62, w: 14, h: 26, color: '#8D6E63', part: 'der Stamm' }] },// Stamm beginnt dort
   { name: 'Boot', g: 'n', parts: [
-    { shape: 'triangle',  x: 42, y: 16, w: 32, h: 46, color: '#FF9F43' },   // Segel steht auf …
-    { shape: 'rectangle', x: 16, y: 62, w: 68, h: 20, color: '#74B9FF' }] },// … dem Rumpf
+    { shape: 'triangle',  x: 42, y: 16, w: 32, h: 46, color: '#FF9F43', part: 'das Segel' },   // Segel steht auf …
+    { shape: 'rectangle', x: 16, y: 62, w: 68, h: 20, color: '#74B9FF', part: 'der Rumpf' }] },// … dem Rumpf
   { name: 'Kerze', g: 'f', parts: [
-    { shape: 'triangle',  x: 44, y: 10, w: 12, h: 24, color: '#FF9F43' },   // Flamme genau so …
-    { shape: 'rectangle', x: 44, y: 34, w: 12, h: 56, color: '#FFD93D' }] },// … breit wie die Kerze
+    { shape: 'triangle',  x: 42, y: 10, w: 16, h: 24, color: '#FF9F43', part: 'die Flamme' },  // Flamme genau so …
+    { shape: 'rectangle', x: 42, y: 34, w: 16, h: 56, color: '#FFD93D', part: 'das Wachs' }] },// … breit wie die Kerze
   { name: 'Eis', g: 'n', parts: [
-    { shape: 'circle',    x: 34, y: 20, w: 32, h: 32, color: '#FD79A8' },   // Kugel in der Waffel
-    { shape: 'triangle',  x: 38, y: 46, w: 24, h: 40, rot: 180, color: '#D9A066' }] },
+    { shape: 'circle',    x: 34, y: 20, w: 32, h: 32, color: '#FD79A8', part: 'die Kugel' },   // Kugel in der Waffel
+    { shape: 'triangle',  x: 38, y: 46, w: 24, h: 40, rot: 180, color: '#D9A066', part: 'die Waffel' }] },
+  { name: 'Lolli', g: 'm', parts: [
+    { shape: 'circle',    x: 28, y: 10, w: 44, h: 44, color: '#E84393', part: 'das Bonbon' },  // Bonbon auf …
+    { shape: 'rectangle', x: 46, y: 54, w: 8,  h: 36, color: '#D9A066', part: 'der Stiel' }] },// … dem Stiel
+  { name: 'Fahne', g: 'f', parts: [
+    { shape: 'rectangle', x: 24, y: 10, w: 8,  h: 80, color: '#8D6E63', part: 'die Stange' },  // Stange, an ihr …
+    { shape: 'triangle',  x: 40, y: 4,  w: 30, h: 46, rot: 90, color: '#FF6B6B', part: 'die Fahne' }] }, // … das Tuch (Spitze nach rechts)
   { name: 'Schneemann', g: 'm', parts: [
-    { shape: 'circle',    x: 39, y: 8,  w: 22, h: 22, color: '#EAF6FF' },   // drei Kugeln, jede
-    { shape: 'circle',    x: 34, y: 28, w: 32, h: 32, color: '#CFE7FF' },   // auf der nächsten
-    { shape: 'circle',    x: 29, y: 54, w: 42, h: 42, color: '#AED4F7' }] },
+    { shape: 'circle',    x: 39, y: 8,  w: 22, h: 22, color: '#EAF6FF', part: 'der Kopf' },          // drei Kugeln, jede
+    { shape: 'circle',    x: 34, y: 28, w: 32, h: 32, color: '#CFE7FF', part: 'die mittlere Kugel' },// auf der nächsten
+    { shape: 'circle',    x: 29, y: 54, w: 42, h: 42, color: '#AED4F7', part: 'die untere Kugel' }] },
   { name: 'Turm', g: 'm', parts: [
-    { shape: 'triangle',  x: 30, y: 6,  w: 40, h: 28, color: '#FF6B6B' },   // Spitze  6–34
-    { shape: 'square',    x: 38, y: 34, w: 24, h: 24, color: '#6C63FF' },   // Mitte  34–58
-    { shape: 'square',    x: 32, y: 58, w: 36, h: 36, color: '#A29BFE' }] },// Sockel 58–94
+    { shape: 'triangle',  x: 30, y: 6,  w: 40, h: 28, color: '#FF6B6B', part: 'die Spitze' },  // Spitze  6–34
+    { shape: 'square',    x: 38, y: 34, w: 24, h: 24, color: '#4AA3FF', part: 'das Fenster' }, // Mitte  34–58
+    { shape: 'square',    x: 32, y: 58, w: 36, h: 36, color: '#B0BEC5', part: 'der Sockel' }] },// Sockel 58–94
   { name: 'Rakete', g: 'f', parts: [
-    { shape: 'triangle',  x: 36, y: 6,  w: 28, h: 24, color: '#FF6B6B' },   // Spitze auf dem Rumpf
-    { shape: 'rectangle', x: 40, y: 30, w: 20, h: 44, color: '#A29BFE' },
-    { shape: 'triangle',  x: 22, y: 50, w: 18, h: 24, color: '#6C63FF' },   // Flossen schließen
-    { shape: 'triangle',  x: 60, y: 50, w: 18, h: 24, color: '#6C63FF' }] },// bündig an den Rumpf an
+    { shape: 'triangle',  x: 36, y: 6,  w: 28, h: 24, color: '#FF6B6B', part: 'die Spitze' },  // Spitze auf dem Rumpf
+    { shape: 'rectangle', x: 40, y: 30, w: 20, h: 44, color: '#B0BEC5', part: 'der Rumpf' },
+    // Flossen: rechtwinklig, die senkrechte Kante liegt am Rumpf (x 40 / 60),
+    // die untere schließt mit ihm bei y 74 ab. Die linke ist dieselbe Form,
+    // eine Dreivierteldrehung weiter.
+    { shape: 'rtriangle', x: 20, y: 54, w: 20, h: 20, rot: 270, color: '#4AA3FF', part: 'eine Flosse' },
+    { shape: 'rtriangle', x: 60, y: 54, w: 20, h: 20, color: '#4AA3FF', part: 'eine Flosse' }] },
   { name: 'Blume', g: 'f', parts: [
-    { shape: 'circle',    x: 39, y: 26, w: 22, h: 22, color: '#FFD93D' },   // Mitte
-    { shape: 'circle',    x: 19, y: 30, w: 20, h: 20, color: '#FD79A8' },   // Blätter berühren sie
-    { shape: 'circle',    x: 61, y: 30, w: 20, h: 20, color: '#FD79A8' },
-    { shape: 'rectangle', x: 47, y: 48, w: 6,  h: 42, color: '#6BCB77' }] },// Stiel ab Mitten-Unterkante
+    // vier große Blütenblätter um eine deutlich kleinere Mitte
+    { shape: 'circle',    x: 38, y: 5,  w: 24, h: 24, color: '#FD79A8', part: 'ein Blütenblatt' },
+    { shape: 'circle',    x: 19, y: 24, w: 24, h: 24, color: '#FD79A8', part: 'ein Blütenblatt' },
+    { shape: 'circle',    x: 57, y: 24, w: 24, h: 24, color: '#FD79A8', part: 'ein Blütenblatt' },
+    { shape: 'circle',    x: 38, y: 43, w: 24, h: 24, color: '#FD79A8', part: 'ein Blütenblatt' },
+    { shape: 'circle',    x: 43, y: 29, w: 14, h: 14, color: '#FFD93D', part: 'die Mitte' },
+    { shape: 'rectangle', x: 46, y: 67, w: 8,  h: 27, color: '#6BCB77', part: 'der Stiel' }] },// Stiel ab dem unteren Blatt
   { name: 'Zug', g: 'm', parts: [
-    { shape: 'rectangle', x: 12, y: 44, w: 46, h: 28, color: '#74B9FF' },   // Wagen 12–58
-    { shape: 'square',    x: 58, y: 48, w: 24, h: 24, color: '#FF9F43' },   // Lok schließt bei 58 an
-    { shape: 'circle',    x: 18, y: 72, w: 16, h: 16, color: '#444' },      // Räder auf der
-    { shape: 'circle',    x: 62, y: 72, w: 16, h: 16, color: '#444' }] },   // Unterkante y72
+    { shape: 'rectangle', x: 12, y: 44, w: 46, h: 28, color: '#74B9FF', part: 'der Wagen' },   // Wagen 12–58
+    { shape: 'square',    x: 58, y: 48, w: 24, h: 24, color: '#FF9F43', part: 'die Lok' },     // Lok schließt bei 58 an
+    { shape: 'circle',    x: 18, y: 72, w: 16, h: 16, color: '#444', part: 'ein Rad' },        // Räder auf der
+    { shape: 'circle',    x: 62, y: 72, w: 16, h: 16, color: '#444', part: 'ein Rad' }] },     // Unterkante y72
 ]
 
 // "Baue einen Baum" / "Das ist ein Baum" — im Deutschen unterscheidet sich der
@@ -101,46 +125,207 @@ const FIGURES = [
 const ART = { m: { akk: 'einen', nom: 'ein' }, f: { akk: 'eine', nom: 'eine' }, n: { akk: 'ein', nom: 'ein' } }
 const art = (fig, fall) => (ART[fig.g] ?? ART.n)[fall]
 
+// What each level asks for, on top of more parts:
+//   1–3 two-part figures · 4–5 up to three parts and one piece that does not
+//   belong · 6–7 pieces come turned and are turned by tapping them again ·
+//   8–10 all figures, only the silhouette shows where the parts go
+function levelRules(level) {
+  return {
+    maxParts:   level <= 3 ? 2 : level <= 6 ? 3 : Infinity,
+    distractor: level >= 4,
+    turn:       level >= 6,
+    silhouette: level >= 8,
+  }
+}
+
 function buildRounds(level, count = 6) {
   // Easy levels only use figures with few parts. When the tier holds fewer
   // figures than there are rounds it repeats *its own* figures — padding with
-  // the full list used to hand a level-1 child the four-part rocket.
-  const pool = level <= 3 ? FIGURES.filter(f => f.parts.length <= 2)
-             : level <= 6 ? FIGURES.filter(f => f.parts.length <= 3)
-             : FIGURES
+  // the full list used to hand a level-1 child the four-part rocket. From
+  // level 7 the bigger figures come first in the draw, so they do appear.
+  const { maxParts } = levelRules(level)
+  const pool = FIGURES.filter(f => f.parts.length <= maxParts)
   const picks = []
   while (picks.length < count) {
     let batch = shuffle(pool)
+    if (level >= 7) batch = [...batch.filter(f => f.parts.length > 2), ...batch.filter(f => f.parts.length <= 2)]
     // never the same figure twice in a row across a reshuffle
     if (picks.length && batch[0] === picks[picks.length - 1] && batch.length > 1) {
       batch = [batch[1], batch[0], ...batch.slice(2)]
     }
     picks.push(...batch)
   }
-  return picks.slice(0, count)
+  return shuffle(picks.slice(0, count))
 }
 
+// A piece that fits nowhere in this figure: a shape it does not use, or a
+// size none of its parts has.
+function makeDistractor(fig) {
+  const used = new Set(fig.parts.map(p => p.shape === 'rtriangle' ? 'triangle' : p.shape))
+  const free = ['circle', 'square', 'triangle', 'rectangle'].filter(s => !used.has(s))
+  const shape = free.length ? free[Math.floor(Math.random() * free.length)] : 'square'
+  const dims = { circle: [26, 26], square: [28, 28], triangle: [34, 28], rectangle: [36, 16] }[shape]
+  return { shape, x: 0, y: 0, w: dims[0], h: dims[1], color: '#B39DDB', extra: true }
+}
+
+// A turn that really looks different: none for circles and squares, a
+// quarter for rectangles, any for triangles.
+function randomTurn(shape) {
+  if (shape === 'circle' || shape === 'square') return 0
+  if (shape === 'rectangle') return 90
+  return 90 * (1 + Math.floor(Math.random() * 3))
+}
+
+// ── Frei bauen: after the last figure, the child builds anything ──────────────
+// Tap a shape to put it on the board, drag it where it should go, tap it to
+// turn it. "Fertig": Lumi counts the shapes and guesses the figure when the
+// shapes are those of one it knows ("Ist das ein Haus?").
+const FREE_SHAPES = [
+  { shape: 'circle',    w: 24, h: 24 },
+  { shape: 'square',    w: 24, h: 24 },
+  { shape: 'triangle',  w: 30, h: 24 },
+  { shape: 'rectangle', w: 34, h: 14 },
+]
+const FREE_COLORS = ['#FF6B6B', '#FFD93D', '#6BCB77', '#4AA3FF', '#FF9F43', '#FD79A8']
+const PLURAL = { circle: 'Kreise', square: 'Quadrate', triangle: 'Dreiecke', rectangle: 'Rechtecke' }
+
+function describeBuild(pieces) {
+  const kind = p => (p.shape === 'rtriangle' ? 'triangle' : p.shape)
+  const key = list => list.map(kind).sort().join()
+  const mine = key(pieces)
+  const known = FIGURES.find(f => key(f.parts) === mine)
+  const counts = Object.entries(pieces.reduce((m, p) => ({ ...m, [kind(p)]: (m[kind(p)] ?? 0) + 1 }), {}))
+    .map(([shape, n]) => (n === 1 ? `ein ${SHAPE[shape].name}` : `${sayNumber(n)} ${PLURAL[shape]}`))
+  const list = counts.length < 2 ? counts[0] : `${counts.slice(0, -1).join(', ')} und ${counts[counts.length - 1]}`
+  return known
+    ? `Ich sehe ${list}. Ist das ${art(known, 'nom')} ${known.name}? Toll gebaut!`
+    : `Ich sehe ${list}. Toll gebaut!`
+}
+
+function FreeBuild({ onDone }) {
+  const [pieces, setPieces] = useState([])
+  const [done, setDone]     = useState(false)
+  const svgRef = useRef(null)
+  const drag   = useRef(null)    // { id, dx, dy, moved }
+
+  useEffect(() => { sayTask('Jetzt darfst du frei bauen! Tippe auf eine Form und schieb sie hin, wo du willst.') }, [])
+
+  const toSvg = e => {
+    const m = svgRef.current?.getScreenCTM()?.inverse()
+    if (!m) return { x: 0, y: 0 }
+    return { x: m.a * e.clientX + m.c * e.clientY + m.e, y: m.b * e.clientX + m.d * e.clientY + m.f }
+  }
+
+  const add = (f) => {
+    if (done) return
+    setPieces(list => [...list, { ...f, id: Date.now(), x: 50 - f.w / 2 + (list.length % 4) * 4, y: 40 - f.h / 2 + (list.length % 4) * 4, rot: 0, color: FREE_COLORS[list.length % FREE_COLORS.length] }])
+    sfx.pop?.()
+    narrate([{ text: `${SHAPE[f.shape].art} ${SHAPE[f.shape].name}.` }])
+  }
+
+  const down = (e, p) => {
+    if (done) return
+    e.stopPropagation()
+    const pt = toSvg(e)
+    drag.current = { id: p.id, dx: pt.x - p.x, dy: pt.y - p.y, moved: false }
+    try { svgRef.current.setPointerCapture(e.pointerId) } catch { /* not supported */ }
+  }
+  const move = e => {
+    const d = drag.current
+    if (!d) return
+    const pt = toSvg(e)
+    d.moved = true
+    setPieces(list => list.map(p => (p.id === d.id
+      ? { ...p, x: Math.max(-p.w / 2, Math.min(100 - p.w / 2, pt.x - d.dx)), y: Math.max(-p.h / 2, Math.min(100 - p.h / 2, pt.y - d.dy)) }
+      : p)))
+  }
+  const up = () => {
+    const d = drag.current
+    drag.current = null
+    // a tap without moving turns the piece
+    if (d && !d.moved) {
+      setPieces(list => list.map(p => (p.id === d.id && p.shape !== 'circle' ? { ...p, rot: p.rot + 90 } : p)))
+      sfx.flip?.()
+    }
+  }
+
+  const finish = () => {
+    if (!pieces.length || done) return
+    setDone(true)
+    sfx.correct()
+    narrate([{ text: describeBuild(pieces) }], { onEnd: onDone })
+  }
+
+  return (
+    <>
+      <div style={{ ...pxPanel, padding: 'clamp(8px,2vw,16px)' }}>
+        <svg ref={svgRef} viewBox="0 0 100 100" onPointerMove={move} onPointerUp={up} onPointerCancel={up}
+          style={{ width: 'clamp(220px,46vw,300px)', height: 'clamp(220px,46vw,300px)', display: 'block', touchAction: 'none' }}>
+          {pieces.map(p => (
+            <ShapePath key={p.id} {...p} fill={p.color} stroke={INK} strokeWidth={1.5} strokeLinejoin="round"
+              onPointerDown={e => down(e, p)} style={{ cursor: done ? 'default' : 'grab' }} />
+          ))}
+        </svg>
+      </div>
+      <div style={{ display: 'flex', gap: 'clamp(8px,2.5vw,16px)', flexWrap: 'wrap', justifyContent: 'center' }}>
+        {FREE_SHAPES.map((f, i) => (
+          <motion.button key={f.shape} whileTap={{ scale: 0.93 }} onClick={() => add(f)} disabled={done}
+            aria-label={`${SHAPE[f.shape].name} dazulegen`}
+            style={{ width: 'clamp(64px,13vw,84px)', height: 'clamp(64px,13vw,84px)', ...pxCard(), cursor: 'pointer', padding: 6 }}>
+            <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%' }}>
+              <ShapePath shape={f.shape} x={50 - f.w * 1.2} y={50 - f.h * 1.2} w={f.w * 2.4} h={f.h * 2.4}
+                fill={FREE_COLORS[i]} stroke={INK} strokeWidth={2.5} strokeLinejoin="round" />
+            </svg>
+          </motion.button>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+        <button onClick={() => setPieces(list => list.slice(0, -1))} disabled={!pieces.length || done}
+          style={{ ...pxButton('parch'), padding: '10px 20px', fontSize: 17, opacity: pieces.length && !done ? 1 : 0.5 }}>
+          🧽 Weg damit
+        </button>
+        <button onClick={finish} disabled={!pieces.length || done}
+          style={{ ...pxButton('green'), color: INK, textShadow: 'none', padding: '10px 28px', fontSize: 17, opacity: pieces.length && !done ? 1 : 0.5 }}>
+          ✅ Fertig
+        </button>
+      </div>
+    </>
+  )
+}
+
+const sayShape = p => `${SHAPE[p.shape].art} ${SHAPE[p.shape].name}`
+
 export default function ShapeBuildGame({ level = 1, onComplete }) {
+  const rules  = levelRules(level)
   const rounds = useState(() => buildRounds(level))[0]
   const [idx,      setIdx]      = useState(0)
   // Each entry pairs the slot that was filled with the tray piece that filled
   // it — the two indices differ whenever a figure has interchangeable pieces
-  // (Rakete's two fins, Blume's two petals), so tracking only one of them
-  // greys out the wrong tile.
+  // (Rakete's two fins, Blume's petals), so tracking only one of them greys
+  // out the wrong tile.
   const [placed,   setPlaced]   = useState([])     // [{ slot, tray }]
   const [selected, setSelected] = useState(null)   // tray index
+  const [turns,    setTurns]    = useState({})     // tray index -> extra turn the child gave it
   const [wrongSlot, setWrongSlot] = useState(null)
-  const [misses,   setMisses]   = useState(0)
   const [mood,     setMood]     = useState('happy')
   const [showWeiter, setShowWeiter] = useState(false)
+  const [freeMode, setFreeMode] = useState(false)
+  const misses = useRef(0)
+  const totalParts = useMemo(() => rounds.reduce((n, f) => n + f.parts.length, 0), [rounds])
 
   const fig = rounds[idx]
-  // The tray holds exactly the pieces the figure needs, in random order.
+  // The tray holds the pieces the figure needs (plus one that does not
+  // belong from level 4), in random order; from level 6 they lie turned.
   const tray = useMemo(() => {
     if (!fig) return []
-    const maxDim = Math.max(...fig.parts.map(p => Math.max(p.w, p.h)))
+    const pieces = fig.parts.map(p => ({
+      ...p,
+      rot: (p.rot ?? 0) + (rules.turn ? randomTurn(p.shape) : 0),
+    }))
+    if (rules.distractor) pieces.push(makeDistractor(fig))
+    const maxDim = Math.max(...pieces.map(p => Math.max(p.w, p.h)))
     const k = 84 / maxDim
-    return shuffle(fig.parts.map(p => ({
+    return shuffle(pieces.map(p => ({
       ...p,
       // drawn size inside the 100-unit tile, kept proportional to the real
       // piece; a floor of 12 keeps a thin stem visible without faking its size
@@ -148,35 +333,58 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
     })))
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const rotOf = i => (tray[i]?.rot ?? 0) + (turns[i] ?? 0)
+
   useEffect(() => {
     if (!fig) return
-    setPlaced([]); setSelected(null); setWrongSlot(null); setMood('happy')
-    const id = setTimeout(() => speakDE(`Baue ${art(fig, 'akk')} ${fig.name}! Welche Form passt wohin?`), 450)
+    setPlaced([]); setSelected(null); setTurns({}); setWrongSlot(null); setMood('happy')
+    lockPreviews()
+    const extra = idx > 0 ? ''
+      : rules.turn ? ' Tippe ein Teil noch einmal an, dann dreht es sich.'
+      : rules.distractor ? ' Ein Teil gehört nicht dazu.' : ''
+    const id = setTimeout(() => sayTask(`Baue ${art(fig, 'akk')} ${fig.name}! Welche Form passt wohin?${extra}`), 450)
     return () => clearTimeout(id)
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const pick = (i) => {
+    if (showWeiter) return
+    if (selected === i && rules.turn) {
+      // tapping the chosen piece again turns it a quarter
+      setTurns(t => ({ ...t, [i]: (t[i] ?? 0) + 90 }))
+      sfx.flip?.()
+      return
+    }
+    setSelected(selected === i ? null : i)
+    if (selected !== i) {
+      const s = SHAPE[tray[i].shape]
+      narrate([{ text: `${s.art} ${s.name}. Wohin gehört ${s.pro}?` }])
+    }
+  }
 
   const placeAt = useCallback((slotIdx) => {
     if (selected === null || !fig || placed.some(pl => pl.slot === slotIdx)) return
     const piece = tray[selected]
-    // A piece fits a slot when it is the same kind of shape and the same size —
-    // two identical circles are interchangeable, which is intended.
+    // A piece fits a slot when it is the same kind of shape, the same size
+    // and turned the same way — two identical circles are interchangeable,
+    // which is intended.
     const slot = fig.parts[slotIdx]
-    const fits = piece.shape === slot.shape && piece.w === slot.w && piece.h === slot.h
-              && (piece.rot ?? 0) === (slot.rot ?? 0)
-    if (!fits) {
+    const sameShape = piece.shape === slot.shape
+    const sameSize  = sameShape && piece.w === slot.w && piece.h === slot.h
+    if (!sameSize || !sameTurn(slot.shape, rotOf(selected), slot.rot)) {
       const s = SHAPE[piece.shape]
       // Right kind of shape, wrong size (the snowman's three circles) is a
       // different mistake from the wrong shape entirely — say which one it is,
       // so the child learns that size is part of "fitting".
-      const sizeOnly = piece.shape === slot.shape
-      const msg = sizeOnly
-        ? `${s.art} ${s.name} ist zu ${piece.w * piece.h > slot.w * slot.h ? 'groß' : 'klein'} für diesen Platz.`
-        : `${s.art} ${s.name} passt da nicht.`
+      const msg = sameSize
+        ? 'Die Form passt, aber sie liegt falsch herum. Tippe noch einmal auf das Teil, dann dreht es sich.'
+        : sameShape
+          ? `${s.art} ${s.name} ist zu ${piece.w * piece.h > slot.w * slot.h ? 'groß' : 'klein'} für diesen Platz.`
+          : `${s.art} ${s.name} passt da nicht.`
       setWrongSlot(slotIdx)
-      setMisses(m => m + 1)
+      misses.current++
       setMood('encouraging')
-      sfx.wrong()
-      speakDE(msg)
+      sfx.mismatch()
+      sayWrong(msg)
       setTimeout(() => { setWrongSlot(null); setMood('happy') }, 900)
       return
     }
@@ -187,24 +395,36 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
     if (next.length === fig.parts.length) {
       setMood('excited')
       sfx.correct()
-      speakDE(`Fertig! Das ist ${art(fig, 'nom')} ${fig.name}.`)
+      sayRight(`${sayShape(piece)} ist ${slot.part}. Das ist ${art(fig, 'nom')} ${fig.name}.${idx + 1 >= rounds.length ? ' Willst du jetzt noch frei bauen?' : ''}`)
       setTimeout(() => setShowWeiter(true), 700)
+    } else {
+      narrate([{ text: `${sayShape(piece)} ist ${slot.part}!` }])
     }
-  }, [selected, fig, placed, tray])
+  }, [selected, fig, placed, tray, turns]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const missTap = () => {
+    if (selected !== null && !showWeiter) narrate([{ text: 'Tippe auf einen Platz im Bild.' }], { skipIfSame: true })
+  }
+
+  const last = idx + 1 >= rounds.length
+  // every piece is one task; a piece that first went to a wrong place does
+  // not count as right on the first try. Free building is a bonus, not rated.
+  const finishLevel = () => {
+    sfx.complete()
+    afterNarration(() => onComplete(result(totalParts - misses.current, totalParts)), { minMs: 300 })
+  }
 
   const weiterClick = () => {
     setShowWeiter(false)
-    if (idx + 1 >= rounds.length) {
-      sfx.complete()
-      const stars = misses <= 1 ? 3 : misses <= rounds.length ? 2 : 1
-      afterNarration(() => onComplete({ score: rounds.length, total: rounds.length, stars }), { minMs: 300 })
-    } else setIdx(i => i + 1)
+    if (last) finishLevel()
+    else setIdx(i => i + 1)
   }
 
   if (!fig) return null
   const filledSlots = new Set(placed.map(pl => pl.slot))
   const usedTiles   = new Set(placed.map(pl => pl.tray))
   const complete    = filledSlots.size === fig.parts.length
+  const sel         = selected !== null ? tray[selected] : null
 
   return (
     <div style={{
@@ -214,7 +434,7 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
       <div style={{ display: 'flex', gap: 5, width: '100%', maxWidth: 680 }}>
         {rounds.map((_, i) => (
           <div key={i} style={{
-            flex: 1, ...pxSegment(i < idx ? 'done' : i === idx ? 'current' : 'todo'),
+            flex: 1, ...pxSegment(i < idx || (i === idx && complete) ? 'done' : i === idx ? 'current' : 'todo'),
           }} />
         ))}
       </div>
@@ -223,74 +443,108 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
         <LumiCharacter mood={mood} size={64} />
         <div style={{
           flex: 1, ...pxBubble, padding: '11px 16px',
-          fontFamily: 'var(--font-heading)', fontSize: 'clamp(14px,3vw,19px)', color: 'var(--text-primary)',
+          fontFamily: 'var(--font-heading)', fontSize: 'clamp(15px,3vw,20px)', color: 'var(--text-primary)',
         }}>
-          {complete
+          {freeMode
+            ? <>🧩 Bau, was du willst! Tippe eine Form an und schieb sie hin.</>
+            : complete
             ? <>🎉 Fertig! Das ist {art(fig, 'nom')} <strong style={{ color: ACCENT }}>{fig.name}</strong>.</>
-            : selected === null
-              ? <>Baue {art(fig, 'akk')} <strong style={{ color: ACCENT }}>{fig.name}</strong> — wähle unten eine Form! 🧩</>
-              : <>Wohin gehört {SHAPE[tray[selected].shape].art.toLowerCase()} <strong style={{ color: ACCENT }}>{SHAPE[tray[selected].shape].name}</strong>?</>}
+            : sel
+              ? <>Wohin gehört {SHAPE[sel.shape].art.toLowerCase()} <strong style={{ color: ACCENT }}>{SHAPE[sel.shape].name}</strong>?{rules.turn && ' Noch einmal tippen: drehen.'}</>
+              : <>Baue {art(fig, 'akk')} <strong style={{ color: ACCENT }}>{fig.name}</strong> — wähle unten eine Form! 🧩</>}
         </div>
       </div>
 
+      {freeMode ? <FreeBuild onDone={finishLevel} /> : <>
       {/* The figure being assembled */}
-      <div style={{
-        ...pxPanel, padding: 'clamp(8px,2vw,16px)',
-      }}>
-        <svg viewBox="0 0 100 100" style={{ width: 'clamp(190px,44vw,290px)', height: 'clamp(190px,44vw,290px)', display: 'block' }}>
+      <div style={{ ...pxPanel, padding: 'clamp(8px,2vw,16px)' }}>
+        <svg viewBox="0 0 100 100" style={{ width: 'clamp(220px,46vw,300px)', height: 'clamp(220px,46vw,300px)', display: 'block' }}>
+          <rect width="100" height="100" fill="transparent" onClick={missTap} />
+          {/* top levels: only the outline of the whole figure, no lines between the parts */}
+          {rules.silhouette && (
+            <g pointerEvents="none">
+              {fig.parts.map((p, i) => <ShapePath key={`o${i}`} {...p} fill="none" stroke={INK} strokeWidth={2.4} strokeLinejoin="round" />)}
+              {fig.parts.map((p, i) => <ShapePath key={`f${i}`} {...p} fill="#E8DCC4" />)}
+            </g>
+          )}
           {fig.parts.map((p, i) => {
             const done = filledSlots.has(i)
+            if (!done && rules.silhouette && wrongSlot !== i) return null
             return (
-              <g key={i}
-                onClick={() => placeAt(i)}
-                style={{ cursor: selected !== null && !done ? 'pointer' : 'default' }}
-              >
-                <ShapePath {...p}
-                  fill={done ? p.color : 'transparent'}
-                  stroke={wrongSlot === i ? '#FF6B6B' : done ? 'rgba(60,40,110,0.35)' : '#A29BFE'}
-                  sw={done ? 1.5 : undefined}
-                  dashed={!done} />
-              </g>
+              <ShapePath key={i} {...p} pointerEvents="none"
+                fill={done ? p.color : 'transparent'}
+                stroke={wrongSlot === i ? '#C2412D' : done ? 'rgba(42,27,61,0.45)' : 'var(--px-ink-soft)'}
+                strokeWidth={done ? 1.5 : wrongSlot === i ? 3 : 2.2}
+                strokeDasharray={done ? undefined : '6 5'} />
             )
           })}
+          {/* hit areas: a wide invisible edge around thin places (stem,
+              flame) first, the places themselves on top */}
+          {fig.parts.map((p, i) => !filledSlots.has(i) && (
+            <ShapePath key={`h${i}`} {...p} fill="none" stroke="transparent" strokeWidth={12} pointerEvents="stroke"
+              onClick={() => placeAt(i)} style={{ cursor: sel ? 'pointer' : 'default' }} />
+          ))}
+          {fig.parts.map((p, i) => !filledSlots.has(i) && (
+            <ShapePath key={`t${i}`} {...p} fill="transparent" pointerEvents="fill"
+              onClick={() => placeAt(i)} style={{ cursor: sel ? 'pointer' : 'default' }} />
+          ))}
         </svg>
       </div>
 
       {/* Piece tray */}
-      <div style={{ display: 'flex', gap: 'clamp(8px,2.5vw,16px)', flexWrap: 'wrap', justifyContent: 'center' }}>
+      <div style={{ display: 'flex', gap: 'clamp(8px,2.5vw,16px)', flexWrap: 'wrap', justifyContent: 'center', maxWidth: 680 }}>
         {tray.map((p, i) => {
           const used = usedTiles.has(i)
           const isSel = selected === i
           return (
             <motion.button key={i}
-              whileHover={!used ? { scale: 1.07 } : {}} whileTap={!used ? { scale: 0.93 } : {}}
-              onClick={() => { if (!used) setSelected(isSel ? null : i) }}
+              whileTap={!used ? { scale: 0.93 } : {}}
+              onClick={() => { if (!used) pick(i) }}
               aria-label={`${SHAPE[p.shape].name} auswählen`}
+              disabled={used || complete}
               style={{
-                width: 'clamp(58px,13vw,80px)', height: 'clamp(58px,13vw,80px)',
+                width: 'clamp(64px,13vw,84px)', height: 'clamp(64px,13vw,84px)', position: 'relative',
                 ...pxCard(isSel ? 'selected' : undefined),
                 cursor: used ? 'default' : 'pointer', opacity: used ? 0.35 : 1,
                 display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 6,
               }}
             >
-              <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%' }}>
-                <ShapePath shape={p.shape} rot={p.rot}
-                  x={(100 - p.dw) / 2} y={(100 - p.dh) / 2} w={p.dw} h={p.dh}
-                  fill={p.color} stroke="rgba(60,40,110,0.45)" sw={2.5} />
+              <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+                <motion.g animate={{ rotate: rotOf(i) }} transition={{ type: 'spring', stiffness: 260, damping: 20 }}>
+                  <ShapePath shape={p.shape}
+                    x={(100 - p.dw) / 2} y={(100 - p.dh) / 2} w={p.dw} h={p.dh}
+                    fill={p.color} stroke={INK} strokeWidth={2.5} strokeLinejoin="round" />
+                </motion.g>
               </svg>
+              {isSel && rules.turn && (
+                <span aria-hidden style={{ position: 'absolute', top: -10, right: -10, width: 26, height: 26, borderRadius: '50%', background: 'var(--px-gold)', border: `2px solid ${INK}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-3-6.2M20 4v5h-5" fill="none" stroke={INK} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                </span>
+              )}
             </motion.button>
           )
         })}
       </div>
 
+      </>}
+
       <AnimatePresence>
-        {showWeiter && (
-          <motion.button
+        {showWeiter && !freeMode && last && (
+          <motion.button key="free"
+            initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ opacity: 0 }}
+            whileTap={{ scale: 0.94 }}
+            onClick={() => { setShowWeiter(false); setFreeMode(true) }}
+            style={{ ...pxButton('gold'), padding: '12px 32px', fontSize: 'clamp(16px,3.4vw,21px)' }}
+          >🧩 Frei bauen</motion.button>
+        )}
+        {showWeiter && !freeMode && (
+          <motion.button key="next"
             initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ opacity: 0 }}
             whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
             onClick={weiterClick}
+            aria-label="Weiter"
             style={{
-              ...pxButton('green'), padding: '12px 40px',
+              ...pxButton('green'), color: INK, textShadow: 'none', padding: '12px 40px',
               fontSize: 'clamp(16px,3.4vw,21px)',
             }}
           >Weiter! →</motion.button>

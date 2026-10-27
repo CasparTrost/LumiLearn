@@ -1,9 +1,14 @@
-import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
-import { speak } from '../tts.js'
-import { pxPanel, pxBubble, pxButton, pxSegment, ACCENT } from './px.js'
+import { sayNumber } from '../tts.js'
+import { narrate, lockPreviews, stopNarration } from '../narrator.js'
+import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
+import { result } from '../lib/score.js'
+import { hearable } from '../lib/hearable.js'
+import { emojiSrc, hasEmojiArt } from '../lib/emojiArt.jsx'
+import { pxPanel, pxBubble, pxButton, pxSegment, ACCENT, INK } from './px.js'
 
 /**
  * Waage-Welt — Vergleiche, was schwerer ist
@@ -12,181 +17,225 @@ import { pxPanel, pxBubble, pxButton, pxSegment, ACCENT } from './px.js'
  *   • Conservation & Proportional Reasoning (Piaget)
  *   • STEM Foundations (NCTM) — measurement and comparison for Pre-K – Grade 2
  *   • Concrete → Pictorial → Abstract learning trajectory
+ *
+ * L1 things that differ a lot · L2 closer pairs, drawn the same size (a brick
+ * and a sponge look alike, only one is heavy) · L3–5 parcels with numbers ·
+ * L6–7 plus · L8–9 minus · L10 make the balance level with 1-kg blocks.
  */
 
 const randomBetween = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a
+const N = sayNumber
+const kilo = n => (n === 1 ? 'ein Kilo' : `${N(n)} Kilo`)
+const cap = s => s[0].toUpperCase() + s.slice(1)
+const ART = { m: 'der', f: 'die', n: 'das', pl: 'die' }
 
-// ── L1: Intuitive / perceptual comparison ───────────────────────────────────
-const INTUITIVE = [
-  { leftEmoji: '🪶', leftLabel: 'Feder',          leftW: 1,  rightEmoji: '🔨', rightLabel: 'Hammer',        rightW: 18 },
-  { leftEmoji: '🐘', leftLabel: 'Elefant',        leftW: 40, rightEmoji: '🐭', rightLabel: 'Maus',          rightW: 1  },
-  { leftEmoji: '🍎', leftLabel: 'Apfel',          leftW: 5,  rightEmoji: '🐣', rightLabel: 'Küken',         rightW: 2  },
-  { leftEmoji: '🚗', leftLabel: 'Auto',           leftW: 30, rightEmoji: '🦋', rightLabel: 'Schmetterling', rightW: 1  },
-  { leftEmoji: '🪨', leftLabel: 'Stein',          leftW: 20, rightEmoji: '🍃', rightLabel: 'Blatt',         rightW: 1  },
-  { leftEmoji: '🐮', leftLabel: 'Kuh',            leftW: 25, rightEmoji: '🐔', rightLabel: 'Huhn',          rightW: 3  },
-  { leftEmoji: '🐳', leftLabel: 'Wal',            leftW: 50, rightEmoji: '🐠', rightLabel: 'Fisch',         rightW: 2  },
-  { leftEmoji: '🍌', leftLabel: 'Banane',         leftW: 4,  rightEmoji: '🍓', rightLabel: 'Erdbeere',      rightW: 2  },
-  { leftEmoji: '🚂', leftLabel: 'Zug',            leftW: 60, rightEmoji: '🛴', rightLabel: 'Roller',        rightW: 5  },
-  { leftEmoji: '🍉', leftLabel: 'Melone',         leftW: 8,  rightEmoji: '🍇', rightLabel: 'Traube',        rightW: 3  },
-  { leftEmoji: '🏋️', leftLabel: 'Hantel',         leftW: 22, rightEmoji: '🎈', rightLabel: 'Luftballon',    rightW: 1  },
-  { leftEmoji: '🐊', leftLabel: 'Krokodil',       leftW: 35, rightEmoji: '🦜', rightLabel: 'Papagei',       rightW: 2  },
-  { leftEmoji: '🚀', leftLabel: 'Rakete',         leftW: 45, rightEmoji: '🍂', rightLabel: 'Blatt',         rightW: 1  },
-  { leftEmoji: '🏠', leftLabel: 'Haus',           leftW: 55, rightEmoji: '🏐', rightLabel: 'Volleyball',    rightW: 3  },
-  { leftEmoji: '🦁', leftLabel: 'Löwe',           leftW: 28, rightEmoji: '🐇', rightLabel: 'Hase',          rightW: 2  },
-  { leftEmoji: '🍞', leftLabel: 'Brot',           leftW: 6,  rightEmoji: '🍬', rightLabel: 'Bonbon',        rightW: 1  },
-  { leftEmoji: '🐋', leftLabel: 'Blauwal',        leftW: 80, rightEmoji: '🐿️', rightLabel: 'Eichhörnchen', rightW: 1  },
-  { leftEmoji: '💎', leftLabel: 'Diamant',        leftW: 12, rightEmoji: '🧸', rightLabel: 'Teddybär',      rightW: 4  },
-  { leftEmoji: '🌊', leftLabel: 'Welle',          leftW: 40, rightEmoji: '🫧', rightLabel: 'Seifenblase',   rightW: 1  },
-  { leftEmoji: '🪵', leftLabel: 'Holzblock',      leftW: 15, rightEmoji: '🌸', rightLabel: 'Blüte',         rightW: 1  },
-  { leftEmoji: '🐸', leftLabel: 'Frosch',         leftW: 4,  rightEmoji: '🐛', rightLabel: 'Raupe',         rightW: 1  },
-  { leftEmoji: '🥊', leftLabel: 'Boxhandschuh',   leftW: 10, rightEmoji: '🪁', rightLabel: 'Schleuder',     rightW: 1  },
-  { leftEmoji: '🏔️', leftLabel: 'Berg',           leftW: 70, rightEmoji: '⛺', rightLabel: 'Zelt',          rightW: 4  },
-  { leftEmoji: '🚢', leftLabel: 'Schiff',         leftW: 65, rightEmoji: '⛵', rightLabel: 'Segelboot',     rightW: 8  },
-  { leftEmoji: '🍕', leftLabel: 'Pizza',          leftW: 7,  rightEmoji: '🍬', rightLabel: 'Gummibärchen', rightW: 1  },
-  { leftEmoji: '🦒', leftLabel: 'Giraffe',        leftW: 30, rightEmoji: '🐓', rightLabel: 'Hahn',          rightW: 3  },
-  { leftEmoji: '🎸', leftLabel: 'Gitarre',        leftW: 6,  rightEmoji: '🪗', rightLabel: 'Harmonika',     rightW: 2  },
-  { leftEmoji: '🥥', leftLabel: 'Kokosnuss',      leftW: 5,  rightEmoji: '🫐', rightLabel: 'Blaubeere',     rightW: 1  },
-  { leftEmoji: '🚜', leftLabel: 'Traktor',        leftW: 40, rightEmoji: '🛺', rightLabel: 'Rikscha',       rightW: 6  },
-  { leftEmoji: '🦣', leftLabel: 'Mammut',         leftW: 55, rightEmoji: '🐇', rightLabel: 'Hase',          rightW: 2  },
-  { leftEmoji: '🪨', leftLabel: 'Felsbrocken',    leftW: 30, rightEmoji: '🍃', rightLabel: 'Blättchen',     rightW: 1  },
-  { leftEmoji: '🎠', leftLabel: 'Karussell',      leftW: 35, rightEmoji: '🥎', rightLabel: 'Baseball',      rightW: 3  },
-  { leftEmoji: '🍰', leftLabel: 'Torte',          leftW: 5,  rightEmoji: '🍡', rightLabel: 'Dango',         rightW: 1  },
-  { leftEmoji: '🦘', leftLabel: 'Känguru',        leftW: 20, rightEmoji: '🐁', rightLabel: 'Mäuschen',      rightW: 1  },
-  { leftEmoji: '🪜', leftLabel: 'Leiter',         leftW: 8,  rightEmoji: '📐', rightLabel: 'Lineal',        rightW: 1  },
-  { leftEmoji: '🛁', leftLabel: 'Badewanne',      leftW: 25, rightEmoji: '🧽', rightLabel: 'Schwamm',       rightW: 1  },
-  { leftEmoji: '🚁', leftLabel: 'Hubschrauber',   leftW: 42, rightEmoji: '🪁', rightLabel: 'Drachen',       rightW: 2  },
-  { leftEmoji: '🐝', leftLabel: 'Biene',          leftW: 1,  rightEmoji: '🍊', rightLabel: 'Orange',        rightW: 6  },
-  { leftEmoji: '🏋️', leftLabel: 'Gewichtheber',   leftW: 28, rightEmoji: '🧒', rightLabel: 'Kind',          rightW: 15 },
-  { leftEmoji: '🌰', leftLabel: 'Eichel',         leftW: 1,  rightEmoji: '🍑', rightLabel: 'Pfirsich',      rightW: 5  },
-  { leftEmoji: '📱', leftLabel: 'Handy',          leftW: 4,  rightEmoji: '💻', rightLabel: 'Laptop',        rightW: 12 },
-  { leftEmoji: '🎒', leftLabel: 'Schulrucksack',  leftW: 8,  rightEmoji: '🖊️', rightLabel: 'Stift',         rightW: 1  },
-  { leftEmoji: '🐅', leftLabel: 'Tiger',          leftW: 26, rightEmoji: '🐾', rightLabel: 'Pfote',         rightW: 1  },
-  { leftEmoji: '🚌', leftLabel: 'Bus',            leftW: 40, rightEmoji: '🛵', rightLabel: 'Moped',         rightW: 6  },
-  { leftEmoji: '🍦', leftLabel: 'Softeis',        leftW: 2,  rightEmoji: '🥐', rightLabel: 'Croissant',     rightW: 4  },
-  { leftEmoji: '🌍', leftLabel: 'Erde',           leftW: 99, rightEmoji: '🌕', rightLabel: 'Mond',          rightW: 15 },
-  { leftEmoji: '🎃', leftLabel: 'Kürbis',         leftW: 9,  rightEmoji: '🕯️', rightLabel: 'Kerze',         rightW: 1  },
-  { leftEmoji: '🦴', leftLabel: 'Knochen',        leftW: 6,  rightEmoji: '🪶', rightLabel: 'Feder',         rightW: 1  },
-  { leftEmoji: '🏊', leftLabel: 'Schwimmer',      leftW: 18, rightEmoji: '🐠', rightLabel: 'Fisch',         rightW: 1  },
-  { leftEmoji: '🪣', leftLabel: 'Eimer',          leftW: 4,  rightEmoji: '🧴', rightLabel: 'Flasche',       rightW: 2  },
+// [emoji, name, weight, gender] — the weights only rank the pair and size
+// the pictures; every pair has one clearly heavier thing.
+const BIG_GAP = [
+  [['🪶', 'Feder', 1, 'f'],          ['🔨', 'Hammer', 18, 'm']],
+  [['🐘', 'Elefant', 40, 'm'],       ['🐭', 'Maus', 1, 'f']],
+  [['🚗', 'Auto', 30, 'n'],          ['🦋', 'Schmetterling', 1, 'm']],
+  [['🪨', 'Stein', 20, 'm'],         ['🍃', 'Blatt', 1, 'n']],
+  [['🐮', 'Kuh', 25, 'f'],           ['🐔', 'Huhn', 3, 'n']],
+  [['🐳', 'Wal', 50, 'm'],           ['🐠', 'Fisch', 2, 'm']],
+  [['🚂', 'Zug', 60, 'm'],           ['🛴', 'Roller', 5, 'm']],
+  [['🐊', 'Krokodil', 35, 'n'],      ['🦜', 'Papagei', 2, 'm']],
+  [['🏠', 'Haus', 55, 'n'],          ['🧦', 'Socke', 1, 'f']],
+  [['🦁', 'Löwe', 28, 'm'],          ['🐇', 'Hase', 2, 'm']],
+  [['🍞', 'Brot', 6, 'n'],           ['🍬', 'Bonbon', 1, 'n']],
+  [['🪑', 'Stuhl', 12, 'm'],         ['🧸', 'Teddybär', 2, 'm']],
+  [['🛶', 'Kanu', 30, 'n'],          ['🫧', 'Seifenblase', 1, 'f']],
+  [['🪵', 'Holzklotz', 15, 'm'],     ['🌸', 'Blüte', 1, 'f']],
+  [['🚢', 'Schiff', 65, 'n'],        ['⛵', 'Segelboot', 8, 'n']],
+  [['🦒', 'Giraffe', 30, 'f'],       ['🐓', 'Hahn', 3, 'm']],
+  [['🎹', 'Klavier', 40, 'n'],       ['🎺', 'Trompete', 2, 'f']],
+  [['🥥', 'Kokosnuss', 5, 'f'],      ['🫐', 'Blaubeere', 1, 'f']],
+  [['🚜', 'Traktor', 40, 'm'],       ['🚲', 'Fahrrad', 6, 'n']],
+  [['🛁', 'Badewanne', 25, 'f'],     ['🧽', 'Schwamm', 1, 'm']],
+  [['🚁', 'Hubschrauber', 42, 'm'],  ['🪁', 'Drachen', 2, 'm']],
+  [['🍊', 'Orange', 6, 'f'],         ['🐝', 'Biene', 1, 'f']],
+  [['🍑', 'Pfirsich', 5, 'm'],       ['🌰', 'Eichel', 1, 'f']],
+  [['💻', 'Laptop', 12, 'm'],        ['📱', 'Handy', 4, 'n']],
+  [['🎒', 'Schulranzen', 8, 'm'],    ['🖊️', 'Stift', 1, 'm']],
+  [['🚌', 'Bus', 40, 'm'],           ['🛵', 'Moped', 6, 'n']],
+  [['🍉', 'Wassermelone', 8, 'f'],   ['🥐', 'Croissant', 1, 'n']],
+  [['🎃', 'Kürbis', 9, 'm'],         ['🕯️', 'Kerze', 1, 'f']],
+  [['🍰', 'Kuchenstück', 5, 'n'],    ['🍭', 'Lutscher', 1, 'm']],
+  [['🪜', 'Leiter', 8, 'f'],         ['📐', 'Lineal', 1, 'n']],
+  [['🐅', 'Tiger', 26, 'm'],         ['🐜', 'Ameise', 1, 'f']],
+  [['🦣', 'Mammut', 55, 'n'],        ['🐿️', 'Eichhörnchen', 1, 'n']],
+  [['🐸', 'Frosch', 4, 'm'],         ['🐛', 'Raupe', 1, 'f']],
 ]
 
-// ── L2: Numeric weights ──────────────────────────────────────────────────────
-const BOX_ITEMS = [
-  { emoji: '📦', label: 'Paket'      },
-  { emoji: '🎒', label: 'Rucksack'   },
-  { emoji: '🧳', label: 'Koffer'     },
-  { emoji: '🏀', label: 'Basketball' },
-  { emoji: '🎱', label: 'Billardball'},
-  { emoji: '🧱', label: 'Ziegel'     },
-  { emoji: '🧊', label: 'Eis'        },
-  { emoji: '🍐', label: 'Wassermelone'},
-  { emoji: '🪨', label: 'Stein'      },
-  { emoji: '🚗', label: 'Auto'       },
-  { emoji: '📚', label: 'Buch'       },
-  { emoji: '🍔', label: 'Burger'     },
-  { emoji: '🐍', label: 'Schlange'   },
-  { emoji: '💻', label: 'Laptop'     },
-  { emoji: '🛹', label: 'Skateboard' },
+// Closer pairs, still clear to a child — and some that look the same size
+// but are not the same weight.
+const SMALL_GAP = [
+  [['🍉', 'Wassermelone', 8, 'f'],   ['🍎', 'Apfel', 2, 'm']],
+  [['🍍', 'Ananas', 4, 'f'],         ['🍓', 'Erdbeere', 1, 'f']],
+  [['🐑', 'Schaf', 10, 'n'],         ['🐔', 'Huhn', 3, 'n']],
+  [['🎃', 'Kürbis', 6, 'm'],         ['🍊', 'Orange', 2, 'f']],
+  [['🥥', 'Kokosnuss', 4, 'f'],      ['🍇', 'Weintraube', 1, 'f']],
+  [['🧳', 'Koffer', 8, 'm'],         ['🧢', 'Mütze', 1, 'f']],
+  [['📚', 'Bücher', 6, 'pl'],        ['✏️', 'Bleistift', 1, 'm']],
+  [['🐢', 'Schildkröte', 4, 'f'],    ['🐌', 'Schnecke', 1, 'f']],
+  [['🧱', 'Ziegelstein', 5, 'm'],    ['🧽', 'Schwamm', 1, 'm']],
+  [['🪨', 'Stein', 5, 'm'],          ['🎈', 'Luftballon', 1, 'm']],
+  [['⚽', 'Fußball', 3, 'm'],        ['🎈', 'Luftballon', 1, 'm']],
+  [['🥔', 'Kartoffel', 3, 'f'],      ['🍒', 'Kirsche', 1, 'f']],
+  [['🐰', 'Hase', 4, 'm'],           ['🐭', 'Maus', 1, 'f']],
+  [['🍍', 'Ananas', 4, 'f'],         ['🍋', 'Zitrone', 1, 'f']],
+  [['🚲', 'Fahrrad', 8, 'n'],        ['🛹', 'Skateboard', 3, 'n']],
+  [['🍞', 'Brot', 4, 'n'],           ['🍪', 'Keks', 1, 'm']],
+  [['🎒', 'Rucksack', 5, 'm'],       ['🧦', 'Socke', 1, 'f']],
+  [['🥚', 'Ei', 2, 'n'],             ['🪶', 'Feder', 1, 'f']],
 ]
 
-// allowEqual exists because the reducer always understood a tie ('equal' in
-// correctSide) but nothing ever produced one: every generator explicitly
-// looped until both sides differed. Children therefore never met the word
-// "gleich schwer" at all, even though it is half of what a balance teaches.
-function makeNumericQuestions(n = 8, maxKg = 15, allowEqual = false) {
-  const qs = []
-  for (let i = 0; i < n; i++) {
-    const lw = randomBetween(1, maxKg)
-    let rw
-    if (allowEqual && Math.random() < 0.25) rw = lw
-    else do { rw = randomBetween(1, maxKg) } while (rw === lw)
-    const li = BOX_ITEMS[randomBetween(0, BOX_ITEMS.length - 1)]
-    let ri
-    do { ri = BOX_ITEMS[randomBetween(0, BOX_ITEMS.length - 1)] } while (ri === li)
-    qs.push({
-      leftEmoji: li.emoji,  leftLabel: `${lw} kg`,  leftW: lw,
-      rightEmoji: ri.emoji, rightLabel: `${rw} kg`, rightW: rw,
-      showNumbers: true,
-    })
-  }
-  return qs
+// From level 3 the things are neutral containers. A car with "2 kg" next to
+// a snake with "6 kg" taught the opposite of level 1.
+const BOXES = ['📦', '🎁', '🧺', '🛍️']
+
+const thing = ([e, label, w, g]) => ({ e, label, w, g })
+const pick  = arr => arr[randomBetween(0, arr.length - 1)]
+
+// Heavy and light used to sit left in 45 of 50 pairs — always tapping left
+// gave three stars. Each question now puts them on a random side.
+const sides = (a, b) => (Math.random() < 0.5 ? { left: a, right: b } : { left: b, right: a })
+
+function pairQuestions(list, n, sameSize) {
+  return [...list].sort(() => Math.random() - 0.5).slice(0, n)
+    .map(([a, b]) => ({ kind: 'things', sameSize, ...sides(thing(a), thing(b)) }))
 }
 
-// ── L3: Addition one side ────────────────────────────────────────────────────
-function makeAdditionQuestions(n = 8, allowEqual = true) {
-  const qs = []
-  for (let i = 0; i < n; i++) {
-    const a = randomBetween(1, 8)
-    const b = randomBetween(1, 8)
-    let rw
-    if (allowEqual && Math.random() < 0.25) rw = a + b
-    else do { rw = randomBetween(2, 14) } while (rw === a + b)
-    qs.push({
-      leftEmoji: '📦', leftLabel: `${a} + ${b} kg`, leftW: a + b,
-      rightEmoji: '📦', rightLabel: `${rw} kg`,      rightW: rw,
-      showNumbers: true,
-    })
-  }
-  return qs
+// A numbered side: a single weight, or "a + b" / "a − b".
+const plain = w => ({ e: pick(BOXES), w, nums: [w] })
+
+function numberQuestions(n, maxKg, allowEqual) {
+  return Array.from({ length: n }, () => {
+    const a = randomBetween(1, maxKg)
+    let b
+    if (allowEqual && Math.random() < 0.25) b = a
+    else do { b = randomBetween(1, maxKg) } while (b === a)
+    return { kind: 'numbers', ...sides(plain(a), plain(b)) }
+  })
 }
 
-// ── Subtraction. The ladder jumped straight from addition to multiplication,
-// skipping subtraction altogether — and multiplication is well beyond this
-// age group anyway, so it now sits at the very top instead of one step above
-// addition.
-function makeSubtractionQuestions(n = 8, allowEqual = true) {
-  const qs = []
-  for (let i = 0; i < n; i++) {
-    const a = randomBetween(5, 15)
-    const b = randomBetween(1, a - 1)
-    const lw = a - b
-    let rw
-    if (allowEqual && Math.random() < 0.25) rw = lw
-    else do { rw = randomBetween(1, 14) } while (rw === lw)
-    qs.push({
-      leftEmoji: '📦', leftLabel: `${a} − ${b} kg`, leftW: lw,
-      rightEmoji: '📦', rightLabel: `${rw} kg`,      rightW: rw,
-      showNumbers: true,
-    })
-  }
-  return qs
+function sumQuestions(n, op, max) {
+  return Array.from({ length: n }, () => {
+    let a, b, w
+    if (op === '+') { a = randomBetween(1, max - 1); b = randomBetween(1, max - a); w = a + b }
+    else            { a = randomBetween(3, max); b = randomBetween(1, a - 1); w = a - b }
+    let other
+    // a tie now and then, otherwise close to the result so it has to be worked out
+    if (Math.random() < 0.25) other = w
+    else do { other = Math.max(1, w + randomBetween(-3, 3)) } while (other === w)
+    return { kind: 'numbers', ...sides({ e: pick(BOXES), w, nums: [a, b], op }, plain(other)) }
+  })
 }
 
-// ── L4: Multiplication ───────────────────────────────────────────────────────
-function makeMultiplyQuestions(n = 8) {
-  const qs = []
-  for (let i = 0; i < n; i++) {
-    const a = randomBetween(2, 6)
-    const b = randomBetween(2, 5)
-    let rw
-    do { rw = randomBetween(4, 28) } while (rw === a * b)
-    qs.push({
-      leftEmoji: '📦', leftLabel: `${a} × ${b} kg`, leftW: a * b,
-      rightEmoji: '📦', rightLabel: `${rw} kg`,       rightW: rw,
-      showNumbers: true,
-    })
-  }
-  return qs
+// Level 10: a parcel on the left, a lighter one on the right — how many 1-kg
+// blocks make the balance level? (Multiplication, "6 × 4 kg", sat here
+// before, well beyond this age group.)
+function balanceQuestions(n) {
+  return Array.from({ length: n }, () => {
+    const big = randomBetween(5, 15)
+    const small = randomBetween(Math.max(1, big - 9), big - 1)
+    return { kind: 'balance', left: plain(big), right: plain(small) }
+  })
 }
 
 function buildQuestions(level) {
-  const n = level <= 4 ? 8 : level <= 7 ? 10 : 12
-  if (level <= 2) return [...INTUITIVE].sort(() => Math.random() - 0.5).slice(0, n)
-  if (level <= 3) return makeNumericQuestions(n, 15)
-  if (level <= 5) return makeNumericQuestions(n, 50, true)
-  if (level <= 7) return makeAdditionQuestions(n)
-  if (level <= 9) return makeSubtractionQuestions(n)
-  return makeMultiplyQuestions(n)
+  const n = level <= 4 ? 8 : level <= 7 ? 10 : level <= 9 ? 12 : 8
+  if (level <= 1) return pairQuestions(BIG_GAP, n, false)
+  if (level <= 2) return pairQuestions(SMALL_GAP, n, true)
+  if (level <= 3) return numberQuestions(n, 10, false)
+  if (level <= 4) return numberQuestions(n, 20, true)
+  if (level <= 5) return numberQuestions(n, 30, true)
+  if (level <= 6) return sumQuestions(n, '+', 10)
+  if (level <= 7) return sumQuestions(n, '+', 20)
+  if (level <= 8) return sumQuestions(n, '−', 10)
+  if (level <= 9) return sumQuestions(n, '−', 20)
+  return balanceQuestions(n)
 }
 
-// ── Balance Scale — realistic SVG with beam, chains and pans ────────────────
-function BalanceScale({ tiltDeg, leftEmoji, rightEmoji, leftLabel, rightLabel,
-                        answered, leftHeavier, onPickLeft, onPickRight, leftSize = 40, rightSize = 40 }) {
-  const W = 400, CX = 200, PIVOT_Y = 70, ARM = 150, CHAIN = 90, PAN_W = 88
+// What a side shows and what is said about it
+const sideLabel = s => s.label ?? (s.op ? `${s.nums[0]} kg ${s.op} ${s.nums[1]} kg` : `${s.w} kg`)
+const sideSpeech = s => s.op ? `${kilo(s.nums[0])} ${s.op === '+' ? 'plus' : 'minus'} ${kilo(s.nums[1])}` : kilo(s.w)
+const named = s => `${ART[s.g]} ${s.label}`
 
+function taskSpeech(q, ties) {
+  const orSame = ties ? ' Oder sind beide gleich schwer?' : ''
+  if (q.kind === 'things') return `Was ist schwerer, ${q.left.label} oder ${q.right.label}?`
+  if (q.kind === 'balance') return `Links liegen ${kilo(q.left.w)}, rechts ${kilo(q.right.w)}. Wie viele Klötze brauchst du, damit die Waage gerade ist?`
+  if (!q.left.op && !q.right.op) return `Welche Seite ist schwerer, ${kilo(q.left.w)} oder ${kilo(q.right.w)}?${orSame}`
+  return `Links sind ${sideSpeech(q.left)}, rechts ${sideSpeech(q.right)}. Welche Seite ist schwerer?${orSame}`
+}
+
+// The answer, explained: what is heavier and, with numbers, by how much.
+function explain(q, heavy) {
+  if (q.kind === 'things') return `${cap(named(q[heavy]))} ${q[heavy].g === 'pl' ? 'sind' : 'ist'} schwerer.`
+  const sum = [q.left, q.right].find(s => s.op)
+  const first = sum ? `${cap(sideSpeech(sum))} ${sum.w === 1 ? 'ist' : 'sind'} ${kilo(sum.w)}. ` : ''
+  if (heavy === 'equal') return `${first}Beide Seiten wiegen ${kilo(q.left.w)}. Die Waage ist gerade.`
+  const h = q[heavy], l = q[heavy === 'left' ? 'right' : 'left']
+  return `${first}${cap(kilo(h.w))} sind ${kilo(h.w - l.w)} mehr als ${kilo(l.w)}.`
+}
+
+// Emoji in SVG are not swapped for the pixel pictures by the build step, so
+// the picture is placed as an <image> here.
+function Pic({ e, x, y, size }) {
+  if (hasEmojiArt(e)) return <image href={emojiSrc(e)} x={x - size / 2} y={y - size / 2} width={size} height={size} style={{ imageRendering: 'pixelated' }} />
+  return <text x={x} y={y} textAnchor="middle" dominantBaseline="middle" fontSize={size}>{e}</text>
+}
+
+// ── Balance Scale — beam, chains and pans ───────────────────────────────────
+const W = 400, CX = 200, PIVOT_Y = 70, ARM = 150, CHAIN = 90, PAN_W = 96
+
+function Pan({ side, x, item, size, label, blocks, heavy, answered, onPick, tilt }) {
+  // The pans hang straight down from the ends of the beam instead of turning
+  // with it, so picture and label stay upright.
+  const a = (tilt * Math.PI) / 180, s = side === 'left' ? -1 : 1
+  const dx = s * ARM * Math.cos(a) - s * ARM, dy = s * ARM * Math.sin(a)
+  const won = answered && heavy === side
+  const py = PIVOT_Y + CHAIN
   return (
-    <svg width="100%" viewBox={`0 0 ${W} 280`}
-      style={{ maxWidth: 440, display:'block', overflow:'visible' }}>
+    <motion.g animate={{ x: dx, y: dy }} transition={{ type: 'spring', stiffness: 50, damping: 11 }}>
+      {Array.from({ length: 5 }, (_, i) => (
+        <line key={i} x1={x} y1={PIVOT_Y + 9 + i * 16} x2={x} y2={PIVOT_Y + 9 + (i + 1) * 16}
+          stroke="#5b4a6e" strokeWidth={3} strokeLinecap="round" />
+      ))}
+      <ellipse cx={x} cy={py} rx={PAN_W / 2} ry={10} fill="#ffe08a" stroke="#2a1b3d" strokeWidth={3} />
+      <path d={`M${x - PAN_W / 2} ${py} Q${x} ${py + 28} ${x + PAN_W / 2} ${py}`} fill="#ffc93c" stroke="#2a1b3d" strokeWidth={3} />
+      {won && <circle cx={x} cy={py - 24} r={40} fill="none" stroke="#2F8F3A" strokeWidth={4} strokeDasharray="8 6" />}
+      <Pic e={item.e} x={x} y={py - 12 - (blocks ? 16 : 0)} size={size} />
+      {/* 1-kg blocks laid on the right pan in level 10 */}
+      {Array.from({ length: blocks ?? 0 }, (_, i) => (
+        <g key={i}>
+          <rect x={x - 42 + (i % 6) * 14} y={py - 10 - Math.floor(i / 6) * 14} width={13} height={13}
+            fill="#d0583a" stroke="#2a1b3d" strokeWidth={2} />
+        </g>
+      ))}
+      <text x={x} y={py + 36} textAnchor="middle" fontSize={label.length > 8 ? 17 : 20}
+        fontWeight="700" fill={won ? ACCENT : '#2a1b3d'}
+        fontFamily="var(--font-heading,system-ui)">
+        {label}
+      </text>
+      {won && <Pic e="🏆" x={x} y={py + 60} size={26} />}
+      {answered && heavy === 'equal' && <Pic e="⚖️" x={x} y={py + 60} size={26} />}
+      {/* The whole pan is the tap target, not just the picture */}
+      {onPick && (
+        <rect x={x - 62} y={py - 70} width={124} height={130} fill="transparent"
+          style={{ cursor: answered ? 'default' : 'pointer' }}
+          role="button" aria-label={`${label} ist schwerer`}
+          onClick={!answered ? onPick : undefined} />
+      )}
+    </motion.g>
+  )
+}
+
+function BalanceScale({ tiltDeg, q, sizes, answered, heavy, onPick, blocks }) {
+  return (
+    <svg width="100%" viewBox={`0 0 ${W} 300`}
+      style={{ maxWidth: 460, display: 'block', overflow: 'visible' }}>
       <defs>
         <linearGradient id="bBase" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#c27a3a"/><stop offset="100%" stopColor="#8a4f22"/>
@@ -202,89 +251,32 @@ function BalanceScale({ tiltDeg, leftEmoji, rightEmoji, leftLabel, rightLabel,
       </defs>
 
       {/* Base */}
-      <rect x={CX-60} y={254} width={120} height={18} rx={4} fill="url(#bBase)" stroke="#2a1b3d" strokeWidth={3} filter="url(#bShadow)"/>
-      <rect x={CX-45} y={244} width={90}  height={14} rx={3} fill="#e3a462" stroke="#2a1b3d" strokeWidth={3}/>
+      <rect x={CX-60} y={274} width={120} height={18} rx={4} fill="url(#bBase)" stroke="#2a1b3d" strokeWidth={3} filter="url(#bShadow)"/>
+      <rect x={CX-45} y={264} width={90}  height={14} rx={3} fill="#e3a462" stroke="#2a1b3d" strokeWidth={3}/>
 
       {/* Pole with rings */}
-      <rect x={CX-7} y={PIVOT_Y+14} width={14} height={178} rx={3} fill="url(#bPole)" stroke="#2a1b3d" strokeWidth={3}/>
+      <rect x={CX-7} y={PIVOT_Y+14} width={14} height={198} rx={3} fill="url(#bPole)" stroke="#2a1b3d" strokeWidth={3}/>
       {[0.25,0.5,0.75].map((f,i)=>(
-        <rect key={i} x={CX-10} y={PIVOT_Y+14+(178)*f} width={20} height={7} rx={2} fill="#8a4f22" stroke="#2a1b3d" strokeWidth={2}/>
+        <rect key={i} x={CX-10} y={PIVOT_Y+14+(198)*f} width={20} height={7} rx={2} fill="#8a4f22" stroke="#2a1b3d" strokeWidth={2}/>
       ))}
 
-      {/* Beam + chains + pans (all rotate together) */}
+      {/* Beam */}
       <motion.g
         animate={{ rotate: tiltDeg }}
         transition={{ type:'spring', stiffness:50, damping:11 }}
         style={{ transformOrigin:`${CX}px ${PIVOT_Y}px` }}
       >
-        {/* Beam bar */}
         <rect x={CX-ARM-8} y={PIVOT_Y-7} width={ARM*2+16} height={14} rx={3}
           fill="url(#bBeam)" stroke="#2a1b3d" strokeWidth={3} filter="url(#bShadow)"/>
         <circle cx={CX-ARM} cy={PIVOT_Y} r={9} fill="#ffc93c" stroke="#2a1b3d" strokeWidth={3}/>
         <circle cx={CX+ARM} cy={PIVOT_Y} r={9} fill="#ffc93c" stroke="#2a1b3d" strokeWidth={3}/>
-
-        {/* Left chain */}
-        {Array.from({length:5},(_,i)=>(
-          <line key={"lc"+i} x1={CX-ARM} y1={PIVOT_Y+9+i*16} x2={CX-ARM} y2={PIVOT_Y+9+(i+1)*16}
-            stroke="#5b4a6e" strokeWidth={3} strokeLinecap="round"/>
-        ))}
-        {/* Right chain */}
-        {Array.from({length:5},(_,i)=>(
-          <line key={"rc"+i} x1={CX+ARM} y1={PIVOT_Y+9+i*16} x2={CX+ARM} y2={PIVOT_Y+9+(i+1)*16}
-            stroke="#5b4a6e" strokeWidth={3} strokeLinecap="round"/>
-        ))}
-
-        {/* Left pan bowl */}
-        <ellipse cx={CX-ARM} cy={PIVOT_Y+CHAIN}   rx={PAN_W/2} ry={10} fill="#ffe08a" stroke="#2a1b3d" strokeWidth={3}/>
-        <path d={`M${CX-ARM-PAN_W/2} ${PIVOT_Y+CHAIN} Q${CX-ARM} ${PIVOT_Y+CHAIN+28} ${CX-ARM+PAN_W/2} ${PIVOT_Y+CHAIN}`}
-          fill="#ffc93c" stroke="#2a1b3d" strokeWidth={3}/>
-        {/* Right pan bowl */}
-        <ellipse cx={CX+ARM} cy={PIVOT_Y+CHAIN}   rx={PAN_W/2} ry={10} fill="#ffe08a" stroke="#2a1b3d" strokeWidth={3}/>
-        <path d={`M${CX+ARM-PAN_W/2} ${PIVOT_Y+CHAIN} Q${CX+ARM} ${PIVOT_Y+CHAIN+28} ${CX+ARM+PAN_W/2} ${PIVOT_Y+CHAIN}`}
-          fill="#ffc93c" stroke="#2a1b3d" strokeWidth={3}/>
-
-        {/* Left item — clickable */}
-        <g style={{ cursor: answered?'default':'pointer' }}
-           onClick={!answered ? onPickLeft : undefined}>
-          {answered && leftHeavier && (
-            <circle cx={CX-ARM} cy={PIVOT_Y+CHAIN-22} r={38} fill="#FFD93D" opacity={0.22}/>
-          )}
-          <text x={CX-ARM} y={PIVOT_Y+CHAIN-8} textAnchor="middle" fontSize={leftSize}
-            dominantBaseline="middle" style={{userSelect:'none',
-              filter: answered&&leftHeavier?'drop-shadow(0 0 8px #FFD93D)':'none'}}>
-            {leftEmoji}
-          </text>
-          <text x={CX-ARM} y={PIVOT_Y+CHAIN+32} textAnchor="middle" fontSize={13}
-            fontWeight="700" fill={answered&&leftHeavier?ACCENT:"#2a1b3d"}
-            fontFamily="var(--font-heading,system-ui)">
-            {leftLabel}
-          </text>
-          {answered && leftHeavier && (
-            <text x={CX-ARM} y={PIVOT_Y+CHAIN+50} textAnchor="middle" fontSize={20}>🏆</text>
-          )}
-        </g>
-
-        {/* Right item — clickable */}
-        <g style={{ cursor: answered?'default':'pointer' }}
-           onClick={!answered ? onPickRight : undefined}>
-          {answered && !leftHeavier && (
-            <circle cx={CX+ARM} cy={PIVOT_Y+CHAIN-22} r={38} fill="#FFD93D" opacity={0.22}/>
-          )}
-          <text x={CX+ARM} y={PIVOT_Y+CHAIN-8} textAnchor="middle" fontSize={rightSize}
-            dominantBaseline="middle" style={{userSelect:'none',
-              filter: answered&&!leftHeavier?'drop-shadow(0 0 8px #FFD93D)':'none'}}>
-            {rightEmoji}
-          </text>
-          <text x={CX+ARM} y={PIVOT_Y+CHAIN+32} textAnchor="middle" fontSize={13}
-            fontWeight="700" fill={answered&&!leftHeavier?ACCENT:"#2a1b3d"}
-            fontFamily="var(--font-heading,system-ui)">
-            {rightLabel}
-          </text>
-          {answered && !leftHeavier && (
-            <text x={CX+ARM} y={PIVOT_Y+CHAIN+50} textAnchor="middle" fontSize={20}>🏆</text>
-          )}
-        </g>
       </motion.g>
+
+      <Pan side="left"  x={CX-ARM} item={q.left}  size={sizes[0]} label={sideLabel(q.left)}
+        heavy={heavy} answered={answered} tilt={tiltDeg} onPick={onPick && (() => onPick('left'))} />
+      <Pan side="right" x={CX+ARM} item={q.right} size={sizes[1]} blocks={blocks}
+        label={blocks != null ? `${q.right.w} kg + ${blocks} kg` : sideLabel(q.right)}
+        heavy={heavy} answered={answered} tilt={tiltDeg} onPick={onPick && (() => onPick('right'))} />
 
       {/* Pivot cap */}
       <circle cx={CX} cy={PIVOT_Y} r={14} fill="#2a1b3d" filter="url(#bShadow)"/>
@@ -294,10 +286,8 @@ function BalanceScale({ tiltDeg, leftEmoji, rightEmoji, leftLabel, rightLabel,
   )
 }
 
-
-function speakDE(text) {
-  speak(text, { rate: 0.8, pitch: 1.05, lang: 'de-DE' })
-}
+const TILT = 18
+const tiltFor = (l, r) => (l > r ? -TILT : r > l ? TILT : 0)
 
 export default function WeightGame({ level = 1, onComplete }) {
   const [questions] = useState(() => buildQuestions(level))
@@ -305,7 +295,86 @@ export default function WeightGame({ level = 1, onComplete }) {
   const [answered,  setAnswered] = useState(false)
   const [isCorrect, setIsCorrect]= useState(false)
   const [showWeiter, setShowWeiter] = useState(false)
-  const [score,     setScore]    = useState(0)
+  const [firstTry,  setFirstTry] = useState(0)
+  const [mood,      setMood]     = useState('happy')
+  const [blocks,    setBlocks]   = useState(0)      // level 10
+  const [tries,     setTries]    = useState(0)      // level 10, wrong "Fertig" on this question
+
+  useEffect(() => stopNarration, [])
+
+  const q = questions[idx]
+  const balance = q.kind === 'balance'
+  const heavy = q.left.w > q.right.w ? 'left' : q.right.w > q.left.w ? 'right' : 'equal'
+  const ties  = questions.some(qq => qq.kind === 'numbers' && qq.left.w === qq.right.w)
+
+  // In the first level the picture is the only clue, and an elephant drawn
+  // as large as a mouse throws it away. In level 2 the pair is drawn the same
+  // size on purpose; parcels with printed weights keep a fixed size.
+  const size = (s) => {
+    if (q.kind !== 'things' || q.sameSize) return 52
+    return Math.round(30 + Math.sqrt(Math.min(s.w, 60) / 60) * 40)
+  }
+
+  // Read the task. Before, from level 3 on only "Rechne. Welche Seite ist
+  // schwerer?" was said, and the numbers never were.
+  useEffect(() => {
+    if (!q) return
+    setBlocks(0)
+    setTries(0)
+    lockPreviews()
+    const id = setTimeout(() => sayTask(taskSpeech(q, ties)), 300)
+    return () => clearTimeout(id)
+  }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const resultText = balance
+    ? `${q.left.w} kg = ${q.right.w} kg + ${q.left.w - q.right.w} kg`
+    : heavy === 'equal' ? 'Beide sind gleich schwer! ⚖️'
+    : q.kind === 'things' ? `${cap(named(q[heavy]))} ${q[heavy].g === 'pl' ? 'sind' : 'ist'} schwerer.`
+    : (() => {
+        const sum = [q.left, q.right].find(s => s.op)
+        const h = q[heavy], l = q[heavy === 'left' ? 'right' : 'left']
+        return `${sum ? `${sideLabel(sum)} = ${sum.w} kg. ` : ''}${h.w} kg sind ${h.w - l.w} kg mehr als ${l.w} kg.`
+      })()
+
+  const answer = useCallback((side) => {
+    if (answered || balance) return
+    const ok = side === heavy
+    setAnswered(true)
+    setIsCorrect(ok)
+    setMood(ok ? 'excited' : 'encouraging')
+    if (ok) { sfx.correct(); setFirstTry(s => s + 1); sayRight(explain(q, heavy)) }
+    else { sfx.wrong(); sayWrong(explain(q, heavy)) }
+    setTimeout(() => setShowWeiter(true), 800)
+  }, [answered, balance, heavy, q])
+
+  // Level 10: put blocks on, take them off, then check
+  const addBlock = (d) => {
+    if (answered) return
+    const b = Math.max(0, Math.min(15, blocks + d))
+    if (b === blocks) return
+    setBlocks(b)
+    sfx.pop?.()
+    if (b > 0) narrate([{ text: N(b), rate: 1 }])
+  }
+  const checkBalance = () => {
+    if (answered) return
+    const need = q.left.w - q.right.w
+    if (blocks === need) {
+      setAnswered(true)
+      setIsCorrect(true)
+      setMood('excited')
+      sfx.correct()
+      if (tries === 0) setFirstTry(s => s + 1)
+      sayRight(`${cap(kilo(q.left.w))} sind ${kilo(q.right.w)} plus ${kilo(need)}. Die Waage ist gerade.`)
+      setTimeout(() => setShowWeiter(true), 800)
+      return
+    }
+    setTries(t => t + 1)
+    setMood('encouraging')
+    sfx.wrong()
+    sayWrong(`Rechts sind jetzt ${kilo(q.right.w + blocks)}, links ${kilo(q.left.w)}. ${blocks > need ? 'Das sind zu viele Klötze.' : 'Da fehlen noch Klötze.'}`)
+    setTimeout(() => setMood('happy'), 900)
+  }
 
   const weiterClick = () => {
     setShowWeiter(false)
@@ -314,77 +383,35 @@ export default function WeightGame({ level = 1, onComplete }) {
     setMood('happy')
     if (idx + 1 >= questions.length) {
       sfx.complete()
-      onComplete({ score, total: questions.length })
+      onComplete(result(firstTry, questions.length))
     } else {
       setIdx(i => i + 1)
     }
   }
-  const [mood,      setMood]     = useState('happy')
-
-  const q = questions[idx]
-
-  // In the intuitive levels the picture is the only clue, and an elephant used
-  // to be drawn exactly as large as a mouse — the one visual cue that could
-  // support the judgement was thrown away. Boxes with printed weights keep a
-  // fixed size; there the number carries the information.
-  const emojiSize = (w) => {
-    if (q?.showNumbers) return 40
-    return Math.round(24 + Math.sqrt(Math.min(w, 60) / 60) * 34)
-  }
-
-  // Die Frage vorlesen. Vorher hieß es nur "Schwimmer oder Fisch" — was zu tun
-  // ist, stand allein auf dem Bildschirm, und ab Level 3 wurde gar nichts mehr
-  // gesagt. Ein Kind, das nicht liest, wusste nicht, worum es geht.
-  useEffect(() => {
-    if (!q) return
-    const say = q.leftLabel && q.rightLabel && level <= 2
-      ? `Was ist schwerer? ${q.leftLabel} oder ${q.rightLabel}?`
-      : 'Rechne. Welche Seite ist schwerer?'
-    const id = setTimeout(() => speakDE(say), 300)
-    return () => clearTimeout(id)
-  }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
-  const correctSide   = q.leftW > q.rightW ? 'left' : q.rightW > q.leftW ? 'right' : 'equal'
-  const heavierLabel  = q.leftW >= q.rightW ? q.leftLabel : q.rightLabel
-  // From level 3 on the weights are actual numbers, so the answer can say by
-  // how much — "schwerer" alone never connected the verdict to the arithmetic.
-  const resultText = correctSide === 'equal'
-    ? 'Beide sind gleich schwer!'
-    : q.showNumbers
-      ? `${heavierLabel} ist ${Math.abs(q.leftW - q.rightW)} kg schwerer.`
-      : `${heavierLabel} ist schwerer.`
-  const tiltDeg       = answered ? (q.leftW > q.rightW ? -18 : q.rightW > q.leftW ? 18 : 0) : 0
-
-  const answer = useCallback((side) => {
-    if (answered) return
-    const ok = side === correctSide
-    setAnswered(true)
-    setIsCorrect(ok)
-    setMood(ok ? 'excited' : 'encouraging')
-    if (ok) { sfx.correct(); setScore(s => s + 1) } else sfx.wrong()
-
-    setTimeout(() => setShowWeiter(true), 800)
-  }, [answered, correctSide])
 
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'ArrowLeft')  answer('left')
       if (e.key === 'ArrowRight') answer('right')
-      if (e.key === 'ArrowDown')  answer('equal')
+      if (e.key === 'ArrowDown' && ties) answer('equal')
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [answer])
+  }, [answer, ties])
 
-  const questionText = useMemo(() => {
-    if (level <= 1) return 'Was ist schwerer? Tippe auf die richtige Seite!'
-    if (level <= 2) return 'Welche Seite wiegt mehr? Tippe drauf!'
-    if (level <= 3) return 'Rechne — welche Seite ist schwerer?'
-    return 'Löse die Aufgabe! Welche Seite wiegt mehr?'
-  }, [level])
+  // The beam shows the truth once answered; in level 10 it also follows the
+  // blocks after a first wrong try, as a help.
+  const tiltDeg = balance
+    ? (answered || tries > 0 ? tiltFor(q.left.w, q.right.w + blocks) : -TILT)
+    : answered ? tiltFor(q.left.w, q.right.w) : 0
+
+  const questionText = q.kind === 'things' ? 'Was ist schwerer? Tippe auf die schwerere Seite!'
+    : balance ? 'Wie viele 1-kg-Klötze 🧱 machen die Waage gerade?'
+    : 'Welche Seite ist schwerer? Tippe drauf!'
 
   return (
     <div style={{
-      flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+      flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       padding: 'clamp(14px,2.5vw,24px) clamp(14px,3vw,28px)',
       gap: 'clamp(10px,1.8vw,16px)',
     }}>
@@ -396,7 +423,7 @@ export default function WeightGame({ level = 1, onComplete }) {
             initial={{ opacity: 0.28 }} animate={{ opacity: 0 }}
             transition={{ duration: 0.55 }}
             style={{ position: 'fixed', inset: 0, zIndex: 150, pointerEvents: 'none',
-                     background: isCorrect ? '#6BCB77' : '#FF6B6B' }}
+                     background: isCorrect ? '#5CC45A' : '#FF6B5B' }}
           />
         )}
       </AnimatePresence>
@@ -411,40 +438,32 @@ export default function WeightGame({ level = 1, onComplete }) {
         ))}
       </div>
 
-      {/* Score row */}
-      <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
-        <div style={{ fontFamily: 'var(--font-heading)', fontSize: 15, color: 'var(--text-muted)' }}>
-          {'✅ ' + score + ' / ' + questions.length}
-        </div>
-        <div style={{ fontFamily: 'var(--font-heading)', fontSize: 12, color: 'var(--text-muted)', opacity: 0.6 }}>
-          {'← links  ·  → rechts'}
-        </div>
-      </div>
-
-      {/* Lumi */}
+      {/* Lumi — tap the bubble to hear the task again */}
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, width: '100%', maxWidth: 640 }}>
         <LumiCharacter mood={mood} size={68} />
         <AnimatePresence mode="wait">
-          <motion.div key={idx + (answered ? 'a' : 'q')}
+          <motion.button key={idx + (answered ? 'a' : 'q')}
             initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0 }}
+            onClick={() => sayTask(answered ? explain(q, heavy) : taskSpeech(q, ties))}
+            aria-label="Noch einmal hören"
             style={{
-              flex: 1, ...pxBubble,
+              flex: 1, ...pxBubble, textAlign: 'left', cursor: 'pointer',
               padding: '12px 18px',
-              fontFamily: 'var(--font-heading)', fontSize: 'clamp(15px,3vw,20px)',
+              fontFamily: 'var(--font-heading)', fontSize: 'clamp(16px,3vw,20px)',
               color: 'var(--text-primary)',
             }}
           >
             {answered
               ? <>
                   <strong style={{ color: isCorrect ? '#2F8F3A' : '#C2412D' }}>
-                    {isCorrect ? 'Super! 🎉 ' : 'Fast! 💪 '}
+                    {isCorrect ? 'Super! 🎉 ' : 'Schau mal: '}
                   </strong>
                   {resultText}
                 </>
-              : questionText
-            }
-          </motion.div>
+              : questionText}
+            {' '}🔊
+          </motion.button>
         </AnimatePresence>
       </div>
 
@@ -452,35 +471,48 @@ export default function WeightGame({ level = 1, onComplete }) {
         <motion.div key={idx}
           initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0 }}
-          style={{ display: 'flex', justifyContent: 'center', width: '100%', maxWidth: 480,
+          style={{ display: 'flex', justifyContent: 'center', width: '100%', maxWidth: 500,
                    ...pxPanel, padding: 'clamp(8px,1.6vw,14px) clamp(10px,2vw,18px)' }}
         >
           <BalanceScale
-            tiltDeg={tiltDeg}
-            leftEmoji={q.leftEmoji}  leftLabel={q.leftLabel}
-            rightEmoji={q.rightEmoji} rightLabel={q.rightLabel}
-            leftSize={emojiSize(q.leftW)} rightSize={emojiSize(q.rightW)}
+            tiltDeg={tiltDeg} q={q}
+            sizes={[size(q.left), size(q.right)]}
             answered={answered}
-            leftHeavier={q.leftW >= q.rightW}
-            onPickLeft={() => answer('left')}
-            onPickRight={() => answer('right')}
+            heavy={balance ? (answered ? 'equal' : null) : heavy}
+            onPick={balance ? null : answer}
+            blocks={balance ? blocks : null}
           />
         </motion.div>
       </AnimatePresence>
 
-      {/* "Both the same" needs a control of its own — the two pans were the
-          only way to answer, so a tie was unanswerable even where the code
-          already knew about it. Shown from the level where ties can occur. */}
-      {!answered && questions.some(qq => qq.leftW === qq.rightW) && (
+      {/* "Both the same" needs a control of its own — shown in the levels
+          where ties occur. */}
+      {!answered && !balance && ties && (
         <motion.button
           whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
           onClick={() => answer('equal')}
+          {...hearable('Gleich schwer')}
           style={{
             ...pxButton('parch'),
-            padding: '10px 30px',
-            fontSize: 'clamp(15px,3.2vw,19px)',
+            padding: '10px 30px', minHeight: 52,
+            fontSize: 'clamp(16px,3.2vw,19px)',
           }}
         >⚖️ Gleich schwer</motion.button>
+      )}
+
+      {/* Level 10: blocks on and off, then check */}
+      {!answered && balance && (
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
+          <motion.button whileTap={{ scale: 0.9 }} onClick={() => addBlock(-1)} aria-label="Klotz wegnehmen"
+            {...hearable('Klotz wegnehmen')}
+            style={{ ...pxButton('parch'), width: 64, height: 56, padding: 0, fontSize: 24 }}>− 🧱</motion.button>
+          <motion.button whileTap={{ scale: 0.9 }} onClick={() => addBlock(1)} aria-label="Klotz dazulegen"
+            {...hearable('Klotz dazulegen')}
+            style={{ ...pxButton('gold'), width: 64, height: 56, padding: 0, fontSize: 24 }}>+ 🧱</motion.button>
+          <motion.button whileTap={{ scale: 0.94 }} onClick={checkBalance}
+            {...hearable('Fertig')}
+            style={{ ...pxButton('green'), color: INK, textShadow: 'none', padding: '10px 30px', minHeight: 56, fontSize: 'clamp(17px,3.2vw,20px)' }}>✅ Fertig</motion.button>
+        </div>
       )}
 
       {/* Weiter button */}
@@ -490,16 +522,14 @@ export default function WeightGame({ level = 1, onComplete }) {
           transition={{ type:'spring', stiffness:300, delay:0.2 }}
           whileHover={{ scale:1.06 }} whileTap={{ scale:0.94 }}
           onClick={weiterClick}
+          {...hearable('Weiter')}
           style={{
-            ...pxButton('green'),
-            padding:'clamp(12px,2vw,16px) clamp(28px,6vw,52px)',
-            fontSize:'clamp(17px,3.5vw,22px)',
+            ...pxButton('green'), color: INK, textShadow: 'none',
+            padding:'clamp(12px,2vw,16px) clamp(28px,6vw,52px)', minHeight: 52,
+            fontSize:'clamp(18px,3.5vw,22px)',
           }}
         >Weiter! →</motion.button>
       )}
-
-
-
     </div>
   )
 }

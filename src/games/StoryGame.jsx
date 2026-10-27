@@ -1,19 +1,13 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
-import { speak } from '../tts.js'
 import { hearable } from '../lib/hearable.js'
 import HearOptions from '../components/HearOptions.jsx'
-import { lockPreviews } from '../narrator.js'
-import { INK, ACCENT, pxPanel, pxButton } from './px.js'
-
-function speakDE(text) {
-  // tts.js's own cleaning (an emoji-range strip plus a strict word-
-  // character whitelist pass) already covers everything this file's
-  // custom emoji list targeted, and more (e.g. ❤️/⭐ sit outside the
-  // emoji-range strip but get removed by the whitelist pass anyway).
-  speak(text, { rate: 0.78, pitch: 1.05, lang: 'de-DE' })
-}
+import { narrate, lockPreviews, afterNarration, stopNarration } from '../narrator.js'
+import { sayRight } from '../lib/feedback.js'
+import { result } from '../lib/score.js'
+import { FEELING_ICON, shuffle } from './feelings.js'
+import { INK, ACCENT, pxCard, pxPanel, pxButton } from './px.js'
 
 /**
  * Lumis Abenteuer — Narratives Lernen & Kausaldenken
@@ -26,527 +20,631 @@ function speakDE(text) {
  *     and perspective-taking (Theory of Mind).
  *   • Choice-based narratives increase intrinsic motivation (self-determination theory).
  *
- * Mechanic: An illustrated mini-story unfolds panel by panel. At a key moment the
- * child picks what Lumi should do. The story continues based on their choice.
- * Each choice has a consequence shown & explained by Lumi.
+ * Mechanic: An illustrated mini-story unfolds panel by panel and is read
+ * aloud. At a key moment the child picks what Lumi should do. The story
+ * continues based on their choice and shows what follows from it.
+ *
+ * The choice itself is not rated. It used to give three stars for the "good"
+ * and two for the "bad" option, which taught "pick the well-behaved answer"
+ * rather than weighing anything, and some stories have two good ways. What
+ * is rated is understanding: at a turn in the story the child is asked how
+ * someone feels (`ask`), and those answers, first try, make the stars.
  */
 
+// tier: 0 = levels 1-3 (short, one clear helper situation), 1 = levels 4-6,
+// 2 = levels 7-10 (honesty and promises, harder to weigh). Three stories
+// (rain, swing, climbing tower) have two good ways on purpose.
 const STORIES = [
   {
-    id: 'forest',
+    id: 'forest', tier: 0,
     title: 'Lumi im Wald',
     panels: [
-      { text: 'Lumi spaziert durch den bunten Herbstwald. 🌲🍂\nPlötzlich hört Lumi ein leises Weinen...', emoji: '🌲', mood:'thinking' },
-      { text: 'Da sitzt ein kleiner Igel. "Ich kann meinen Weg nach Hause nicht finden! 😢"', emoji: '🦔', mood:'encouraging' },
+      { text: 'Lumi spaziert durch den bunten Herbstwald. 🌲🍂\nPlötzlich hört Lumi ein leises Weinen …', emoji: '🌲', mood: 'thinking' },
+      { text: 'Da sitzt ein kleiner Igel. „Ich finde den Weg nach Hause nicht!“', emoji: '🦔', mood: 'encouraging',
+        ask: { q: 'Wie fühlt sich der Igel?', who: 'der Igel', feeling: 'Traurig' } },
     ],
     choice: {
       question: 'Was macht Lumi?',
       options: [
-        { text: '🤝 Lumi hilft dem Igel den Weg zu finden', value:'help', good:true },
-        { text: '🏃 Lumi läuft schnell weiter', value:'run', good:false },
+        { text: '🤝 Lumi hilft dem Igel, den Weg zu finden', value: 'help' },
+        { text: '🏃 Lumi läuft schnell weiter', value: 'run' },
       ],
     },
     outcomes: {
       help: {
         panels: [
-          { text: 'Lumi hilft dem Igel! Gemeinsam finden sie den Weg. 🗺️✨', emoji:'🦔❤️🦊', mood:'happy' },
-          { text: '"Danke Lumi!" Der Igel bringt Lumi als Dankeschön Pilze mit! 🍄🎁', emoji:'🍄', mood:'excited' },
+          { text: 'Lumi hilft dem Igel. Gemeinsam finden sie den Weg. 🗺️✨', emoji: '🦔❤️', mood: 'happy',
+            ask: { q: 'Wie fühlt sich der Igel jetzt?', who: 'der Igel', feeling: 'Glücklich' } },
+          { text: '„Danke, Lumi!“ Der Igel schenkt Lumi einen glänzenden Apfel.', emoji: '🍎', mood: 'excited' },
         ],
-        lesson: '💡 Wenn wir anderen helfen, macht das uns BEIDE glücklich!',
-        stars: 3,
+        lesson: 'Helfen macht froh: den Igel und Lumi!',
       },
       run: {
         panels: [
-          { text: 'Lumi läuft weiter... aber der Igel weint immer noch. 😢', emoji:'😞', mood:'sleepy' },
-          { text: 'Lumi dreht doch um und hilft. Der Igel hat lange allein geweint. 🔄', emoji:'🔄', mood:'encouraging' },
+          { text: 'Lumi läuft weiter … aber der Igel weint immer noch.', emoji: '🦔', mood: 'thinking',
+            ask: { q: 'Wie fühlt sich der Igel?', who: 'der Igel', feeling: 'Traurig' } },
+          { text: 'Da dreht Lumi um und hilft dem Igel doch noch. Zusammen finden sie den Weg. 🔄', emoji: '🦔❤️', mood: 'encouraging' },
         ],
-        lesson: '💡 Manchmal erkennen wir erst danach, was das Richtige wäre.',
-        stars: 2,
+        lesson: 'Umdrehen und doch noch helfen ist auch gut!',
       },
     },
   },
   {
-    id: 'bakery',
+    id: 'bakery', tier: 0,
     title: 'Der Kuchenladen',
     panels: [
-      { text: 'Lumi steht vor dem Kuchenladen. 🍰\nEs riecht nach frischem Kuchen!', emoji:'🏪', mood:'happy' },
-      { text: 'Lumi hat nur noch 1 Münze. Für sich oder für die kleine Maus, die hungrig daneben sitzt?', emoji:'🐭', mood:'thinking' },
+      { text: 'Lumi steht vor dem Kuchenladen. Es riecht nach frischem Kuchen! 🍰', emoji: '🏪', mood: 'happy' },
+      { text: 'Lumi hat nur noch eine Münze. Daneben sitzt eine kleine Maus und weint: „Ich habe so großen Hunger!“', emoji: '🐭', mood: 'thinking',
+        ask: { q: 'Wie fühlt sich die Maus?', who: 'die Maus', feeling: 'Traurig' } },
     ],
     choice: {
       question: 'Was macht Lumi mit der Münze?',
       options: [
-        { text: '🎁 Lumi kauft der Maus den Kuchen', value:'share', good:true },
-        { text: '🍰 Lumi kauft sich selbst den Kuchen', value:'keep', good:false },
+        { text: '🍰 Lumi kauft ein Stück Kuchen und teilt es mit der Maus', value: 'share' },
+        { text: '😋 Lumi kauft das Stück Kuchen für sich allein', value: 'keep' },
       ],
     },
     outcomes: {
       share: {
         panels: [
-          { text: 'Die Maus freut sich riesig! 🐭🎉 "Das ist so lieb von dir, Lumi!"', emoji:'🐭😄', mood:'excited' },
-          { text: 'Der Bäcker hat alles gesehen. Er schenkt Lumi einen extra großen Kuchen! 🍰🎁', emoji:'👨‍🍳🎂', mood:'excited' },
+          { text: 'Lumi teilt den Kuchen. Die Maus strahlt: „Danke, Lumi!“ 🎉', emoji: '🐭', mood: 'excited',
+            ask: { q: 'Wie fühlt sich die Maus jetzt?', who: 'die Maus', feeling: 'Glücklich' } },
+          { text: 'Zusammen schmeckt der Kuchen doppelt so gut!', emoji: '🍰', mood: 'happy' },
         ],
-        lesson: '💡 Großzügigkeit kommt immer zurück — doppelt so groß!',
-        stars: 3,
+        lesson: 'Teilen macht froh: die Maus und auch Lumi!',
       },
       keep: {
         panels: [
-          { text: 'Lumi isst alleine. Aber irgendwie schmeckt der Kuchen heute nicht so gut...', emoji:'😐🍰', mood:'sleepy' },
-          { text: 'Lumi nimmt sich vor, nächstes Mal zu teilen. Die Maus ist heute hungrig geblieben. 🐭', emoji:'🤝', mood:'encouraging' },
+          { text: 'Lumi isst den Kuchen allein. Die Maus schaut zu, und ihr Bauch knurrt.', emoji: '🐭', mood: 'thinking',
+            ask: { q: 'Wie fühlt sich die Maus?', who: 'die Maus', feeling: 'Traurig' } },
+          { text: 'Irgendwie schmeckt der Kuchen heute nicht so gut. Da gibt Lumi der Maus das letzte Stück.', emoji: '🍰', mood: 'encouraging' },
         ],
-        lesson: '💡 Selbst wenn wir nicht teilen, können wir daraus lernen.',
-        stars: 2,
+        lesson: 'Beim nächsten Mal kann Lumi gleich teilen. Das fühlt sich gut an.',
       },
     },
   },
   {
-    id: 'rain',
-    title: 'Der Regentag',
-    panels: [
-      { text: 'Es regnet! 🌧️ Lumi hatte draußen spielen wollen. Das ist schade...', emoji:'🌧️', mood:'sleepy' },
-      { text: 'Oma fragt: "Lumi, magst du mir beim Backen helfen oder liest du alleine?" 📚🍪', emoji:'👵', mood:'happy' },
-    ],
-    choice: {
-      question: 'Was wählt Lumi?',
-      options: [
-        { text: '👵🍪 Lumi hilft Oma beim Backen', value:'bake', good:true },
-        { text: '📚 Lumi liest alleine in der Ecke', value:'read', good:true },
-      ],
-    },
-    outcomes: {
-      bake: {
-        panels: [
-          { text: 'Zusammen backen sie Plätzchen für die ganze Familie! 🍪🥰', emoji:'🍪', mood:'excited' },
-          { text: 'Oma erzählt dabei alte Geschichten. Es ist der schönste Regentag ever! ☔❤️', emoji:'☔❤️', mood:'happy' },
-        ],
-        lesson: '💡 Zeit mit Familie ist wertvoller als jedes Wetter!',
-        stars: 3,
-      },
-      read: {
-        panels: [
-          { text: 'Lumi taucht in ein spannendes Buch ein. 📚 ✨ Zeit vergeht wie im Flug!', emoji:'📖✨', mood:'happy' },
-          { text: '"Lumi! Plätzchen sind fertig!" — Oma hatte trotzdem für Lumi gebacken. 🍪❤️', emoji:'🍪', mood:'excited' },
-        ],
-        lesson: '💡 Lesen und Fantasie sind Superkräfte!',
-        stars: 3,
-      },
-    },
-  },
-  {
-    id: 'playground',
+    id: 'playground', tier: 0,
     title: 'Auf dem Spielplatz',
     panels: [
-      { text: 'Lumi will die Rutsche runterrutschen. Aber da wartet schon eine lange Schlange... 🧒🧒🧒', emoji:'🛝', mood:'thinking' },
-      { text: 'Ein Kind sagt: "Komm vor! Ich kenne dich!" 😊', emoji:'👦', mood:'happy' },
+      { text: 'Lumi will rutschen. Aber vor der Rutsche wartet schon eine lange Reihe Kinder. 🧒🧒🧒', emoji: '🛝', mood: 'thinking' },
+      { text: 'Ein Kind ganz vorne ruft: „Komm, Lumi, stell dich vor mich!“', emoji: '👦', mood: 'happy' },
     ],
     choice: {
-      question: 'Was tut Lumi?',
+      question: 'Was macht Lumi?',
       options: [
-        { text: '⏳ Lumi wartet in der Reihe', value:'wait', good:true },
-        { text: '🏃 Lumi geht vor', value:'skip', good:false },
+        { text: '⏳ Lumi stellt sich hinten an', value: 'wait' },
+        { text: '🏃 Lumi drängelt sich vor', value: 'skip' },
       ],
     },
     outcomes: {
       wait: {
         panels: [
-          { text: 'Lumi wartet geduldig. 🌟 Die anderen Kinder freuen sich!', emoji:'😊', mood:'happy' },
-          { text: '"Du bist so fair!" sagen alle. Am Ende rutschen sie ZUSAMMEN! 🎉', emoji:'🛝🎉', mood:'excited' },
+          { text: 'Lumi wartet, bis Lumi dran ist. Die anderen Kinder lächeln.', emoji: '🧒', mood: 'happy' },
+          { text: 'Dann rutschen alle nacheinander, immer wieder. Juhu! 🎉', emoji: '🛝', mood: 'excited',
+            ask: { q: 'Wie fühlt sich Lumi jetzt?', who: 'Lumi', feeling: 'Glücklich' } },
         ],
-        lesson: '💡 Geduld und Fairness machen Freundschaften!',
-        stars: 3,
+        lesson: 'Wenn alle der Reihe nach drankommen, ist es fair.',
       },
       skip: {
         panels: [
-          { text: 'Lumi geht vor. Die anderen Kinder sind traurig und sauer. 😢', emoji:'😠', mood:'encouraging' },
-          { text: 'Lumi sieht ihre Gesichter und entschuldigt sich. Schön war das Warten für sie trotzdem nicht. 💛', emoji:'💛', mood:'happy' },
+          { text: 'Lumi drängelt sich vor. Die Kinder hinten rufen: „Das ist unfair!“', emoji: '😠', mood: 'thinking',
+            ask: { q: 'Wie fühlen sich die anderen Kinder?', who: 'die anderen Kinder', plural: true, feeling: 'Wütend' } },
+          { text: 'Lumi sieht die Gesichter und sagt: „Entschuldigung!“ Dann stellt sich Lumi hinten an. 💛', emoji: '💛', mood: 'encouraging' },
         ],
-        lesson: '💡 Entschuldigen ist mutig — jeder macht Fehler!',
-        stars: 2,
+        lesson: 'Sich entschuldigen ist mutig. Jeder macht mal Fehler!',
       },
     },
   },
-  // ── 5 ──────────────────────────────────────────────────────────────────────
   {
-    id: 'kitten',
+    id: 'kitten', tier: 0,
     title: 'Das Kätzchen im Regen',
     panels: [
-      { text: 'Lumi geht nach Hause, als ein leises Miauen zu hören ist... 🌧️\nUnter einer Bank sitzt ein kleines Kätzchen, ganz nass und allein.', emoji:'🐱', mood:'thinking' },
-      { text: 'Das Kätzchen schaut Lumi mit großen Augen an. Es hat kein Halsband und zittert vor Kälte. 🐱😢', emoji:'🐾', mood:'encouraging' },
+      { text: 'Es regnet. Auf dem Heimweg hört Lumi ein leises Miauen. 🌧️\nUnter einer Bank sitzt ein kleines Kätzchen, ganz nass.', emoji: '🐱', mood: 'thinking' },
+      { text: 'Das Kätzchen zittert und duckt sich ganz tief. Es hat kein Halsband.', emoji: '🐾', mood: 'encouraging',
+        ask: { q: 'Wie fühlt sich das Kätzchen?', who: 'das Kätzchen', feeling: 'Ängstlich' } },
     ],
     choice: {
-      question: 'Was macht Lumi mit dem Kätzchen?',
+      question: 'Was macht Lumi?',
       options: [
-        { text: '🏠 Lumi nimmt das Kätzchen mit nach Hause', value:'help', good:true },
-        { text: '🚶 Lumi geht weiter — vielleicht hilft jemand anderes', value:'leave', good:false },
+        // Fremde Tiere fasst man nicht an — man holt einen Erwachsenen.
+        { text: '🏠 Lumi holt schnell Mama und zeigt ihr das Kätzchen', value: 'help' },
+        { text: '🚶 Lumi geht weiter. Vielleicht hilft ja jemand anderes.', value: 'leave' },
       ],
     },
     outcomes: {
       help: {
         panels: [
-          { text: 'Mama ist überrascht, aber sagt: "Wir schauen, ob wir den Besitzer finden." 🏠❤️', emoji:'🏠', mood:'happy' },
-          { text: 'Am nächsten Tag finden sie die Besitzerin. Sie ist SO erleichtert! Als Dankeschön bekommt Lumi ein Foto vom Kätzchen. 📸🎉', emoji:'📸', mood:'excited' },
+          { text: 'Mama wickelt das Kätzchen in ein warmes Handtuch. „Wir suchen den Besitzer“, sagt Mama.', emoji: '🏠', mood: 'happy' },
+          { text: 'Am nächsten Tag finden sie die Besitzerin. Sie drückt ihr Kätzchen ganz fest an sich. 🐱❤️', emoji: '🐱', mood: 'excited',
+            ask: { q: 'Wie fühlt sich die Besitzerin?', who: 'die Besitzerin', feeling: 'Glücklich' } },
         ],
-        lesson: '💡 Ein kleines Herz für Tiere kann einen riesigen Unterschied machen!',
-        stars: 3,
+        lesson: 'Wenn ein Tier Hilfe braucht, holen wir einen Erwachsenen.',
       },
       leave: {
         panels: [
-          { text: 'Lumi geht weiter... aber das leise Miauen ist nicht zu vergessen. 😔', emoji:'😟', mood:'sleepy' },
-          { text: 'Lumi dreht um und bringt das Kätzchen doch nach Hause — nach einer langen, bangen Stunde. 💛', emoji:'💛', mood:'encouraging' },
+          { text: 'Lumi geht weiter … aber das leise Miauen geht Lumi nicht aus dem Kopf.', emoji: '😟', mood: 'thinking' },
+          { text: 'Lumi läuft zurück und holt Mama. Nach einer langen Stunde voller Sorgen liegt das Kätzchen endlich im Warmen. 💛', emoji: '🐱', mood: 'encouraging',
+            ask: { q: 'Wie fühlt sich das Kätzchen jetzt?', who: 'das Kätzchen', feeling: 'Glücklich' } },
         ],
-        lesson: '💡 Auf unser Herz zu hören ist immer eine gute Idee.',
-        stars: 2,
+        lesson: 'Auf das eigene Herz zu hören ist eine gute Idee.',
       },
     },
   },
-  // ── 6 ──────────────────────────────────────────────────────────────────────
   {
-    id: 'lunchbox',
+    id: 'rain', tier: 0,
+    title: 'Der Regentag',
+    panels: [
+      { text: 'Es regnet! 🌧️ Lumi wollte draußen spielen. Das ist schade …', emoji: '🌧️', mood: 'thinking',
+        ask: { q: 'Wie fühlt sich Lumi?', who: 'Lumi', feeling: 'Traurig' } },
+      { text: 'Oma fragt: „Lumi, backst du mit mir Plätzchen? Oder schaust du ein Bilderbuch an?“ 🍪📚', emoji: '👵', mood: 'happy' },
+    ],
+    choice: {
+      question: 'Was möchte Lumi?',
+      options: [
+        { text: '🍪 Lumi backt mit Oma Plätzchen', value: 'bake' },
+        { text: '📚 Lumi schaut gemütlich ein Bilderbuch an', value: 'book' },
+      ],
+    },
+    outcomes: {
+      bake: {
+        panels: [
+          { text: 'Zusammen backen sie Plätzchen für die ganze Familie. 🍪', emoji: '🍪', mood: 'excited' },
+          { text: 'Oma erzählt dabei lustige Geschichten. Es ist der schönste Regentag aller Zeiten! ☔❤️', emoji: '☔', mood: 'happy',
+            ask: { q: 'Wie fühlt sich Lumi jetzt?', who: 'Lumi', feeling: 'Glücklich' } },
+        ],
+        lesson: 'Auch an Regentagen kann man zusammen viel Schönes erleben!',
+      },
+      book: {
+        panels: [
+          { text: 'Lumi kuschelt sich aufs Sofa und schaut ein spannendes Bilderbuch an. 📖✨', emoji: '📖', mood: 'happy' },
+          { text: '„Lumi, die Plätzchen sind fertig!“ Oma hat trotzdem welche für Lumi gebacken. 🍪', emoji: '🍪', mood: 'excited',
+            ask: { q: 'Wie fühlt sich Lumi jetzt?', who: 'Lumi', feeling: 'Glücklich' } },
+        ],
+        lesson: 'In Bilderbüchern kann man tolle Abenteuer erleben!',
+      },
+    },
+  },
+  {
+    id: 'lunchbox', tier: 1,
     title: 'Kein Frühstück',
     panels: [
-      { text: 'In der Pause macht Lumi die Brotdose auf. Leckere Butterbrote! 🥪✨\nAber Jonas, der Klassenkamerad, sitzt still daneben und schaut auf den Boden.', emoji:'🥪', mood:'happy' },
-      { text: '"Hast du etwas vergessen?" fragt Lumi. "Meine Brotdose..." flüstert Jonas. 😢', emoji:'🎒', mood:'thinking' },
+      { text: 'In der Pause macht Lumi die Brotdose auf. Leckere Butterbrote! 🥪\nAber Jonas sitzt still daneben und schaut auf den Boden.', emoji: '🥪', mood: 'happy' },
+      { text: '„Hast du etwas vergessen?“, fragt Lumi. „Meine Brotdose …“, flüstert Jonas.', emoji: '🎒', mood: 'thinking',
+        ask: { q: 'Wie fühlt sich Jonas?', who: 'Jonas', feeling: 'Traurig' } },
     ],
     choice: {
       question: 'Was macht Lumi?',
       options: [
-        { text: '🥪 Lumi teilt sein Brot mit Jonas', value:'share', good:true },
-        { text: '😶 Lumi isst alleine — es ist ja sein Brot', value:'keep', good:false },
+        { text: '🥪 Lumi teilt das Brot mit Jonas', value: 'share' },
+        { text: '😶 Lumi isst allein. Es ist ja Lumis Brot.', value: 'keep' },
       ],
     },
     outcomes: {
       share: {
         panels: [
-          { text: '"Möchtest du die Hälfte?" Jonas ist sprachlos vor Freude! 🥪😄', emoji:'🤝', mood:'excited' },
-          { text: 'Nach der Schule fragt Jonas, ob Lumi zum Spielen kommen darf. Aus Fremden werden Freunde! 🤝✨', emoji:'🏠', mood:'happy' },
+          { text: '„Möchtest du die Hälfte?“ Jonas strahlt über das ganze Gesicht.', emoji: '🤝', mood: 'excited',
+            ask: { q: 'Wie fühlt sich Jonas jetzt?', who: 'Jonas', feeling: 'Glücklich' } },
+          { text: 'Nach der Pause spielen Lumi und Jonas zusammen. Die beiden werden richtig gute Freunde! ✨', emoji: '🏠', mood: 'happy' },
         ],
-        lesson: '💡 Teilen schafft Freundschaften, die ein Leben lang halten!',
-        stars: 3,
+        lesson: 'Teilen macht beide satt und froh!',
       },
       keep: {
         panels: [
-          { text: 'Lumi isst... aber irgendwie schmeckt das Brot heute nicht so gut. 😐', emoji:'😐', mood:'sleepy' },
-          { text: 'Beim nächsten Mal teilt Lumi mit Jonas. Heute hatte Jonas nichts. 💛', emoji:'💛', mood:'encouraging' },
+          { text: 'Lumi isst … aber irgendwie schmeckt das Brot heute nicht so gut.', emoji: '🥪', mood: 'thinking' },
+          { text: 'Jonas hat großen Hunger. Da gibt Lumi Jonas doch noch ein Brot ab. 💛', emoji: '💛', mood: 'encouraging',
+            ask: { q: 'Wie fühlt sich Jonas jetzt?', who: 'Jonas', feeling: 'Glücklich' } },
         ],
-        lesson: '💡 Es ist nie zu spät, das Richtige zu tun.',
-        stars: 2,
+        lesson: 'Es ist nie zu spät, das Richtige zu tun.',
       },
     },
   },
-  // ── 7 ──────────────────────────────────────────────────────────────────────
   {
-    id: 'vase',
+    id: 'vase', tier: 1,
     title: 'Die zerbrochene Vase',
     panels: [
-      { text: 'PENG! 💥 Beim Spielen schubst Lumi aus Versehen Omas Lieblingsvase vom Tisch.\nScherben auf dem Boden...', emoji:'🏺', mood:'thinking' },
-      { text: 'Oma ist noch beim Einkaufen. Lumi könnte die Scherben verstecken — oder die Wahrheit sagen. 🤔', emoji:'😟', mood:'thinking' },
+      { text: 'Peng! 💥 Beim Spielen stößt Lumi aus Versehen Omas Lieblingsvase vom Tisch.\nÜberall liegen Scherben. Vorsicht, die sind scharf! Lumi fasst sie nicht an.', emoji: '🏺', mood: 'thinking' },
+      { text: 'Oma ist noch einkaufen. Lumis Herz klopft ganz schnell. Lumi könnte nichts sagen … oder die Wahrheit sagen.', emoji: '💓', mood: 'thinking',
+        ask: { q: 'Wie fühlt sich Lumi?', who: 'Lumi', feeling: 'Ängstlich' } },
     ],
     choice: {
       question: 'Was macht Lumi?',
       options: [
-        { text: '🗣️ Lumi erzählt Oma sofort die Wahrheit', value:'truth', good:true },
-        { text: '🫙 Lumi versteckt die Scherben unter dem Sofa', value:'hide', good:false },
+        { text: '🗣️ Lumi erzählt Oma die Wahrheit, sobald sie heimkommt', value: 'truth' },
+        { text: '🙈 Lumi sagt nichts und hofft, dass Oma es nicht merkt', value: 'hide' },
       ],
     },
     outcomes: {
       truth: {
         panels: [
-          { text: 'Oma kommt nach Hause. "Oma, ich muss dir etwas sagen..." Lumis Herz klopft. 💓', emoji:'👵', mood:'encouraging' },
-          { text: 'Oma ist kurz traurig, dann umarmt sie Lumi fest. "Dass du ehrlich bist — darauf bin ich am stolzsten!" ❤️', emoji:'❤️', mood:'excited' },
+          { text: 'Oma kommt nach Hause. „Oma, ich muss dir etwas sagen …“', emoji: '👵', mood: 'encouraging' },
+          { text: 'Oma schaut auf die Scherben. Dann nimmt sie Lumi in den Arm: „Danke, dass du ehrlich bist!“ Zusammen kehren sie die Scherben auf. ❤️', emoji: '❤️', mood: 'excited',
+            ask: { q: 'Wie fühlt sich Lumi jetzt?', who: 'Lumi', feeling: 'Glücklich' } },
         ],
-        lesson: '💡 Die Wahrheit zu sagen ist mutig — und macht das Herz viel leichter!',
-        stars: 3,
+        lesson: 'Die Wahrheit zu sagen ist mutig. Danach ist das Herz viel leichter!',
       },
       hide: {
         panels: [
-          { text: 'Lumi versteckt die Scherben. Aber das Geheimnis liegt wie ein Stein im Bauch. 😟', emoji:'😟', mood:'sleepy' },
-          { text: 'Beim Abendessen kommt es raus: "Oma, ich habe etwas angestellt..." Oma lächelt: "Gut, dass du es sagst." 💛', emoji:'💛', mood:'happy' },
+          { text: 'Lumi sagt nichts. Aber das Geheimnis liegt Lumi wie ein Stein im Bauch.', emoji: '😟', mood: 'thinking',
+            ask: { q: 'Wie fühlt sich Lumi mit dem Geheimnis?', who: 'Lumi', feeling: 'Ängstlich' } },
+          { text: 'Beim Abendessen sagt Lumi: „Oma, ich war das mit der Vase.“ Oma nickt: „Gut, dass du es mir sagst.“ 💛', emoji: '💛', mood: 'happy' },
         ],
-        lesson: '💡 Geheimnisse, die wehtun, sollte man teilen. Ehrlichkeit befreit!',
-        stars: 2,
+        lesson: 'Ein Geheimnis, das drückt, erzählt man besser. Ehrlich sein macht frei!',
       },
     },
   },
-  // ── 8 ──────────────────────────────────────────────────────────────────────
   {
-    id: 'climbingframe',
-    title: 'Der mutige Kletterturm',
-    panels: [
-      { text: 'Im Park steht DER große Kletterturm. Alle Kinder klettern drauf. Lumi bleibt unten. 😟\n"Das ist zu hoch... was wenn ich falle?"', emoji:'🧗', mood:'thinking' },
-      { text: 'Freundin Mia reicht Lumi die Hand: "Ich bin neben dir. Versuch es Schritt für Schritt!" 🤝', emoji:'🤝', mood:'encouraging' },
-    ],
-    choice: {
-      question: 'Was macht Lumi?',
-      options: [
-        { text: '🧗 Lumi versucht es — mutig!', value:'brave', good:true },
-        { text: '🌳 Lumi bleibt lieber unten', value:'stay', good:true },
-      ],
-    },
-    outcomes: {
-      brave: {
-        panels: [
-          { text: 'Schritt... für... Schritt. Lumi klettert! 💪 Oben angekommen sieht die Welt ganz anders aus.', emoji:'🌟', mood:'excited' },
-          { text: '"ICH HABE ES GESCHAFFT!" 🎉 Alle jubeln. Mut wächst, wenn man ihn benutzt!', emoji:'🏆', mood:'excited' },
-        ],
-        lesson: '💡 Mutsein heißt nicht, keine Angst zu haben — sondern trotzdem zu versuchen!',
-        stars: 3,
-      },
-      stay: {
-        panels: [
-          { text: 'Lumi bleibt unten — das ist auch mutig! Seine Grenzen zu kennen ist klug. 🌱', emoji:'🌱', mood:'happy' },
-          { text: 'Lumi klettert auf den kleinen Turm und strahlt: "Nächstes Mal den großen!" ✨', emoji:'✨', mood:'excited' },
-        ],
-        lesson: '💡 Jeden Tag ein kleiner Schritt weiter — das ist echter Mut!',
-        stars: 3,
-      },
-    },
-  },
-  // ── 9 ──────────────────────────────────────────────────────────────────────
-  {
-    id: 'newkid',
+    id: 'newkid', tier: 1,
     title: 'Das neue Mädchen',
     panels: [
-      { text: 'In der Schule gibt es ein neues Mädchen: Emma. Sie steht alleine im Schulhof. 🏫\nLumi kennt Emma nicht... aber Emma sieht einsam aus.', emoji:'🧒', mood:'thinking' },
-      { text: 'Lumis Freunde rufen: "Lumi, komm spielen!" Lumi schaut zu Emma, dann zu den Freunden. 🤔', emoji:'👧', mood:'thinking' },
+      { text: 'Im Kindergarten gibt es ein neues Mädchen: Emma. Emma steht ganz allein in der Ecke und schaut auf den Boden.', emoji: '👧', mood: 'thinking',
+        ask: { q: 'Wie fühlt sich Emma?', who: 'Emma', feeling: 'Traurig' } },
+      { text: 'Lumis Freunde rufen: „Lumi, komm spielen!“ Lumi schaut zu Emma, dann zu den Freunden. 🤔', emoji: '🧒', mood: 'thinking' },
     ],
     choice: {
       question: 'Was macht Lumi?',
       options: [
-        { text: '👋 Lumi geht zu Emma und stellt sich vor', value:'approach', good:true },
-        { text: '🏃 Lumi rennt zu den alten Freunden', value:'ignore', good:false },
+        { text: '👋 Lumi geht zu Emma und sagt Hallo', value: 'approach' },
+        { text: '🏃 Lumi rennt zu den anderen Freunden', value: 'ignore' },
       ],
     },
     outcomes: {
       approach: {
         panels: [
-          { text: '"Hallo! Ich bin Lumi. Willst du mitspielen?" Emmas Gesicht leuchtet auf! 😊✨', emoji:'😊', mood:'happy' },
-          { text: 'Am Ende des Tages hat Lumi eine neue Freundin. Emma: "Du bist die erste, die freundlich war. Danke!" 💛', emoji:'💛', mood:'excited' },
+          { text: '„Hallo! Ich bin Lumi. Willst du mitspielen?“ Emmas Gesicht leuchtet auf!', emoji: '👧', mood: 'happy',
+            ask: { q: 'Wie fühlt sich Emma jetzt?', who: 'Emma', feeling: 'Glücklich' } },
+          { text: 'Am Ende des Tages hat Lumi eine neue Freundin. „Danke, dass du so nett warst!“, sagt Emma. 💛', emoji: '💛', mood: 'excited' },
         ],
-        lesson: '💡 Eine kleine Geste kann für jemand anderen die Welt bedeuten!',
-        stars: 3,
+        lesson: 'Ein freundliches Hallo kann für andere ganz viel bedeuten!',
       },
       ignore: {
         panels: [
-          { text: 'Lumi spielt... aber nach einer Weile weint Emma in einer Ecke. 😢 Das Lachen hört auf.', emoji:'😢', mood:'sleepy' },
-          { text: 'Lumi geht zu Emma: "Willst du mitspielen?" Emma lächelt — sie hat lange allein gesessen. 💛', emoji:'💛', mood:'encouraging' },
+          { text: 'Lumi spielt … aber Emma steht immer noch allein da und weint.', emoji: '👧', mood: 'thinking',
+            ask: { q: 'Wie fühlt sich Emma?', who: 'Emma', feeling: 'Traurig' } },
+          { text: 'Da geht Lumi zu Emma: „Willst du mitspielen?“ Emma lächelt. Sie hat lange allein gewartet. 💛', emoji: '💛', mood: 'encouraging' },
         ],
-        lesson: '💡 Es ist nie zu spät, freundlich zu sein. Aber früher ist besser!',
-        stars: 2,
+        lesson: 'Es ist nie zu spät, freundlich zu sein. Aber früher ist noch besser!',
       },
     },
   },
-  // ── 10 ─────────────────────────────────────────────────────────────────────
   {
-    id: 'wallet',
-    title: 'Das gefundene Portemonnaie',
+    id: 'swing', tier: 1,
+    title: 'Die Schaukel',
     panels: [
-      { text: 'Beim Spielen im Park findet Lumi ein schwarzes Portemonnaie im Gras. 💼\nDarin sind Geld, ein Foto und eine Telefonnummer.', emoji:'💼', mood:'thinking' },
-      { text: 'Lumi könnte das Geld behalten — oder mit Mama zur Polizei gehen. 🤔', emoji:'🤔', mood:'thinking' },
+      { text: 'Lumi schaukelt hoch in den Himmel. Juhu!', emoji: ':px-schaukel:', mood: 'excited' },
+      { text: 'Da kommt Ida. Ida möchte auch so gern schaukeln. Aber es gibt nur eine Schaukel.', emoji: '👧', mood: 'thinking' },
     ],
     choice: {
       question: 'Was macht Lumi?',
       options: [
-        { text: '👮 Lumi gibt das Portemonnaie zur Polizei', value:'return', good:true },
-        { text: '💰 Lumi behält das Geld erst mal', value:'keep', good:false },
+        { text: '🔁 Lumi schaukelt noch zehnmal und wechselt dann mit Ida ab', value: 'turns' },
+        { text: '🤝 Lumi lässt Ida gleich schaukeln und schubst sie an', value: 'now' },
       ],
     },
     outcomes: {
-      return: {
+      turns: {
         panels: [
-          { text: 'Lumi geht mit Mama zur Polizei. Der Beamte lobt Lumi sehr! 👮⭐', emoji:'👮', mood:'happy' },
-          { text: 'Am nächsten Tag klingelt es — die Besitzerin umarmt Lumi: "Das war mein letztes Geld für Medikamente. Danke!" Sie schenkt Lumi ein Buch. 💛📚', emoji:'📚', mood:'excited' },
+          { text: 'Lumi zählt laut bis zehn. Dann darf Ida schaukeln.', emoji: ':px-schaukel:', mood: 'happy' },
+          { text: 'So wechseln sie sich ab, immer wieder. Ida lacht laut.', emoji: '👧', mood: 'excited',
+            ask: { q: 'Wie fühlt sich Ida jetzt?', who: 'Ida', feeling: 'Glücklich' } },
         ],
-        lesson: '💡 Ehrlichkeit kann einem fremden Menschen wirklich helfen!',
-        stars: 3,
+        lesson: 'Abwechseln ist fair. So kommt jeder dran!',
       },
-      keep: {
+      now: {
         panels: [
-          { text: 'Lumi gibt das Geld aus... aber das Foto im Portemonnaie — eine alte Frau — lässt Lumi nicht schlafen. 😟', emoji:'😟', mood:'sleepy' },
-          { text: 'Lumi geht doch zur Polizei. "Es tut mir leid." Der Beamte sagt: "Gut, dass du es überhaupt gebracht hast." 💛', emoji:'💛', mood:'encouraging' },
+          { text: 'Ida schaukelt, und Lumi schubst sie an. Höher, höher!', emoji: ':px-schaukel:', mood: 'happy',
+            ask: { q: 'Wie fühlt sich Ida?', who: 'Ida', feeling: 'Glücklich' } },
+          { text: 'Danach darf Lumi wieder. Jetzt schubst Ida. 💛', emoji: '💛', mood: 'excited' },
         ],
-        lesson: '💡 Fehler machen ist menschlich — sie wieder gut machen ist heldenhaft!',
-        stars: 2,
-      },
-    },
-  },
-  {
-    id: 'lonelykid',
-    title: 'Das einsame Kind',
-    panels: [
-      { text: 'Beim Mittagessen sitzt ein neues Kind ganz allein am Rand. Es schaut traurig auf seinen Teller. 👦😢', emoji:'😢', mood:'thinking' },
-      { text: 'Lumis Freunde sagen: "Lass ihn, der ist komisch!" Aber Lumi ist unsicher. 🤔', emoji:'🤔', mood:'thinking' },
-    ],
-    choice: {
-      question: 'Was macht Lumi?',
-      options: [
-        { text: '👋 Lumi geht hin und sagt Hallo', value:'hello', good:true },
-        { text: '🙅 Lumi bleibt bei den Freunden', value:'ignore', good:false },
-      ],
-    },
-    outcomes: {
-      hello: {
-        panels: [
-          { text: 'Lumi setzt sich dazu. "Ich bin Lumi!" Das Kind lächelt zum ersten Mal. 😊', emoji:'😊', mood:'happy' },
-          { text: 'Nach dem Essen spielen sie zusammen. Die anderen kommen auch dazu. Ein neuer Freund! 👫✨', emoji:'👫', mood:'excited' },
-        ],
-        lesson: '💡 Ein einfaches "Hallo" kann jemandes Tag komplett verändern!',
-        stars: 3,
-      },
-      ignore: {
-        panels: [
-          { text: 'Lumi bleibt bei den Freunden, aber kann das traurige Kind nicht vergessen. 😔', emoji:'😔', mood:'encouraging' },
-          { text: 'Am nächsten Tag spricht Lumi das Kind an. Einen ganzen Tag war es allein. 🌟', emoji:'🌟', mood:'happy' },
-        ],
-        lesson: '💡 Es ist nie zu spät, nett zu sein!',
-        stars: 2,
+        lesson: 'Zusammen schaukeln macht doppelt Spaß!',
       },
     },
   },
   {
-    id: 'promise',
-    title: 'Das Versprechen',
+    id: 'screentime', tier: 1,
+    title: 'Das Tablet',
     panels: [
-      { text: 'Lumi hat Oma versprochen, nach der Schule sofort nach Hause zu kommen. Aber die Freunde wollen noch auf dem Spielplatz bleiben. 🤔', emoji:'🤔', mood:'thinking' },
-      { text: 'Oma wartet zu Hause. Aber der Spielplatz macht so viel Spaß! 🛖🙏', emoji:'🙏', mood:'thinking' },
+      { text: 'Lumi spielt schon lange auf dem Tablet. Mama sagt: „Noch zehn Minuten, dann ist Pause.“', emoji: '📱', mood: 'thinking' },
+      { text: 'Die Zeit ist um. Aber Lumi ist gerade an der spannendsten Stelle!', emoji: '🎮', mood: 'thinking' },
     ],
     choice: {
       question: 'Was macht Lumi?',
       options: [
-        { text: '🏠 Lumi geht zu Oma wie versprochen', value:'promise', good:true },
-        { text: '🛖 Lumi bleibt noch auf dem Spielplatz', value:'stay', good:false },
-      ],
-    },
-    outcomes: {
-      promise: {
-        panels: [
-          { text: 'Lumi sagt "Tschüss!" und geht nach Hause. Oma freut sich riesig! 💜', emoji:'💜', mood:'happy' },
-          { text: 'Oma hat Kuchen gebacken. "Ich wusste, dass du kommst!" Sie backen zusammen noch mehr. 🍰✨', emoji:'🍰', mood:'excited' },
-        ],
-        lesson: '💡 Versprechen halten zeigt, dass wir jemanden wirklich lieben!',
-        stars: 3,
-      },
-      stay: {
-        panels: [
-          { text: 'Lumi spielt... aber dann klingelt das Telefon. Oma macht sich Sorgen. 😞', emoji:'😞', mood:'sleepy' },
-          { text: 'Lumi rennt nach Hause. Oma hat sich lange Sorgen gemacht. Sie umarmen sich. 💛', emoji:'💛', mood:'encouraging' },
-        ],
-        lesson: '💡 Versprechen sind wichtig — besonders für Menschen die uns lieben!',
-        stars: 2,
-      },
-    },
-  },
-  {
-    id: 'fakegrade',
-    title: 'Die gefälschte Note',
-    panels: [
-      { text: 'Lumi hat eine schlechte Note bekommen. 😟 Die Eltern werden das sehen wenn Lumi das Heft mitbringt.', emoji:'📓', mood:'thinking' },
-      { text: 'Lumi denkt: Ich könnte die Note heimlich ändern... oder einfach ehrlich sein. 🤔', emoji:'🤔', mood:'thinking' },
-    ],
-    choice: {
-      question: 'Was macht Lumi?',
-      options: [
-        { text: '🗣️ Lumi zeigt die Note und erklärt es', value:'honest', good:true },
-        { text: '✏️ Lumi ändert die Note heimlich', value:'cheat', good:false },
-      ],
-    },
-    outcomes: {
-      honest: {
-        panels: [
-          { text: '"Mama, ich hab eine schlechte Note." Mama ist überrascht, aber sagt: "Danke, dass du ehrlich bist. Dann üben wir zusammen!" 💛', emoji:'💛', mood:'happy' },
-          { text: 'Sie üben eine Woche. Die nächste Note: viel besser! Lumi fühlt sich richtig stark. 💪⭐', emoji:'⭐', mood:'excited' },
-        ],
-        lesson: '💡 Fehler zuzugeben braucht Mut — aber ehrliche Kinder wachsen am schnellsten!',
-        stars: 3,
-      },
-      cheat: {
-        panels: [
-          { text: 'Die Lehrerin merkt es. "Das war nicht Lumi\'s Schrift." Jetzt ist alles schlimmer. 😳', emoji:'😳', mood:'sleepy' },
-          { text: 'Lumi entschuldigt sich. Die Lehrerin sagt: "Ein Fehler ist ok. Ihn verstecken macht alles schwerer." 💛', emoji:'💛', mood:'encouraging' },
-        ],
-        lesson: '💡 Fehler passieren jedem — Ehrlichkeit ist immer der bessere Weg!',
-        stars: 2,
-      },
-    },
-  },
-  {
-    id: 'screentime',
-    title: 'Zu viel Bildschirm',
-    panels: [
-      { text: 'Lumi spielt schon 2 Stunden auf dem Tablet. Mama sagt: "Noch 10 Minuten, dann Pause." 📱', emoji:'📱', mood:'thinking' },
-      { text: 'Die Zeit ist um, aber Lumi ist an der spannendsten Stelle. 🎮', emoji:'🎮', mood:'thinking' },
-    ],
-    choice: {
-      question: 'Was macht Lumi?',
-      options: [
-        { text: '✅ Lumi macht das Tablet aus', value:'stop', good:true },
-        { text: '🤫 Lumi spielt heimlich weiter', value:'sneak', good:false },
+        { text: '✅ Lumi macht das Tablet aus', value: 'stop' },
+        { text: '🤫 Lumi spielt heimlich weiter', value: 'sneak' },
       ],
     },
     outcomes: {
       stop: {
         panels: [
-          { text: 'Lumi stellt das Tablet weg. "Ich hab aufgehört!" Mama lächelt: "Super! Wollen wir was zusammen machen?" 🎲', emoji:'🎲', mood:'happy' },
-          { text: 'Sie spielen Karten. Das macht auch Spaß! Und Lumi darf morgen wieder spielen. 🌟', emoji:'🌟', mood:'excited' },
+          { text: 'Lumi legt das Tablet weg. Mama lächelt: „Super! Wollen wir zusammen etwas spielen?“', emoji: '🎲', mood: 'happy',
+            ask: { q: 'Wie fühlt sich Mama?', who: 'Mama', feeling: 'Glücklich' } },
+          { text: 'Sie spielen ein Kartenspiel. Das macht auch Spaß! Und morgen darf Lumi wieder ein bisschen spielen. 🌟', emoji: '🌟', mood: 'excited' },
         ],
-        lesson: '💡 Grenzen einhalten ist Stärke — und bringt Vertrauen!',
-        stars: 3,
+        lesson: 'Wer sich an Abmachungen hält, dem kann man vertrauen.',
       },
       sneak: {
         panels: [
-          { text: 'Mama kommt rein. "Lumi! Das war nicht abgemacht." Lumi muss 3 Tage Pause machen. 😔', emoji:'😔', mood:'sleepy' },
-          { text: '"Es tut mir leid, Mama." Mama umarmt Lumi: "Danke. Morgen sprechen wir über neue Regeln." 💛', emoji:'💛', mood:'encouraging' },
+          { text: 'Mama kommt herein. „Lumi, das war nicht abgemacht.“ Mama ist enttäuscht. Heute bleibt das Tablet aus.', emoji: '📱', mood: 'thinking',
+            ask: { q: 'Wie fühlt sich Mama?', who: 'Mama', feeling: 'Traurig' } },
+          { text: '„Es tut mir leid, Mama.“ Mama nimmt Lumi in den Arm: „Danke. Morgen probieren wir es nochmal.“ 💛', emoji: '💛', mood: 'encouraging' },
         ],
-        lesson: '💡 Vereinbarungen halten macht das Leben für alle besser!',
-        stars: 2,
+        lesson: 'Abmachungen halten macht das Leben für alle leichter!',
+      },
+    },
+  },
+  {
+    id: 'climbingframe', tier: 2,
+    title: 'Lumi und der große Kletterturm',
+    panels: [
+      { text: 'Im Park steht ein großer Kletterturm. Alle Kinder klettern hinauf. Lumi bleibt unten.\n„Das ist so hoch … was ist, wenn ich falle?“', emoji: '🧗', mood: 'thinking',
+        ask: { q: 'Wie fühlt sich Lumi?', who: 'Lumi', feeling: 'Ängstlich' } },
+      { text: 'Mia reicht Lumi die Hand: „Ich bin neben dir. Versuch es Schritt für Schritt!“ 🤝', emoji: '🤝', mood: 'encouraging' },
+    ],
+    choice: {
+      question: 'Was macht Lumi?',
+      options: [
+        { text: '🧗 Lumi versucht es, Schritt für Schritt', value: 'brave' },
+        { text: '🌳 Lumi bleibt lieber unten', value: 'stay' },
+      ],
+    },
+    outcomes: {
+      brave: {
+        panels: [
+          { text: 'Schritt … für … Schritt. Lumi klettert! 💪 Von oben sieht die Welt ganz anders aus.', emoji: '🌟', mood: 'excited' },
+          { text: '„Ich habe es geschafft!“ Alle jubeln. 🎉', emoji: '🏆', mood: 'excited',
+            ask: { q: 'Wie fühlt sich Lumi jetzt?', who: 'Lumi', feeling: 'Stolz' } },
+        ],
+        lesson: 'Mutig sein heißt nicht, keine Angst zu haben. Mutig sein heißt, es trotzdem zu versuchen!',
+      },
+      stay: {
+        panels: [
+          { text: 'Lumi bleibt unten. Das ist auch in Ordnung! Lumi weiß: Der große Turm ist heute noch zu hoch.', emoji: '🌱', mood: 'happy' },
+          { text: 'Lumi klettert auf den kleinen Turm, bis ganz nach oben: „Nächstes Mal probiere ich den großen!“ ✨', emoji: '✨', mood: 'excited',
+            ask: { q: 'Wie fühlt sich Lumi jetzt?', who: 'Lumi', feeling: 'Stolz' } },
+        ],
+        lesson: 'Jeden Tag ein kleiner Schritt weiter, das ist auch Mut!',
+      },
+    },
+  },
+  {
+    id: 'promise', tier: 2,
+    title: 'Das Versprechen',
+    panels: [
+      { text: 'Lumi spielt beim Nachbarskind Ben. Lumi hat Oma versprochen, zum Abendessen pünktlich heimzukommen.', emoji: '🏠', mood: 'happy' },
+      { text: 'Gleich gibt es Essen. Aber Ben ruft: „Bleib doch noch! Wir bauen gerade eine Höhle!“', emoji: '🧸', mood: 'thinking' },
+    ],
+    choice: {
+      question: 'Was macht Lumi?',
+      options: [
+        { text: '🏠 Lumi geht pünktlich nach Hause, wie versprochen', value: 'promise' },
+        { text: '🧸 Lumi bleibt noch ein bisschen bei Ben', value: 'stay' },
+      ],
+    },
+    outcomes: {
+      promise: {
+        panels: [
+          { text: 'Lumi sagt „Tschüss, bis morgen!“ und geht heim. Oma wartet schon an der Tür und lacht. 💜', emoji: '👵', mood: 'happy',
+            ask: { q: 'Wie fühlt sich Oma?', who: 'Oma', feeling: 'Glücklich' } },
+          { text: 'Zum Nachtisch gibt es Kuchen. „Auf dich kann man sich verlassen!“, sagt Oma. 🍰', emoji: '🍰', mood: 'excited' },
+        ],
+        lesson: 'Wer ein Versprechen hält, auf den kann man sich verlassen!',
+      },
+      stay: {
+        panels: [
+          { text: 'Lumi spielt weiter. Da klingelt bei Ben das Telefon. Es ist Oma. Oma weiß nicht, wo Lumi bleibt.', emoji: '📱', mood: 'thinking',
+            ask: { q: 'Wie fühlt sich Oma?', who: 'Oma', feeling: 'Ängstlich' } },
+          { text: 'Lumi läuft schnell nach Hause. Oma und Lumi nehmen sich fest in den Arm. 💛', emoji: '💛', mood: 'encouraging' },
+        ],
+        lesson: 'Versprechen sind wichtig, besonders für Menschen, die uns lieb haben.',
+      },
+    },
+  },
+  {
+    id: 'wallet', tier: 2,
+    title: 'Das gefundene Portemonnaie',
+    panels: [
+      { text: 'Beim Spielen im Park findet Lumi ein Portemonnaie im Gras.\nDarin sind Geld und ein Foto.', emoji: ':px-portemonnaie:', mood: 'thinking' },
+      { text: 'Mama sitzt auf der Bank gleich daneben. Lumi könnte das Portemonnaie behalten … oder es Mama zeigen.', emoji: '🤔', mood: 'thinking' },
+    ],
+    choice: {
+      question: 'Was macht Lumi?',
+      options: [
+        { text: '👮 Lumi bringt das Portemonnaie mit Mama zur Polizei', value: 'return' },
+        { text: '💰 Lumi steckt das Portemonnaie in die eigene Tasche', value: 'keep' },
+      ],
+    },
+    outcomes: {
+      return: {
+        panels: [
+          { text: 'Lumi und Mama bringen das Portemonnaie zur Polizei. Der Polizist sagt: „Das habt ihr toll gemacht!“', emoji: '👮', mood: 'happy' },
+          { text: 'Am nächsten Tag ruft die Besitzerin an: „Danke! Da ist das Foto von meinem Enkel drin.“ 💛', emoji: '💛', mood: 'excited',
+            ask: { q: 'Wie fühlt sich die Besitzerin?', who: 'die Besitzerin', feeling: 'Glücklich' } },
+        ],
+        lesson: 'Ehrlich sein hilft anderen Menschen!',
+      },
+      keep: {
+        panels: [
+          { text: 'Zu Hause fühlt sich das Portemonnaie in der Tasche ganz schwer an.', emoji: '😟', mood: 'thinking' },
+          { text: 'Lumi erzählt es Mama. Zusammen bringen sie es zum Fundbüro. Die Besitzerin bekommt alles zurück. 💛', emoji: '💛', mood: 'encouraging',
+            ask: { q: 'Wie fühlt sich die Besitzerin?', who: 'die Besitzerin', feeling: 'Glücklich' } },
+        ],
+        lesson: 'Einen Fehler kann man wiedergutmachen. Das ist mutig!',
+      },
+    },
+  },
+  {
+    id: 'sweater', tier: 2,
+    title: 'Der bekleckste Pulli',
+    panels: [
+      { text: 'Lumi malt mit Wasserfarben. Auf dem Stuhl liegt der Lieblingspulli von Lumis großer Schwester Lea. 🎨', emoji: '👕', mood: 'happy' },
+      { text: 'Platsch! Ein dicker blauer Klecks landet auf dem Pulli. Lumi erschrickt. Lea ist nicht da.', emoji: '💧', mood: 'thinking',
+        ask: { q: 'Wie fühlt sich Lumi?', who: 'Lumi', feeling: 'Ängstlich' } },
+    ],
+    choice: {
+      question: 'Was macht Lumi?',
+      options: [
+        { text: '🗣️ Lumi erzählt Lea, was passiert ist', value: 'tell' },
+        { text: '🙈 Lumi stopft den Pulli ganz hinten in den Schrank', value: 'hide' },
+      ],
+    },
+    outcomes: {
+      tell: {
+        panels: [
+          { text: '„Lea, ich habe aus Versehen auf deinen Pulli gekleckst. Es tut mir leid.“', emoji: '👕', mood: 'encouraging' },
+          { text: 'Lea schaut auf den Fleck und schimpft. Dann waschen sie den Pulli zusammen. Der Fleck geht raus! 🫧', emoji: '🫧', mood: 'happy',
+            ask: { q: 'Wie fühlt sich Lea, als sie den Fleck sieht?', who: 'Lea', feeling: 'Wütend' } },
+        ],
+        lesson: 'Sagen, was passiert ist, braucht Mut. Dann kann man es zusammen wiedergutmachen!',
+      },
+      hide: {
+        panels: [
+          { text: 'Lumi stopft den Pulli in den Schrank. Aber Lumi muss die ganze Zeit daran denken.', emoji: '😟', mood: 'thinking',
+            ask: { q: 'Wie fühlt sich Lumi?', who: 'Lumi', feeling: 'Ängstlich' } },
+          { text: 'Am Abend sucht Lea den Pulli. Da sagt Lumi: „Ich war das. Es tut mir leid.“ Lea seufzt: „Gut, dass du es sagst. Komm, wir waschen ihn zusammen.“ 💛', emoji: '💛', mood: 'encouraging' },
+        ],
+        lesson: 'Verstecken macht es nicht besser. Ehrlich sein schon!',
       },
     },
   },
 ]
 
-function shuffle(a) { return [...a].sort(() => Math.random() - 0.5) }
+// The other faces next to the right one: never a feeling of the same kind,
+// so there is exactly one that fits ("die Kinder sind traurig und sauer" —
+// both would be right).
+const DECOYS = {
+  'Glücklich': ['Traurig', 'Wütend', 'Ängstlich', 'Müde'],
+  'Traurig':   ['Glücklich', 'Stolz'],
+  'Wütend':    ['Glücklich', 'Stolz', 'Müde'],
+  'Ängstlich': ['Glücklich', 'Stolz', 'Müde'],
+  'Stolz':     ['Traurig', 'Ängstlich', 'Müde', 'Wütend'],
+}
+
+// Levels used to differ only in the number of stories, drawn at random from
+// all of them — level 1 could start with the forged report card. Now the
+// stories are graded too, and from level 4 there are two feeling questions
+// per story with three faces instead of one with two.
+function levelSetup(level) {
+  const tier = level <= 3 ? 0 : level <= 6 ? 1 : 2
+  const count = level <= 2 ? 2 : level <= 8 ? 3 : 4
+  const pool = [
+    ...shuffle(STORIES.filter(s => s.tier === tier)),
+    ...shuffle(STORIES.filter(s => s.tier === tier - 1)),
+  ]
+  return { stories: pool.slice(0, count), faces: level <= 3 ? 2 : 3, allAsks: level >= 4 }
+}
+
+const word = f => f.toLowerCase()
+const cap = s => s[0].toUpperCase() + s.slice(1)
+const GO = { ...pxButton('green'), color: INK, textShadow: '0 1px 0 rgba(255,255,255,0.45)' }
 
 export default function StoryGame({ level = 1, onComplete }) {
-  const storyCount = level <= 3 ? 2 : level <= 6 ? 3 : level <= 8 ? 4 : Math.min(5, STORIES.length)
-  const [stories]    = useState(() => shuffle(STORIES).slice(0, storyCount))
+  const [setup]      = useState(() => levelSetup(level))
+  const { stories, faces, allAsks } = setup
   const [storyIdx,   setStoryIdx]   = useState(0)
   const [panelIdx,   setPanelIdx]   = useState(0)
   const [chosen,     setChosen]     = useState(null)
   const [outPanel,   setOutPanel]   = useState(0)
-  const [totalStars, setTotalStars] = useState(0)
   const [phase,      setPhase]      = useState('intro') // intro | choice | outcome | lesson
   const [showAlt,    setShowAlt]    = useState(false)
+  const [answer,     setAnswer]     = useState(null)    // the face picked for this panel's question
+  const [asked,      setAsked]      = useState(0)
+  const [firstTry,   setFirstTry]   = useState(0)
+  const [spoken,     setSpoken]     = useState(false)   // the step has been read to the end
+  const waitRef = useRef(null)
 
   const story   = stories[storyIdx]
   const outcome = chosen ? story.outcomes[chosen] : null
-  // The branch the child did not take, for the comparison at the end.
-  const altOutcome = chosen
-    ? Object.entries(story.outcomes).find(([k]) => k !== chosen)?.[1] ?? null
-    : null
+  const altOption  = chosen ? story.choice.options.find(o => o.value !== chosen) : null
+  const altOutcome = altOption ? story.outcomes[altOption.value] : null
 
-  const nextPanel = useCallback(() => {
-    const maxIntro = story.panels.length - 1
-    if (phase === 'intro') {
-      if (panelIdx < maxIntro) { setPanelIdx(p => p + 1) }
-      else { setPhase('choice') }
-    } else if (phase === 'outcome') {
-      const maxOut = (outcome?.panels.length ?? 1) - 1
-      if (outPanel < maxOut) { setOutPanel(p => p + 1) }
-      else { setPhase('lesson') }
+  const currentPanel = phase === 'intro' ? story.panels[panelIdx]
+                     : phase === 'outcome' ? outcome?.panels[outPanel]
+                     : null
+  // Levels 1-3 ask once per story: in the opening if it has a question,
+  // otherwise after the choice.
+  const ask = currentPanel?.ask && (allAsks || phase === 'intro' || !story.panels.some(p => p.ask))
+    ? currentPanel.ask : null
+  const stepKey = `${storyIdx}-${phase}-${panelIdx}-${outPanel}`
+
+  const askFaces = useMemo(() => ask
+    ? shuffle([ask.feeling, ...shuffle(DECOYS[ask.feeling]).slice(0, faces - 1)])
+    : [], [stepKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const whenQuiet = (fn) => {
+    waitRef.current?.()
+    waitRef.current = afterNarration(fn, { minMs: 200, maxMs: 20000 })
+  }
+  useEffect(() => () => { waitRef.current?.(); stopNarration() }, [])
+
+  // Everything is read aloud: the title, each panel, the question with its
+  // faces, the choice with its options and the lesson. Before, only the
+  // lesson was spoken, and the game could not be played without reading.
+  useEffect(() => {
+    setAnswer(null)
+    setSpoken(false)
+    lockPreviews()
+    let parts
+    if (currentPanel) {
+      parts = [
+        phase === 'intro' && panelIdx === 0 && { text: `${story.title}.` },
+        { text: currentPanel.text, gap: 200 },
+        ask && { text: ask.q, gap: 400 },
+        ...askFaces.map(f => ({ text: f, gap: 300 })),
+      ]
+    } else if (phase === 'choice') {
+      parts = [{ text: story.choice.question }, ...story.choice.options.map(o => ({ text: o.text, gap: 350 }))]
+    } else if (phase === 'lesson') {
+      parts = [{ text: outcome.lesson }]
     }
-  }, [phase, panelIdx, story, outcome, outPanel])
+    narrate(parts)
+    whenQuiet(() => setSpoken(true))
+  }, [stepKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const makeChoice = useCallback((value) => {
+  const pickFace = (f) => {
+    if (!ask || answer) return
+    const ok = f === ask.feeling
+    setAnswer(f)
+    setAsked(n => n + 1)
+    if (ok) setFirstTry(n => n + 1)
+    const who = `${ask.who} ${ask.plural ? 'sind' : 'ist'}`
+    // No second try and no red cross: the face that fits turns green, and
+    // Lumi says it.
+    if (ok) sayRight(`${cap(who)} ${word(ask.feeling)}.`)
+    else narrate([{ text: `Hm, ich glaube, ${who} eher ${word(ask.feeling)}.` }])
+    setSpoken(false)
+    whenQuiet(() => setSpoken(true))
+  }
+
+  const nextPanel = () => {
+    if (ask && !answer) return
+    if (phase === 'intro') {
+      if (panelIdx < story.panels.length - 1) setPanelIdx(p => p + 1)
+      else setPhase('choice')
+    } else if (phase === 'outcome') {
+      if (outPanel < outcome.panels.length - 1) setOutPanel(p => p + 1)
+      else setPhase('lesson')
+    }
+  }
+
+  const makeChoice = (value) => {
     setChosen(value)
     setPhase('outcome')
     setOutPanel(0)
-    const s = story.outcomes[value]?.stars ?? 2
-    setTotalStars(ts => ts + s)
-  }, [story])
+  }
 
-  const nextStory = useCallback(() => {
-    // Stars are already tallied by makeChoice; use totalStars directly
+  const openAlt = () => {
+    setShowAlt(true)
+    lockPreviews()
+    narrate([
+      { text: `Der andere Weg: ${altOption.text}.` },
+      ...altOutcome.panels.map(p => ({ text: p.text, gap: 300 })),
+    ])
+  }
+
+  const nextStory = () => {
     if (storyIdx + 1 >= stories.length) {
-      // Pass stars as score out of max (3 stars * number of stories)
-      onComplete({ score: totalStars, total: stories.length * 3 })
+      onComplete(result(firstTry, asked))
     } else {
       setStoryIdx(i => i + 1)
       setPanelIdx(0)
@@ -555,162 +653,175 @@ export default function StoryGame({ level = 1, onComplete }) {
       setPhase('intro')
       setShowAlt(false)
     }
-  }, [storyIdx, stories, totalStars, onComplete])
+  }
 
-  const currentPanel = phase === 'intro' ? story.panels[panelIdx]
-                     : phase === 'outcome' ? outcome?.panels[outPanel]
-                     : null
-
-  // Auto-speak lesson text when the lesson panel is reached
-  useEffect(() => {
-    if (phase === 'lesson') {
-      const txt = story?.lesson || outcome?.lesson
-      if (txt) { lockPreviews(); setTimeout(() => speakDE(txt.replace(/💡/g, '')), 300) }
-    }
-  }, [phase]) // eslint-disable-line react-hooks/exhaustive-deps
+  // The Weiter button can always be pressed; once Lumi has finished reading
+  // it starts to bounce, so the child knows it is their turn.
+  const nudge = spoken ? { scale: [1, 1.06, 1], transition: { duration: 1.1, repeat: Infinity } } : { scale: 1 }
+  const bigBtn = { padding: '14px clamp(28px,6vw,52px)', minHeight: 56, fontSize: 'clamp(18px,4vw,24px)' }
 
   return (
     <div style={{
-      flex:1, display:'flex', flexDirection:'column', alignItems:'center',
+      flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
       padding:'clamp(14px,2.5vw,28px) clamp(16px,4vw,40px)',
-      gap:'clamp(14px,2vw,22px)',
+      gap:'clamp(12px,2vw,20px)',
     }}>
 
       {/* Story progress */}
-      <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+      <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap', justifyContent:'center' }}>
         {stories.map((s, i) => (
-          <div key={i} style={{
-            display:'flex', alignItems:'center', gap:4,
-            fontFamily:'var(--font-heading)', fontSize:14,
-            color: i === storyIdx ? INK : i < storyIdx ? '#2F8F3A' : 'var(--text-muted)',
-          }}>
+          <div key={i} style={{ display:'flex', alignItems:'center', gap:4 }}>
             <div style={{
               width:32, height:32, borderRadius:8, border:`3px solid ${INK}`,
               background: i < storyIdx ? 'var(--px-green)' : i === storyIdx ? 'var(--px-gold)' : '#FFFDF7',
               boxShadow:'0 3px 0 rgba(42,27,61,0.35)',
-              display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:700,
-              color: i < storyIdx ? 'white' : 'inherit',
+              display:'flex', alignItems:'center', justifyContent:'center',
+              fontFamily:'var(--font-heading)', fontSize:15, fontWeight:700, color: INK,
             }}>
               {i < storyIdx ? '✓' : i + 1}
             </div>
             {i < stories.length - 1 && <div style={{ width:20, height:3, background: i < storyIdx ? '#2F8F3A' : 'var(--px-parch-dark)', borderRadius:1 }} />}
           </div>
         ))}
-        <span style={{ fontFamily:'var(--font-heading)', fontSize:15, color:'var(--text-muted)', marginLeft:6 }}>
+        <span style={{ fontFamily:'var(--font-heading)', fontSize:17, color:'var(--text-primary)', marginLeft:6 }}>
           {story.title}
         </span>
       </div>
 
-      {/* Story card */}
+      {/* Story card — fades in place: sliding in from the side cut it off at
+          the right edge for a moment */}
       <AnimatePresence mode="wait">
-        <motion.div key={`${storyIdx}-${phase}-${panelIdx}-${outPanel}`}
-          initial={{ opacity:0, x:40 }} animate={{ opacity:1, x:0 }}
-          exit={{ opacity:0, x:-40 }}
-          transition={{ type:'spring', stiffness:280, damping:22 }}
+        {phase !== 'choice' && <motion.div key={stepKey}
+          initial={{ opacity:0, scale:0.96 }} animate={{ opacity:1, scale:1 }}
+          exit={{ opacity:0, scale:0.96 }}
+          transition={{ duration:0.2 }}
           style={{
-            // the choice phase leaves this card empty: keep its space, hide the frame
-            ...(currentPanel || phase === 'lesson' ? pxPanel : { background:'transparent' }),
-            padding:'clamp(20px,4vw,36px)',
+            ...pxPanel,
+            padding:'clamp(18px,4vw,32px)',
             width:'100%', maxWidth:680,
-            display:'flex', flexDirection:'column', alignItems:'center', gap:18,
+            display:'flex', flexDirection:'column', alignItems:'center', gap:16,
+            position:'relative',
           }}
         >
-          {/* Big emoji */}
           {currentPanel && (
-            <div style={{ fontSize:'clamp(56px,14vw,88px)', lineHeight:1, textAlign:'center' }}>
-              {currentPanel.emoji}
-            </div>
+            <>
+              <div style={{ fontSize: ask ? 'clamp(52px,11vw,72px)' : 'clamp(56px,14vw,88px)', lineHeight:1, textAlign:'center', minHeight:'1em' }}>
+                {currentPanel.emoji}
+              </div>
+              <p style={{
+                fontFamily:'var(--font-body)', fontWeight:600, fontSize:'clamp(17px,3.4vw,23px)',
+                color:'var(--text-primary)', textAlign:'center', lineHeight:1.5,
+                whiteSpace:'pre-line',
+              }}>
+                {currentPanel.text}
+              </p>
+              {/* in the corner, so it costs the card no height */}
+              <HearOptions items={[currentPanel.text, ...(ask ? [ask.q, ...askFaces] : [])]} label="Nochmal vorlesen"
+                style={{ position:'absolute', top:10, right:10 }} />
+            </>
           )}
 
-          {/* Text */}
-          {currentPanel && (
-            <p style={{
-              fontFamily:'var(--font-body)', fontSize:'clamp(16px,3.2vw,22px)',
-              color:'var(--text-primary)', textAlign:'center', lineHeight:1.55,
-              whiteSpace:'pre-line',
-            }}>
-              {currentPanel.text}
-            </p>
-          )}
-
-          {/* Lesson phase */}
-          {phase === 'lesson' && outcome && (
+          {phase === 'lesson' && (
             <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:14, width:'100%' }}>
-              <LumiCharacter mood="happy" size={80} />
+              <LumiCharacter mood="happy" size={showAlt ? 56 : 80} />
               <div style={{
                 background:'#FFF1D6',
                 border:`3px solid ${INK}`, boxShadow:'inset 0 -4px 0 var(--px-parch-dark)',
                 borderRadius:12, padding:'16px 22px',
-                fontFamily:'var(--font-heading)', fontSize:'clamp(16px,3.5vw,22px)',
+                fontFamily:'var(--font-heading)', fontSize:'clamp(17px,3.6vw,23px)',
                 color:ACCENT, textAlign:'center',
+                display:'flex', alignItems:'center', gap:12,
               }}>
-                {story?.lesson || outcome?.lesson || '💡 Gut gemacht!'}
-              </div>
-              <div style={{ display:'flex', gap:4 }}>
-                {Array.from({length:3}).map((_,i) => (
-                  <span key={i} style={{ fontSize:28, filter: i < (outcome?.stars ?? 3) ? 'none' : 'grayscale(1) opacity(0.3)' }}>⭐</span>
-                ))}
+                <span>💡 {outcome.lesson}</span>
+                <HearOptions items={[outcome.lesson]} label="Nochmal vorlesen" />
               </div>
 
-              {/* Both branches were always held in the data but only ever one
-                  was shown, so the decision had nothing to be compared
-                  against and felt weightless. This puts the other path side
-                  by side with the chosen one. */}
-              {altOutcome && !showAlt && (
+              {/* The other path, side by side with the chosen one — and read
+                  aloud like the rest */}
+              {!showAlt && (
                 <motion.button
                   whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
-                  onClick={() => setShowAlt(true)}
+                  onClick={openAlt}
+                  {...hearable('Und wenn Lumi anders entschieden hätte?')}
                   style={{
                     ...pxButton('parch'),
-                    padding: '10px 24px',
-                    fontFamily: 'var(--font-heading)', fontSize: 'clamp(13px,2.8vw,16px)',
+                    padding: '10px 24px', minHeight: 52,
+                    fontSize: 'clamp(15px,3vw,17px)',
                   }}
                 >🔀 Und wenn Lumi anders entschieden hätte?</motion.button>
               )}
-              {altOutcome && showAlt && (
+              {showAlt && (
                 <motion.div
                   initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                   style={{
                     background: '#FFF8E8', border: `3px solid ${INK}`,
                     boxShadow: 'inset 0 -4px 0 var(--px-parch-dark), 0 4px 0 rgba(42,27,61,0.35)',
-                    borderRadius: 12, padding: '14px 18px', maxWidth: 460,
+                    borderRadius: 12, padding: '14px 18px', maxWidth: 480,
                     display: 'flex', flexDirection: 'column', gap: 8,
                   }}
                 >
-                  <div style={{ fontFamily: 'var(--font-heading)', fontSize: 13, color: '#8B6F00' }}>
-                    Der andere Weg wäre gewesen:
+                  <div style={{ fontFamily: 'var(--font-heading)', fontSize: 16, color: INK }}>
+                    Der andere Weg: {altOption.text}
                   </div>
                   {altOutcome.panels.map((pn, i) => (
                     <div key={i} style={{
-                      fontFamily: 'var(--font-body)', fontSize: 'clamp(13px,2.8vw,15px)',
+                      fontFamily: 'var(--font-body)', fontSize: 'clamp(15px,3vw,17px)',
                       color: 'var(--text-secondary)', whiteSpace: 'pre-line',
                     }}>{pn.text}</div>
                   ))}
-                  <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-                    {Array.from({ length: 3 }).map((_, i) => (
-                      <span key={i} style={{ fontSize: 18, filter: i < (altOutcome.stars ?? 2) ? 'none' : 'grayscale(1) opacity(0.3)' }}>⭐</span>
-                    ))}
-                  </div>
                 </motion.div>
               )}
             </div>
           )}
-        </motion.div>
+        </motion.div>}
       </AnimatePresence>
 
-      {/* Lumi character (intro/outcome phases) */}
-      {(phase === 'intro' || phase === 'outcome') && currentPanel && (
-        <LumiCharacter mood={currentPanel.mood ?? 'happy'} size={72} />
+      {/* Lumi herself, not a fox emoji */}
+      {((currentPanel && !ask) || phase === 'choice') && (
+        <LumiCharacter mood={currentPanel?.mood ?? 'thinking'} size={phase === 'choice' ? 96 : 72} />
+      )}
+
+      {/* A feeling question at a turn of the story */}
+      {ask && (
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:12, width:'100%', maxWidth:600 }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:10 }}>
+            <LumiCharacter mood="thinking" size={56} />
+            <p style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(18px,4vw,24px)', color:ACCENT, textAlign:'center' }}>
+              {ask.q}
+            </p>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:`repeat(${askFaces.length},1fr)`, gap:'clamp(8px,2vw,14px)', width:'100%' }}>
+            {askFaces.map(f => {
+              const isRight  = answer && f === ask.feeling
+              const isChosen = answer && f === answer && !isRight
+              return (
+                <motion.button key={f}
+                  whileHover={!answer ? { scale:1.04 } : {}} whileTap={!answer ? { scale:0.96 } : {}}
+                  onClick={() => pickFace(f)}
+                  {...hearable(f, { enabled: !answer })}
+                  aria-label={f}
+                  style={{
+                    ...pxCard(isRight ? 'right' : isChosen ? 'selected' : undefined),
+                    padding:'10px 6px', minHeight:88,
+                    display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:4,
+                    cursor: answer ? 'default' : 'pointer',
+                    opacity: answer && !isRight && !isChosen ? 0.55 : 1,
+                  }}
+                >
+                  <span style={{ fontSize:'clamp(34px,7vw,44px)', lineHeight:1 }}>{FEELING_ICON[f]}</span>
+                  <span style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(15px,3.2vw,19px)', fontWeight:700, color:'var(--text-primary)' }}>{f}</span>
+                </motion.button>
+              )
+            })}
+          </div>
+        </div>
       )}
 
       {/* CTA buttons */}
-      {phase === 'intro' && (
-        <motion.button whileHover={{scale:1.04}} whileTap={{scale:0.96}} onClick={nextPanel}
-          style={{
-            ...pxButton('green'),
-            padding:'16px clamp(28px,6vw,52px)',
-            fontFamily:'var(--font-heading)', fontSize:'clamp(18px,4vw,24px)', fontWeight:600,
-          }}
+      {(phase === 'intro' || phase === 'outcome') && (!ask || answer) && (
+        <motion.button whileTap={{scale:0.96}} onClick={nextPanel} animate={nudge}
+          {...hearable('Weiter')}
+          style={{ ...GO, ...bigBtn }}
         >
           Weiter ▶
         </motion.button>
@@ -721,18 +832,21 @@ export default function StoryGame({ level = 1, onComplete }) {
           display:'flex', flexDirection:'column', gap:'clamp(10px,2vw,16px)',
           width:'100%', maxWidth:600,
         }}>
-          <p style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(18px,4vw,24px)', color:ACCENT, textAlign:'center' }}>
-            {story.choice.question}
-          </p>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:12 }}>
+            <p style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(19px,4vw,25px)', color:ACCENT, textAlign:'center' }}>
+              {story.choice.question}
+            </p>
+            <HearOptions items={story.choice.options.map(o => o.text)} label="Alle Antworten vorlesen" size={48} />
+          </div>
           {story.choice.options.map((opt) => (
             <motion.button key={opt.value}
-              whileHover={{scale:1.03, x:4}} whileTap={{scale:0.97}}
+              whileHover={{scale:1.03}} whileTap={{scale:0.97}}
               onClick={() => makeChoice(opt.value)}
               {...hearable(opt.text)}
               style={{
                 ...pxButton('parch'),
-                padding:'clamp(14px,3vw,22px) clamp(16px,4vw,28px)',
-                fontFamily:'var(--font-heading)', fontSize:'clamp(16px,3.5vw,22px)', fontWeight:600,
+                padding:'clamp(14px,3vw,20px) clamp(16px,4vw,28px)', minHeight:60,
+                fontSize:'clamp(17px,3.5vw,22px)',
                 textAlign:'left',
               }}
             >
@@ -742,25 +856,10 @@ export default function StoryGame({ level = 1, onComplete }) {
         </div>
       )}
 
-      {phase === 'outcome' && (
-        <motion.button whileHover={{scale:1.04}} whileTap={{scale:0.96}} onClick={nextPanel}
-          style={{
-            ...pxButton('green'),
-            padding:'16px clamp(28px,6vw,52px)',
-            fontFamily:'var(--font-heading)', fontSize:'clamp(18px,4vw,24px)', fontWeight:600,
-          }}
-        >
-          Weiter ▶
-        </motion.button>
-      )}
-
       {phase === 'lesson' && (
-        <motion.button whileHover={{scale:1.04}} whileTap={{scale:0.96}} onClick={nextStory}
-          style={{
-            ...pxButton('green'),
-            padding:'16px clamp(28px,6vw,52px)',
-            fontFamily:'var(--font-heading)', fontSize:'clamp(18px,4vw,24px)', fontWeight:600,
-          }}
+        <motion.button whileTap={{scale:0.96}} onClick={nextStory} animate={nudge}
+          {...hearable(storyIdx + 1 >= stories.length ? 'Fertig' : 'Nächste Geschichte')}
+          style={{ ...GO, ...bigBtn }}
         >
           {storyIdx + 1 >= stories.length ? '🏆 Fertig!' : 'Nächste Geschichte ➡️'}
         </motion.button>

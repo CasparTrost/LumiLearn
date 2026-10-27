@@ -1,97 +1,60 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { narrate, stopNarration } from '../narrator.js'
+import { MODULE_BY_ID } from '../modules.js'
 
+// Help per game. Read aloud when the dialog opens (most children who play
+// can't read yet), so the texts are written to be heard: short sentences,
+// no "lies", no keyboard talk, nothing that depends on seeing the words.
 const INFO = {
-  'number-intro': {
-    emoji: '🔢',
-    title: 'Zahlen entdecken',
-    text: 'Du siehst Objekte auf dem Bildschirm – tippe sie nacheinander an und zähle laut mit! So lernst du die Zahlen 1 bis 10 kennen. 🌟',
-  },
-  'letter-intro': {
-    emoji: '🔡',
-    title: 'ABC-Abenteuer',
-    text: 'Ein Buchstabe erscheint groß auf dem Bildschirm – lerne etwas über ihn! Tippe dann auf das Bild, dessen Wort mit diesem Buchstaben beginnt. ✏️',
-  },
-  numbers: {
-    emoji: '🛒',
-    title: 'Zahlenland',
-    text: 'Ein Kunde kommt in den Laden und bestellt etwas! Lege genau die richtige Anzahl in den Korb – hör gut hin und zähle mit. 🔢',
-  },
-  letters: {
-    emoji: '⌨️',
-    title: 'Buchstabenwald',
-    text: 'Ein Wort wird angezeigt – tippe jeden Buchstaben in der richtigen Reihenfolge! Der goldene Buchstabe ist als nächstes dran. In höheren Leveln fallen die Buchstaben vom Himmel – tippe sie, bevor sie landen! ⌨️',
-  },
-  listen: {
-    emoji: '👂',
-    title: 'Hörabenteuer',
-    text: 'Hör genau hin! Du hörst ein Wort – tippe dann auf das Bild, das dazu passt. Du kannst es dir auch zweimal anhören! 🎵',
-  },
-  words: {
-    emoji: '🃏',
-    title: 'Memo-Welt',
-    text: 'Drehe die Karten um und merke dir, was drauf war! Finde zwei Karten, die dasselbe zeigen. Wer findet alle Paare? 🧠',
-  },
-  patterns: {
-    emoji: '🔮',
-    title: 'Musterpark',
-    text: 'Schau dir das Muster genau an – was kommt als nächstes? Tippe auf die richtige Antwort! 🔍',
-  },
-  shapes: {
-    emoji: '🎨',
-    title: 'Farbenreich',
-    text: 'Wähle zuerst einen Farbtopf aus – dann tippe auf den Teil des Bildes, den du anmalen möchtest! Die Aufkleber zeigen dir, welche Farbe wohin gehört. 🖌️',
-  },
-  emotions: {
-    emoji: '😊',
-    title: 'Gefühlswelt',
-    text: 'Lumi erlebt etwas! Lies die Situation und denke nach: Wie fühlt sich Lumi dabei wohl? Tippe auf das passende Gefühl! 💛',
-  },
-  maze: {
-    emoji: '🌀',
-    title: 'Lumi-Labyrinth',
-    text: 'Lumi ist im Labyrinth! Sammle alle Edelsteine und finde dann den Weg zum Schloss. Nutze die Pfeiltasten oder die Buttons auf dem Bildschirm. 🏰',
-  },
-  shadows: {
-    emoji: '🌑',
-    title: 'Schattenrätsel',
-    text: 'Hinter einem Schatten versteckt sich ein Tier! Fahre mit der Taschenlampe über den Schatten und tippe dann auf das Tier, das du erkennst. 🔦',
-  },
-  bubbles: {
-    emoji: '🫧',
-    title: 'Blasen-Blitz',
-    text: 'Blasen steigen auf! Tippe schnell auf alle Blasen mit der richtigen Zahl. Lass keine entkommen – die Zeit läuft! ⚡',
-  },
-  stories: {
-    emoji: '📖',
-    title: 'Lumis Abenteuer',
-    text: 'Lumi erlebt eine Geschichte! Lies mit und entscheide am Ende: Was soll Lumi tun? Deine Wahl verändert alles! 🌈',
-  },
-  sort: {
-    emoji: '🧺',
-    title: 'Sortier-Spaß',
-    text: 'Sortiere die Dinge in die richtige Gruppe! Tippe auf einen Gegenstand und dann auf die Gruppe, zu der er gehört. Alles muss an den richtigen Platz! 📦',
-  },
-  clock: {
-    emoji: '🕐',
-    title: 'Uhren-Uhr',
-    text: 'Lerne die Uhr kennen! Beim Lesen: schau, wohin die Zeiger zeigen, und tippe auf die richtige Uhrzeit. Beim Stellen: ziehe die Zeiger auf die richtige Stelle! ⏰',
-  },
-  words2: {
-    emoji: '🔤',
-    title: 'Silben-Spaß',
-    text: 'Schau auf das Bild – was siehst du? Tippe auf die Silben in der richtigen Reihenfolge, um das Wort zusammenzusetzen. Die Silben rücken wie Puzzleteile zusammen! 🧩',
-  },
-  weight: {
-    emoji: '⚖️',
-    title: 'Waage-Welt',
-    text: 'Schau dir die zwei Dinge an – welches ist wohl schwerer? Tippe auf die schwerere Seite! In höheren Leveln musst du die Gewichte ausrechnen. 💪',
-  },
+  'number-intro':  { emoji: '🔢', title: 'Zahlen entdecken', text: 'Lumi sagt dir eine Zahl. Tippe genau so viele Dinge an. Jedes Mal, wenn du tippst, zählt Lumi mit. Bist du fertig, tippe auf Fertig.' },
+  'letter-intro':  { emoji: '🔡', title: 'ABC-Abenteuer', text: 'Ein Buchstabe kommt groß ins Bild, und Lumi erzählt dir etwas über ihn. Dann tippst du auf das Bild, dessen Wort mit diesem Buchstaben anfängt.' },
+  'initial-sound': { emoji: '🕵️', title: 'Anlaut-Detektiv', text: 'Du siehst ein Bild und hörst das Wort. Hör genau auf den ersten Laut! Dann tippe auf den Buchstaben, mit dem das Wort anfängt.' },
+  rhyme:           { emoji: '🎵', title: 'Reim-Rallye', text: 'Lumi sagt dir ein Wort. Welches Bild reimt sich darauf? Wörter reimen sich, wenn sie am Ende gleich klingen, so wie Maus und Haus. Später sagst du Ja oder Nein, findest das Wort, das sich nicht reimt, oder ergänzt einen kleinen Reim.' },
+  numbers:         { emoji: '🛒', title: 'Zahlenland', text: 'Ein Kunde kommt in den Laden und sagt, was er möchte. Tippe die Sachen an, dann wandern sie in den Einkaufswagen. Zähle gut mit und tippe auf den grünen Haken, wenn es genau stimmt.' },
+  letters:         { emoji: '⌨️', title: 'Buchstabenwald', text: 'Du siehst ein Bild und hörst das Wort. Tippe die Buchstaben auf der Tastatur in der richtigen Reihenfolge. Der leuchtende Platz zeigt dir, welcher Buchstabe als Nächstes dran ist. Später fallen die Buchstaben herunter: Tippe sie auf der Tastatur, bevor sie unten sind.' },
+  listen:          { emoji: '👂', title: 'Hörabenteuer', text: 'Hör genau hin! Lumi sagt ein Wort. Tippe auf das Bild, das dazu passt. Mit dem Lautsprecher hörst du das Wort noch einmal. In den letzten Leveln siehst du ein Bild und liest, welches Wort dazu passt.' },
+  words:           { emoji: '🃏', title: 'Memo-Welt', text: 'Merk dir die Karten, bevor sie sich umdrehen. Dann deckst du immer zwei Karten auf. Findest du zwei, die zusammengehören, bleiben sie liegen.' },
+  patterns:        { emoji: '🔮', title: 'Musterpark', text: 'Schau dir die Reihe genau an. Sie wiederholt sich immer gleich. Was kommt als Nächstes? Manchmal fehlt ein Bild mitten in der Reihe, oder die Reihe wird immer länger. Tippe auf das Bild, das passt.' },
+  shapes:          { emoji: '🎨', title: 'Farbenreich', text: 'Lumi sagt dir, welche Farbe wohin gehört. Tippe zuerst auf den Farbeimer und dann auf die Fläche im Bild, die leuchtet.' },
+  emotions:        { emoji: '😊', title: 'Gefühlswelt', text: 'Lumi erzählt dir, was passiert ist. Wie fühlt sich Lumi wohl dabei? Tippe auf das Gesicht, das dazu passt. Mit dem Lautsprecher hörst du alle Gefühle.' },
+  empathy:         { emoji: '🕵️‍♀️', title: 'Gefühlsdetektiv', text: 'Schau dir das Kind genau an: sein Gesicht und seine Haltung. Wie fühlt es sich? Und dann: Was kannst du tun, damit es ihm besser geht?' },
+  maze:            { emoji: '🌀', title: 'Lumi-Labyrinth', text: 'Hilf Lumi durch das Labyrinth! Sammle alle Zaubertränke und lauf dann zum leuchtenden Ausgang. Wische oder benutze die Pfeile. Pass auf den Drachen auf! Wenn du stehen bleibst, kann der Drache dir nichts tun.' },
+  shadows:         { emoji: '🌑', title: 'Schattenrätsel', text: 'Im Dunkeln versteckt sich etwas. Fahre mit der Taschenlampe über das Bild. Was ist es? Tippe auf das richtige Bild.' },
+  bubbles:         { emoji: '🫧', title: 'Blasen-Blitz', text: 'Lumi sagt dir eine Zahl. Tippe alle Blasen an, auf denen so viele Punkte sind oder die diese Zahl zeigen. Lass dir Zeit und schau genau hin.' },
+  stories:         { emoji: '📖', title: 'Lumis Abenteuer', text: 'Lumi erlebt eine Geschichte, und Lumi liest sie dir vor. Am Ende entscheidest du: Was soll Lumi tun? Danach erfährst du, wie es weitergeht.' },
+  sort:            { emoji: '🧺', title: 'Sortier-Spaß', text: 'Lumi zeigt dir ein Ding und sagt dir, was es ist. In welchen Korb gehört es? Tippe auf den richtigen Korb.' },
+  clock:           { emoji: '🕐', title: 'Uhren-Uhr', text: 'Der kurze Zeiger zeigt die Stunde, der lange Zeiger die Minuten. Schau, wohin die Zeiger zeigen, und tippe auf die richtige Uhrzeit. Manchmal stellst du die Uhr selbst: Zieh die Zeiger oder tippe auf Plus und Minus. Und manchmal fragt Lumi, was um diese Zeit passiert.' },
+  words2:          { emoji: '🔤', title: 'Silben-Spaß', text: 'Schau auf das Bild und hör das Wort. Jedes Stück des Wortes ist eine Silbe, wie beim Klatschen: Ho, nig. Tippe die Silben in der richtigen Reihenfolge. Manchmal klatschst du mit und zählst, wie viele Silben du hörst.' },
+  weight:          { emoji: '⚖️', title: 'Waage-Welt', text: 'Zwei Dinge liegen auf der Waage. Welches ist schwerer? Tippe auf die schwerere Seite. Später stehen Zahlen auf den Paketen: Die größere Zahl ist schwerer. Ganz am Ende legst du Klötze auf die Waage, bis sie gerade ist.' },
+  'rocket-math':   { emoji: '🚀', title: 'Rechen-Rakete', text: 'Die Rakete hüpft auf dem Zahlenstrahl. Lumi sagt dir die Aufgabe. Tippe auf das Feld, wo die Rakete landet.' },
+  'shapes-land':   { emoji: '🔷', title: 'Formen-Land', text: 'Lumi nennt eine Form. Tippe sie an! Manchmal sollst du Formen nach der Größe ordnen oder ein Muster weiterlegen.' },
+  'shape-build':   { emoji: '🧩', title: 'Formen-Werkstatt', text: 'Lumi möchte etwas bauen. Tippe unten auf eine Form und dann auf den Platz im Bild, wo sie hingehört. Liegt eine Form falsch herum, tippe sie noch einmal an, dann dreht sie sich. Manchmal ist ein Teil zu viel.' },
+  coloring:        { emoji: '🖍️', title: 'Mal-Atelier', text: 'Hier darfst du frei malen. Wähle eine Farbe und male mit dem Pinsel, oder fülle eine ganze Fläche mit dem Farbeimer. Mit dem Pfeil machst du den letzten Schritt rückgängig.' },
 }
 
-export default function InfoButton({ moduleId }) {
-  const [open, setOpen] = useState(false)
-  const info = INFO[moduleId] ?? { emoji: '❓', title: 'Wie geht das?', text: 'Schau dir die Aufgabe an und tippe auf die richtige Antwort!' }
+export default function InfoButton({ moduleId, onOpenChange }) {
+  const [open, setOpenState] = useState(false)
+  // Opening reads the help aloud and pauses the game (GameScreen passes
+  // onOpenChange to its PauseContext); closing stops the reading.
+  const setOpen = v => {
+    setOpenState(v)
+    onOpenChange?.(v)
+    if (v) narrate([{ text: `${info.title}. ${info.text}` }])
+    else stopNarration()
+  }
+  const help = INFO[moduleId] ?? { emoji: '❓', title: 'Wie geht das?', text: 'Schau dir die Aufgabe an und tippe auf die richtige Antwort!' }
+  // the name as on the tiles (modules.js), one spelling everywhere
+  const info = { ...help, title: MODULE_BY_ID[moduleId]?.title ?? help.title }
+
+  // Escape closes the help, like a tap outside it
+  useEffect(() => {
+    if (!open) return
+    const onKey = e => { if (e.key === 'Escape') setOpen(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <>
@@ -104,7 +67,9 @@ export default function InfoButton({ moduleId }) {
         ?
       </button>
 
-      <AnimatePresence>
+      {/* In a portal on <body>: inside the screen's animated container a
+          fixed overlay is positioned against that container, not the window */}
+      {createPortal(<AnimatePresence>
         {open && (
           <motion.div
             key="info-overlay"
@@ -115,8 +80,7 @@ export default function InfoButton({ moduleId }) {
             onClick={() => setOpen(false)}
             style={{
               position: 'fixed', inset: 0, zIndex: 900,
-              background: 'rgba(20, 5, 50, 0.60)',
-              backdropFilter: 'blur(8px)',
+              background: 'rgba(42, 27, 61, 0.60)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               padding: 24,
             }}
@@ -127,6 +91,9 @@ export default function InfoButton({ moduleId }) {
               exit={{ scale: 0.82, opacity: 0, y: 18 }}
               transition={{ type: 'spring', stiffness: 420, damping: 30 }}
               onClick={e => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-label={info.title}
               className="px-panel"
               style={{
                 padding: '36px 28px 28px',
@@ -144,7 +111,8 @@ export default function InfoButton({ moduleId }) {
                 transition={{ type: 'spring', stiffness: 500, damping: 22, delay: 0.08 }}
                 style={{
                   fontSize: 72, lineHeight: 1, zIndex: 1,
-                  filter: 'drop-shadow(0 6px 18px rgba(0,0,0,0.15))',
+                  // a hard pixel shadow, like Lumi's (no soft glow)
+                  filter: 'drop-shadow(0 4px 0 rgba(42,27,61,0.35))',
                 }}
               >
                 {info.emoji}
@@ -184,7 +152,7 @@ export default function InfoButton({ moduleId }) {
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>, document.body)}
     </>
   )
 }

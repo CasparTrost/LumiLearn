@@ -1,8 +1,11 @@
+import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Lock, X } from 'lucide-react'
-import { PxStars } from './PixelUI.jsx'
+import { PxStars, PxIcon } from './PixelUI.jsx'
 import TileArt from './TileArt.jsx'
 import { hearable } from '../lib/hearable.js'
+import { narrate, lockPreviews } from '../narrator.js'
+import { sayNumber } from '../tts.js'
 
 /**
  * Levelauswahl für ein Spiel.
@@ -27,7 +30,17 @@ export default function LevelPicker({ mod, title, progress, maxLevel, onPick, on
   const current    = Math.min(progress?.currentLevel ?? 1, maxLevel)
   const unlocked   = unlockedUpTo(progress, maxLevel)
 
-  return (
+  // The sheet says what it is for; on a tablet the level buttons can't be
+  // heard by pointing at them.
+  useEffect(() => {
+    narrate([{ text: `${title}. Welches Level möchtest du spielen? Der grüne Knopf spielt Level ${sayNumber(current)}.` }])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A click focuses the button, and focus starts the hover preview, which
+  // then ran into the game's first task — so no previews from here on.
+  const pick = lv => { lockPreviews(); onPick(lv) }
+
+  return createPortal(
     <AnimatePresence>
       <motion.div
         key="backdrop"
@@ -37,9 +50,8 @@ export default function LevelPicker({ mod, title, progress, maxLevel, onPick, on
         onClick={onClose}
         style={{
           position: 'fixed', inset: 0,
-          background: 'rgba(0,0,0,0.45)',
+          background: 'rgba(42,27,61,0.5)',
           zIndex: 200,
-          backdropFilter: 'blur(3px)',
         }}
       />
 
@@ -81,31 +93,33 @@ export default function LevelPicker({ mod, title, progress, maxLevel, onPick, on
               aria-label="Schließen"
               style={{ flexShrink: 0 }}
             >
-              <X size={22} color="var(--px-ink)" strokeWidth={3} />
+              <PxIcon name="close" size={20} color="var(--px-ink)" />
             </button>
           </div>
 
           {/* Weiterspielen */}
           <button
             className="px-btn px-btn--green px-btn--lg"
-            onClick={() => onPick(current)}
-            {...hearable(`Weiter mit Level ${current}`)}
+            onClick={() => pick(current)}
+            {...hearable(`Weiter mit Level ${sayNumber(current)}`)}
             style={{ width: '100%', marginBottom: 22 }}
           >
-            ▶ Weiter mit Level {current}
+            <PxIcon name="play" size={22} /> Weiter mit Level {current}
           </button>
 
           {/* Alle Level */}
           <div style={{
-            fontFamily: 'var(--font-heading)', fontSize: 14, fontWeight: 700, color: 'var(--text-secondary)',
-            marginBottom: 10, letterSpacing: 0.5, textTransform: 'uppercase',
+            fontFamily: 'var(--font-heading)', fontSize: 17, fontWeight: 700, color: 'var(--text-secondary)',
+            marginBottom: 10,
           }}>
-            Level wählen
+            Oder ein anderes Level:
           </div>
+          {/* four to five small tiles a row on a phone (it used to be two
+              big ones, and most levels were scrolled out of the sheet) */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(84px, 1fr))',
-            gap: 12,
+            gridTemplateColumns: 'repeat(auto-fill, minmax(62px, 1fr))',
+            gap: 10,
           }}>
             {Array.from({ length: maxLevel }, (_, i) => i + 1).map(lv => {
               const open  = lv <= unlocked
@@ -116,26 +130,27 @@ export default function LevelPicker({ mod, title, progress, maxLevel, onPick, on
                   key={lv}
                   className={`px-btn ${isCur ? 'px-btn--gold' : 'px-btn--parch'}`}
                   disabled={!open}
-                  onClick={() => open && onPick(lv)}
-                  {...hearable(`Level ${lv}`, { enabled: open })}
+                  onClick={() => open && pick(lv)}
+                  {...hearable(`Level ${sayNumber(lv)}`, { enabled: open })}
                   aria-label={open ? `Level ${lv}, ${stars} von 3 Sternen` : `Level ${lv}, noch gesperrt`}
                   style={{
-                    aspectRatio: '1', height: 'auto', padding: 4,
-                    flexDirection: 'column', gap: 6,
+                    height: 76, padding: 4,
+                    flexDirection: 'column', gap: 5,
                   }}
                 >
                   {open ? (
-                    <span style={{ fontFamily: 'var(--font-pixel)', fontSize: 34, fontWeight: 700, lineHeight: 1 }}>{lv}</span>
+                    <span style={{ fontFamily: 'var(--font-pixel)', fontSize: 30, fontWeight: 700, lineHeight: 1 }}>{lv}</span>
                   ) : (
-                    <Lock size={26} color="var(--px-ink)" />
+                    <PxIcon name="lock" size={24} color="var(--px-ink)" />
                   )}
-                  {open && <PxStars filled={stars} size={14} gap={1} />}
+                  {open && <PxStars filled={stars} size={16} gap={1} />}
                 </button>
               )
             })}
           </div>
         </div>
       </motion.div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   )
 }

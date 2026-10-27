@@ -30,7 +30,7 @@ export function lazyWithReload(load) {
         alreadyTried = !!sessionStorage.getItem(RELOAD_KEY)
         if (!alreadyTried) sessionStorage.setItem(RELOAD_KEY, '1')
       } catch { /* Sitzungsspeicher gesperrt: dann lieber den Fehler zeigen */ }
-      if (!alreadyTried && typeof window !== 'undefined') {
+      if (!alreadyTried && navigator.onLine !== false && typeof window !== 'undefined') {
         window.location.reload()
         // Nie auflösen — die Seite wird gerade ersetzt, und ein aufgelöstes
         // Versprechen würde vorher noch den Fehlerbildschirm zeigen.

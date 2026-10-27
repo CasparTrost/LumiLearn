@@ -1,75 +1,122 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { useApp } from '../AppContext.jsx'
-import { ALL_MISSIONS } from '../AppContext.jsx'
-import { PixelLumi, PxStar, uiSpr } from '../components/PixelUI.jsx'
-import Button from '../components/Button.jsx'
+import { useApp, missionDef, todayMs } from '../AppContext.jsx'
+import { PixelLumi, PxStar, PxIcon, uiSpr } from '../components/PixelUI.jsx'
 import Confetti from '../components/Confetti.jsx'
+import { animalsFor, nextAnimal, getFarmLevel, FARM_LEVEL_LABELS, einTier, zumTier, farmAsset } from '../components/FarmProgress.jsx'
 import { sfx } from '../sfx.js'
-import { voice } from '../voice.js'
-import { afterNarration } from '../narrator.js'
+import { afterNarration, narrate, stopNarration } from '../narrator.js'
+import { sayNumber, sayCount } from '../tts.js'
+import { starsFor } from '../lib/score.js'
 import { useT } from '../i18n.js'
-import { useProfile } from '../hooks/useProfile.js'
+
+// One star means the level is done and the next one is open — the texts
+// say so ("Üb weiter!" next to an unlocked level was a contradiction).
+const MESSAGES = {
+  3: ['Fantastisch!', 'Super gemacht!', 'Perfekt!'],
+  2: ['Sehr gut gemacht!', 'Klasse!', 'Toll gemacht!'],
+  1: ['Geschafft!', 'Level geschafft!', 'Gut gemacht!'],
+  0: ['Nicht aufgeben!', 'Du schaffst das!', 'Gleich klappt es!'],
+}
+const PRAISE_CLIP = s => s >= 2 ? 'audio/allgemein/das-hast-du-super-gemacht.mp3'
+  : s >= 1 ? 'audio/allgemein/ja-super.mp3'
+  : 'audio/allgemein/klasse-versuch-es-direkt-noch-einmal.mp3'
+const cap = s => s[0].toUpperCase() + s.slice(1)
+
+const NO_FRACTION = new Set(['coloring', 'maze'])
 
 export default function ResultsScreen() {
   const t = useT()
   const { state, dispatch } = useApp()
-  const { streak: profileStreak } = useProfile()
-  const { gameResult, currentGame } = state
+  const { gameResult } = state
   const stars       = gameResult?.stars        ?? 0
   const score       = gameResult?.score        ?? 0
   const total       = gameResult?.total        ?? 0
   const moduleId    = gameResult?.moduleId     ?? 'numbers'
   const level       = gameResult?.level        ?? 1
-  const nextLevelNum   = gameResult?.nextLevelNum   ?? null
+  const nextLevel      = gameResult?.nextLevelNum   ?? null
   const justCompleted  = gameResult?.justCompleted  ?? false
+  const masteredWell   = gameResult?.masteredWell   ?? false
   const isFirstPass    = gameResult?.isFirstPass    ?? false
   const maxLevel       = gameResult?.maxLevel       ?? 5
   const newMissionsCompleted = gameResult?.newMissionsCompleted ?? []
-  const streakCount    = profileStreak?.count ?? 0
+  const streakCount    = gameResult?.streakCount ?? 0
+  const farmBefore     = gameResult?.farmBefore ?? 0
+  const farmAfter      = gameResult?.farmAfter ?? farmBefore
 
-  // Modules where a fraction counter makes sense
-  const SCORE_MODULES = ['numbers','letters','listen','words','patterns','shapes','emotions','shadows','bubbles']
-  const showFraction  = SCORE_MODULES.includes(moduleId) && total > 0
-  // nextLevel is now derived directly from gameResult
-  const nextLevel     = nextLevelNum   // kept as alias for clarity
+  // What the round meant for the farm
+  const newAnimals = animalsFor(farmAfter).slice(animalsFor(farmBefore).length)
+  const farmGrew   = getFarmLevel(farmAfter) > getFarmLevel(farmBefore)
+  const next       = nextAnimal(farmAfter)
+
+  // "7 von 7 richtig" next to one star was a contradiction: the line now
+  // counts what the stars count (answers right on the first try) and is
+  // left out for games that rate otherwise (Memo by moves, the maze by
+  // dragon hits) and for free painting, where nothing is right or wrong.
+  const showFraction = total > 0 && starsFor(score, total) === stars && !NO_FRACTION.has(moduleId)
+
+  // Chosen once: picked during render, the heading changed when the
+  // buttons appeared after 1.4 s ("Du schaffst das!" → "Nicht aufgeben!")
+  const msg = useMemo(() => {
+    if (justCompleted) return masteredWell ? 'Du bist ein Meister!' : 'Alle Level geschafft!'
+    if (isFirstPass && nextLevel) return `Level ${nextLevel} ist offen!`
+    const list = MESSAGES[Math.max(0, Math.min(3, stars))]
+    return list[Math.floor(Math.random() * list.length)]
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const [showButtons, setShowButtons] = useState(false)
   useEffect(() => {
     const b = setTimeout(() => setShowButtons(true), 1400)
     return () => clearTimeout(b)
   }, [])
+
   useEffect(() => {
-    const t = setTimeout(() => {
+    const tm = setTimeout(() => {
       if (stars >= 3)      sfx.complete()
       else if (stars >= 1) sfx.correct()
     }, 350)
-    // Ein Lob, sonst nichts.
-    //
-    // Vorher liefen hier drei Ansagen gegeneinander: das Spiel sagte seinen
-    // Glückwunsch, der Bildschirmwechsel schnitt ihn ab, dieses Lob startete
-    // nach 900 ms — und wurde seinerseits von einer Münz-Ansage zerschnitten.
-    // Die Münzen sind inzwischen ganz aus der App verschwunden, und das Lob
-    // wartet, bis der Satz aus dem Spiel zu Ende ist, statt ihn zu überfahren.
+    // The praise, then what is new — all of it was only on screen before,
+    // and mastering a whole game sounded like a narrow pass.
+    const news = []
+    if (justCompleted) news.push(masteredWell ? 'Du hast alle Level geschafft. Du bist ein Meister!' : 'Du hast alle Level geschafft! Hol dir noch mehr Sterne.')
+    else if (isFirstPass && nextLevel) news.push(`Level ${sayNumber(nextLevel)} ist jetzt offen.`)
+    if (stars === 0) {
+      if (score > 0) news.push(`Du hattest schon ${sayCount(score, 'Aufgabe', 'f')} richtig.`)
+      news.push(level > 1 ? 'Versuch es noch einmal, oder spiel das leichtere Level.' : 'Versuch es noch einmal.')
+    }
+    if (newMissionsCompleted.length) news.push(newMissionsCompleted.length === 1 ? 'Du hast eine Tagesaufgabe geschafft!' : 'Du hast Tagesaufgaben geschafft!')
+    newAnimals.forEach(a => news.push(`${cap(einTier(a))} zieht auf deinen Hof!`))
     const stop = afterNarration(() => {
-      if (stars >= 2)      voice.play('audio/allgemein/das-hast-du-super-gemacht.mp3')
-      else if (stars >= 1) voice.play('audio/allgemein/ja-super.mp3')
-      else                 voice.play('audio/allgemein/klasse-versuch-es-direkt-noch-einmal.mp3')
+      narrate([
+        { src: PRAISE_CLIP(stars) },
+        ...news.map((text, i) => ({ text, gap: i === 0 ? 250 : 150 })),
+      ])
     }, { minMs: 900 })
-    return () => { clearTimeout(t); stop(); voice.stop() }
+    return () => { clearTimeout(tm); stop(); stopNarration() }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const messages = {
-    3: ['Fantastisch! 🎉', 'Du bist ein Superstar! ⭐', 'Perfekt! Wow!'],
-    2: ['Sehr gut gemacht! 👏', 'Weiter so! 🌟', 'Klasse!'],
-    1: ['Gut versucht! 💪', 'Nächstes Mal schaffst du das! 🌈', 'Üb weiter!'],
-    0: ['Nicht aufgeben! 💕', 'Probier\'s nochmal! 🔄', 'Du schaffst das!'],
-  }
-  const msg = justCompleted
-    ? '🎉 Spiel abgeschlossen! Du bist ein Meister!'
-    : isFirstPass && nextLevel
-      ? `🚀 Level ${nextLevel} freigeschaltet!`
-      : messages[stars][Math.floor(Math.random() * 3)]
+  const go = (lv) => dispatch({ type: 'START_GAME', payload: { moduleId, level: lv } })
+  const home = () => dispatch({ type: 'NAVIGATE', payload: 'home' })
+
+  // With the day's play time used up (parent area) the way leads home,
+  // where Lumi says goodbye for today
+  const limitMin = state.settings?.dailyLimitMin ?? 0
+  const timeUp = limitMin > 0 && todayMs(state.profiles[state.activeProfileId]) >= limitMin * 60000
+
+  // One clear main button per situation, plus a small way home
+  const main = timeUp ? { label: 'Zur Startseite', icon: '🏠', onClick: home }
+    : stars === 0
+    ? { label: 'Nochmal', icon: '🔄', onClick: () => go(level) }
+    : nextLevel
+      ? { label: `Weiter: Level ${nextLevel}`, play: true, onClick: () => go(nextLevel) }
+      : { label: 'Zur Startseite', icon: '🏠', onClick: home }
+  const secondary = timeUp ? [] : [
+    stars === 0 && level > 1 && { label: `Leichter: Level ${level - 1}`, onClick: () => go(level - 1) },
+    stars >= 1 && { label: 'Nochmal', icon: '🔄', onClick: () => go(level) },
+  ].filter(Boolean)
+
+  const newsChip = { display:'flex', alignItems:'center', gap:8, padding:'6px 12px', border:'3px solid var(--px-ink)', borderRadius:8,
+    fontFamily:'var(--font-heading)', fontWeight:700, color:'var(--px-ink)', fontSize:16, lineHeight:1.2 }
 
   return (
     <div style={{
@@ -79,11 +126,11 @@ export default function ResultsScreen() {
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '32px 24px',
+      padding: 'clamp(12px,3dvh,32px) 16px',
       position: 'relative',
       overflow: 'hidden',
     }}>
-      {stars >= 2 && <Confetti count={stars === 3 ? 60 : 28} yFrom="-5vh" yTo="110vh" />}
+      {(stars >= 2 || newAnimals.length > 0) && <Confetti count={stars === 3 ? 60 : 28} yFrom="-5vh" yTo="110vh" />}
 
       {/* Pixel landscape, dimmed so the result card stands out */}
       <div aria-hidden="true" className="px-art" style={{
@@ -98,9 +145,9 @@ export default function ResultsScreen() {
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 300, damping: 18 }}
         className="px-panel"
-        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18, zIndex: 1, width: '100%', maxWidth: 500, padding: 'clamp(22px,4vw,34px) clamp(18px,4vw,30px)' }}
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'clamp(8px,1.8dvh,16px)', zIndex: 1, width: '100%', maxWidth: 500, padding: 'clamp(14px,2.6dvh,30px) clamp(14px,4vw,28px)' }}
       >
-        <PixelLumi size={136} happy={stars >= 2} />
+        <PixelLumi size="clamp(56px, 11dvh, 132px)" happy={stars >= 2} />
 
         <div style={{
             fontFamily: 'var(--font-heading)',
@@ -122,18 +169,17 @@ export default function ResultsScreen() {
           style={{
             background: 'rgba(42,27,61,0.82)',
             borderRadius: 10,
-            padding: '18px 36px',
+            padding: 'clamp(10px,1.8dvh,18px) 24px',
             border: '3px solid var(--px-ink)',
             boxShadow: 'inset 0 3px 0 rgba(255,255,255,0.12)',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: 14,
+            gap: 10,
             width: '100%',
           }}
         >
-          {/* Animated star row */}
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 10 }} aria-label={`${stars} von 3 Sternen`}>
             {Array.from({ length: 3 }).map((_, idx) => (
               <motion.div
                 key={idx}
@@ -142,122 +188,79 @@ export default function ResultsScreen() {
                 transition={{ delay: 0.5 + idx * 0.15, type: 'spring', stiffness: 400 }}
                 style={{ filter: idx < stars ? 'drop-shadow(0 0 10px rgba(255,201,60,0.8))' : 'none' }}
               >
-                <PxStar size={60} off={idx >= stars} />
+                <PxStar size="clamp(40px, 7dvh, 60px)" off={idx >= stars} />
               </motion.div>
             ))}
           </div>
 
           {showFraction && (
-            <div style={{ fontFamily: 'var(--font-heading)', color: '#fff', fontSize: 18, fontWeight: 600 }}>
-              {score} von {total} richtig ✅
+            <div style={{ fontFamily: 'var(--font-heading)', color: '#fff', fontSize: 18, fontWeight: 600, textAlign: 'center' }}>
+              {score} von {total} gleich beim ersten Mal richtig
+            </div>
+          )}
+          {stars === 1 && !justCompleted && (
+            <div style={{ fontFamily: 'var(--font-heading)', color: '#fff', fontSize: 16, fontWeight: 600, textAlign: 'center' }}>
+              Willst du noch mehr Sterne? Spiel es nochmal!
             </div>
           )}
         </motion.div>
 
-        {/* Serie — der Bauernhof und die Sterne zeigen den Fortschritt, die
-            Tagesserie den Fleiß. Hier stand vorher eine Münzanzeige; sie
-            versprach eine Währung, die es nie gab. */}
-        {streakCount >= 2 && (
-          <motion.div
-            initial={{ scale:0, y:10 }}
-            animate={{ scale:1, y:0 }}
-            transition={{ delay:0.8, type:'spring', stiffness:350 }}
-            style={{ display:'flex', justifyContent:'center', marginTop:4 }}
-          >
-            <div className="px-chip" style={{ fontFamily:'var(--font-heading)', fontSize:17 }}>
-              <span style={{ fontSize:18 }}>🔥</span> {streakCount} Tage!
+        {/* What is new: missions, streak, the farm */}
+        <motion.div
+          initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.9 }}
+          style={{ display:'flex', flexWrap:'wrap', gap:8, justifyContent:'center', width:'100%' }}
+        >
+          {newMissionsCompleted.map(id => missionDef(id) && (
+            <div key={id} style={{ ...newsChip, background:'#d9f5c8' }}>
+              <span style={{ fontSize:18 }}>✅</span> {t('mission.' + id)}
             </div>
-          </motion.div>
-        )}
-
-          {/* Mission completions */}
-          {newMissionsCompleted.length > 0 && (
-            <motion.div
-              initial={{ opacity:0, y:10 }}
-              animate={{ opacity:1, y:0 }}
-              transition={{ delay:1.0 }}
-              style={{ display:'flex', flexDirection:'column', gap:6, width:'100%', alignItems:'center' }}
-            >
-              {newMissionsCompleted.map(id => {
-                const m = ALL_MISSIONS.find(x => x.id === id)
-                if (!m) return null
-                return (
-                  <div key={id} style={{
-                    display:'flex', alignItems:'center', gap:8,
-                    background:'#d9f5c8', borderRadius:8, padding:'6px 14px',
-                    border:'3px solid var(--px-ink)',
-                  }}>
-                    <span style={{ fontSize:18 }}>✅</span>
-                    <span style={{ fontFamily:'var(--font-heading)', fontWeight:600, color:'var(--px-ink)', fontSize:15 }}>Aufgabe erledigt: {t('mission.' + id)}</span>
-                  </div>
-                )
-              })}
-            </motion.div>
+          ))}
+          {streakCount >= 2 && (
+            <div style={{ ...newsChip, background:'var(--px-parch-light)' }}>
+              <span style={{ fontSize:18 }}>🔥</span> {streakCount} Tage in Folge
+            </div>
           )}
+          {newAnimals.length > 0 ? (
+            <div style={{ ...newsChip, background:'var(--px-gold)', flexWrap:'wrap', justifyContent:'center' }}>
+              {newAnimals.map(a => (
+                <img key={a.instanceId} src={farmAsset(a.gif)} alt={a.name} className="px-art" style={{ width:40, height:40, objectFit:'contain' }} />
+              ))}
+              <span>Neu auf deinem Hof{farmGrew ? `: ${FARM_LEVEL_LABELS[getFarmLevel(farmAfter)]}` : '!'}</span>
+            </div>
+          ) : next && farmAfter > farmBefore ? (
+            <div style={{ ...newsChip, background:'var(--px-parch-light)' }}>
+              <span style={{ fontSize:18 }}>🌾</span> Noch {next.missing} ⭐ bis {zumTier(next)}
+            </div>
+          ) : null}
+        </motion.div>
 
-          {justCompleted && (
-            <motion.div
-              initial={{ scale:0, y:-20 }}
-              animate={{ scale:1, y:0 }}
-              transition={{ delay:1.2, type:'spring', stiffness:380 }}
-              className="px-title"
-              style={{
-                background:'var(--px-gold)', border:'3px solid var(--px-ink)',
-                borderRadius:10, padding:'10px 24px',
-                fontSize:'clamp(18px,4vw,24px)', textAlign:'center',
-                boxShadow:'inset 0 -5px 0 rgba(0,0,0,0.2), 0 5px 0 var(--px-ink)',
-              }}
-            >
-              🏆 Alle {maxLevel} Level gemeistert!
-            </motion.div>
-          )}
-
-          {/* Buttons — appear after short delay */}
+        {/* Buttons — appear after short delay */}
+        <div style={{ minHeight: 'clamp(112px, 16dvh, 136px)', width:'100%' }}>
           {showButtons && (
             <motion.div
               initial={{ opacity:0, y:16 }}
               animate={{ opacity:1, y:0 }}
               transition={{ type:'spring', stiffness:300, damping:22 }}
-              style={{ display:'flex', flexDirection:'column', gap:10, width:'100%', alignItems:'center', marginTop:8 }}
+              style={{ display:'flex', flexDirection:'column', gap:10, width:'100%', alignItems:'center' }}
             >
-              {/* 0-star mode: big Nochmal, small home */}
-              {stars === 0 && (
-                <>
-                  <Button variant="gold" size="lg" onClick={() => dispatch({ type: 'START_GAME', payload: { moduleId, level } })}>
-                    🔄 Nochmal versuchen!
-                  </Button>
-                  <Button variant="white" size="sm" onClick={() => dispatch({ type: 'NAVIGATE', payload: 'home' })}>
-                    🏠 Menü
-                  </Button>
-                </>
-              )}
-              {/* 1-3 star mode */}
-              {stars >= 1 && (
-                <>
-                  {/* Primary action: next level or mastered */}
-                  {nextLevel && (
-                    <Button variant="gold" size="lg" onClick={() => dispatch({ type: 'START_GAME', payload: { moduleId, level: nextLevel } })}>
-                      {isFirstPass ? `🚀 Level ${nextLevel} starten!` : `➡️ Weiter zu Level ${nextLevel}`}
-                    </Button>
-                  )}
-                  {!nextLevel && justCompleted && (
-                    <Button variant="gold" size="lg" onClick={() => dispatch({ type: 'NAVIGATE', payload: 'home' })}>
-                      🌟 Zurück zur Auswahl
-                    </Button>
-                  )}
-                  {/* Secondary actions row */}
-                  <div style={{ display:'flex', gap:10, flexWrap:'wrap', justifyContent:'center' }}>
-                    <Button variant="white" size="md" onClick={() => dispatch({ type: 'START_GAME', payload: { moduleId, level } })}>
-                      🔄 Nochmal
-                    </Button>
-                    <Button variant="primary" size="md" onClick={() => dispatch({ type: 'NAVIGATE', payload: 'home' })}>
-                      🏠 Menü
-                    </Button>
-                  </div>
-                </>
-              )}
+              <button className="px-btn px-btn--green px-btn--lg" onClick={main.onClick} style={{ width:'100%', whiteSpace:'normal' }}>
+                {main.play ? <PxIcon name="play" size={22} /> : main.icon} {main.label}
+              </button>
+              <div style={{ display:'flex', gap:10, flexWrap:'wrap', justifyContent:'center' }}>
+                {secondary.map(b => (
+                  <button key={b.label} className="px-btn px-btn--gold px-btn--md" onClick={b.onClick}>
+                    {b.icon} {b.label}
+                  </button>
+                ))}
+                {main.onClick !== home && (
+                  <button className="px-btn px-btn--parch px-btn--md" onClick={home} aria-label="Startseite">
+                    🏠
+                  </button>
+                )}
+              </div>
             </motion.div>
           )}
+        </div>
       </motion.div>
     </div>
   )

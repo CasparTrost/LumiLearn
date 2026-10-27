@@ -1,20 +1,15 @@
 import { motion } from 'framer-motion'
 
 // Shared "rain" confetti — pieces fall from the top of their container,
-// rotating and fading out. Was duplicated near-verbatim in
-// ResultsScreen.jsx and FarmProgress.jsx's LevelUpCelebration; both now
-// use this, passing their own count/colors/position to keep their exact
-// original look.
+// rotating and fading out (results screen).
 //
 // Not merged in here: NumbersGame.jsx's Confetti (radiates outward from
 // a point, not a rain effect), MazeGame.jsx's Sparkles and MemoryGame's
-// SparkBurst (emoji-based radial bursts), and the larger multi-shape
-// confetti inside FarmProgress's LevelUpCelebration overlay (bespoke,
-// used only for that one big moment) — those are genuinely different
+// SparkBurst (emoji-based radial bursts) — those are genuinely different
 // visual mechanics, not copies of this one.
 export default function Confetti({
   count = 30,
-  colors = ['#FFD93D', '#FF6B6B', '#6C63FF', '#4ECDC4', '#6BCB77', '#FD79A8'],
+  colors = ['#ffc93c', '#ff6b5b', '#4aa3ff', '#3fc1a8', '#5cc45a', '#ff8fb8'],
   position = 'fixed',
   zIndex = 0,
   xRange = [10, 90],

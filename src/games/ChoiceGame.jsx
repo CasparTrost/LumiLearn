@@ -1,18 +1,24 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { generateQuestions } from './gameEngine.js'
 import { sfx } from '../sfx.js'
-import { speak } from '../tts.js'
+import { sayNumber } from '../tts.js'
+import { lockPreviews, afterNarration } from '../narrator.js'
+import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
+import { hearable } from '../lib/hearable.js'
+import { result } from '../lib/score.js'
+import HearOptions from '../components/HearOptions.jsx'
 import { pxCard, pxPanel, pxButton, pxSegment, INK } from './px.js'
-
-const FOODS = ['🍕','🍎','🍗','🌮','🍩','🍓','🧁','🍔','🍒','🥕']
 
 // Fixed star burst positions
 const BURST_STARS = [0,1,2,3,4,5,6,7].map(i => {
   const angle = (i / 8) * Math.PI * 2
-  const r = 50 + (i % 2) * 28
-  return { dx: Math.cos(angle) * r, dy: Math.sin(angle) * r - 15, e: ['⭐','✨','🌟','💫','⭐','✨','🌟','💥'][i] }
+  const r = 34 + (i % 2) * 18
+  return { dx: Math.cos(angle) * r, dy: Math.sin(angle) * r - 10, e: ['⭐','✨','🌟','💫','⭐','✨','🌟','💥'][i] }
 })
+
+// The row flies in symbol by symbol; the question is asked once it is there.
+const FLY_STEP = 0.19
 
 function Cloud({ xStart, top, size, duration }) {
   return (
@@ -32,365 +38,209 @@ function StarBurst({ x, y, onDone }) {
         <motion.div
           key={i}
           initial={{ x: 0, y: 0, scale: 0, opacity: 1 }}
-          animate={{ x: s.dx, y: s.dy, scale: [0, 1.4, 0], opacity: [1, 1, 0] }}
+          animate={{ x: s.dx, y: s.dy, scale: [0, 1.3, 0], opacity: [1, 1, 0] }}
           transition={{ duration: 0.72, delay: i * 0.03, ease: 'easeOut' }}
           onAnimationComplete={i === BURST_STARS.length - 1 ? onDone : undefined}
-          style={{ position: 'absolute', left: x, bottom: y, fontSize: 22, lineHeight: 1, pointerEvents: 'none', zIndex: 30 }}
+          style={{ position: 'absolute', left: x, bottom: y, fontSize: 18, lineHeight: 1, pointerEvents: 'none', zIndex: 30 }}
         >{s.e}</motion.div>
       ))}
     </>
   )
 }
 
-const OBSTACLES = ['🌵','🪨','🌵','🪨','🦴']
-
-function DinoScene({ chomping, shaking, dinoScale, streak, eaten, total, projectiles, puffIds, bursts, obstacles, obstOffset, jumpTrigger, onProjDone, onPuffDone, onBurstDone, onObstacleDone }) {
-  const [jumping, setJumping] = useState(false)
-  const jumpingRef = useRef(false)
-  const [showJumpHint, setShowJumpHint] = useState(false)
-  const hintShownRef = useRef(false)
-
-  const doJump = useCallback(() => {
-    if (jumpingRef.current) return
-    jumpingRef.current = true
-    setJumping(true)
-    setTimeout(() => { setJumping(false); jumpingRef.current = false }, 650)
-  }, [])
-
-  // Auto-jump when a correct answer is given
-  useEffect(() => {
-    if (jumpTrigger) doJump()
-  }, [jumpTrigger]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Show hint when first obstacle appears
-  useEffect(() => {
-    if (obstacles.length > 0 && !hintShownRef.current) {
-      hintShownRef.current = true
-      setShowJumpHint(true)
-      setTimeout(() => setShowJumpHint(false), 2200)
-    }
-  }, [obstacles.length])
-
-  const groundDuration = streak >= 4 ? 0.16 : streak >= 2 ? 0.22 : jumping ? 0.18 : chomping ? 0.26 : 0.40
-
+// The dino eats the pattern: a right answer flies into its mouth. It used to
+// be a 210 px arcade of its own — cacti rolling in on mistakes, a strength
+// bar, "Tippe den Dino – er hüpft gern!" — that drew the eye away from the
+// row the child is meant to look at. Now it is a small strip and only
+// reacts to answers.
+function DinoScene({ chomping, shaking, dinoScale, projectiles, puffIds, bursts, onProjDone, onPuffDone, onBurstDone }) {
   return (
     <div
-      onClick={doJump}
+      aria-hidden="true"
       style={{
-        position: 'relative', width: '100%', height: 210,
+        position: 'relative', width: '100%', maxWidth: 760, height: 104,
         border: `3px solid ${INK}`, borderRadius: 14, overflow: 'hidden',
-        background: 'linear-gradient(180deg, #3A8BC5 0%, #6AB9E8 55%, #72C945 55%, #4A9A22 100%)',
+        background: 'linear-gradient(180deg, #3A8BC5 0%, #6AB9E8 62%, #72C945 62%, #4A9A22 100%)',
         boxShadow: '0 5px 0 rgba(42,27,61,0.35)',
-        flexShrink: 0, cursor: 'pointer',
-        WebkitTapHighlightColor: 'transparent',
+        flexShrink: 0, pointerEvents: 'none',
       }}
     >
-      {/* Clouds */}
-      <Cloud xStart={900}  top={8}  size={28} duration={13} />
-      <Cloud xStart={1200} top={34} size={21} duration={19} />
-      <Cloud xStart={1550} top={14} size={24} duration={16} />
+      <Cloud xStart={900}  top={6}  size={22} duration={16} />
+      <Cloud xStart={1300} top={22} size={18} duration={22} />
 
-      {/* Mountains in background */}
-      <div style={{ position: 'absolute', bottom: '45%', left: '55%', width: 0, height: 0,
-        borderLeft: '55px solid transparent', borderRight: '55px solid transparent',
-        borderBottom: '70px solid #2E7D32', opacity: 0.35 }} />
-      <div style={{ position: 'absolute', bottom: '45%', left: '72%', width: 0, height: 0,
-        borderLeft: '40px solid transparent', borderRight: '40px solid transparent',
-        borderBottom: '52px solid #2E7D32', opacity: 0.28 }} />
-
-      {/* Scrolling ground */}
-      <div style={{ position: 'absolute', bottom: 0, height: 40, width: '100%', overflow: 'hidden' }}>
-        <motion.div
-          animate={{ x: [0, -80] }}
-          transition={{ duration: groundDuration * 2.5, repeat: Infinity, ease: 'linear' }}
-          style={{ display: 'flex', width: '400%' }}
-        >
-          {[...Array(64)].map((_, i) => (
-            <div key={i} style={{
-              width: 40, height: 40, flexShrink: 0,
-              background: i % 2 === 0 ? '#4A9A22' : '#5CB82E',
-              borderTop: '3px solid #3A8015',
-            }} />
-          ))}
-        </motion.div>
-      </div>
-
-      {/* Dino shadow (stretches when jumping) */}
-      <motion.div
-        animate={{ scaleX: jumping ? 0.6 : 1, opacity: jumping ? 0.18 : 0.28 }}
-        transition={{ duration: 0.2 }}
-        style={{
-          position: 'absolute', left: '8%', bottom: 36,
-          width: `calc(${dinoScale} * clamp(36px,8vw,58px))`,
-          height: 10, borderRadius: '50%',
-          background: 'rgba(0,0,0,0.55)',
-          filter: 'blur(5px)',
-          transformOrigin: 'center',
-          pointerEvents: 'none', zIndex: 6,
-        }}
-      />
+      {/* Ground */}
+      <div style={{ position: 'absolute', bottom: 0, height: 26, width: '100%', background: '#4A9A22', borderTop: '3px solid #3A8015' }} />
 
       {/* Dino — wrapped in scaleX(-1) so it faces the incoming food */}
       <div style={{
-        position: 'absolute', left: '8%', bottom: 36,
+        position: 'absolute', left: '8%', bottom: 22,
         transform: 'scaleX(-1)', transformOrigin: 'bottom center',
         zIndex: 10,
       }}>
         <motion.div
           animate={
-            jumping
-              ? { y: [0, -82, -88, -60, 0], scaleX: [1, 0.78, 1.08, 0.92, 1], scaleY: [1, 1.22, 0.88, 1.14, 1] }
-              : chomping
-              ? { y: [0, -52, -70, -40, 0], scaleX: [1, 0.78, 1.14, 0.90, 1], scaleY: [1, 1.22, 0.80, 1.14, 1] }
+            chomping
+              ? { y: [0, -26, -34, -18, 0], scaleX: [1, 0.82, 1.12, 0.92, 1], scaleY: [1, 1.18, 0.84, 1.1, 1] }
               : shaking
-              ? { x: [0, -12, 12, -8, 8, -4, 4, 0], rotate: [0, -8, 8, -5, 5, 0] }
-              : { y: [0, -9, 0, -6, 0], scaleY: [1, 0.93, 1, 0.96, 1] }
+              ? { x: [0, -8, 8, -5, 5, 0], rotate: [0, -6, 6, -4, 4, 0] }
+              : { y: [0, -4, 0], scaleY: [1, 0.96, 1] }
           }
           transition={
-            jumping
-              ? { duration: 0.65, times: [0, 0.28, 0.44, 0.72, 1], ease: 'easeInOut' }
-              : chomping
-              ? { duration: 0.58, times: [0, 0.22, 0.44, 0.70, 1] }
-              : shaking
-              ? { duration: 0.54 }
-              : { duration: 0.95, repeat: Infinity, ease: 'easeInOut' }
+            chomping ? { duration: 0.58, times: [0, 0.22, 0.44, 0.70, 1] }
+            : shaking ? { duration: 0.5 }
+            : { duration: 1.2, repeat: Infinity, ease: 'easeInOut' }
           }
           style={{
-            fontSize: `calc(${dinoScale} * clamp(46px, 9.5vw, 76px))`,
+            fontSize: `calc(${dinoScale} * 54px)`,
             lineHeight: 1,
-            filter: 'drop-shadow(0 5px 10px rgba(0,0,0,0.28))',
+            filter: 'drop-shadow(0 3px 0 rgba(42,27,61,0.35))',
             userSelect: 'none', transformOrigin: 'bottom center',
           }}
         >{'🦖'}</motion.div>
       </div>
 
-      {/* Food flying in from the right and arcing down to the dino mouth (left side after flip) */}
+      {/* The answer flies in from the right into the dino's mouth */}
       <AnimatePresence>
         {projectiles.map(p => (
           <motion.div
             key={p.id}
-            initial={{ x: 680, y: -22, rotate: 0, scale: 0.7 }}
-            animate={{ x: -20, y: 10, rotate: -520, scale: 1.4 }}
+            initial={{ x: 640, y: -16, rotate: 0, scale: 0.8 }}
+            animate={{ x: 10, y: 6, rotate: -360, scale: 1.1 }}
             exit={{ scale: 0, opacity: 0, transition: { duration: 0.15 } }}
-            transition={{ duration: 0.60, ease: [0.22, 0.68, 0.45, 0.92] }}
+            transition={{ duration: 0.6, ease: [0.22, 0.68, 0.45, 0.92] }}
             onAnimationComplete={() => onProjDone(p.id)}
-            style={{ position: 'absolute', left: '8%', bottom: 62, fontSize: 38, lineHeight: 1, pointerEvents: 'none', zIndex: 15, filter: 'drop-shadow(0 3px 7px rgba(0,0,0,0.25))' }}
+            style={{ position: 'absolute', left: '8%', bottom: 46, fontSize: 30, lineHeight: 1, pointerEvents: 'none', zIndex: 15 }}
           >{p.food}</motion.div>
         ))}
       </AnimatePresence>
 
-      {/* Obstacles (cactus / rock) scroll from right — appear on wrong answers */}
-      <AnimatePresence>
-        {obstacles.map((o, i) => (
-          <motion.div
-            key={o.id}
-            initial={{ x: 720 }}
-            animate={{ x: -120 }}
-            transition={{ duration: Math.max(1.8, 2.6 - streak * 0.18), ease: 'linear' }}
-            onAnimationComplete={() => onObstacleDone(o.id)}
-            style={{
-              position: 'absolute', left: '8%', bottom: 36,
-              fontSize: 'clamp(24px,5.5vw,38px)', lineHeight: 1,
-              pointerEvents: 'none', zIndex: 8,
-              filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.3))',
-            }}
-          >{OBSTACLES[(obstOffset + i) % OBSTACLES.length]}</motion.div>
-        ))}
-      </AnimatePresence>
-
-      {/* Smoke puff (wrong answer) */}
+      {/* Puff on a wrong answer */}
       <AnimatePresence>
         {puffIds.map(id => (
           <motion.div
             key={id}
             initial={{ x: 20, y: 0, scale: 0, opacity: 0.9 }}
-            animate={{ x: 80, y: -42, scale: 3, opacity: 0 }}
-            transition={{ duration: 0.65 }}
+            animate={{ x: 60, y: -24, scale: 2.2, opacity: 0 }}
+            transition={{ duration: 0.6 }}
             onAnimationComplete={() => onPuffDone(id)}
-            style={{ position: 'absolute', left: '8%', bottom: 72, fontSize: 26, lineHeight: 1, pointerEvents: 'none', zIndex: 20 }}
+            style={{ position: 'absolute', left: '8%', bottom: 50, fontSize: 20, lineHeight: 1, pointerEvents: 'none', zIndex: 20 }}
           >{'💨'}</motion.div>
         ))}
       </AnimatePresence>
 
-      {/* Star bursts on correct eat */}
       <AnimatePresence>
         {bursts.map(b => (
-          <StarBurst key={b.id} x='8%' y={72} onDone={() => onBurstDone(b.id)} />
+          <StarBurst key={b.id} x="10%" y={52} onDone={() => onBurstDone(b.id)} />
         ))}
       </AnimatePresence>
-
-      {/* NOM / Hm speech bubble */}
-      <AnimatePresence>
-        {(chomping || shaking) && (
-          <motion.div
-            key={chomping ? 'nom' : 'hm'}
-            initial={{ scale: 0, opacity: 0, y: 10 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 580, damping: 22 }}
-            style={{
-              position: 'absolute',
-              left: 'calc(8% + 62px)', bottom: 108,
-              background: chomping ? '#FFD93D' : '#FFE8E8',
-              border: `3px solid ${INK}`, borderRadius: 10, padding: '5px 16px',
-              fontFamily: 'var(--font-heading)', fontSize: 18, fontWeight: 800,
-              color: chomping ? '#7B5800' : '#CC3333',
-              boxShadow: '0 4px 0 rgba(42,27,61,0.35)',
-              whiteSpace: 'nowrap', zIndex: 25,
-            }}
-          >{chomping ? '😋 NOM!' : '😬 Hm...'}</motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* "Tippe zum Springen" hint */}
-      <AnimatePresence>
-        {showJumpHint && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.3 }}
-            style={{
-              position: 'absolute', left: '50%', bottom: 50,
-              transform: 'translateX(-50%)',
-              background: 'rgba(42,27,61,0.72)',
-              border: `3px solid ${INK}`, borderRadius: 10, padding: '6px 18px',
-              fontFamily: 'var(--font-heading)', fontSize: 14, color: 'white',
-              whiteSpace: 'nowrap', pointerEvents: 'none', zIndex: 40,
-            }}
-          >{'👆 Tippe den Dino – er hüpft gern!'}</motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Arcade HUD: score */}
-      <motion.div
-        animate={{ scale: chomping ? [1, 1.28, 1] : 1 }}
-        transition={{ duration: 0.28 }}
-        style={{
-          position: 'absolute', top: 10, right: 14,
-          background: 'rgba(42,27,61,0.72)',
-          border: `3px solid ${INK}`, borderRadius: 8, padding: '4px 13px',
-          fontFamily: 'var(--font-heading)', fontSize: 16, fontWeight: 700, color: 'white',
-          display: 'flex', alignItems: 'center', gap: 8,
-          boxShadow: 'inset 0 2px 0 rgba(255,255,255,0.12)',
-          textShadow: '0 2px 0 rgba(0,0,0,0.5)',
-          zIndex: 35,
-        }}
-      >
-        <span style={{ fontSize: 18 }}>{'⭐'}</span>
-        <span style={{ fontSize: 22, letterSpacing: -1 }}>{eaten}</span>
-        <span style={{ opacity: 0.6, fontSize: 14 }}>{'/ ' + total}</span>
-      </motion.div>
-
-      {/* Strength bar (top-left) */}
-      <div style={{ position: 'absolute', top: 10, left: 14, display: 'flex', flexDirection: 'column', gap: 3, zIndex: 35 }}>
-        <div style={{ fontFamily: 'var(--font-heading)', fontSize: 11, color: 'rgba(255,255,255,0.9)', fontWeight: 700 }}>{'💪 Stärke'}</div>
-        <div style={{ width: 80, height: 12, background: 'rgba(42,27,61,0.45)', border: `2px solid ${INK}`, borderRadius: 4, overflow: 'hidden' }}>
-          <motion.div
-            animate={{ width: (total > 0 ? Math.min(eaten / total * 100, 100) : 0) + '%' }}
-            transition={{ type: 'spring', stiffness: 160, damping: 22 }}
-            style={{ height: '100%', borderRadius: 1,
-              background: eaten / total > 0.7 ? 'linear-gradient(90deg,#6BCB77,#00D2AA)'
-                        : eaten / total > 0.4 ? 'linear-gradient(90deg,#FFD93D,#FF9F43)'
-                        : 'linear-gradient(90deg,#FF9F43,#FF6B6B)' }}
-          />
-        </div>
-      </div>
-
-      {/* Bottom hint: tap =  jump */}
-      <div style={{
-        position: 'absolute', bottom: 44, right: 14,
-        fontFamily: 'var(--font-heading)', fontSize: 11,
-        color: 'rgba(255,255,255,0.7)', pointerEvents: 'none', zIndex: 35,
-      }}>{'👆 = springen'}</div>
     </div>
   )
 }
 
-function speakDE(text) {
-  speak(text, { rate: 0.8, pitch: 1.05, lang: 'de-DE' })
+// What the voice says about a question.
+const nameOf = (q, e) => q.names[e] ?? ''
+// pictures in a string, without the emoji variation selector
+const glyphs = s => [...s].filter(ch => ch !== '\uFE0F').length
+const countOf = (q, opt) => glyphs(opt) / glyphs(q.sym)
+
+function optionName(q, opt) {
+  return q.kind === 'grow' ? sayNumber(countOf(q, opt)) : nameOf(q, opt)
+}
+
+// "Genau! Immer wieder Frosch, Frosch, Hund."
+function praiseFor(q) {
+  if (q.kind === 'grow') return `${q.counts.map(sayNumber).join(', ')}. Es wird immer eins mehr.`
+  return `Immer wieder ${q.unit.map(e => nameOf(q, e)).join(', ')}.`
+}
+
+// After a miss the row is read out, so the child can hear the rhythm:
+// "Hör mal! Frosch, Hund, Frosch, Hund, Frosch – und dann?"
+function hintFor(q) {
+  if (q.kind === 'grow') return `Hör mal! ${q.counts.slice(0, 3).map(sayNumber).join(', ')}, und dann?`
+  if (q.kind === 'gap') {
+    const said = q.tokens.map(t => (t === '❓' ? 'und hier?' : nameOf(q, t)))
+    return `Hör mal! ${said.join(', ')}.`
+  }
+  return `Hör mal! ${q.tokens.slice(0, -1).map(e => nameOf(q, e)).join(', ')}, und dann?`
 }
 
 export default function ChoiceGame({ moduleId, level, onComplete }) {
   const [questions]   = useState(() => generateQuestions(moduleId, level))
   const [idx,         setIdx]         = useState(0)
-  const [selected,    setSelected]    = useState(null)
-  const [correct,     setCorrect]     = useState(0)
+  const [wrong,       setWrong]       = useState([])      // options already tried this round
+  const [solved,      setSolved]      = useState(false)
+  const [firstTry,    setFirstTry]    = useState(0)
+  const [missed,      setMissed]      = useState([])      // rounds not solved on the first try
   const [chomping,    setChomping]    = useState(false)
   const [shaking,     setShaking]     = useState(false)
-  const [streak,      setStreak]      = useState(0)
   const [flashType,   setFlashType]   = useState(null)
   const [flashId,     setFlashId]     = useState(0)
   const [highlighted, setHighlighted] = useState(null)
-  const [showWeiter,  setShowWeiter]  = useState(false)
   const [projectiles, setProjectiles] = useState([])
   const [puffIds,     setPuffIds]     = useState([])
   const [bursts,      setBursts]      = useState([])
-  const [obstacles,   setObstacles]   = useState([])
-  const [jumpTrigger, setJumpTrigger] = useState(0)
   const effectIdRef = useRef(0)
-  const obstIdxRef  = useRef(0)
 
-  // dino grows by 3% per correct answer, max 1.6×
-  const dinoScale = Math.min(1 + correct * 0.03, 1.6)
+  // dino grows by 3% per answer right on the first try, max 1.3×
+  const dinoScale = Math.min(1 + firstTry * 0.03, 1.3)
 
-  // q and pick must be defined before effects that reference them
   const q = questions[idx]
 
+  // A wrong answer no longer ends the question: the card is greyed out, the
+  // row is read out loud, and the child tries again. Stars count the answers
+  // right on the first try.
   const pick = useCallback((opt) => {
-    if (selected !== null || !q) return
+    if (solved || !q || wrong.includes(opt)) return
     const ok = opt === q.answer
-    const nc = correct + (ok ? 1 : 0)
-    setSelected(opt)
     setFlashId(n => n + 1)
     if (ok) {
-      const newStreak = streak + 1
-      setStreak(newStreak)
-      setCorrect(nc)
+      setSolved(true)
+      if (!wrong.length) setFirstTry(n => n + 1)
       setChomping(true)
       setFlashType('ok')
-      setJumpTrigger(t => t + 1)
       const pid = ++effectIdRef.current
-      const food = FOODS[(nc - 1) % FOODS.length]
-      setProjectiles(prev => [...prev, { id: pid, food }])
+      setProjectiles(prev => [...prev, { id: pid, food: opt }])
       const bid = ++effectIdRef.current
       setBursts(prev => [...prev, { id: bid }])
-      if (newStreak >= 3) sfx.combo(newStreak)
-      else sfx.correct()
+      sfx.correct()
+      sayRight(praiseFor(q))
       setTimeout(() => setChomping(false), 820)
       setTimeout(() => setFlashType(null), 400)
     } else {
-      setStreak(0)
+      setWrong(w => [...w, opt])
+      setMissed(m => (m.includes(idx) ? m : [...m, idx]))
       setShaking(true)
       setFlashType('err')
       sfx.wrong()
+      sayWrong(hintFor(q))
       const pid = ++effectIdRef.current
       setPuffIds(prev => [...prev, pid])
-      const oid = ++effectIdRef.current
-      setObstacles(prev => [...prev, { id: oid }])
-      obstIdxRef.current++
       setTimeout(() => setShaking(false), 700)
       setTimeout(() => setFlashType(null), 400)
     }
-    setTimeout(() => {
-      setShowWeiter(true)
-    }, ok ? 800 : 1100)
-  }, [selected, q, correct, streak, idx, questions, onComplete])
+  }, [solved, q, wrong, idx])
 
   const weiterClick = useCallback(() => {
-    setShowWeiter(false)
-    setSelected(null)
-    if (idx + 1 >= questions.length) { onComplete({ score: correct, total: questions.length }) }
-    else { setIdx(i => i + 1) }
-  }, [idx, correct, questions, onComplete])
+    if (idx + 1 >= questions.length) {
+      sfx.complete()
+      afterNarration(() => onComplete(result(firstTry, questions.length)), { minMs: 300 })
+    } else {
+      setIdx(i => i + 1)
+    }
+  }, [idx, firstTry, questions, onComplete])
 
-  useEffect(() => { setHighlighted(null); setShowWeiter(false) }, [idx])
-
+  // New round: clear the board, then ask once the row has flown in
   useEffect(() => {
-    if (q?.prompt) speakDE(q.prompt)
+    setHighlighted(null); setWrong([]); setSolved(false)
+    if (!q) return
+    lockPreviews()
+    const id = setTimeout(() => sayTask(q.prompt), (q.tokens.length * FLY_STEP + 0.35) * 1000)
+    return () => clearTimeout(id)
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const onKey = (e) => {
-      if (selected !== null || !q) return
+      if (solved || !q) return
       const opts = q.options
       const num  = parseInt(e.key)
       if (num >= 1 && num <= opts.length) {
@@ -408,20 +258,27 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [q, selected, highlighted, pick])
+  }, [q, solved, highlighted, pick])
 
   if (!q) return null
 
-  const cols = Math.min(q.options.length, 2)
+  // One line for the whole row: the symbols shrink with their number instead
+  // of breaking the pattern over two or three lines on a phone.
+  const rowGlyphs = q.tokens.reduce((n, t) => n + glyphs(t), 0)
+  const rowGap    = q.kind === 'grow' ? 18 : 6
+  const symSize   = `min(76px, calc((min(100vw, 720px) - 7vw - ${16 + rowGap * q.tokens.length}px) / ${rowGlyphs}))`
+  const maxOpt    = Math.max(...q.options.map(glyphs))
+  const optSize   = maxOpt > 1 ? `min(44px, calc((min(100vw, 720px) - 120px) / ${maxOpt * 2}))` : 'clamp(48px, 11vw, 72px)'
+  const isLast    = idx + 1 >= questions.length
 
   return (
-    <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', padding:'clamp(14px,2.5vw,28px) clamp(14px,3.5vw,36px)', gap:'clamp(12px,2vw,22px)' }}>
+    <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', padding:'clamp(12px,2.2vw,24px) clamp(14px,3.5vw,36px)', gap:'clamp(10px,1.8vw,18px)' }}>
 
       <AnimatePresence>
         {flashType && (
           <motion.div
             key={flashId}
-            initial={{ opacity: flashType === 'ok' ? 0.30 : 0.24 }}
+            initial={{ opacity: flashType === 'ok' ? 0.30 : 0.2 }}
             animate={{ opacity: 0 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.4 }}
@@ -431,157 +288,134 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
         )}
       </AnimatePresence>
 
-      <div style={{ display:'flex', gap:6, width:'100%', maxWidth:760 }}>
+      <div style={{ display:'flex', gap:6, width:'100%', maxWidth:760, flexShrink:0 }}>
         {questions.map((_, i) => (
-          <div key={i} style={{ flex:1, ...pxSegment(i < idx ? 'done' : i === idx ? 'current' : 'todo'), transition:'background 0.3s' }} />
+          <div key={i} style={{
+            flex:1,
+            ...pxSegment(i < idx || (i === idx && solved) ? 'done' : i === idx ? 'current' : 'todo'),
+            // answered, but not on the first try
+            ...((i < idx || (i === idx && solved)) && missed.includes(i) ? { background: '#F3A091' } : {}),
+            transition:'background 0.3s',
+          }} />
         ))}
       </div>
 
-      <AnimatePresence>
-        {streak >= 2 && (
-          <motion.div
-            key={streak}
-            initial={{ scale:0, y:-10, opacity:0 }}
-            animate={{ scale:1, y:0, opacity:1 }}
-            exit={{ scale:0.5, opacity:0 }}
-            transition={{ type:'spring', stiffness:460, damping:20 }}
-            style={{
-              background: streak >= 5 ? 'linear-gradient(135deg,#E84393,#FF6B6B)'
-                : streak >= 4 ? 'linear-gradient(135deg,#FF6B6B,#FF9F43)'
-                : streak >= 3 ? 'linear-gradient(135deg,#FF9F43,#FFD93D)'
-                : 'linear-gradient(135deg,#FFD93D,#FFA500)',
-              border:`3px solid ${INK}`, borderRadius:12, padding:'7px 22px',
-              fontFamily:'var(--font-heading)', fontSize:20, color:'white',
-              boxShadow:'inset 0 -4px 0 rgba(0,0,0,0.18), 0 5px 0 rgba(42,27,61,0.35)',
-              pointerEvents:'none', whiteSpace:'nowrap',
-              textShadow:'0 2px 0 rgba(0,0,0,0.3)',
-            }}
-          >
-            {'🔥'.repeat(Math.min(streak - 1, 4)) + ' ' + streak + 'x Kombo!'}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Dino game scene */}
       <DinoScene
-        chomping={chomping} shaking={shaking} dinoScale={dinoScale} streak={streak}
-        eaten={correct} total={questions.length}
-        projectiles={projectiles} puffIds={puffIds} bursts={bursts} obstacles={obstacles}
-        obstOffset={obstIdxRef.current}
-        jumpTrigger={jumpTrigger}
+        chomping={chomping} shaking={shaking} dinoScale={dinoScale}
+        projectiles={projectiles} puffIds={puffIds} bursts={bursts}
         onProjDone={id => setProjectiles(prev => prev.filter(p => p.id !== id))}
         onPuffDone={id => setPuffIds(prev => prev.filter(x => x !== id))}
         onBurstDone={id => setBursts(prev => prev.filter(b => b.id !== id))}
-        onObstacleDone={id => setObstacles(prev => prev.filter(o => o.id !== id))}
       />
 
-      {/* Question */}
-      <AnimatePresence mode="wait">
-        <motion.div key={idx}
-          initial={{ opacity:0, x:18 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-18 }} transition={{ duration:0.22 }}
-          style={{ width:'100%', maxWidth:760, ...pxPanel, padding:'clamp(14px,2.8vw,22px) clamp(16px,3.2vw,24px)', fontFamily:'var(--font-heading)', fontSize:'clamp(17px,3.5vw,26px)', color:'var(--text-primary)' }}
-        >{q.prompt}</motion.div>
-      </AnimatePresence>
-
-      {q.visual && (
+      {/* Question + speaker: reads the task and then every answer */}
+      <div style={{ display:'flex', alignItems:'center', gap:10, width:'100%', maxWidth:760, flexShrink:0 }}>
         <AnimatePresence mode="wait">
-          <motion.div key={'vis-' + idx}
-            initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:10 }} transition={{ type:'spring', stiffness:280 }}
-            style={{
-              width:'100%', maxWidth:760,
-              ...(moduleId === 'patterns' ? { background: 'transparent' } : pxPanel),
-              padding: moduleId === 'patterns' ? '4px 0 12px' : 'clamp(14px,3.5vw,24px) clamp(18px,5vw,36px)',
-            }}
+          <motion.div key={idx}
+            initial={{ opacity:0, y:-6 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }} transition={{ duration:0.22 }}
+            style={{ flex:1, ...pxPanel, padding:'clamp(10px,2vw,16px) clamp(14px,3vw,22px)', fontFamily:'var(--font-heading)', fontSize:'clamp(18px,3.5vw,26px)', color:'var(--text-primary)' }}
+          >{q.prompt}</motion.div>
+        </AnimatePresence>
+        <HearOptions
+          size={52}
+          label="Aufgabe und Antworten vorlesen"
+          items={[q.prompt, ...q.options.map(o => optionName(q, o))]}
+        />
+      </div>
+
+      {/* The row */}
+      <div style={{ flex:1, minHeight:0, width:'100%', maxWidth:760, display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <AnimatePresence mode="wait">
+          <motion.div key={'row-' + idx}
+            initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} transition={{ duration:0.18 }}
+            style={{ display:'flex', alignItems:'center', gap:rowGap, flexWrap:'nowrap', justifyContent:'center', padding:'6px 0' }}
           >
-            {moduleId === 'patterns' ? (
-              <div style={{ display:'flex', alignItems:'center', gap:'clamp(4px,1.5vw,12px)', flexWrap:'wrap', justifyContent:'center' }}>
-                {q.visual.split(/\s+/).filter(Boolean).map((token, i) => {
-                  const isQuestion = token === '❓'
-                  return (
-                    <motion.span
-                      key={i}
-                      initial={{ scale:0, opacity:0, y:16 }}
-                      animate={isQuestion
-                        ? { scale:[1,1.18,1], opacity:1, y:0 }
-                        : { scale:1, opacity:1, y:0 }}
-                      transition={isQuestion
-                        ? { scale:{ delay: i * 0.38, duration:1.1, repeat:Infinity, type:'tween' }, opacity:{ delay: i * 0.38, duration:0.22 }, y:{ delay: i * 0.38, type:'spring', stiffness:340, damping:20 } }
-                        : { delay: i * 0.38, type:'spring', stiffness:340, damping:20 }}
-                      style={{
-                        fontSize: isQuestion ? 'clamp(46px,9vw,74px)' : 'clamp(50px,10vw,82px)',
-                        lineHeight: 1.1,
-                        display: 'inline-block',
-                        filter: isQuestion ? 'drop-shadow(0 4px 0 #ffc93c)' : 'none',
-                      }}
-                    >
-                      {token}
-                    </motion.span>
-                  )
-                })}
-              </div>
-            ) : (
-              <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(20px,4.5vw,32px)', color:'var(--text-primary)', textAlign:'center' }}>
-                {q.visual}
-              </div>
-            )}
+            {q.tokens.map((token, i) => {
+              const isQuestion = token === '❓'
+              const filled     = isQuestion && solved
+              return (
+                <motion.span
+                  key={i}
+                  initial={{ scale:0, opacity:0, y:16 }}
+                  animate={isQuestion && !solved
+                    ? { scale:[1,1.15,1], opacity:1, y:0 }
+                    : { scale:1, opacity:1, y:0 }}
+                  transition={isQuestion && !solved
+                    ? { scale:{ delay: i * FLY_STEP, duration:1.1, repeat:Infinity, type:'tween' }, opacity:{ delay: i * FLY_STEP, duration:0.22 }, y:{ delay: i * FLY_STEP, type:'spring', stiffness:340, damping:20 } }
+                    : filled ? { type:'spring', stiffness:340, damping:18 }
+                    : { delay: i * FLY_STEP, type:'spring', stiffness:340, damping:20 }}
+                  style={{
+                    fontSize: symSize,
+                    lineHeight: 1.1,
+                    display: 'inline-flex',
+                    whiteSpace: 'nowrap',
+                    // the place asked for: a dashed slot, filled once solved
+                    ...(isQuestion ? {
+                      outline: `3px dashed ${solved ? '#2F8F3A' : INK}`, outlineOffset: 3, borderRadius: 8,
+                      background: solved ? '#DDF6CF' : 'var(--px-parch-light)',
+                    } : {}),
+                  }}
+                >
+                  {filled ? q.answer : token}
+                </motion.span>
+              )
+            })}
           </motion.div>
         </AnimatePresence>
-      )}
+      </div>
 
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(' + cols + ',1fr)', gap:'clamp(10px,2vw,16px)', width:'100%', maxWidth:760 }}>
-        {q.options.map((opt) => {
+      {/* Answers — the pictures as big as in the row (they were 18–26 px) */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(' + Math.min(q.options.length, 2) + ',1fr)', gap:'clamp(10px,2vw,16px)', width:'100%', maxWidth:760, flexShrink:0 }}>
+        {q.options.map((opt, oi) => {
           const isCorrect     = opt === q.answer
-          const isChosen      = opt === selected
-          const done          = selected !== null
-          const isHighlighted = !done && highlighted === q.options.indexOf(opt)
-
-          let cardState
-          if (isHighlighted)         cardState = 'selected'
-          if (done && isCorrect)     cardState = 'right'
-          else if (done && isChosen) cardState = 'wrong'
-
+          const isWrong       = wrong.includes(opt)
+          const isHighlighted = !solved && highlighted === oi
+          const cardState = solved && isCorrect ? 'right' : isWrong ? 'wrong' : isHighlighted ? 'selected' : undefined
+          const active = !solved && !isWrong
           return (
-            <motion.button key={idx + '-' + String(opt)}
-              whileHover={!done ? { scale:1.05 } : {}}
-              whileTap={!done ? { scale:0.95 } : {}}
-              animate={
-                done && isChosen && isCorrect   ? { scale:[1,1.24,0.04], y:[0,-10,-90], opacity:[1,1,0] }
-                : done && isChosen && !isCorrect ? { x:[0,-12,12,-8,8,-3,3,0] }
-                : {}
-              }
-              transition={done && isChosen && isCorrect ? { duration:0.55, times:[0,0.32,1] } : { duration:0.42 }}
+            <motion.button key={idx + '-' + opt}
+              whileHover={active ? { scale:1.04 } : {}}
+              whileTap={active ? { scale:0.95 } : {}}
+              animate={isWrong ? { x:[0,-10,10,-6,6,0] } : { x:0 }}
+              transition={{ duration:0.42 }}
               onClick={() => pick(opt)}
-              style={{ ...pxCard(cardState), padding:'clamp(14px,3vw,24px) clamp(12px,2.5vw,20px)', fontFamily:'var(--font-heading)', fontSize:'clamp(18px,3.8vw,26px)', color:'var(--text-primary)', cursor:done?'default':'pointer', transition:'background 0.22s, border 0.22s, box-shadow 0.18s', display:'flex', alignItems:'center', justifyContent:'center', gap:10, position:'relative' }}
+              {...hearable(optionName(q, opt))}
+              aria-label={optionName(q, opt)}
+              disabled={isWrong}
+              style={{
+                ...pxCard(cardState),
+                minHeight: 'clamp(76px, 12dvh, 112px)', padding:'8px 10px',
+                fontSize: optSize, lineHeight: 1, color:'var(--text-primary)',
+                cursor: active ? 'pointer' : 'default',
+                opacity: isWrong ? 0.45 : 1,
+                transition:'background 0.22s, border 0.22s, box-shadow 0.18s, opacity 0.2s',
+                display:'flex', alignItems:'center', justifyContent:'center', flexWrap:'nowrap',
+              }}
             >
-              {!done && (
-                <span style={{ position:'absolute', top:7, left:10, fontFamily:'var(--font-heading)', fontSize:12, color: isHighlighted ? INK : 'var(--text-muted)', background: isHighlighted ? 'var(--px-gold)' : 'var(--px-parch-dark)', borderRadius:4, padding:'1px 6px', lineHeight:'1.4' }}>
-                  {q.options.indexOf(opt) + 1}
-                </span>
-              )}
-              {done && isChosen && !isCorrect ? '❌' : ''}
-              {String(opt)}
+              {opt}
             </motion.button>
           )
         })}
       </div>
 
-      <p style={{ fontFamily:'var(--font-heading)', fontSize:15, color:'var(--text-muted)' }}>
-        {correct + ' von ' + Math.min(idx + (selected !== null ? 1 : 0), questions.length) + ' richtig'}
-      </p>
-
-      {showWeiter && (
-        <motion.button
-          initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }}
-          onClick={weiterClick}
-          style={{
-            ...pxButton('green'),
-            marginTop:4, padding:'13px 40px',
-            fontSize:19,
-          }}
-        >
-          {idx + 1 >= questions.length ? '🏁 Fertig!' : 'Weiter! →'}
-        </motion.button>
-      )}
+      {/* Fixed slot for "Weiter", so nothing jumps when it appears */}
+      <div style={{ height: 62, flexShrink: 0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+        {solved && (
+          <motion.button
+            initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} transition={{ delay: 0.5 }}
+            onClick={weiterClick}
+            {...hearable(isLast ? 'Fertig' : 'Weiter')}
+            style={{
+              ...pxButton('green'),
+              // ink on green: white text reached only 2.2:1
+              color: INK, textShadow: '0 1px 0 rgba(255,255,255,0.35)',
+              padding:'12px 40px', fontSize:20, minHeight: 52,
+            }}
+          >
+            {isLast ? '🏁 Fertig!' : 'Weiter! ➡️'}
+          </motion.button>
+        )}
+      </div>
     </div>
   )
 }

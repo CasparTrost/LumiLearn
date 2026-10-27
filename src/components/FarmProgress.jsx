@@ -1,8 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { narrate } from '../narrator.js'
+import { sayNumber } from '../tts.js'
 
 const BASE = import.meta.env.BASE_URL || '/LumiLearn/'
-const asset = (n) => BASE + 'sprites/farm/' + n
+export const farmAsset = (n) => BASE + 'sprites/farm/' + n
+const asset = farmAsset
 
 let _ac = null
 function getAc() {
@@ -44,12 +47,6 @@ const sfx = {
       vib.start(t+0.1); vib.stop(t+0.7); o.start(t); o.stop(t+0.7)
     } catch {}
   },
-  levelUp() {
-    const ac=getAc(); if(!ac) return; const t=ac.currentTime
-    // Triumphant fanfare
-    [[523,.0],[659,.15],[784,.3],[1047,.5],[784,.7],[1047,.9]].forEach(([f,d])=>tone(f,'sine',t+d,.25,.18))
-  },
-  chime() { const ac=getAc();if(!ac)return;const t=ac.currentTime;[523,659,784,1047].forEach((f,i)=>tone(f,'sine',t+i*.12,.25,.15)) },
 }
 
 const ZONES = {
@@ -63,55 +60,52 @@ const ZONES = {
 const FARMER_PATH = [{x:4,y:379},{x:98,y:383},{x:129,y:352},{x:134,y:380},{x:211,y:376},{x:275,y:244},{x:264,y:227},{x:184,y:234},{x:139,y:193},{x:137,y:134},{x:150,y:211},{x:204,y:234},{x:325,y:224},{x:342,y:196},{x:491,y:196},{x:322,y:224},{x:270,y:238},{x:221,y:386},{x:520,y:384},{x:550,y:299},{x:555,y:382},{x:636,y:389},{x:659,y:364},{x:715,y:391},{x:144,y:383},{x:5,y:379}]
 
 const ANIMAL_DEFS = [
-  { id:'chicken', name:'Huhn',    gif:'anim_chicken.gif', gifRight:'anim_chicken_right.gif', size:40, zone:'Huhnerstall',   sfx:sfx.cluck, emoji:'🐔' },
-  { id:'sheep',   name:'Schaf',   gif:'anim_sheep.gif',   gifRight:'anim_sheep_right.gif',   size:52, zone:'Schafgehege',   sfx:sfx.baa,   emoji:'🐑' },
-  { id:'pig',     name:'Schwein', gif:'anim_pig.gif',     gifRight:'anim_pig_right.gif',     size:54, zone:'Schweinestall', sfx:sfx.oink,  emoji:'🐷' },
-  { id:'cow',     name:'Kuh',     gif:'anim_cow.gif',     gifRight:'anim_cow_right.gif',     size:60, zone:'Kuhstall',      sfx:sfx.moo,   emoji:'🐄' },
-  { id:'horse',   name:'Pferd',   gif:'anim_horse.gif',   gifRight:'anim_horse_left.gif',    size:64, zone:'Pferdekoppel',  sfx:sfx.neigh, emoji:'🐴', facesRight:true },
+  { id:'chicken', name:'Huhn',    art:'das', gif:'anim_chicken.gif', gifRight:'anim_chicken_right.gif', size:40, zone:'Huhnerstall',   sfx:sfx.cluck, emoji:'🐔' },
+  { id:'sheep',   name:'Schaf',   art:'das', gif:'anim_sheep.gif',   gifRight:'anim_sheep_right.gif',   size:52, zone:'Schafgehege',   sfx:sfx.baa,   emoji:'🐑' },
+  { id:'pig',     name:'Schwein', art:'das', gif:'anim_pig.gif',     gifRight:'anim_pig_right.gif',     size:54, zone:'Schweinestall', sfx:sfx.oink,  emoji:'🐷' },
+  { id:'cow',     name:'Kuh',     art:'die', gif:'anim_cow.gif',     gifRight:'anim_cow_right.gif',     size:60, zone:'Kuhstall',      sfx:sfx.moo,   emoji:'🐄' },
+  { id:'horse',   name:'Pferd',   art:'das', gif:'anim_horse.gif',   gifRight:'anim_horse_left.gif',    size:64, zone:'Pferdekoppel',  sfx:sfx.neigh, emoji:'🐴', facesRight:true },
 ]
+const DEF = Object.fromEntries(ANIMAL_DEFS.map(d => [d.id, d]))
 
-// How many of each animal per level [lv0..lv6]
-const ANIMAL_COUNT = {
-  chicken: [0, 0, 1, 1, 2, 3, 4],
-  pig:     [0, 0, 0, 1, 1, 2, 3],
-  sheep:   [0, 0, 0, 0, 1, 2, 4],
-  cow:     [0, 0, 0, 0, 0, 1, 2],
-  horse:   [0, 0, 0, 0, 0, 0, 2],
-}
+// Der Hof wächst mit den Sternen. Vorher kam das erste Tier erst nach drei
+// komplett gemeisterten Spielen (25–30 erfolgreiche Runden) — tagelang
+// passierte auf dem Hof nichts. Jetzt wohnt ab dem ersten Tag ein Huhn dort,
+// und schon die ersten Runden bringen das nächste Tier; später werden die
+// Abstände größer. Punkte = Sterne (bestes Ergebnis je Level) plus zwei
+// Extra-Sterne je geschaffter Tagesaufgabe (AppContext farmPoints).
+const ARRIVALS   = ['chicken','sheep','pig','cow','chicken','sheep','pig','horse','chicken','sheep','cow','pig','chicken','sheep','horse']
+const THRESHOLDS = [0, 2, 5, 9, 14, 20, 27, 35, 44, 54, 65, 77, 90, 105, 120]
 
-// Exported so ParentScreen can show the SAME real farm level the kid sees
-// here, instead of the separate (and, until recently, dead/frozen)
-// profile.farmLevel stat — der Hof leitet seine Stufe aus den wirklich
-// abgeschlossenen Modulen ab, nicht aus einem separaten Zähler.
-export function getFarmLevel(completedCount) {
-  const n = completedCount
-  if (n<=2) return 1; if (n<=5) return 2; if (n<=8) return 3
-  if (n<=12) return 4; if (n<=16) return 5; return 6
-}
-const getLevel = getFarmLevel
-export const FARM_LEVEL_LABELS = ['','Kleiner Hof','Wachsender Hof','Blühender Hof','Großer Hof','Prächtiger Hof','Traumhof!']
-const LABELS = FARM_LEVEL_LABELS
-const NEXT_AT = [0,3,6,9,13,17,Infinity]
-
-// Compute which animals should be on farm for a given level
-function getAnimalsForLevel(lvl) {
-  const result = []
-  ANIMAL_DEFS.forEach(def => {
-    const count = (ANIMAL_COUNT[def.id] || [])[Math.min(lvl,6)] || 0
-    for (let i = 0; i < count; i++) {
-      result.push({ ...def, instanceId: `${def.id}_${i}` })
-    }
+/** The animals living on the farm with this many points, in arrival order. */
+export function animalsFor(points) {
+  const seen = {}
+  return ARRIVALS.filter((_, i) => points >= THRESHOLDS[i]).map(id => {
+    seen[id] = (seen[id] ?? 0) + 1
+    return { ...DEF[id], instanceId: `${id}_${seen[id] - 1}` }
   })
-  return result
 }
 
-// Compute which animals are NEW at this level vs previous
-function getNewAnimals(lvl) {
-  const prev = getAnimalsForLevel(lvl - 1)
-  const curr = getAnimalsForLevel(lvl)
-  const prevIds = prev.map(a => a.instanceId)
-  return curr.filter(a => !prevIds.includes(a.instanceId))
+/** The next animal and how many stars are still missing, or null when full. */
+export function nextAnimal(points) {
+  const i = THRESHOLDS.findIndex(t => points < t)
+  if (i < 0) return null
+  return { ...DEF[ARRIVALS[i]], missing: THRESHOLDS[i] - points, at: THRESHOLDS[i], from: THRESHOLDS[i - 1] ?? 0 }
 }
+
+/** "das Huhn" → "zum Huhn", "die Kuh" → "zur Kuh" */
+export const zumTier = a => `${a.art === 'die' ? 'zur' : 'zum'} ${a.name}`
+/** "ein Huhn", "eine Kuh" */
+export const einTier = a => `${a.art === 'die' ? 'eine' : 'ein'} ${a.name}`
+
+// Exported so ParentScreen and the results show the same farm the kid sees.
+export function getFarmLevel(points) {
+  const n = animalsFor(points).length
+  if (n<=2) return 1; if (n<=5) return 2; if (n<=8) return 3
+  if (n<=11) return 4; if (n<=14) return 5; return 6
+}
+// One list of names (the celebration used to have its own, different one)
+export const FARM_LEVEL_LABELS = ['','Kleiner Hof','Wachsender Hof','Blühender Hof','Großer Hof','Prächtiger Hof','Traumhof']
 
 function pointInPoly(px, py, points) {
   let inside = false
@@ -136,14 +130,13 @@ function randomInZone(zone) {
   return {x:(minX+maxX)/2, y:(minY+maxY)/2}
 }
 
-function usePageVisible() {
-  const ref = useRef(!document.hidden)
-  useEffect(() => {
-    const h = () => { ref.current = !document.hidden }
-    document.addEventListener('visibilitychange', h)
-    return () => document.removeEventListener('visibilitychange', h)
-  }, [])
-  return ref
+// The animals only move while the farm can be seen: page visible and the
+// farm on screen. Scrolled away they used to keep a requestAnimationFrame
+// loop and a React update per animal running, which costs battery on a
+// weak tablet.
+const FarmVisible = React.createContext({ current: true })
+function useFarmVisible() {
+  return React.useContext(FarmVisible)
 }
 
 function RoamingAnimal({ def, farmScale = 1, delay = 0 }) {
@@ -151,7 +144,7 @@ function RoamingAnimal({ def, farmScale = 1, delay = 0 }) {
   const targetRef = useRef(randomInZone(def.zone))
   const pauseRef = useRef(false)
   const pauseTimerRef = useRef(null)
-  const visibleRef = usePageVisible()
+  const visibleRef = useFarmVisible()
   const [pos, setPos] = useState(posRef.current)
   const [movingRight, setMovingRight] = useState(false)
   const [paused, setPaused] = useState(false)
@@ -191,7 +184,7 @@ function RoamingAnimal({ def, farmScale = 1, delay = 0 }) {
     return () => { cancelAnimationFrame(rafId); if(pauseTimerRef.current) clearTimeout(pauseTimerRef.current) }
   }, [def.zone]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const click = () => { try { def.sfx() } catch {} }
+  const click = () => { try { def.sfx() } catch {} narrate([{ text: `${def.art === 'die' ? 'Die' : 'Das'} ${def.name}!` }]) }
 
   const currentGif = def.facesRight
     ? (movingRight ? asset(def.gif) : asset(def.gifRight || def.gif))
@@ -211,7 +204,7 @@ function RoamingAnimal({ def, farmScale = 1, delay = 0 }) {
     >
       <img src={currentGif} alt={def.name}
         style={{ width:'100%', imageRendering:'pixelated',
-          filter:'drop-shadow(1px 3px 3px rgba(0,0,0,.4))' }}/>
+          filter:'drop-shadow(0 2px 0 rgba(42,27,61,.35))' }}/>
     </motion.div>
   )
 }
@@ -221,7 +214,7 @@ function Farmer({ farmScale = 1 }) {
   const posRef = useRef(wps[0])
   const wpRef = useRef(0)
   const pauseRef = useRef(false)
-  const visibleRef = usePageVisible()
+  const visibleRef = useFarmVisible()
   const [pos, setPos] = useState(wps[0])
   const [dir, setDir] = useState('idle_front')
 
@@ -282,182 +275,15 @@ function Farmer({ farmScale = 1 }) {
       <img src={asset(gif)} alt="Bauer"
         style={{ width:'100%', imageRendering:'pixelated',
           transform: flipX ? 'scaleX(-1)' : 'none',
-          filter:'drop-shadow(1px 3px 3px rgba(0,0,0,.5))' }}/>
+          filter:'drop-shadow(0 2px 0 rgba(42,27,61,.35))' }}/>
     </div>
   )
 }
 
-// Epic level-up overlay
-function LevelUpCelebration({ level, newAnimals, onDone }) {
-  const [phase, setPhase] = useState('enter') // enter → animals → done
-  const [barFill, setBarFill] = useState(0)
-
-  useEffect(() => {
-    try { sfx.levelUp() } catch {}
-    // Animate progress bar filling up
-    setTimeout(() => setBarFill(100), 100)
-    // Keine neuen Tiere → sofort nach 2s fertig
-    if (!newAnimals || newAnimals.length === 0) {
-      const t = setTimeout(() => { setPhase('exit'); setTimeout(onDone, 400) }, 2000)
-      return () => clearTimeout(t)
-    }
-    const t1 = setTimeout(() => setPhase('animals'), 2000)
-    const t2 = setTimeout(() => { setPhase('exit'); setTimeout(onDone, 400) }, 4000)
-    return () => { clearTimeout(t1); clearTimeout(t2) }
-  }, [])
-
-  // Confetti pieces
-  const pieces = Array.from({length:60}, (_,i) => ({
-    x: Math.random()*100,
-    color: ['#FFD93D','#FF6B6B','#6C63FF','#6BCB77','#FD79A8','#FF9F43','#74B9FF'][i%7],
-    size: 6 + Math.random()*10,
-    delay: Math.random()*0.6,
-    dur: 1.2 + Math.random()*1,
-    rotate: Math.random()*720,
-    shape: i%3,
-  }))
-
-  const LABELS = ['','Kleiner Hof','Gemütlicher Hof','Wachsender Hof','Lebhafter Hof','Großer Hof','Traumhof']
-
-  return (
-    <motion.div
-      initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
-      style={{
-        position:'fixed', inset:0, zIndex:1000,
-        background:'rgba(10,5,30,.82)',
-        display:'flex', alignItems:'center', justifyContent:'center',
-        flexDirection:'column', overflow:'hidden',
-      }}
-    >
-      {/* Confetti rain */}
-      <div style={{position:'fixed',inset:0,pointerEvents:'none',overflow:'hidden'}}>
-        {pieces.map((p,i) => (
-          <motion.div key={i}
-            initial={{x:`${p.x}vw`, y:'-8vh', rotate:0, opacity:1}}
-            animate={{y:'108vh', rotate:p.rotate, opacity:[1,1,0]}}
-            transition={{duration:p.dur, delay:p.delay, ease:'easeIn'}}
-            style={{
-              position:'absolute',
-              width:p.size, height:p.size,
-              background:p.color,
-              borderRadius: p.shape===0?'50%': p.shape===1?3:'50% 0',
-            }}
-          />
-        ))}
-      </div>
-
-      {/* Star burst */}
-      <div style={{position:'fixed',top:'50%',left:'50%',pointerEvents:'none',zIndex:1001}}>
-        {Array.from({length:12},(_,i)=>{
-          const angle=(i/12)*360
-          return (
-            <motion.span key={i}
-              initial={{x:0,y:0,scale:0,opacity:1}}
-              animate={{
-                x:Math.cos(angle*Math.PI/180)*120,
-                y:Math.sin(angle*Math.PI/180)*120,
-                scale:[0,1.4,0], opacity:[1,1,0]
-              }}
-              transition={{duration:0.8,delay:0.1+i*0.04,ease:'easeOut'}}
-              style={{position:'absolute',fontSize:22,marginLeft:-11,marginTop:-11}}
-            >⭐</motion.span>
-          )
-        })}
-      </div>
-
-      <AnimatePresence mode="wait">
-        {phase === 'enter' && (
-          <motion.div key="level-card"
-            initial={{scale:0, rotate:-10}} animate={{scale:1, rotate:0}}
-            exit={{scale:0.8, opacity:0, y:-40}}
-            transition={{type:'spring', stiffness:260, damping:18}}
-            style={{
-              background:'linear-gradient(135deg,#1a2e0d,#2d5a1a)',
-              border:'4px solid #FFD93D',
-              borderRadius:28, padding:'32px 48px', textAlign:'center',
-              boxShadow:'0 0 80px rgba(255,217,61,.6), 0 20px 60px rgba(0,0,0,.6)',
-              minWidth:280,
-            }}
-          >
-            <motion.div
-              animate={{scale:[1,1.15,1]}}
-              transition={{duration:0.7, repeat:2}}
-              style={{width:80, margin:'0 auto 8px'}}
-            >
-              <img src={asset('farmer_idle_front.gif')} alt="Bauer"
-                style={{width:'100%', imageRendering:'pixelated',
-                  filter:'drop-shadow(0 4px 12px rgba(255,217,61,.6))'}}/>
-            </motion.div>
-            <div style={{fontFamily:'var(--font-heading)', fontSize:13, color:'rgba(255,255,200,.7)', letterSpacing:2, marginBottom:8}}>
-              NEUES LEVEL ERREICHT!
-            </div>
-            <div style={{fontFamily:'var(--font-heading)', fontSize:36, fontWeight:900, color:'#FFD93D',
-              textShadow:'0 0 30px rgba(255,217,61,.8)', lineHeight:1.1}}>
-              {LABELS[level]}
-            </div>
-            <div style={{fontFamily:'var(--font-body)', fontSize:14, color:'rgba(255,255,200,.6)', marginTop:10}}>
-              Level {level} von 6
-            </div>
-          </motion.div>
-        )}
-
-        {phase === 'animals' && newAnimals.length > 0 && (
-          <motion.div key="animals-card"
-            initial={{scale:0.8, opacity:0, y:30}} animate={{scale:1, opacity:1, y:0}}
-            exit={{scale:0.8, opacity:0}}
-            transition={{type:'spring', stiffness:300, damping:20}}
-            style={{
-              background:'linear-gradient(135deg,#1a2e0d,#2d5a1a)',
-              border:'4px solid #FFD93D',
-              borderRadius:28, padding:'28px 40px', textAlign:'center',
-              boxShadow:'0 0 60px rgba(255,217,61,.4), 0 20px 60px rgba(0,0,0,.6)',
-              maxWidth:360,
-            }}
-          >
-            <div style={{fontFamily:'var(--font-heading)', fontSize:13, color:'rgba(255,255,200,.7)', letterSpacing:2, marginBottom:16}}>
-              {newAnimals.length === 1 ? 'EIN NEUES TIER ZIEHT EIN!' : 'NEUE TIERE ZIEHEN EIN!'}
-            </div>
-            <div style={{display:'flex', justifyContent:'center', gap:20, flexWrap:'wrap', marginBottom:16}}>
-              {newAnimals.map((a, i) => (
-                <motion.div key={a.instanceId}
-                  initial={{scale:0, y:20}} animate={{scale:1, y:0}}
-                  transition={{type:'spring', stiffness:300, delay: i * 0.35}}
-                  style={{textAlign:'center'}}
-                >
-                  <motion.div
-                    animate={{y:[0,-10,0]}}
-                    transition={{duration:0.7, delay: i*0.35+0.3, repeat:Infinity, ease:'easeInOut'}}
-                    style={{width:80, margin:'0 auto'}}
-                  >
-                    <img src={asset(a.gif)} alt={a.name}
-                      style={{width:'100%', imageRendering:'pixelated',
-                        filter:'drop-shadow(0 4px 8px rgba(0,0,0,.5))'}}/>
-                  </motion.div>
-                  <div style={{fontFamily:'var(--font-heading)', fontSize:14, color:'#FFD93D', marginTop:6, fontWeight:700}}>
-                    {a.name}
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-            <motion.div
-              animate={{opacity:[0.5,1,0.5]}} transition={{duration:1, repeat:Infinity}}
-              style={{fontSize:12, color:'rgba(255,255,200,.5)', fontFamily:'var(--font-body)'}}>
-              Schau mal auf deinen Hof! 👇
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
-  )
-}
-
-export default function FarmProgress({ completedCount: rawCount = 0, totalModules = 17, profile }) {
-  const completedCount = rawCount  // use real count
-  const level = getLevel(completedCount)
-  const pct = Math.round((completedCount / totalModules) * 100)
-  const nextUnlock = NEXT_AT[level] !== Infinity
-    ? `${NEXT_AT[level] - completedCount} bis nächstes Level`
-    : 'Max Level! 🏆'
+export default function FarmProgress({ points = 0 }) {
+  const level = getFarmLevel(points)
+  const next = nextAnimal(points)
+  const pct = next ? Math.round(((points - next.from) / (next.at - next.from)) * 100) : 100
 
   const farmRef = useRef(null)
   const [farmScale, setFarmScale] = useState(() => {
@@ -477,110 +303,92 @@ export default function FarmProgress({ completedCount: rawCount = 0, totalModule
     return () => { clearTimeout(t); window.removeEventListener('resize', update) }
   }, [])
 
-  // Animals are derived from level — no manual placement
-  const animals = getAnimalsForLevel(level)
-
-  // Level-up detection — persist prevLevel in localStorage
-  const [prevLevel, setPrevLevel] = useState(() => {
-    try { return parseInt(localStorage.getItem('lumilearn_farm_level') || '0', 10) } catch { return 0 }
-  })
-  const [celebration, setCelebration] = useState(null)
-
+  // visible = page shown and farm on screen
+  const visibleRef = useRef(!document.hidden)
   useEffect(() => {
-    if (level > prevLevel) {
-      const newAnimals = getNewAnimals(level)
-      setCelebration({ level, newAnimals })
-      setPrevLevel(level)
-      try { localStorage.setItem('lumilearn_farm_level', String(level)) } catch {}
-    } else if (prevLevel === 0 && level > 0) {
-      // First ever load — just save, no celebration
-      setPrevLevel(level)
-      try { localStorage.setItem('lumilearn_farm_level', String(level)) } catch {}
-    }
-  }, [level])
+    let onScreen = true
+    const sync = () => { visibleRef.current = onScreen && !document.hidden }
+    const io = typeof IntersectionObserver !== 'undefined' && farmRef.current
+      ? new IntersectionObserver(([e]) => { onScreen = e.isIntersecting; sync() })
+      : null
+    io?.observe(farmRef.current)
+    document.addEventListener('visibilitychange', sync)
+    return () => { io?.disconnect(); document.removeEventListener('visibilitychange', sync) }
+  }, [])
+
+  const animals = animalsFor(points)
+  const goal = next
+    ? `Noch ${next.missing} ⭐ bis ${zumTier(next)}`
+    : 'Alle Tiere sind da!'
+  const sayGoal = next
+    ? `Auf deinem Hof wohnen schon ${animals.length === 1 ? 'ein Tier' : `${sayNumber(animals.length)} Tiere`}. Noch ${sayNumber(next.missing)} ${next.missing === 1 ? 'Stern' : 'Sterne'}, dann kommt ${einTier(next)}.`
+    : 'Alle Tiere wohnen auf deinem Hof. Toll!'
 
   return (
     <div className="farm-progress-wrapper" style={{
-      width:'100%', maxWidth:860, margin:'0 auto', userSelect:'none',
+      width:'100%', userSelect:'none',
       // Pixel frame like every panel (styles/pixel.css)
       border:'3px solid var(--px-ink)', borderRadius:'var(--px-radius)', overflow:'hidden',
-      boxShadow:'0 5px 0 var(--px-ink-soft)',
+      boxShadow:'0 5px 0 var(--px-ink-soft)', background:'var(--px-parch)',
     }}>
 
-      {/* Header */}
-      <div className="px-wood" style={{
-        display:'flex', justifyContent:'space-between', alignItems:'center',
-        padding:'8px 14px 8px',
-        borderBottom:'3px solid var(--px-ink)',
-      }}>
-        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+      {/* Header: what the farm is, and what comes next */}
+      <button className="px-wood" onClick={() => narrate([{ text: sayGoal }])}
+        aria-label={`${FARM_LEVEL_LABELS[level]}. ${goal.replace('⭐', 'Sterne')}`}
+        style={{
+          width:'100%', display:'flex', justifyContent:'space-between', alignItems:'center', gap:10,
+          padding:'6px 12px', borderBottom:'3px solid var(--px-ink)', textAlign:'left', cursor:'pointer',
+        }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8, minWidth:0 }}>
           <span style={{fontSize:22}}>🌾</span>
-          <div>
-            <div className="px-title" style={{fontSize:16}}>
-              {LABELS[level]}
+          <div style={{ minWidth:0 }}>
+            <div className="px-title" style={{fontSize:17, lineHeight:1.15}}>
+              {FARM_LEVEL_LABELS[level]}
             </div>
-            <div style={{color:'rgba(255,255,255,.9)',fontSize:11,fontWeight:700,fontFamily:'var(--font-body)',textShadow:'0 1px 0 rgba(0,0,0,.4)'}}>
-              {nextUnlock}
+            <div className="px-title" style={{fontSize:14, lineHeight:1.2, letterSpacing:0, textShadow:'-1px -1px 0 var(--px-ink), 1px -1px 0 var(--px-ink), -1px 1px 0 var(--px-ink), 1px 2px 0 var(--px-ink)'}}>
+              {goal}
             </div>
           </div>
         </div>
-        <div style={{textAlign:'right'}}>
-          <div style={{color:'#fff',fontSize:13,fontFamily:'var(--font-heading)',fontWeight:700,textShadow:'0 2px 0 rgba(0,0,0,.4)'}}>
-            Level {level} / 6
-          </div>
-          <div style={{display:'flex',gap:4,marginTop:3,justifyContent:'flex-end'}}>
-            {[1,2,3,4,5,6].map(l=>(
-              <div key={l} className={`px-pip${l<=level?' px-pip--gold':''}`} style={{width:11,height:11,
-                background:l<=level?undefined:'rgba(255,255,255,.35)'}}/>
-            ))}
-          </div>
-        </div>
-      </div>
+        {next && (
+          <img src={asset(next.gif)} alt={next.name} className="px-art"
+            style={{ width:40, height:40, objectFit:'contain', flexShrink:0, filter:'brightness(0.25) opacity(0.75)' }} />
+        )}
+      </button>
 
-      {/* Farm — full width, no sidebar */}
+      {/* Farm */}
       <div ref={farmRef} className="farm-scene" style={{ position:'relative', overflow:'hidden', width:'100%',
+        // own stacking context: the animals' z-index (their y position, up
+        // to ~430) stays inside the farm instead of rising above the
+        // profile and level sheets
+        isolation:'isolate',
         cursor:'url(' + BASE + 'sprites/farm/cursor_fork.png) 4 4, crosshair' }}>
-        <img src={asset('farm_final.png')} alt="Farm" style={{width:'100%', display:'block'}}/>
+        <img src={asset('farm_final.png')} alt="Dein Bauernhof" width={1376} height={768} style={{width:'100%', height:'auto', display:'block'}}/>
         <div style={{position:'absolute',inset:0}}>
-          <AnimatePresence>
-            {animals.map((a, i) => (
-              <RoamingAnimal key={a.instanceId} def={a} farmScale={farmScale} delay={i * 0.08}/>
-            ))}
-          </AnimatePresence>
-          <Farmer farmScale={farmScale}/>
+          <FarmVisible.Provider value={visibleRef}>
+            <AnimatePresence>
+              {animals.map((a, i) => (
+                <RoamingAnimal key={a.instanceId} def={a} farmScale={farmScale} delay={i * 0.08}/>
+              ))}
+            </AnimatePresence>
+            <Farmer farmScale={farmScale}/>
+          </FarmVisible.Provider>
         </div>
       </div>
 
-      {/* Progress Bar */}
+      {/* Progress to the next animal */}
       <div className="px-wood" style={{
-        padding:'8px 14px 10px',
+        padding:'6px 12px 8px',
         borderTop:'3px solid var(--px-ink)', borderBottom:'none', boxShadow:'none',
       }}>
         <div style={{background:'rgba(42,27,61,.55)',borderRadius:4,height:14,overflow:'hidden',
           border:'2px solid var(--px-ink)'}}>
           <motion.div initial={{width:0}} animate={{width:`${pct}%`}}
             transition={{duration:1.2,ease:'easeOut'}}
-            style={{height:'100%',background:'linear-gradient(180deg,#8be36a,#4caf50)',
+            style={{height:'100%',background:'var(--px-gold)',
               boxShadow:'inset 0 2px 0 rgba(255,255,255,.4)'}}/>
         </div>
-        <div style={{display:'flex',justifyContent:'space-between',marginTop:5,
-          fontSize:12,fontWeight:700,color:'#fff',textShadow:'0 1px 0 rgba(0,0,0,.4)',fontFamily:'var(--font-body)'}}>
-          <span>{completedCount} / {totalModules} Module</span>
-          <span>{pct}%</span>
-        </div>
       </div>
-
-      {/* Level-Up Celebration Overlay */}
-      <AnimatePresence>
-        {celebration && (
-          <LevelUpCelebration
-            key={celebration.level}
-            level={celebration.level}
-            newAnimals={celebration.newAnimals}
-            onDone={() => setCelebration(null)}
-          />
-        )}
-      </AnimatePresence>
     </div>
   )
 }

@@ -41,7 +41,9 @@ export function hearable(text, { src, rate, pitch, enabled = true } = {}) {
     onPointerEnter: e => { if (e.pointerType !== 'touch') start() },
     onPointerLeave: stop,
     onPointerDown: stop,      // beim Antippen zählt die Antwort, nicht die Vorschau
-    onFocus: start,
+    // Nur Tastatur-Fokus: Klick und Tippen fokussieren auch, sollen aber
+    // nicht zusätzlich vorlesen
+    onFocus: e => { if (e.currentTarget.matches?.(':focus-visible')) start() },
     onBlur: stop,
   }
 }
