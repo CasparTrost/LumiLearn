@@ -1,12 +1,13 @@
 /* ===== Pixel-Abenteuer — LumiLearn design system =====================
    Wood, parchment and dark pixel outlines, in the style of the maze and
-   the farm. Words stay in the round Fredoka/Nunito everywhere — pixel
-   fonts bend letter shapes (Pixelify's Z reads as a 2), the last thing a
-   reading beginner needs. The pixel font is used for HUD numbers only;
-   the pixel feel of titles and buttons comes from hard ink outlines. */
+   the farm. All text, digits included, is the round Fredoka/Nunito: pixel
+   fonts bend letter and digit shapes (Pixelify's Z reads as a 2, its level
+   numbers were hard to read), the last thing a child who is learning them
+   needs. The pixel feel comes from hard ink outlines, not from the font. */
 
 :root {
-  --font-pixel: 'Pixelify Sans', 'Fredoka', sans-serif;
+  /* kept as a name for numbers in HUD chips; deliberately the round font */
+  --font-pixel: 'Fredoka', 'Nunito', sans-serif;
 
   --px-ink:         #2a1b3d;   /* outline of every panel and button */
   --px-ink-soft:    rgba(42, 27, 61, 0.55);
@@ -175,4 +176,15 @@
 /* HUD counters that give way first on narrow phones */
 @media (max-width: 520px) {
   .hud-hide-sm { display: none; }
+}
+
+/* Emoji pictures (src/lib/emojiArt.jsx): sized by the surrounding font, so
+   every place that sized an emoji with font-size keeps its size. */
+.emo {
+  display: inline-block;
+  width: 1.15em;
+  height: 1.15em;
+  vertical-align: -0.22em;
+  object-fit: contain;
+  pointer-events: none;
 }
