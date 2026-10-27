@@ -11,6 +11,8 @@ import { result } from '../lib/score.js'
 import { pxCard, pxButton, pxBubble, INK } from './px.js'
 
 const BASE = import.meta.env.BASE_URL || '/LumiLearn/'
+// size of the coloring pages, and of the empty sheet
+const SHEET_W = 1000, SHEET_H = 1500
 
 const IMAGES = [
   // A completely empty sheet. Both painting modules were strictly guided —
@@ -18,14 +20,17 @@ const IMAGES = [
   // so there was nowhere in the app to simply draw something of your own.
   // Always unlocked: free drawing is not a reward for reaching a level.
   { id: 'blank', src: null, label: 'Kritzel-Leinwand', emoji: '🖍️', free: true },
-  // Own pages with Lumi (scripts/generate-coloring-pages.py); ids stay
-  // stable, the album remembers them for "Weitermalen"
-  { id: 'lumi-wald',      src: `${BASE}images/coloring/lumi-wald.png`,      label: 'Zauberwald',     emoji: '🍄' },
-  { id: 'lumi-bauernhof', src: `${BASE}images/coloring/lumi-bauernhof.png`, label: 'Bauernhof',      emoji: '🐮' },
-  { id: 'lumi-weltraum',  src: `${BASE}images/coloring/lumi-weltraum.png`,  label: 'Weltraum',       emoji: '🚀' },
-  { id: 'lumi-meer',      src: `${BASE}images/coloring/lumi-meer.png`,      label: 'Meer',           emoji: '🐠' },
-  { id: 'lumi-schloss',   src: `${BASE}images/coloring/lumi-schloss.png`,   label: 'Drachenschloss', emoji: '🏰' },
-  { id: 'lumi-garten',    src: `${BASE}images/coloring/lumi-garten.png`,    label: 'Garten',         emoji: '🌻' },
+  // Own pages with Lumi (scripts/generate-coloring-pages.py). The ids
+  // changed with the redrawn 1000 x 1500 pages: a picture painted on the
+  // first, differently shaped pages must not be continued on these.
+  { id: 'lumi2-wald',      src: `${BASE}images/coloring/lumi-wald.png`,      label: 'Zauberwald',     emoji: '🍄' },
+  { id: 'lumi2-bauernhof', src: `${BASE}images/coloring/lumi-bauernhof.png`, label: 'Bauernhof',      emoji: '🐮' },
+  { id: 'lumi2-weltraum',  src: `${BASE}images/coloring/lumi-weltraum.png`,  label: 'Weltraum',       emoji: '🚀' },
+  { id: 'lumi2-meer',      src: `${BASE}images/coloring/lumi-meer.png`,      label: 'Meer',           emoji: '🐠' },
+  { id: 'lumi2-schloss',   src: `${BASE}images/coloring/lumi-schloss.png`,   label: 'Drachenschloss', emoji: '🏰' },
+  { id: 'lumi2-garten',    src: `${BASE}images/coloring/lumi-garten.png`,    label: 'Garten',         emoji: '🌻' },
+  { id: 'lumi2-strand',    src: `${BASE}images/coloring/lumi-strand.png`,    label: 'Strand',         emoji: '🏖️' },
+  { id: 'lumi2-winter',    src: `${BASE}images/coloring/lumi-winter.png`,    label: 'Winter',         emoji: '⛄' },
 ]
 
 // 14 colours a child can tell apart, each with its name (Lumi says it). There
@@ -267,7 +272,7 @@ export default function ColoringGame({ onComplete }) {
   const paintRef    = useRef(document.createElement('canvas'))   // transparent colour strokes
   const basePixels  = useRef(null)                               // sheet pixels for the fill
   const baseImg     = useRef(null)
-  const canvasSize  = useRef({ w: 1000, h: 1164 })
+  const canvasSize  = useRef({ w: SHEET_W, h: SHEET_H })
   const undoStack   = useRef([])
   const pointerId   = useRef(null)
   const lastPos     = useRef(null)
@@ -354,11 +359,11 @@ export default function ColoringGame({ onComplete }) {
     if (currentImage.free) {
       // No outline to load — just a white sheet the child owns entirely.
       const blank = document.createElement('canvas')
-      blank.width = 1000; blank.height = 1164
+      blank.width = SHEET_W; blank.height = SHEET_H
       const bctx = blank.getContext('2d')
       bctx.fillStyle = '#ffffff'
-      bctx.fillRect(0, 0, 1000, 1164)
-      setup(blank, 1000, 1164)
+      bctx.fillRect(0, 0, SHEET_W, SHEET_H)
+      setup(blank, SHEET_W, SHEET_H)
     } else {
       const img = new Image()
       img.crossOrigin = 'anonymous'
@@ -744,7 +749,7 @@ export default function ColoringGame({ onComplete }) {
               <div style={{ overflowY:'auto', display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(110px, 1fr))', gap:10, padding:2 }}>
                 {album.map(e => (
                   <button key={e.id} onClick={() => setViewing(e)} aria-label="Bild ansehen" style={{
-                    padding:0, border:`3px solid ${INK}`, borderRadius:8, background:'#fff', cursor:'pointer', overflow:'hidden', aspectRatio:'1000 / 1164',
+                    padding:0, border:`3px solid ${INK}`, borderRadius:8, background:'#fff', cursor:'pointer', overflow:'hidden', aspectRatio:`${SHEET_W} / ${SHEET_H}`,
                   }}>
                     <img src={urls.get(e.id)} alt="" style={{ width:'100%', height:'100%', objectFit:'contain', display:'block' }} />
                   </button>
