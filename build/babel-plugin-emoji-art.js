@@ -16,7 +16,7 @@
  * emoji used outside JSX (speech, canvas drawing, document.title).
  */
 const SKIP_TAGS = new Set(['text', 'tspan', 'textPath', 'title', 'option', 'optgroup', 'textarea', 'style', 'script'])
-const HAS_EMOJI = /\p{Extended_Pictographic}|\p{Regional_Indicator}/u
+const HAS_EMOJI = /\p{Extended_Pictographic}|\p{Regional_Indicator}|:px-[a-z0-9-]+:/u
 const HELPER = '__emoji'
 const SOURCE = '/src/lib/emojiArt.jsx'
 
@@ -36,8 +36,15 @@ export default function emojiArtPlugin({ types: t }) {
       JSXElement(path, state) {
         const file = state.filename ?? ''
         if (!file.includes('/src/') || file.endsWith('/lib/emojiArt.jsx')) return
+        // HTML elements, and framer-motion's animated HTML elements
+        // (motion.div, motion.button …), which render plain HTML too — the
+        // first version skipped those, ~480 places kept system emoji
         const name = path.node.openingElement.name
-        if (name.type !== 'JSXIdentifier' || !/^[a-z]/.test(name.name) || SKIP_TAGS.has(name.name)) return
+        const tag = name.type === 'JSXIdentifier' ? name.name
+                  : name.type === 'JSXMemberExpression' && name.object.type === 'JSXIdentifier'
+                    && name.object.name === 'motion' ? name.property.name
+                  : null
+        if (!tag || !/^[a-z]/.test(tag) || SKIP_TAGS.has(tag)) return
 
         let changed = false
         const children = path.node.children.map(child => {

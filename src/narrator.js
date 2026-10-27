@@ -50,7 +50,17 @@ function resolveAsset(src) {
 // Emojis und Sonderzeichen raus, sonst buchstabiert die Stimme sie aus.
 function cleanText(text) {
   return String(text)
+    // eigene Bilder (:px-tisch:, siehe lib/emojiArt.jsx) sind nur zum Ansehen
+    .replace(/:px-[a-z0-9-]+:/g, '')
     .replace(/[\u{1F300}-\u{1FFFF}]/gu, '')
+    // Rechen- und Maßzeichen in Wörter, bevor der Zeichenfilter sie löscht:
+    // aus "20× ihre Körpergröße" wurde sonst "20 ihre Körpergröße"
+    .replace(/\s*[×✕]\s*/g, ' mal ')
+    .replace(/km\/h/g, 'Kilometer pro Stunde')
+    .replace(/(\d)\s*\+\s*(\d)/g, '$1 plus $2')
+    .replace(/(\d)\s*[−]\s*(\d)/g, '$1 minus $2')
+    .replace(/(\d)\s*=\s*/g, '$1 ist ')
+    .replace(/(\d)\s*%/g, '$1 Prozent')
     // Ein Gedankenstrich ist eine Atempause. Er wurde vorher ersatzlos
     // gelöscht, und die Stimme las "Hilfe holen das ist eine gute Idee" in
     // einem Zug durch.
@@ -203,6 +213,9 @@ export function narrate(parts, { onEnd, skipIfSame = false, priority = 'normal' 
       let failed = false
       const hand = once(done, s, 15000)
       const onFail = () => {
+        // error-Ereignis und abgelehntes play() kommen beide — nur einmal
+        // ersatzweise sprechen, sonst sagt die Stimme alles doppelt
+        if (failed) return
         failed = true
         if (s !== seq) return
         // Fehlt die Aufnahme, springt die Sprachsynthese ein — lieber eine

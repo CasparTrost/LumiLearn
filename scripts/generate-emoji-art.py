@@ -131,13 +131,16 @@ def save_small(im, path):
 
 def write_list():
     codes = sorted(f[:-4] for f in os.listdir(OUT) if f.endswith('.png'))
+    cdir = os.path.join(OUT, 'custom')
+    custom = sorted(f[:-4] for f in os.listdir(cdir) if f.endswith('.png')) if os.path.isdir(cdir) else []
     with open(LIST, 'w') as fh:
         fh.write('// Generated from public/sprites/emoji by scripts/generate-emoji-art.py — do not edit.\n')
-        fh.write('export const EMOJI_ART = new Set([\n')
-        for i in range(0, len(codes), 8):
-            fh.write('  ' + ', '.join(f"'{c}'" for c in codes[i:i + 8]) + ',\n')
-        fh.write('])\n')
-    print(len(codes), 'pictures listed')
+        for name, items in (('EMOJI_ART', codes), ('CUSTOM_ART', custom)):
+            fh.write(f'export const {name} = new Set([\n')
+            for i in range(0, len(items), 8):
+                fh.write('  ' + ', '.join(f"'{c}'" for c in items[i:i + 8]) + ',\n')
+            fh.write('])\n')
+    print(len(codes), 'pictures,', len(custom), 'custom pictures listed')
 
 
 if __name__ == '__main__':

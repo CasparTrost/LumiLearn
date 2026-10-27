@@ -82,3 +82,5 @@ export const EMOJI_ART = new Set([
   '2744', '274c', '2753', '2764', '2795', '2796', '27a1', '2b1b',
   '2b1c', '2b50', '2b55',
 ])
+export const CUSTOM_ART = new Set([
+])

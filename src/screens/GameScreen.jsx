@@ -1,4 +1,4 @@
-import { Suspense, useEffect } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowLeft } from 'lucide-react'
 import { useApp, MAX_LEVELS } from '../AppContext.jsx'
@@ -8,6 +8,8 @@ import ErrorBoundary from '../components/ErrorBoundary.jsx'
 import { stopNarration, lockPreviews } from '../narrator.js'
 import FitBox from '../components/FitBox.jsx'
 import { lazyWithReload } from '../lib/lazyWithReload.js'
+import { PauseContext } from '../lib/pause.js'
+import { result } from '../lib/score.js'
 
 const ChoiceGame    = lazyWithReload(() => import('../games/ChoiceGame.jsx'))
 const TyperGame     = lazyWithReload(() => import('../games/TyperGame.jsx'))
@@ -128,15 +130,17 @@ export default function GameScreen() {
   // erst die Ansage, dann darf das Darüberfahren vorlesen.
   useEffect(() => { lockPreviews(); return stopNarration }, [moduleId, level])
 
+  // While the help is open the game is paused (timers, spawning, the
+  // dragon …): games read it with usePaused() from lib/pause.js.
+  const [helpOpen, setHelpOpen] = useState(false)
+  useEffect(() => setHelpOpen(false), [moduleId, level])
+
   const handleComplete = ({ score, total, stars: providedStars }) => {
-    // Some games (e.g. MemoryGame) compute their own star rating from a
-    // metric other than score/total (move efficiency) and show it to the
-    // child directly — respect that instead of silently recomputing a
-    // different number from score/total, which used to award 3 stars
-    // regardless of what was actually displayed.
-    const pct   = total > 0 ? score / total : 0
-    const stars = providedStars ?? (pct >= 0.85 ? 3 : pct >= 0.6 ? 2 : pct >= 0.35 ? 1 : 0)
-    dispatch({ type: 'FINISH_GAME', payload: { moduleId, level, stars, score, total } })
+    // Games that rate by something other than first-try answers (Memo by
+    // moves) pass their own stars, the number they show the child; all
+    // others are rated the same way (lib/score.js), score kept in 0..total.
+    const r = result(score, total)
+    dispatch({ type: 'FINISH_GAME', payload: { moduleId, level, stars: providedStars ?? r.stars, score: r.score, total } })
   }
 
   const quit = () => { stopNarration(); dispatch({ type: 'NAVIGATE', payload: 'home' }) }
@@ -165,11 +169,12 @@ export default function GameScreen() {
         <span className="px-chip" style={{ fontFamily: 'var(--font-heading)', fontSize: 17 }}>
           Level {level}/{MAX_LEVELS[moduleId] ?? 5}
         </span>
-        <InfoButton moduleId={moduleId} />
+        <InfoButton moduleId={moduleId} onOpenChange={setHelpOpen} />
       </HudBar>
 
       {/* Game */}
       <ErrorBoundary moduleId={moduleId} onHome={() => dispatch({ type: 'NAVIGATE', payload: 'home' })}>
+        <PauseContext.Provider value={helpOpen}>
         <Suspense fallback={<GameLoadingFallback gradient={meta.gradient} />}>
           {NO_SCALE.has(moduleId)
             ? <GameComponent moduleId={moduleId} level={level} onComplete={handleComplete} />
@@ -179,6 +184,7 @@ export default function GameScreen() {
                 <GameComponent moduleId={moduleId} level={level} onComplete={handleComplete} />
               </FitBox>}
         </Suspense>
+        </PauseContext.Provider>
       </ErrorBoundary>
     </div>
   )
