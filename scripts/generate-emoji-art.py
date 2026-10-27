@@ -33,7 +33,7 @@ tiles = importlib.util.module_from_spec(spec); spec.loader.exec_module(tiles)
 
 EMOJI = re.compile(
     r'[\U0001F1E6-\U0001F1FF]{2}'
-    r'|[\U0001F300-\U0001FAFF☀-➿⬀-⯿⌀-⏿]️?[\U0001F3FB-\U0001F3FF]?'
+    r'|[\U0001F000-\U0001FAFF☀-➿⬀-⯿⌀-⏿]️?[\U0001F3FB-\U0001F3FF]?'
     r'(?:‍[\U0001F300-\U0001FAFF☀-➿♀♂⚕⚖✈❤]️?[\U0001F3FB-\U0001F3FF]?)*'
 )
 SKIP = set('✦✧〰↔⌫')     # typographic marks, not pictures
