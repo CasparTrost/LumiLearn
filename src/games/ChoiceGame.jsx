@@ -139,7 +139,9 @@ function DinoScene({ chomping, shaking, dinoScale, projectiles, puffIds, bursts,
 
 // What the voice says about a question.
 const nameOf = (q, e) => q.names[e] ?? ''
-const countOf = (q, opt) => [...opt].filter(ch => ch !== '️').length / [...q.sym].filter(ch => ch !== '️').length
+// pictures in a string, without the emoji variation selector
+const glyphs = s => [...s].filter(ch => ch !== '\uFE0F').length
+const countOf = (q, opt) => glyphs(opt) / glyphs(q.sym)
 
 function optionName(q, opt) {
   return q.kind === 'grow' ? sayNumber(countOf(q, opt)) : nameOf(q, opt)
@@ -161,8 +163,6 @@ function hintFor(q) {
   }
   return `Hör mal! ${q.tokens.slice(0, -1).map(e => nameOf(q, e)).join(', ')}, und dann?`
 }
-
-const glyphs = s => [...s].filter(ch => ch !== '️').length
 
 export default function ChoiceGame({ moduleId, level, onComplete }) {
   const [questions]   = useState(() => generateQuestions(moduleId, level))

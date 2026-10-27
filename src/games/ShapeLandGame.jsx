@@ -261,8 +261,9 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
   const cardSize = r.mode === 'match'
     ? (r.options.length === 4 ? 'min(19dvh, calc((min(100vw, 720px) - 100px - 8vw) / 2), 190px)' : threeUp(200, 22))
     : r.mode === 'size'
-      // the whole row has to fit across a phone: buttons, gaps and shelf
-      ? `min(26dvh, calc((min(100vw, 720px) - ${58 + 14 * r.items.length}px) / ${sumScale.toFixed(2)}), 220px)`
+      // the whole row has to fit across: buttons, gaps and shelf (on a phone
+      // it may wrap — the order is about size, not place)
+      ? (narrow ? 'min(20dvh, 34vw, 220px)' : `min(26dvh, calc((min(100vw, 720px) - ${76 + 14 * r.items.length}px) / ${sumScale.toFixed(2)}), 220px)`)
       : (narrow ? 'min(12dvh, 26vw, 150px)' : threeUp(150, 17))
   const rowSize = r.mode === 'pattern' ? `min(64px, calc((min(100vw, 720px) - ${60 + 4 * r.seq.length}px) / ${r.seq.length + 1}))` : null
 
@@ -335,6 +336,7 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
         {r.mode === 'size' && (
           <div style={{
             display: 'flex', gap: 'clamp(6px,1.5vw,16px)', justifyContent: 'center', alignItems: 'flex-end',
+            flexWrap: narrow ? 'wrap' : 'nowrap', rowGap: 14,
             ...pxPanel, padding: 10,
           }}>
             {r.items.map(item => {
@@ -350,7 +352,7 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
                   animate={isWrong ? { x: [0, -8, 8, -6, 6, 0] } : { x: 0 }}
                   style={{
                     position: 'relative', background: 'transparent', border: 'none',
-                    padding: 4, minWidth: 44, minHeight: 44,
+                    padding: 4, minWidth: 48, minHeight: 48,
                     display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
                     cursor: taken || solved ? 'default' : 'pointer',
                     opacity: taken ? 0.45 : 1,

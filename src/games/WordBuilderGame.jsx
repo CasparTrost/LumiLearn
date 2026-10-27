@@ -481,10 +481,12 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
                 onClick={() => clickTile(tile)}
               />
             ))}
-            <HearOptions
-              items={round.tiles.filter(t => !usedIds.has(t.id)).map(t => ({ text: say(t.text), rate: 0.6 }))}
-              label="Silben vorlesen" size={52}
-            />
+            {!solved && (
+              <HearOptions
+                items={round.tiles.filter(t => !usedIds.has(t.id)).map(t => ({ text: say(t.text), rate: 0.6 }))}
+                label="Silben vorlesen" size={52}
+              />
+            )}
           </div>
         </>
       ) : (

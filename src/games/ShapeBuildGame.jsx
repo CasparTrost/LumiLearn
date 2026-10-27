@@ -4,6 +4,7 @@ import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
 import { narrate, afterNarration, lockPreviews } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
+import { sayNumber } from '../tts.js'
 import { result } from '../lib/score.js'
 import { pxCard, pxPanel, pxBubble, pxButton, pxSegment, ACCENT, INK } from './px.js'
 
@@ -175,6 +176,123 @@ function randomTurn(shape) {
   return 90 * (1 + Math.floor(Math.random() * 3))
 }
 
+// ── Frei bauen: after the last figure, the child builds anything ──────────────
+// Tap a shape to put it on the board, drag it where it should go, tap it to
+// turn it. "Fertig": Lumi counts the shapes and guesses the figure when the
+// shapes are those of one it knows ("Ist das ein Haus?").
+const FREE_SHAPES = [
+  { shape: 'circle',    w: 24, h: 24 },
+  { shape: 'square',    w: 24, h: 24 },
+  { shape: 'triangle',  w: 30, h: 24 },
+  { shape: 'rectangle', w: 34, h: 14 },
+]
+const FREE_COLORS = ['#FF6B6B', '#FFD93D', '#6BCB77', '#4AA3FF', '#FF9F43', '#FD79A8']
+const PLURAL = { circle: 'Kreise', square: 'Quadrate', triangle: 'Dreiecke', rectangle: 'Rechtecke' }
+
+function describeBuild(pieces) {
+  const kind = p => (p.shape === 'rtriangle' ? 'triangle' : p.shape)
+  const key = list => list.map(kind).sort().join()
+  const mine = key(pieces)
+  const known = FIGURES.find(f => key(f.parts) === mine)
+  const counts = Object.entries(pieces.reduce((m, p) => ({ ...m, [kind(p)]: (m[kind(p)] ?? 0) + 1 }), {}))
+    .map(([shape, n]) => (n === 1 ? `ein ${SHAPE[shape].name}` : `${sayNumber(n)} ${PLURAL[shape]}`))
+  const list = counts.length < 2 ? counts[0] : `${counts.slice(0, -1).join(', ')} und ${counts[counts.length - 1]}`
+  return known
+    ? `Ich sehe ${list}. Ist das ${art(known, 'nom')} ${known.name}? Toll gebaut!`
+    : `Ich sehe ${list}. Toll gebaut!`
+}
+
+function FreeBuild({ onDone }) {
+  const [pieces, setPieces] = useState([])
+  const [done, setDone]     = useState(false)
+  const svgRef = useRef(null)
+  const drag   = useRef(null)    // { id, dx, dy, moved }
+
+  useEffect(() => { sayTask('Jetzt darfst du frei bauen! Tippe auf eine Form und schieb sie hin, wo du willst.') }, [])
+
+  const toSvg = e => {
+    const m = svgRef.current?.getScreenCTM()?.inverse()
+    if (!m) return { x: 0, y: 0 }
+    return { x: m.a * e.clientX + m.c * e.clientY + m.e, y: m.b * e.clientX + m.d * e.clientY + m.f }
+  }
+
+  const add = (f) => {
+    if (done) return
+    setPieces(list => [...list, { ...f, id: Date.now(), x: 50 - f.w / 2 + (list.length % 4) * 4, y: 40 - f.h / 2 + (list.length % 4) * 4, rot: 0, color: FREE_COLORS[list.length % FREE_COLORS.length] }])
+    sfx.pop?.()
+    narrate([{ text: `${SHAPE[f.shape].art} ${SHAPE[f.shape].name}.` }])
+  }
+
+  const down = (e, p) => {
+    if (done) return
+    e.stopPropagation()
+    const pt = toSvg(e)
+    drag.current = { id: p.id, dx: pt.x - p.x, dy: pt.y - p.y, moved: false }
+    try { svgRef.current.setPointerCapture(e.pointerId) } catch { /* not supported */ }
+  }
+  const move = e => {
+    const d = drag.current
+    if (!d) return
+    const pt = toSvg(e)
+    d.moved = true
+    setPieces(list => list.map(p => (p.id === d.id
+      ? { ...p, x: Math.max(-p.w / 2, Math.min(100 - p.w / 2, pt.x - d.dx)), y: Math.max(-p.h / 2, Math.min(100 - p.h / 2, pt.y - d.dy)) }
+      : p)))
+  }
+  const up = () => {
+    const d = drag.current
+    drag.current = null
+    // a tap without moving turns the piece
+    if (d && !d.moved) {
+      setPieces(list => list.map(p => (p.id === d.id && p.shape !== 'circle' ? { ...p, rot: p.rot + 90 } : p)))
+      sfx.flip?.()
+    }
+  }
+
+  const finish = () => {
+    if (!pieces.length || done) return
+    setDone(true)
+    sfx.correct()
+    narrate([{ text: describeBuild(pieces) }], { onEnd: onDone })
+  }
+
+  return (
+    <>
+      <div style={{ ...pxPanel, padding: 'clamp(8px,2vw,16px)' }}>
+        <svg ref={svgRef} viewBox="0 0 100 100" onPointerMove={move} onPointerUp={up} onPointerCancel={up}
+          style={{ width: 'clamp(220px,46vw,300px)', height: 'clamp(220px,46vw,300px)', display: 'block', touchAction: 'none' }}>
+          {pieces.map(p => (
+            <ShapePath key={p.id} {...p} fill={p.color} stroke={INK} strokeWidth={1.5} strokeLinejoin="round"
+              onPointerDown={e => down(e, p)} style={{ cursor: done ? 'default' : 'grab' }} />
+          ))}
+        </svg>
+      </div>
+      <div style={{ display: 'flex', gap: 'clamp(8px,2.5vw,16px)', flexWrap: 'wrap', justifyContent: 'center' }}>
+        {FREE_SHAPES.map((f, i) => (
+          <motion.button key={f.shape} whileTap={{ scale: 0.93 }} onClick={() => add(f)} disabled={done}
+            aria-label={`${SHAPE[f.shape].name} dazulegen`}
+            style={{ width: 'clamp(64px,13vw,84px)', height: 'clamp(64px,13vw,84px)', ...pxCard(), cursor: 'pointer', padding: 6 }}>
+            <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%' }}>
+              <ShapePath shape={f.shape} x={50 - f.w * 1.2} y={50 - f.h * 1.2} w={f.w * 2.4} h={f.h * 2.4}
+                fill={FREE_COLORS[i]} stroke={INK} strokeWidth={2.5} strokeLinejoin="round" />
+            </svg>
+          </motion.button>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+        <button onClick={() => setPieces(list => list.slice(0, -1))} disabled={!pieces.length || done}
+          style={{ ...pxButton('parch'), padding: '10px 20px', fontSize: 17, opacity: pieces.length && !done ? 1 : 0.5 }}>
+          🧽 Weg damit
+        </button>
+        <button onClick={finish} disabled={!pieces.length || done}
+          style={{ ...pxButton('green'), color: INK, textShadow: 'none', padding: '10px 28px', fontSize: 17, opacity: pieces.length && !done ? 1 : 0.5 }}>
+          ✅ Fertig
+        </button>
+      </div>
+    </>
+  )
+}
+
 const sayShape = p => `${SHAPE[p.shape].art} ${SHAPE[p.shape].name}`
 
 export default function ShapeBuildGame({ level = 1, onComplete }) {
@@ -191,6 +309,7 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
   const [wrongSlot, setWrongSlot] = useState(null)
   const [mood,     setMood]     = useState('happy')
   const [showWeiter, setShowWeiter] = useState(false)
+  const [freeMode, setFreeMode] = useState(false)
   const misses = useRef(0)
   const totalParts = useMemo(() => rounds.reduce((n, f) => n + f.parts.length, 0), [rounds])
 
@@ -276,7 +395,7 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
     if (next.length === fig.parts.length) {
       setMood('excited')
       sfx.correct()
-      sayRight(`${sayShape(piece)} ist ${slot.part}. Das ist ${art(fig, 'nom')} ${fig.name}.`)
+      sayRight(`${sayShape(piece)} ist ${slot.part}. Das ist ${art(fig, 'nom')} ${fig.name}.${idx + 1 >= rounds.length ? ' Willst du jetzt noch frei bauen?' : ''}`)
       setTimeout(() => setShowWeiter(true), 700)
     } else {
       narrate([{ text: `${sayShape(piece)} ist ${slot.part}!` }])
@@ -287,14 +406,18 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
     if (selected !== null && !showWeiter) narrate([{ text: 'Tippe auf einen Platz im Bild.' }], { skipIfSame: true })
   }
 
+  const last = idx + 1 >= rounds.length
+  // every piece is one task; a piece that first went to a wrong place does
+  // not count as right on the first try. Free building is a bonus, not rated.
+  const finishLevel = () => {
+    sfx.complete()
+    afterNarration(() => onComplete(result(totalParts - misses.current, totalParts)), { minMs: 300 })
+  }
+
   const weiterClick = () => {
     setShowWeiter(false)
-    if (idx + 1 >= rounds.length) {
-      sfx.complete()
-      // every piece is one task; a piece that first went to a wrong place
-      // does not count as right on the first try
-      afterNarration(() => onComplete(result(totalParts - misses.current, totalParts)), { minMs: 300 })
-    } else setIdx(i => i + 1)
+    if (last) finishLevel()
+    else setIdx(i => i + 1)
   }
 
   if (!fig) return null
@@ -322,7 +445,9 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
           flex: 1, ...pxBubble, padding: '11px 16px',
           fontFamily: 'var(--font-heading)', fontSize: 'clamp(15px,3vw,20px)', color: 'var(--text-primary)',
         }}>
-          {complete
+          {freeMode
+            ? <>🧩 Bau, was du willst! Tippe eine Form an und schieb sie hin.</>
+            : complete
             ? <>🎉 Fertig! Das ist {art(fig, 'nom')} <strong style={{ color: ACCENT }}>{fig.name}</strong>.</>
             : sel
               ? <>Wohin gehört {SHAPE[sel.shape].art.toLowerCase()} <strong style={{ color: ACCENT }}>{SHAPE[sel.shape].name}</strong>?{rules.turn && ' Noch einmal tippen: drehen.'}</>
@@ -330,6 +455,7 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
         </div>
       </div>
 
+      {freeMode ? <FreeBuild onDone={finishLevel} /> : <>
       {/* The figure being assembled */}
       <div style={{ ...pxPanel, padding: 'clamp(8px,2vw,16px)' }}>
         <svg viewBox="0 0 100 100" style={{ width: 'clamp(220px,46vw,300px)', height: 'clamp(220px,46vw,300px)', display: 'block' }}>
@@ -400,9 +526,19 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
         })}
       </div>
 
+      </>}
+
       <AnimatePresence>
-        {showWeiter && (
-          <motion.button
+        {showWeiter && !freeMode && last && (
+          <motion.button key="free"
+            initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ opacity: 0 }}
+            whileTap={{ scale: 0.94 }}
+            onClick={() => { setShowWeiter(false); setFreeMode(true) }}
+            style={{ ...pxButton('gold'), padding: '12px 32px', fontSize: 'clamp(16px,3.4vw,21px)' }}
+          >🧩 Frei bauen</motion.button>
+        )}
+        {showWeiter && !freeMode && (
+          <motion.button key="next"
             initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ opacity: 0 }}
             whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
             onClick={weiterClick}

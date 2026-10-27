@@ -675,7 +675,7 @@ export default function PainterGame({ level = 1, onComplete }) {
       <div style={{
         ...pxPanel, flexShrink: 0,
         padding: '6px 8px',
-        width: '100%', maxWidth: 660,
+        width: '100%', maxWidth: 720,
       }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px clamp(2px,0.8vw,10px)', justifyContent: 'center' }}>
           {palette.map(color => (

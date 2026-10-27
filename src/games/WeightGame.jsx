@@ -162,11 +162,12 @@ const sideLabel = s => s.label ?? (s.op ? `${s.nums[0]} kg ${s.op} ${s.nums[1]} 
 const sideSpeech = s => s.op ? `${kilo(s.nums[0])} ${s.op === '+' ? 'plus' : 'minus'} ${kilo(s.nums[1])}` : kilo(s.w)
 const named = s => `${ART[s.g]} ${s.label}`
 
-function taskSpeech(q) {
+function taskSpeech(q, ties) {
+  const orSame = ties ? ' Oder sind beide gleich schwer?' : ''
   if (q.kind === 'things') return `Was ist schwerer, ${q.left.label} oder ${q.right.label}?`
   if (q.kind === 'balance') return `Links liegen ${kilo(q.left.w)}, rechts ${kilo(q.right.w)}. Wie viele Klötze brauchst du, damit die Waage gerade ist?`
-  if (!q.left.op && !q.right.op) return `Welche Seite ist schwerer, ${kilo(q.left.w)} oder ${kilo(q.right.w)}?`
-  return `Links sind ${sideSpeech(q.left)}, rechts ${sideSpeech(q.right)}. Welche Seite ist schwerer?`
+  if (!q.left.op && !q.right.op) return `Welche Seite ist schwerer, ${kilo(q.left.w)} oder ${kilo(q.right.w)}?${orSame}`
+  return `Links sind ${sideSpeech(q.left)}, rechts ${sideSpeech(q.right)}. Welche Seite ist schwerer?${orSame}`
 }
 
 // The answer, explained: what is heavier and, with numbers, by how much.
@@ -321,7 +322,7 @@ export default function WeightGame({ level = 1, onComplete }) {
     setBlocks(0)
     setTries(0)
     lockPreviews()
-    const id = setTimeout(() => sayTask(taskSpeech(q)), 300)
+    const id = setTimeout(() => sayTask(taskSpeech(q, ties)), 300)
     return () => clearTimeout(id)
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -444,7 +445,7 @@ export default function WeightGame({ level = 1, onComplete }) {
           <motion.button key={idx + (answered ? 'a' : 'q')}
             initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0 }}
-            onClick={() => sayTask(answered ? explain(q, heavy) : taskSpeech(q))}
+            onClick={() => sayTask(answered ? explain(q, heavy) : taskSpeech(q, ties))}
             aria-label="Noch einmal hören"
             style={{
               flex: 1, ...pxBubble, textAlign: 'left', cursor: 'pointer',

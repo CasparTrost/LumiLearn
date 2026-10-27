@@ -142,7 +142,7 @@ export default function MemoryGame({ level = 1, onComplete }) {
     landscape: window.innerWidth > window.innerHeight,
   }))
   const gridCols    = screen.narrow ? 4
-    : screen.landscape ? Math.ceil(Math.sqrt(pairCount * 2 * 1.6))
+    : screen.landscape ? { 4: 4, 6: 6, 8: 4, 10: 5, 12: 6 }[pairCount]
     : pairCount <= 8 ? 4 : pairCount <= 10 ? 5 : 6
   // The preview used to shrink with the level while the board grew: one
   // single second for twelve pairs, i.e. twenty-four cards. Nobody can encode

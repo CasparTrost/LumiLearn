@@ -580,7 +580,7 @@ export default function NumbersGame({ level = 1, onComplete }) {
                       <span>💡</span>
                       {home && <span>🏠 {home} +</span>}
                       <span>{Array.from({ length: p.n }, (_, k) => <span key={k}>{p.item.emoji}</span>)}</span>
-                      <span>= {p.n}</span>
+                      <span>= {home ? home + p.n : p.n}</span>
                     </div>
                   ))}
                 </motion.div>
