@@ -312,12 +312,13 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
   // One line for the whole row: the symbols shrink with their number instead
   // of breaking the pattern over two or three lines on a phone.
   const rowGlyphs = q.tokens.reduce((n, t) => n + glyphs(t), 0)
-  const rowGap    = q.kind === 'grow' ? 18 : 6
+  const build     = q.kind === 'build'
+  // build rounds: room between the empty places, which pulse one at a time
+  const rowGap    = q.kind === 'grow' ? 18 : build ? 12 : 6
   const symSize   = `min(76px, calc((min(100vw, 720px) - 7vw - ${16 + rowGap * q.tokens.length}px) / ${rowGlyphs}))`
   const maxOpt    = Math.max(...q.options.map(glyphs))
   const optSize   = maxOpt > 1 ? `min(44px, calc((min(100vw, 720px) - 120px) / ${maxOpt * 2}))` : 'clamp(48px, 11vw, 72px)'
   const isLast    = idx + 1 >= questions.length
-  const build     = q.kind === 'build'
   // the right piece, lit up after two misses on one place
   const showPiece = build && !solved && missesHere >= 2 ? q.fill[placed.length] : null
 
