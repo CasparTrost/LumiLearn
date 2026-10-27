@@ -9,6 +9,7 @@ import { sfx } from '../sfx.js'
 import './maze/maze.css'
 import { afterNarration } from '../narrator.js'
 import { usePaused } from '../lib/pause.js'
+import { PxIcon } from '../components/PixelUI.jsx'
 
 // ──────────────────────────────────────────────────────────────────
 // ASSET HELPER
@@ -545,7 +546,10 @@ function Lighting({ maze, cellSize, pos, seen, lights, coll, radius, fogColor })
 // to this element regardless of visual size changes. A window-level
 // fallback listener is a second safety net in case capture itself fails.
 // ──────────────────────────────────────────────────────────────────
-function DPadButton({ label, onPress, size = 52, ariaLabel, style: styleOverride }) {
+// Pixel arrow instead of ◀▶▲▼, which some devices drew as coloured emoji
+const ARROW = { up: ['down', 180], down: ['down', 0], left: ['play', 180], right: ['play', 0] }
+
+function DPadButton({ dir, label, onPress, size = 52, style: styleOverride }) {
   const repeatRef = useRef(null)
   const activeRef = useRef(false)
 
@@ -586,7 +590,7 @@ function DPadButton({ label, onPress, size = 52, ariaLabel, style: styleOverride
       onPointerUp={stop}
       onPointerLeave={stop}
       onPointerCancel={stop}
-      aria-label={ariaLabel ?? label}
+      aria-label={label}
       style={{
         width:             size,
         height:            size,
@@ -607,7 +611,7 @@ function DPadButton({ label, onPress, size = 52, ariaLabel, style: styleOverride
         ...styleOverride,
       }}
     >
-      {label}
+      <PxIcon name={ARROW[dir][0]} size={20} color="white" style={{ transform: `rotate(${ARROW[dir][1]}deg)` }} />
     </motion.button>
   )
 }
@@ -1340,12 +1344,12 @@ export default function MazeGame({ level = 1, onComplete }) {
       {/* ── D-PAD ───────────────────────────────────────────────── */}
       <div style={{ flexShrink: 0, marginTop: 8, userSelect: 'none', WebkitUserSelect: 'none' }}>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
-          <DPadButton label="▲" onPress={() => doMove(0, -1)} />
+          <DPadButton dir="up" label="Nach oben" onPress={() => doMove(0, -1)} />
         </div>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-          <DPadButton label="◀" onPress={() => doMove(-1, 0)} />
-          <DPadButton label="▼" onPress={() => doMove(0, 1)} />
-          <DPadButton label="▶" onPress={() => doMove(1, 0)} />
+          <DPadButton dir="left" label="Nach links" onPress={() => doMove(-1, 0)} />
+          <DPadButton dir="down" label="Nach unten" onPress={() => doMove(0, 1)} />
+          <DPadButton dir="right" label="Nach rechts" onPress={() => doMove(1, 0)} />
         </div>
       </div>
     </div>
