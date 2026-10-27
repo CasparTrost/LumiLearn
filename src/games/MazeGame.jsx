@@ -4,7 +4,7 @@ import { genMaze } from './maze/mazeGen.js'
 import { mazeReducer, initState } from './maze/mazeReducer.js'
 import { useBoardSize } from './maze/useBoardSize.js'
 import { useSwipe } from './maze/useSwipe.js'
-import { speak, cancelSpeech } from '../tts.js'
+import { speak, cancelSpeech, sayNumber } from '../tts.js'
 import { sfx } from '../sfx.js'
 import './maze/maze.css'
 import { afterNarration } from '../narrator.js'
@@ -587,7 +587,9 @@ export default function MazeGame({ level = 1, onComplete }) {
     const n = mazeRef.current.potions.length
     const dragonWarning = cfg.hasDragon ? ' — pass auf den Drachen auf!' : '!'
     const msg = n > 0
-      ? `Sammle ${n} Zaubertrank${n > 1 ? 'e' : ''} und finde den Ausgang${dragonWarning}`
+      // Plural von Trank ist Tränke, und für einen einzelnen heißt es
+      // "einen", nicht "eins": vorher "Sammle 3 Zaubertranke".
+      ? `Sammle ${n === 1 ? 'einen Zaubertrank' : `${sayNumber(n)} Zaubertränke`} und finde den Ausgang${dragonWarning}`
       : `Finde den Ausgang des Labyrinths${dragonWarning}`
     const tid = setTimeout(() => speak(msg, { lang: 'de-DE' }), 700)
     return () => clearTimeout(tid)

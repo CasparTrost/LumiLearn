@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
-import { speak } from '../tts.js'
+import { speak, sayNumber } from '../tts.js'
 import { afterNarration } from '../narrator.js'
 
 /**
@@ -89,19 +89,31 @@ const DAILY_ACTIVITIES = [
   { id: 'schlafen',     icon: '\u{1F6CF}\uFE0F', label: 'Schlafengehen', h: 8, m: 0 },
 ]
 
-function toGermanTime(h, m) {
-  // Return the colloquial German expression for common times
-  const map = {
-    '0':   'genau',
-    '30':  'halb ' + (h % 12 === 0 ? 12 : (h % 12) + 1),
-    '15':  'viertel nach ' + h,
-    '45':  'viertel vor ' + (h % 12 === 0 ? 12 : (h % 12) + 1),
-  }
-  if (m === 0) return `${h} Uhr`
-  if (m === 30) return `halb ${h % 12 === 0 ? 12 : (h % 12) + 1}`
-  if (m === 15) return `viertel nach ${h}`
-  if (m === 45) return `viertel vor ${h % 12 === 0 ? 12 : (h % 12) + 1}`
-  return `${h}:${String(m).padStart(2,'0')} Uhr`
+// Uhrzeit so, wie man sie einem Kind sagt — für eine Zeigeruhr.
+//
+// Die Ansage lautete vorher "Stelle die Uhr auf 2 Uhr 30": Digitaluhr-Sprache.
+// Im Kindergarten heißt das "halb drei", und genau diese Brücke zwischen
+// Zeigerstellung und Wort soll das Spiel bauen. Der alte Helfer kannte nur
+// volle, halbe und Viertelstunden und fiel sonst auf "2:05 Uhr" zurück,
+// obwohl das Spiel in 5-Minuten-Schritten fragt.
+//
+// spoken: Stunden als Wort, für die Sprachausgabe. Volle Stunde 1 heißt
+// "ein Uhr", sonst steht die Eins allein: "halb eins", "fünf nach eins".
+const MIN_WORD = { 5: 'fünf', 10: 'zehn', 20: 'zwanzig' }
+function toGermanTime(h, m, { spoken = false } = {}) {
+  const cur = h % 12 === 0 ? 12 : h % 12
+  const nxt = cur % 12 + 1
+  const H = (n) => (spoken ? sayNumber(n) : String(n))
+  if (m === 0)  return spoken && cur === 1 ? 'ein Uhr' : `${H(cur)} Uhr`
+  if (m === 15) return `Viertel nach ${H(cur)}`
+  if (m === 30) return `halb ${H(nxt)}`
+  if (m === 45) return `Viertel vor ${H(nxt)}`
+  if (m === 25) return `fünf vor halb ${H(nxt)}`
+  if (m === 35) return `fünf nach halb ${H(nxt)}`
+  if (m < 30 && MIN_WORD[m])      return `${MIN_WORD[m]} nach ${H(cur)}`
+  if (m > 30 && MIN_WORD[60 - m]) return `${MIN_WORD[60 - m]} vor ${H(nxt)}`
+  // keine 5-Minuten-Zeit: dann eben genau
+  return spoken ? `${H(cur)} Uhr ${sayNumber(m)}` : `${cur}:${String(m).padStart(2, '0')} Uhr`
 }
 
 function fmt(h, m) {
@@ -482,10 +494,9 @@ export default function ClockGame({ level = 1, onComplete }) {
   // the very question being asked. Only the setting task names a time.
   const speakTask = useCallback(() => {
     if (!t) return
-    const mins = t.m > 0 ? ` ${t.m}` : ''
     const task = mode === 'read'  ? 'Schau auf die Uhr. Wie viel Uhr ist es?'
                : mode === 'daily' ? 'Schau auf die Uhr. Was macht Lumi um diese Zeit?'
-               :                    `Stelle die Uhr auf ${t.h} Uhr${mins}`
+               :                    `Stelle die Uhr auf ${toGermanTime(t.h, t.m, { spoken: true })}.`
     speak(task, { rate: 0.8, pitch: 1.05, lang: 'de-DE' })
   }, [t, mode])
 
