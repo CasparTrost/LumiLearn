@@ -15,7 +15,6 @@ import { afterNarration } from '../narrator.js'
 const BASE = import.meta.env.BASE_URL ?? '/'
 const spr = f => BASE.replace(/\/$/, '') + '/sprites/maze/' + f
 const wangSpr = (theme, id) => spr(`wang/${theme}/wang_${id}.png`)
-const wangMask = id => spr(`wang/masks/mask_${id}.png`)
 
 // ──────────────────────────────────────────────────────────────────
 // LEVEL CONFIG
@@ -32,15 +31,12 @@ const LEVEL_CONFIG = level => {
                     : level === 4 ? 6.5
                     : level <= 6 ? 5
                     : level <= 8 ? 4 : 3.5
-  // Two tile sets for ten levels meant every level from 4 on looked exactly
-  // the same. The top levels re-tint the dungeon into a warm sandstone
-  // cavern — same tiles, clearly a different place, and no new art needed.
-  // (The dungeon tiles are bluish to begin with, so the rotation lands on
-  // sand rather than the ice it might sound like.)
   // Three worlds: Zauberwald (1–3, bright path, dark hedge), Kristallhöhle
   // (4–6, lit by glowing crystals) and the Kerker (7–10, lit by torches).
-  const theme       = level <= 3 ? 'zauberwald' : level <= 6 ? 'kristall' : 'dungeon'
-  const tint        = level >= 9 ? 'sand' : null
+  // The last two levels re-tint the Kerker so the finale is a place of its
+  // own without new art.
+  const theme       = level <= 3 ? 'zauberwald' : level <= 6 ? 'kristall' : 'kerker'
+  const tint        = level >= 9 ? 'glut' : null
   // Dragon moves independently, once every `dragonSpeed` ms. Deliberately
   // slow and only ramps up gently with level — this is a kids' game, not
   // a reflex test. Combined with the short 5-cell patrol (mazeGen.js) and
@@ -83,7 +79,7 @@ function wangTileId(dx, dy, g, cols, rows) {
 // The Zauberwald set's all-floor tile (id 0) is the floor itself, so floor
 // and wall edges come from one generation and match in colour and texture.
 function floorSprite(theme) {
-  return theme === 'dungeon' ? 'mw_floor.png' : `wang/${theme}/wang_0.png`
+  return `wang/${theme}/wang_0.png`
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -95,8 +91,8 @@ function floorSprite(theme) {
 // quarters of a fogged maze without a single light, and clumped others.
 // Closer together they lit up nearly the whole board and the fog no
 // longer hid anything; the Kerker is sparser than the cave.
-const LIGHT_KIND = { dungeon: 'torch', kristall: 'crystal' }
-const LIGHT_GAP  = { dungeon: 6, kristall: 5 }
+const LIGHT_KIND = { kerker: 'torch', kristall: 'crystal' }
+const LIGHT_GAP  = { kerker: 6, kristall: 5 }
 
 function lightSources(maze, theme) {
   const kind = LIGHT_KIND[theme]
@@ -150,7 +146,10 @@ function SpriteStrip({ sprite, size, className, style }) {
 
 // One potion sprite, three colours: pink, turquoise, gold.
 const POTION_HUES = [0, 190, 60]
-const FOG_COLOR = { zauberwald: '#071f0e', kristall: '#0a0618', dungeon: '#050208' }
+// Level 9–10: the Kerker glows red-hot, as if deep under a volcano.
+const TINT = { glut: 'sepia(0.5) hue-rotate(-28deg) saturate(2.2) brightness(0.88)' }
+
+const FOG_COLOR = { zauberwald: '#071f0e', kristall: '#0a0618', kerker: '#070403' }
 const WORLD_LOOK = {
   zauberwald: {
     bg:   'radial-gradient(ellipse at 50% 30%, #2f8a3c 0%, #0b3d17 100%)',
@@ -160,9 +159,9 @@ const WORLD_LOOK = {
     bg:   'radial-gradient(ellipse at 50% 30%, #1d2b5e 0%, #070a1f 100%)',
     glow: '0 0 40px rgba(80,200,255,0.4), 0 0 80px rgba(80,200,255,0.15), 0 12px 50px rgba(0,0,0,0.7)',
   },
-  dungeon: {
-    bg:   'radial-gradient(ellipse at 50% 30%, #1e0a3c 0%, #080412 100%)',
-    glow: '0 0 40px rgba(74,0,224,0.45), 0 0 80px rgba(74,0,224,0.18), 0 12px 50px rgba(0,0,0,0.7)',
+  kerker: {
+    bg:   'radial-gradient(ellipse at 50% 30%, #3a2416 0%, #0d0805 100%)',
+    glow: '0 0 40px rgba(255,140,40,0.32), 0 0 80px rgba(255,140,40,0.12), 0 12px 50px rgba(0,0,0,0.7)',
   },
 }
 
@@ -179,26 +178,11 @@ const Board = memo(function Board({ maze, cellSize, coll, theme, tint, lights })
   // half a cell from the maze's own cell grid. id=0 (all 4 neighbours
   // floor) needs no sprite — the floor layer underneath already shows
   // through there.
-  // Floor vs. wall contrast, forced via CSS rather than trusted to the
-  // generated art: three separate PixelLab prompt attempts for the
-  // dungeon theme (increasingly explicit about wanting a light floor vs.
-  // a dark wall) all still came back with near-identical base colours
-  // for both — measured directly from the rendered game, not just the
-  // source tiles (e.g. floor ~rgb(38,60,91) vs. wall ~rgb(35,57,87) at
-  // equal fog-of-war distance from the player, a ~3-unit difference,
-  // imperceptible). Only the brick linework told floor and wall apart,
-  // which is not enough at a glance for the target audience. Forcing a
-  // real brightness gap here guarantees legibility regardless of what
-  // any future regeneration produces. Forest already has strong natural
-  // contrast (bright grass vs. dark hedge) and doesn't need this.
-  const isDungeon   = theme === 'dungeon'
+  // Every world's tileset brings its own floor/wall contrast. The old
+  // dungeon set did not (floor and wall a few RGB units apart) and needed
+  // brightness filters plus per-tile masks; the Kerker set replaced it.
   const isWood      = theme === 'zauberwald'
-  const sandFloor   = ' hue-rotate(165deg) saturate(1.5)'
-  const sandWall    = ' hue-rotate(165deg) saturate(1.35)'
-  const floorFilter = (isDungeon ? 'brightness(1.2) saturate(1.05)' : 'none')
-                    + (tint === 'sand' ? sandFloor : '')
-  const wallFilter  = (isDungeon ? 'brightness(0.62)' : 'none')
-                    + (tint === 'sand' ? sandWall : '')
+  const tintFilter  = TINT[tint] ?? 'none'
 
   const wangOverlay = []
   for (let dy = 0; dy <= rows; dy++) {
@@ -236,7 +220,7 @@ const Board = memo(function Board({ maze, cellSize, coll, theme, tint, lights })
               imageRendering:  'pixelated',
               display:         'block',
               objectFit:       'cover',
-              filter:          floorFilter,
+              filter:          tintFilter,
             }}
             onError={e => {
               e.target.style.display = 'none'
@@ -246,20 +230,8 @@ const Board = memo(function Board({ maze, cellSize, coll, theme, tint, lights })
         ))
       )}
 
-      {/* Wall layer — PixelLab Wang tileset, dual-grid positioned.
-          Dungeon only: also masked to its own "upper"(wall) quadrants
-          (per the corner classification PixelLab returned per id) —
-          measured directly, floor and wall pixels within a single
-          generated tile are only a few RGB units apart, nowhere near
-          enough contrast on their own. Punching the floor quadrants
-          fully transparent lets the separately-brightened floor layer
-          show through there instead, guaranteeing real contrast
-          regardless of how close the tile's own colours are. Forest
-          already has strong natural floor/wall contrast and doesn't
-          need this. */}
-      {wangOverlay.map(({ dx, dy, id }) => {
-        const maskUrl = isDungeon && id !== 15 ? wangMask(id) : null
-        return (
+      {/* Wall layer — PixelLab Wang tileset, dual-grid positioned. */}
+      {wangOverlay.map(({ dx, dy, id }) => (
           <img
             key={`w-${dx},${dy}`}
             src={wangSpr(theme, id)}
@@ -273,21 +245,12 @@ const Board = memo(function Board({ maze, cellSize, coll, theme, tint, lights })
               height:          cellSize,
               imageRendering:  'pixelated',
               display:         'block',
-              filter:          wallFilter,
+              filter:          tintFilter,
               pointerEvents:   'none',
-              ...(maskUrl ? {
-                maskImage:        `url(${maskUrl})`,
-                WebkitMaskImage:  `url(${maskUrl})`,
-                maskSize:         '100% 100%',
-                WebkitMaskSize:   '100% 100%',
-                maskRepeat:       'no-repeat',
-                WebkitMaskRepeat: 'no-repeat',
-              } : null),
             }}
             onError={e => { e.target.style.display = 'none' }}
           />
-        )
-      })}
+      ))}
 
       {/* Decorations — torch / exit / potion, above both tile layers */}
       {g.map((row, y) =>
@@ -356,7 +319,7 @@ const Board = memo(function Board({ maze, cellSize, coll, theme, tint, lights })
                   justifyContent:  'center',
                   zIndex:          5,
                 }}>
-                  {!isDungeon ? (
+                  {theme !== 'kerker' ? (
                     <SpriteStrip
                       sprite={PORTAL_GLOW}
                       size={cellSize}
@@ -817,6 +780,9 @@ export default function MazeGame({ level = 1, onComplete }) {
   // Invincibility: blinking
   const isInvincible = st.invUntil > Date.now()
   const lumiSize     = Math.round(cellSize * 1.05)
+  // The Lumi sprite is drawn turned slightly to the left, the knight it
+  // replaced faced right — so the flip is the other way round.
+  const lumiFlip     = -st.facing
 
   const dragonDir = dragonFaceRef.current
 
@@ -1055,8 +1021,8 @@ export default function MazeGame({ level = 1, onComplete }) {
                     // runs and reads --facing for the flip (see maze.css).
                     // This inline transform is only the fallback for when
                     // the animation is off (prefers-reduced-motion).
-                    '--facing': st.facing,
-                    transform:  `translateX(-50%) scaleX(${st.facing})`,
+                    '--facing': lumiFlip,
+                    transform:  `translateX(-50%) scaleX(${lumiFlip})`,
                     filter:     'drop-shadow(0 2px 5px rgba(0,0,0,0.75))',
                   }}
                 >
