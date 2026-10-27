@@ -28,8 +28,8 @@ import { INK, pxCard, pxPanel, pxBubble, pxButton, pxSegment } from './px.js'
 // ── Word Data ──────────────────────────────────────────────────────────────────
 // 'HO-NIG 🍯': syllables in the right order and the picture. Every picture
 // shows exactly its word (KÜCHE was a frying pan, BRUDER any boy, STAUBSAUGER
-// a spiral). Words with a CH or CK syllable are left out: spoken on their own
-// those syllables come out wrong ("Che" as "Tsche", "Cke" spelled out).
+// a spiral). Words with a syllable that starts with CH or CK are left out:
+// spoken on their own those come out wrong ("Che" as "Tsche", "Cke" spelled out).
 const parse = list => list.map(spec => {
   const [parts, emoji] = spec.split(' ')
   const syllables = parts.split('-')
@@ -51,11 +51,12 @@ const P2 = parse([
   'PAN-DA 🐼', 'PIZ-ZA 🍕', 'WAF-FEL 🧇', 'KÜR-BIS 🎃', 'DEL-FIN 🐬', 'TRAK-TOR 🚜', 'BUT-TER 🧈', 'WOL-KE ☁️',
   'GEI-GE 🎻', 'PAL-ME 🌴', 'TOR-TE 🎂', 'KAK-TUS 🌵',
 ])
-// 3 syllables
+// 3 syllables (no "ng" split across two syllables: KÄN-GU-RU sounds
+// different in parts than in the word)
 const P3 = parse([
   'BA-NA-NE 🍌', 'E-LE-FANT 🐘', 'TO-MA-TE 🍅', 'ME-LO-NE 🍈', 'ZI-TRO-NE 🍋', 'KA-ME-RA 📷', 'GI-RAF-FE 🦒',
   'A-NA-NAS 🍍', 'RA-KE-TE 🚀', 'RO-BO-TER 🤖', 'PA-PRI-KA 🫑', 'PA-PA-GEI 🦜', 'KRO-KO-DIL 🐊', 'TROM-PE-TE 🎺',
-  'GI-TAR-RE 🎸', 'ERD-BEE-RE 🍓', 'KÄN-GU-RU 🦘', 'SCHMET-TER-LING 🦋', 'SCHILD-KRÖ-TE 🐢', 'LA-TER-NE 🏮',
+  'GI-TAR-RE 🎸', 'ERD-BEE-RE 🍓', 'SCHMET-TER-LING 🦋', 'SCHILD-KRÖ-TE 🐢', 'LA-TER-NE 🏮',
 ])
 // 3 syllables, longer words and compounds
 const P4 = parse([

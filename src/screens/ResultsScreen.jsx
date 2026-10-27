@@ -23,6 +23,8 @@ const PRAISE_CLIP = s => s >= 2 ? 'audio/allgemein/das-hast-du-super-gemacht.mp3
   : 'audio/allgemein/klasse-versuch-es-direkt-noch-einmal.mp3'
 const cap = s => s[0].toUpperCase() + s.slice(1)
 
+const NO_FRACTION = new Set(['coloring', 'maze'])
+
 export default function ResultsScreen() {
   const t = useT()
   const { state, dispatch } = useApp()
@@ -49,8 +51,9 @@ export default function ResultsScreen() {
 
   // "7 von 7 richtig" next to one star was a contradiction: the line now
   // counts what the stars count (answers right on the first try) and is
-  // left out for games that rate otherwise (Memo by moves).
-  const showFraction = total > 0 && starsFor(score, total) === stars
+  // left out for games that rate otherwise (Memo by moves, the maze by
+  // dragon hits) and for free painting, where nothing is right or wrong.
+  const showFraction = total > 0 && starsFor(score, total) === stars && !NO_FRACTION.has(moduleId)
 
   // Chosen once: picked during render, the heading changed when the
   // buttons appeared after 1.4 s ("Du schaffst das!" → "Nicht aufgeben!")

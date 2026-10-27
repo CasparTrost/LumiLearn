@@ -18,12 +18,14 @@ const IMAGES = [
   // so there was nowhere in the app to simply draw something of your own.
   // Always unlocked: free drawing is not a reward for reaching a level.
   { id: 'blank', src: null, label: 'Kritzel-Leinwand', emoji: '🖍️', free: true },
-  { id: 'princess',  src: `${BASE}images/coloring/princess.jpg`,  label: 'Prinzessin',          emoji: '👸' },
-  { id: 'page2',     src: `${BASE}images/coloring/page2.jpg`,     label: 'Ausmalbild 2',        emoji: '🌸' },
-  { id: 'page3',     src: `${BASE}images/coloring/page3.jpg`,     label: 'Ausmalbild 3',        emoji: '🌟' },
-  { id: 'page4',     src: `${BASE}images/coloring/page4.jpg`,     label: 'Ausmalbild 4',        emoji: '🦋' },
-  { id: 'page5',     src: `${BASE}images/coloring/page5.jpg`,     label: 'Ausmalbild 5',        emoji: '🐉' },
-  { id: 'page6',     src: `${BASE}images/coloring/page6.jpg`,     label: 'Ausmalbild 6',        emoji: '🌈' },
+  // Own pages with Lumi (scripts/generate-coloring-pages.py); ids stay
+  // stable, the album remembers them for "Weitermalen"
+  { id: 'lumi-wald',      src: `${BASE}images/coloring/lumi-wald.png`,      label: 'Lumi im Zauberwald',   emoji: '🍄' },
+  { id: 'lumi-bauernhof', src: `${BASE}images/coloring/lumi-bauernhof.png`, label: 'Lumi auf dem Bauernhof', emoji: '🐮' },
+  { id: 'lumi-weltraum',  src: `${BASE}images/coloring/lumi-weltraum.png`,  label: 'Lumi im Weltraum',     emoji: '🚀' },
+  { id: 'lumi-meer',      src: `${BASE}images/coloring/lumi-meer.png`,      label: 'Lumi im Meer',         emoji: '🐠' },
+  { id: 'lumi-schloss',   src: `${BASE}images/coloring/lumi-schloss.png`,   label: 'Lumi und der kleine Drache', emoji: '🏰' },
+  { id: 'lumi-garten',    src: `${BASE}images/coloring/lumi-garten.png`,    label: 'Lumi im Garten',       emoji: '🌻' },
 ]
 
 // 14 colours a child can tell apart, each with its name (Lumi says it). There

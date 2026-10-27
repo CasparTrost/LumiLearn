@@ -30,7 +30,7 @@ const INFO = {
   weight:          { emoji: '⚖️', title: 'Waage-Welt', text: 'Zwei Dinge liegen auf der Waage. Welches ist schwerer? Tippe auf die schwerere Seite. Später stehen Zahlen auf den Paketen: Die größere Zahl ist schwerer. Ganz am Ende legst du Klötze auf die Waage, bis sie gerade ist.' },
   'rocket-math':   { emoji: '🚀', title: 'Rechen-Rakete', text: 'Die Rakete hüpft auf dem Zahlenstrahl. Lumi sagt dir die Aufgabe. Tippe auf das Feld, wo die Rakete landet.' },
   'shapes-land':   { emoji: '🔷', title: 'Formen-Land', text: 'Lumi nennt eine Form. Tippe sie an! Manchmal sollst du Formen nach der Größe ordnen oder ein Muster weiterlegen.' },
-  'shape-build':   { emoji: '🧩', title: 'Formen-Werkstatt', text: 'Lumi möchte etwas bauen. Tippe unten auf eine Form und dann auf den Platz im Bild, wo sie hingehört. Wenn alles passt, ist das Bild fertig.' },
+  'shape-build':   { emoji: '🧩', title: 'Formen-Werkstatt', text: 'Lumi möchte etwas bauen. Tippe unten auf eine Form und dann auf den Platz im Bild, wo sie hingehört. Liegt eine Form falsch herum, tippe sie noch einmal an, dann dreht sie sich. Manchmal ist ein Teil zu viel.' },
   coloring:        { emoji: '🖍️', title: 'Mal-Atelier', text: 'Hier darfst du frei malen. Wähle eine Farbe und male mit dem Pinsel, oder fülle eine ganze Fläche mit dem Farbeimer. Mit dem Pfeil machst du den letzten Schritt rückgängig.' },
 }
 
