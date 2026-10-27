@@ -1,11 +1,11 @@
 ﻿import React, { useState, useEffect, useMemo, Suspense } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { Settings } from 'lucide-react'
 import { useApp } from '../AppContext.jsx'
 import { useT } from '../i18n.js'
 import { MAX_LEVELS } from '../AppContext.jsx'
-import StarRow from '../components/StarRow.jsx'
-import LumiCharacter from '../components/LumiCharacter.jsx'
+import { PxStar, PxStars, HudBar, uiSpr } from '../components/PixelUI.jsx'
+import TileArt from '../components/TileArt.jsx'
 import FarmProgress from '../components/FarmProgress.jsx'
 import ProfileSwitcher from '../components/ProfileSwitcher.jsx'
 import LevelPicker, { unlockedUpTo } from '../components/LevelPicker.jsx'
@@ -75,38 +75,6 @@ const cardVariants = {
 // outside the component so it survives those remounts and only resets on
 // an actual page reload — i.e. once per app open, as intended.
 let hasGreetedThisSession = false
-
-// ── Lumi with orbiting completion stars ───────────────────────────────────────
-function LumiWithOrbit({ completedCount, size }) {
-  const cap   = Math.min(completedCount, 10)
-  const orbit = size * 0.52
-  return (
-    <div style={{ position:'relative', width: size, height: size, flexShrink:0 }}>
-      <LumiCharacter mood="happy" size={size} />
-      {Array.from({ length: cap }).map((_, i) => {
-        const startAngle = (i / Math.max(cap, 1)) * 360
-        const dur        = 4 + (i % 3) * 0.7
-        const r          = orbit + (i % 2) * (size * 0.07)
-        return (
-          <motion.div
-            key={i}
-            style={{ position:'absolute', left:'50%', top:'50%', width:0, height:0, zIndex:10 }}
-            animate={{ rotate: [startAngle, startAngle + 360] }}
-            transition={{ duration: dur, repeat: Infinity, ease:'linear' }}
-          >
-            <div style={{
-              position:'absolute',
-              left: r, top: -(size * 0.1),
-              fontSize: size * 0.18, lineHeight:1,
-              filter:'drop-shadow(0 0 5px #FFD93D)',
-              userSelect:'none', pointerEvents:'none',
-            }}>⭐</div>
-          </motion.div>
-        )
-      })}
-    </div>
-  )
-}
 
 export default function HomeScreen() {
   const t = useT()
@@ -189,109 +157,91 @@ export default function HomeScreen() {
     else startModule(mod)
   }
 
+  const totalStars = Object.values(progress)
+    .reduce((sum, p) => sum + Object.values(p?.levelStars ?? {}).reduce((a, b) => a + (b ?? 0), 0), 0)
+
   return (
-    <div className="home-bg" style={{ minHeight:'100dvh', display:'flex', flexDirection:'column', position:'relative', overflowX:'hidden' }}>
+    // isolation: the page gets its own stacking context, so the landscape
+    // layers (negative z-index) sit above its background colour, not below.
+    <div className="home-bg" style={{ minHeight:'100dvh', display:'flex', flexDirection:'column', position:'relative', overflowX:'hidden', isolation:'isolate' }}>
 
-      {/* ── Animated background orbs ── */}
-      <div style={{ position:'fixed', inset:0, zIndex:-1, overflow:'hidden', pointerEvents:'none' }}>
-        {[
-          { clr:'rgba(108,99,255,0.22)',  sz:560, left:'2%',  top:'5%',  dx:55,  dy:45,  dur:16 },
-          { clr:'rgba(107,203,119,0.16)', sz:400, left:'68%', top:'3%',  dx:-42, dy:58,  dur:21 },
-          { clr:'rgba(255,107,107,0.14)', sz:440, left:'48%', top:'54%', dx:65,  dy:-38, dur:14 },
-          { clr:'rgba(255,217,61,0.15)',  sz:320, left:'3%',  top:'65%', dx:-48, dy:-52, dur:19 },
-          { clr:'rgba(116,185,255,0.14)', sz:280, left:'82%', top:'40%', dx:-36, dy:34,  dur:12 },
-        ].map((o, idx) => (
-          <motion.div
-            key={idx}
-            animate={{ x:[0,o.dx,0,-o.dx/2,0], y:[0,o.dy,o.dy/2,0] }}
-            transition={{ duration:o.dur, repeat:Infinity, ease:'easeInOut' }}
-            style={{
-              position:'absolute', left:o.left, top:o.top,
-              width:o.sz, height:o.sz, borderRadius:'50%',
-              background:`radial-gradient(circle, ${o.clr}, transparent 70%)`,
-              willChange:'transform',
-            }}
-          />
-        ))}
-      </div>
+      {/* ── Pixel landscape behind everything ── */}
+      <div aria-hidden="true" className="px-art" style={{
+        position:'fixed', inset:0, zIndex:-2,
+        backgroundImage:`url(${uiSpr('landscape.png')})`,
+        backgroundSize:'cover', backgroundPosition:'center 70%',
+        imageRendering:'pixelated',
+      }} />
+      <div aria-hidden="true" style={{
+        position:'fixed', inset:0, zIndex:-1, pointerEvents:'none',
+        background:'linear-gradient(180deg, rgba(255,244,218,0) 0%, rgba(255,244,218,0.18) 45%, rgba(255,244,218,0.55) 100%)',
+      }} />
 
-      {/* ── Header ── */}
-      <div style={{
-        background:'linear-gradient(135deg,#4A00E0,#8E2DE2)',
-        padding:'clamp(14px,2.5vw,22px) clamp(20px,4vw,40px)',
-        display:'flex', alignItems:'center', gap:16,
-        borderRadius:'0 0 28px 28px',
-        boxShadow:'0 6px 28px rgba(74,0,224,0.3)',
-      }}>
-        <motion.button
-          whileHover={{ scale:1.1 }} whileTap={{ scale:0.92 }}
+      {/* ── HUD ── */}
+      <HudBar style={{ position:'sticky', top:0 }}>
+        <button
+          className="px-btn px-btn--parch"
           onClick={() => setShowSwitcher(true)}
-          style={{ fontSize:'clamp(36px,7vw,52px)', lineHeight:1, background:'none', border:'none', cursor:'pointer', padding:0, borderRadius:'50%' }}
+          style={{ width:56, height:56, padding:0, fontSize:32, lineHeight:1 }}
           title="Profil wechseln"
           aria-label="Profil wechseln"
-        >{profile.avatar}</motion.button>
-        <div style={{ flex:1 }}>
-          <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(14px,2.8vw,20px)', color:'rgba(255,255,255,0.75)' }}>
+        >{profile.avatar}</button>
+        <div style={{ minWidth:0 }}>
+          <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(12px,2.4vw,15px)', color:'rgba(255,255,255,0.9)', textShadow:'0 2px 0 rgba(0,0,0,0.35)' }}>
             {getGreeting()},
           </div>
-          <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(16px,4vw,28px)', color:'white', fontWeight:700, lineHeight:1.1 }}>
-            {profile.name}! 👋
+          <div className="px-title" style={{ fontSize:'clamp(18px,3.6vw,26px)', lineHeight:1.1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+            {profile.name}!
           </div>
         </div>
-        <LumiWithOrbit completedCount={completedCount} size={64} />
-        <motion.button whileHover={{scale:1.1}} whileTap={{scale:0.9}}
-          style={{ width:48,height:48,borderRadius:'50%',background:'rgba(255,255,255,0.18)',display:'flex',alignItems:'center',justifyContent:'center' }}
+        <div style={{ flex:1 }} />
+        <div className="px-chip" title="Gesammelte Sterne" aria-label={`${totalStars} Sterne`}>
+          <PxStar size={22} /> {totalStars}
+        </div>
+        {streak.count >= 1 && (
+          <div className="px-chip hud-hide-sm" title="Tage in Folge gespielt" aria-label={`${streak.count} Tage in Folge`}>
+            <span className="px-chip-icon" style={{ fontSize:18, lineHeight:'22px', textAlign:'center' }}>🔥</span> {streak.count}
+          </div>
+        )}
+        <div className="px-chip hud-hide-sm" title="Gemeisterte Spiele" aria-label={`${completedCount} von ${MODULES.length} Spielen gemeistert`}>
+          <span className="px-chip-icon" style={{ fontSize:18, lineHeight:'22px', textAlign:'center' }}>🏆</span> {completedCount}/{MODULES.length}
+        </div>
+        <button
+          className="px-btn px-btn--wood px-btn--icon"
           onClick={() => setShowParent(true)}
           title="Einstellungen"
           aria-label="Einstellungen (Elternbereich)"
         >
-          <Settings size={20} color="white" />
-        </motion.button>
-      </div>
+          <Settings size={22} color="white" />
+        </button>
+      </HudBar>
 
-      {/* ── Tagline ── */}
-      <div style={{ textAlign:'center', padding:'clamp(16px,3vw,28px) clamp(20px,4vw,40px) clamp(8px,1.5vw,16px)' }}>
-        <h1 className="title-flow" style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(22px,5vw,36px)', fontWeight:700, lineHeight:1.2 }}>
-          Was möchtest du heute lernen? ✨
+      {/* ── Title over the sky ── */}
+      <div style={{ textAlign:'center', padding:'clamp(18px,3.5vw,34px) 16px clamp(10px,2vw,18px)' }}>
+        <h1 className="px-title" style={{ fontSize:'clamp(24px,5vw,42px)', lineHeight:1.15 }}>
+          Was möchtest du heute lernen?
         </h1>
       </div>
 
-      {/* ── Streak + Missions als kompakte Pills ── */}
-      {(streak.count >= 1 || (dailyMission.missions ?? []).length > 0) && (
+      {/* ── Tagesaufgaben ── */}
+      {(dailyMission.missions ?? []).length > 0 && (
         <div style={{
-          display:'flex', gap:8, alignItems:'center', flexWrap:'wrap',
-          padding:'0 clamp(12px,3vw,24px)', marginBottom:6,
+          display:'flex', gap:8, alignItems:'center', justifyContent:'center', flexWrap:'wrap',
+          padding:'0 clamp(12px,3vw,24px)', marginBottom:12,
         }}>
-          {streak.count >= 1 && (
-            <div style={{
-              display:'flex', alignItems:'center', gap:5,
-              background:'rgba(255,107,107,0.15)', borderRadius:20, padding:'5px 12px',
-              border:'1.5px solid rgba(255,107,107,0.3)',
-            }}>
-              <span style={{fontSize:15}}>🔥</span>
-              <span style={{fontFamily:'var(--font-heading)',color:'#FF6B6B',fontWeight:700,fontSize:13}}>
-                {streak.count} {streak.count === 1 ? 'Tag' : 'Tage'}
-              </span>
-            </div>
-          )}
           {(dailyMission.missions ?? []).map(m => {
             if (!m) return null
             const done = (dailyMission.completedIds ?? []).includes(m.id)
             return (
-              <div key={m.id} style={{
-                display:'flex', alignItems:'center', gap:5,
-                background: done ? 'rgba(107,203,119,0.15)' : 'rgba(255,255,255,0.12)',
-                borderRadius:20, padding:'5px 12px',
-                border: done ? '1.5px solid rgba(107,203,119,0.4)' : '1.5px solid rgba(255,255,255,0.2)',
+              <div key={m.id} className="px-panel" style={{
+                display:'flex', alignItems:'center', gap:6, padding:'5px 12px',
+                background: done ? '#d9f5c8' : undefined,
               }}>
-                <span style={{fontSize:13}}>{done ? '✅' : m.icon}</span>
+                <span style={{ fontSize:15 }}>{done ? '✅' : m.icon}</span>
                 <span style={{
-                  fontFamily:'var(--font-heading)',
-                  color: done ? '#6BCB77' : 'rgba(255,255,255,0.9)',
-                  fontSize:'clamp(11px,2.5vw,13px)',
-                  fontWeight:600,
-                  textDecoration: done ? 'line-through' : 'none',
-                  whiteSpace:'nowrap',
+                  fontFamily:'var(--font-heading)', fontWeight:600,
+                  color:'var(--px-ink)', fontSize:'clamp(12px,2.5vw,14px)',
+                  textDecoration: done ? 'line-through' : 'none', whiteSpace:'nowrap',
                 }}>{t('mission.' + m.id)}</span>
               </div>
             )
@@ -300,93 +250,72 @@ export default function HomeScreen() {
       )}
 
       {/* ── Farm Progress ── */}
-      <FarmProgress completedCount={completedCount} totalModules={MODULES.length} profile={profile} />
+      <div style={{ padding:'0 clamp(16px,4vw,40px)', marginBottom:16 }}>
+        <FarmProgress completedCount={completedCount} totalModules={MODULES.length} profile={profile} />
+      </div>
 
-      {/* ── Continue card ── */}
+      {/* ── Weiterspielen ── */}
       {lastPlayedModule && (
         <motion.div
           initial={{ opacity:0, y:-12 }}
           animate={{ opacity:1, y:0 }}
           transition={{ delay:0.2 }}
-          style={{ padding:'0 clamp(20px,4vw,40px)', marginBottom:8 }}
+          style={{ padding:'0 clamp(16px,4vw,40px)', marginBottom:14, display:'flex', justifyContent:'center' }}
         >
-          <motion.button
-            whileHover={{ scale:1.02, y:-2 }}
-            whileTap={{ scale:0.98 }}
+          <button
+            className="px-panel"
             onClick={() => startModule(lastPlayedModule)}
             style={{
-              width:'100%', cursor:'pointer', textAlign:'left',
-              background:'linear-gradient(135deg,rgba(74,0,224,0.12),rgba(142,45,226,0.12))',
-              borderRadius:20, padding:'clamp(12px,2vw,16px) clamp(16px,3vw,22px)',
-              display:'flex', alignItems:'center', gap:14,
-              border:'1.5px solid rgba(108,99,255,0.3)',
-              backdropFilter:'blur(8px)',
+              width:'100%', maxWidth:720, cursor:'pointer', textAlign:'left',
+              padding:'10px 12px', display:'flex', alignItems:'center', gap:14,
             }}
           >
-            <div style={{
-              width:46, height:46, borderRadius:'50%', flexShrink:0,
-              background: lastPlayedModule.gradient,
-              display:'flex', alignItems:'center', justifyContent:'center',
-              fontSize:22, boxShadow:`0 4px 14px ${lastPlayedModule.shadow}`,
-            }}>{lastPlayedModule.emoji}</div>
+            <TileArt mod={lastPlayedModule} size={52} />
             <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(11px,2.5vw,13px)', color:'var(--violet-mid)', fontWeight:600, marginBottom:2 }}>
-                {t('home.continue')} ▶
+              <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(12px,2.5vw,14px)', color:'var(--text-secondary)', fontWeight:600 }}>
+                {t('home.continue')}
               </div>
-              <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(14px,3vw,18px)', color:'var(--text-primary)', fontWeight:700, lineHeight:1.2, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis' }}>
-                {lastPlayedModule.title}
+              <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(17px,3.2vw,21px)', color:'var(--px-ink)', fontWeight:700, lineHeight:1.15, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis' }}>
+                {getModuleTitle(lastPlayedModule.id, lastPlayedModule.title)}
               </div>
             </div>
-            <div style={{
-              background: lastPlayedModule.gradient,
-              borderRadius:12, padding:'6px 16px',
-              fontFamily:'var(--font-heading)', fontSize:13, color:'white', fontWeight:700,
-              whiteSpace:'nowrap', flexShrink:0,
-            }}>▶ Weiter</div>
-          </motion.button>
+            <span className="px-btn px-btn--green px-btn--sm">▶ Weiter</span>
+          </button>
         </motion.div>
       )}
 
-      {/* ── Category filter chips ── */}
+      {/* ── Category filter ── */}
       <div style={{
-        display:'flex', gap:8, overflowX:'auto', overflowY:'hidden',
-        padding:'0 clamp(20px,4vw,40px) 10px',
+        display:'flex', gap:10, overflowX:'auto', overflowY:'hidden',
+        padding:'2px clamp(16px,4vw,40px) 14px', justifyContent:'safe center',
         scrollbarWidth:'none', WebkitOverflowScrolling:'touch',
       }}>
-        {CATEGORIES.map(cat => (
-          <motion.button
-            key={cat.id}
-            whileTap={{ scale:0.92 }}
-            onClick={() => setActiveCategory(cat.id)}
-            style={{
-              flexShrink:0, cursor:'pointer',
-              padding:'7px 16px', borderRadius:99,
-              fontFamily:'var(--font-heading)', fontSize:'clamp(12px,2.5vw,14px)', fontWeight:700,
-              background: activeCategory === cat.id
-                ? cat.color
-                : 'rgba(255,255,255,0.55)',
-              color: activeCategory === cat.id ? 'white' : 'var(--text-secondary)',
-              boxShadow: activeCategory === cat.id
-                ? `0 4px 14px ${cat.color}55`
-                : 'none',
-              outline: activeCategory === cat.id
-                ? 'none'
-                : '1.5px solid rgba(0,0,0,0.08)',
-              transition:'all 0.2s',
-            }}
-          >
-            {cat.label}
-          </motion.button>
-        ))}
+        {CATEGORIES.map(cat => {
+          const active = activeCategory === cat.id
+          return (
+            <button
+              key={cat.id}
+              className={`px-btn px-btn--sm ${active ? '' : 'px-btn--parch'}`}
+              aria-pressed={active}
+              onClick={() => setActiveCategory(cat.id)}
+              style={{
+                flexShrink:0,
+                ...(active ? { '--btn': cat.color, '--btn-text': '#fff', textShadow:'0 2px 0 rgba(0,0,0,0.3)' } : null),
+              }}
+            >
+              {cat.label}
+            </button>
+          )
+        })}
       </div>
 
       {/* ── Card grid ── */}
       <div style={{
         flex:1,
         display:'grid',
-        gridTemplateColumns:'repeat(auto-fill,minmax(clamp(240px,28vw,320px),1fr))',
-        gap:'clamp(14px,2.5vw,24px)',
-        padding:'clamp(10px,2vw,20px) clamp(20px,4vw,40px) clamp(24px,4vw,40px)',
+        gridTemplateColumns:'repeat(auto-fill, minmax(min(100%, 230px), 1fr))',
+        gap:'clamp(14px,2.5vw,22px)',
+        padding:'clamp(4px,1vw,10px) clamp(16px,4vw,40px) clamp(28px,4vw,44px)',
         alignContent:'start',
       }}>
         {filteredModules.map((mod, i) => {
@@ -395,125 +324,83 @@ export default function HomeScreen() {
           const levelStars = p.levelStars  ?? {}
           const isCompleted= p.completed   ?? false
           const curLevel   = p.currentLevel ?? 1
-          const doneCount  = Object.keys(levelStars).filter(l => (levelStars[l] ?? 0) >= 1).length
           const vals       = Object.values(levelStars)
           const bestStars  = vals.length ? Math.max(...vals) : 0
+          const pipColor   = mod.gradient.match(/#[0-9A-Fa-f]{6}/g)?.[0] ?? 'var(--px-green)'
 
           return (
             <motion.button
               key={mod.id}
-              className="lumi-card"
+              className="px-panel lumi-card"
               custom={i}
               initial="hidden"
               animate="visible"
               variants={cardVariants}
-              whileHover={{ scale:1.05, y:-9, rotate:0.7 }}
-              whileTap={{ scale:0.96, rotate:0 }}
+              whileHover={{ y:-6 }}
+              whileTap={{ y:2 }}
               onClick={() => openModule(mod)}
               style={{
-                background:'white', borderRadius:28, border:'none', cursor:'pointer',
-                boxShadow:`0 8px 28px ${mod.shadow}`, overflow:'hidden',
+                padding:0, overflow:'hidden', cursor:'pointer',
                 display:'flex', flexDirection:'column', textAlign:'left', minWidth:0,
-                transition:'box-shadow 0.2s', position:'relative',
+                position:'relative',
               }}
             >
-              {/* Completed badge */}
-              {isCompleted && (
-                <motion.div
-                  animate={{ rotate:[-4,4,-4], scale:[1,1.08,1] }}
-                  transition={{ duration:2.4, repeat:Infinity, ease:'easeInOut' }}
-                  style={{
-                    position:'absolute', top:12, right:12, zIndex:4,
-                    background:'linear-gradient(135deg,#FFD93D,#FF9F43)', color:'white',
-                    fontFamily:'var(--font-heading)', fontSize:12, fontWeight:700,
-                    padding:'3px 10px', borderRadius:99, letterSpacing:0.5,
-                    boxShadow:'0 2px 12px rgba(255,217,61,0.7)',
-                  }}
-                >🏆 Meister!</motion.div>
-              )}
-
-
-
-              {/* Gradient header */}
+              {/* Bild */}
               <div className="card-header-shine" style={{
                 background: mod.gradient,
-                padding:'clamp(20px,3.5vw,30px) clamp(20px,3.5vw,28px) clamp(16px,2.5vw,22px)',
-                display:'flex', alignItems:'center', gap:16,
+                borderBottom:'3px solid var(--px-ink)',
+                height:'clamp(92px,13vw,124px)',
+                display:'flex', alignItems:'center', justifyContent:'center',
                 position:'relative', overflow:'hidden',
-                minHeight:'clamp(70px,18vw,120px)',
               }}>
-                <div style={{ position:'absolute', top:-20, right:-20, width:90, height:90, borderRadius:'50%', background:'rgba(255,255,255,0.12)', pointerEvents:'none' }} />
-                <div style={{ position:'absolute', bottom:-30, right:40, width:70, height:70, borderRadius:'50%', background:'rgba(255,255,255,0.08)', pointerEvents:'none' }} />
-                <div style={{ position:'absolute', top:10, right:55, width:30, height:30, borderRadius:'50%', background:'rgba(255,255,255,0.15)', pointerEvents:'none' }} />
-
-                <div className="emoji-float" style={{
-                  '--float-dur': `${2.6 + (i % 4) * 0.55}s`,
-                  width:'clamp(44px,10vw,64px)', height:'clamp(44px,10vw,64px)',
-                  background:'rgba(255,255,255,0.22)', borderRadius:'50%',
-                  display:'flex', alignItems:'center', justifyContent:'center',
-                  fontSize:'clamp(24px,6vw,38px)', lineHeight:1, flexShrink:0,
-                  boxShadow:'0 4px 16px rgba(0,0,0,0.12)', backdropFilter:'blur(4px)', zIndex:1,
-                }}>
-                  {mod.emoji}
+                <div aria-hidden="true" style={{
+                  position:'absolute', inset:0,
+                  background:'repeating-linear-gradient(45deg, rgba(255,255,255,0.07) 0 10px, transparent 10px 20px)',
+                }} />
+                <div className="emoji-float" style={{ '--float-dur': `${2.6 + (i % 4) * 0.55}s`, zIndex:1 }}>
+                  <TileArt mod={mod} size={96} bare />
                 </div>
+                {isCompleted && (
+                  <div className="px-chip" style={{ position:'absolute', top:8, right:8, fontSize:14, minHeight:28, padding:'2px 8px', zIndex:2, fontFamily:'var(--font-heading)' }}>
+                    🏆 Meister
+                  </div>
+                )}
+              </div>
 
-                <div style={{ zIndex:1 }}>
-                  <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(13px,3.5vw,22px)', color:'white', fontWeight:700, lineHeight:1.2 }}>
+              {/* Text + Fortschritt */}
+              <div style={{ padding:'clamp(10px,2vw,14px) clamp(12px,2.4vw,16px) clamp(14px,2.4vw,18px)', display:'flex', flexDirection:'column', gap:8, flex:1 }}>
+                <div>
+                  <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(17px,2.6vw,21px)', color:'var(--px-ink)', fontWeight:700, lineHeight:1.15 }}>
                     {getModuleTitle(mod.id, mod.title)}
                   </div>
-                  <div style={{ fontFamily:'var(--font-body)', fontSize:'clamp(10px,2.2vw,14px)', color:'rgba(255,255,255,0.85)', marginTop:2 }}>
+                  <div style={{ fontFamily:'var(--font-body)', fontSize:'clamp(12px,2vw,14px)', color:'var(--text-secondary)', marginTop:2, fontWeight:600 }}>
                     {getModuleSub(mod.id) || mod.sub}
                   </div>
                 </div>
-              </div>
 
-              {/* Card body */}
-              <div style={{ padding:'clamp(12px,2.5vw,18px) clamp(18px,3.5vw,24px)', display:'flex', flexDirection:'column', gap:10 }}>
-                {/* Stars + level row */}
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}>
-                  <StarRow filled={bestStars} total={3} size={18} />
-                  <div style={{
-                    background:'var(--bg)', borderRadius:99, padding:'3px 10px',
-                    fontFamily:'var(--font-heading)', fontSize:12, color:'var(--text-secondary)',
-                    border:'1.5px solid var(--border)', whiteSpace:'nowrap',
-                  }}>
-                    {isCompleted ? '✅ Alle Level' : `Lv. ${curLevel} / ${maxLvl}`}
-                  </div>
-                </div>
-
-                {/* Level progress dots */}
-                <div style={{ display:'flex', gap:4, alignItems:'center', flexWrap:'wrap' }}>
-                  {Array.from({ length: maxLvl }).map((_, li) => {
-                    const lvNum = li + 1
-                    const s     = levelStars[lvNum] ?? 0
-                    const dotColor = s >= 3 ? '#FFD93D'
-                                   : s >= 1 ? (mod.gradient.match(/#[0-9A-Fa-f]{6}/g)?.[0] ?? '#6BCB77')
-                                   : 'var(--border)'
-                    return (
-                      <div key={li} style={{
-                        width:10, height:10, borderRadius:'50%',
-                        background: dotColor, flexShrink:0,
-                        boxShadow: s >= 1 ? '0 0 4px rgba(107,203,119,0.5)' : 'none',
-                        border: lvNum === curLevel && !isCompleted ? '2px solid #6C63FF' : '2px solid transparent',
-                        transition:'background 0.3s',
-                      }} />
-                    )
-                  })}
-                  <span style={{ fontFamily:'var(--font-body)', fontSize:10, color:'var(--text-muted)', marginLeft:2 }}>
-                    {doneCount}/{maxLvl}
+                  <PxStars filled={bestStars} size={20} />
+                  <span style={{ fontFamily:'var(--font-heading)', fontSize:15, fontWeight:600, color:'var(--text-secondary)', whiteSpace:'nowrap' }}>
+                    {isCompleted ? 'Alle Level' : `Level ${curLevel}/${maxLvl}`}
                   </span>
                 </div>
 
-                {/* Play CTA */}
-                <div className="play-cta-bob" style={{
-                  marginTop:2, background: mod.gradient,
-                  borderRadius:99, padding:'9px 18px',
-                  fontFamily:'var(--font-heading)', fontSize:'clamp(13px,2.5vw,15px)',
-                  color:'white', fontWeight:700, textAlign:'center',
-                  boxShadow:`0 4px 18px ${mod.shadow}`, letterSpacing:0.3,
-                }}>
-                  ▶ Spielen
+                <div style={{ display:'flex', gap:4, flexWrap:'wrap' }} aria-hidden="true">
+                  {Array.from({ length: maxLvl }).map((_, li) => {
+                    const lv = li + 1
+                    const s  = levelStars[lv] ?? 0
+                    return (
+                      <div key={li}
+                        className={`px-pip${s >= 3 ? ' px-pip--gold' : s >= 1 ? ' px-pip--done' : ''}${lv === curLevel && !isCompleted ? ' px-pip--current' : ''}`}
+                        style={{ '--pip': pipColor }}
+                      />
+                    )
+                  })}
                 </div>
+
+                <span className="px-btn px-btn--green px-btn--sm" style={{ marginTop:'auto', width:'100%' }}>
+                  ▶ Spielen
+                </span>
               </div>
             </motion.button>
           )
@@ -551,7 +438,6 @@ export default function HomeScreen() {
           onClose={() => setPickerMod(null)}
         />
       )}
-
-</div>
+    </div>
   )
 }

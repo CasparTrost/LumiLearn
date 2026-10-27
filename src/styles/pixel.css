@@ -1,0 +1,178 @@
+/* ===== Pixel-Abenteuer — LumiLearn design system =====================
+   Wood, parchment and dark pixel outlines, in the style of the maze and
+   the farm. Words stay in the round Fredoka/Nunito everywhere — pixel
+   fonts bend letter shapes (Pixelify's Z reads as a 2), the last thing a
+   reading beginner needs. The pixel font is used for HUD numbers only;
+   the pixel feel of titles and buttons comes from hard ink outlines. */
+
+:root {
+  --font-pixel: 'Pixelify Sans', 'Fredoka', sans-serif;
+
+  --px-ink:         #2a1b3d;   /* outline of every panel and button */
+  --px-ink-soft:    rgba(42, 27, 61, 0.55);
+
+  --px-wood:        #c27a3a;
+  --px-wood-dark:   #8a4f22;
+  --px-wood-light:  #e3a462;
+
+  --px-parch:       #fff4da;
+  --px-parch-dark:  #ecd2a0;
+  --px-parch-light: #fffaf0;
+
+  --px-gold:   #ffc93c;
+  --px-green:  #5cc45a;
+  --px-blue:   #4aa3ff;
+  --px-red:    #ff6b5b;
+  --px-purple: #8e6cf0;
+
+  --px-border: 3px solid var(--px-ink);
+  --px-radius: 10px;
+}
+
+/* ── Panel: a sheet of parchment with a dark outline and a thick bevel ── */
+.px-panel {
+  background: var(--px-parch);
+  border: var(--px-border);
+  border-radius: var(--px-radius);
+  box-shadow:
+    inset 0 3px 0 var(--px-parch-light),
+    inset 0 -5px 0 var(--px-parch-dark),
+    0 5px 0 var(--px-ink-soft);
+}
+
+/* ── Wooden plank (HUD bars, banners) ── */
+.px-wood {
+  background:
+    repeating-linear-gradient(180deg,
+      transparent 0 14px,
+      rgba(0, 0, 0, 0.10) 14px 16px),
+    linear-gradient(180deg, var(--px-wood-light) 0%, var(--px-wood) 30%, var(--px-wood) 70%, var(--px-wood-dark) 100%);
+  border-bottom: 4px solid var(--px-ink);
+  box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.25), 0 4px 0 rgba(0, 0, 0, 0.25);
+}
+
+/* ── Chunky 3D button ──
+   --btn is the face colour; the bottom edge and the drop below come from
+   darkening it, so one variable recolours the whole button. Pressing
+   pushes it down onto its own shadow. */
+.px-btn {
+  --btn: var(--px-gold);
+  --btn-text: var(--px-ink);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  color: var(--btn-text);
+  background: var(--btn);
+  border: var(--px-border);
+  border-radius: var(--px-radius);
+  box-shadow:
+    inset 0 3px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -5px 0 rgba(0, 0, 0, 0.22),
+    0 5px 0 var(--px-ink);
+  transform: translateY(0);
+  transition: transform 80ms ease-out, box-shadow 80ms ease-out, filter 120ms;
+  cursor: pointer;
+  white-space: nowrap;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.px-btn:hover:not(:disabled) { filter: brightness(1.07); }
+.px-btn:active:not(:disabled),
+.px-btn[aria-pressed='true'] {
+  transform: translateY(4px);
+  box-shadow:
+    inset 0 3px 0 rgba(0, 0, 0, 0.12),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.18),
+    0 1px 0 var(--px-ink);
+}
+.px-btn:disabled { filter: grayscale(0.6) opacity(0.55); cursor: default; }
+.px-btn:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+
+.px-btn--gold   { --btn: var(--px-gold); }
+.px-btn--green  { --btn: var(--px-green);  --btn-text: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.3); }
+.px-btn--blue   { --btn: var(--px-blue);   --btn-text: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.3); }
+.px-btn--red    { --btn: var(--px-red);    --btn-text: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.3); }
+.px-btn--purple { --btn: var(--px-purple); --btn-text: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.3); }
+.px-btn--wood   { --btn: var(--px-wood);   --btn-text: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.3); }
+.px-btn--parch  { --btn: var(--px-parch); }
+
+.px-btn--sm { font-size: 15px; padding: 6px 14px;  min-height: 42px; }
+.px-btn--md { font-size: 19px; padding: 10px 24px; min-height: 52px; }
+.px-btn--lg { font-size: 24px; padding: 14px 34px; min-height: 62px; }
+.px-btn--icon { width: 48px; height: 48px; padding: 0; }
+
+/* ── HUD chip: a dark inset counter (stars, streak, level) ── */
+.px-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px 4px 8px;
+  min-height: 36px;
+  font-family: var(--font-pixel);
+  font-size: 20px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(42, 27, 61, 0.72);
+  border: 3px solid var(--px-ink);
+  border-radius: 8px;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.12);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+}
+.px-chip img, .px-chip .px-chip-icon { width: 22px; height: 22px; image-rendering: pixelated; }
+
+/* ── Big pixel title with a hard ink drop ── */
+.px-title {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.5px;
+  text-shadow:
+    -2px -2px 0 var(--px-ink), 2px -2px 0 var(--px-ink),
+    -2px  2px 0 var(--px-ink), 2px  2px 0 var(--px-ink),
+     0    5px 0 var(--px-ink);
+}
+
+/* ── Ribbon banner (section headings) ── */
+.px-ribbon {
+  display: inline-block;
+  padding: 8px 26px 10px;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  color: var(--px-ink);
+  background: var(--px-parch);
+  border: var(--px-border);
+  border-radius: 6px;
+  box-shadow: inset 0 -4px 0 var(--px-parch-dark), 0 4px 0 var(--px-ink-soft);
+}
+
+/* ── Pixel progress squares (level dots) ── */
+.px-pip {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--px-ink);
+  border-radius: 2px;
+  background: rgba(42, 27, 61, 0.12);
+  flex-shrink: 0;
+}
+.px-pip--done { background: var(--pip, var(--px-green)); }
+.px-pip--gold { background: var(--px-gold); }
+.px-pip--current { outline: 2px solid var(--px-gold); outline-offset: 1px; }
+
+/* ── Pixel art images stay crisp ── */
+.px-art { image-rendering: pixelated; image-rendering: crisp-edges; }
+
+/* ── Idle bob for sprites ── */
+@keyframes px-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+.px-bob { animation: px-bob 1.8s ease-in-out infinite; }
+
+/* HUD counters that give way first on narrow phones */
+@media (max-width: 520px) {
+  .hud-hide-sm { display: none; }
+}

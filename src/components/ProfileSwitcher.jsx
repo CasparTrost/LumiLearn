@@ -146,9 +146,10 @@ export default function ProfileSwitcher({ onClose }) {
         style={{
           position: 'fixed', bottom: 0, left: 0, right: 0,
           zIndex: 201,
-          background: 'linear-gradient(180deg,#f8f5ff 0%,#fff 100%)',
-          borderRadius: '28px 28px 0 0',
-          boxShadow: '0 -8px 40px rgba(74,0,224,0.18)',
+          background: 'var(--px-parch)',
+          borderTop: '4px solid var(--px-ink)',
+          borderRadius: '14px 14px 0 0',
+          boxShadow: 'inset 0 4px 0 var(--px-parch-light), 0 -6px 0 rgba(42,27,61,0.25)',
           padding: 'clamp(20px,4vw,32px)',
           paddingBottom: `calc(clamp(20px,4vw,32px) + env(safe-area-inset-bottom, 0px))`,
           maxHeight: '80dvh',

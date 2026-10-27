@@ -13,13 +13,14 @@
   --coral:        #FF6B6B;
   --sky:          #74B9FF;
 
-  /* Semantic */
-  --bg:           #F5F0FF;
+  /* Semantic — warm parchment instead of lilac (Pixel-Abenteuer look,
+     see styles/pixel.css); every game picks these up. */
+  --bg:           #FFF5DF;
   --surface:      #FFFFFF;
-  --text-primary: #1A1040;
-  --text-secondary:#5A4880;
-  --text-muted:   #9B8EC0;
-  --border:       #ECE8FF;
+  --text-primary: #2A1B3D;
+  --text-secondary:#6A4B3A;
+  --text-muted:   #A08670;
+  --border:       #EEDCB6;
 
   /* Glass surfaces */
   --color-surface: rgba(255,255,255,0.12);
@@ -243,10 +244,10 @@ button:focus-visible {
 }
 
 /* ─── Home screen background ─────────────────────────── */
+/* The pixel landscape is a fixed layer inside HomeScreen; this colour only
+   shows while it loads. */
 .home-bg {
-  background: linear-gradient(-45deg, #F2EAFF, #E5D9FF, #D8EEFF, #EEE8FF, #FFE5F8);
-  background-size: 400% 400%;
-  animation: bg-drift 22s ease infinite;
+  background: #8fd3ff;
 }
 
 /* ─── Card hover shimmer ──────────────────────────────── */

@@ -2,6 +2,7 @@ import { Suspense, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowLeft } from 'lucide-react'
 import { useApp, MAX_LEVELS } from '../AppContext.jsx'
+import { HudBar } from '../components/PixelUI.jsx'
 import InfoButton from '../components/InfoButton.jsx'
 import ErrorBoundary from '../components/ErrorBoundary.jsx'
 import { stopNarration, lockPreviews } from '../narrator.js'
@@ -141,34 +142,31 @@ export default function GameScreen() {
   const quit = () => { stopNarration(); dispatch({ type: 'NAVIGATE', payload: 'home' }) }
 
   return (
-    <div style={{ height: '100dvh', background: 'var(--bg)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      {/* Header */}
-      <div style={{
-        background: meta.gradient,
-        padding: 'clamp(12px,2.5vw,20px) clamp(16px,3vw,28px)',
-        display: 'flex', alignItems: 'center', gap: 16,
-        borderRadius: '0 0 28px 28px',
-        boxShadow: '0 6px 24px rgba(0,0,0,0.15)',
-        flexShrink: 0,
-      }}>
-        <motion.button whileHover={{scale:1.1}} whileTap={{scale:0.92}} onClick={quit}
+    <div style={{
+      height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden',
+      // Parchment with a faint pixel grid, the table the game is played on
+      background: 'var(--bg)',
+      backgroundImage: 'linear-gradient(rgba(138,79,34,0.05) 2px, transparent 2px), linear-gradient(90deg, rgba(138,79,34,0.05) 2px, transparent 2px)',
+      backgroundSize: '32px 32px',
+    }}>
+      {/* HUD */}
+      <HudBar>
+        <button
+          className="px-btn px-btn--wood px-btn--icon"
+          onClick={quit}
           aria-label="Spiel verlassen"
-          style={{
-            width: 44, height: 44, borderRadius:'50%',
-            background:'rgba(255,255,255,0.22)',
-            display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0,
-          }}
+          style={{ flexShrink: 0 }}
         >
-          <ArrowLeft size={20} color="white" />
-        </motion.button>
-        <span style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(18px,3.5vw,26px)', color:'white', fontWeight:600, flex:1 }}>
+          <ArrowLeft size={24} color="white" strokeWidth={3} />
+        </button>
+        <span className="px-title" style={{ fontSize: 'clamp(19px,3.6vw,28px)', flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {meta.label}
         </span>
-        <span style={{ fontFamily:'var(--font-heading)', fontSize:16, color:'rgba(255,255,255,0.75)' }}>
-          Level {level} / {MAX_LEVELS[moduleId] ?? 5}
+        <span className="px-chip" style={{ fontFamily: 'var(--font-heading)', fontSize: 17 }}>
+          Level {level}/{MAX_LEVELS[moduleId] ?? 5}
         </span>
         <InfoButton moduleId={moduleId} />
-      </div>
+      </HudBar>
 
       {/* Game */}
       <ErrorBoundary moduleId={moduleId} onHome={() => dispatch({ type: 'NAVIGATE', payload: 'home' })}>

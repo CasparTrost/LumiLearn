@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useApp } from '../AppContext.jsx'
 import { useT } from '../i18n.js'
-import LumiCharacter from '../components/LumiCharacter.jsx'
+import { PixelLumi, uiSpr } from '../components/PixelUI.jsx'
 import Button from '../components/Button.jsx'
 
 const LANGUAGES = [
@@ -24,13 +24,15 @@ export default function LanguageScreen() {
   return (
     <div style={{
       minHeight: '100dvh',
-      background: 'linear-gradient(160deg, #1A0050 0%, #4A00E0 40%, #8E2DE2 100%)',
+      backgroundColor: '#2a1b3d',
+      backgroundImage: `linear-gradient(rgba(42,27,61,0.62), rgba(42,27,61,0.62)), url(${uiSpr('landscape.png')})`,
+      backgroundSize: 'cover', backgroundPosition: 'center 70%', imageRendering: 'pixelated',
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       padding: '32px 24px',
     }}>
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} style={{ textAlign: 'center', marginBottom: 24 }}>
-        <LumiCharacter mood="happy" size={110} />
-        <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(26px, 6vw, 38px)', color: 'white', marginTop: 12 }}>
+        <PixelLumi size={110} style={{ margin: "0 auto" }} />
+        <h1 className="px-title" style={{ fontSize: 'clamp(26px, 6vw, 38px)', marginTop: 12 }}>
           {t('language.title')}
         </h1>
         <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 16, marginTop: 6 }}>

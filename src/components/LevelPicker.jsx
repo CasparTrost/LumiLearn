@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { Lock, X } from 'lucide-react'
-import StarRow from './StarRow.jsx'
+import { PxStars } from './PixelUI.jsx'
+import TileArt from './TileArt.jsx'
 import { hearable } from '../lib/hearable.js'
 
 /**
@@ -25,7 +26,6 @@ export default function LevelPicker({ mod, title, progress, maxLevel, onPick, on
   const levelStars = progress?.levelStars ?? {}
   const current    = Math.min(progress?.currentLevel ?? 1, maxLevel)
   const unlocked   = unlockedUpTo(progress, maxLevel)
-  const accent     = mod.gradient.match(/#[0-9A-Fa-f]{6}/g)?.[0] ?? '#6C63FF'
 
   return (
     <AnimatePresence>
@@ -54,9 +54,10 @@ export default function LevelPicker({ mod, title, progress, maxLevel, onPick, on
         style={{
           position: 'fixed', bottom: 0, left: 0, right: 0,
           zIndex: 201,
-          background: 'linear-gradient(180deg,#f8f5ff 0%,#fff 100%)',
-          borderRadius: '28px 28px 0 0',
-          boxShadow: '0 -8px 40px rgba(74,0,224,0.18)',
+          background: 'var(--px-parch)',
+          borderTop: '4px solid var(--px-ink)',
+          borderRadius: '14px 14px 0 0',
+          boxShadow: 'inset 0 4px 0 var(--px-parch-light), 0 -6px 0 rgba(42,27,61,0.25)',
           padding: 'clamp(20px,4vw,32px)',
           paddingBottom: 'calc(clamp(20px,4vw,32px) + env(safe-area-inset-bottom, 0px))',
           maxHeight: '85dvh',
@@ -66,53 +67,37 @@ export default function LevelPicker({ mod, title, progress, maxLevel, onPick, on
         <div style={{ maxWidth: 560, margin: '0 auto' }}>
           {/* Kopfzeile */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-            <div style={{
-              width: 48, height: 48, borderRadius: '50%', flexShrink: 0,
-              background: mod.gradient,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 24, boxShadow: `0 4px 14px ${mod.shadow}`,
-            }}>{mod.emoji}</div>
+            <TileArt mod={mod} size={56} />
             <div style={{
               flex: 1, minWidth: 0,
               fontFamily: 'var(--font-heading)', fontSize: 'clamp(18px,4vw,24px)',
-              fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2,
+              fontWeight: 700, color: 'var(--px-ink)', lineHeight: 1.2,
             }}>
               {title}
             </div>
-            <motion.button
-              whileTap={{ scale: 0.9 }}
+            <button
+              className="px-btn px-btn--parch px-btn--icon"
               onClick={onClose}
               aria-label="Schließen"
-              style={{
-                width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
-                background: 'var(--bg)', border: 'none', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
+              style={{ flexShrink: 0 }}
             >
-              <X size={20} color="var(--text-secondary)" />
-            </motion.button>
+              <X size={22} color="var(--px-ink)" strokeWidth={3} />
+            </button>
           </div>
 
           {/* Weiterspielen */}
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.97 }}
+          <button
+            className="px-btn px-btn--green px-btn--lg"
             onClick={() => onPick(current)}
             {...hearable(`Weiter mit Level ${current}`)}
-            style={{
-              width: '100%', border: 'none', cursor: 'pointer',
-              background: mod.gradient, color: 'white',
-              borderRadius: 99, padding: '14px 20px', marginBottom: 20,
-              fontFamily: 'var(--font-heading)', fontSize: 'clamp(16px,3.5vw,19px)', fontWeight: 700,
-              boxShadow: `0 6px 20px ${mod.shadow}`,
-            }}
+            style={{ width: '100%', marginBottom: 22 }}
           >
             ▶ Weiter mit Level {current}
-          </motion.button>
+          </button>
 
           {/* Alle Level */}
           <div style={{
-            fontFamily: 'var(--font-heading)', fontSize: 13, color: 'var(--text-muted)',
+            fontFamily: 'var(--font-heading)', fontSize: 14, fontWeight: 700, color: 'var(--text-secondary)',
             marginBottom: 10, letterSpacing: 0.5, textTransform: 'uppercase',
           }}>
             Level wählen
@@ -120,44 +105,32 @@ export default function LevelPicker({ mod, title, progress, maxLevel, onPick, on
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fill, minmax(84px, 1fr))',
-            gap: 10,
+            gap: 12,
           }}>
             {Array.from({ length: maxLevel }, (_, i) => i + 1).map(lv => {
               const open  = lv <= unlocked
               const stars = levelStars[lv] ?? 0
               const isCur = lv === current
               return (
-                <motion.button
+                <button
                   key={lv}
+                  className={`px-btn ${isCur ? 'px-btn--gold' : 'px-btn--parch'}`}
                   disabled={!open}
-                  whileHover={open ? { scale: 1.05, y: -2 } : undefined}
-                  whileTap={open ? { scale: 0.94 } : undefined}
                   onClick={() => open && onPick(lv)}
                   {...hearable(`Level ${lv}`, { enabled: open })}
                   aria-label={open ? `Level ${lv}, ${stars} von 3 Sternen` : `Level ${lv}, noch gesperrt`}
                   style={{
-                    position: 'relative',
-                    aspectRatio: '1',
-                    borderRadius: 20,
-                    cursor: open ? 'pointer' : 'default',
-                    background: open ? 'white' : 'var(--bg)',
-                    border: isCur ? `3px solid ${accent}` : '2px solid var(--border)',
-                    boxShadow: open ? '0 4px 14px rgba(74,0,224,0.10)' : 'none',
-                    display: 'flex', flexDirection: 'column',
-                    alignItems: 'center', justifyContent: 'center', gap: 6,
-                    opacity: open ? 1 : 0.55,
+                    aspectRatio: '1', height: 'auto', padding: 4,
+                    flexDirection: 'column', gap: 6,
                   }}
                 >
                   {open ? (
-                    <span style={{
-                      fontFamily: 'var(--font-heading)', fontSize: 30, fontWeight: 800,
-                      color: isCur ? accent : 'var(--text-primary)', lineHeight: 1,
-                    }}>{lv}</span>
+                    <span style={{ fontFamily: 'var(--font-pixel)', fontSize: 34, fontWeight: 700, lineHeight: 1 }}>{lv}</span>
                   ) : (
-                    <Lock size={26} color="var(--text-muted)" />
+                    <Lock size={26} color="var(--px-ink)" />
                   )}
-                  {open && <StarRow filled={stars} total={3} size={13} />}
-                </motion.button>
+                  {open && <PxStars filled={stars} size={14} gap={1} />}
+                </button>
               )
             })}
           </div>

@@ -95,23 +95,14 @@ export default function InfoButton({ moduleId }) {
 
   return (
     <>
-      <motion.button
-        whileHover={{ scale: 1.12 }}
-        whileTap={{ scale: 0.93 }}
+      <button
+        className="px-btn px-btn--parch px-btn--icon"
         onClick={() => setOpen(true)}
         aria-label="Spielanleitung anzeigen"
-        style={{
-          width: 38, height: 38, borderRadius: '50%',
-          background: 'rgba(255,255,255,0.22)',
-          border: '2.5px solid rgba(255,255,255,0.55)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          cursor: 'pointer', flexShrink: 0, color: 'white',
-          fontFamily: 'var(--font-heading)', fontSize: 19, fontWeight: 800,
-          lineHeight: 1,
-        }}
+        style={{ flexShrink: 0, fontSize: 24, lineHeight: 1 }}
       >
         ?
-      </motion.button>
+      </button>
 
       <AnimatePresence>
         {open && (
@@ -136,32 +127,16 @@ export default function InfoButton({ moduleId }) {
               exit={{ scale: 0.82, opacity: 0, y: 18 }}
               transition={{ type: 'spring', stiffness: 420, damping: 30 }}
               onClick={e => e.stopPropagation()}
+              className="px-panel"
               style={{
-                background: 'white',
-                borderRadius: 36,
-                padding: '40px 32px 32px',
+                padding: '36px 28px 28px',
                 maxWidth: 420, width: '100%',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18,
-                boxShadow: '0 28px 90px rgba(0,0,0,0.35)',
                 textAlign: 'center',
                 position: 'relative',
                 overflow: 'hidden',
               }}
             >
-              {/* Decorative background circles */}
-              <div style={{
-                position: 'absolute', top: -40, right: -40,
-                width: 130, height: 130, borderRadius: '50%',
-                background: 'linear-gradient(135deg,#ECE8FF,#C4B5FF)',
-                opacity: 0.6, pointerEvents: 'none',
-              }} />
-              <div style={{
-                position: 'absolute', bottom: -30, left: -30,
-                width: 100, height: 100, borderRadius: '50%',
-                background: 'linear-gradient(135deg,#D4F5E2,#A8EDCA)',
-                opacity: 0.55, pointerEvents: 'none',
-              }} />
-
               {/* Emoji */}
               <motion.div
                 initial={{ scale: 0 }}
@@ -180,7 +155,7 @@ export default function InfoButton({ moduleId }) {
                 fontFamily: 'var(--font-heading)',
                 fontSize: 'clamp(22px,5vw,28px)',
                 fontWeight: 800,
-                color: '#4A00E0',
+                color: 'var(--px-ink)',
                 zIndex: 1,
               }}>
                 {info.title}
@@ -191,7 +166,7 @@ export default function InfoButton({ moduleId }) {
                 fontFamily: 'var(--font-body, sans-serif)',
                 fontSize: 'clamp(16px,3.5vw,19px)',
                 lineHeight: 1.65,
-                color: '#3a3a5c',
+                color: 'var(--text-secondary)',
                 maxWidth: 340,
                 zIndex: 1,
               }}>
@@ -199,24 +174,13 @@ export default function InfoButton({ moduleId }) {
               </div>
 
               {/* Close button */}
-              <motion.button
-                whileHover={{ scale: 1.06 }}
-                whileTap={{ scale: 0.95 }}
+              <button
+                className="px-btn px-btn--green px-btn--md"
                 onClick={() => setOpen(false)}
-                style={{
-                  marginTop: 6, zIndex: 1,
-                  background: 'linear-gradient(135deg,#6C63FF,#A78BFA)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 99,
-                  padding: '15px 44px',
-                  fontFamily: 'var(--font-heading)', fontSize: 19, fontWeight: 700,
-                  cursor: 'pointer',
-                  boxShadow: '0 6px 28px rgba(108,99,255,0.50)',
-                }}
+                style={{ marginTop: 6, zIndex: 1 }}
               >
                 Alles klar! 👍
-              </motion.button>
+              </button>
             </motion.div>
           </motion.div>
         )}
