@@ -5,6 +5,7 @@ import { speak } from '../tts.js'
 import { hearable } from '../lib/hearable.js'
 import HearOptions from '../components/HearOptions.jsx'
 import { lockPreviews } from '../narrator.js'
+import { pxCard, pxButton, INK } from './px.js'
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 const LETTER_DATA = {
@@ -191,10 +192,10 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
     <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:20, padding:'clamp(12px,3vw,24px)', width:'100%' }}>
 
       {/* Progress */}
-      <div style={{ width:'100%', maxWidth:520, height:10, background:'rgba(0,0,0,0.08)', borderRadius:10, overflow:'hidden' }}>
+      <div style={{ width:'100%', maxWidth:520, height:14, background:'rgba(42,27,61,0.12)', border:`2px solid ${INK}`, borderRadius:4, overflow:'hidden', boxSizing:'border-box' }}>
         <motion.div
           animate={{ width:`${((idx + (selected ? 1 : 0)) / questions.length) * 100}%` }}
-          style={{ height:'100%', background:q.color, borderRadius:10 }}
+          style={{ height:'100%', background:q.color, borderRadius:2, boxShadow:'inset 0 -3px 0 rgba(0,0,0,0.18)' }}
           transition={{ duration:0.4 }}
         />
       </div>
@@ -215,7 +216,8 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
             fontSize:'clamp(150px,28vw,240px)',
             lineHeight:1, userSelect:'none',
             color: q.color,
-            filter:`drop-shadow(0 8px 32px ${q.color}77)`,
+            WebkitTextStroke:`5px ${INK}`, paintOrder:'stroke fill',
+            filter:'drop-shadow(0 6px 0 rgba(42,27,61,0.35))',
           }}>
             {q.letter}
           </div>
@@ -224,16 +226,17 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
             fontFamily:'var(--font-heading)',
             fontSize:'clamp(110px,20vw,176px)',
             lineHeight:1, color:`${q.color}77`,
+            WebkitTextStroke:'4px rgba(42,27,61,0.35)', paintOrder:'stroke fill',
           }}>
             {q.letter.toLowerCase()}
           </div>
           {VOWELS.has(q.letter) && (
             <div style={{
               position:'absolute', top:-8, right:-8,
-              background:'#FFD93D', color:'#333',
-              borderRadius:99, padding:'2px 10px',
+              background:'var(--px-gold)', color:INK,
+              border:`2px solid ${INK}`, borderRadius:6, padding:'2px 10px',
               fontFamily:'var(--font-heading)', fontSize:12, fontWeight:700,
-              boxShadow:'0 2px 8px rgba(0,0,0,0.15)',
+              boxShadow:'0 3px 0 rgba(42,27,61,0.35)',
             }}>Vokal</div>
           )}
         </motion.div>
@@ -246,12 +249,10 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
         onClick={sayRound}
         aria-label="Frage noch einmal anhören"
         style={{
+          ...pxButton('parch'),
           display:'flex', alignItems:'center', gap:8,
-          background:'white', border:`2.5px solid ${q.color}`, borderRadius:99,
-          padding:'8px 20px', cursor:'pointer',
-          fontFamily:'var(--font-heading)', fontSize:'clamp(14px,3vw,17px)',
-          fontWeight:700, color:q.color,
-          boxShadow:`0 4px 16px ${q.color}33`,
+          padding:'8px 20px',
+          fontSize:'clamp(14px,3vw,17px)',
         }}
       >🔊 Nochmal</motion.button>
 
@@ -262,9 +263,10 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
           initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }}
           transition={{ delay:0.3, duration:0.35 }}
           style={{
-            background:`${q.color}18`,
-            border:`2px solid ${q.color}55`,
-            borderRadius:16,
+            background:`linear-gradient(${q.color}22, ${q.color}22), var(--px-parch-light)`,
+            border:`3px solid ${INK}`,
+            borderRadius:12,
+            boxShadow:'0 5px 0 rgba(42,27,61,0.35)',
             padding:'10px 22px',
             fontFamily:'var(--font-heading)',
             fontSize:'clamp(14px,3vw,20px)',
@@ -299,13 +301,7 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
           const isChosen  = opt === selected
           const isWrong   = opt === shakeOpt
 
-          let bg     = 'white'
-          let border = '3px solid #ECE8FF'
-          let shadow = '0 4px 18px rgba(0,0,0,0.07)'
-          if (isChosen && isCorrect) {
-            bg = '#E8F8EE'; border = '3px solid #6BCB77'
-            shadow = '0 8px 28px rgba(107,203,119,0.4)'
-          }
+          const cardState = isChosen && isCorrect ? 'right' : isWrong ? 'wrong' : undefined
 
           return (
             <motion.button
@@ -319,8 +315,7 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
               onClick={() => pick(opt)}
               {...hearable(opt.w, { enabled: !selected })}
               style={{
-                background:bg, border, boxShadow:shadow,
-                borderRadius:24,
+                ...pxCard(cardState),
                 padding:'clamp(14px,3.2vw,24px) clamp(16px,3.5vw,30px)',
                 cursor: selected ? 'default' : 'pointer',
                 display:'flex', flexDirection:'column', alignItems:'center', gap:8,
@@ -365,11 +360,9 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
           whileHover={{ scale:1.06 }} whileTap={{ scale:0.94 }}
           onClick={weiterClick}
           style={{
-            background:`linear-gradient(135deg,${q.color},${q.color}cc)`,
-            color:'white', border:'none', borderRadius:20,
+            ...pxButton('green'),
             padding:'14px 40px',
-            fontFamily:'var(--font-heading)', fontSize:20, fontWeight:700,
-            cursor:'pointer', boxShadow:`0 5px 20px ${q.color}66`,
+            fontSize:20,
           }}
         >Weiter! →</motion.button>
       )}

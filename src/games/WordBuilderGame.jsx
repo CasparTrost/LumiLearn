@@ -4,6 +4,7 @@ import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
 import { speak } from '../tts.js'
 import { afterNarration } from '../narrator.js'
+import { INK, pxCard, pxPanel, pxBubble, pxButton, pxSegment } from './px.js'
 
 function speakDE(text) {
   speak(text, { rate: 0.7, pitch: 1.1, lang: 'de-DE' })
@@ -242,17 +243,13 @@ function SyllableTile({ text, used, index, rejected, onClick }) {
       whileTap={!used ? { scale: 0.88 } : {}}
       onClick={onClick}
       style={{
-        minWidth: 64, padding: '18px 24px',
+        // 3px less padding than before: the ink frame takes its place
+        minWidth: 64, padding: '15px 21px',
         fontFamily: 'var(--font-heading)', fontSize: 'clamp(22px,5vw,32px)', fontWeight: 900,
         letterSpacing: 2,
-        background: rejected ? 'linear-gradient(135deg,#FF8E8E,#FF6B6B)'
-                  : used     ? '#F0EEFF'
-                             : 'linear-gradient(135deg,#6C63FF,#4A00E0)',
-        color: used && !rejected ? '#C0B8E8' : 'white',
-        border: 'none', borderRadius: 18,
-        boxShadow: rejected ? '0 6px 22px rgba(255,107,107,0.45)'
-                 : used     ? 'none'
-                            : '0 6px 22px rgba(74,0,224,0.38)',
+        ...pxCard(rejected ? 'wrong' : undefined),
+        ...(used && !rejected ? { background: '#FFF1D6', boxShadow: 'none' } : null),
+        color: rejected ? '#C2412D' : used ? 'var(--px-ink-soft)' : INK,
         cursor: used ? 'default' : 'pointer',
         transition: 'background 0.25s, color 0.25s',
         pointerEvents: used ? 'none' : 'auto',
@@ -270,11 +267,11 @@ function WordSlot({ text, isDone, isFirst, isLast, only }) {
   const pr = isDone && !isLast  && !only ? '0'  : '24px'
 
   const br = isDone
-    ? only    ? '18px'
-    : isFirst ? '18px 0 0 18px'
-    : isLast  ? '0 18px 18px 0'
+    ? only    ? '12px'
+    : isFirst ? '12px 0 0 12px'
+    : isLast  ? '0 12px 12px 0'
     : '0'
-    : '18px'
+    : '12px'
 
   return (
     <motion.div
@@ -283,17 +280,16 @@ function WordSlot({ text, isDone, isFirst, isLast, only }) {
         padding: `${pt} ${pr} ${pb} ${pl}`,
         fontFamily: 'var(--font-heading)', fontSize: 'clamp(22px,5vw,32px)', fontWeight: 900,
         letterSpacing: isDone ? 0 : 2,
-        background: isDone
-          ? '#52C87A'
-          : text ? 'linear-gradient(135deg,#FFD93D,#F7A428)' : 'white',
-        color: text || isDone ? 'white' : '#C0B8E8',
-        border: isDone ? 'none' : `3.5px dashed ${text ? 'transparent' : '#A29BFE'}`,
+        ...pxCard(isDone ? 'right' : text ? 'selected' : undefined),
+        ...(!isDone && !text ? { background: '#FFF1D6', border: `3px dashed ${INK}`, boxShadow: 'inset 0 4px 0 rgba(42,27,61,0.08)' } : null),
+        // merged word: one frame around all parts, no seams between them
+        ...(isDone && !only ? {
+          borderLeftWidth:  isFirst ? 3 : 0,
+          borderRightWidth: isLast  ? 3 : 0,
+        } : null),
+        color: isDone ? '#1F6B2A' : text ? INK : 'var(--px-ink-soft)',
         borderRadius: br,
         outline: 'none',
-        // box-shadow only on the leftmost tile when merged, to avoid doubled shadows
-        boxShadow: isDone
-          ? (isFirst || only ? '0 8px 32px rgba(82,200,122,0.45)' : 'none')
-          : text ? '0 5px 18px rgba(0,0,0,0.15)' : '0 2px 8px rgba(162,155,254,0.14)',
         transition: 'background 0.35s, border-radius 0.35s, box-shadow 0.35s, border 0.35s, padding 0.35s, letter-spacing 0.35s',
         minHeight: 60, minWidth: isDone ? 0 : 64,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -432,8 +428,7 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
       <div style={{ display: 'flex', gap: 5, width: '100%', maxWidth: 680 }}>
         {Array.from({ length: TOTAL }, (_, i) => (
           <div key={i} style={{
-            flex: 1, height: 10, borderRadius: 99,
-            background: i < idx ? '#6C63FF' : i === idx ? '#FFD93D' : '#ECE8FF',
+            flex: 1, ...pxSegment(i < idx ? 'done' : i === idx ? 'current' : 'todo'),
             transition: 'background 0.3s',
           }} />
         ))}
@@ -452,15 +447,14 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
             initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0 }}
             style={{
-              flex: 1, background: 'white', borderRadius: '22px 22px 22px 5px',
+              flex: 1, ...pxBubble,
               padding: '13px 18px',
-              boxShadow: '0 4px 20px rgba(108,99,255,0.14)',
               fontFamily: 'var(--font-heading)', fontSize: 'clamp(15px,3vw,20px)',
               color: 'var(--text-primary)',
             }}
           >
             {isDone
-              ? <><strong style={{ color: '#6BCB77' }}>{'Bravo! 🎉'}</strong>{' ' + round.word + ' — richtig!'}</>
+              ? <><strong style={{ color: '#2F8F3A' }}>{'Bravo! 🎉'}</strong>{' ' + round.word + ' — richtig!'}</>
               : <>Setze die Silben zusammen: Was zeigt das Bild? 👇</>
             }
           </motion.div>
@@ -509,7 +503,7 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
         display: 'flex', flexWrap: 'wrap', gap: 'clamp(8px,2vw,14px)',
         justifyContent: 'center', alignItems: 'center',
         width: '100%', maxWidth: 680,
-        background: 'rgba(162,155,254,0.1)', borderRadius: 22, padding: 'clamp(12px,2vw,20px)',
+        ...pxPanel, padding: 'clamp(12px,2vw,20px)',
       }}>
         {round.tiles.map(tile => (
           <SyllableTile
@@ -529,10 +523,8 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
           initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }}
           onClick={weiterClick}
           style={{
-            padding:'13px 44px', borderRadius:50,
-            background:'linear-gradient(135deg,#6BCB77,#44D498)',
-            color:'white', fontFamily:'var(--font-heading)', fontSize:20, fontWeight:700,
-            border:'none', cursor:'pointer', boxShadow:'0 4px 18px rgba(107,203,119,0.5)',
+            ...pxButton('green'),
+            padding:'13px 44px', fontSize:20,
           }}
         >
           {idx + 1 >= TOTAL ? '🏁 Fertig!' : 'Weiter! →'}

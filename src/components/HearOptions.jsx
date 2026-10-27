@@ -24,9 +24,10 @@ export default function HearOptions({ items, label = 'Antworten vorlesen', size 
       aria-label={label}
       title={label}
       style={{
-        width: size, height: size, borderRadius: '50%', flexShrink: 0,
-        background: 'white', border: '2px solid #ECE8FF',
-        boxShadow: '0 3px 12px rgba(108,99,255,0.18)',
+        width: size, height: size, flexShrink: 0,
+        // pixel button (styles/pixel.css colours)
+        background: 'var(--px-gold)', border: '3px solid var(--px-ink)', borderRadius: 12,
+        boxShadow: 'inset 0 3px 0 rgba(255,255,255,0.45), inset 0 -5px 0 rgba(0,0,0,0.2), 0 4px 0 var(--px-ink)',
         cursor: 'pointer', fontSize: Math.round(size * 0.5), lineHeight: 1,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         ...style,

@@ -5,6 +5,7 @@ import { speak as ttsSpeak } from '../tts.js'
 import { hearable } from '../lib/hearable.js'
 import HearOptions from '../components/HearOptions.jsx'
 import { lockPreviews } from '../narrator.js'
+import { pxCard, pxPanel, pxBubble, pxButton, pxSegment } from './px.js'
 
 /**
  * Hörabenteuer — Phonologisches Bewusstsein
@@ -14,6 +15,11 @@ import { lockPreviews } from '../narrator.js'
  *   • Dual Coding Theory (Paivio, 1990) — audio + visual encoding deepens memory traces.
  *   • Peabody Picture Vocabulary Test methodology — hear a word, find the matching picture.
  */
+
+// The play button pulses until the word was heard: its pixel drop plus a
+// gold ring, instead of the old soft coral glow.
+const PLAY_SHADOW       = pxButton('gold').boxShadow
+const PLAY_SHADOW_PULSE = `${PLAY_SHADOW}, 0 0 0 6px rgba(255,201,60,0.55)`
 
 const WORD_BANK = [
   // Tiere
@@ -257,8 +263,7 @@ export default function ListenGame({ level = 1, onComplete }) {
       <div style={{ display:'flex', gap:6, width:'100%', maxWidth:680 }}>
         {words.map((_, i) => (
           <div key={i} style={{
-            flex:1, height:10, borderRadius:99,
-            background: i < idx ? '#FF6B6B' : i === idx ? '#FFD93D' : '#FFE4DD',
+            flex:1, ...pxSegment(i < idx ? 'done' : i === idx ? 'current' : 'todo'),
             transition:'background 0.3s',
           }} />
         ))}
@@ -268,9 +273,8 @@ export default function ListenGame({ level = 1, onComplete }) {
       <div style={{ display:'flex', alignItems:'flex-end', gap:14, width:'100%', maxWidth:760 }}>
         <LumiCharacter mood={mood} size={88} />
         <div style={{
-          flex:1, background:'white', borderRadius:'24px 24px 24px 6px',
+          flex:1, ...pxBubble,
           padding:'16px 22px',
-          boxShadow:'0 4px 24px rgba(255,107,107,0.12)',
           fontFamily:'var(--font-heading)',
           fontSize:'clamp(18px,3.8vw,26px)',
           color:'var(--text-primary)',
@@ -284,19 +288,15 @@ export default function ListenGame({ level = 1, onComplete }) {
         whileHover={{ scale:1.06 }} whileTap={{ scale:0.93 }}
         onClick={replay}
         animate={!played
-          ? { scale:[1,1.08,1], boxShadow:['0 6px 24px rgba(255,107,107,0.3)','0 12px 44px rgba(255,107,107,0.6)','0 6px 24px rgba(255,107,107,0.3)'] }
+          ? { scale:[1,1.08,1], boxShadow:[PLAY_SHADOW, PLAY_SHADOW_PULSE, PLAY_SHADOW] }
           : {}}
         transition={!played ? { duration:1.4, repeat:Infinity } : {}}
         style={{
-          background:'linear-gradient(135deg,#FF6B6B,#FF8E53)',
-          color:'white', borderRadius:99,
+          ...pxButton('gold'),
           padding:'16px clamp(28px,5vw,56px)',
-          fontFamily:'var(--font-heading)',
           fontSize:'clamp(20px,4.5vw,30px)',
           fontWeight:600,
-          boxShadow:'0 8px 28px rgba(255,107,107,0.4)',
           display:'flex', alignItems:'center', gap:14,
-          border: 'none', cursor: 'pointer',
         }}
       >
         🔊 Anhören!
@@ -310,8 +310,7 @@ export default function ListenGame({ level = 1, onComplete }) {
             initial={{ scale:0.8, opacity:0 }} animate={{ scale:1, opacity:1 }}
             style={{
               fontSize:'clamp(80px,18vw,130px)', lineHeight:1,
-              background:'white', borderRadius:28, padding:'24px 40px',
-              boxShadow:'0 6px 28px rgba(0,0,0,0.09)',
+              ...pxPanel, padding:'24px 40px',
             }}
           >{current.emoji}</motion.div>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:12, width:'100%' }}>
@@ -329,12 +328,10 @@ export default function ListenGame({ level = 1, onComplete }) {
                   onClick={() => { if (!isWrong) pickWord(word) }}
                   {...hearable(word)}
                   style={{
-                    padding:'14px 10px', borderRadius:18,
+                    ...pxCard(done&&isAns ? 'right' : done&&isChos ? 'wrong' : undefined),
+                    padding:'14px 10px',
                     fontFamily:'var(--font-heading)', fontSize:'clamp(15px,3.2vw,20px)',
                     fontWeight:700, cursor:done?'default':'pointer', color:'var(--text-primary)',
-                    background: done&&isAns?'#E8F8EE':done&&isChos?'#FFE8E8':'white',
-                    border:`3px solid ${done&&isAns?'#6BCB77':done&&isChos?'#FF6B6B':'#ECE8FF'}`,
-                    boxShadow: done&&isAns?'0 6px 22px rgba(107,203,119,0.35)':'0 3px 12px rgba(0,0,0,0.07)',
                     transition:'all 0.2s',
                   }}
                 >{word}{done&&isAns?' ✅':''}</motion.button>
@@ -357,15 +354,12 @@ export default function ListenGame({ level = 1, onComplete }) {
             const done    = selected !== null
             const isWrong = wrongPicks.includes(emoji)
 
-            let bg     = 'white'
-            let border = '3px solid #F0EEF8'
-            let shadow = '0 4px 18px rgba(0,0,0,0.06)'
-
+            let cardState
             if (done) {
-              if (isAns)        { bg='#E8F8EE'; border='3px solid #6BCB77'; shadow='0 8px 28px rgba(107,203,119,0.4)' }
-              else if (isChos)  { bg='#FFE8E8'; border='3px solid #FF6B6B' }
+              if (isAns)        cardState = 'right'
+              else if (isChos)  cardState = 'wrong'
             } else if (isWrong) {
-              bg='#FFE8E8'; border='3px solid #FF6B6B'
+              cardState = 'wrong'
             }
 
             return (
@@ -379,7 +373,7 @@ export default function ListenGame({ level = 1, onComplete }) {
                 onClick={() => { if (!isWrong) pick(emoji) }}
                 style={{
                   padding:'clamp(20px,5vw,40px) 16px',
-                  borderRadius:26, background:bg, border, boxShadow:shadow,
+                  ...pxCard(cardState),
                   fontSize:'clamp(56px,14vw,92px)',
                   display:'flex', alignItems:'center', justifyContent:'center',
                   cursor:done ? 'default' : 'pointer',
@@ -417,11 +411,9 @@ export default function ListenGame({ level = 1, onComplete }) {
           whileHover={{ scale:1.06 }} whileTap={{ scale:0.94 }}
           onClick={weiterClick}
           style={{
-            background:'linear-gradient(135deg,#FF6B6B,#FF8E53)',
-            color:'white', border:'none', borderRadius:20,
+            ...pxButton('green'),
             padding:'14px 40px',
-            fontFamily:'var(--font-heading)', fontSize:20, fontWeight:700,
-            cursor:'pointer', boxShadow:'0 5px 20px rgba(255,107,107,0.45)',
+            fontSize:20,
           }}
         >Weiter! →</motion.button>
       )}

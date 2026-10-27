@@ -103,6 +103,17 @@ def key_magenta(im):
     seen = np.zeros_like(bgish)
     q = deque((y, x) for y in range(H) for x in (0, W - 1) if bgish[y, x])
     q.extend((y, x) for x in range(W) for y in (0, H - 1) if bgish[y, x])
+    # enclosed pockets (inside a ladder, a pretzel, a basket): every pixel
+    # close to the sheet's actual background colour seeds a fill too, which
+    # then takes the pocket's slightly shaded edge pixels with it. The model
+    # never paints exact #FF00FF (one sheet: 234/66/212), so the key colour
+    # is measured from the border instead of assumed.
+    border = np.concatenate([a[0], a[-1], a[:, 0], a[:, -1]])[:, :3]
+    border = border[(border[:, 0] > 150) & (border[:, 2] > 150) & (border[:, 1] < 110)]
+    if len(border):
+        key = np.median(border, axis=0)
+        near_key = (np.abs(a[..., :3] - key).sum(axis=-1) < 45) & bgish
+        q.extend(zip(*np.nonzero(near_key)))
     for y, x in q: seen[y, x] = True
     while q:
         y, x = q.popleft()
@@ -114,7 +125,6 @@ def key_magenta(im):
     near = np.zeros_like(seen)
     near[1:, :] |= seen[:-1, :]; near[:-1, :] |= seen[1:, :]; near[:, 1:] |= seen[:, :-1]; near[:, :-1] |= seen[:, 1:]
     out[near & ~seen & (r > 140) & (b > 120) & (g < 140), 3] = 0
-    out[(r > 215) & (b > 215) & (g < 70), 3] = 0
     return Image.fromarray(out)
 
 

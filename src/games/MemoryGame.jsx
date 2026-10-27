@@ -4,6 +4,7 @@ import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
 import { speak } from '../tts.js'
 import { afterNarration } from '../narrator.js'
+import { INK, pxCard, pxPanel, pxBubble } from './px.js'
 
 function speakDE(text) {
   speak(text, { rate: 0.85, pitch: 1.1, lang: 'de-DE' })
@@ -251,7 +252,7 @@ export default function MemoryGame({ level = 1, onComplete }) {
               transform: 'translateX(-50%)',
               zIndex: 300, pointerEvents: 'none',
               fontFamily: 'var(--font-heading)', fontSize: 36, fontWeight: 800,
-              color: '#FFD93D', textShadow: '0 3px 18px rgba(0,0,0,0.45)',
+              color: 'var(--px-gold)', WebkitTextStroke: `1.5px ${INK}`, textShadow: `0 4px 0 ${INK}`,
               whiteSpace: 'nowrap',
             }}
           >
@@ -271,9 +272,8 @@ export default function MemoryGame({ level = 1, onComplete }) {
             transition={{type:'spring',stiffness:300,delay:0.1}}
             style={{
               position:'fixed',top:'50%',left:'50%',transform:'translate(-50%,-50%)',
-              zIndex:500,background:'rgba(255,255,255,0.97)',
-              borderRadius:32,padding:'32px 48px',textAlign:'center',
-              boxShadow:'0 8px 48px rgba(0,0,0,0.18)',
+              zIndex:500,...pxPanel,
+              padding:'32px 48px',textAlign:'center',
               display:'flex',flexDirection:'column',alignItems:'center',gap:12,
             }}
           >
@@ -298,11 +298,9 @@ export default function MemoryGame({ level = 1, onComplete }) {
       <div style={{
         width:'100%', maxWidth:780,
         minHeight:52,
-        background:'linear-gradient(135deg,#FFF9E6,#FFF3CC)',
-        borderRadius:18, border:'2px solid #FFD93D',
+        ...pxPanel, background:'#FFF1C9',
         padding:'8px 16px',
         display:'flex', alignItems:'center', gap:8, flexWrap:'wrap',
-        boxShadow:'0 3px 16px rgba(255,217,61,0.22)',
       }}>
         <span style={{ fontFamily:'var(--font-heading)', fontSize:14, color:'#9B7700', whiteSpace:'nowrap' }}>🏆 Gefunden:</span>
         <AnimatePresence>
@@ -324,16 +322,14 @@ export default function MemoryGame({ level = 1, onComplete }) {
       {/* Stats row */}
       <div style={{ display:'flex', gap:20, alignItems:'center' }}>
         <div style={{
-          background:'white', borderRadius:99, padding:'8px 20px',
+          ...pxCard(), padding:'8px 20px',
           fontFamily:'var(--font-heading)', fontSize:17, color:'var(--text-secondary)',
-          boxShadow:'0 3px 12px rgba(0,0,0,0.07)',
         }}>
           🃏 {matches}/{pairCount} Paare
         </div>
         <div style={{
-          background:'white', borderRadius:99, padding:'8px 20px',
+          ...pxCard(), padding:'8px 20px',
           fontFamily:'var(--font-heading)', fontSize:17, color:'var(--text-secondary)',
-          boxShadow:'0 3px 12px rgba(0,0,0,0.07)',
         }}>
           👆 {moves} Versuche
         </div>
@@ -343,9 +339,8 @@ export default function MemoryGame({ level = 1, onComplete }) {
       <div style={{ display:'flex', alignItems:'flex-end', gap:12, width:'100%', maxWidth:760 }}>
         <LumiCharacter mood={mood} size={80} />
         <div style={{
-          flex:1, background:'white', borderRadius:'24px 24px 24px 6px',
+          flex:1, ...pxBubble,
           padding:'14px 20px',
-          boxShadow:'0 4px 20px rgba(253,121,168,0.12)',
           fontFamily:'var(--font-heading)',
           fontSize:'clamp(16px,3.5vw,24px)',
           color:'var(--text-primary)',
@@ -375,8 +370,8 @@ export default function MemoryGame({ level = 1, onComplete }) {
               key="preview-overlay"
               initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0, scale:0.9 }}
               style={{
-                position:'absolute', inset:-8, zIndex:20, borderRadius:28,
-                background:'rgba(74,0,224,0.55)', backdropFilter:'blur(3px)',
+                position:'absolute', inset:-8, zIndex:20, borderRadius:14,
+                background:'rgba(42,27,61,0.55)', border:`3px solid ${INK}`, backdropFilter:'blur(3px)',
                 display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
                 gap:10, pointerEvents:'none',
               }}
@@ -387,7 +382,7 @@ export default function MemoryGame({ level = 1, onComplete }) {
               <motion.div
                 key={countdown}
                 initial={{ scale:1.5, opacity:0 }} animate={{ scale:1, opacity:1 }}
-                style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(48px,10vw,80px)', fontWeight:800, color:'#FFD93D', lineHeight:1, textShadow:'0 4px 18px rgba(0,0,0,0.5)' }}
+                style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(48px,10vw,80px)', fontWeight:800, color:'var(--px-gold)', lineHeight:1, textShadow:`0 5px 0 ${INK}` }}
               >
                 {countdown}
               </motion.div>
@@ -406,7 +401,7 @@ export default function MemoryGame({ level = 1, onComplete }) {
             transition={{ duration: 0.50 }}
             style={{ cursor: card.matched ? 'default' : 'pointer', perspective:700,
                      outline: card.id === cursor ? '3px solid #FFD93D' : 'none',
-                     outlineOffset: 4, borderRadius: 22 }}
+                     outlineOffset: 4, borderRadius: 14 }}
           >
             <motion.div
               animate={{ rotateY: (card.flipped || card.matched || phase === 'preview') ? 0 : 180 }}
@@ -416,48 +411,27 @@ export default function MemoryGame({ level = 1, onComplete }) {
               {/* Front */}
               <div style={{
                 position:'absolute', inset:0, backfaceVisibility:'hidden',
-                borderRadius:20,
-                background: card.matched
-                  ? 'linear-gradient(160deg,#F0FFF4 0%,#C8F5D8 100%)'
-                  : 'linear-gradient(160deg,#FFFFFF 0%,#F0EEFF 100%)',
-                border: `2.5px solid ${card.matched ? '#6BCB77' : '#D4CCFF'}`,
-                boxShadow: card.matched
-                  ? '0 2px 0 #A8E6B4, 0 6px 0 #78C988, 0 10px 24px rgba(107,203,119,0.30)'
-                  : '0 2px 0 #E0DAFA, 0 5px 0 #B8B0E8, 0 10px 22px rgba(108,99,255,0.18)',
+                ...pxCard(card.matched ? 'right' : undefined),
                 display:'flex', alignItems:'center', justifyContent:'center',
                 fontSize:'clamp(28px,6.5vw,50px)',
-                // top-light sheen
-                backgroundImage: card.matched
-                  ? 'linear-gradient(160deg,#F0FFF4 0%,#C8F5D8 100%)'
-                  : 'linear-gradient(160deg,#FFFFFF 0%,#EDE8FF 100%)',
               }}>
-                {/* inner shine strip */}
-                <div style={{
-                  position:'absolute', inset:0, borderRadius:18, pointerEvents:'none',
-                  background:'linear-gradient(135deg,rgba(255,255,255,0.55) 0%,transparent 55%)',
-                }} />
                 {card.emoji}
               </div>
               {/* Back */}
               <div style={{
                 position:'absolute', inset:0, backfaceVisibility:'hidden',
                 transform:'rotateY(180deg)',
-                borderRadius:20,
-                background:'linear-gradient(160deg,#A855F7 0%,#6C3ADE 50%,#3B0FA0 100%)',
-                border:'2.5px solid #7C3AED',
-                boxShadow:'0 2px 0 #7C3AED, 0 5px 0 #4A00C0, 0 10px 22px rgba(74,0,224,0.35)',
+                borderRadius:12,
+                background:'linear-gradient(180deg,#9A7BF5 0%,#8e6cf0 45%,#6a48cf 100%)',
+                border:`3px solid ${INK}`,
+                boxShadow:'inset 0 3px 0 rgba(255,255,255,0.3), inset 0 -5px 0 rgba(0,0,0,0.22), 0 5px 0 rgba(42,27,61,0.35)',
                 display:'flex', alignItems:'center', justifyContent:'center',
                 fontSize:'clamp(22px,5vw,38px)',
                 overflow:'hidden',
               }}>
-                {/* shine */}
-                <div style={{
-                  position:'absolute', inset:0, borderRadius:18, pointerEvents:'none',
-                  background:'linear-gradient(135deg,rgba(255,255,255,0.22) 0%,transparent 52%)',
-                }} />
                 {/* dot pattern */}
                 <div style={{
-                  position:'absolute', inset:0, borderRadius:18, pointerEvents:'none', opacity:0.18,
+                  position:'absolute', inset:0, borderRadius:9, pointerEvents:'none', opacity:0.18,
                   backgroundImage:'radial-gradient(circle, white 1px, transparent 1px)',
                   backgroundSize:'14px 14px',
                 }} />

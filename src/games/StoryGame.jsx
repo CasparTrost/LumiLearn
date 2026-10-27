@@ -5,6 +5,7 @@ import { speak } from '../tts.js'
 import { hearable } from '../lib/hearable.js'
 import HearOptions from '../components/HearOptions.jsx'
 import { lockPreviews } from '../narrator.js'
+import { INK, ACCENT, pxPanel, pxButton } from './px.js'
 
 function speakDE(text) {
   // tts.js's own cleaning (an emoji-range strip plus a strict word-
@@ -581,17 +582,18 @@ export default function StoryGame({ level = 1, onComplete }) {
           <div key={i} style={{
             display:'flex', alignItems:'center', gap:4,
             fontFamily:'var(--font-heading)', fontSize:14,
-            color: i === storyIdx ? 'var(--violet-deep)' : i < storyIdx ? '#6BCB77' : 'var(--text-muted)',
+            color: i === storyIdx ? INK : i < storyIdx ? '#2F8F3A' : 'var(--text-muted)',
           }}>
             <div style={{
-              width:32, height:32, borderRadius:'50%', border:`3px solid ${i === storyIdx ? 'var(--violet-deep)' : i < storyIdx ? '#6BCB77' : '#ECE8FF'}`,
-              background: i < storyIdx ? '#6BCB77' : i === storyIdx ? '#EDE5FF' : 'white',
+              width:32, height:32, borderRadius:8, border:`3px solid ${INK}`,
+              background: i < storyIdx ? 'var(--px-green)' : i === storyIdx ? 'var(--px-gold)' : '#FFFDF7',
+              boxShadow:'0 3px 0 rgba(42,27,61,0.35)',
               display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:700,
               color: i < storyIdx ? 'white' : 'inherit',
             }}>
               {i < storyIdx ? '✓' : i + 1}
             </div>
-            {i < stories.length - 1 && <div style={{ width:20, height:2, background: i < storyIdx ? '#6BCB77' : '#ECE8FF', borderRadius:99 }} />}
+            {i < stories.length - 1 && <div style={{ width:20, height:3, background: i < storyIdx ? '#2F8F3A' : 'var(--px-parch-dark)', borderRadius:1 }} />}
           </div>
         ))}
         <span style={{ fontFamily:'var(--font-heading)', fontSize:15, color:'var(--text-muted)', marginLeft:6 }}>
@@ -606,9 +608,9 @@ export default function StoryGame({ level = 1, onComplete }) {
           exit={{ opacity:0, x:-40 }}
           transition={{ type:'spring', stiffness:280, damping:22 }}
           style={{
-            background:'white', borderRadius:32,
+            // the choice phase leaves this card empty: keep its space, hide the frame
+            ...(currentPanel || phase === 'lesson' ? pxPanel : { background:'transparent' }),
             padding:'clamp(20px,4vw,36px)',
-            boxShadow:'0 10px 40px rgba(108,99,255,0.14)',
             width:'100%', maxWidth:680,
             display:'flex', flexDirection:'column', alignItems:'center', gap:18,
           }}
@@ -636,11 +638,11 @@ export default function StoryGame({ level = 1, onComplete }) {
             <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:14, width:'100%' }}>
               <LumiCharacter mood="happy" size={80} />
               <div style={{
-                background:'linear-gradient(135deg,#EDE5FF,#F5F0FF)',
-                border:'2px solid var(--violet-light)',
-                borderRadius:20, padding:'16px 22px',
+                background:'#FFF1D6',
+                border:`3px solid ${INK}`, boxShadow:'inset 0 -4px 0 var(--px-parch-dark)',
+                borderRadius:12, padding:'16px 22px',
                 fontFamily:'var(--font-heading)', fontSize:'clamp(16px,3.5vw,22px)',
-                color:'var(--violet-deep)', textAlign:'center',
+                color:ACCENT, textAlign:'center',
               }}>
                 {story?.lesson || outcome?.lesson || '💡 Gut gemacht!'}
               </div>
@@ -659,10 +661,9 @@ export default function StoryGame({ level = 1, onComplete }) {
                   whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
                   onClick={() => setShowAlt(true)}
                   style={{
-                    background: 'white', border: '2.5px solid var(--violet-light)',
-                    borderRadius: 99, padding: '10px 24px', cursor: 'pointer',
+                    ...pxButton('parch'),
+                    padding: '10px 24px',
                     fontFamily: 'var(--font-heading)', fontSize: 'clamp(13px,2.8vw,16px)',
-                    color: 'var(--violet-deep)',
                   }}
                 >🔀 Und wenn Lumi anders entschieden hätte?</motion.button>
               )}
@@ -670,8 +671,9 @@ export default function StoryGame({ level = 1, onComplete }) {
                 <motion.div
                   initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                   style={{
-                    background: '#FFF8E8', border: '2px dashed #FFB800',
-                    borderRadius: 18, padding: '14px 18px', maxWidth: 460,
+                    background: '#FFF8E8', border: `3px solid ${INK}`,
+                    boxShadow: 'inset 0 -4px 0 var(--px-parch-dark), 0 4px 0 rgba(42,27,61,0.35)',
+                    borderRadius: 12, padding: '14px 18px', maxWidth: 460,
                     display: 'flex', flexDirection: 'column', gap: 8,
                   }}
                 >
@@ -705,11 +707,9 @@ export default function StoryGame({ level = 1, onComplete }) {
       {phase === 'intro' && (
         <motion.button whileHover={{scale:1.04}} whileTap={{scale:0.96}} onClick={nextPanel}
           style={{
-            background:'linear-gradient(135deg,#6C63FF,#4A00E0)',
-            color:'white', borderRadius:99, padding:'16px clamp(28px,6vw,52px)',
+            ...pxButton('green'),
+            padding:'16px clamp(28px,6vw,52px)',
             fontFamily:'var(--font-heading)', fontSize:'clamp(18px,4vw,24px)', fontWeight:600,
-            boxShadow:'0 8px 28px rgba(108,99,255,0.4)',
-            cursor:'pointer',
           }}
         >
           Weiter ▶
@@ -721,7 +721,7 @@ export default function StoryGame({ level = 1, onComplete }) {
           display:'flex', flexDirection:'column', gap:'clamp(10px,2vw,16px)',
           width:'100%', maxWidth:600,
         }}>
-          <p style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(18px,4vw,24px)', color:'var(--violet-deep)', textAlign:'center' }}>
+          <p style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(18px,4vw,24px)', color:ACCENT, textAlign:'center' }}>
             {story.choice.question}
           </p>
           {story.choice.options.map((opt) => (
@@ -730,12 +730,10 @@ export default function StoryGame({ level = 1, onComplete }) {
               onClick={() => makeChoice(opt.value)}
               {...hearable(opt.text)}
               style={{
-                background: 'linear-gradient(135deg,#6C63FF,#4A00E0)',
-                color:'white', borderRadius:22,
+                ...pxButton('parch'),
                 padding:'clamp(14px,3vw,22px) clamp(16px,4vw,28px)',
                 fontFamily:'var(--font-heading)', fontSize:'clamp(16px,3.5vw,22px)', fontWeight:600,
-                boxShadow: '0 6px 22px rgba(108,99,255,0.35)',
-                cursor:'pointer', textAlign:'left',
+                textAlign:'left',
               }}
             >
               {opt.text}
@@ -747,11 +745,9 @@ export default function StoryGame({ level = 1, onComplete }) {
       {phase === 'outcome' && (
         <motion.button whileHover={{scale:1.04}} whileTap={{scale:0.96}} onClick={nextPanel}
           style={{
-            background:'linear-gradient(135deg,#FD79A8,#E84393)',
-            color:'white', borderRadius:99, padding:'16px clamp(28px,6vw,52px)',
+            ...pxButton('green'),
+            padding:'16px clamp(28px,6vw,52px)',
             fontFamily:'var(--font-heading)', fontSize:'clamp(18px,4vw,24px)', fontWeight:600,
-            boxShadow:'0 8px 28px rgba(253,121,168,0.4)',
-            cursor:'pointer',
           }}
         >
           Weiter ▶
@@ -761,11 +757,9 @@ export default function StoryGame({ level = 1, onComplete }) {
       {phase === 'lesson' && (
         <motion.button whileHover={{scale:1.04}} whileTap={{scale:0.96}} onClick={nextStory}
           style={{
-            background:'linear-gradient(135deg,#6BCB77,#44D498)',
-            color:'white', borderRadius:99, padding:'16px clamp(28px,6vw,52px)',
+            ...pxButton('green'),
+            padding:'16px clamp(28px,6vw,52px)',
             fontFamily:'var(--font-heading)', fontSize:'clamp(18px,4vw,24px)', fontWeight:600,
-            boxShadow:'0 8px 28px rgba(107,203,119,0.4)',
-            cursor:'pointer',
           }}
         >
           {storyIdx + 1 >= stories.length ? '🏆 Fertig!' : 'Nächste Geschichte ➡️'}

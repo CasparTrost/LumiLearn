@@ -3,6 +3,8 @@
 Pixel-art pictures for every emoji the app shows
 (public/sprites/emoji/<codepoints>.png, 96 x 96, palette PNG ~3 KB) and the
 list src/lib/emojiArtList.js the app uses to know which ones exist.
+Check every finished sheet by eye before `finish` — the model sometimes
+lays a sheet out differently than asked.
 
 64 emoji per image call: gpt-image-2 draws an 8 x 8 sheet at 2048 x 2048
 (quality "low", magenta background — see generate-tile-art.py for why),
@@ -97,10 +99,14 @@ def generate(batches):
         batch = todo[b * 64:(b + 1) * 64]
         if not batch:
             continue
-        print(f'sheet {b}: {len(batch)} emoji')
-        sheet = tiles.key_magenta(tiles.request_image(prompt(batch, 8, 8), '2048x2048'))
+        # A short last sheet gets a grid that fits it: asked for 8 x 8 with
+        # only five emoji, the model laid them out in five columns instead.
+        cols = min(8, len(batch)); rows = (len(batch) + cols - 1) // cols
+        print(f'sheet {b}: {len(batch)} emoji, {cols} x {rows}')
+        sheet = tiles.key_magenta(tiles.request_image(prompt(batch, cols, rows), '2048x2048'))
         sheet.save(os.path.join(WORK, f'sheet_{b}.png'))
-        json.dump(batch, open(os.path.join(WORK, f'sheet_{b}.json'), 'w'), ensure_ascii=False)
+        json.dump({'cols': cols, 'rows': rows, 'items': batch},
+                  open(os.path.join(WORK, f'sheet_{b}.json'), 'w'), ensure_ascii=False)
 
 
 def finish():
@@ -108,12 +114,13 @@ def finish():
     for f in sorted(os.listdir(WORK)):
         if not (f.startswith('sheet_') and f.endswith('.json')):
             continue
-        batch = json.load(open(os.path.join(WORK, f)))
+        meta = json.load(open(os.path.join(WORK, f)))
+        cols, rows, batch = meta['cols'], meta['rows'], meta['items']
         sheet = Image.open(os.path.join(WORK, f[:-5] + '.png')).convert('RGBA')
         W, H = sheet.size
         for i, it in enumerate(batch):
-            c, r = i % 8, i // 8
-            cell = sheet.crop((W * c // 8, H * r // 8, W * (c + 1) // 8, H * (r + 1) // 8))
+            c, r = i % cols, i // cols
+            cell = sheet.crop((W * c // cols, H * r // rows, W * (c + 1) // cols, H * (r + 1) // rows))
             save_small(tiles.to_tile(cell), os.path.join(OUT, code(it['e']) + '.png'))
     write_list()
 

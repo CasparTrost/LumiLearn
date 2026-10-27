@@ -6,6 +6,7 @@ import { speak } from '../tts.js'
 import { hearable } from '../lib/hearable.js'
 import HearOptions from '../components/HearOptions.jsx'
 import { lockPreviews, afterNarration } from '../narrator.js'
+import { pxCard, pxPanel, pxBubble, pxButton, pxSegment, ACCENT } from './px.js'
 
 /**
  * Gefühlsdetektiv — Gefühle an der Körperhaltung erkennen und helfen
@@ -313,8 +314,7 @@ export default function EmpathyGame({ level = 1, onComplete }) {
       <div style={{ display: 'flex', gap: 5, width: '100%', maxWidth: 680 }}>
         {scenes.map((_, i) => (
           <div key={i} style={{
-            flex: 1, height: 10, borderRadius: 99,
-            background: i < idx ? '#6C63FF' : i === idx ? '#FFD93D' : '#ECE8FF',
+            flex: 1, ...pxSegment(i < idx ? 'done' : i === idx ? 'current' : 'todo'),
           }} />
         ))}
       </div>
@@ -322,8 +322,7 @@ export default function EmpathyGame({ level = 1, onComplete }) {
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, width: '100%', maxWidth: 680 }}>
         <LumiCharacter mood={mood} size={64} />
         <div style={{
-          flex: 1, background: 'white', borderRadius: '22px 22px 22px 5px', padding: '11px 16px',
-          boxShadow: '0 4px 20px rgba(108,99,255,0.14)',
+          flex: 1, ...pxBubble, padding: '11px 16px',
           fontFamily: 'var(--font-heading)', fontSize: 'clamp(14px,3vw,19px)', color: 'var(--text-primary)',
         }}>
           {sc.situation}
@@ -335,24 +334,24 @@ export default function EmpathyGame({ level = 1, onComplete }) {
       {/* The scene: the child in question, and you */}
       <div style={{
         display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 'clamp(20px,8vw,70px)',
-        background: 'linear-gradient(180deg,#F5F2FF,#EDE9FF)', borderRadius: 26,
+        ...pxPanel,
         padding: 'clamp(12px,2.5vw,20px) clamp(18px,5vw,46px)', width: '100%', maxWidth: 560,
       }}>
         <div style={{ textAlign: 'center' }}>
           <Figure pose={sc.pose} color="#E84393" size={132} />
-          <div style={{ fontFamily: 'var(--font-heading)', fontSize: 13, color: '#9B8FCC' }}>
+          <div style={{ fontFamily: 'var(--font-heading)', fontSize: 13, color: 'var(--px-ink-soft)' }}>
             {phase === 'feeling' ? '❓' : sc.feeling}
           </div>
         </div>
         <div style={{ textAlign: 'center', opacity: phase === 'feeling' ? 0.4 : 1, transition: 'opacity 0.4s' }}>
           <Figure pose="fröhlich" color="#4A00E0" size={132} flip />
-          <div style={{ fontFamily: 'var(--font-heading)', fontSize: 13, color: '#9B8FCC' }}>du</div>
+          <div style={{ fontFamily: 'var(--font-heading)', fontSize: 13, color: 'var(--px-ink-soft)' }}>du</div>
         </div>
       </div>
 
       <div style={{
         fontFamily: 'var(--font-heading)', fontSize: 'clamp(15px,3.2vw,20px)',
-        color: '#4A00E0', fontWeight: 700, textAlign: 'center',
+        color: ACCENT, fontWeight: 700, textAlign: 'center',
       }}>
         {phase === 'feeling' ? 'Wie fühlt sich das Kind?'
          : phase === 'help'  ? 'Was kannst du tun?'
@@ -371,9 +370,8 @@ export default function EmpathyGame({ level = 1, onComplete }) {
                 {...hearable(f)}
                 aria-label={f}
                 style={{
-                  background: isWrong ? '#FFE8E8' : 'white',
-                  border: `3px solid ${isWrong ? '#FF6B6B' : '#ECE8FF'}`,
-                  borderRadius: 18, padding: '10px 20px', cursor: isWrong ? 'default' : 'pointer',
+                  ...pxCard(isWrong ? 'wrong' : undefined),
+                  padding: '10px 20px', cursor: isWrong ? 'default' : 'pointer',
                   fontFamily: 'var(--font-heading)', fontSize: 'clamp(14px,3vw,19px)',
                   color: 'var(--text-primary)', opacity: isWrong ? 0.55 : 1,
                 }}
@@ -396,9 +394,10 @@ export default function EmpathyGame({ level = 1, onComplete }) {
                 onClick={() => { if (!isWrong) pickHelp(h) }}
                 {...hearable(h)}
                 style={{
-                  background: isBest ? '#E8F8EE' : isWrong ? '#FFF4E5' : 'white',
-                  border: `3px solid ${isBest ? '#6BCB77' : isWrong ? '#FFD93D' : '#ECE8FF'}`,
-                  borderRadius: 18, padding: '12px 16px', textAlign: 'left',
+                  // A kind-but-not-best way to help stays gentle gold, as it
+                  // was before — being kind is never "wrong"
+                  ...pxCard(isBest ? 'right' : isWrong ? 'selected' : undefined),
+                  padding: '12px 16px', textAlign: 'left',
                   cursor: phase === 'help' && !isWrong ? 'pointer' : 'default',
                   fontFamily: 'var(--font-body)', fontSize: 'clamp(13px,2.9vw,17px)',
                   color: 'var(--text-primary)', opacity: isWrong ? 0.7 : 1,
@@ -416,10 +415,8 @@ export default function EmpathyGame({ level = 1, onComplete }) {
             whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
             onClick={weiterClick}
             style={{
-              background: 'linear-gradient(135deg,#6C63FF,#4A00E0)', color: 'white',
-              border: 'none', borderRadius: 20, padding: '12px 40px', cursor: 'pointer',
-              fontFamily: 'var(--font-heading)', fontSize: 'clamp(16px,3.4vw,21px)', fontWeight: 700,
-              boxShadow: '0 5px 20px rgba(74,0,224,0.38)',
+              ...pxButton('green'), padding: '12px 40px',
+              fontSize: 'clamp(16px,3.4vw,21px)',
             }}
           >Weiter! →</motion.button>
         )}

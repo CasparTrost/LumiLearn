@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
 import { speak } from '../tts.js'
+import { pxPanel, pxBubble, pxButton, pxSegment, ACCENT } from './px.js'
 
 /**
  * Waage-Welt — Vergleiche, was schwerer ist
@@ -188,26 +189,26 @@ function BalanceScale({ tiltDeg, leftEmoji, rightEmoji, leftLabel, rightLabel,
       style={{ maxWidth: 440, display:'block', overflow:'visible' }}>
       <defs>
         <linearGradient id="bBase" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#7C6FAF"/><stop offset="100%" stopColor="#4A00E0"/>
+          <stop offset="0%" stopColor="#c27a3a"/><stop offset="100%" stopColor="#8a4f22"/>
         </linearGradient>
         <linearGradient id="bPole" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#A29BFE"/><stop offset="50%" stopColor="#E8E4FF"/>
-          <stop offset="100%" stopColor="#A29BFE"/>
+          <stop offset="0%" stopColor="#c27a3a"/><stop offset="50%" stopColor="#e3a462"/>
+          <stop offset="100%" stopColor="#c27a3a"/>
         </linearGradient>
         <linearGradient id="bBeam" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#EDE8FF"/><stop offset="100%" stopColor="#A29BFE"/>
+          <stop offset="0%" stopColor="#e3a462"/><stop offset="100%" stopColor="#c27a3a"/>
         </linearGradient>
-        <filter id="bShadow"><feDropShadow dx="0" dy="3" stdDeviation="5" floodOpacity="0.2"/></filter>
+        <filter id="bShadow"><feDropShadow dx="0" dy="3" stdDeviation="0" floodColor="#2a1b3d" floodOpacity="0.3"/></filter>
       </defs>
 
       {/* Base */}
-      <rect x={CX-60} y={254} width={120} height={18} rx={9} fill="url(#bBase)" filter="url(#bShadow)"/>
-      <rect x={CX-45} y={244} width={90}  height={14} rx={7} fill="#9B8FCC"/>
+      <rect x={CX-60} y={254} width={120} height={18} rx={4} fill="url(#bBase)" stroke="#2a1b3d" strokeWidth={3} filter="url(#bShadow)"/>
+      <rect x={CX-45} y={244} width={90}  height={14} rx={3} fill="#e3a462" stroke="#2a1b3d" strokeWidth={3}/>
 
       {/* Pole with rings */}
-      <rect x={CX-7} y={PIVOT_Y+14} width={14} height={178} rx={7} fill="url(#bPole)"/>
+      <rect x={CX-7} y={PIVOT_Y+14} width={14} height={178} rx={3} fill="url(#bPole)" stroke="#2a1b3d" strokeWidth={3}/>
       {[0.25,0.5,0.75].map((f,i)=>(
-        <rect key={i} x={CX-10} y={PIVOT_Y+14+(178)*f} width={20} height={7} rx={3.5} fill="#7C6FAF"/>
+        <rect key={i} x={CX-10} y={PIVOT_Y+14+(178)*f} width={20} height={7} rx={2} fill="#8a4f22" stroke="#2a1b3d" strokeWidth={2}/>
       ))}
 
       {/* Beam + chains + pans (all rotate together) */}
@@ -217,30 +218,30 @@ function BalanceScale({ tiltDeg, leftEmoji, rightEmoji, leftLabel, rightLabel,
         style={{ transformOrigin:`${CX}px ${PIVOT_Y}px` }}
       >
         {/* Beam bar */}
-        <rect x={CX-ARM-8} y={PIVOT_Y-7} width={ARM*2+16} height={14} rx={7}
-          fill="url(#bBeam)" filter="url(#bShadow)"/>
-        <circle cx={CX-ARM} cy={PIVOT_Y} r={9} fill="#6C63FF"/>
-        <circle cx={CX+ARM} cy={PIVOT_Y} r={9} fill="#6C63FF"/>
+        <rect x={CX-ARM-8} y={PIVOT_Y-7} width={ARM*2+16} height={14} rx={3}
+          fill="url(#bBeam)" stroke="#2a1b3d" strokeWidth={3} filter="url(#bShadow)"/>
+        <circle cx={CX-ARM} cy={PIVOT_Y} r={9} fill="#ffc93c" stroke="#2a1b3d" strokeWidth={3}/>
+        <circle cx={CX+ARM} cy={PIVOT_Y} r={9} fill="#ffc93c" stroke="#2a1b3d" strokeWidth={3}/>
 
         {/* Left chain */}
         {Array.from({length:5},(_,i)=>(
           <line key={"lc"+i} x1={CX-ARM} y1={PIVOT_Y+9+i*16} x2={CX-ARM} y2={PIVOT_Y+9+(i+1)*16}
-            stroke="#9B8FCC" strokeWidth={3} strokeLinecap="round"/>
+            stroke="#5b4a6e" strokeWidth={3} strokeLinecap="round"/>
         ))}
         {/* Right chain */}
         {Array.from({length:5},(_,i)=>(
           <line key={"rc"+i} x1={CX+ARM} y1={PIVOT_Y+9+i*16} x2={CX+ARM} y2={PIVOT_Y+9+(i+1)*16}
-            stroke="#9B8FCC" strokeWidth={3} strokeLinecap="round"/>
+            stroke="#5b4a6e" strokeWidth={3} strokeLinecap="round"/>
         ))}
 
         {/* Left pan bowl */}
-        <ellipse cx={CX-ARM} cy={PIVOT_Y+CHAIN}   rx={PAN_W/2} ry={10} fill="#D4CCFF" stroke="#9B8FCC" strokeWidth={2}/>
+        <ellipse cx={CX-ARM} cy={PIVOT_Y+CHAIN}   rx={PAN_W/2} ry={10} fill="#ffe08a" stroke="#2a1b3d" strokeWidth={3}/>
         <path d={`M${CX-ARM-PAN_W/2} ${PIVOT_Y+CHAIN} Q${CX-ARM} ${PIVOT_Y+CHAIN+28} ${CX-ARM+PAN_W/2} ${PIVOT_Y+CHAIN}`}
-          fill="#C4BAFF" stroke="#9B8FCC" strokeWidth={2}/>
+          fill="#ffc93c" stroke="#2a1b3d" strokeWidth={3}/>
         {/* Right pan bowl */}
-        <ellipse cx={CX+ARM} cy={PIVOT_Y+CHAIN}   rx={PAN_W/2} ry={10} fill="#D4CCFF" stroke="#9B8FCC" strokeWidth={2}/>
+        <ellipse cx={CX+ARM} cy={PIVOT_Y+CHAIN}   rx={PAN_W/2} ry={10} fill="#ffe08a" stroke="#2a1b3d" strokeWidth={3}/>
         <path d={`M${CX+ARM-PAN_W/2} ${PIVOT_Y+CHAIN} Q${CX+ARM} ${PIVOT_Y+CHAIN+28} ${CX+ARM+PAN_W/2} ${PIVOT_Y+CHAIN}`}
-          fill="#C4BAFF" stroke="#9B8FCC" strokeWidth={2}/>
+          fill="#ffc93c" stroke="#2a1b3d" strokeWidth={3}/>
 
         {/* Left item — clickable */}
         <g style={{ cursor: answered?'default':'pointer' }}
@@ -254,7 +255,7 @@ function BalanceScale({ tiltDeg, leftEmoji, rightEmoji, leftLabel, rightLabel,
             {leftEmoji}
           </text>
           <text x={CX-ARM} y={PIVOT_Y+CHAIN+32} textAnchor="middle" fontSize={13}
-            fontWeight="700" fill={answered&&leftHeavier?"#4A00E0":"#6C5CE7"}
+            fontWeight="700" fill={answered&&leftHeavier?ACCENT:"#2a1b3d"}
             fontFamily="var(--font-heading,system-ui)">
             {leftLabel}
           </text>
@@ -275,7 +276,7 @@ function BalanceScale({ tiltDeg, leftEmoji, rightEmoji, leftLabel, rightLabel,
             {rightEmoji}
           </text>
           <text x={CX+ARM} y={PIVOT_Y+CHAIN+32} textAnchor="middle" fontSize={13}
-            fontWeight="700" fill={answered&&!leftHeavier?"#4A00E0":"#6C5CE7"}
+            fontWeight="700" fill={answered&&!leftHeavier?ACCENT:"#2a1b3d"}
             fontFamily="var(--font-heading,system-ui)">
             {rightLabel}
           </text>
@@ -286,9 +287,9 @@ function BalanceScale({ tiltDeg, leftEmoji, rightEmoji, leftLabel, rightLabel,
       </motion.g>
 
       {/* Pivot cap */}
-      <circle cx={CX} cy={PIVOT_Y} r={14} fill="#4A00E0" filter="url(#bShadow)"/>
-      <circle cx={CX} cy={PIVOT_Y} r={6}  fill="white"/>
-      <circle cx={CX} cy={PIVOT_Y} r={2}  fill="#4A00E0"/>
+      <circle cx={CX} cy={PIVOT_Y} r={14} fill="#2a1b3d" filter="url(#bShadow)"/>
+      <circle cx={CX} cy={PIVOT_Y} r={6}  fill="#ffc93c"/>
+      <circle cx={CX} cy={PIVOT_Y} r={2}  fill="#2a1b3d"/>
     </svg>
   )
 }
@@ -404,8 +405,7 @@ export default function WeightGame({ level = 1, onComplete }) {
       <div style={{ display: 'flex', gap: 5, width: '100%', maxWidth: 640 }}>
         {questions.map((_, i) => (
           <div key={i} style={{
-            flex: 1, height: 10, borderRadius: 99,
-            background: i < idx ? '#6C63FF' : i === idx ? '#FFD93D' : '#ECE8FF',
+            flex: 1, ...pxSegment(i < idx ? 'done' : i === idx ? 'current' : 'todo'),
             transition: 'background 0.3s',
           }} />
         ))}
@@ -429,16 +429,15 @@ export default function WeightGame({ level = 1, onComplete }) {
             initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0 }}
             style={{
-              flex: 1, background: 'white', borderRadius: '22px 22px 22px 5px',
+              flex: 1, ...pxBubble,
               padding: '12px 18px',
-              boxShadow: '0 4px 20px rgba(108,99,255,0.14)',
               fontFamily: 'var(--font-heading)', fontSize: 'clamp(15px,3vw,20px)',
               color: 'var(--text-primary)',
             }}
           >
             {answered
               ? <>
-                  <strong style={{ color: isCorrect ? '#6BCB77' : '#FF6B6B' }}>
+                  <strong style={{ color: isCorrect ? '#2F8F3A' : '#C2412D' }}>
                     {isCorrect ? 'Super! 🎉 ' : 'Fast! 💪 '}
                   </strong>
                   {resultText}
@@ -453,7 +452,8 @@ export default function WeightGame({ level = 1, onComplete }) {
         <motion.div key={idx}
           initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0 }}
-          style={{ display: 'flex', justifyContent: 'center', width: '100%', maxWidth: 480 }}
+          style={{ display: 'flex', justifyContent: 'center', width: '100%', maxWidth: 480,
+                   ...pxPanel, padding: 'clamp(8px,1.6vw,14px) clamp(10px,2vw,18px)' }}
         >
           <BalanceScale
             tiltDeg={tiltDeg}
@@ -476,11 +476,9 @@ export default function WeightGame({ level = 1, onComplete }) {
           whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
           onClick={() => answer('equal')}
           style={{
-            background: 'white', border: '3px solid #A29BFE', borderRadius: 20,
-            padding: '10px 30px', cursor: 'pointer',
-            fontFamily: 'var(--font-heading)', fontSize: 'clamp(15px,3.2vw,19px)',
-            fontWeight: 700, color: '#6C63FF',
-            boxShadow: '0 4px 16px rgba(162,155,254,0.3)',
+            ...pxButton('parch'),
+            padding: '10px 30px',
+            fontSize: 'clamp(15px,3.2vw,19px)',
           }}
         >⚖️ Gleich schwer</motion.button>
       )}
@@ -493,12 +491,9 @@ export default function WeightGame({ level = 1, onComplete }) {
           whileHover={{ scale:1.06 }} whileTap={{ scale:0.94 }}
           onClick={weiterClick}
           style={{
-            background:'linear-gradient(135deg,#FFD93D,#FF9F43)',
-            color:'white', border:'none', borderRadius:20,
+            ...pxButton('green'),
             padding:'clamp(12px,2vw,16px) clamp(28px,6vw,52px)',
-            fontFamily:'var(--font-heading)',
-            fontSize:'clamp(17px,3.5vw,22px)', fontWeight:700,
-            cursor:'pointer', boxShadow:'0 5px 20px rgba(255,159,67,0.45)',
+            fontSize:'clamp(17px,3.5vw,22px)',
           }}
         >Weiter! →</motion.button>
       )}

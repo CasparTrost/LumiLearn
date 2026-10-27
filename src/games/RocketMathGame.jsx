@@ -4,6 +4,7 @@ import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
 import { speak, sayNumber } from '../tts.js'
 import { afterNarration } from '../narrator.js'
+import { pxCard, pxPanel, pxBubble, pxButton, pxSegment, ACCENT, INK } from './px.js'
 
 /**
  * Rechen-Rakete — Addieren und Subtrahieren am Zahlenstrahl
@@ -64,9 +65,10 @@ function TenFrame({ filled, added, max = 10 }) {
         const isAdded = i >= filled && i < filled + added
         return (
           <div key={i} style={{
-            aspectRatio: '1', borderRadius: 8,
-            border: '2px solid #C9C2EC',
-            background: isBase ? '#6C63FF' : isAdded ? '#FFD93D' : 'white',
+            aspectRatio: '1', borderRadius: 4,
+            border: `2px solid ${INK}`,
+            background: isBase ? 'var(--px-purple)' : isAdded ? 'var(--px-gold)' : '#FFFDF7',
+            boxShadow: 'inset 0 -3px 0 rgba(42,27,61,0.15)',
             transition: 'background 0.25s',
           }} />
         )
@@ -176,8 +178,7 @@ export default function RocketMathGame({ level = 1, onComplete }) {
       <div style={{ display: 'flex', gap: 5, width: '100%', maxWidth: 680 }}>
         {tasks.map((_, i) => (
           <div key={i} style={{
-            flex: 1, height: 10, borderRadius: 99,
-            background: i < idx ? '#6C63FF' : i === idx ? '#FFD93D' : '#ECE8FF',
+            flex: 1, ...pxSegment(i < idx ? 'done' : i === idx ? 'current' : 'todo'),
             transition: 'background 0.3s',
           }} />
         ))}
@@ -187,14 +188,13 @@ export default function RocketMathGame({ level = 1, onComplete }) {
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, width: '100%', maxWidth: 680 }}>
         <LumiCharacter mood={mood} size={68} />
         <div style={{
-          flex: 1, background: 'white', borderRadius: '22px 22px 22px 5px', padding: '12px 18px',
-          boxShadow: '0 4px 20px rgba(108,99,255,0.14)',
+          flex: 1, ...pxBubble, padding: '12px 18px',
           fontFamily: 'var(--font-heading)', fontSize: 'clamp(16px,3.4vw,22px)', color: 'var(--text-primary)',
         }}>
           {picked !== null
-            ? <>🚀 Gelandet auf <strong style={{ color: '#4A00E0' }}>{t.target}</strong>!</>
+            ? <>🚀 Gelandet auf <strong style={{ color: ACCENT }}>{t.target}</strong>!</>
             : t.kind === 'missing'
-              ? <>Wo muss die Rakete landen, damit es <strong style={{ color: '#4A00E0' }}>{t.target}</strong> sind?</>
+              ? <>Wo muss die Rakete landen, damit es <strong style={{ color: ACCENT }}>{t.target}</strong> sind?</>
               : <>Tippe das Feld, auf dem die Rakete landet!</>}
         </div>
       </div>
@@ -203,14 +203,13 @@ export default function RocketMathGame({ level = 1, onComplete }) {
       <div style={{
         display: 'flex', alignItems: 'center', gap: 'clamp(8px,2vw,14px)',
         fontFamily: 'var(--font-heading)', fontSize: 'clamp(30px,7vw,48px)', fontWeight: 800,
-        color: '#4A00E0', background: 'white', borderRadius: 20,
+        color: ACCENT, ...pxPanel,
         padding: 'clamp(8px,1.5vw,14px) clamp(18px,4vw,32px)',
-        boxShadow: '0 5px 22px rgba(74,0,224,0.14)',
       }}>
         <span>{t.from}</span>
         <span style={{ color: '#FF9F43' }}>{t.op}</span>
         <span>{t.kind === 'missing' ? '?' : t.step}</span>
-        <span style={{ color: '#9B8FCC' }}>=</span>
+        <span style={{ color: 'var(--px-ink-soft)' }}>=</span>
         <span>{t.kind === 'missing' ? t.target : (picked !== null ? t.target : '?')}</span>
       </div>
 
@@ -223,7 +222,8 @@ export default function RocketMathGame({ level = 1, onComplete }) {
       <div style={{
         display: 'flex', gap: 'clamp(2px,0.8vw,6px)', flexWrap: 'nowrap',
         width: '100%', maxWidth: 720, justifyContent: 'center',
-        overflowX: 'auto', padding: '30px 4px 6px',
+        overflowX: 'auto', padding: '30px 8px 14px',
+        ...pxPanel,
       }}>
         {line.map(n => {
           const here    = pos === n
@@ -248,9 +248,8 @@ export default function RocketMathGame({ level = 1, onComplete }) {
                 aria-label={`Feld ${n}`}
                 style={{
                   width: 'clamp(26px,5.4vw,44px)', height: 'clamp(34px,6.4vw,52px)',
-                  borderRadius: 12, cursor: done || hopping ? 'default' : 'pointer',
-                  border: `2.5px solid ${done && n === t.target ? '#6BCB77' : isWrong ? '#FF6B6B' : here ? '#4A00E0' : '#ECE8FF'}`,
-                  background: done && n === t.target ? '#E8F8EE' : isWrong ? '#FFE8E8' : here ? '#F0EEFF' : 'white',
+                  ...pxCard(done && n === t.target ? 'right' : isWrong ? 'wrong' : here ? 'selected' : undefined),
+                  borderRadius: 8, cursor: done || hopping ? 'default' : 'pointer',
                   fontFamily: 'var(--font-heading)', fontWeight: 700,
                   fontSize: 'clamp(13px,2.6vw,18px)',
                   color: isWrong ? '#C0392B' : 'var(--text-primary)',
@@ -270,10 +269,8 @@ export default function RocketMathGame({ level = 1, onComplete }) {
             whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
             onClick={weiterClick}
             style={{
-              background: 'linear-gradient(135deg,#6C63FF,#4A00E0)', color: 'white',
-              border: 'none', borderRadius: 20, padding: '12px 40px', cursor: 'pointer',
-              fontFamily: 'var(--font-heading)', fontSize: 'clamp(16px,3.4vw,21px)', fontWeight: 700,
-              boxShadow: '0 5px 20px rgba(74,0,224,0.38)',
+              ...pxButton('green'), padding: '12px 40px',
+              fontSize: 'clamp(16px,3.4vw,21px)',
             }}
           >Weiter! →</motion.button>
         )}

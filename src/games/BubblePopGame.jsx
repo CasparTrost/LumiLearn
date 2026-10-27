@@ -4,6 +4,7 @@ import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
 import { speak } from '../tts.js'
 import { afterNarration } from '../narrator.js'
+import { pxCard, pxBubble, pxButton, INK } from './px.js'
 
 /**
  * Blasen-Blitz — Subitizing & Inhibitorische Kontrolle
@@ -285,7 +286,7 @@ export default function BubblePopGame({ level = 1, onComplete }) {
 
       {/* HUD */}
       <div style={{ display:'flex', gap:10, alignItems:'center', width:'100%', maxWidth:720, flexWrap:'wrap', justifyContent:'center' }}>
-        <div style={{ display:'flex', gap:5, background:'white', borderRadius:99, padding:'7px 14px', boxShadow:'0 3px 12px rgba(0,0,0,0.08)' }}>
+        <div style={{ display:'flex', gap:5, ...pxCard(), padding:'7px 14px' }}>
           {Array.from({length:3}).map((_,i) => (
             <span key={i} style={{ fontSize:22, filter: i < lives ? 'none' : 'grayscale(1) opacity(0.25)' }}>{'❤️'}</span>
           ))}
@@ -298,7 +299,7 @@ export default function BubblePopGame({ level = 1, onComplete }) {
               key="chain"
               initial={{ scale:0, y:-8 }} animate={{ scale:1, y:0 }} exit={{ scale:0, opacity:0 }}
               transition={{ type:'spring', stiffness:500, damping:18 }}
-              style={{ background:'linear-gradient(135deg,#FFD93D,#FF9F43)', borderRadius:30, padding:'7px 20px', fontFamily:'var(--font-heading)', fontSize:20, fontWeight:800, color:'white', boxShadow:'0 4px 20px rgba(255,217,61,0.6)', whiteSpace:'nowrap', textShadow:'0 2px 6px rgba(0,0,0,0.2)' }}
+              style={{ ...pxButton('gold'), cursor:'default', padding:'7px 20px', fontSize:20, fontWeight:800, whiteSpace:'nowrap' }}
             >{'⚡ 2x KETTE!'}</motion.div>
           )}
         </AnimatePresence>
@@ -306,19 +307,19 @@ export default function BubblePopGame({ level = 1, onComplete }) {
         <motion.div
           animate={{ scale:[1, 1.07, 1] }}
           transition={{ duration:1.8, repeat:Infinity }}
-          style={{ background:'linear-gradient(135deg,#0984E3,#74B9FF)', borderRadius:24, padding:'8px 20px', fontFamily:'var(--font-heading)', fontSize:'clamp(16px,3.5vw,24px)', color:'white', fontWeight:700, boxShadow:'0 4px 20px rgba(9,132,227,0.4)', display:'flex', alignItems:'center', gap:10 }}
+          style={{ ...pxButton('blue'), cursor:'default', padding:'8px 20px', fontSize:'clamp(16px,3.5vw,24px)', display:'flex', alignItems:'center', gap:10 }}
         >
           <span style={{fontSize:'0.85em',opacity:0.9}}>🎯 Alle</span>
-          <span style={{ background:'white', color:'#0984E3', borderRadius:'50%', width:'1.9em', height:'1.9em', display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:'1.05em', fontWeight:800 }}>{target}</span>
+          <span style={{ background:'#FFFDF7', color:'#0984E3', border:`3px solid ${INK}`, textShadow:'none', borderRadius:'50%', width:'1.9em', height:'1.9em', display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:'1.05em', fontWeight:800 }}>{target}</span>
           <span style={{fontSize:'0.85em',opacity:0.9}}>poppen!</span>
         </motion.div>
 
         <div style={{ flex:1, minWidth:100, display:'flex', flexDirection:'column', gap:4 }}>
-          <div style={{ height:12, background:'rgba(0,0,0,0.08)', borderRadius:99, overflow:'hidden' }}>
+          <div style={{ height:12, background:'rgba(42,27,61,0.12)', border:`2px solid ${INK}`, borderRadius:4, overflow:'hidden' }}>
             <motion.div
               animate={{ width:`${timeFraction*100}%` }}
               transition={{ duration:0.85 }}
-              style={{ height:'100%', borderRadius:99, background: timeFraction>0.5 ? 'linear-gradient(90deg,#6BCB77,#44D498)' : timeFraction>0.25 ? 'linear-gradient(90deg,#FFD93D,#FFA500)' : 'linear-gradient(90deg,#FF6B6B,#FF4444)' }}
+              style={{ height:'100%', borderRadius:2, background: timeFraction>0.5 ? 'var(--px-green)' : timeFraction>0.25 ? 'var(--px-gold)' : 'var(--px-red)' }}
             />
           </div>
           <span style={{ fontFamily:'var(--font-heading)', fontSize:13, color:'var(--text-muted)', textAlign:'right' }}>{timeLeft}s</span>
@@ -328,7 +329,7 @@ export default function BubblePopGame({ level = 1, onComplete }) {
       {/* Lumi */}
       <div style={{ display:'flex', alignItems:'flex-end', gap:10, width:'100%', maxWidth:720 }}>
         <LumiCharacter mood={mood} size={60} />
-        <div style={{ flex:1, background:'white', borderRadius:'16px 16px 16px 4px', padding:'9px 14px', fontFamily:'var(--font-heading)', fontSize:'clamp(13px,2.5vw,16px)', color:'var(--text-primary)', boxShadow:'0 2px 12px rgba(9,132,227,0.1)' }}>
+        <div style={{ flex:1, ...pxBubble, padding:'9px 14px', fontFamily:'var(--font-heading)', fontSize:'clamp(13px,2.5vw,16px)', color:'var(--text-primary)' }}>
           {phase==='roundWin'  ? `🎉 Runde ${roundIdx+1} geschafft! Weiter!`
          : phase==='roundFail' ? '⌛ Zeit! Nächste Runde…'
          : phase==='done'      ? (roundsWon>0 ? `🏆 ${roundsWon} von 3 Runden gewonnen!` : '😅 Probier es nochmal!')
@@ -338,7 +339,7 @@ export default function BubblePopGame({ level = 1, onComplete }) {
       </div>
 
       {/* OCEAN ARENA */}
-      <div ref={arenaRef} style={{ position:'relative', overflow:'hidden', width:'100%', maxWidth:750, height:'clamp(280px,48vw,450px)', background:'linear-gradient(180deg, #05305e 0%, #0a5294 28%, #1076bb 55%, #23a8d8 78%, #5dd8f0 100%)', borderRadius:28, boxShadow:'0 12px 44px rgba(5,48,94,0.45)', flexShrink:0 }}>
+      <div ref={arenaRef} style={{ position:'relative', overflow:'hidden', width:'100%', maxWidth:750, height:'clamp(280px,48vw,450px)', background:'linear-gradient(180deg, #05305e 0%, #0a5294 28%, #1076bb 55%, #23a8d8 78%, #5dd8f0 100%)', border:`3px solid ${INK}`, borderRadius:14, boxShadow:'inset 0 -4px 0 rgba(0,0,0,0.18), 0 5px 0 rgba(42,27,61,0.35)', flexShrink:0 }}>
 
         {/* Light rays */}
         {[10,26,42,58,74,88].map((l,i) => (
@@ -363,7 +364,7 @@ export default function BubblePopGame({ level = 1, onComplete }) {
         <div style={{ position:'absolute', bottom:0, left:0, right:0, height:20, background:'linear-gradient(180deg,#c9933c,#9e7229)', pointerEvents:'none' }} />
 
         {/* Rounds counter */}
-        <div style={{ position:'absolute', top:10, left:12, zIndex:10, fontFamily:'var(--font-heading)', fontSize:16, color:'white', background:'rgba(0,0,0,0.30)', borderRadius:99, padding:'4px 12px', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', gap:6 }}>
+        <div style={{ position:'absolute', top:10, left:12, zIndex:10, fontFamily:'var(--font-heading)', fontSize:16, color:'white', background:'rgba(42,27,61,0.55)', border:`2px solid ${INK}`, borderRadius:8, padding:'4px 12px', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', gap:6 }}>
           {Array.from({length:3}).map((_,i) => (
             <span key={i} style={{ fontSize:16, filter: i<roundsWon?'none':'grayscale(1) opacity(0.3)' }}>⭐</span>
           ))}
@@ -419,17 +420,17 @@ export default function BubblePopGame({ level = 1, onComplete }) {
         <AnimatePresence>
           {phase === 'roundWin' && (
             <motion.div key="win" initial={{ opacity:0, scale:0.8 }} animate={{ opacity:1, scale:1 }} exit={{ opacity:0 }}
-              style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(40,180,80,0.35)', backdropFilter:'blur(6px)', borderRadius:28, fontFamily:'var(--font-heading)', fontSize:'clamp(26px,8vw,48px)', color:'white', fontWeight:700, flexDirection:'column', gap:4, textShadow:'0 2px 12px rgba(0,0,0,0.4)' }}
+              style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(40,180,80,0.35)', backdropFilter:'blur(6px)', borderRadius:11, fontFamily:'var(--font-heading)', fontSize:'clamp(26px,8vw,48px)', color:'white', fontWeight:700, flexDirection:'column', gap:4, textShadow:'0 2px 12px rgba(0,0,0,0.4)' }}
             ><span>🎉</span><span>Runde {roundIdx+1} geschafft!</span></motion.div>
           )}
           {phase === 'roundFail' && (
             <motion.div key="fail" initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
-              style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(220,60,60,0.3)', backdropFilter:'blur(5px)', borderRadius:28, fontFamily:'var(--font-heading)', fontSize:'clamp(24px,7vw,42px)', color:'white', fontWeight:700, textShadow:'0 2px 8px rgba(0,0,0,0.4)' }}
+              style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(220,60,60,0.3)', backdropFilter:'blur(5px)', borderRadius:11, fontFamily:'var(--font-heading)', fontSize:'clamp(24px,7vw,42px)', color:'white', fontWeight:700, textShadow:'0 2px 8px rgba(0,0,0,0.4)' }}
             >⌛ Zeit!</motion.div>
           )}
           {phase === 'done' && (
             <motion.div key="done" initial={{ opacity:0, scale:0.8 }} animate={{ opacity:1, scale:1 }} exit={{ opacity:0 }}
-              style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(0,0,0,0.45)', backdropFilter:'blur(8px)', borderRadius:28, fontFamily:'var(--font-heading)', fontSize:'clamp(24px,7vw,44px)', color:'white', fontWeight:700, flexDirection:'column', gap:6, textShadow:'0 2px 12px rgba(0,0,0,0.5)' }}
+              style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(0,0,0,0.45)', backdropFilter:'blur(8px)', borderRadius:11, fontFamily:'var(--font-heading)', fontSize:'clamp(24px,7vw,44px)', color:'white', fontWeight:700, flexDirection:'column', gap:6, textShadow:'0 2px 12px rgba(0,0,0,0.5)' }}
             >
               <span>{roundsWon>=3?'🏆':roundsWon>0?'🌟':'😅'}</span>
               <span>{roundsWon>=3?'Perfekt!':roundsWon>0?`${roundsWon}/3 Runden!`:'Nochmal!'}</span>

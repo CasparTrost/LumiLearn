@@ -3,6 +3,22 @@ import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
 import { speak as ttsSpeak } from '../tts.js'
+import { INK, pxCard, pxPanel, pxBubble, pxSegment } from './px.js'
+
+// Keyboard key in the pixel look: parchment key, gold when it is the hinted
+// letter, red for backspace. The hinted key pulses a gold ring around its
+// pixel drop instead of a soft glow.
+const KEY_DROP = 'inset 0 -4px 0 rgba(42,27,61,0.10), 0 4px 0 rgba(42,27,61,0.35)'
+const KEY_RING = [KEY_DROP, `${KEY_DROP}, 0 0 0 4px rgba(255,201,60,0.75)`]
+function keyLook(hinted, isBackspace) {
+  return {
+    ...pxCard(hinted ? 'selected' : undefined),
+    borderRadius: 10,
+    boxShadow: KEY_DROP,
+    ...(hinted      ? { background: 'var(--px-gold)' } : null),
+    ...(isBackspace ? { background: 'var(--px-red)' } : null),
+  }
+}
 
 /**
  * Buchstabenwald — Tippen & Schreiben
@@ -291,7 +307,7 @@ function FallingLettersGame({ level, onComplete }) {
       <div style={{ display:'flex', gap:12, width:'100%', maxWidth:720, justifyContent:'space-between', alignItems:'center', flexWrap:'wrap' }}>
         <div style={{ display:'flex', gap:6 }}>
           {words.map((_, i) => (
-            <div key={i} style={{ flex:1, width:28, height:10, borderRadius:99, background: i < wIdx ? '#6C63FF' : i === wIdx ? '#FFD93D' : '#ECE8FF', transition:'background 0.3s' }} />
+            <div key={i} style={{ flex:1, width:28, ...pxSegment(i < wIdx ? 'done' : i === wIdx ? 'current' : 'todo'), transition:'background 0.3s' }} />
           ))}
         </div>
         <div style={{ display:'flex', gap:6 }}>
@@ -299,7 +315,7 @@ function FallingLettersGame({ level, onComplete }) {
             <span key={i} style={{ fontSize:22, filter: i < lives ? 'none' : 'grayscale(1) opacity(0.28)' }}>❤️</span>
           ))}
         </div>
-        <div style={{ fontFamily:'var(--font-heading)', fontSize:16, color:'var(--text-secondary)', background:'white', borderRadius:99, padding:'6px 16px', boxShadow:'0 2px 10px rgba(0,0,0,0.07)' }}>
+        <div style={{ fontFamily:'var(--font-heading)', fontSize:16, color:'var(--text-secondary)', ...pxCard(), padding:'6px 16px' }}>
           {'✅ ' + score + ' Wörter'}
         </div>
       </div>
@@ -307,7 +323,7 @@ function FallingLettersGame({ level, onComplete }) {
       {/* Lumi */}
       <div style={{ display:'flex', alignItems:'flex-end', gap:12, width:'100%', maxWidth:720 }}>
         <LumiCharacter mood={mood} size={72} />
-        <div style={{ flex:1, background:'white', borderRadius:'24px 24px 24px 6px', padding:'12px 18px', boxShadow:'0 4px 20px rgba(108,99,255,0.12)', fontFamily:'var(--font-heading)', fontSize:'clamp(15px,3.2vw,22px)', color:'var(--text-primary)' }}>
+        <div style={{ flex:1, ...pxBubble, padding:'12px 18px', fontFamily:'var(--font-heading)', fontSize:'clamp(15px,3.2vw,22px)', color:'var(--text-primary)' }}>
           {showHint ? `💡 Der Buchstabe ist: ${targetChar.toUpperCase()}` : 'Tippe den fallenden Buchstaben! ⌨️'}
         </div>
       </div>
@@ -330,11 +346,10 @@ function FallingLettersGame({ level, onComplete }) {
         {word.split('').map((ch, i) => (
           <div key={i} style={{
             width:'clamp(32px,6vw,52px)', height:'clamp(38px,7vw,60px)',
-            borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center',
+            ...pxCard(i < typed ? 'right' : i === typed ? 'selected' : undefined),
+            display:'flex', alignItems:'center', justifyContent:'center',
             fontFamily:'var(--font-heading)', fontSize:'clamp(16px,3.5vw,26px)', fontWeight:700,
-            background: i < typed ? '#E8F8EE' : i === typed ? '#FFF9E0' : '#F5F0FF',
-            border: '2.5px solid ' + (i < typed ? '#6BCB77' : i === typed ? '#FFD93D' : '#ECE8FF'),
-            color: i < typed ? '#2C8C50' : i === typed ? '#8B6F00' : '#BDB3E0',
+            color: i < typed ? '#2C8C50' : i === typed ? '#8B6F00' : 'var(--px-ink-soft)',
             transition:'all 0.2s',
           }}>{i < typed ? ch : i === typed ? ch : '_'}</div>
         ))}
@@ -346,14 +361,14 @@ function FallingLettersGame({ level, onComplete }) {
         height:'clamp(220px,42vw,360px)',
         background: missAnim
           ? 'linear-gradient(180deg,#33001a,#660033 65%,#CC0044)'
-          : 'linear-gradient(180deg,#1a0533,#2d1066 65%,#4A00E0)',
-        borderRadius:24, overflow:'hidden', flexShrink:0,
-        boxShadow:'0 8px 30px rgba(74,0,224,0.35)',
+          : 'linear-gradient(180deg,#1b1230,#2e1f55 65%,#4b3486)',
+        border:`3px solid ${INK}`, borderRadius:14, overflow:'hidden', flexShrink:0,
+        boxShadow:'inset 0 -6px 0 rgba(0,0,0,0.25), 0 5px 0 rgba(42,27,61,0.35)',
         transition:'background 0.35s',
       }}>
         {/* Stars */}
         {Array.from({length:18}).map((_,i) => (
-          <div key={i} style={{ position:'absolute', borderRadius:'50%', width: 2 + i%3, height: 2 + i%3, background:'white', opacity:0.3 + (i%4)*0.1, left: `${(i * 17 + 5) % 95}%`, top: `${(i * 23 + 8) % 90}%` }} />
+          <div key={i} style={{ position:'absolute', borderRadius:1, width: 2 + i%3, height: 2 + i%3, background:'white', opacity:0.3 + (i%4)*0.1, left: `${(i * 17 + 5) % 95}%`, top: `${(i * 23 + 8) % 90}%` }} />
         ))}
         {/* Floor */}
         <div style={{ position:'absolute', bottom:0, left:0, right:0, height:28, background:'rgba(255,80,80,0.22)', borderTop:'2px solid rgba(255,80,80,0.55)' }} />
@@ -369,13 +384,13 @@ function FallingLettersGame({ level, onComplete }) {
               top:  letterY + '%',
               transform:'translate(-50%,-50%)',
               width:'clamp(48px,10vw,72px)', height:'clamp(48px,10vw,72px)',
-              borderRadius:16,
-              background:'linear-gradient(135deg,#6C63FF,#A78BFA)',
-              border:'2.5px solid rgba(255,255,255,0.35)',
+              borderRadius:12,
+              background:'var(--px-gold)',
+              border:`3px solid ${INK}`,
               display:'flex', alignItems:'center', justifyContent:'center',
               fontFamily:'var(--font-heading)', fontSize:'clamp(24px,5.5vw,40px)', fontWeight:800,
-              color:'white', textShadow:'0 2px 8px rgba(0,0,0,0.4)',
-              boxShadow:'0 4px 20px rgba(108,99,255,0.6)',
+              color:INK, textShadow:'0 2px 0 rgba(255,255,255,0.45)',
+              boxShadow:'inset 0 3px 0 rgba(255,255,255,0.45), inset 0 -5px 0 rgba(0,0,0,0.22), 0 5px 0 rgba(0,0,0,0.45)',
               cursor:'pointer', userSelect:'none',
             }}
             initial={{ scale:0, opacity:0 }}
@@ -398,14 +413,12 @@ function FallingLettersGame({ level, onComplete }) {
                 <motion.button key={k}
                   whileTap={{ scale:0.86 }}
                   onClick={() => k !== '⌫' && handleChar(k)}
-                  animate={isTarget ? { scale:[1,1.1,1], boxShadow:['0 4px 14px rgba(255,217,61,0.3)','0 8px 30px rgba(255,217,61,0.7)','0 4px 14px rgba(255,217,61,0.3)'] } : {}}
+                  animate={isTarget ? { scale:[1,1.1,1], boxShadow:[KEY_RING[0],KEY_RING[1],KEY_RING[0]] } : {}}
                   transition={isTarget ? { duration:1.3, repeat:Infinity } : {}}
                   style={{
                     width:'clamp(26px,7.2vw,54px)', height:'clamp(30px,7.2vw,52px)',
-                    borderRadius:10,
-                    background: isTarget ? 'linear-gradient(135deg,#FFD93D,#FFB800)' : k === '⌫' ? '#FF6B6B' : 'white',
-                    color: isTarget ? '#6B4C00' : k === '⌫' ? 'white' : 'var(--text-primary)',
-                    border: '2px solid ' + (isTarget ? '#FFB800' : k === '⌫' ? '#FF6B6B' : '#ECE8FF'),
+                    ...keyLook(isTarget, k === '⌫'),
+                    color: isTarget ? INK : k === '⌫' ? 'white' : 'var(--text-primary)',
                     fontFamily:'var(--font-heading)', fontSize:'clamp(11px,2.6vw,19px)', fontWeight:700,
                     cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
                   }}
@@ -513,8 +526,7 @@ function StaticTyperGame({ level, onComplete }) {
       <div style={{ display:'flex', gap:6, width:'100%', maxWidth:720 }}>
         {words.map((_, i) => (
           <div key={i} style={{
-            flex:1, height:10, borderRadius:99,
-            background: i < wIdx ? '#6C63FF' : i === wIdx ? '#FFD93D' : '#ECE8FF',
+            flex:1, ...pxSegment(i < wIdx ? 'done' : i === wIdx ? 'current' : 'todo'),
             transition:'background 0.3s',
           }} />
         ))}
@@ -524,9 +536,8 @@ function StaticTyperGame({ level, onComplete }) {
       <div style={{ display:'flex', alignItems:'flex-end', gap:12, width:'100%', maxWidth:760 }}>
         <LumiCharacter mood={mood} size={88} />
         <div style={{
-          flex:1, background:'white', borderRadius:'24px 24px 24px 6px',
+          flex:1, ...pxBubble,
           padding:'16px 22px',
-          boxShadow:'0 4px 24px rgba(108,99,255,0.12)',
           fontFamily:'var(--font-heading)',
           fontSize:'clamp(18px,3.8vw,26px)',
           color:'var(--text-primary)',
@@ -542,8 +553,7 @@ function StaticTyperGame({ level, onComplete }) {
           style={{
             display:'flex', gap:'clamp(6px,1.5vw,12px)',
             padding:'clamp(14px,3vw,24px)',
-            background:'white', borderRadius:24,
-            boxShadow:'0 6px 24px rgba(108,99,255,0.12)',
+            ...pxPanel,
             width:'100%', maxWidth:760,
             justifyContent:'center', flexWrap:'wrap', alignItems:'center',
           }}
@@ -564,20 +574,15 @@ function StaticTyperGame({ level, onComplete }) {
                 style={{
                   width:'clamp(40px,8vw,66px)',
                   height:'clamp(50px,10vw,80px)',
-                  borderRadius:14,
+                  ...pxCard(isTyped ? 'right' : isCurrent ? (shake ? 'wrong' : 'selected') : undefined),
                   display:'flex', alignItems:'center', justifyContent:'center',
                   fontFamily:'var(--font-heading)',
                   fontSize:'clamp(22px,5vw,38px)',
                   fontWeight:700,
-                  background: isTyped ? '#E8F8EE'
-                             : isCurrent ? (shake ? '#FFE8E8' : '#FFF9E0')
-                             : '#F5F0FF',
-                  border: `3px solid ${isTyped ? '#6BCB77' : isCurrent ? (shake ? '#FF6B6B' : '#FFD93D') : '#ECE8FF'}`,
                   color: isTyped ? '#2C8C50'
                        : isCurrent ? (shake ? '#CC2222' : '#8B6F00')
-                       : '#BDB3E0',
+                       : 'var(--px-ink-soft)',
                   transition:'all 0.2s',
-                  boxShadow: isCurrent ? `0 4px 18px ${shake ? 'rgba(255,107,107,0.3)' : 'rgba(255,217,61,0.35)'}` : 'none',
                 }}
               >
                 {isTyped ? ch : isCurrent ? ch : '_'}
@@ -602,21 +607,14 @@ function StaticTyperGame({ level, onComplete }) {
                   whileHover={{ scale:1.08 }}
                   whileTap={{ scale:0.90 }}
                   onClick={() => k === '⌫' ? setTyped(t => t.slice(0,-1)) : handleKey(k)}
-                  animate={isNext ? { scale:[1,1.1,1], boxShadow:['0 4px 14px rgba(255,217,61,0.3)','0 8px 30px rgba(255,217,61,0.7)','0 4px 14px rgba(255,217,61,0.3)'] } : {}}
+                  animate={isNext ? { scale:[1,1.1,1], boxShadow:[KEY_RING[0],KEY_RING[1],KEY_RING[0]] } : {}}
                   transition={isNext ? { duration:1.3, repeat:Infinity } : {}}
                   style={{
                     width:'clamp(30px,8.5vw,64px)',
                     height:'clamp(36px,8.5vw,64px)',
-                    borderRadius:12,
-                    background: isNext
-                      ? 'linear-gradient(135deg,#FFD93D,#FFB800)'
-                      : k === '⌫' ? '#FF6B6B' : 'white',
-                    color: isNext ? '#6B4C00'
+                    ...keyLook(isNext, k === '⌫'),
+                    color: isNext ? INK
                          : k === '⌫' ? 'white' : 'var(--text-primary)',
-                    border: `2.5px solid ${isNext ? '#FFB800' : k === '⌫' ? '#FF6B6B' : '#ECE8FF'}`,
-                    boxShadow: isNext
-                      ? '0 6px 20px rgba(255,217,61,0.45)'
-                      : '0 3px 10px rgba(0,0,0,0.06)',
                     fontFamily:'var(--font-heading)',
                     fontSize:'clamp(13px,3vw,22px)',
                     fontWeight:700,

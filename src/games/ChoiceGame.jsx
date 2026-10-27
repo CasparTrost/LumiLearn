@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { generateQuestions } from './gameEngine.js'
 import { sfx } from '../sfx.js'
 import { speak } from '../tts.js'
+import { pxCard, pxPanel, pxButton, pxSegment, INK } from './px.js'
 
 const FOODS = ['🍕','🍎','🍗','🌮','🍩','🍓','🧁','🍔','🍒','🥕']
 
@@ -77,9 +78,9 @@ function DinoScene({ chomping, shaking, dinoScale, streak, eaten, total, project
       onClick={doJump}
       style={{
         position: 'relative', width: '100%', height: 210,
-        borderRadius: 24, overflow: 'hidden',
+        border: `3px solid ${INK}`, borderRadius: 14, overflow: 'hidden',
         background: 'linear-gradient(180deg, #3A8BC5 0%, #6AB9E8 55%, #72C945 55%, #4A9A22 100%)',
-        boxShadow: '0 6px 30px rgba(0,0,0,0.16)',
+        boxShadow: '0 5px 0 rgba(42,27,61,0.35)',
         flexShrink: 0, cursor: 'pointer',
         WebkitTapHighlightColor: 'transparent',
       }}
@@ -231,10 +232,10 @@ function DinoScene({ chomping, shaking, dinoScale, streak, eaten, total, project
               position: 'absolute',
               left: 'calc(8% + 62px)', bottom: 108,
               background: chomping ? '#FFD93D' : '#FFE8E8',
-              borderRadius: 18, padding: '5px 16px',
+              border: `3px solid ${INK}`, borderRadius: 10, padding: '5px 16px',
               fontFamily: 'var(--font-heading)', fontSize: 18, fontWeight: 800,
               color: chomping ? '#7B5800' : '#CC3333',
-              boxShadow: '0 4px 14px rgba(0,0,0,0.18)',
+              boxShadow: '0 4px 0 rgba(42,27,61,0.35)',
               whiteSpace: 'nowrap', zIndex: 25,
             }}
           >{chomping ? '😋 NOM!' : '😬 Hm...'}</motion.div>
@@ -250,8 +251,8 @@ function DinoScene({ chomping, shaking, dinoScale, streak, eaten, total, project
             style={{
               position: 'absolute', left: '50%', bottom: 50,
               transform: 'translateX(-50%)',
-              background: 'rgba(0,0,0,0.52)', backdropFilter: 'blur(6px)',
-              borderRadius: 18, padding: '6px 18px',
+              background: 'rgba(42,27,61,0.72)',
+              border: `3px solid ${INK}`, borderRadius: 10, padding: '6px 18px',
               fontFamily: 'var(--font-heading)', fontSize: 14, color: 'white',
               whiteSpace: 'nowrap', pointerEvents: 'none', zIndex: 40,
             }}
@@ -265,11 +266,12 @@ function DinoScene({ chomping, shaking, dinoScale, streak, eaten, total, project
         transition={{ duration: 0.28 }}
         style={{
           position: 'absolute', top: 10, right: 14,
-          background: 'rgba(0,0,0,0.32)', backdropFilter: 'blur(6px)',
-          borderRadius: 14, padding: '6px 15px',
+          background: 'rgba(42,27,61,0.72)',
+          border: `3px solid ${INK}`, borderRadius: 8, padding: '4px 13px',
           fontFamily: 'var(--font-heading)', fontSize: 16, fontWeight: 700, color: 'white',
           display: 'flex', alignItems: 'center', gap: 8,
-          boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.15)',
+          boxShadow: 'inset 0 2px 0 rgba(255,255,255,0.12)',
+          textShadow: '0 2px 0 rgba(0,0,0,0.5)',
           zIndex: 35,
         }}
       >
@@ -281,11 +283,11 @@ function DinoScene({ chomping, shaking, dinoScale, streak, eaten, total, project
       {/* Strength bar (top-left) */}
       <div style={{ position: 'absolute', top: 10, left: 14, display: 'flex', flexDirection: 'column', gap: 3, zIndex: 35 }}>
         <div style={{ fontFamily: 'var(--font-heading)', fontSize: 11, color: 'rgba(255,255,255,0.9)', fontWeight: 700 }}>{'💪 Stärke'}</div>
-        <div style={{ width: 80, height: 10, background: 'rgba(0,0,0,0.30)', borderRadius: 99, overflow: 'hidden' }}>
+        <div style={{ width: 80, height: 12, background: 'rgba(42,27,61,0.45)', border: `2px solid ${INK}`, borderRadius: 4, overflow: 'hidden' }}>
           <motion.div
             animate={{ width: (total > 0 ? Math.min(eaten / total * 100, 100) : 0) + '%' }}
             transition={{ type: 'spring', stiffness: 160, damping: 22 }}
-            style={{ height: '100%', borderRadius: 99,
+            style={{ height: '100%', borderRadius: 1,
               background: eaten / total > 0.7 ? 'linear-gradient(90deg,#6BCB77,#00D2AA)'
                         : eaten / total > 0.4 ? 'linear-gradient(90deg,#FFD93D,#FF9F43)'
                         : 'linear-gradient(90deg,#FF9F43,#FF6B6B)' }}
@@ -431,7 +433,7 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
 
       <div style={{ display:'flex', gap:6, width:'100%', maxWidth:760 }}>
         {questions.map((_, i) => (
-          <div key={i} style={{ flex:1, height:10, borderRadius:99, background: i < idx ? '#6BCB77' : i === idx ? '#FFD93D' : '#ECE8FF', transition:'background 0.3s' }} />
+          <div key={i} style={{ flex:1, ...pxSegment(i < idx ? 'done' : i === idx ? 'current' : 'todo'), transition:'background 0.3s' }} />
         ))}
       </div>
 
@@ -448,11 +450,11 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
                 : streak >= 4 ? 'linear-gradient(135deg,#FF6B6B,#FF9F43)'
                 : streak >= 3 ? 'linear-gradient(135deg,#FF9F43,#FFD93D)'
                 : 'linear-gradient(135deg,#FFD93D,#FFA500)',
-              borderRadius:30, padding:'7px 22px',
+              border:`3px solid ${INK}`, borderRadius:12, padding:'7px 22px',
               fontFamily:'var(--font-heading)', fontSize:20, color:'white',
-              boxShadow:'0 4px 20px rgba(255,165,0,0.50)',
+              boxShadow:'inset 0 -4px 0 rgba(0,0,0,0.18), 0 5px 0 rgba(42,27,61,0.35)',
               pointerEvents:'none', whiteSpace:'nowrap',
-              textShadow:'0 2px 8px rgba(0,0,0,0.18)',
+              textShadow:'0 2px 0 rgba(0,0,0,0.3)',
             }}
           >
             {'🔥'.repeat(Math.min(streak - 1, 4)) + ' ' + streak + 'x Kombo!'}
@@ -477,7 +479,7 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
       <AnimatePresence mode="wait">
         <motion.div key={idx}
           initial={{ opacity:0, x:18 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-18 }} transition={{ duration:0.22 }}
-          style={{ width:'100%', maxWidth:760, background:'white', borderRadius:22, padding:'clamp(14px,2.8vw,22px) clamp(16px,3.2vw,24px)', boxShadow:'0 4px 24px rgba(107,203,119,0.15)', fontFamily:'var(--font-heading)', fontSize:'clamp(17px,3.5vw,26px)', color:'var(--text-primary)' }}
+          style={{ width:'100%', maxWidth:760, ...pxPanel, padding:'clamp(14px,2.8vw,22px) clamp(16px,3.2vw,24px)', fontFamily:'var(--font-heading)', fontSize:'clamp(17px,3.5vw,26px)', color:'var(--text-primary)' }}
         >{q.prompt}</motion.div>
       </AnimatePresence>
 
@@ -487,10 +489,8 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
             initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:10 }} transition={{ type:'spring', stiffness:280 }}
             style={{
               width:'100%', maxWidth:760,
-              background: moduleId === 'patterns' ? 'transparent' : 'white',
-              borderRadius: moduleId === 'patterns' ? 0 : 24,
+              ...(moduleId === 'patterns' ? { background: 'transparent' } : pxPanel),
               padding: moduleId === 'patterns' ? '4px 0 12px' : 'clamp(14px,3.5vw,24px) clamp(18px,5vw,36px)',
-              boxShadow: moduleId === 'patterns' ? 'none' : '0 8px 32px rgba(107,203,119,0.15)',
             }}
           >
             {moduleId === 'patterns' ? (
@@ -511,7 +511,7 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
                         fontSize: isQuestion ? 'clamp(46px,9vw,74px)' : 'clamp(50px,10vw,82px)',
                         lineHeight: 1.1,
                         display: 'inline-block',
-                        filter: isQuestion ? 'drop-shadow(0 0 10px rgba(255,200,0,0.55))' : 'none',
+                        filter: isQuestion ? 'drop-shadow(0 4px 0 #ffc93c)' : 'none',
                       }}
                     >
                       {token}
@@ -535,10 +535,10 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
           const done          = selected !== null
           const isHighlighted = !done && highlighted === q.options.indexOf(opt)
 
-          let bg = 'white', border = '3px solid #ECE8FF', shadow = '0 4px 16px rgba(0,0,0,0.06)'
-          if (isHighlighted)         { border='3px solid #FFD93D'; shadow='0 0 0 4px rgba(255,217,61,0.35), 0 4px 16px rgba(0,0,0,0.06)' }
-          if (done && isCorrect)     { bg='#E8F8EE'; border='3px solid #6BCB77'; shadow='0 8px 28px rgba(107,203,119,0.4)' }
-          else if (done && isChosen) { bg='#FFE8E8'; border='3px solid #FF6B6B' }
+          let cardState
+          if (isHighlighted)         cardState = 'selected'
+          if (done && isCorrect)     cardState = 'right'
+          else if (done && isChosen) cardState = 'wrong'
 
           return (
             <motion.button key={idx + '-' + String(opt)}
@@ -551,10 +551,10 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
               }
               transition={done && isChosen && isCorrect ? { duration:0.55, times:[0,0.32,1] } : { duration:0.42 }}
               onClick={() => pick(opt)}
-              style={{ padding:'clamp(14px,3vw,24px) clamp(12px,2.5vw,20px)', borderRadius:22, background:bg, border, boxShadow:shadow, fontFamily:'var(--font-heading)', fontSize:'clamp(18px,3.8vw,26px)', color:'var(--text-primary)', cursor:done?'default':'pointer', transition:'background 0.22s, border 0.22s, box-shadow 0.18s', display:'flex', alignItems:'center', justifyContent:'center', gap:10, position:'relative' }}
+              style={{ ...pxCard(cardState), padding:'clamp(14px,3vw,24px) clamp(12px,2.5vw,20px)', fontFamily:'var(--font-heading)', fontSize:'clamp(18px,3.8vw,26px)', color:'var(--text-primary)', cursor:done?'default':'pointer', transition:'background 0.22s, border 0.22s, box-shadow 0.18s', display:'flex', alignItems:'center', justifyContent:'center', gap:10, position:'relative' }}
             >
               {!done && (
-                <span style={{ position:'absolute', top:7, left:10, fontFamily:'var(--font-heading)', fontSize:12, color: isHighlighted ? '#9B7700' : 'var(--text-muted)', background: isHighlighted ? '#FFD93D' : '#ECE8FF', borderRadius:6, padding:'1px 6px', lineHeight:'1.4' }}>
+                <span style={{ position:'absolute', top:7, left:10, fontFamily:'var(--font-heading)', fontSize:12, color: isHighlighted ? INK : 'var(--text-muted)', background: isHighlighted ? 'var(--px-gold)' : 'var(--px-parch-dark)', borderRadius:4, padding:'1px 6px', lineHeight:'1.4' }}>
                   {q.options.indexOf(opt) + 1}
                 </span>
               )}
@@ -574,10 +574,9 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
           initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }}
           onClick={weiterClick}
           style={{
-            marginTop:4, padding:'13px 40px', borderRadius:50,
-            background:'linear-gradient(135deg,#6BCB77,#44D498)',
-            color:'white', fontFamily:'var(--font-heading)', fontSize:19, fontWeight:700,
-            border:'none', cursor:'pointer', boxShadow:'0 4px 18px rgba(107,203,119,0.5)',
+            ...pxButton('green'),
+            marginTop:4, padding:'13px 40px',
+            fontSize:19,
           }}
         >
           {idx + 1 >= questions.length ? '🏁 Fertig!' : 'Weiter! →'}

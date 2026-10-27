@@ -6,6 +6,7 @@ import { speak } from '../tts.js'
 import { hearable } from '../lib/hearable.js'
 import HearOptions from '../components/HearOptions.jsx'
 import { lockPreviews, afterNarration } from '../narrator.js'
+import { pxCard, pxPanel, pxBubble, pxButton, pxSegment, ACCENT } from './px.js'
 
 /**
  * Reim-Rallye — hören, was sich reimt
@@ -140,8 +141,7 @@ export default function RhymeGame({ level = 1, onComplete }) {
       <div style={{ display: 'flex', gap: 5, width: '100%', maxWidth: 680 }}>
         {rounds.map((_, i) => (
           <div key={i} style={{
-            flex: 1, height: 10, borderRadius: 99,
-            background: i < idx ? '#6C63FF' : i === idx ? '#FFD93D' : '#ECE8FF',
+            flex: 1, ...pxSegment(i < idx ? 'done' : i === idx ? 'current' : 'todo'),
           }} />
         ))}
       </div>
@@ -149,13 +149,12 @@ export default function RhymeGame({ level = 1, onComplete }) {
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, width: '100%', maxWidth: 680 }}>
         <LumiCharacter mood={mood} size={68} />
         <div style={{
-          flex: 1, background: 'white', borderRadius: '22px 22px 22px 5px', padding: '12px 18px',
-          boxShadow: '0 4px 20px rgba(108,99,255,0.14)',
+          flex: 1, ...pxBubble, padding: '12px 18px',
           fontFamily: 'var(--font-heading)', fontSize: 'clamp(16px,3.4vw,22px)', color: 'var(--text-primary)',
         }}>
           {solved
-            ? <>⭐ <strong style={{ color: '#4A00E0' }}>{r.base.w}</strong> und <strong style={{ color: '#4A00E0' }}>{r.correct.w}</strong> reimen sich!</>
-            : <>Was reimt sich auf <strong style={{ color: '#4A00E0' }}>{r.base.w}</strong>? 🎵</>}
+            ? <>⭐ <strong style={{ color: ACCENT }}>{r.base.w}</strong> und <strong style={{ color: ACCENT }}>{r.correct.w}</strong> reimen sich!</>
+            : <>Was reimt sich auf <strong style={{ color: ACCENT }}>{r.base.w}</strong>? 🎵</>}
         </div>
         {/* Auf dem Tablet gibt es kein Darüberfahren — hier hört das Kind alle
             Möglichkeiten nacheinander, ohne schon zu antworten. */}
@@ -165,11 +164,10 @@ export default function RhymeGame({ level = 1, onComplete }) {
       {/* The word to rhyme with */}
       <div style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-        background: 'white', borderRadius: 26, padding: 'clamp(12px,2.5vw,22px) clamp(24px,6vw,48px)',
-        boxShadow: '0 6px 26px rgba(74,0,224,0.14)',
+        ...pxPanel, padding: 'clamp(12px,2.5vw,22px) clamp(24px,6vw,48px)',
       }}>
         <div style={{ fontSize: 'clamp(56px,13vw,90px)', lineHeight: 1 }}>{r.base.e}</div>
-        <div style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(20px,4.5vw,30px)', fontWeight: 800, color: '#4A00E0' }}>
+        <div style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(20px,4.5vw,30px)', fontWeight: 800, color: ACCENT }}>
           {r.base.w}
         </div>
         <motion.button
@@ -177,9 +175,8 @@ export default function RhymeGame({ level = 1, onComplete }) {
           onClick={sayTask}
           aria-label="Wort noch einmal anhören"
           style={{
-            background: '#F0EEFF', border: '2px solid #A29BFE', borderRadius: 99,
-            padding: '5px 16px', cursor: 'pointer',
-            fontFamily: 'var(--font-heading)', fontSize: 13, color: '#6C63FF',
+            ...pxButton('parch'),
+            padding: '5px 16px', fontSize: 13,
           }}
         >🔊 Nochmal</motion.button>
       </div>
@@ -201,12 +198,10 @@ export default function RhymeGame({ level = 1, onComplete }) {
               aria-label={opt.w}
               style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                background: isRight ? '#E8F8EE' : isWrong ? '#FFE8E8' : 'white',
-                border: `3px solid ${isRight ? '#6BCB77' : isWrong ? '#FF6B6B' : '#ECE8FF'}`,
-                borderRadius: 22, padding: 'clamp(10px,2vw,16px) 8px',
+                ...pxCard(isRight ? 'right' : isWrong ? 'wrong' : undefined),
+                padding: 'clamp(10px,2vw,16px) 8px',
                 cursor: solved || isWrong ? 'default' : 'pointer',
                 opacity: isWrong ? 0.55 : 1,
-                boxShadow: isRight ? '0 6px 24px rgba(107,203,119,0.4)' : '0 4px 16px rgba(0,0,0,0.06)',
               }}
             >
               <span style={{ fontSize: 'clamp(34px,8vw,52px)', lineHeight: 1 }}>{opt.e}</span>
@@ -225,10 +220,8 @@ export default function RhymeGame({ level = 1, onComplete }) {
             whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
             onClick={weiterClick}
             style={{
-              background: 'linear-gradient(135deg,#6C63FF,#4A00E0)', color: 'white',
-              border: 'none', borderRadius: 20, padding: '12px 40px', cursor: 'pointer',
-              fontFamily: 'var(--font-heading)', fontSize: 'clamp(16px,3.4vw,21px)', fontWeight: 700,
-              boxShadow: '0 5px 20px rgba(74,0,224,0.38)',
+              ...pxButton('green'), padding: '12px 40px',
+              fontSize: 'clamp(16px,3.4vw,21px)',
             }}
           >Weiter! →</motion.button>
         )}
