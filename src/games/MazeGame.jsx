@@ -1,4 +1,4 @@
-import { useReducer, useEffect, useRef, useState, useCallback, memo } from 'react'
+import { useReducer, useEffect, useRef, useState, useCallback, useMemo, useId, memo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { genMaze } from './maze/mazeGen.js'
 import { mazeReducer, initState } from './maze/mazeReducer.js'
@@ -37,9 +37,9 @@ const LEVEL_CONFIG = level => {
   // cavern — same tiles, clearly a different place, and no new art needed.
   // (The dungeon tiles are bluish to begin with, so the rotation lands on
   // sand rather than the ice it might sound like.)
-  // Levels 1–3 play in the Zauberwald: bright path, dark hedge with
-  // glowing mushrooms (PixelLab tileset, wang/zauberwald).
-  const theme       = level <= 3 ? 'zauberwald' : 'dungeon'
+  // Three worlds: Zauberwald (1–3, bright path, dark hedge), Kristallhöhle
+  // (4–6, lit by glowing crystals) and the Kerker (7–10, lit by torches).
+  const theme       = level <= 3 ? 'zauberwald' : level <= 6 ? 'kristall' : 'dungeon'
   const tint        = level >= 9 ? 'sand' : null
   // Dragon moves independently, once every `dragonSpeed` ms. Deliberately
   // slow and only ramps up gently with level — this is a kids' game, not
@@ -83,7 +83,39 @@ function wangTileId(dx, dy, g, cols, rows) {
 // The Zauberwald set's all-floor tile (id 0) is the floor itself, so floor
 // and wall edges come from one generation and match in colour and texture.
 function floorSprite(theme) {
-  return theme === 'zauberwald' ? 'wang/zauberwald/wang_0.png' : 'mw_floor.png'
+  return theme === 'dungeon' ? 'mw_floor.png' : `wang/${theme}/wang_0.png`
+}
+
+// ──────────────────────────────────────────────────────────────────
+// LIGHT SOURCES — torches (Kerker) and crystals (Kristallhöhle)
+// ──────────────────────────────────────────────────────────────────
+// Sit on wall cells that have floor directly below, so they read as
+// mounted on the wall face. Picked in a fixed pseudo-random order and kept
+// at least LIGHT_GAP cells apart: the old 1-in-8 sprinkle left whole
+// quarters of a fogged maze without a single light, and clumped others.
+// Closer together they lit up nearly the whole board and the fog no
+// longer hid anything; the Kerker is sparser than the cave.
+const LIGHT_KIND = { dungeon: 'torch', kristall: 'crystal' }
+const LIGHT_GAP  = { dungeon: 6, kristall: 5 }
+
+function lightSources(maze, theme) {
+  const kind = LIGHT_KIND[theme]
+  if (!kind) return []
+  const { g, rows, cols } = maze
+  const spots = []
+  for (let y = 0; y < rows - 1; y++) {
+    for (let x = 0; x < cols; x++) {
+      if (g[y][x] === 1 && g[y + 1][x] === 0) spots.push({ x, y, h: (x * 73 + y * 151) % 97 })
+    }
+  }
+  spots.sort((a, b) => a.h - b.h)
+  const picked = []
+  for (const s of spots) {
+    if (picked.every(p => Math.abs(p.x - s.x) + Math.abs(p.y - s.y) >= LIGHT_GAP[theme])) {
+      picked.push({ x: s.x, y: s.y, kind })
+    }
+  }
+  return picked
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -94,6 +126,7 @@ function floorSprite(theme) {
 const LUMI_WALK   = { src: 'lumi_walk.png',   frames: 10, fps: 12 }
 const DRAGON_WALK = { src: 'dragon_walk.png', frames: 8,  fps: 9 }
 const PORTAL_GLOW = { src: 'portal_glow.png', frames: 8,  fps: 8 }
+const TORCH_FIRE  = { src: 'torch_fire.png',  frames: 8,  fps: 10 }
 
 function SpriteStrip({ sprite, size, className, style }) {
   const { src, frames, fps } = sprite
@@ -117,12 +150,28 @@ function SpriteStrip({ sprite, size, className, style }) {
 
 // One potion sprite, three colours: pink, turquoise, gold.
 const POTION_HUES = [0, 190, 60]
+const FOG_COLOR = { zauberwald: '#071f0e', kristall: '#0a0618', dungeon: '#050208' }
+const WORLD_LOOK = {
+  zauberwald: {
+    bg:   'radial-gradient(ellipse at 50% 30%, #2f8a3c 0%, #0b3d17 100%)',
+    glow: '0 0 30px rgba(0,140,0,0.5), 0 12px 50px rgba(0,0,0,0.7)',
+  },
+  kristall: {
+    bg:   'radial-gradient(ellipse at 50% 30%, #1d2b5e 0%, #070a1f 100%)',
+    glow: '0 0 40px rgba(80,200,255,0.4), 0 0 80px rgba(80,200,255,0.15), 0 12px 50px rgba(0,0,0,0.7)',
+  },
+  dungeon: {
+    bg:   'radial-gradient(ellipse at 50% 30%, #1e0a3c 0%, #080412 100%)',
+    glow: '0 0 40px rgba(74,0,224,0.45), 0 0 80px rgba(74,0,224,0.18), 0 12px 50px rgba(0,0,0,0.7)',
+  },
+}
+
 const potionFilter = type => (POTION_HUES[type] ? `hue-rotate(${POTION_HUES[type]}deg) ` : '')
 
 // ──────────────────────────────────────────────────────────────────
 // MEMOISED BOARD — only re-renders when collected potions change
 // ──────────────────────────────────────────────────────────────────
-const Board = memo(function Board({ maze, cellSize, coll, theme, tint }) {
+const Board = memo(function Board({ maze, cellSize, coll, theme, tint, lights }) {
   const { g, rows, cols, potions, exit } = maze
 
   // Dual-grid overlay: one wang tile per intersection point between 4
@@ -248,12 +297,9 @@ const Board = memo(function Board({ maze, cellSize, coll, theme, tint }) {
           const potion   = potions.find(p => p.x === x && p.y === y)
           const potionOk = potion && !coll.includes(potion.id)
 
-          // Torch: wall that has floor directly below, sprinkled randomly.
-          // Dungeon only; the Zauberwald hedge brings its own glowing
-          // mushrooms and fireflies.
-          const hasTorch = isDungeon && isWall && g[y + 1]?.[x] === 0 && ((x * 3 + y * 7) % 8 === 0)
+          const light = isWall ? lights.find(l => l.x === x && l.y === y) : null
 
-          if (!hasTorch && !(isExit && !isWall) && !potionOk) return null
+          if (!light && !(isExit && !isWall) && !potionOk) return null
 
           return (
             <div
@@ -266,19 +312,33 @@ const Board = memo(function Board({ maze, cellSize, coll, theme, tint }) {
                 height:   cellSize,
               }}
             >
-              {/* Torch (gif sprite) */}
-              {hasTorch && (
+              {/* Torch / crystal on the wall face */}
+              {light?.kind === 'torch' && (
+                <SpriteStrip
+                  sprite={TORCH_FIRE}
+                  size={Math.round(cellSize * 0.9)}
+                  style={{
+                    position:      'absolute',
+                    bottom:        -Math.round(cellSize * 0.08),
+                    left:          '50%',
+                    transform:     'translateX(-50%)',
+                    pointerEvents: 'none',
+                    zIndex:        3,
+                  }}
+                />
+              )}
+              {light?.kind === 'crystal' && (
                 <img
-                  src={spr('maze_torch.gif')}
+                  src={spr('crystal.png')}
                   alt=""
                   draggable={false}
+                  className="mz-crystal"
                   style={{
                     position:       'absolute',
-                    bottom:         2,
+                    bottom:         0,
                     left:           '50%',
-                    transform:      'translateX(-50%)',
-                    width:          Math.round(cellSize * 0.72),
-                    height:         Math.round(cellSize * 0.72),
+                    width:          Math.round(cellSize * 0.8),
+                    height:         Math.round(cellSize * 0.8),
                     imageRendering: 'pixelated',
                     pointerEvents:  'none',
                     zIndex:         3,
@@ -296,11 +356,11 @@ const Board = memo(function Board({ maze, cellSize, coll, theme, tint }) {
                   justifyContent:  'center',
                   zIndex:          5,
                 }}>
-                  {isWood ? (
+                  {!isDungeon ? (
                     <SpriteStrip
                       sprite={PORTAL_GLOW}
                       size={cellSize}
-                      style={{ filter: 'drop-shadow(0 0 6px #67e8f9)' }}
+                      style={{ filter: 'drop-shadow(0 0 6px #67e8f9)' + (theme === 'kristall' ? ' hue-rotate(40deg)' : '') }}
                     />
                   ) : (
                   <img
@@ -396,6 +456,102 @@ function Sparkles({ x, y, cellSize }) {
 }
 
 // ──────────────────────────────────────────────────────────────────
+// LIGHTING — fog of war with real light sources
+// ──────────────────────────────────────────────────────────────────
+// The fog used to be one radial CSS mask around Lumi: everything else was
+// black, torches included, so they decorated nothing. Now the fog is an
+// SVG mask (white = fog, black = clear) that several lights cut into:
+//   • Lumi glows and lights the cells around her,
+//   • torches / crystals light their own patch of corridor, so they work
+//     as landmarks even far away,
+//   • the exit and any potion still lying around shine a little,
+//   • cells Lumi has already walked stay faintly visible.
+// A second, additive layer paints the warm (torch) or cool (crystal) glow
+// on top, flickering gently.
+const LIGHT_LOOK = {
+  torch:   { r: 1.8, glow: 'rgba(255,150,40,0.6)',  flicker: true  },
+  crystal: { r: 1.8, glow: 'rgba(120,220,255,0.4)', flicker: false },
+}
+const SEEN_FOG = '#8a8a8a'   // mask grey: explored cells keep ~55 % fog
+
+function Lighting({ maze, cellSize, pos, seen, lights, coll, radius, fogColor }) {
+  const id = useId().replace(/:/g, '')
+  const { cols, rows, exit, potions } = maze
+  const W = cols * cellSize
+  const H = rows * cellSize
+  const c = v => (v + 0.5) * cellSize
+
+  const spots = [
+    ...lights.map(l => ({ key: `l-${l.x},${l.y}`, x: c(l.x), y: c(l.y) + cellSize * 0.45, r: LIGHT_LOOK[l.kind].r })),
+    { x: c(exit.x), y: c(exit.y), r: 1.5, key: 'exit' },
+    ...potions.filter(p => !coll.includes(p.id)).map(p => ({ x: c(p.x), y: c(p.y), r: 1.0, key: 'p' + p.id })),
+  ]
+
+  return (
+    <>
+      <svg
+        width={W}
+        height={H}
+        style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 10 }}
+        aria-hidden="true"
+      >
+        <defs>
+          <radialGradient id={`${id}-hole`}>
+            <stop offset="0%"   stopColor="#000" stopOpacity="1" />
+            <stop offset="55%"  stopColor="#000" stopOpacity="1" />
+            <stop offset="100%" stopColor="#000" stopOpacity="0" />
+          </radialGradient>
+          <mask id={`${id}-mask`} maskUnits="userSpaceOnUse" x="0" y="0" width={W} height={H}>
+            <rect width={W} height={H} fill="#fff" />
+            {Object.keys(seen).map(k => {
+              const [x, y] = k.split(',').map(Number)
+              return <rect key={k} x={x * cellSize} y={y * cellSize} width={cellSize} height={cellSize} fill={SEEN_FOG} />
+            })}
+            {spots.map(sp => (
+              <circle key={sp.key} cx={sp.x} cy={sp.y} r={sp.r * cellSize} fill={`url(#${id}-hole)`} />
+            ))}
+            {/* Lumi's own light glides along with her instead of jumping */}
+            <circle
+              cx={0}
+              cy={0}
+              r={radius * cellSize}
+              fill={`url(#${id}-hole)`}
+              style={{ transform: `translate(${c(pos.x)}px, ${c(pos.y)}px)`, transition: 'transform 0.22s ease-out' }}
+            />
+          </mask>
+        </defs>
+        <rect width={W} height={H} fill={fogColor} mask={`url(#${id}-mask)`} />
+      </svg>
+
+      {/* Coloured glow of the light sources, added on top of the fog */}
+      {lights.map(l => {
+        const look = LIGHT_LOOK[l.kind]
+        const d = look.r * 2 * cellSize
+        return (
+          <div
+            key={`g-${l.x},${l.y}`}
+            className={look.flicker ? 'mz-flicker' : 'mz-shimmer'}
+            style={{
+              position:      'absolute',
+              left:          c(l.x) - d / 2,
+              top:           c(l.y) + cellSize * 0.45 - d / 2,
+              width:         d,
+              height:        d,
+              borderRadius:  '50%',
+              background:    `radial-gradient(circle, ${look.glow} 0%, transparent 68%)`,
+              mixBlendMode:  'screen',
+              pointerEvents: 'none',
+              zIndex:        12,
+              animationDelay: `${-((l.x * 7 + l.y * 3) % 10) / 10}s`,
+            }}
+          />
+        )
+      })}
+    </>
+  )
+}
+
+// ──────────────────────────────────────────────────────────────────
 // D-PAD BUTTON  (touch-friendly with hold-repeat)
 //
 // IMPORTANT: without setPointerCapture, `whileTap={{ scale: 0.86 }}`
@@ -485,6 +641,7 @@ export default function MazeGame({ level = 1, onComplete }) {
   const [st, dispatch] = useReducer(mazeReducer, null, () => initState(mazeRef.current, cfg.hasDragon))
 
   const { containerRef, cellSize } = useBoardSize(cfg.cols, cfg.rows, 76)
+  const lights = useMemo(() => lightSources(mazeRef.current, cfg.theme), [cfg.theme])
 
   const doneRef         = useRef(false)
   const onCompleteRef   = useRef(onComplete)
@@ -655,18 +812,7 @@ export default function MazeGame({ level = 1, onComplete }) {
   const boardW = cols * cellSize
   const boardH = rows * cellSize
 
-  const isWood    = theme === 'zauberwald'
-  const bgGrad    = isWood
-    ? 'radial-gradient(ellipse at 50% 30%, #2f8a3c 0%, #0b3d17 100%)'
-    : 'radial-gradient(ellipse at 50% 30%, #1e0a3c 0%, #080412 100%)'
-  const glow      = isWood
-    ? '0 0 30px rgba(0,140,0,0.5), 0 12px 50px rgba(0,0,0,0.7)'
-    : '0 0 40px rgba(74,0,224,0.45), 0 0 80px rgba(74,0,224,0.18), 0 12px 50px rgba(0,0,0,0.7)'
-
-  // Fog-of-war radial mask
-  const fogMaskImage = fogRadius && cellSize > 0
-    ? `radial-gradient(circle at ${(st.pos.x + 0.5) * cellSize}px ${(st.pos.y + 0.5) * cellSize}px, transparent 0, transparent ${fogRadius * cellSize}px, rgba(0,0,0,0.95) ${fogRadius * cellSize * 1.55}px)`
-    : null
+  const { bg: bgGrad, glow } = WORLD_LOOK[theme]
 
   // Invincibility: blinking
   const isInvincible = st.invUntil > Date.now()
@@ -816,19 +962,21 @@ export default function MazeGame({ level = 1, onComplete }) {
               coll={st.coll}
               theme={theme}
               tint={cfg.tint}
+              lights={lights}
             />
 
-            {/* Fog of war */}
-            {fogMaskImage && (
-              <div style={{
-                position:         'absolute',
-                inset:            0,
-                pointerEvents:    'none',
-                zIndex:           10,
-                maskImage:        fogMaskImage,
-                WebkitMaskImage:  fogMaskImage,
-                background:       isWood ? '#071f0e' : '#050208',
-              }} />
+            {/* Fog of war + light sources */}
+            {fogRadius && (
+              <Lighting
+                maze={mazeRef.current}
+                cellSize={cellSize}
+                pos={st.pos}
+                seen={st.seen}
+                lights={lights}
+                coll={st.coll}
+                radius={fogRadius}
+                fogColor={FOG_COLOR[theme]}
+              />
             )}
 
             {/* Danger vignette */}
@@ -860,6 +1008,17 @@ export default function MazeGame({ level = 1, onComplete }) {
                 pointerEvents: 'none',
               }}
             >
+              {/* Lumi leuchtet: a soft warm halo in the dark worlds */}
+              {fogRadius && (
+                <div className="mz-shimmer" style={{
+                  position:     'absolute',
+                  inset:        '-60%',
+                  borderRadius: '50%',
+                  background:   'radial-gradient(circle, rgba(255,230,120,0.38) 0%, transparent 62%)',
+                  mixBlendMode: 'screen',
+                }} />
+              )}
+
               {/* Drop shadow */}
               <div style={{
                 position:     'absolute',

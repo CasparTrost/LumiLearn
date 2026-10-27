@@ -56,3 +56,22 @@
   from { background-position: 0 0; }
   to   { background-position: calc(-1 * var(--strip-w)) 0; }
 }
+
+/* Light sources (Lighting in MazeGame.jsx) */
+@keyframes mz-flicker {
+  0%, 100% { opacity: 0.9;  transform: scale(1); }
+  20%      { opacity: 1;    transform: scale(1.04); }
+  45%      { opacity: 0.78; transform: scale(0.97); }
+  70%      { opacity: 0.95; transform: scale(1.02); }
+}
+@keyframes mz-shimmer {
+  0%, 100% { opacity: 0.75; }
+  50%      { opacity: 1; }
+}
+@keyframes mz-crystal-pulse {
+  0%, 100% { filter: drop-shadow(0 0 3px rgba(120,220,255,0.7)) brightness(1); }
+  50%      { filter: drop-shadow(0 0 8px rgba(120,220,255,1))   brightness(1.15); }
+}
+.mz-flicker { animation: mz-flicker 1.1s ease-in-out infinite; }
+.mz-shimmer { animation: mz-shimmer 2.6s ease-in-out infinite; }
+.mz-crystal { animation: mz-crystal-pulse 2.4s ease-in-out infinite; }
