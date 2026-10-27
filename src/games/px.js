@@ -40,9 +40,11 @@ export const pxBubble = {
 
 /** Chunky button in one of the pixel colours: gold | green | blue | red | purple | wood | parch */
 export function pxButton(color = 'purple') {
-  const light = color === 'gold' || color === 'parch'
+  // Ink on the light colours, like .px-btn--green/--red/--blue in pixel.css:
+  // white on these was too weak (green 2.2:1)
+  const light = !['purple', 'wood'].includes(color)
   return {
-    background:   `var(--px-${color})`,
+    background:   color === 'purple' ? 'var(--px-purple-deep)' : `var(--px-${color})`,
     color:        light ? INK : '#fff',
     border:       `3px solid ${INK}`,
     borderRadius: 12,
