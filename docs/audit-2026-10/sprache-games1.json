@@ -1,0 +1,9881 @@
+{
+ "hinweis": "Mitschnitt mit Sprach-Attrappe (PROBE): Dauer einer TTS-Äußerung = 350 ms + 55 ms × Zeichen / Tempo. \"aktion\" = Testklick (WRONG/RIGHT/TRY/PAIR…). \"cut\" = von nachfolgender Ausgabe abgebrochen. Testklicks erfolgten meist erst nach Ende der Ansage; einige cuts entstehen durch Vorlesen beim Darüberfahren der Maus (hover) direkt vor dem Klick.",
+ "laeufe": {
+  "initial-sound-L1": {
+   "fehler_konsole": [],
+   "runden": [
+    {
+     "word": "Wolf",
+     "letters": [
+      "W",
+      "B",
+      "K"
+     ]
+    },
+    {
+     "word": "Jacke",
+     "letters": [
+      "O",
+      "J",
+      "D"
+     ]
+    },
+    {
+     "word": "Haus",
+     "letters": [
+      "I",
+      "H",
+      "J"
+     ]
+    },
+    {
+     "word": "Uhr",
+     "letters": [
+      "V",
+      "U",
+      "L"
+     ]
+    },
+    {
+     "word": "Fisch",
+     "letters": [
+      "R",
+      "F",
+      "W"
+     ]
+    },
+    {
+     "word": "Hund",
+     "letters": [
+      "H",
+      "A",
+      "B"
+     ]
+    },
+    {
+     "word": "Wolke",
+     "letters": [
+      "E",
+      "W",
+      "F"
+     ]
+    },
+    {
+     "word": "Drache",
+     "letters": [
+      "D",
+      "J",
+      "I"
+     ]
+    }
+   ],
+   "anzahl_aeusserungen": 33,
+   "abgebrochen": [],
+   "fehlende_audios": [],
+   "verlauf": [
+    {
+     "t_ms": 0,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "GAME START"
+    },
+    {
+     "t_ms": 437,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Womit fängt Wolf an?"
+    },
+    {
+     "t_ms": 3670,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "W"
+    },
+    {
+     "t_ms": 4315,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG B"
+    },
+    {
+     "t_ms": 4482,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Wolf fängt nicht mit B an."
+    },
+    {
+     "t_ms": 7073,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT W"
+    },
+    {
+     "t_ms": 7247,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Richtig! Wolf fängt mit W an."
+    },
+    {
+     "t_ms": 10492,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Womit fängt Jacke an?"
+    },
+    {
+     "t_ms": 13808,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "O"
+    },
+    {
+     "t_ms": 14449,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG O"
+    },
+    {
+     "t_ms": 14506,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Jacke fängt nicht mit O an."
+    },
+    {
+     "t_ms": 17183,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT J"
+    },
+    {
+     "t_ms": 17233,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Richtig! Jacke fängt mit J an."
+    },
+    {
+     "t_ms": 20869,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Womit fängt Haus an?"
+    },
+    {
+     "t_ms": 24061,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "I"
+    },
+    {
+     "t_ms": 24718,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG I"
+    },
+    {
+     "t_ms": 24775,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Haus fängt nicht mit I an."
+    },
+    {
+     "t_ms": 27594,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT H"
+    },
+    {
+     "t_ms": 27699,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Richtig! Haus fängt mit H an."
+    },
+    {
+     "t_ms": 31040,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Womit fängt Uhr an?"
+    },
+    {
+     "t_ms": 34284,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "V"
+    },
+    {
+     "t_ms": 35067,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG V"
+    },
+    {
+     "t_ms": 35363,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Uhr fängt nicht mit V an."
+    },
+    {
+     "t_ms": 38327,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT U"
+    },
+    {
+     "t_ms": 38656,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Richtig! Uhr fängt mit U an."
+    },
+    {
+     "t_ms": 42104,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Womit fängt Fisch an?"
+    },
+    {
+     "t_ms": 45640,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "R"
+    },
+    {
+     "t_ms": 46293,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG R"
+    },
+    {
+     "t_ms": 46351,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Fisch fängt nicht mit R an."
+    },
+    {
+     "t_ms": 49040,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT F"
+    },
+    {
+     "t_ms": 49100,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Richtig! Fisch fängt mit F an."
+    },
+    {
+     "t_ms": 52904,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Womit fängt Hund an?"
+    },
+    {
+     "t_ms": 56966,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "H"
+    },
+    {
+     "t_ms": 57676,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG A"
+    },
+    {
+     "t_ms": 57727,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Hund fängt nicht mit A an."
+    },
+    {
+     "t_ms": 60449,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT H"
+    },
+    {
+     "t_ms": 60522,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Richtig! Hund fängt mit H an."
+    },
+    {
+     "t_ms": 64117,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Womit fängt Wolke an?"
+    },
+    {
+     "t_ms": 67694,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "E"
+    },
+    {
+     "t_ms": 68382,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG E"
+    },
+    {
+     "t_ms": 68544,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Wolke fängt nicht mit E an."
+    },
+    {
+     "t_ms": 71246,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT W"
+    },
+    {
+     "t_ms": 71372,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Richtig! Wolke fängt mit W an."
+    },
+    {
+     "t_ms": 74937,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Womit fängt Drache an?"
+    },
+    {
+     "t_ms": 78747,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "D"
+    },
+    {
+     "t_ms": 79460,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG J"
+    },
+    {
+     "t_ms": 79548,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Drache fängt nicht mit J an."
+    },
+    {
+     "t_ms": 82319,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT D"
+    },
+    {
+     "t_ms": 82366,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Richtig! Drache fängt mit D an."
+    },
+    {
+     "t_ms": 87873,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "das-hast-du-super-gemacht.mp3"
+    }
+   ]
+  },
+  "initial-sound-L5": {
+   "fehler_konsole": [],
+   "runden": [
+    {
+     "word": "Haus",
+     "letters": [
+      "V",
+      "A",
+      "S",
+      "H"
+     ]
+    },
+    {
+     "word": "Mond",
+     "letters": [
+      "D",
+      "M",
+      "R",
+      "I"
+     ]
+    },
+    {
+     "word": "Nase",
+     "letters": [
+      "S",
+      "W",
+      "E",
+      "N"
+     ]
+    },
+    {
+     "word": "Ohr",
+     "letters": [
+      "D",
+      "L",
+      "O",
+      "E"
+     ]
+    },
+    {
+     "word": "Wolf",
+     "letters": [
+      "H",
+      "F",
+      "W",
+      "Z"
+     ]
+    },
+    {
+     "word": "Tisch",
+     "letters": [
+      "T",
+      "I",
+      "B",
+      "P"
+     ]
+    },
+    {
+     "word": "Zebra",
+     "letters": [
+      "G",
+      "V",
+      "Z",
+      "E"
+     ]
+    },
+    {
+     "word": "Zahn",
+     "letters": [
+      "O",
+      "Z",
+      "G",
+      "H"
+     ]
+    }
+   ],
+   "anzahl_aeusserungen": 32,
+   "abgebrochen": [
+    "Womit fängt Haus an? (1245 ms)"
+   ],
+   "fehlende_audios": [],
+   "verlauf": [
+    {
+     "t_ms": 0,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "GAME START"
+    },
+    {
+     "t_ms": 912,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Womit fängt Haus an?"
+    },
+    {
+     "t_ms": 2031,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG V"
+    },
+    {
+     "t_ms": 2157,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Womit fängt Haus an?",
+     "abgebrochen_nach_ms": 1245
+    },
+    {
+     "t_ms": 2348,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Haus fängt nicht mit V an."
+    },
+    {
+     "t_ms": 5061,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT H"
+    },
+    {
+     "t_ms": 5114,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Richtig! Haus fängt mit H an."
+    },
+    {
+     "t_ms": 8650,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Womit fängt Mond an?"
+    },
+    {
+     "t_ms": 12455,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "D"
+    },
+    {
+     "t_ms": 13167,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG D"
+    },
+    {
+     "t_ms": 13361,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Mond fängt nicht mit D an."
+    },
+    {
+     "t_ms": 15996,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT M"
+    },
+    {
+     "t_ms": 16070,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Richtig! Mond fängt mit M an."
+    },
+    {
+     "t_ms": 19497,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Womit fängt Nase an?"
+    },
+    {
+     "t_ms": 22781,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "S"
+    },
+    {
+     "t_ms": 23442,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG S"
+    },
+    {
+     "t_ms": 23608,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Nase fängt nicht mit S an."
+    },
+    {
+     "t_ms": 26266,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT N"
+    },
+    {
+     "t_ms": 26396,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Richtig! Nase fängt mit N an."
+    },
+    {
+     "t_ms": 29911,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Womit fängt Ohr an?"
+    },
+    {
+     "t_ms": 33133,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "D"
+    },
+    {
+     "t_ms": 33910,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG D"
+    },
+    {
+     "t_ms": 33949,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Ohr fängt nicht mit D an."
+    },
+    {
+     "t_ms": 36488,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT O"
+    },
+    {
+     "t_ms": 36644,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Richtig! Ohr fängt mit O an."
+    },
+    {
+     "t_ms": 39887,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Womit fängt Wolf an?"
+    },
+    {
+     "t_ms": 43329,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "H"
+    },
+    {
+     "t_ms": 44032,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG H"
+    },
+    {
+     "t_ms": 44079,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Wolf fängt nicht mit H an."
+    },
+    {
+     "t_ms": 46810,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT W"
+    },
+    {
+     "t_ms": 47045,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Richtig! Wolf fängt mit W an."
+    },
+    {
+     "t_ms": 50464,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Womit fängt Tisch an?"
+    },
+    {
+     "t_ms": 53980,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "T"
+    },
+    {
+     "t_ms": 54775,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG I"
+    },
+    {
+     "t_ms": 54829,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Tisch fängt nicht mit I an."
+    },
+    {
+     "t_ms": 57716,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT T"
+    },
+    {
+     "t_ms": 57764,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Richtig! Tisch fängt mit T an."
+    },
+    {
+     "t_ms": 61686,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Womit fängt Zebra an?"
+    },
+    {
+     "t_ms": 65047,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "G"
+    },
+    {
+     "t_ms": 65698,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG G"
+    },
+    {
+     "t_ms": 65810,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Zebra fängt nicht mit G an."
+    },
+    {
+     "t_ms": 68498,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Z"
+    },
+    {
+     "t_ms": 68632,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Richtig! Zebra fängt mit Z an."
+    },
+    {
+     "t_ms": 72156,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Womit fängt Zahn an?"
+    },
+    {
+     "t_ms": 75503,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "O"
+    },
+    {
+     "t_ms": 76212,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG O"
+    },
+    {
+     "t_ms": 76509,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Zahn fängt nicht mit O an."
+    },
+    {
+     "t_ms": 79297,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Z"
+    },
+    {
+     "t_ms": 79439,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Richtig! Zahn fängt mit Z an."
+    },
+    {
+     "t_ms": 84210,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "das-hast-du-super-gemacht.mp3"
+    }
+   ]
+  },
+  "initial-sound-L9": {
+   "fehler_konsole": [],
+   "runden": [
+    {
+     "word": "Tisch",
+     "letters": [
+      "L",
+      "T",
+      "V",
+      "A",
+      "F"
+     ]
+    },
+    {
+     "word": "Apfel",
+     "letters": [
+      "F",
+      "S",
+      "O",
+      "A",
+      "V"
+     ]
+    },
+    {
+     "word": "Banane",
+     "letters": [
+      "P",
+      "U",
+      "E",
+      "B",
+      "F"
+     ]
+    },
+    {
+     "word": "Gabel",
+     "letters": [
+      "B",
+      "O",
+      "G",
+      "A",
+      "U"
+     ]
+    },
+    {
+     "word": "Rakete",
+     "letters": [
+      "V",
+      "F",
+      "R",
+      "E",
+      "U"
+     ]
+    },
+    {
+     "word": "Vogel",
+     "letters": [
+      "I",
+      "V",
+      "F",
+      "L",
+      "N"
+     ]
+    },
+    {
+     "word": "Pilz",
+     "letters": [
+      "T",
+      "P",
+      "U",
+      "H",
+      "G"
+     ]
+    },
+    {
+     "word": "Pferd",
+     "letters": [
+      "P",
+      "L",
+      "S",
+      "D",
+      "K"
+     ]
+    }
+   ],
+   "anzahl_aeusserungen": 33,
+   "abgebrochen": [],
+   "fehlende_audios": [],
+   "verlauf": [
+    {
+     "t_ms": 0,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "GAME START"
+    },
+    {
+     "t_ms": 2660,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Womit fängt Tisch an?"
+    },
+    {
+     "t_ms": 6121,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "L"
+    },
+    {
+     "t_ms": 6781,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG L"
+    },
+    {
+     "t_ms": 6875,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Tisch fängt nicht mit L an."
+    },
+    {
+     "t_ms": 9499,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT T"
+    },
+    {
+     "t_ms": 9584,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Richtig! Tisch fängt mit T an."
+    },
+    {
+     "t_ms": 12932,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Womit fängt Apfel an?"
+    },
+    {
+     "t_ms": 16202,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "F"
+    },
+    {
+     "t_ms": 16850,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG F"
+    },
+    {
+     "t_ms": 16893,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Apfel fängt nicht mit F an."
+    },
+    {
+     "t_ms": 19877,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT A"
+    },
+    {
+     "t_ms": 19957,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Richtig! Apfel fängt mit A an."
+    },
+    {
+     "t_ms": 23575,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Womit fängt Banane an?"
+    },
+    {
+     "t_ms": 26996,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "P"
+    },
+    {
+     "t_ms": 27645,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG P"
+    },
+    {
+     "t_ms": 27716,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Banane fängt nicht mit P an."
+    },
+    {
+     "t_ms": 30565,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT B"
+    },
+    {
+     "t_ms": 30739,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Richtig! Banane fängt mit B an."
+    },
+    {
+     "t_ms": 34228,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Womit fängt Gabel an?"
+    },
+    {
+     "t_ms": 37494,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "B"
+    },
+    {
+     "t_ms": 38190,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG B"
+    },
+    {
+     "t_ms": 38415,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Gabel fängt nicht mit B an."
+    },
+    {
+     "t_ms": 41365,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT G"
+    },
+    {
+     "t_ms": 41431,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Richtig! Gabel fängt mit G an."
+    },
+    {
+     "t_ms": 45166,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Womit fängt Rakete an?"
+    },
+    {
+     "t_ms": 48794,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "V"
+    },
+    {
+     "t_ms": 49513,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG V"
+    },
+    {
+     "t_ms": 49648,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Rakete fängt nicht mit V an."
+    },
+    {
+     "t_ms": 52358,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT R"
+    },
+    {
+     "t_ms": 52628,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Richtig! Rakete fängt mit R an."
+    },
+    {
+     "t_ms": 56111,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Womit fängt Vogel an?"
+    },
+    {
+     "t_ms": 59731,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "I"
+    },
+    {
+     "t_ms": 60413,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG I"
+    },
+    {
+     "t_ms": 60584,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Vogel fängt nicht mit I an."
+    },
+    {
+     "t_ms": 63280,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT V"
+    },
+    {
+     "t_ms": 63368,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Richtig! Vogel fängt mit V an."
+    },
+    {
+     "t_ms": 66990,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Womit fängt Pilz an?"
+    },
+    {
+     "t_ms": 70244,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "T"
+    },
+    {
+     "t_ms": 71024,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG T"
+    },
+    {
+     "t_ms": 71314,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Pilz fängt nicht mit T an."
+    },
+    {
+     "t_ms": 73975,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT P"
+    },
+    {
+     "t_ms": 74036,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Richtig! Pilz fängt mit P an."
+    },
+    {
+     "t_ms": 77442,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Womit fängt Pferd an?"
+    },
+    {
+     "t_ms": 80952,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "P"
+    },
+    {
+     "t_ms": 81597,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG L"
+    },
+    {
+     "t_ms": 81627,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Pferd fängt nicht mit L an."
+    },
+    {
+     "t_ms": 84256,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT P"
+    },
+    {
+     "t_ms": 84499,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Richtig! Pferd fängt mit P an."
+    },
+    {
+     "t_ms": 89894,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "das-hast-du-super-gemacht.mp3"
+    }
+   ]
+  },
+  "letter-intro-L1": {
+   "fehler_konsole": [],
+   "runden": [
+    {
+     "letter": "A",
+     "options": [
+      "Zug",
+      "Uhu",
+      "Alligator"
+     ]
+    },
+    {
+     "letter": "S",
+     "options": [
+      "Trommel",
+      "Schlange",
+      "Koala"
+     ]
+    },
+    {
+     "letter": "B",
+     "options": [
+      "Trommel",
+      "Biene",
+      "Lampe"
+     ]
+    },
+    {
+     "letter": "O",
+     "options": [
+      "Oktopus",
+      "Auto",
+      "Ei"
+     ]
+    },
+    {
+     "letter": "E",
+     "options": [
+      "Ei",
+      "Rakete",
+      "Jaguar"
+     ]
+    },
+    {
+     "letter": "I",
+     "options": [
+      "Ballon",
+      "Tiger",
+      "Igel"
+     ]
+    },
+    {
+     "letter": "M",
+     "options": [
+      "Nest",
+      "Musik",
+      "Pinguin"
+     ]
+    },
+    {
+     "letter": "U",
+     "options": [
+      "Ufo",
+      "Rakete",
+      "Oktopus"
+     ]
+    }
+   ],
+   "anzahl_aeusserungen": 29,
+   "abgebrochen": [
+    "Trommel (650 ms)"
+   ],
+   "fehlende_audios": [],
+   "verlauf": [
+    {
+     "t_ms": 0,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "GAME START"
+    },
+    {
+     "t_ms": 411,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "a-ist-der-1-buchstabe-des-alphabets-und-ein-vokal.mp3"
+    },
+    {
+     "t_ms": 4786,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-a.mp3"
+    },
+    {
+     "t_ms": 7615,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Zug"
+    },
+    {
+     "t_ms": 7938,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Zug"
+    },
+    {
+     "t_ms": 8669,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Alligator"
+    },
+    {
+     "t_ms": 8738,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Alligator"
+    },
+    {
+     "t_ms": 11242,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "s-ist-der-19-buchstabe-s-zischt-wie-eine-schlange.mp3"
+    },
+    {
+     "t_ms": 15936,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-s.mp3"
+    },
+    {
+     "t_ms": 18673,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Schlange"
+    },
+    {
+     "t_ms": 18723,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Schlange"
+    },
+    {
+     "t_ms": 20900,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "b-ist-der-2-buchstabe-des-alphabets.mp3"
+    },
+    {
+     "t_ms": 23765,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-b.mp3"
+    },
+    {
+     "t_ms": 26262,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Trommel"
+    },
+    {
+     "t_ms": 26681,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Trommel"
+    },
+    {
+     "t_ms": 27280,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Biene"
+    },
+    {
+     "t_ms": 27331,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Trommel",
+     "abgebrochen_nach_ms": 650
+    },
+    {
+     "t_ms": 27513,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Biene"
+    },
+    {
+     "t_ms": 29645,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "o-ist-der-15-buchstabe-des-alphabets-und-ein-vokal.mp3"
+    },
+    {
+     "t_ms": 34068,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-o.mp3"
+    },
+    {
+     "t_ms": 36785,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Oktopus"
+    },
+    {
+     "t_ms": 36835,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Oktopus"
+    },
+    {
+     "t_ms": 38976,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "e-ist-der-5-buchstabe-des-alphabets-und-ein-vokal.mp3"
+    },
+    {
+     "t_ms": 43514,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-e.mp3"
+    },
+    {
+     "t_ms": 46174,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Rakete"
+    },
+    {
+     "t_ms": 46465,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Rakete"
+    },
+    {
+     "t_ms": 47218,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Ei"
+    },
+    {
+     "t_ms": 47253,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Ei"
+    },
+    {
+     "t_ms": 49488,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "i-ist-der-9-buchstabe-des-alphabets-und-ein-vokal.mp3"
+    },
+    {
+     "t_ms": 54174,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-i.mp3"
+    },
+    {
+     "t_ms": 57021,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Igel"
+    },
+    {
+     "t_ms": 57130,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Igel"
+    },
+    {
+     "t_ms": 59412,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "m-ist-der-13-buchstabe-m-klingt-wie-ein-summen.mp3"
+    },
+    {
+     "t_ms": 63816,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-m.mp3"
+    },
+    {
+     "t_ms": 66690,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Nest"
+    },
+    {
+     "t_ms": 67003,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Nest"
+    },
+    {
+     "t_ms": 67840,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Musik"
+    },
+    {
+     "t_ms": 68554,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Musik"
+    },
+    {
+     "t_ms": 70723,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "u-ist-der-21-buchstabe-des-alphabets-und-ein-vokal.mp3"
+    },
+    {
+     "t_ms": 76040,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-u.mp3"
+    },
+    {
+     "t_ms": 78666,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Ufo"
+    },
+    {
+     "t_ms": 78706,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Ufo"
+    },
+    {
+     "t_ms": 81953,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "das-hast-du-super-gemacht.mp3"
+    }
+   ]
+  },
+  "letter-intro-L3": {
+   "fehler_konsole": [],
+   "runden": [
+    {
+     "letter": "P",
+     "options": [
+      "Wal",
+      "Wolf",
+      "Pinguin"
+     ]
+    },
+    {
+     "letter": "G",
+     "options": [
+      "Geschenk",
+      "Koala",
+      "Haus"
+     ]
+    },
+    {
+     "letter": "V",
+     "options": [
+      "X",
+      "Vogel",
+      "Pilz"
+     ]
+    },
+    {
+     "letter": "C",
+     "options": [
+      "Clown",
+      "Hase",
+      "Roboter"
+     ]
+    },
+    {
+     "letter": "Z",
+     "options": [
+      "Zebra",
+      "Insekt",
+      "Joghurt"
+     ]
+    },
+    {
+     "letter": "Q",
+     "options": [
+      "Qualm",
+      "Ballon",
+      "Katze"
+     ]
+    },
+    {
+     "letter": "W",
+     "options": [
+      "Wal",
+      "Alligator",
+      "Ziegel"
+     ]
+    },
+    {
+     "letter": "J",
+     "options": [
+      "Fuchs",
+      "Ziegel",
+      "Jaguar"
+     ]
+    }
+   ],
+   "anzahl_aeusserungen": 21,
+   "abgebrochen": [
+    "Weiter mit Level 3 (796 ms)",
+    "p-ist-der-16-buchstabe-des-alphabets.mp3 (1468 ms)",
+    "g-ist-der-7-buchstabe-des-alphabets.mp3 (600 ms)",
+    "v-ist-der-22-buchstabe-v-klingt-aehnlich-wie-f.mp3 (1601 ms)",
+    "z-ist-der-26-und-letzte-buchstabe-des-alphabets.mp3 (1913 ms)",
+    "w-ist-der-23-buchstabe-des-alphabets.mp3 (1626 ms)",
+    "j-ist-der-10-buchstabe-des-alphabets.mp3 (620 ms)"
+   ],
+   "fehlende_audios": [
+    "welches-wort-beginnt-mit-c.mp3",
+    "welches-wort-beginnt-mit-q.mp3"
+   ],
+   "verlauf": [
+    {
+     "t_ms": 0,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "GAME START"
+    },
+    {
+     "t_ms": 685,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Weiter mit Level 3",
+     "abgebrochen_nach_ms": 796
+    },
+    {
+     "t_ms": 734,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "p-ist-der-16-buchstabe-des-alphabets.mp3"
+    },
+    {
+     "t_ms": 1213,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Wal"
+    },
+    {
+     "t_ms": 2169,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Pinguin"
+    },
+    {
+     "t_ms": 2202,
+     "typ": "cut",
+     "quelle": "audio",
+     "text": "p-ist-der-16-buchstabe-des-alphabets.mp3",
+     "abgebrochen_nach_ms": 1468
+    },
+    {
+     "t_ms": 2382,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Pinguin"
+    },
+    {
+     "t_ms": 4335,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "g-ist-der-7-buchstabe-des-alphabets.mp3"
+    },
+    {
+     "t_ms": 4894,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Geschenk"
+    },
+    {
+     "t_ms": 4935,
+     "typ": "cut",
+     "quelle": "audio",
+     "text": "g-ist-der-7-buchstabe-des-alphabets.mp3",
+     "abgebrochen_nach_ms": 600
+    },
+    {
+     "t_ms": 5115,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Geschenk"
+    },
+    {
+     "t_ms": 7072,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "v-ist-der-22-buchstabe-v-klingt-aehnlich-wie-f.mp3"
+    },
+    {
+     "t_ms": 7632,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG X"
+    },
+    {
+     "t_ms": 8630,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Vogel"
+    },
+    {
+     "t_ms": 8673,
+     "typ": "cut",
+     "quelle": "audio",
+     "text": "v-ist-der-22-buchstabe-v-klingt-aehnlich-wie-f.mp3",
+     "abgebrochen_nach_ms": 1601
+    },
+    {
+     "t_ms": 8853,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Vogel"
+    },
+    {
+     "t_ms": 10742,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "C ist der 3. Buchstabe. C klingt oft wie K oder Z."
+    },
+    {
+     "t_ms": 14338,
+     "typ": "missing",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-c.mp3"
+    },
+    {
+     "t_ms": 14338,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Welches Wort beginnt mit C?"
+    },
+    {
+     "t_ms": 14338,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Welches Wort beginnt mit C?"
+    },
+    {
+     "t_ms": 17106,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Clown"
+    },
+    {
+     "t_ms": 17134,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Clown"
+    },
+    {
+     "t_ms": 19250,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "z-ist-der-26-und-letzte-buchstabe-des-alphabets.mp3"
+    },
+    {
+     "t_ms": 19820,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Insekt"
+    },
+    {
+     "t_ms": 21124,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Zebra"
+    },
+    {
+     "t_ms": 21163,
+     "typ": "cut",
+     "quelle": "audio",
+     "text": "z-ist-der-26-und-letzte-buchstabe-des-alphabets.mp3",
+     "abgebrochen_nach_ms": 1913
+    },
+    {
+     "t_ms": 21343,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Zebra"
+    },
+    {
+     "t_ms": 23328,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Q ist der 17. Buchstabe. Q kommt fast immer mit U zusammen."
+    },
+    {
+     "t_ms": 27591,
+     "typ": "missing",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-q.mp3"
+    },
+    {
+     "t_ms": 27591,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Welches Wort beginnt mit Q?"
+    },
+    {
+     "t_ms": 27591,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Welches Wort beginnt mit Q?"
+    },
+    {
+     "t_ms": 30258,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Qualm"
+    },
+    {
+     "t_ms": 30302,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Qualm"
+    },
+    {
+     "t_ms": 32423,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "w-ist-der-23-buchstabe-des-alphabets.mp3"
+    },
+    {
+     "t_ms": 33027,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Alligator"
+    },
+    {
+     "t_ms": 34016,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Wal"
+    },
+    {
+     "t_ms": 34049,
+     "typ": "cut",
+     "quelle": "audio",
+     "text": "w-ist-der-23-buchstabe-des-alphabets.mp3",
+     "abgebrochen_nach_ms": 1626
+    },
+    {
+     "t_ms": 34230,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Wal"
+    },
+    {
+     "t_ms": 36301,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "j-ist-der-10-buchstabe-des-alphabets.mp3"
+    },
+    {
+     "t_ms": 36869,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Jaguar"
+    },
+    {
+     "t_ms": 36921,
+     "typ": "cut",
+     "quelle": "audio",
+     "text": "j-ist-der-10-buchstabe-des-alphabets.mp3",
+     "abgebrochen_nach_ms": 620
+    },
+    {
+     "t_ms": 37101,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Jaguar"
+    },
+    {
+     "t_ms": 39906,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "das-hast-du-super-gemacht.mp3"
+    }
+   ]
+  },
+  "letter-intro-L4": {
+   "fehler_konsole": [],
+   "runden": [
+    {
+     "letter": "I",
+     "options": [
+      "Dose",
+      "Insekt",
+      "Maus"
+     ]
+    },
+    {
+     "letter": "M",
+     "options": [
+      "Pilz",
+      "Maus",
+      "Schlange"
+     ]
+    },
+    {
+     "letter": "D",
+     "options": [
+      "Wolf",
+      "Drache",
+      "Apfel"
+     ]
+    },
+    {
+     "letter": "J",
+     "options": [
+      "Joghurt",
+      "Ufo",
+      "Schnecke"
+     ]
+    },
+    {
+     "letter": "E",
+     "options": [
+      "Roboter",
+      "Dose",
+      "Eichhörnchen"
+     ]
+    },
+    {
+     "letter": "K",
+     "options": [
+      "Uhr",
+      "Ziel",
+      "Koala"
+     ]
+    },
+    {
+     "letter": "G",
+     "options": [
+      "Rakete",
+      "Ziel",
+      "Geist"
+     ]
+    },
+    {
+     "letter": "F",
+     "options": [
+      "Frosch",
+      "Igel",
+      "Clown"
+     ]
+    },
+    {
+     "letter": "A",
+     "options": [
+      "Adler",
+      "Yoga",
+      "Zebra"
+     ]
+    },
+    {
+     "letter": "X",
+     "options": [
+      "Joghurt",
+      "Xylophon",
+      "Auto"
+     ]
+    },
+    {
+     "letter": "B",
+     "options": [
+      "Blume",
+      "Lama",
+      "Pinguin"
+     ]
+    },
+    {
+     "letter": "L",
+     "options": [
+      "Vase",
+      "Löwe",
+      "Wal"
+     ]
+    },
+    {
+     "letter": "H",
+     "options": [
+      "Haus",
+      "Yo-Yo",
+      "X"
+     ]
+    },
+    {
+     "letter": "Y",
+     "options": [
+      "Yo-Yo",
+      "Rose",
+      "Nest"
+     ]
+    }
+   ],
+   "anzahl_aeusserungen": 33,
+   "abgebrochen": [
+    "Weiter mit Level 4 (923 ms)",
+    "i-ist-der-9-buchstabe-des-alphabets-und-ein-vokal.mp3 (1499 ms)",
+    "m-ist-der-13-buchstabe-m-klingt-wie-ein-summen.mp3 (630 ms)",
+    "d-ist-der-4-buchstabe-nach-c-kommt-d.mp3 (1523 ms)",
+    "j-ist-der-10-buchstabe-des-alphabets.mp3 (595 ms)",
+    "e-ist-der-5-buchstabe-des-alphabets-und-ein-vokal.mp3 (1598 ms)",
+    "k-ist-der-11-buchstabe-des-alphabets.mp3 (628 ms)",
+    "g-ist-der-7-buchstabe-des-alphabets.mp3 (1563 ms)",
+    "f-ist-der-6-buchstabe.mp3 (616 ms)",
+    "a-ist-der-1-buchstabe-des-alphabets-und-ein-vokal.mp3 (1564 ms)",
+    "b-ist-der-2-buchstabe-des-alphabets.mp3 (1569 ms)",
+    "l-ist-der-12-buchstabe.mp3 (562 ms)",
+    "h-ist-der-8-buchstabe-h-haucht-ganz-leise.mp3 (1582 ms)"
+   ],
+   "fehlende_audios": [
+    "welches-wort-beginnt-mit-x.mp3",
+    "welches-wort-beginnt-mit-y.mp3"
+   ],
+   "verlauf": [
+    {
+     "t_ms": 0,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "GAME START"
+    },
+    {
+     "t_ms": 678,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Weiter mit Level 4",
+     "abgebrochen_nach_ms": 923
+    },
+    {
+     "t_ms": 690,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "i-ist-der-9-buchstabe-des-alphabets-und-ein-vokal.mp3"
+    },
+    {
+     "t_ms": 1200,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Dose"
+    },
+    {
+     "t_ms": 2138,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Insekt"
+    },
+    {
+     "t_ms": 2189,
+     "typ": "cut",
+     "quelle": "audio",
+     "text": "i-ist-der-9-buchstabe-des-alphabets-und-ein-vokal.mp3",
+     "abgebrochen_nach_ms": 1499
+    },
+    {
+     "t_ms": 2369,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Insekt"
+    },
+    {
+     "t_ms": 4290,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "m-ist-der-13-buchstabe-m-klingt-wie-ein-summen.mp3"
+    },
+    {
+     "t_ms": 4883,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Maus"
+    },
+    {
+     "t_ms": 4920,
+     "typ": "cut",
+     "quelle": "audio",
+     "text": "m-ist-der-13-buchstabe-m-klingt-wie-ein-summen.mp3",
+     "abgebrochen_nach_ms": 630
+    },
+    {
+     "t_ms": 5100,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Maus"
+    },
+    {
+     "t_ms": 7030,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "d-ist-der-4-buchstabe-nach-c-kommt-d.mp3"
+    },
+    {
+     "t_ms": 7569,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Wolf"
+    },
+    {
+     "t_ms": 8525,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Drache"
+    },
+    {
+     "t_ms": 8553,
+     "typ": "cut",
+     "quelle": "audio",
+     "text": "d-ist-der-4-buchstabe-nach-c-kommt-d.mp3",
+     "abgebrochen_nach_ms": 1523
+    },
+    {
+     "t_ms": 8734,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Drache"
+    },
+    {
+     "t_ms": 10664,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "j-ist-der-10-buchstabe-des-alphabets.mp3"
+    },
+    {
+     "t_ms": 11209,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Joghurt"
+    },
+    {
+     "t_ms": 11259,
+     "typ": "cut",
+     "quelle": "audio",
+     "text": "j-ist-der-10-buchstabe-des-alphabets.mp3",
+     "abgebrochen_nach_ms": 595
+    },
+    {
+     "t_ms": 11439,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Joghurt"
+    },
+    {
+     "t_ms": 13420,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "e-ist-der-5-buchstabe-des-alphabets-und-ein-vokal.mp3"
+    },
+    {
+     "t_ms": 13982,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Roboter"
+    },
+    {
+     "t_ms": 14954,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Eichhörnchen"
+    },
+    {
+     "t_ms": 15018,
+     "typ": "cut",
+     "quelle": "audio",
+     "text": "e-ist-der-5-buchstabe-des-alphabets-und-ein-vokal.mp3",
+     "abgebrochen_nach_ms": 1598
+    },
+    {
+     "t_ms": 15198,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Eichhörnchen"
+    },
+    {
+     "t_ms": 17227,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "k-ist-der-11-buchstabe-des-alphabets.mp3"
+    },
+    {
+     "t_ms": 17814,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Koala"
+    },
+    {
+     "t_ms": 17855,
+     "typ": "cut",
+     "quelle": "audio",
+     "text": "k-ist-der-11-buchstabe-des-alphabets.mp3",
+     "abgebrochen_nach_ms": 628
+    },
+    {
+     "t_ms": 18036,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Koala"
+    },
+    {
+     "t_ms": 19937,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "g-ist-der-7-buchstabe-des-alphabets.mp3"
+    },
+    {
+     "t_ms": 20475,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Rakete"
+    },
+    {
+     "t_ms": 21454,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Geist"
+    },
+    {
+     "t_ms": 21499,
+     "typ": "cut",
+     "quelle": "audio",
+     "text": "g-ist-der-7-buchstabe-des-alphabets.mp3",
+     "abgebrochen_nach_ms": 1563
+    },
+    {
+     "t_ms": 21679,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Geist"
+    },
+    {
+     "t_ms": 23666,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "f-ist-der-6-buchstabe.mp3"
+    },
+    {
+     "t_ms": 24223,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Frosch"
+    },
+    {
+     "t_ms": 24281,
+     "typ": "cut",
+     "quelle": "audio",
+     "text": "f-ist-der-6-buchstabe.mp3",
+     "abgebrochen_nach_ms": 616
+    },
+    {
+     "t_ms": 24463,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Frosch"
+    },
+    {
+     "t_ms": 26371,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "a-ist-der-1-buchstabe-des-alphabets-und-ein-vokal.mp3"
+    },
+    {
+     "t_ms": 26953,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Yoga"
+    },
+    {
+     "t_ms": 27914,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Adler"
+    },
+    {
+     "t_ms": 27935,
+     "typ": "cut",
+     "quelle": "audio",
+     "text": "a-ist-der-1-buchstabe-des-alphabets-und-ein-vokal.mp3",
+     "abgebrochen_nach_ms": 1564
+    },
+    {
+     "t_ms": 28115,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Adler"
+    },
+    {
+     "t_ms": 30011,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "X ist der 24. Buchstabe. X macht ein ks Geräusch."
+    },
+    {
+     "t_ms": 33549,
+     "typ": "missing",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-x.mp3"
+    },
+    {
+     "t_ms": 33549,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Welches Wort beginnt mit X?"
+    },
+    {
+     "t_ms": 33549,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Welches Wort beginnt mit X?"
+    },
+    {
+     "t_ms": 36190,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Xylophon"
+    },
+    {
+     "t_ms": 36216,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Xylophon"
+    },
+    {
+     "t_ms": 38303,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "b-ist-der-2-buchstabe-des-alphabets.mp3"
+    },
+    {
+     "t_ms": 38850,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Lama"
+    },
+    {
+     "t_ms": 39832,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Blume"
+    },
+    {
+     "t_ms": 39872,
+     "typ": "cut",
+     "quelle": "audio",
+     "text": "b-ist-der-2-buchstabe-des-alphabets.mp3",
+     "abgebrochen_nach_ms": 1569
+    },
+    {
+     "t_ms": 40056,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Blume"
+    },
+    {
+     "t_ms": 42143,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "l-ist-der-12-buchstabe.mp3"
+    },
+    {
+     "t_ms": 42655,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Löwe"
+    },
+    {
+     "t_ms": 42705,
+     "typ": "cut",
+     "quelle": "audio",
+     "text": "l-ist-der-12-buchstabe.mp3",
+     "abgebrochen_nach_ms": 562
+    },
+    {
+     "t_ms": 42888,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Löwe"
+    },
+    {
+     "t_ms": 44896,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "h-ist-der-8-buchstabe-h-haucht-ganz-leise.mp3"
+    },
+    {
+     "t_ms": 45451,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Yo-Yo"
+    },
+    {
+     "t_ms": 46401,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Haus"
+    },
+    {
+     "t_ms": 46478,
+     "typ": "cut",
+     "quelle": "audio",
+     "text": "h-ist-der-8-buchstabe-h-haucht-ganz-leise.mp3",
+     "abgebrochen_nach_ms": 1582
+    },
+    {
+     "t_ms": 46658,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Haus"
+    },
+    {
+     "t_ms": 48582,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Y ist der 25. Buchstabe. Y klingt wie ein Ü oder J."
+    },
+    {
+     "t_ms": 52319,
+     "typ": "missing",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-y.mp3"
+    },
+    {
+     "t_ms": 52319,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Welches Wort beginnt mit Y?"
+    },
+    {
+     "t_ms": 52319,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Welches Wort beginnt mit Y?"
+    },
+    {
+     "t_ms": 54944,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Yo-Yo"
+    },
+    {
+     "t_ms": 55000,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Yo-Yo"
+    },
+    {
+     "t_ms": 58099,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "das-hast-du-super-gemacht.mp3"
+    }
+   ]
+  },
+  "letter-intro-L5": {
+   "fehler_konsole": [],
+   "runden": [
+    {
+     "letter": "J",
+     "options": [
+      "Trommel",
+      "Wolke",
+      "Joghurt"
+     ]
+    },
+    {
+     "letter": "K",
+     "options": [
+      "Drache",
+      "Katze",
+      "Hase"
+     ]
+    },
+    {
+     "letter": "X",
+     "options": [
+      "X",
+      "Giraffe",
+      "Trommel"
+     ]
+    },
+    {
+     "letter": "R",
+     "options": [
+      "Roboter",
+      "Pinguin",
+      "Wolke"
+     ]
+    },
+    {
+     "letter": "G",
+     "options": [
+      "Giraffe",
+      "Ente",
+      "Igel"
+     ]
+    },
+    {
+     "letter": "A",
+     "options": [
+      "Schmetterling",
+      "Auto",
+      "Clown"
+     ]
+    },
+    {
+     "letter": "H",
+     "options": [
+      "Ballon",
+      "Schnecke",
+      "Haus"
+     ]
+    },
+    {
+     "letter": "Q",
+     "options": [
+      "Qualle",
+      "Ziel",
+      "Apfel"
+     ]
+    },
+    {
+     "letter": "V",
+     "options": [
+      "König",
+      "Vogel",
+      "Maus"
+     ]
+    },
+    {
+     "letter": "L",
+     "options": [
+      "Eule",
+      "Löwe",
+      "Jaguar"
+     ]
+    },
+    {
+     "letter": "T",
+     "options": [
+      "Eichhörnchen",
+      "Tiger",
+      "Joghurt"
+     ]
+    },
+    {
+     "letter": "O",
+     "options": [
+      "Geschenk",
+      "Ei",
+      "Orange"
+     ]
+    },
+    {
+     "letter": "P",
+     "options": [
+      "Oktopus",
+      "Pinguin",
+      "Dose"
+     ]
+    },
+    {
+     "letter": "B",
+     "options": [
+      "Ohr",
+      "Biene",
+      "Schmetterling"
+     ]
+    },
+    {
+     "letter": "F",
+     "options": [
+      "Frosch",
+      "Uhr",
+      "Xylofon"
+     ]
+    },
+    {
+     "letter": "E",
+     "options": [
+      "Schmetterling",
+      "Koala",
+      "Elefant"
+     ]
+    },
+    {
+     "letter": "I",
+     "options": [
+      "Insekt",
+      "Orange",
+      "Zebra"
+     ]
+    },
+    {
+     "letter": "N",
+     "options": [
+      "Nase",
+      "Ohr",
+      "Katze"
+     ]
+    },
+    {
+     "letter": "Z",
+     "options": [
+      "Zahn",
+      "Aubergine",
+      "Rakete"
+     ]
+    },
+    {
+     "letter": "D",
+     "options": [
+      "Musik",
+      "Drache",
+      "Roboter"
+     ]
+    },
+    {
+     "letter": "M",
+     "options": [
+      "Katze",
+      "Maus",
+      "Wolf"
+     ]
+    },
+    {
+     "letter": "Y",
+     "options": [
+      "Oktopus",
+      "Pinguin",
+      "Yoga"
+     ]
+    },
+    {
+     "letter": "U",
+     "options": [
+      "Hund",
+      "Uhr",
+      "Löwe"
+     ]
+    },
+    {
+     "letter": "W",
+     "options": [
+      "Rose",
+      "Fisch",
+      "Wolf"
+     ]
+    },
+    {
+     "letter": "C",
+     "options": [
+      "Schmetterling",
+      "Clown",
+      "Ziegel"
+     ]
+    },
+    {
+     "letter": "S",
+     "options": [
+      "Croissant",
+      "Schnecke",
+      "Eichhörnchen"
+     ]
+    }
+   ],
+   "anzahl_aeusserungen": 96,
+   "abgebrochen": [
+    "Weiter mit Level 5 (812 ms)",
+    "Trommel (694 ms)",
+    "Giraffe (694 ms)",
+    "Ballon (690 ms)",
+    "König (673 ms)",
+    "Eichhörnchen (672 ms)",
+    "Oktopus (687 ms)",
+    "Orange (673 ms)",
+    "Aubergine (674 ms)",
+    "Schmetterling (720 ms)"
+   ],
+   "fehlende_audios": [
+    "welches-wort-beginnt-mit-x.mp3",
+    "welches-wort-beginnt-mit-q.mp3",
+    "welches-wort-beginnt-mit-y.mp3",
+    "welches-wort-beginnt-mit-c.mp3"
+   ],
+   "verlauf": [
+    {
+     "t_ms": 0,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "GAME START"
+    },
+    {
+     "t_ms": 631,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Weiter mit Level 5",
+     "abgebrochen_nach_ms": 812
+    },
+    {
+     "t_ms": 649,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "j-ist-der-10-buchstabe-des-alphabets.mp3"
+    },
+    {
+     "t_ms": 4011,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-j.mp3"
+    },
+    {
+     "t_ms": 6585,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Trommel"
+    },
+    {
+     "t_ms": 6879,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Trommel"
+    },
+    {
+     "t_ms": 7535,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Joghurt"
+    },
+    {
+     "t_ms": 7574,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Trommel",
+     "abgebrochen_nach_ms": 694
+    },
+    {
+     "t_ms": 7753,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Joghurt"
+    },
+    {
+     "t_ms": 9684,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "k-ist-der-11-buchstabe-des-alphabets.mp3"
+    },
+    {
+     "t_ms": 12758,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-k.mp3"
+    },
+    {
+     "t_ms": 15422,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Katze"
+    },
+    {
+     "t_ms": 15470,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Katze"
+    },
+    {
+     "t_ms": 17585,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "X ist der 24. Buchstabe. X macht ein ks Geräusch."
+    },
+    {
+     "t_ms": 21122,
+     "typ": "missing",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-x.mp3"
+    },
+    {
+     "t_ms": 21122,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Welches Wort beginnt mit X?"
+    },
+    {
+     "t_ms": 21122,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Welches Wort beginnt mit X?"
+    },
+    {
+     "t_ms": 23746,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Giraffe"
+    },
+    {
+     "t_ms": 24028,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Giraffe"
+    },
+    {
+     "t_ms": 24685,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT X"
+    },
+    {
+     "t_ms": 24721,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Giraffe",
+     "abgebrochen_nach_ms": 694
+    },
+    {
+     "t_ms": 24908,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "X"
+    },
+    {
+     "t_ms": 26864,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "r-ist-der-18-buchstabe-r-kann-man-rollen-lassen.mp3"
+    },
+    {
+     "t_ms": 31181,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-r.mp3"
+    },
+    {
+     "t_ms": 33903,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Roboter"
+    },
+    {
+     "t_ms": 33934,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Roboter"
+    },
+    {
+     "t_ms": 36030,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "g-ist-der-7-buchstabe-des-alphabets.mp3"
+    },
+    {
+     "t_ms": 39018,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-g.mp3"
+    },
+    {
+     "t_ms": 41758,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Ente"
+    },
+    {
+     "t_ms": 42045,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Ente"
+    },
+    {
+     "t_ms": 42713,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Giraffe"
+    },
+    {
+     "t_ms": 42732,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Giraffe"
+    },
+    {
+     "t_ms": 44833,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "a-ist-der-1-buchstabe-des-alphabets-und-ein-vokal.mp3"
+    },
+    {
+     "t_ms": 49054,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-a.mp3"
+    },
+    {
+     "t_ms": 51600,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Auto"
+    },
+    {
+     "t_ms": 51635,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Auto"
+    },
+    {
+     "t_ms": 53734,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "h-ist-der-8-buchstabe-h-haucht-ganz-leise.mp3"
+    },
+    {
+     "t_ms": 58458,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-h.mp3"
+    },
+    {
+     "t_ms": 60935,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Ballon"
+    },
+    {
+     "t_ms": 61227,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Ballon"
+    },
+    {
+     "t_ms": 61885,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Haus"
+    },
+    {
+     "t_ms": 61917,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Ballon",
+     "abgebrochen_nach_ms": 690
+    },
+    {
+     "t_ms": 62098,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Haus"
+    },
+    {
+     "t_ms": 63982,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Q ist der 17. Buchstabe. Q kommt fast immer mit U zusammen."
+    },
+    {
+     "t_ms": 68163,
+     "typ": "missing",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-q.mp3"
+    },
+    {
+     "t_ms": 68163,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Welches Wort beginnt mit Q?"
+    },
+    {
+     "t_ms": 68163,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Welches Wort beginnt mit Q?"
+    },
+    {
+     "t_ms": 70762,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Qualle"
+    },
+    {
+     "t_ms": 70781,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Qualle"
+    },
+    {
+     "t_ms": 72861,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "v-ist-der-22-buchstabe-v-klingt-aehnlich-wie-f.mp3"
+    },
+    {
+     "t_ms": 78524,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-v.mp3"
+    },
+    {
+     "t_ms": 81123,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG König"
+    },
+    {
+     "t_ms": 81406,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "König"
+    },
+    {
+     "t_ms": 82058,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Vogel"
+    },
+    {
+     "t_ms": 82079,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "König",
+     "abgebrochen_nach_ms": 673
+    },
+    {
+     "t_ms": 82259,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Vogel"
+    },
+    {
+     "t_ms": 84170,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "l-ist-der-12-buchstabe.mp3"
+    },
+    {
+     "t_ms": 86715,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-l.mp3"
+    },
+    {
+     "t_ms": 89271,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Löwe"
+    },
+    {
+     "t_ms": 89295,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Löwe"
+    },
+    {
+     "t_ms": 91399,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "t-ist-der-20-buchstabe-des-alphabets.mp3"
+    },
+    {
+     "t_ms": 94215,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-t.mp3"
+    },
+    {
+     "t_ms": 96860,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Eichhörnchen"
+    },
+    {
+     "t_ms": 97141,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Eichhörnchen"
+    },
+    {
+     "t_ms": 97790,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Tiger"
+    },
+    {
+     "t_ms": 97813,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Eichhörnchen",
+     "abgebrochen_nach_ms": 672
+    },
+    {
+     "t_ms": 97993,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Tiger"
+    },
+    {
+     "t_ms": 99880,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "o-ist-der-15-buchstabe-des-alphabets-und-ein-vokal.mp3"
+    },
+    {
+     "t_ms": 104260,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-o.mp3"
+    },
+    {
+     "t_ms": 106856,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Orange"
+    },
+    {
+     "t_ms": 106879,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Orange"
+    },
+    {
+     "t_ms": 108983,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "p-ist-der-16-buchstabe-des-alphabets.mp3"
+    },
+    {
+     "t_ms": 112038,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-p.mp3"
+    },
+    {
+     "t_ms": 114663,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Oktopus"
+    },
+    {
+     "t_ms": 114961,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Oktopus"
+    },
+    {
+     "t_ms": 115618,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Pinguin"
+    },
+    {
+     "t_ms": 115648,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Oktopus",
+     "abgebrochen_nach_ms": 687
+    },
+    {
+     "t_ms": 115828,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Pinguin"
+    },
+    {
+     "t_ms": 117732,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "b-ist-der-2-buchstabe-des-alphabets.mp3"
+    },
+    {
+     "t_ms": 120588,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-b.mp3"
+    },
+    {
+     "t_ms": 123052,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Biene"
+    },
+    {
+     "t_ms": 123092,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Biene"
+    },
+    {
+     "t_ms": 125213,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "f-ist-der-6-buchstabe.mp3"
+    },
+    {
+     "t_ms": 127316,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-f.mp3"
+    },
+    {
+     "t_ms": 134407,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Uhr"
+    },
+    {
+     "t_ms": 134688,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Uhr"
+    },
+    {
+     "t_ms": 135341,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Frosch"
+    },
+    {
+     "t_ms": 135381,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Frosch"
+    },
+    {
+     "t_ms": 146074,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "e-ist-der-5-buchstabe-des-alphabets-und-ein-vokal.mp3"
+    },
+    {
+     "t_ms": 150545,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-e.mp3"
+    },
+    {
+     "t_ms": 155224,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Elefant"
+    },
+    {
+     "t_ms": 155245,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Elefant"
+    },
+    {
+     "t_ms": 165923,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "i-ist-der-9-buchstabe-des-alphabets-und-ein-vokal.mp3"
+    },
+    {
+     "t_ms": 170443,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-i.mp3"
+    },
+    {
+     "t_ms": 175080,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Orange"
+    },
+    {
+     "t_ms": 175368,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Orange"
+    },
+    {
+     "t_ms": 176016,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Insekt"
+    },
+    {
+     "t_ms": 176040,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Orange",
+     "abgebrochen_nach_ms": 673
+    },
+    {
+     "t_ms": 176221,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Insekt"
+    },
+    {
+     "t_ms": 186685,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "n-ist-der-14-buchstabe-des-alphabets.mp3"
+    },
+    {
+     "t_ms": 189969,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-n.mp3"
+    },
+    {
+     "t_ms": 195835,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Nase"
+    },
+    {
+     "t_ms": 195857,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Nase"
+    },
+    {
+     "t_ms": 206548,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "z-ist-der-26-und-letzte-buchstabe-des-alphabets.mp3"
+    },
+    {
+     "t_ms": 210414,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-z.mp3"
+    },
+    {
+     "t_ms": 215682,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Aubergine"
+    },
+    {
+     "t_ms": 215967,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Aubergine"
+    },
+    {
+     "t_ms": 216618,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Zahn"
+    },
+    {
+     "t_ms": 216640,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Aubergine",
+     "abgebrochen_nach_ms": 674
+    },
+    {
+     "t_ms": 216820,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Zahn"
+    },
+    {
+     "t_ms": 227302,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "d-ist-der-4-buchstabe-nach-c-kommt-d.mp3"
+    },
+    {
+     "t_ms": 230983,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-d.mp3"
+    },
+    {
+     "t_ms": 236494,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Drache"
+    },
+    {
+     "t_ms": 236525,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Drache"
+    },
+    {
+     "t_ms": 247189,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "m-ist-der-13-buchstabe-m-klingt-wie-ein-summen.mp3"
+    },
+    {
+     "t_ms": 251568,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-m.mp3"
+    },
+    {
+     "t_ms": 256337,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Katze"
+    },
+    {
+     "t_ms": 256671,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Katze"
+    },
+    {
+     "t_ms": 257346,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Maus"
+    },
+    {
+     "t_ms": 257372,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Maus"
+    },
+    {
+     "t_ms": 268112,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Y ist der 25. Buchstabe. Y klingt wie ein Ü oder J."
+    },
+    {
+     "t_ms": 271772,
+     "typ": "missing",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-y.mp3"
+    },
+    {
+     "t_ms": 271772,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Welches Wort beginnt mit Y?"
+    },
+    {
+     "t_ms": 271772,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Welches Wort beginnt mit Y?"
+    },
+    {
+     "t_ms": 277398,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Yoga"
+    },
+    {
+     "t_ms": 277422,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Yoga"
+    },
+    {
+     "t_ms": 288144,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "u-ist-der-21-buchstabe-des-alphabets-und-ein-vokal.mp3"
+    },
+    {
+     "t_ms": 293492,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-u.mp3"
+    },
+    {
+     "t_ms": 297494,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Hund"
+    },
+    {
+     "t_ms": 297785,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Hund"
+    },
+    {
+     "t_ms": 298472,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Uhr"
+    },
+    {
+     "t_ms": 298505,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Uhr"
+    },
+    {
+     "t_ms": 309199,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "w-ist-der-23-buchstabe-des-alphabets.mp3"
+    },
+    {
+     "t_ms": 312333,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-w.mp3"
+    },
+    {
+     "t_ms": 318370,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Wolf"
+    },
+    {
+     "t_ms": 318406,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Wolf"
+    },
+    {
+     "t_ms": 329083,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "C ist der 3. Buchstabe. C klingt oft wie K oder Z."
+    },
+    {
+     "t_ms": 332676,
+     "typ": "missing",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-c.mp3"
+    },
+    {
+     "t_ms": 332676,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Welches Wort beginnt mit C?"
+    },
+    {
+     "t_ms": 332676,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Welches Wort beginnt mit C?"
+    },
+    {
+     "t_ms": 338317,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Schmetterling"
+    },
+    {
+     "t_ms": 338621,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Schmetterling"
+    },
+    {
+     "t_ms": 339278,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Clown"
+    },
+    {
+     "t_ms": 339341,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Schmetterling",
+     "abgebrochen_nach_ms": 720
+    },
+    {
+     "t_ms": 339522,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Clown"
+    },
+    {
+     "t_ms": 350058,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "s-ist-der-19-buchstabe-s-zischt-wie-eine-schlange.mp3"
+    },
+    {
+     "t_ms": 354805,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "welches-wort-beginnt-mit-s.mp3"
+    },
+    {
+     "t_ms": 359309,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Schnecke"
+    },
+    {
+     "t_ms": 359374,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Schnecke"
+    },
+    {
+     "t_ms": 370953,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "das-hast-du-super-gemacht.mp3"
+    }
+   ]
+  },
+  "letters-L1": {
+   "fehler_konsole": [],
+   "anzahl_aeusserungen": 13,
+   "abgebrochen": [],
+   "fehlende_audios": [],
+   "verlauf": [
+    {
+     "t_ms": 0,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "GAME START"
+    },
+    {
+     "t_ms": 175,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Sohn"
+    },
+    {
+     "t_ms": 2482,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY S"
+    },
+    {
+     "t_ms": 3399,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY O"
+    },
+    {
+     "t_ms": 4407,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY H"
+    },
+    {
+     "t_ms": 5378,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY N"
+    },
+    {
+     "t_ms": 5424,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Sohn"
+    },
+    {
+     "t_ms": 6830,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Hund"
+    },
+    {
+     "t_ms": 6951,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY H"
+    },
+    {
+     "t_ms": 8001,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY U"
+    },
+    {
+     "t_ms": 9484,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY N"
+    },
+    {
+     "t_ms": 10540,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY D"
+    },
+    {
+     "t_ms": 10695,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Hund"
+    },
+    {
+     "t_ms": 12118,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Wolf"
+    },
+    {
+     "t_ms": 12566,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY W"
+    },
+    {
+     "t_ms": 13553,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY O"
+    },
+    {
+     "t_ms": 14410,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY L"
+    },
+    {
+     "t_ms": 15643,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY F"
+    },
+    {
+     "t_ms": 15679,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Wolf"
+    },
+    {
+     "t_ms": 17082,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Hase"
+    },
+    {
+     "t_ms": 17320,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY H"
+    },
+    {
+     "t_ms": 18353,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY A"
+    },
+    {
+     "t_ms": 19459,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY S"
+    },
+    {
+     "t_ms": 20562,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY E"
+    },
+    {
+     "t_ms": 20578,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Hase"
+    },
+    {
+     "t_ms": 21982,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Kuh"
+    },
+    {
+     "t_ms": 22603,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY K"
+    },
+    {
+     "t_ms": 23853,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY U"
+    },
+    {
+     "t_ms": 24702,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY H"
+    },
+    {
+     "t_ms": 24760,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Kuh"
+    },
+    {
+     "t_ms": 26165,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Holz"
+    },
+    {
+     "t_ms": 26469,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY H"
+    },
+    {
+     "t_ms": 27362,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY O"
+    },
+    {
+     "t_ms": 28512,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY L"
+    },
+    {
+     "t_ms": 29528,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY Z"
+    },
+    {
+     "t_ms": 29553,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Holz"
+    },
+    {
+     "t_ms": 32050,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "das-hast-du-super-gemacht.mp3"
+    }
+   ]
+  },
+  "letters-L10-loseLives": {
+   "fehler_konsole": [
+    "Error: Minified React error #520; visit https://react.dev/errors/520 for the full message or use the non-minified dev environment for full errors and additional helpful warnings."
+   ],
+   "anzahl_aeusserungen": 0,
+   "abgebrochen": [],
+   "fehlende_audios": [],
+   "verlauf": [
+    {
+     "t_ms": 0,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "GAME START"
+    }
+   ]
+  },
+  "letters-L3": {
+   "fehler_konsole": [],
+   "anzahl_aeusserungen": 13,
+   "abgebrochen": [
+    "Weiter mit Level 3 (884 ms)"
+   ],
+   "fehlende_audios": [],
+   "verlauf": [
+    {
+     "t_ms": 0,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "GAME START"
+    },
+    {
+     "t_ms": 789,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Weiter mit Level 3",
+     "abgebrochen_nach_ms": 884
+    },
+    {
+     "t_ms": 968,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Stifte"
+    },
+    {
+     "t_ms": 2051,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY S"
+    },
+    {
+     "t_ms": 2900,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY T"
+    },
+    {
+     "t_ms": 3919,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY I"
+    },
+    {
+     "t_ms": 4835,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY F"
+    },
+    {
+     "t_ms": 5733,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY T"
+    },
+    {
+     "t_ms": 6575,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY E"
+    },
+    {
+     "t_ms": 6625,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Stifte"
+    },
+    {
+     "t_ms": 8039,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Brezel"
+    },
+    {
+     "t_ms": 8456,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY B"
+    },
+    {
+     "t_ms": 9424,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY R"
+    },
+    {
+     "t_ms": 10331,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY E"
+    },
+    {
+     "t_ms": 11228,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY Z"
+    },
+    {
+     "t_ms": 12104,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY E"
+    },
+    {
+     "t_ms": 12968,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY L"
+    },
+    {
+     "t_ms": 13006,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Brezel"
+    },
+    {
+     "t_ms": 14434,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Winter"
+    },
+    {
+     "t_ms": 14657,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY W"
+    },
+    {
+     "t_ms": 15648,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY I"
+    },
+    {
+     "t_ms": 16651,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY N"
+    },
+    {
+     "t_ms": 17491,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY T"
+    },
+    {
+     "t_ms": 18472,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY E"
+    },
+    {
+     "t_ms": 19371,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY R"
+    },
+    {
+     "t_ms": 19537,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Winter"
+    },
+    {
+     "t_ms": 20947,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Spinat"
+    },
+    {
+     "t_ms": 21567,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY S"
+    },
+    {
+     "t_ms": 22644,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY P"
+    },
+    {
+     "t_ms": 23635,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY I"
+    },
+    {
+     "t_ms": 24557,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY N"
+    },
+    {
+     "t_ms": 25547,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY A"
+    },
+    {
+     "t_ms": 26606,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY T"
+    },
+    {
+     "t_ms": 26635,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Spinat"
+    },
+    {
+     "t_ms": 28042,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Flöte"
+    },
+    {
+     "t_ms": 28721,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY F"
+    },
+    {
+     "t_ms": 29618,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY L"
+    },
+    {
+     "t_ms": 30908,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY Ö"
+    },
+    {
+     "t_ms": 31823,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY T"
+    },
+    {
+     "t_ms": 32989,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY E"
+    },
+    {
+     "t_ms": 33021,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Flöte"
+    },
+    {
+     "t_ms": 34436,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Nummer"
+    },
+    {
+     "t_ms": 34605,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY N"
+    },
+    {
+     "t_ms": 35704,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY U"
+    },
+    {
+     "t_ms": 36587,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY M"
+    },
+    {
+     "t_ms": 37539,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY M"
+    },
+    {
+     "t_ms": 38741,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY E"
+    },
+    {
+     "t_ms": 40057,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "KEY R"
+    },
+    {
+     "t_ms": 40080,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Nummer"
+    },
+    {
+     "t_ms": 42448,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "das-hast-du-super-gemacht.mp3"
+    }
+   ]
+  },
+  "letters-L4-tapTile": {
+   "fehler_konsole": [],
+   "anzahl_aeusserungen": 6,
+   "abgebrochen": [],
+   "fehlende_audios": [],
+   "verlauf": [
+    {
+     "t_ms": 0,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "GAME START"
+    },
+    {
+     "t_ms": 3751,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Adler"
+    },
+    {
+     "t_ms": 7508,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Regen"
+    },
+    {
+     "t_ms": 11707,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Stuhl"
+    },
+    {
+     "t_ms": 15533,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Krone"
+    },
+    {
+     "t_ms": 19480,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Nagel"
+    },
+    {
+     "t_ms": 21730,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "das-hast-du-super-gemacht.mp3"
+    }
+   ]
+  },
+  "listen-L1": {
+   "fehler_konsole": [],
+   "runden": [
+    {
+     "word": "Schaf",
+     "options": [
+      "🐄",
+      "🐑",
+      "🐐"
+     ],
+     "reverse": false
+    },
+    {
+     "word": "Frosch",
+     "options": [
+      "🦎",
+      "🐸",
+      "🐢"
+     ],
+     "reverse": false
+    },
+    {
+     "word": "Apfel",
+     "options": [
+      "🍊",
+      "🍎",
+      "🍌"
+     ],
+     "reverse": false
+    },
+    {
+     "word": "Vogel",
+     "options": [
+      "🐕",
+      "🐦",
+      "🐟"
+     ],
+     "reverse": false
+    },
+    {
+     "word": "Giraffe",
+     "options": [
+      "🐘",
+      "🦒",
+      "🦓"
+     ],
+     "reverse": false
+    },
+    {
+     "word": "Hund",
+     "options": [
+      "🐟",
+      "🐕",
+      "🐱"
+     ],
+     "reverse": false
+    },
+    {
+     "word": "Elefant",
+     "options": [
+      "🦏",
+      "🦒",
+      "🐘"
+     ],
+     "reverse": false
+    }
+   ],
+   "anzahl_aeusserungen": 23,
+   "abgebrochen": [],
+   "fehlende_audios": [],
+   "verlauf": [
+    {
+     "t_ms": 0,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "GAME START"
+    },
+    {
+     "t_ms": 67,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Schaf"
+    },
+    {
+     "t_ms": 1644,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG 🐄"
+    },
+    {
+     "t_ms": 2209,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Schaf"
+    },
+    {
+     "t_ms": 3690,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT 🐑"
+    },
+    {
+     "t_ms": 4050,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Schaf"
+    },
+    {
+     "t_ms": 6072,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Frosch"
+    },
+    {
+     "t_ms": 8070,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG 🦎"
+    },
+    {
+     "t_ms": 8523,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Frosch"
+    },
+    {
+     "t_ms": 10183,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT 🐸"
+    },
+    {
+     "t_ms": 10615,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Frosch"
+    },
+    {
+     "t_ms": 12668,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Apfel"
+    },
+    {
+     "t_ms": 14370,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG 🍊"
+    },
+    {
+     "t_ms": 14940,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Apfel"
+    },
+    {
+     "t_ms": 16463,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT 🍎"
+    },
+    {
+     "t_ms": 16885,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Apfel"
+    },
+    {
+     "t_ms": 19101,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Vogel"
+    },
+    {
+     "t_ms": 20887,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG 🐕"
+    },
+    {
+     "t_ms": 21794,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Vogel"
+    },
+    {
+     "t_ms": 23471,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT 🐦"
+    },
+    {
+     "t_ms": 23923,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Vogel"
+    },
+    {
+     "t_ms": 25903,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Giraffe"
+    },
+    {
+     "t_ms": 27433,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG 🐘"
+    },
+    {
+     "t_ms": 27912,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Giraffe"
+    },
+    {
+     "t_ms": 29713,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT 🦒"
+    },
+    {
+     "t_ms": 30202,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Giraffe"
+    },
+    {
+     "t_ms": 32175,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Hund"
+    },
+    {
+     "t_ms": 33854,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG 🐟"
+    },
+    {
+     "t_ms": 34402,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Hund"
+    },
+    {
+     "t_ms": 36122,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT 🐕"
+    },
+    {
+     "t_ms": 36642,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Hund"
+    },
+    {
+     "t_ms": 38878,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Elefant"
+    },
+    {
+     "t_ms": 40518,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG 🦏"
+    },
+    {
+     "t_ms": 40974,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Elefant"
+    },
+    {
+     "t_ms": 43289,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT 🐘"
+    },
+    {
+     "t_ms": 43899,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Elefant"
+    },
+    {
+     "t_ms": 47946,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "das-hast-du-super-gemacht.mp3"
+    },
+    {
+     "t_ms": 49283,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "das-hast-du-super-gemacht.mp3"
+    }
+   ]
+  },
+  "listen-L4": {
+   "fehler_konsole": [],
+   "runden": [
+    {
+     "word": "Delfin",
+     "options": [
+      "🐟",
+      "🐬",
+      "🦈",
+      "🐳"
+     ],
+     "reverse": false
+    },
+    {
+     "word": "Bär",
+     "options": [
+      "🐻",
+      "🦁",
+      "🦊",
+      "🐯"
+     ],
+     "reverse": false
+    },
+    {
+     "word": "Hand",
+     "options": [
+      "✋",
+      "🧱"
+     ],
+     "reverse": false
+    },
+    {
+     "word": "Mais",
+     "options": [
+      "🍅",
+      "🥦",
+      "🌽",
+      "🥕"
+     ],
+     "reverse": false
+    },
+    {
+     "word": "Schiff",
+     "options": [
+      "⛵",
+      "🛶",
+      "🚤",
+      "🚢"
+     ],
+     "reverse": false
+    },
+    {
+     "word": "Tasse",
+     "options": [
+      "☕",
+      "👜"
+     ],
+     "reverse": false
+    },
+    {
+     "word": "Schmetterling",
+     "options": [
+      "🦗",
+      "🐝",
+      "🦋",
+      "🐞"
+     ],
+     "reverse": false
+    },
+    {
+     "word": "Regenbogen",
+     "options": [
+      "☀️",
+      "🌈",
+      "⛅",
+      "🌧️"
+     ],
+     "reverse": false
+    },
+    {
+     "word": "Haus",
+     "options": [
+      "🏠",
+      "🐭"
+     ],
+     "reverse": false
+    }
+   ],
+   "anzahl_aeusserungen": 28,
+   "abgebrochen": [],
+   "fehlende_audios": [],
+   "verlauf": [
+    {
+     "t_ms": 0,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "GAME START"
+    },
+    {
+     "t_ms": 973,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Delfin"
+    },
+    {
+     "t_ms": 2794,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG 🐟"
+    },
+    {
+     "t_ms": 3468,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Delfin"
+    },
+    {
+     "t_ms": 5300,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT 🐬"
+    },
+    {
+     "t_ms": 5742,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Delfin"
+    },
+    {
+     "t_ms": 7800,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Bär"
+    },
+    {
+     "t_ms": 8991,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG 🦁"
+    },
+    {
+     "t_ms": 9472,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Bär"
+    },
+    {
+     "t_ms": 10746,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT 🐻"
+    },
+    {
+     "t_ms": 11245,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Bär"
+    },
+    {
+     "t_ms": 13048,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Hand"
+    },
+    {
+     "t_ms": 14386,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG 🧱"
+    },
+    {
+     "t_ms": 14858,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Hand"
+    },
+    {
+     "t_ms": 16275,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT ✋"
+    },
+    {
+     "t_ms": 16655,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Hand"
+    },
+    {
+     "t_ms": 19090,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Mais"
+    },
+    {
+     "t_ms": 20755,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG 🍅"
+    },
+    {
+     "t_ms": 21227,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Mais"
+    },
+    {
+     "t_ms": 22811,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT 🌽"
+    },
+    {
+     "t_ms": 23158,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Mais"
+    },
+    {
+     "t_ms": 25153,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Schiff"
+    },
+    {
+     "t_ms": 26466,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG ⛵"
+    },
+    {
+     "t_ms": 26952,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Schiff"
+    },
+    {
+     "t_ms": 28503,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT 🚢"
+    },
+    {
+     "t_ms": 28937,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Schiff"
+    },
+    {
+     "t_ms": 31117,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Tasse"
+    },
+    {
+     "t_ms": 32588,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG 👜"
+    },
+    {
+     "t_ms": 33138,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Tasse"
+    },
+    {
+     "t_ms": 34653,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT ☕"
+    },
+    {
+     "t_ms": 35614,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Tasse"
+    },
+    {
+     "t_ms": 37597,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Schmetterling"
+    },
+    {
+     "t_ms": 39562,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG 🦗"
+    },
+    {
+     "t_ms": 40003,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Schmetterling"
+    },
+    {
+     "t_ms": 42540,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT 🦋"
+    },
+    {
+     "t_ms": 42988,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Schmetterling"
+    },
+    {
+     "t_ms": 45481,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Regenbogen"
+    },
+    {
+     "t_ms": 47613,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG ☀️"
+    },
+    {
+     "t_ms": 48103,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Regenbogen"
+    },
+    {
+     "t_ms": 50191,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT 🌈"
+    },
+    {
+     "t_ms": 50537,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Regenbogen"
+    },
+    {
+     "t_ms": 53226,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Haus"
+    },
+    {
+     "t_ms": 54598,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG 🐭"
+    },
+    {
+     "t_ms": 55327,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Haus"
+    },
+    {
+     "t_ms": 57049,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT 🏠"
+    },
+    {
+     "t_ms": 57422,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Haus"
+    },
+    {
+     "t_ms": 61262,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "das-hast-du-super-gemacht.mp3"
+    }
+   ]
+  },
+  "listen-L8": {
+   "fehler_konsole": [],
+   "runden": [
+    {
+     "word": "Schmetterling",
+     "options": [
+      "Schmetterling",
+      "Brille",
+      "Stuhl",
+      "Affe"
+     ],
+     "reverse": true,
+     "afterWrong": [
+      "Fuchs",
+      "Geschenk",
+      "Schmetterling",
+      "Kuh"
+     ]
+    },
+    {
+     "word": "Kuh",
+     "options": [
+      "Trommel",
+      "Schlüssel",
+      "Kuh",
+      "Schwein"
+     ],
+     "reverse": true,
+     "afterWrong": [
+      "Mais",
+      "Kuh",
+      "Eule",
+      "Krone"
+     ]
+    },
+    {
+     "word": "Haus",
+     "options": [
+      "Haus",
+      "Pinguin",
+      "Fahrrad",
+      "Ballon"
+     ],
+     "reverse": true,
+     "afterWrong": [
+      "Zug",
+      "Haus",
+      "Vogel",
+      "Baum"
+     ]
+    },
+    {
+     "word": "Fisch",
+     "options": [
+      "Vogel",
+      "Fisch",
+      "Banane",
+      "Haus"
+     ],
+     "reverse": true,
+     "afterWrong": [
+      "Regenbogen",
+      "Pilz",
+      "Biene",
+      "Fisch"
+     ]
+    },
+    {
+     "word": "Rakete",
+     "options": [
+      "Mais",
+      "Rakete",
+      "Löwe",
+      "Schildkröte"
+     ],
+     "reverse": true,
+     "afterWrong": [
+      "Rakete",
+      "Pferd",
+      "Haus",
+      "Trommel"
+     ]
+    },
+    {
+     "word": "Hase",
+     "options": [
+      "Hase",
+      "Eimer",
+      "Elefant",
+      "Eis"
+     ],
+     "reverse": true,
+     "afterWrong": [
+      "Hund",
+      "Ball",
+      "Hase",
+      "Flugzeug"
+     ]
+    },
+    {
+     "word": "Pizza",
+     "options": [
+      "Schlüssel",
+      "Fisch",
+      "Pizza",
+      "Ballon"
+     ],
+     "reverse": true,
+     "afterWrong": [
+      "Delfin",
+      "Sonne",
+      "Pizza",
+      "Erdbeere"
+     ]
+    },
+    {
+     "word": "Schaf",
+     "options": [
+      "Schaf",
+      "Keks",
+      "Bär",
+      "Diamant"
+     ],
+     "reverse": true,
+     "afterWrong": [
+      "Schaf",
+      "Fisch",
+      "Eis",
+      "Diamant"
+     ]
+    },
+    {
+     "word": "Tatze",
+     "options": [
+      "Hund",
+      "Tatze",
+      "Schiff",
+      "Mond"
+     ],
+     "reverse": true,
+     "afterWrong": [
+      "Bär",
+      "Tatze",
+      "Drachen",
+      "Regenbogen"
+     ]
+    },
+    {
+     "word": "Krokodil",
+     "options": [
+      "Krokodil",
+      "Kuchen",
+      "Löwe",
+      "Saft"
+     ],
+     "reverse": true,
+     "afterWrong": [
+      "Fahrrad",
+      "Hund",
+      "Krokodil",
+      "Flugzeug"
+     ]
+    },
+    {
+     "word": "Drachen",
+     "options": [
+      "Hund",
+      "Drachen",
+      "Regenbogen",
+      "Bär"
+     ],
+     "reverse": true,
+     "afterWrong": [
+      "Eule",
+      "Drachen",
+      "Mond",
+      "Pinguin"
+     ]
+    }
+   ],
+   "anzahl_aeusserungen": 56,
+   "abgebrochen": [
+    "Brille (19 ms)",
+    "Schmetterling (0 ms)",
+    "Trommel (13 ms)",
+    "Kuh (11 ms)",
+    "Pinguin (5 ms)",
+    "Haus (37 ms)",
+    "Vogel (28 ms)",
+    "Fisch (6 ms)",
+    "Mais (1 ms)",
+    "Rakete (41 ms)",
+    "Eimer (6 ms)",
+    "Hase (16 ms)",
+    "Schlüssel (6 ms)",
+    "Pizza (10 ms)",
+    "Keks (6 ms)",
+    "Schaf (0 ms)",
+    "Hund (9 ms)",
+    "Tatze (8 ms)",
+    "Kuchen (0 ms)",
+    "Krokodil (13 ms)",
+    "Hund (0 ms)",
+    "Drachen (9 ms)"
+   ],
+   "fehlende_audios": [],
+   "verlauf": [
+    {
+     "t_ms": 0,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "GAME START"
+    },
+    {
+     "t_ms": 1345,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Schmetterling"
+    },
+    {
+     "t_ms": 3691,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Brille"
+    },
+    {
+     "t_ms": 4362,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Brille"
+    },
+    {
+     "t_ms": 4381,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Brille",
+     "abgebrochen_nach_ms": 19
+    },
+    {
+     "t_ms": 4682,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Schmetterling"
+    },
+    {
+     "t_ms": 7279,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Schmetterling"
+    },
+    {
+     "t_ms": 7649,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Schmetterling"
+    },
+    {
+     "t_ms": 7650,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Schmetterling",
+     "abgebrochen_nach_ms": 0
+    },
+    {
+     "t_ms": 7831,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Schmetterling"
+    },
+    {
+     "t_ms": 10332,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Kuh"
+    },
+    {
+     "t_ms": 12480,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Trommel"
+    },
+    {
+     "t_ms": 12876,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Trommel"
+    },
+    {
+     "t_ms": 12889,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Trommel",
+     "abgebrochen_nach_ms": 13
+    },
+    {
+     "t_ms": 13189,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Kuh"
+    },
+    {
+     "t_ms": 14881,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Kuh"
+    },
+    {
+     "t_ms": 15210,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Kuh"
+    },
+    {
+     "t_ms": 15222,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Kuh",
+     "abgebrochen_nach_ms": 11
+    },
+    {
+     "t_ms": 15442,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Kuh"
+    },
+    {
+     "t_ms": 17122,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Haus"
+    },
+    {
+     "t_ms": 18464,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Pinguin"
+    },
+    {
+     "t_ms": 18774,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Pinguin"
+    },
+    {
+     "t_ms": 18779,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Pinguin",
+     "abgebrochen_nach_ms": 5
+    },
+    {
+     "t_ms": 19093,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Haus"
+    },
+    {
+     "t_ms": 20837,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Haus"
+    },
+    {
+     "t_ms": 21162,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Haus"
+    },
+    {
+     "t_ms": 21199,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Haus",
+     "abgebrochen_nach_ms": 37
+    },
+    {
+     "t_ms": 21380,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Haus"
+    },
+    {
+     "t_ms": 23104,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Fisch"
+    },
+    {
+     "t_ms": 24571,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Vogel"
+    },
+    {
+     "t_ms": 24874,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Vogel"
+    },
+    {
+     "t_ms": 24902,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Vogel",
+     "abgebrochen_nach_ms": 28
+    },
+    {
+     "t_ms": 25209,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Fisch"
+    },
+    {
+     "t_ms": 26880,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Fisch"
+    },
+    {
+     "t_ms": 27225,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Fisch"
+    },
+    {
+     "t_ms": 27231,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Fisch",
+     "abgebrochen_nach_ms": 6
+    },
+    {
+     "t_ms": 27449,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Fisch"
+    },
+    {
+     "t_ms": 29428,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Rakete"
+    },
+    {
+     "t_ms": 31059,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Mais"
+    },
+    {
+     "t_ms": 31447,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Mais"
+    },
+    {
+     "t_ms": 31448,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Mais",
+     "abgebrochen_nach_ms": 1
+    },
+    {
+     "t_ms": 31763,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Rakete"
+    },
+    {
+     "t_ms": 33562,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Rakete"
+    },
+    {
+     "t_ms": 33867,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Rakete"
+    },
+    {
+     "t_ms": 33908,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Rakete",
+     "abgebrochen_nach_ms": 41
+    },
+    {
+     "t_ms": 34088,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Rakete"
+    },
+    {
+     "t_ms": 36133,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Hase"
+    },
+    {
+     "t_ms": 37995,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Eimer"
+    },
+    {
+     "t_ms": 38337,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Eimer"
+    },
+    {
+     "t_ms": 38343,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Eimer",
+     "abgebrochen_nach_ms": 6
+    },
+    {
+     "t_ms": 38693,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Hase"
+    },
+    {
+     "t_ms": 40238,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Hase"
+    },
+    {
+     "t_ms": 40720,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Hase"
+    },
+    {
+     "t_ms": 40736,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Hase",
+     "abgebrochen_nach_ms": 16
+    },
+    {
+     "t_ms": 40931,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Hase"
+    },
+    {
+     "t_ms": 43062,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Pizza"
+    },
+    {
+     "t_ms": 44746,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Schlüssel"
+    },
+    {
+     "t_ms": 45141,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Schlüssel"
+    },
+    {
+     "t_ms": 45148,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Schlüssel",
+     "abgebrochen_nach_ms": 6
+    },
+    {
+     "t_ms": 45463,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Pizza"
+    },
+    {
+     "t_ms": 47559,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Pizza"
+    },
+    {
+     "t_ms": 48201,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Pizza"
+    },
+    {
+     "t_ms": 48211,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Pizza",
+     "abgebrochen_nach_ms": 10
+    },
+    {
+     "t_ms": 48425,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Pizza"
+    },
+    {
+     "t_ms": 50792,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Schaf"
+    },
+    {
+     "t_ms": 52281,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Keks"
+    },
+    {
+     "t_ms": 52620,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Keks"
+    },
+    {
+     "t_ms": 52626,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Keks",
+     "abgebrochen_nach_ms": 6
+    },
+    {
+     "t_ms": 52942,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Schaf"
+    },
+    {
+     "t_ms": 54764,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Schaf"
+    },
+    {
+     "t_ms": 55375,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Schaf"
+    },
+    {
+     "t_ms": 55375,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Schaf",
+     "abgebrochen_nach_ms": 0
+    },
+    {
+     "t_ms": 55630,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Schaf"
+    },
+    {
+     "t_ms": 57720,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Tatze"
+    },
+    {
+     "t_ms": 59149,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Hund"
+    },
+    {
+     "t_ms": 59619,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Hund"
+    },
+    {
+     "t_ms": 59628,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Hund",
+     "abgebrochen_nach_ms": 9
+    },
+    {
+     "t_ms": 59939,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Tatze"
+    },
+    {
+     "t_ms": 62178,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Tatze"
+    },
+    {
+     "t_ms": 62628,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Tatze"
+    },
+    {
+     "t_ms": 62636,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Tatze",
+     "abgebrochen_nach_ms": 8
+    },
+    {
+     "t_ms": 62907,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Tatze"
+    },
+    {
+     "t_ms": 65003,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Krokodil"
+    },
+    {
+     "t_ms": 66578,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Kuchen"
+    },
+    {
+     "t_ms": 67248,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Kuchen"
+    },
+    {
+     "t_ms": 67248,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Kuchen",
+     "abgebrochen_nach_ms": 0
+    },
+    {
+     "t_ms": 67468,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Krokodil"
+    },
+    {
+     "t_ms": 69512,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Krokodil"
+    },
+    {
+     "t_ms": 69822,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Krokodil"
+    },
+    {
+     "t_ms": 69835,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Krokodil",
+     "abgebrochen_nach_ms": 13
+    },
+    {
+     "t_ms": 70145,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Krokodil"
+    },
+    {
+     "t_ms": 72304,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Drachen"
+    },
+    {
+     "t_ms": 73775,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Hund"
+    },
+    {
+     "t_ms": 74155,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Hund"
+    },
+    {
+     "t_ms": 74155,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Hund",
+     "abgebrochen_nach_ms": 0
+    },
+    {
+     "t_ms": 74389,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Drachen"
+    },
+    {
+     "t_ms": 76245,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Drachen"
+    },
+    {
+     "t_ms": 76570,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Drachen"
+    },
+    {
+     "t_ms": 76579,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Drachen",
+     "abgebrochen_nach_ms": 9
+    },
+    {
+     "t_ms": 76791,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Drachen"
+    },
+    {
+     "t_ms": 80280,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "das-hast-du-super-gemacht.mp3"
+    }
+   ]
+  },
+  "memory-L1": {
+   "fehler_konsole": [],
+   "runden": [
+    "🐟",
+    "🦊",
+    "🦋",
+    "🦋",
+    "🦊",
+    "🐸",
+    "🐟",
+    "🐸"
+   ],
+   "anzahl_aeusserungen": 6,
+   "abgebrochen": [],
+   "fehlende_audios": [],
+   "verlauf": [
+    {
+     "t_ms": 0,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "GAME START"
+    },
+    {
+     "t_ms": 11173,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "MISMATCH"
+    },
+    {
+     "t_ms": 13109,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "PAIR 🐟🐟"
+    },
+    {
+     "t_ms": 14032,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Super! Paar gefunden!"
+    },
+    {
+     "t_ms": 16413,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "PAIR 🦊🦊"
+    },
+    {
+     "t_ms": 17493,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Super! Paar gefunden!"
+    },
+    {
+     "t_ms": 19727,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "PAIR 🦋🦋"
+    },
+    {
+     "t_ms": 20697,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Super! Paar gefunden!"
+    },
+    {
+     "t_ms": 23069,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "PAIR 🐸🐸"
+    },
+    {
+     "t_ms": 24292,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Super! Paar gefunden!"
+    },
+    {
+     "t_ms": 27663,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "das-hast-du-super-gemacht.mp3"
+    },
+    {
+     "t_ms": 28580,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "das-hast-du-super-gemacht.mp3"
+    }
+   ]
+  },
+  "memory-L5": {
+   "fehler_konsole": [],
+   "runden": [
+    "🌱",
+    "📚",
+    "🎣",
+    "🌻",
+    "🐄",
+    "🤓",
+    "🥛",
+    "☂️",
+    "🌧️",
+    "🐝",
+    "🍯",
+    "🐟",
+    "🔥",
+    "🔑",
+    "🕯️",
+    "🔒"
+   ],
+   "anzahl_aeusserungen": 9,
+   "abgebrochen": [],
+   "fehlende_audios": [],
+   "verlauf": [
+    {
+     "t_ms": 0,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "GAME START"
+    },
+    {
+     "t_ms": 11829,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "MISMATCH"
+    },
+    {
+     "t_ms": 13707,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "PAIR 🌱🌻"
+    },
+    {
+     "t_ms": 14982,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Super! Paar gefunden!"
+    },
+    {
+     "t_ms": 17194,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "PAIR 📚🤓"
+    },
+    {
+     "t_ms": 18223,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Super! Paar gefunden!"
+    },
+    {
+     "t_ms": 20657,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "PAIR 🎣🐟"
+    },
+    {
+     "t_ms": 21712,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Super! Paar gefunden!"
+    },
+    {
+     "t_ms": 23997,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "PAIR 🐄🥛"
+    },
+    {
+     "t_ms": 25378,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Super! Paar gefunden!"
+    },
+    {
+     "t_ms": 27894,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "PAIR ☂️🌧️"
+    },
+    {
+     "t_ms": 29123,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Super! Paar gefunden!"
+    },
+    {
+     "t_ms": 31544,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "PAIR 🐝🍯"
+    },
+    {
+     "t_ms": 32658,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Super! Paar gefunden!"
+    },
+    {
+     "t_ms": 35032,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "PAIR 🔥🕯️"
+    },
+    {
+     "t_ms": 36144,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Super! Paar gefunden!"
+    },
+    {
+     "t_ms": 38399,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "PAIR 🔑🔒"
+    },
+    {
+     "t_ms": 39448,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Super! Paar gefunden!"
+    },
+    {
+     "t_ms": 43108,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "das-hast-du-super-gemacht.mp3"
+    }
+   ]
+  },
+  "memory-L9": {
+   "fehler_konsole": [],
+   "runden": [
+    "⚽",
+    "☂️",
+    "⛄",
+    "🔒",
+    "🌰",
+    "🎣",
+    "🌧️",
+    "🍞",
+    "🐿️",
+    "📚",
+    "🥅",
+    "❄️",
+    "🕶️",
+    "🧦",
+    "🧈",
+    "☀️",
+    "🎻",
+    "🐝",
+    "🔑",
+    "👟",
+    "🐟",
+    "🍯",
+    "🎵",
+    "🤓"
+   ],
+   "anzahl_aeusserungen": 13,
+   "abgebrochen": [],
+   "fehlende_audios": [],
+   "verlauf": [
+    {
+     "t_ms": 0,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "GAME START"
+    },
+    {
+     "t_ms": 11698,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "MISMATCH"
+    },
+    {
+     "t_ms": 13934,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "PAIR ⚽🥅"
+    },
+    {
+     "t_ms": 15147,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Super! Paar gefunden!"
+    },
+    {
+     "t_ms": 17535,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "PAIR ☂️🌧️"
+    },
+    {
+     "t_ms": 19174,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Super! Paar gefunden!"
+    },
+    {
+     "t_ms": 21377,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "PAIR ⛄❄️"
+    },
+    {
+     "t_ms": 22357,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Super! Paar gefunden!"
+    },
+    {
+     "t_ms": 24703,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "PAIR 🔒🔑"
+    },
+    {
+     "t_ms": 25643,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Super! Paar gefunden!"
+    },
+    {
+     "t_ms": 27946,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "PAIR 🌰🐿️"
+    },
+    {
+     "t_ms": 28889,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Super! Paar gefunden!"
+    },
+    {
+     "t_ms": 31268,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "PAIR 🎣🐟"
+    },
+    {
+     "t_ms": 32291,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Super! Paar gefunden!"
+    },
+    {
+     "t_ms": 34450,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "PAIR 🍞🧈"
+    },
+    {
+     "t_ms": 35381,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Super! Paar gefunden!"
+    },
+    {
+     "t_ms": 37573,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "PAIR 📚🤓"
+    },
+    {
+     "t_ms": 38942,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Super! Paar gefunden!"
+    },
+    {
+     "t_ms": 41423,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "PAIR 🕶️☀️"
+    },
+    {
+     "t_ms": 42578,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Super! Paar gefunden!"
+    },
+    {
+     "t_ms": 44988,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "PAIR 🧦👟"
+    },
+    {
+     "t_ms": 45901,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Super! Paar gefunden!"
+    },
+    {
+     "t_ms": 48174,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "PAIR 🎻🎵"
+    },
+    {
+     "t_ms": 49148,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Super! Paar gefunden!"
+    },
+    {
+     "t_ms": 51385,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "PAIR 🐝🍯"
+    },
+    {
+     "t_ms": 52512,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Super! Paar gefunden!"
+    },
+    {
+     "t_ms": 55786,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "das-hast-du-super-gemacht.mp3"
+    }
+   ]
+  },
+  "rhyme-L1": {
+   "fehler_konsole": [],
+   "runden": [
+    {
+     "base": "Fliege",
+     "options": [
+      "Maus",
+      "Tisch",
+      "Ziege"
+     ],
+     "correct": "Ziege"
+    },
+    {
+     "base": "Haus",
+     "options": [
+      "Maus",
+      "Stall",
+      "Sand"
+     ],
+     "correct": "Maus"
+    },
+    {
+     "base": "Kanne",
+     "options": [
+      "Tanne",
+      "Tatze",
+      "Schaum"
+     ],
+     "correct": "Tanne"
+    },
+    {
+     "base": "Buch",
+     "options": [
+      "Tuch",
+      "Eis",
+      "Tanne"
+     ],
+     "correct": "Tuch"
+    },
+    {
+     "base": "Banane",
+     "options": [
+      "Fahne",
+      "Ziege",
+      "Schlaf"
+     ],
+     "correct": "Fahne"
+    },
+    {
+     "base": "Hund",
+     "options": [
+      "Fliege",
+      "Matratze",
+      "Mund"
+     ],
+     "correct": "Mund"
+    },
+    {
+     "base": "Tonne",
+     "options": [
+      "Maus",
+      "Sonne",
+      "Ziege"
+     ],
+     "correct": "Sonne"
+    },
+    {
+     "base": "Kuh",
+     "options": [
+      "Rakete",
+      "Schuh",
+      "Haus"
+     ],
+     "correct": "Schuh"
+    }
+   ],
+   "anzahl_aeusserungen": 28,
+   "abgebrochen": [],
+   "fehlende_audios": [],
+   "verlauf": [
+    {
+     "t_ms": 0,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "GAME START"
+    },
+    {
+     "t_ms": 3219,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "HEAROPTIONS"
+    },
+    {
+     "t_ms": 3308,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Maus"
+    },
+    {
+     "t_ms": 4202,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Tisch"
+    },
+    {
+     "t_ms": 5155,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Ziege"
+    },
+    {
+     "t_ms": 6359,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Maus"
+    },
+    {
+     "t_ms": 6417,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Fliege und Maus. Das reimt sich nicht."
+    },
+    {
+     "t_ms": 9900,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Ziege"
+    },
+    {
+     "t_ms": 9940,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Fliege und Ziege. Das reimt sich!"
+    },
+    {
+     "t_ms": 13510,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Haus. Was reimt sich auf Haus?"
+    },
+    {
+     "t_ms": 16549,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Stall"
+    },
+    {
+     "t_ms": 16621,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Haus und Stall. Das reimt sich nicht."
+    },
+    {
+     "t_ms": 20308,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Maus"
+    },
+    {
+     "t_ms": 20645,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Haus und Maus. Das reimt sich!"
+    },
+    {
+     "t_ms": 24205,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Kanne. Was reimt sich auf Kanne?"
+    },
+    {
+     "t_ms": 27506,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Tatze"
+    },
+    {
+     "t_ms": 27552,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Kanne und Tatze. Das reimt sich nicht."
+    },
+    {
+     "t_ms": 31090,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Tanne"
+    },
+    {
+     "t_ms": 31245,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Kanne und Tanne. Das reimt sich!"
+    },
+    {
+     "t_ms": 35572,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Buch. Was reimt sich auf Buch?"
+    },
+    {
+     "t_ms": 39252,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Eis"
+    },
+    {
+     "t_ms": 39505,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Buch und Eis. Das reimt sich nicht."
+    },
+    {
+     "t_ms": 42880,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Tuch"
+    },
+    {
+     "t_ms": 42976,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Buch und Tuch. Das reimt sich!"
+    },
+    {
+     "t_ms": 46413,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Banane. Was reimt sich auf Banane?"
+    },
+    {
+     "t_ms": 50065,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Ziege"
+    },
+    {
+     "t_ms": 50489,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Banane und Ziege. Das reimt sich nicht."
+    },
+    {
+     "t_ms": 54205,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Fahne"
+    },
+    {
+     "t_ms": 54344,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Banane und Fahne. Das reimt sich!"
+    },
+    {
+     "t_ms": 58298,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Hund. Was reimt sich auf Hund?"
+    },
+    {
+     "t_ms": 61383,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Fliege"
+    },
+    {
+     "t_ms": 61418,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Hund und Fliege. Das reimt sich nicht."
+    },
+    {
+     "t_ms": 65116,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Mund"
+    },
+    {
+     "t_ms": 65322,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Hund und Mund. Das reimt sich!"
+    },
+    {
+     "t_ms": 68940,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Tonne. Was reimt sich auf Tonne?"
+    },
+    {
+     "t_ms": 72329,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Maus"
+    },
+    {
+     "t_ms": 72370,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Tonne und Maus. Das reimt sich nicht."
+    },
+    {
+     "t_ms": 75903,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Sonne"
+    },
+    {
+     "t_ms": 75970,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Tonne und Sonne. Das reimt sich!"
+    },
+    {
+     "t_ms": 79550,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Kuh. Was reimt sich auf Kuh?"
+    },
+    {
+     "t_ms": 82527,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Rakete"
+    },
+    {
+     "t_ms": 82605,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Kuh und Rakete. Das reimt sich nicht."
+    },
+    {
+     "t_ms": 86012,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Schuh"
+    },
+    {
+     "t_ms": 86337,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Kuh und Schuh. Das reimt sich!"
+    },
+    {
+     "t_ms": 91416,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "das-hast-du-super-gemacht.mp3"
+    },
+    {
+     "t_ms": 92974,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "das-hast-du-super-gemacht.mp3"
+    }
+   ]
+  },
+  "rhyme-L6": {
+   "fehler_konsole": [],
+   "runden": [
+    {
+     "base": "Rakete",
+     "options": [
+      "Trompete",
+      "Krone",
+      "Tisch",
+      "Dose"
+     ],
+     "correct": "Trompete"
+    },
+    {
+     "base": "Stall",
+     "options": [
+      "Trompete",
+      "Ball",
+      "Rose",
+      "Tanne"
+     ],
+     "correct": "Ball"
+    },
+    {
+     "base": "Haus",
+     "options": [
+      "Nase",
+      "Krone",
+      "Stall",
+      "Maus"
+     ],
+     "correct": "Maus"
+    },
+    {
+     "base": "Wand",
+     "options": [
+      "Rose",
+      "Katze",
+      "Hand",
+      "Bohne"
+     ],
+     "correct": "Hand"
+    },
+    {
+     "base": "Kanne",
+     "options": [
+      "Tanne",
+      "Baum",
+      "Mund",
+      "Ziege"
+     ],
+     "correct": "Tanne"
+    },
+    {
+     "base": "Bohne",
+     "options": [
+      "Matratze",
+      "Kanne",
+      "Hund",
+      "Krone"
+     ],
+     "correct": "Krone"
+    },
+    {
+     "base": "Banane",
+     "options": [
+      "Schaum",
+      "Dose",
+      "Fahne",
+      "Matratze"
+     ],
+     "correct": "Fahne"
+    },
+    {
+     "base": "Rose",
+     "options": [
+      "Hose",
+      "Bohne",
+      "Tatze",
+      "Schuh"
+     ],
+     "correct": "Hose"
+    }
+   ],
+   "anzahl_aeusserungen": 29,
+   "abgebrochen": [],
+   "fehlende_audios": [],
+   "verlauf": [
+    {
+     "t_ms": 0,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "GAME START"
+    },
+    {
+     "t_ms": 1155,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Rakete. Was reimt sich auf Rakete?"
+    },
+    {
+     "t_ms": 4738,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "HEAROPTIONS"
+    },
+    {
+     "t_ms": 4806,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Trompete"
+    },
+    {
+     "t_ms": 5953,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Krone"
+    },
+    {
+     "t_ms": 6912,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Tisch"
+    },
+    {
+     "t_ms": 7877,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Dose"
+    },
+    {
+     "t_ms": 9065,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Krone"
+    },
+    {
+     "t_ms": 9152,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Rakete und Krone. Das reimt sich nicht."
+    },
+    {
+     "t_ms": 12697,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Trompete"
+    },
+    {
+     "t_ms": 12770,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Rakete und Trompete. Das reimt sich!"
+    },
+    {
+     "t_ms": 17313,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Stall. Was reimt sich auf Stall?"
+    },
+    {
+     "t_ms": 20647,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Trompete"
+    },
+    {
+     "t_ms": 20682,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Stall und Trompete. Das reimt sich nicht."
+    },
+    {
+     "t_ms": 24719,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Ball"
+    },
+    {
+     "t_ms": 24942,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Stall und Ball. Das reimt sich!"
+    },
+    {
+     "t_ms": 28389,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Haus. Was reimt sich auf Haus?"
+    },
+    {
+     "t_ms": 31467,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Nase"
+    },
+    {
+     "t_ms": 31573,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Haus und Nase. Das reimt sich nicht."
+    },
+    {
+     "t_ms": 35026,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Maus"
+    },
+    {
+     "t_ms": 35097,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Haus und Maus. Das reimt sich!"
+    },
+    {
+     "t_ms": 38873,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Wand. Was reimt sich auf Wand?"
+    },
+    {
+     "t_ms": 41996,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Rose"
+    },
+    {
+     "t_ms": 42152,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Wand und Rose. Das reimt sich nicht."
+    },
+    {
+     "t_ms": 45704,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Hand"
+    },
+    {
+     "t_ms": 45754,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Wand und Hand. Das reimt sich!"
+    },
+    {
+     "t_ms": 49257,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Kanne. Was reimt sich auf Kanne?"
+    },
+    {
+     "t_ms": 52728,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Baum"
+    },
+    {
+     "t_ms": 53003,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Kanne und Baum. Das reimt sich nicht."
+    },
+    {
+     "t_ms": 56385,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Tanne"
+    },
+    {
+     "t_ms": 56464,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Kanne und Tanne. Das reimt sich!"
+    },
+    {
+     "t_ms": 60525,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Bohne. Was reimt sich auf Bohne?"
+    },
+    {
+     "t_ms": 64078,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Matratze"
+    },
+    {
+     "t_ms": 64130,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Bohne und Matratze. Das reimt sich nicht."
+    },
+    {
+     "t_ms": 67926,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Krone"
+    },
+    {
+     "t_ms": 68025,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Bohne und Krone. Das reimt sich!"
+    },
+    {
+     "t_ms": 71792,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Banane. Was reimt sich auf Banane?"
+    },
+    {
+     "t_ms": 75129,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Schaum"
+    },
+    {
+     "t_ms": 75214,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Banane und Schaum. Das reimt sich nicht."
+    },
+    {
+     "t_ms": 78783,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Fahne"
+    },
+    {
+     "t_ms": 78938,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Banane und Fahne. Das reimt sich!"
+    },
+    {
+     "t_ms": 82645,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Rose. Was reimt sich auf Rose?"
+    },
+    {
+     "t_ms": 87066,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG Bohne"
+    },
+    {
+     "t_ms": 87247,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Rose und Bohne. Das reimt sich nicht."
+    },
+    {
+     "t_ms": 90729,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT Hose"
+    },
+    {
+     "t_ms": 90780,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Rose und Hose. Das reimt sich!"
+    },
+    {
+     "t_ms": 96291,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "das-hast-du-super-gemacht.mp3"
+    }
+   ]
+  },
+  "shadows-L1": {
+   "fehler_konsole": [],
+   "runden": [
+    {
+     "shadow": "🐊",
+     "options": [
+      "🐍",
+      "🦎",
+      "🐊",
+      "🐢"
+     ]
+    },
+    {
+     "shadow": "🌵",
+     "options": [
+      "🌲",
+      "🌵",
+      "🍄",
+      "🌺"
+     ]
+    },
+    {
+     "shadow": "⛺",
+     "options": [
+      "⛺",
+      "🏰",
+      "🏠",
+      "🛖"
+     ]
+    },
+    {
+     "shadow": "🦁",
+     "options": [
+      "🐘",
+      "🦁",
+      "🦒",
+      "🐬"
+     ]
+    },
+    {
+     "shadow": "🐯",
+     "options": [
+      "🐯",
+      "🐻",
+      "🦁",
+      "🐆"
+     ]
+    },
+    {
+     "shadow": "🦉",
+     "options": [
+      "🦅",
+      "🦜",
+      "🐦",
+      "🦉"
+     ]
+    },
+    {
+     "shadow": "🐻",
+     "options": [
+      "🐻",
+      "🦁",
+      "🦊",
+      "🐺"
+     ]
+    },
+    {
+     "shadow": "🚲",
+     "options": [
+      "🛴",
+      "🚲",
+      "🛵",
+      "🏍️"
+     ]
+    }
+   ],
+   "anzahl_aeusserungen": 13,
+   "abgebrochen": [],
+   "fehlende_audios": [],
+   "verlauf": [
+    {
+     "t_ms": 0,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "GAME START"
+    },
+    {
+     "t_ms": 3088,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG 🐍"
+    },
+    {
+     "t_ms": 3266,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Noch nicht ganz. Schau nochmal mit der Lampe!"
+    },
+    {
+     "t_ms": 7278,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT 🐊"
+    },
+    {
+     "t_ms": 7338,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Krokodil! Krokodile zählen zu den ältesten Tieren der Erde!"
+    },
+    {
+     "t_ms": 16116,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT 🌵"
+    },
+    {
+     "t_ms": 16169,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Kaktus! Kakteen speichern Wasser in der Wüste!"
+    },
+    {
+     "t_ms": 23889,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG 🏰"
+    },
+    {
+     "t_ms": 23932,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Noch nicht ganz. Schau nochmal mit der Lampe!"
+    },
+    {
+     "t_ms": 28111,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT ⛺"
+    },
+    {
+     "t_ms": 28172,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Zelt! Im Zelt schläft man draußen in der Natur!"
+    },
+    {
+     "t_ms": 35828,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT 🦁"
+    },
+    {
+     "t_ms": 35956,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Löwe! Der Löwe ist der König der Tiere!"
+    },
+    {
+     "t_ms": 43760,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG 🐻"
+    },
+    {
+     "t_ms": 43799,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Noch nicht ganz. Schau nochmal mit der Lampe!"
+    },
+    {
+     "t_ms": 48269,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT 🐯"
+    },
+    {
+     "t_ms": 48488,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Tiger! Tiger sind die größten wilden Katzen der Welt!"
+    },
+    {
+     "t_ms": 56750,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT 🦉"
+    },
+    {
+     "t_ms": 56934,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Eule! Eulen können ihren Kopf fast komplett drehen!"
+    },
+    {
+     "t_ms": 64604,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG 🦁"
+    },
+    {
+     "t_ms": 64659,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Noch nicht ganz. Schau nochmal mit der Lampe!"
+    },
+    {
+     "t_ms": 68713,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT 🐻"
+    },
+    {
+     "t_ms": 68784,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Bär! Bären schlafen im Winter einen langen Schlaf!"
+    },
+    {
+     "t_ms": 76150,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT 🚲"
+    },
+    {
+     "t_ms": 76502,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Fahrrad! Fahrradfahren ist gut für Umwelt und Gesundheit!"
+    },
+    {
+     "t_ms": 84181,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "das-hast-du-super-gemacht.mp3"
+    }
+   ]
+  },
+  "shadows-L6": {
+   "fehler_konsole": [],
+   "runden": [
+    {
+     "shadow": "🥁",
+     "options": [
+      "🎺",
+      "🎹",
+      "🎸",
+      "🥁"
+     ]
+    },
+    {
+     "shadow": "🚂",
+     "options": [
+      "🚌",
+      "🚃",
+      "🚂",
+      "🚗"
+     ]
+    },
+    {
+     "shadow": "🎹",
+     "options": [
+      "🥁",
+      "🎸",
+      "🎺",
+      "🎹"
+     ]
+    },
+    {
+     "shadow": "🐸",
+     "options": [
+      "🦗",
+      "🐢",
+      "🐸",
+      "🦎"
+     ]
+    },
+    {
+     "shadow": "🦋",
+     "options": [
+      "🐝",
+      "🦗",
+      "🦋",
+      "🐞"
+     ]
+    },
+    {
+     "shadow": "🌵",
+     "options": [
+      "🌲",
+      "🍄",
+      "🌵",
+      "🌺"
+     ]
+    },
+    {
+     "shadow": "🍄",
+     "options": [
+      "🌺",
+      "🌵",
+      "🌳",
+      "🍄"
+     ]
+    },
+    {
+     "shadow": "🦓",
+     "options": [
+      "🦓",
+      "🐴",
+      "🦒",
+      "🐎"
+     ]
+    },
+    {
+     "shadow": "🏄",
+     "options": [
+      "🏊",
+      "🤿",
+      "🚣",
+      "🏄"
+     ]
+    },
+    {
+     "shadow": "🐯",
+     "options": [
+      "🐆",
+      "🦁",
+      "🐯",
+      "🐻"
+     ]
+    }
+   ],
+   "anzahl_aeusserungen": 16,
+   "abgebrochen": [],
+   "fehlende_audios": [],
+   "verlauf": [
+    {
+     "t_ms": 0,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "GAME START"
+    },
+    {
+     "t_ms": 3659,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG 🎺"
+    },
+    {
+     "t_ms": 3737,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Noch nicht ganz. Schau nochmal mit der Lampe!"
+    },
+    {
+     "t_ms": 7739,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT 🥁"
+    },
+    {
+     "t_ms": 7790,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Schlagzeug! Schlagzeuge haben bis zu 20 verschiedene Teile!"
+    },
+    {
+     "t_ms": 16278,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT 🚂"
+    },
+    {
+     "t_ms": 16411,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Lokomotive! Die erste Dampflokomotive fuhr 1825!"
+    },
+    {
+     "t_ms": 24017,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG 🥁"
+    },
+    {
+     "t_ms": 24140,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Noch nicht ganz. Schau nochmal mit der Lampe!"
+    },
+    {
+     "t_ms": 28156,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT 🎹"
+    },
+    {
+     "t_ms": 28239,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Klavier! Ein Klavier hat 88 Tasten!"
+    },
+    {
+     "t_ms": 34704,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT 🐸"
+    },
+    {
+     "t_ms": 34756,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Frosch! Frösche können 20 ihre Körpergröße springen!"
+    },
+    {
+     "t_ms": 42401,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG 🐝"
+    },
+    {
+     "t_ms": 42441,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Noch nicht ganz. Schau nochmal mit der Lampe!"
+    },
+    {
+     "t_ms": 46469,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT 🦋"
+    },
+    {
+     "t_ms": 46541,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Schmetterling! Schmetterlinge kommen aus einer Raupe!"
+    },
+    {
+     "t_ms": 54182,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT 🌵"
+    },
+    {
+     "t_ms": 54298,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Kaktus! Kakteen speichern Wasser in der Wüste!"
+    },
+    {
+     "t_ms": 62577,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG 🌺"
+    },
+    {
+     "t_ms": 62621,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Noch nicht ganz. Schau nochmal mit der Lampe!"
+    },
+    {
+     "t_ms": 66636,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT 🍄"
+    },
+    {
+     "t_ms": 66679,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Pilz! Einige Pilze leuchten im Dunkeln!"
+    },
+    {
+     "t_ms": 73541,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT 🦓"
+    },
+    {
+     "t_ms": 73578,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Zebra! Jedes Zebra hat ein einzigartiges Streifenmuster!"
+    },
+    {
+     "t_ms": 81751,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "WRONG 🏊"
+    },
+    {
+     "t_ms": 81892,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Noch nicht ganz. Schau nochmal mit der Lampe!"
+    },
+    {
+     "t_ms": 86160,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT 🏄"
+    },
+    {
+     "t_ms": 86489,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Surfer! Beim Surfen reitet man auf Wellen!"
+    },
+    {
+     "t_ms": 93152,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "RIGHT 🐯"
+    },
+    {
+     "t_ms": 93474,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Tiger! Tiger sind die größten wilden Katzen der Welt!"
+    },
+    {
+     "t_ms": 100877,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "das-hast-du-super-gemacht.mp3"
+    }
+   ]
+  },
+  "words2-L1": {
+   "fehler_konsole": [],
+   "runden": [
+    {
+     "syllables": [
+      "MA",
+      "MA"
+     ],
+     "bubble": "Bravo!  MAMA — richtig!"
+    },
+    {
+     "syllables": [
+      "SCHNE",
+      "CKE"
+     ],
+     "bubble": "Bravo!  SCHNECKE — richtig!"
+    },
+    {
+     "syllables": [
+      "ROB",
+      "BE"
+     ],
+     "bubble": "Bravo!  ROBBE — richtig!"
+    },
+    {
+     "syllables": [
+      "SCHE",
+      "RE"
+     ],
+     "bubble": "Bravo!  SCHERE — richtig!"
+    },
+    {
+     "syllables": [
+      "TRAU",
+      "BE"
+     ],
+     "bubble": "Bravo!  TRAUBE — richtig!"
+    },
+    {
+     "syllables": [
+      "TI",
+      "GER"
+     ],
+     "bubble": "Bravo!  TIGER — richtig!"
+    },
+    {
+     "syllables": [
+      "WOL",
+      "KE"
+     ],
+     "bubble": "Bravo!  WOLKE — richtig!"
+    },
+    {
+     "syllables": [
+      "GA",
+      "BEL"
+     ],
+     "bubble": "Bravo!  GABEL — richtig!"
+    }
+   ],
+   "anzahl_aeusserungen": 25,
+   "abgebrochen": [
+    "Cke (600 ms)",
+    "Ger (663 ms)",
+    "Bel (601 ms)"
+   ],
+   "fehlende_audios": [],
+   "verlauf": [
+    {
+     "t_ms": 0,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "GAME START"
+    },
+    {
+     "t_ms": 3443,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY MA"
+    },
+    {
+     "t_ms": 3490,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Ma"
+    },
+    {
+     "t_ms": 4733,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY MA"
+    },
+    {
+     "t_ms": 4896,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Ma"
+    },
+    {
+     "t_ms": 5503,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "mama"
+    },
+    {
+     "t_ms": 9161,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY SCHNE"
+    },
+    {
+     "t_ms": 9179,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Schne"
+    },
+    {
+     "t_ms": 10495,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY CKE"
+    },
+    {
+     "t_ms": 10515,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Cke"
+    },
+    {
+     "t_ms": 11115,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Cke",
+     "abgebrochen_nach_ms": 600
+    },
+    {
+     "t_ms": 11296,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "schnecke"
+    },
+    {
+     "t_ms": 15244,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY BE"
+    },
+    {
+     "t_ms": 16182,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY ROB"
+    },
+    {
+     "t_ms": 16204,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Rob"
+    },
+    {
+     "t_ms": 17463,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY BE"
+    },
+    {
+     "t_ms": 17493,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Be"
+    },
+    {
+     "t_ms": 18095,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "robbe"
+    },
+    {
+     "t_ms": 22709,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY RE"
+    },
+    {
+     "t_ms": 23858,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY SCHE"
+    },
+    {
+     "t_ms": 24252,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Sche"
+    },
+    {
+     "t_ms": 25612,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY RE"
+    },
+    {
+     "t_ms": 25638,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Re"
+    },
+    {
+     "t_ms": 26239,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "schere"
+    },
+    {
+     "t_ms": 31254,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY TRAU"
+    },
+    {
+     "t_ms": 31290,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Trau"
+    },
+    {
+     "t_ms": 32698,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY BE"
+    },
+    {
+     "t_ms": 32982,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Be"
+    },
+    {
+     "t_ms": 33582,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "traube"
+    },
+    {
+     "t_ms": 38521,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY TI"
+    },
+    {
+     "t_ms": 38643,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Ti"
+    },
+    {
+     "t_ms": 40004,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY GER"
+    },
+    {
+     "t_ms": 40180,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Ger"
+    },
+    {
+     "t_ms": 40843,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Ger",
+     "abgebrochen_nach_ms": 663
+    },
+    {
+     "t_ms": 41024,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "tiger"
+    },
+    {
+     "t_ms": 45831,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY WOL"
+    },
+    {
+     "t_ms": 45851,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Wol"
+    },
+    {
+     "t_ms": 47289,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY KE"
+    },
+    {
+     "t_ms": 47325,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Ke"
+    },
+    {
+     "t_ms": 47968,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "wolke"
+    },
+    {
+     "t_ms": 52820,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY GA"
+    },
+    {
+     "t_ms": 53028,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Ga"
+    },
+    {
+     "t_ms": 55276,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY BEL"
+    },
+    {
+     "t_ms": 55698,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Bel"
+    },
+    {
+     "t_ms": 56299,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Bel",
+     "abgebrochen_nach_ms": 601
+    },
+    {
+     "t_ms": 56479,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "gabel"
+    },
+    {
+     "t_ms": 62199,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "das-hast-du-super-gemacht.mp3"
+    }
+   ]
+  },
+  "words2-L3": {
+   "fehler_konsole": [],
+   "runden": [
+    {
+     "syllables": [
+      "RAU",
+      "PE"
+     ],
+     "bubble": "Bravo!  RAUPE — richtig!"
+    },
+    {
+     "syllables": [
+      "HAM",
+      "STER"
+     ],
+     "bubble": "Bravo!  HAMSTER — richtig!"
+    },
+    {
+     "syllables": [
+      "PAN",
+      "DA"
+     ],
+     "bubble": "Bravo!  PANDA — richtig!"
+    },
+    {
+     "syllables": [
+      "SUP",
+      "PE"
+     ],
+     "bubble": "Bravo!  SUPPE — richtig!"
+    },
+    {
+     "syllables": [
+      "ZE",
+      "BRA"
+     ],
+     "bubble": "Bravo!  ZEBRA — richtig!"
+    },
+    {
+     "syllables": [
+      "NU",
+      "DELN"
+     ],
+     "bubble": "Bravo!  NUDELN — richtig!"
+    },
+    {
+     "syllables": [
+      "DA",
+      "CKEL"
+     ],
+     "bubble": "Bravo!  DACKEL — richtig!"
+    },
+    {
+     "syllables": [
+      "TA",
+      "SCHE"
+     ],
+     "bubble": "Bravo!  TASCHE — richtig!"
+    }
+   ],
+   "anzahl_aeusserungen": 25,
+   "abgebrochen": [
+    "Ster (601 ms)",
+    "Bra (601 ms)",
+    "Deln (607 ms)",
+    "Ckel (604 ms)",
+    "Sche (602 ms)"
+   ],
+   "fehlende_audios": [],
+   "verlauf": [
+    {
+     "t_ms": 0,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "GAME START"
+    },
+    {
+     "t_ms": 3165,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY RAU"
+    },
+    {
+     "t_ms": 3296,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Rau"
+    },
+    {
+     "t_ms": 4683,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY PE"
+    },
+    {
+     "t_ms": 4754,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Pe"
+    },
+    {
+     "t_ms": 5384,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "raupe"
+    },
+    {
+     "t_ms": 9649,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY STER"
+    },
+    {
+     "t_ms": 10743,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY HAM"
+    },
+    {
+     "t_ms": 10966,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Ham"
+    },
+    {
+     "t_ms": 14069,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY STER"
+    },
+    {
+     "t_ms": 14232,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Ster"
+    },
+    {
+     "t_ms": 14832,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Ster",
+     "abgebrochen_nach_ms": 601
+    },
+    {
+     "t_ms": 15013,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "hamster"
+    },
+    {
+     "t_ms": 19282,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY DA"
+    },
+    {
+     "t_ms": 20330,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY PAN"
+    },
+    {
+     "t_ms": 20484,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Pan"
+    },
+    {
+     "t_ms": 21745,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY DA"
+    },
+    {
+     "t_ms": 21955,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Da"
+    },
+    {
+     "t_ms": 22586,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "panda"
+    },
+    {
+     "t_ms": 27030,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY PE"
+    },
+    {
+     "t_ms": 27976,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY SUP"
+    },
+    {
+     "t_ms": 27995,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Sup"
+    },
+    {
+     "t_ms": 29479,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY PE"
+    },
+    {
+     "t_ms": 29566,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Pe"
+    },
+    {
+     "t_ms": 30167,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "suppe"
+    },
+    {
+     "t_ms": 34130,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY ZE"
+    },
+    {
+     "t_ms": 34153,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Ze"
+    },
+    {
+     "t_ms": 35609,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY BRA"
+    },
+    {
+     "t_ms": 35862,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Bra"
+    },
+    {
+     "t_ms": 36462,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Bra",
+     "abgebrochen_nach_ms": 601
+    },
+    {
+     "t_ms": 36643,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "zebra"
+    },
+    {
+     "t_ms": 40722,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY NU"
+    },
+    {
+     "t_ms": 40748,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Nu"
+    },
+    {
+     "t_ms": 42437,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY DELN"
+    },
+    {
+     "t_ms": 42449,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Deln"
+    },
+    {
+     "t_ms": 43056,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Deln",
+     "abgebrochen_nach_ms": 607
+    },
+    {
+     "t_ms": 43238,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "nudeln"
+    },
+    {
+     "t_ms": 47130,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY CKEL"
+    },
+    {
+     "t_ms": 48042,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY DA"
+    },
+    {
+     "t_ms": 48210,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Da"
+    },
+    {
+     "t_ms": 49297,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY CKEL"
+    },
+    {
+     "t_ms": 49369,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Ckel"
+    },
+    {
+     "t_ms": 49973,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Ckel",
+     "abgebrochen_nach_ms": 604
+    },
+    {
+     "t_ms": 50153,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "dackel"
+    },
+    {
+     "t_ms": 54234,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY TA"
+    },
+    {
+     "t_ms": 54261,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Ta"
+    },
+    {
+     "t_ms": 55463,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY SCHE"
+    },
+    {
+     "t_ms": 55614,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Sche"
+    },
+    {
+     "t_ms": 56215,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Sche",
+     "abgebrochen_nach_ms": 602
+    },
+    {
+     "t_ms": 56398,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "tasche"
+    },
+    {
+     "t_ms": 61126,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "das-hast-du-super-gemacht.mp3"
+    }
+   ]
+  },
+  "words2-L5": {
+   "fehler_konsole": [],
+   "runden": [
+    {
+     "syllables": [
+      "ERD",
+      "BEE",
+      "RE"
+     ],
+     "bubble": "Bravo!  ERDBEERE — richtig!"
+    },
+    {
+     "syllables": [
+      "GI",
+      "RAF",
+      "FE"
+     ],
+     "bubble": "Bravo!  GIRAFFE — richtig!"
+    },
+    {
+     "syllables": [
+      "KÜR",
+      "BIS"
+     ],
+     "bubble": "Bravo!  KÜRBIS — richtig!"
+    },
+    {
+     "syllables": [
+      "EICH",
+      "HÖRN",
+      "CHEN"
+     ],
+     "bubble": "Bravo!  EICHHÖRNCHEN — richtig!"
+    },
+    {
+     "syllables": [
+      "KA",
+      "ROT",
+      "TE"
+     ],
+     "bubble": "Bravo!  KAROTTE — richtig!"
+    },
+    {
+     "syllables": [
+      "SCHO",
+      "KO",
+      "LA",
+      "DE"
+     ],
+     "bubble": "Bravo!  SCHOKOLADE — richtig!"
+    },
+    {
+     "syllables": [
+      "TRAK",
+      "TOR"
+     ],
+     "bubble": "Bravo!  TRAKTOR — richtig!"
+    },
+    {
+     "syllables": [
+      "SCHILD",
+      "KRÖ",
+      "TE"
+     ],
+     "bubble": "Bravo!  SCHILDKRÖTE — richtig!"
+    }
+   ],
+   "anzahl_aeusserungen": 32,
+   "abgebrochen": [
+    "Bis (600 ms)",
+    "Chen (601 ms)",
+    "Tor (600 ms)"
+   ],
+   "fehlende_audios": [],
+   "verlauf": [
+    {
+     "t_ms": 0,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "GAME START"
+    },
+    {
+     "t_ms": 4042,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY ERD"
+    },
+    {
+     "t_ms": 4252,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Erd"
+    },
+    {
+     "t_ms": 5879,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY BEE"
+    },
+    {
+     "t_ms": 6030,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Bee"
+    },
+    {
+     "t_ms": 7655,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY RE"
+    },
+    {
+     "t_ms": 7681,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Re"
+    },
+    {
+     "t_ms": 8287,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "erdbeere"
+    },
+    {
+     "t_ms": 13302,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY GI"
+    },
+    {
+     "t_ms": 13356,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Gi"
+    },
+    {
+     "t_ms": 15154,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY FE"
+    },
+    {
+     "t_ms": 16207,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY RAF"
+    },
+    {
+     "t_ms": 16413,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Raf"
+    },
+    {
+     "t_ms": 17669,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY FE"
+    },
+    {
+     "t_ms": 17691,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Fe"
+    },
+    {
+     "t_ms": 18292,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "giraffe"
+    },
+    {
+     "t_ms": 23644,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY BIS"
+    },
+    {
+     "t_ms": 24832,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY KÜR"
+    },
+    {
+     "t_ms": 24847,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Kür"
+    },
+    {
+     "t_ms": 26280,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY BIS"
+    },
+    {
+     "t_ms": 26308,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Bis"
+    },
+    {
+     "t_ms": 26908,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Bis",
+     "abgebrochen_nach_ms": 600
+    },
+    {
+     "t_ms": 27088,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "kürbis"
+    },
+    {
+     "t_ms": 31825,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY EICH"
+    },
+    {
+     "t_ms": 31961,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Eich"
+    },
+    {
+     "t_ms": 33798,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY CHEN"
+    },
+    {
+     "t_ms": 35215,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY HÖRN"
+    },
+    {
+     "t_ms": 35236,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Hörn"
+    },
+    {
+     "t_ms": 36783,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY CHEN"
+    },
+    {
+     "t_ms": 36807,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Chen"
+    },
+    {
+     "t_ms": 37408,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Chen",
+     "abgebrochen_nach_ms": 601
+    },
+    {
+     "t_ms": 37590,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "eichhörnchen"
+    },
+    {
+     "t_ms": 42567,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY TE"
+    },
+    {
+     "t_ms": 44265,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY ROT"
+    },
+    {
+     "t_ms": 46369,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY KA"
+    },
+    {
+     "t_ms": 46820,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Ka"
+    },
+    {
+     "t_ms": 47896,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY TE"
+    },
+    {
+     "t_ms": 48909,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY ROT"
+    },
+    {
+     "t_ms": 48921,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Rot"
+    },
+    {
+     "t_ms": 50177,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY TE"
+    },
+    {
+     "t_ms": 50233,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Te"
+    },
+    {
+     "t_ms": 50866,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "karotte"
+    },
+    {
+     "t_ms": 55896,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY SCHO"
+    },
+    {
+     "t_ms": 55967,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Scho"
+    },
+    {
+     "t_ms": 57952,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY LA"
+    },
+    {
+     "t_ms": 59444,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY DE"
+    },
+    {
+     "t_ms": 60974,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY KO"
+    },
+    {
+     "t_ms": 61009,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Ko"
+    },
+    {
+     "t_ms": 62290,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY LA"
+    },
+    {
+     "t_ms": 62329,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "La"
+    },
+    {
+     "t_ms": 63635,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY DE"
+    },
+    {
+     "t_ms": 63718,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "De"
+    },
+    {
+     "t_ms": 64503,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "schokolade"
+    },
+    {
+     "t_ms": 69303,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY TOR"
+    },
+    {
+     "t_ms": 70136,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY TRAK"
+    },
+    {
+     "t_ms": 70198,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Trak"
+    },
+    {
+     "t_ms": 71442,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY TOR"
+    },
+    {
+     "t_ms": 71458,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Tor"
+    },
+    {
+     "t_ms": 72058,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Tor",
+     "abgebrochen_nach_ms": 600
+    },
+    {
+     "t_ms": 72239,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "traktor"
+    },
+    {
+     "t_ms": 76500,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY TE"
+    },
+    {
+     "t_ms": 77446,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY KRÖ"
+    },
+    {
+     "t_ms": 78481,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY SCHILD"
+    },
+    {
+     "t_ms": 78544,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Schild"
+    },
+    {
+     "t_ms": 80431,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY TE"
+    },
+    {
+     "t_ms": 81348,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY KRÖ"
+    },
+    {
+     "t_ms": 81364,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Krö"
+    },
+    {
+     "t_ms": 82520,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY TE"
+    },
+    {
+     "t_ms": 82553,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Te"
+    },
+    {
+     "t_ms": 83155,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "schildkröte"
+    },
+    {
+     "t_ms": 88856,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "ja-super.mp3"
+    }
+   ]
+  },
+  "words2-L7": {
+   "fehler_konsole": [],
+   "runden": [
+    {
+     "syllables": [
+      "NACH",
+      "MIT",
+      "TAG"
+     ],
+     "bubble": "Bravo!  NACHMITTAG — richtig!"
+    },
+    {
+     "syllables": [
+      "FEU",
+      "ER",
+      "WEHR"
+     ],
+     "bubble": "Bravo!  FEUERWEHR — richtig!"
+    },
+    {
+     "syllables": [
+      "TISCH",
+      "TEN",
+      "NIS"
+     ],
+     "bubble": "Bravo!  TISCHTENNIS — richtig!"
+    },
+    {
+     "syllables": [
+      "BRIEF",
+      "KAS",
+      "TEN"
+     ],
+     "bubble": "Bravo!  BRIEFKASTEN — richtig!"
+    },
+    {
+     "syllables": [
+      "FLUG",
+      "ZEUG"
+     ],
+     "bubble": "Bravo!  FLUGZEUG — richtig!"
+    },
+    {
+     "syllables": [
+      "SCHLAF",
+      "SACK"
+     ],
+     "bubble": "Bravo!  SCHLAFSACK — richtig!"
+    },
+    {
+     "syllables": [
+      "WAS",
+      "SER",
+      "HAHN"
+     ],
+     "bubble": "Bravo!  WASSERHAHN — richtig!"
+    },
+    {
+     "syllables": [
+      "KÜHL",
+      "SCHRANK"
+     ],
+     "bubble": "Bravo!  KÜHLSCHRANK — richtig!"
+    }
+   ],
+   "anzahl_aeusserungen": 30,
+   "abgebrochen": [
+    "Tag (601 ms)",
+    "Wehr (610 ms)",
+    "Nis (601 ms)",
+    "Ten (605 ms)",
+    "Zeug (601 ms)",
+    "Sack (602 ms)",
+    "Hahn (601 ms)",
+    "Schrank (601 ms)"
+   ],
+   "fehlende_audios": [],
+   "verlauf": [
+    {
+     "t_ms": 0,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "GAME START"
+    },
+    {
+     "t_ms": 3220,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY TAG"
+    },
+    {
+     "t_ms": 4148,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY NACH"
+    },
+    {
+     "t_ms": 4493,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Nach"
+    },
+    {
+     "t_ms": 5907,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY TAG"
+    },
+    {
+     "t_ms": 7131,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY MIT"
+    },
+    {
+     "t_ms": 7162,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Mit"
+    },
+    {
+     "t_ms": 8452,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY TAG"
+    },
+    {
+     "t_ms": 8484,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Tag"
+    },
+    {
+     "t_ms": 9085,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Tag",
+     "abgebrochen_nach_ms": 601
+    },
+    {
+     "t_ms": 9312,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "nachmittag"
+    },
+    {
+     "t_ms": 14066,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY FEU"
+    },
+    {
+     "t_ms": 14085,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Feu"
+    },
+    {
+     "t_ms": 15467,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY WEHR"
+    },
+    {
+     "t_ms": 16648,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY ER"
+    },
+    {
+     "t_ms": 16804,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Er"
+    },
+    {
+     "t_ms": 17967,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY WEHR"
+    },
+    {
+     "t_ms": 17987,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Wehr"
+    },
+    {
+     "t_ms": 18597,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Wehr",
+     "abgebrochen_nach_ms": 610
+    },
+    {
+     "t_ms": 18778,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "feuerwehr"
+    },
+    {
+     "t_ms": 23227,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY TEN"
+    },
+    {
+     "t_ms": 24164,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY NIS"
+    },
+    {
+     "t_ms": 25027,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY TISCH"
+    },
+    {
+     "t_ms": 25048,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Tisch"
+    },
+    {
+     "t_ms": 26430,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY TEN"
+    },
+    {
+     "t_ms": 26474,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Ten"
+    },
+    {
+     "t_ms": 27683,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY NIS"
+    },
+    {
+     "t_ms": 27699,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Nis"
+    },
+    {
+     "t_ms": 28300,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Nis",
+     "abgebrochen_nach_ms": 601
+    },
+    {
+     "t_ms": 28480,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "tischtennis"
+    },
+    {
+     "t_ms": 32565,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY TEN"
+    },
+    {
+     "t_ms": 33430,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY KAS"
+    },
+    {
+     "t_ms": 34267,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY BRIEF"
+    },
+    {
+     "t_ms": 34304,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Brief"
+    },
+    {
+     "t_ms": 35691,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY TEN"
+    },
+    {
+     "t_ms": 36529,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY KAS"
+    },
+    {
+     "t_ms": 36576,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Kas"
+    },
+    {
+     "t_ms": 37745,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY TEN"
+    },
+    {
+     "t_ms": 37766,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Ten"
+    },
+    {
+     "t_ms": 38371,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Ten",
+     "abgebrochen_nach_ms": 605
+    },
+    {
+     "t_ms": 38551,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "briefkasten"
+    },
+    {
+     "t_ms": 43114,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY FLUG"
+    },
+    {
+     "t_ms": 43129,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Flug"
+    },
+    {
+     "t_ms": 44565,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY ZEUG"
+    },
+    {
+     "t_ms": 44781,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Zeug"
+    },
+    {
+     "t_ms": 45382,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Zeug",
+     "abgebrochen_nach_ms": 601
+    },
+    {
+     "t_ms": 45622,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "flugzeug"
+    },
+    {
+     "t_ms": 49898,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY SACK"
+    },
+    {
+     "t_ms": 50772,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY SCHLAF"
+    },
+    {
+     "t_ms": 50798,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Schlaf"
+    },
+    {
+     "t_ms": 52298,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY SACK"
+    },
+    {
+     "t_ms": 52339,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Sack"
+    },
+    {
+     "t_ms": 52941,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Sack",
+     "abgebrochen_nach_ms": 602
+    },
+    {
+     "t_ms": 53122,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "schlafsack"
+    },
+    {
+     "t_ms": 57376,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY HAHN"
+    },
+    {
+     "t_ms": 58448,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY WAS"
+    },
+    {
+     "t_ms": 58511,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Was"
+    },
+    {
+     "t_ms": 59747,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY HAHN"
+    },
+    {
+     "t_ms": 60708,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY SER"
+    },
+    {
+     "t_ms": 60737,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Ser"
+    },
+    {
+     "t_ms": 61946,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY HAHN"
+    },
+    {
+     "t_ms": 62126,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Hahn"
+    },
+    {
+     "t_ms": 62727,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Hahn",
+     "abgebrochen_nach_ms": 601
+    },
+    {
+     "t_ms": 62908,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "wasserhahn"
+    },
+    {
+     "t_ms": 66963,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY KÜHL"
+    },
+    {
+     "t_ms": 66982,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Kühl"
+    },
+    {
+     "t_ms": 68229,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY SCHRANK"
+    },
+    {
+     "t_ms": 68258,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Schrank"
+    },
+    {
+     "t_ms": 68859,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Schrank",
+     "abgebrochen_nach_ms": 601
+    },
+    {
+     "t_ms": 69064,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "kühlschrank"
+    },
+    {
+     "t_ms": 74049,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "ja-super.mp3"
+    }
+   ]
+  },
+  "words2-L9": {
+   "fehler_konsole": [],
+   "runden": [
+    {
+     "syllables": [
+      "NI",
+      "KO",
+      "LAUS",
+      "STIE",
+      "FEL"
+     ],
+     "bubble": "Bravo!  NIKOLAUSSTIEFEL — richtig!"
+    },
+    {
+     "syllables": [
+      "WIN",
+      "TER",
+      "LAND",
+      "SCHAFT"
+     ],
+     "bubble": "Bravo!  WINTERLANDSCHAFT — richtig!"
+    },
+    {
+     "syllables": [
+      "BLU",
+      "MEN",
+      "WIE",
+      "SE"
+     ],
+     "bubble": "Bravo!  BLUMENWIESE — richtig!"
+    },
+    {
+     "syllables": [
+      "MEE",
+      "RES",
+      "SCHILD",
+      "KRÖ",
+      "TE"
+     ],
+     "bubble": "Bravo!  MEERESSCHILDKRÖTE — richtig!"
+    },
+    {
+     "syllables": [
+      "KIN",
+      "DER",
+      "GAR",
+      "TEN"
+     ],
+     "bubble": "Bravo!  KINDERGARTEN — richtig!"
+    },
+    {
+     "syllables": [
+      "ZIR",
+      "KUS",
+      "DI",
+      "REK",
+      "TOR"
+     ],
+     "bubble": "Bravo!  ZIRKUSDIREKTOR — richtig!"
+    },
+    {
+     "syllables": [
+      "SPIEL",
+      "ZEUG",
+      "AU",
+      "TO"
+     ],
+     "bubble": "Bravo!  SPIELZEUGAUTO — richtig!"
+    },
+    {
+     "syllables": [
+      "SCHAU",
+      "KEL",
+      "PFERD"
+     ],
+     "bubble": "Bravo!  SCHAUKELPFERD — richtig!"
+    }
+   ],
+   "anzahl_aeusserungen": 43,
+   "abgebrochen": [
+    "Fel (601 ms)",
+    "Schaft (601 ms)",
+    "Ten (601 ms)",
+    "Tor (601 ms)",
+    "Pferd (601 ms)"
+   ],
+   "fehlende_audios": [],
+   "verlauf": [
+    {
+     "t_ms": 0,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "GAME START"
+    },
+    {
+     "t_ms": 3305,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY FEL"
+    },
+    {
+     "t_ms": 4316,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY KO"
+    },
+    {
+     "t_ms": 5216,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY STIE"
+    },
+    {
+     "t_ms": 6064,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY NI"
+    },
+    {
+     "t_ms": 6089,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Ni"
+    },
+    {
+     "t_ms": 7478,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY FEL"
+    },
+    {
+     "t_ms": 8346,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY KO"
+    },
+    {
+     "t_ms": 8399,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Ko"
+    },
+    {
+     "t_ms": 9522,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY FEL"
+    },
+    {
+     "t_ms": 10673,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY STIE"
+    },
+    {
+     "t_ms": 11634,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY LAUS"
+    },
+    {
+     "t_ms": 11695,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Laus"
+    },
+    {
+     "t_ms": 13113,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY FEL"
+    },
+    {
+     "t_ms": 13999,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY STIE"
+    },
+    {
+     "t_ms": 14022,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Stie"
+    },
+    {
+     "t_ms": 15309,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY FEL"
+    },
+    {
+     "t_ms": 15320,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Fel"
+    },
+    {
+     "t_ms": 15921,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Fel",
+     "abgebrochen_nach_ms": 601
+    },
+    {
+     "t_ms": 16102,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "nikolausstiefel"
+    },
+    {
+     "t_ms": 20845,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY LAND"
+    },
+    {
+     "t_ms": 21713,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY SCHAFT"
+    },
+    {
+     "t_ms": 22597,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY WIN"
+    },
+    {
+     "t_ms": 22617,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Win"
+    },
+    {
+     "t_ms": 23735,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY LAND"
+    },
+    {
+     "t_ms": 24557,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY SCHAFT"
+    },
+    {
+     "t_ms": 25494,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY TER"
+    },
+    {
+     "t_ms": 25632,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Ter"
+    },
+    {
+     "t_ms": 26783,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY LAND"
+    },
+    {
+     "t_ms": 26815,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Land"
+    },
+    {
+     "t_ms": 28082,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY SCHAFT"
+    },
+    {
+     "t_ms": 28101,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Schaft"
+    },
+    {
+     "t_ms": 28702,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Schaft",
+     "abgebrochen_nach_ms": 601
+    },
+    {
+     "t_ms": 28882,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "winterlandschaft"
+    },
+    {
+     "t_ms": 33349,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY WIE"
+    },
+    {
+     "t_ms": 34182,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY BLU"
+    },
+    {
+     "t_ms": 34197,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Blu"
+    },
+    {
+     "t_ms": 35327,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY WIE"
+    },
+    {
+     "t_ms": 36166,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY MEN"
+    },
+    {
+     "t_ms": 36184,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Men"
+    },
+    {
+     "t_ms": 37355,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY WIE"
+    },
+    {
+     "t_ms": 37368,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Wie"
+    },
+    {
+     "t_ms": 38549,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY SE"
+    },
+    {
+     "t_ms": 38573,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Se"
+    },
+    {
+     "t_ms": 39174,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "blumenwiese"
+    },
+    {
+     "t_ms": 43231,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY SCHILD"
+    },
+    {
+     "t_ms": 44079,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY KRÖ"
+    },
+    {
+     "t_ms": 44908,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY MEE"
+    },
+    {
+     "t_ms": 44928,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Mee"
+    },
+    {
+     "t_ms": 46071,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY SCHILD"
+    },
+    {
+     "t_ms": 46908,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY KRÖ"
+    },
+    {
+     "t_ms": 47758,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY TE"
+    },
+    {
+     "t_ms": 48596,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY RES"
+    },
+    {
+     "t_ms": 48614,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Res"
+    },
+    {
+     "t_ms": 49768,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY SCHILD"
+    },
+    {
+     "t_ms": 49789,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Schild"
+    },
+    {
+     "t_ms": 51260,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY KRÖ"
+    },
+    {
+     "t_ms": 51279,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Krö"
+    },
+    {
+     "t_ms": 52470,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY TE"
+    },
+    {
+     "t_ms": 52487,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Te"
+    },
+    {
+     "t_ms": 53087,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "meeresschildkröte"
+    },
+    {
+     "t_ms": 57606,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY DER"
+    },
+    {
+     "t_ms": 58407,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY GAR"
+    },
+    {
+     "t_ms": 59215,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY KIN"
+    },
+    {
+     "t_ms": 59229,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Kin"
+    },
+    {
+     "t_ms": 60353,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY DER"
+    },
+    {
+     "t_ms": 60375,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Der"
+    },
+    {
+     "t_ms": 61491,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY GAR"
+    },
+    {
+     "t_ms": 61501,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Gar"
+    },
+    {
+     "t_ms": 62642,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY TEN"
+    },
+    {
+     "t_ms": 62654,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Ten"
+    },
+    {
+     "t_ms": 63255,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Ten",
+     "abgebrochen_nach_ms": 601
+    },
+    {
+     "t_ms": 63435,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "kindergarten"
+    },
+    {
+     "t_ms": 67589,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY ZIR"
+    },
+    {
+     "t_ms": 67599,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Zir"
+    },
+    {
+     "t_ms": 68743,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY DI"
+    },
+    {
+     "t_ms": 69544,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY TOR"
+    },
+    {
+     "t_ms": 70371,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY REK"
+    },
+    {
+     "t_ms": 71183,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY KUS"
+    },
+    {
+     "t_ms": 71197,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Kus"
+    },
+    {
+     "t_ms": 72348,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY DI"
+    },
+    {
+     "t_ms": 72364,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Di"
+    },
+    {
+     "t_ms": 73413,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY TOR"
+    },
+    {
+     "t_ms": 74210,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY REK"
+    },
+    {
+     "t_ms": 74219,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Rek"
+    },
+    {
+     "t_ms": 75354,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY TOR"
+    },
+    {
+     "t_ms": 75363,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Tor"
+    },
+    {
+     "t_ms": 75964,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Tor",
+     "abgebrochen_nach_ms": 601
+    },
+    {
+     "t_ms": 76144,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "zirkusdirektor"
+    },
+    {
+     "t_ms": 80391,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY ZEUG"
+    },
+    {
+     "t_ms": 81198,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY AU"
+    },
+    {
+     "t_ms": 82009,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY TO"
+    },
+    {
+     "t_ms": 82808,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY SPIEL"
+    },
+    {
+     "t_ms": 82823,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Spiel"
+    },
+    {
+     "t_ms": 84143,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY ZEUG"
+    },
+    {
+     "t_ms": 84155,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Zeug"
+    },
+    {
+     "t_ms": 85391,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY AU"
+    },
+    {
+     "t_ms": 85408,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Au"
+    },
+    {
+     "t_ms": 86470,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY TO"
+    },
+    {
+     "t_ms": 86480,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "To"
+    },
+    {
+     "t_ms": 87080,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "spielzeugauto"
+    },
+    {
+     "t_ms": 91314,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY KEL"
+    },
+    {
+     "t_ms": 92137,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY SCHAU"
+    },
+    {
+     "t_ms": 92158,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Schau"
+    },
+    {
+     "t_ms": 93498,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY KEL"
+    },
+    {
+     "t_ms": 93508,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Kel"
+    },
+    {
+     "t_ms": 94647,
+     "typ": "aktion",
+     "quelle": "test",
+     "text": "TRY PFERD"
+    },
+    {
+     "t_ms": 94660,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "Pferd"
+    },
+    {
+     "t_ms": 95260,
+     "typ": "cut",
+     "quelle": "stimme",
+     "text": "Pferd",
+     "abgebrochen_nach_ms": 601
+    },
+    {
+     "t_ms": 95440,
+     "typ": "start",
+     "quelle": "stimme",
+     "text": "schaukelpferd"
+    },
+    {
+     "t_ms": 100063,
+     "typ": "start",
+     "quelle": "audio",
+     "text": "ja-super.mp3"
+    }
+   ]
+  }
+ }
+}

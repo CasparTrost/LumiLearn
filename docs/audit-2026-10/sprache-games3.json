@@ -1,0 +1,3338 @@
+{
+ "Gefühlswelt (emotions)": {
+  "runs": [
+   "run_emotions_l1.json",
+   "run_emotions_l2.json",
+   "run_emotions_l9.json"
+  ],
+  "notes": [
+   "Hinweis zur Messung: Läufe mit Maus (Playwright). Einzelwörter wie 'Müde', 'Wütend' direkt nach einem Klick sind Hover-Vorschauen (hearable) – auf dem Tablet gibt es sie nicht.",
+   "GESPROCHEN: Situationssatz (18 Szenarien als mp3 'audio', 54 per TTS 'stimme'); nach richtiger Antwort 'lumi-war-<gefühl>.mp3' + (nur 18 Szenarien) Erklärungs-mp3; nach Strategiewahl TTS 'Lumi ist <stärke>. <Strategie>, das ist eine gute Idee!'.",
+   "NICHT GESPROCHEN: Frage 'Wie fühlt sich Lumi wohl?' (mp3 vorhanden, ungenutzt), Antwortoptionen auf Touch (kein HearOptions), jede Rückmeldung nach falscher Antwort ('Es war: X!' + Erklärung), Erklärung für 54 Szenarien, 'Wie stark war das Gefühl?', Stärke-Stufen, 'Was hilft Lumi jetzt?', Strategien vor dem Antippen, 'Alles davon ist richtig', Zusammenfassung 'Das hast du gelernt!'.",
+   "Sprachfehler im Gesprochenen: 'Lumi hört Mama und Papa tuscheln und schnell aufhören wenn Lumi reinkommt.' (TTS, ungrammatisch); 'Die Freundin tröstet Lumi als Lumi weint.'; 'Das Geschwister bekommt mehr Spielzeit als Lumi.'; möglich: 'Lumis Goldfish …' (englisch), 'Lumi ist ein bisschen mulmig.'",
+   "Abgeschnitten: Erklärungs-mp3 durch Strategie-Tipp (z.B. 'vor-einem-grossen-auftritt-…' nach 2,7 s), Strategie-Satz durch 'Weiter' (z.B. nach 3,4 s). Zwei Stimmen (mp3 + TTS) innerhalb einer Frage."
+  ],
+  "utterances": [
+   {
+    "text": "Lumi darf heute Abend mit Freunden zelten!",
+    "kind": "stimme",
+    "count": 2,
+    "cut": 0
+   },
+   {
+    "text": "Müde",
+    "kind": "stimme",
+    "count": 17,
+    "cut": 0
+   },
+   {
+    "text": "lumi-war-aufgeregt.mp3",
+    "kind": "audio",
+    "count": 17,
+    "cut": 0
+   },
+   {
+    "text": "Aufgeregt",
+    "kind": "stimme",
+    "count": 14,
+    "cut": 0
+   },
+   {
+    "text": "Lumi hört Mama und Papa tuscheln und schnell aufhören wenn Lumi reinkommt.",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "lumi-war-neugierig.mp3",
+    "kind": "audio",
+    "count": 2,
+    "cut": 0
+   },
+   {
+    "text": "Lumi ist sehr neugierig. Nachfragen, das ist eine gute Idee!",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 1
+   },
+   {
+    "text": "ein-kind-nimmt-lumi-einfach-das-spielzeug-weg.mp3",
+    "kind": "audio",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "lumi-war-wuetend.mp3",
+    "kind": "audio",
+    "count": 2,
+    "cut": 0
+   },
+   {
+    "text": "wenn-wir-uns-ungerecht-behandelt-fuehlen-werden-wir-wuetend.mp3",
+    "kind": "audio",
+    "count": 1,
+    "cut": 1
+   },
+   {
+    "text": "Lumi ist sehr wütend. Tief durchatmen, das ist eine gute Idee!",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Lumi wartet schon eine Stunde beim Arzt...",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "lumi-war-gelangweilt.mp3",
+    "kind": "audio",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Lumi ist sehr gelangweilt. Etwas malen, das ist eine gute Idee!",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 1
+   },
+   {
+    "text": "lumi-trifft-nach-langer-zeit-den-besten-freund-wieder.mp3",
+    "kind": "audio",
+    "count": 2,
+    "cut": 0
+   },
+   {
+    "text": "Wütend",
+    "kind": "stimme",
+    "count": 8,
+    "cut": 2
+   },
+   {
+    "text": "lumi-war-gluecklich.mp3",
+    "kind": "audio",
+    "count": 2,
+    "cut": 0
+   },
+   {
+    "text": "freunde-wiederzusehen-macht-uns-gluecklich.mp3",
+    "kind": "audio",
+    "count": 1,
+    "cut": 1
+   },
+   {
+    "text": "Lumi ist sehr glücklich. Davon erzählen, das ist eine gute Idee!",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 1
+   },
+   {
+    "text": "morgen-ist-lumis-mega-geburtstagsparty.mp3",
+    "kind": "audio",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "wenn-wir-uns-auf-etwas-tolles-freuen-sind-wir-aufgeregt.mp3",
+    "kind": "audio",
+    "count": 1,
+    "cut": 1
+   },
+   {
+    "text": "Lumi ist sehr aufgeregt. Tief durchatmen, das ist eine gute Idee!",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 1
+   },
+   {
+    "text": "Die Freundin tröstet Lumi als Lumi weint.",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Traurig",
+    "kind": "stimme",
+    "count": 2,
+    "cut": 0
+   },
+   {
+    "text": "lumi-war-dankbar.mp3",
+    "kind": "audio",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Lumi ist sehr dankbar. Danke sagen, das ist eine gute Idee!",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 1
+   },
+   {
+    "text": "Lumi kann jetzt alleine Fahrrad fahren!",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "lumi-war-stolz.mp3",
+    "kind": "audio",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Lumi ist sehr stolz. Davon erzählen, das ist eine gute Idee!",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 1
+   },
+   {
+    "text": "lumi-soll-alleine-auf-der-grossen-buehne-auftreten.mp3",
+    "kind": "audio",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Glücklich",
+    "kind": "stimme",
+    "count": 2,
+    "cut": 1
+   },
+   {
+    "text": "lumi-war-aengstlich.mp3",
+    "kind": "audio",
+    "count": 2,
+    "cut": 0
+   },
+   {
+    "text": "vor-einem-grossen-auftritt-haben-viele-menschen-angst.mp3",
+    "kind": "audio",
+    "count": 1,
+    "cut": 1
+   },
+   {
+    "text": "Lumi ist sehr ängstlich. Hilfe holen, das ist eine gute Idee!",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 1
+   },
+   {
+    "text": "Lumi hat den ganzen Tag Lesen geübt. Jetzt fallen die Augen zu.",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 1
+   },
+   {
+    "text": "lumi-war-muede.mp3",
+    "kind": "audio",
+    "count": 2,
+    "cut": 0
+   },
+   {
+    "text": "Lumi ist sehr müde. Ausruhen, das ist eine gute Idee!",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Lumi hat versehentlich ein Glas umgeworfen. Alle schauen!",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "lumi-war-verlegen.mp3",
+    "kind": "audio",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Lumi ist sehr verlegen. Tief durchatmen, das ist eine gute Idee!",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 1
+   },
+   {
+    "text": "Das Geschwister bekommt mehr Spielzeit als Lumi.",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "lumi-war-eifersuechtig.mp3",
+    "kind": "audio",
+    "count": 2,
+    "cut": 0
+   },
+   {
+    "text": "Lumi ist sehr eifersüchtig. Darüber reden, das ist eine gute Idee!",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 1
+   },
+   {
+    "text": "es-regnet-und-lumi-kann-draussen-nicht-spielen.mp3",
+    "kind": "audio",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "lumi-war-traurig.mp3",
+    "kind": "audio",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "enttaeuschungen-koennen-uns-traurig-machen.mp3",
+    "kind": "audio",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Lumi ist sehr traurig. Trost holen, das ist eine gute Idee!",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "das-hast-du-super-gemacht.mp3",
+    "kind": "audio",
+    "count": 1,
+    "cut": 0
+   }
+  ],
+  "cuts": [
+   {
+    "file": "run_emotions_l9.json",
+    "t": 36220,
+    "kind": "stimme",
+    "text": "Lumi ist sehr neugierig. Nachfragen, das ist eine gute Idee!",
+    "playedMs": 3794
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 46201,
+    "kind": "audio",
+    "text": "wenn-wir-uns-ungerecht-behandelt-fuehlen-werden-wir-wuetend.mp3",
+    "playedMs": 3381
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 71574,
+    "kind": "stimme",
+    "text": "Lumi ist sehr gelangweilt. Etwas malen, das ist eine gute Idee!",
+    "playedMs": 3761
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 83081,
+    "kind": "stimme",
+    "text": "Wütend",
+    "playedMs": 172
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 87824,
+    "kind": "audio",
+    "text": "freunde-wiederzusehen-macht-uns-gluecklich.mp3",
+    "playedMs": 2785
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 91422,
+    "kind": "stimme",
+    "text": "Lumi ist sehr glücklich. Davon erzählen, das ist eine gute Idee!",
+    "playedMs": 3413
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 107115,
+    "kind": "audio",
+    "text": "wenn-wir-uns-auf-etwas-tolles-freuen-sind-wir-aufgeregt.mp3",
+    "playedMs": 2622
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 111281,
+    "kind": "stimme",
+    "text": "Lumi ist sehr aufgeregt. Tief durchatmen, das ist eine gute Idee!",
+    "playedMs": 3980
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 130875,
+    "kind": "stimme",
+    "text": "Lumi ist sehr dankbar. Danke sagen, das ist eine gute Idee!",
+    "playedMs": 4233
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 144151,
+    "kind": "stimme",
+    "text": "Lumi ist sehr stolz. Davon erzählen, das ist eine gute Idee!",
+    "playedMs": 3606
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 155407,
+    "kind": "stimme",
+    "text": "Glücklich",
+    "playedMs": 762
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 159856,
+    "kind": "audio",
+    "text": "vor-einem-grossen-auftritt-haben-viele-menschen-angst.mp3",
+    "playedMs": 2663
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 164466,
+    "kind": "stimme",
+    "text": "Lumi ist sehr ängstlich. Hilfe holen, das ist eine gute Idee!",
+    "playedMs": 4413
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 168579,
+    "kind": "stimme",
+    "text": "Lumi hat den ganzen Tag Lesen geübt. Jetzt fallen die Augen zu.",
+    "playedMs": 3792
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 188708,
+    "kind": "stimme",
+    "text": "Wütend",
+    "playedMs": 691
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 197269,
+    "kind": "stimme",
+    "text": "Lumi ist sehr verlegen. Tief durchatmen, das ist eine gute Idee!",
+    "playedMs": 4022
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 216804,
+    "kind": "stimme",
+    "text": "Lumi ist sehr eifersüchtig. Darüber reden, das ist eine gute Idee!",
+    "playedMs": 3861
+   }
+  ],
+  "timeline": [
+   {
+    "file": "run_emotions_l1.json",
+    "t": 4642,
+    "kind": "stimme",
+    "say": "Lumi darf heute Abend mit Freunden zelten!"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 10414,
+    "mark": "Q0 wrong-click Müde"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 10737,
+    "kind": "stimme",
+    "say": "Müde"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 14202,
+    "mark": "Q0 right-click Aufgeregt"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 14293,
+    "kind": "audio",
+    "say": "lumi-war-aufgeregt.mp3"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 26328,
+    "mark": "Q1 wrong-click Müde"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 26630,
+    "kind": "stimme",
+    "say": "Müde"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 30079,
+    "mark": "Q1 right-click Aufgeregt"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 30147,
+    "kind": "audio",
+    "say": "lumi-war-aufgeregt.mp3"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 31969,
+    "kind": "stimme",
+    "say": "Aufgeregt"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 42265,
+    "mark": "Q2 wrong-click Müde"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 42557,
+    "kind": "stimme",
+    "say": "Müde"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 45962,
+    "mark": "Q2 right-click Aufgeregt"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 46037,
+    "kind": "audio",
+    "say": "lumi-war-aufgeregt.mp3"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 47900,
+    "kind": "stimme",
+    "say": "Aufgeregt"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 58077,
+    "mark": "Q3 wrong-click Müde"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 58395,
+    "kind": "stimme",
+    "say": "Müde"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 61891,
+    "mark": "Q3 right-click Aufgeregt"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 62017,
+    "kind": "audio",
+    "say": "lumi-war-aufgeregt.mp3"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 63749,
+    "kind": "stimme",
+    "say": "Aufgeregt"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 74037,
+    "mark": "Q4 wrong-click Müde"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 74394,
+    "kind": "stimme",
+    "say": "Müde"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 77883,
+    "mark": "Q4 right-click Aufgeregt"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 78003,
+    "kind": "audio",
+    "say": "lumi-war-aufgeregt.mp3"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 79734,
+    "kind": "stimme",
+    "say": "Aufgeregt"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 90020,
+    "mark": "Q5 wrong-click Müde"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 90324,
+    "kind": "stimme",
+    "say": "Müde"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 93763,
+    "mark": "Q5 right-click Aufgeregt"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 93867,
+    "kind": "audio",
+    "say": "lumi-war-aufgeregt.mp3"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 95688,
+    "kind": "stimme",
+    "say": "Aufgeregt"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 105968,
+    "mark": "Q6 wrong-click Müde"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 106273,
+    "kind": "stimme",
+    "say": "Müde"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 109729,
+    "mark": "Q6 right-click Aufgeregt"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 109793,
+    "kind": "audio",
+    "say": "lumi-war-aufgeregt.mp3"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 111614,
+    "kind": "stimme",
+    "say": "Aufgeregt"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 121832,
+    "mark": "Q7 wrong-click Müde"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 122139,
+    "kind": "stimme",
+    "say": "Müde"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 125563,
+    "mark": "Q7 right-click Aufgeregt"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 125632,
+    "kind": "audio",
+    "say": "lumi-war-aufgeregt.mp3"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 127480,
+    "kind": "stimme",
+    "say": "Aufgeregt"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 137683,
+    "mark": "Q8 wrong-click Müde"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 138014,
+    "kind": "stimme",
+    "say": "Müde"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 141458,
+    "mark": "Q8 right-click Aufgeregt"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 141569,
+    "kind": "audio",
+    "say": "lumi-war-aufgeregt.mp3"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 143365,
+    "kind": "stimme",
+    "say": "Aufgeregt"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 153622,
+    "mark": "Q9 wrong-click Müde"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 153941,
+    "kind": "stimme",
+    "say": "Müde"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 157492,
+    "mark": "Q9 right-click Aufgeregt"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 157679,
+    "kind": "audio",
+    "say": "lumi-war-aufgeregt.mp3"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 159278,
+    "kind": "stimme",
+    "say": "Aufgeregt"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 169779,
+    "mark": "Q10 wrong-click Müde"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 170098,
+    "kind": "stimme",
+    "say": "Müde"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 173610,
+    "mark": "Q10 right-click Aufgeregt"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 173746,
+    "kind": "audio",
+    "say": "lumi-war-aufgeregt.mp3"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 175497,
+    "kind": "stimme",
+    "say": "Aufgeregt"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 185802,
+    "mark": "Q11 wrong-click Müde"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 186129,
+    "kind": "stimme",
+    "say": "Müde"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 189715,
+    "mark": "Q11 right-click Aufgeregt"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 190063,
+    "kind": "audio",
+    "say": "lumi-war-aufgeregt.mp3"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 202042,
+    "mark": "Q12 wrong-click Müde"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 202358,
+    "kind": "stimme",
+    "say": "Müde"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 205922,
+    "mark": "Q12 right-click Aufgeregt"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 206033,
+    "kind": "audio",
+    "say": "lumi-war-aufgeregt.mp3"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 207708,
+    "kind": "stimme",
+    "say": "Aufgeregt"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 218074,
+    "mark": "Q13 wrong-click Müde"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 218369,
+    "kind": "stimme",
+    "say": "Müde"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 221827,
+    "mark": "Q13 right-click Aufgeregt"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 221955,
+    "kind": "audio",
+    "say": "lumi-war-aufgeregt.mp3"
+   },
+   {
+    "file": "run_emotions_l1.json",
+    "t": 223709,
+    "kind": "stimme",
+    "say": "Aufgeregt"
+   },
+   {
+    "file": "run_emotions_l2.json",
+    "t": 14198,
+    "kind": "stimme",
+    "say": "Lumi darf heute Abend mit Freunden zelten!"
+   },
+   {
+    "file": "run_emotions_l2.json",
+    "t": 17714,
+    "mark": "Q0 wrong-click Müde"
+   },
+   {
+    "file": "run_emotions_l2.json",
+    "t": 18129,
+    "kind": "stimme",
+    "say": "Müde"
+   },
+   {
+    "file": "run_emotions_l2.json",
+    "t": 21182,
+    "mark": "Q0 tap-to-continue"
+   },
+   {
+    "file": "run_emotions_l2.json",
+    "t": 22320,
+    "mark": "Q0 right-click Aufgeregt"
+   },
+   {
+    "file": "run_emotions_l2.json",
+    "t": 23209,
+    "kind": "audio",
+    "say": "lumi-war-aufgeregt.mp3"
+   },
+   {
+    "file": "run_emotions_l2.json",
+    "t": 29951,
+    "mark": "Q0 re-pick"
+   },
+   {
+    "file": "run_emotions_l2.json",
+    "t": 30955,
+    "kind": "audio",
+    "say": "lumi-war-aufgeregt.mp3"
+   },
+   {
+    "file": "run_emotions_l2.json",
+    "t": 33681,
+    "mark": "Q0 coping"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 12311,
+    "kind": "stimme",
+    "say": "Lumi hört Mama und Papa tuscheln und schnell aufhören wenn Lumi reinkommt."
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 16345,
+    "mark": "Q0 wrong-click Verlegen"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 20283,
+    "mark": "Q0 tap-to-continue"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 21079,
+    "mark": "Q0 right-click Neugierig"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 21478,
+    "kind": "audio",
+    "say": "lumi-war-neugierig.mp3"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 28538,
+    "mark": "Q0 re-pick"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 29095,
+    "kind": "audio",
+    "say": "lumi-war-neugierig.mp3"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 32371,
+    "mark": "Q0 coping"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 32427,
+    "kind": "stimme",
+    "say": "Lumi ist sehr neugierig. Nachfragen, das ist eine gute Idee!"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 35974,
+    "mark": "Q0 weiter"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 36220,
+    "cut": "Lumi ist sehr neugierig. Nachfragen, das ist eine gute Idee!",
+    "playedMs": 3794
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 36843,
+    "kind": "audio",
+    "say": "ein-kind-nimmt-lumi-einfach-das-spielzeug-weg.mp3"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 40802,
+    "mark": "Q1 wrong-click Wütend"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 41194,
+    "kind": "audio",
+    "say": "lumi-war-wuetend.mp3"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 41913,
+    "kind": "audio",
+    "say": "lumi-war-wuetend.mp3"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 42821,
+    "kind": "audio",
+    "say": "wenn-wir-uns-ungerecht-behandelt-fuehlen-werden-wir-wuetend.mp3"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 46136,
+    "mark": "Q1 coping"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 46201,
+    "cut": "wenn-wir-uns-ungerecht-behandelt-fuehlen-werden-wir-wuetend.mp3",
+    "playedMs": 3381
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 46383,
+    "kind": "stimme",
+    "say": "Lumi ist sehr wütend. Tief durchatmen, das ist eine gute Idee!"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 50456,
+    "mark": "Q1 weiter"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 51159,
+    "kind": "stimme",
+    "say": "Lumi wartet schon eine Stunde beim Arzt..."
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 55501,
+    "mark": "Q2 wrong-click Müde"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 55922,
+    "kind": "stimme",
+    "say": "Müde"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 61193,
+    "kind": "stimme",
+    "say": "Müde"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 62519,
+    "mark": "Q2 right-click Gelangweilt"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 62886,
+    "kind": "audio",
+    "say": "lumi-war-gelangweilt.mp3"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 66907,
+    "mark": "Q2 coping"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 67814,
+    "kind": "stimme",
+    "say": "Lumi ist sehr gelangweilt. Etwas malen, das ist eine gute Idee!"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 71434,
+    "mark": "Q2 weiter"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 71574,
+    "cut": "Lumi ist sehr gelangweilt. Etwas malen, das ist eine gute Idee!",
+    "playedMs": 3761
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 71846,
+    "kind": "audio",
+    "say": "lumi-trifft-nach-langer-zeit-den-besten-freund-wieder.mp3"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 72938,
+    "kind": "audio",
+    "say": "lumi-trifft-nach-langer-zeit-den-besten-freund-wieder.mp3"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 76576,
+    "mark": "Q3 wrong-click Wütend"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 77118,
+    "kind": "stimme",
+    "say": "Wütend"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 82910,
+    "kind": "stimme",
+    "say": "Wütend"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 83027,
+    "mark": "Q3 right-click Glücklich"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 83081,
+    "cut": "Wütend",
+    "playedMs": 172
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 83230,
+    "kind": "audio",
+    "say": "lumi-war-gluecklich.mp3"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 83620,
+    "kind": "audio",
+    "say": "lumi-war-gluecklich.mp3"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 85039,
+    "kind": "audio",
+    "say": "freunde-wiederzusehen-macht-uns-gluecklich.mp3"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 87726,
+    "mark": "Q3 coping"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 87824,
+    "cut": "freunde-wiederzusehen-macht-uns-gluecklich.mp3",
+    "playedMs": 2785
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 88009,
+    "kind": "stimme",
+    "say": "Lumi ist sehr glücklich. Davon erzählen, das ist eine gute Idee!"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 91356,
+    "mark": "Q3 weiter"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 91422,
+    "cut": "Lumi ist sehr glücklich. Davon erzählen, das ist eine gute Idee!",
+    "playedMs": 3413
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 92428,
+    "kind": "audio",
+    "say": "morgen-ist-lumis-mega-geburtstagsparty.mp3"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 96122,
+    "mark": "Q4 wrong-click Wütend"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 96474,
+    "kind": "stimme",
+    "say": "Wütend"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 101890,
+    "kind": "stimme",
+    "say": "Wütend"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 102674,
+    "mark": "Q4 right-click Aufgeregt"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 102858,
+    "kind": "audio",
+    "say": "lumi-war-aufgeregt.mp3"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 104493,
+    "kind": "audio",
+    "say": "wenn-wir-uns-auf-etwas-tolles-freuen-sind-wir-aufgeregt.mp3"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 106991,
+    "mark": "Q4 coping"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 107115,
+    "cut": "wenn-wir-uns-auf-etwas-tolles-freuen-sind-wir-aufgeregt.mp3",
+    "playedMs": 2622
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 107300,
+    "kind": "stimme",
+    "say": "Lumi ist sehr aufgeregt. Tief durchatmen, das ist eine gute Idee!"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 110718,
+    "mark": "Q4 weiter"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 111281,
+    "cut": "Lumi ist sehr aufgeregt. Tief durchatmen, das ist eine gute Idee!",
+    "playedMs": 3980
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 111478,
+    "kind": "stimme",
+    "say": "Die Freundin tröstet Lumi als Lumi weint."
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 115580,
+    "mark": "Q5 wrong-click Traurig"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 115918,
+    "kind": "stimme",
+    "say": "Traurig"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 121266,
+    "kind": "stimme",
+    "say": "Traurig"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 122035,
+    "mark": "Q5 right-click Dankbar"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 122297,
+    "kind": "audio",
+    "say": "lumi-war-dankbar.mp3"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 126477,
+    "mark": "Q5 coping"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 126643,
+    "kind": "stimme",
+    "say": "Lumi ist sehr dankbar. Danke sagen, das ist eine gute Idee!"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 130185,
+    "mark": "Q5 weiter"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 130875,
+    "cut": "Lumi ist sehr dankbar. Danke sagen, das ist eine gute Idee!",
+    "playedMs": 4233
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 131055,
+    "kind": "stimme",
+    "say": "Lumi kann jetzt alleine Fahrrad fahren!"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 135089,
+    "mark": "Q6 wrong-click Stolz"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 135850,
+    "kind": "audio",
+    "say": "lumi-war-stolz.mp3"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 140482,
+    "mark": "Q6 coping"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 140545,
+    "kind": "stimme",
+    "say": "Lumi ist sehr stolz. Davon erzählen, das ist eine gute Idee!"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 144073,
+    "mark": "Q6 weiter"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 144151,
+    "cut": "Lumi ist sehr stolz. Davon erzählen, das ist eine gute Idee!",
+    "playedMs": 3606
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 144428,
+    "kind": "audio",
+    "say": "lumi-soll-alleine-auf-der-grossen-buehne-auftreten.mp3"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 148972,
+    "mark": "Q7 wrong-click Glücklich"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 149283,
+    "kind": "stimme",
+    "say": "Glücklich"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 154645,
+    "kind": "stimme",
+    "say": "Glücklich"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 155276,
+    "mark": "Q7 right-click Ängstlich"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 155407,
+    "cut": "Glücklich",
+    "playedMs": 762
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 155602,
+    "kind": "audio",
+    "say": "lumi-war-aengstlich.mp3"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 156104,
+    "kind": "audio",
+    "say": "lumi-war-aengstlich.mp3"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 157193,
+    "kind": "audio",
+    "say": "vor-einem-grossen-auftritt-haben-viele-menschen-angst.mp3"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 159672,
+    "mark": "Q7 coping"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 159856,
+    "cut": "vor-einem-grossen-auftritt-haben-viele-menschen-angst.mp3",
+    "playedMs": 2663
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 160052,
+    "kind": "stimme",
+    "say": "Lumi ist sehr ängstlich. Hilfe holen, das ist eine gute Idee!"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 163801,
+    "mark": "Q7 weiter"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 164466,
+    "cut": "Lumi ist sehr ängstlich. Hilfe holen, das ist eine gute Idee!",
+    "playedMs": 4413
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 164787,
+    "kind": "stimme",
+    "say": "Lumi hat den ganzen Tag Lesen geübt. Jetzt fallen die Augen zu."
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 168507,
+    "mark": "Q8 wrong-click Müde"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 168579,
+    "cut": "Lumi hat den ganzen Tag Lesen geübt. Jetzt fallen die Augen zu.",
+    "playedMs": 3792
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 169029,
+    "kind": "audio",
+    "say": "lumi-war-muede.mp3"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 169449,
+    "kind": "audio",
+    "say": "lumi-war-muede.mp3"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 173674,
+    "mark": "Q8 coping"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 173725,
+    "kind": "stimme",
+    "say": "Lumi ist sehr müde. Ausruhen, das ist eine gute Idee!"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 177284,
+    "mark": "Q8 weiter"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 178102,
+    "kind": "stimme",
+    "say": "Lumi hat versehentlich ein Glas umgeworfen. Alle schauen!"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 182017,
+    "mark": "Q9 wrong-click Wütend"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 182369,
+    "kind": "stimme",
+    "say": "Wütend"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 188017,
+    "kind": "stimme",
+    "say": "Wütend"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 188557,
+    "mark": "Q9 right-click Verlegen"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 188708,
+    "cut": "Wütend",
+    "playedMs": 691
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 188961,
+    "kind": "audio",
+    "say": "lumi-war-verlegen.mp3"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 193182,
+    "mark": "Q9 coping"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 193246,
+    "kind": "stimme",
+    "say": "Lumi ist sehr verlegen. Tief durchatmen, das ist eine gute Idee!"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 196791,
+    "mark": "Q9 weiter"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 197269,
+    "cut": "Lumi ist sehr verlegen. Tief durchatmen, das ist eine gute Idee!",
+    "playedMs": 4022
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 197463,
+    "kind": "stimme",
+    "say": "Das Geschwister bekommt mehr Spielzeit als Lumi."
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 201537,
+    "mark": "Q10 wrong-click Wütend"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 201900,
+    "kind": "stimme",
+    "say": "Wütend"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 207338,
+    "kind": "stimme",
+    "say": "Wütend"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 207999,
+    "mark": "Q10 right-click Eifersüchtig"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 208912,
+    "kind": "audio",
+    "say": "lumi-war-eifersuechtig.mp3"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 210071,
+    "kind": "audio",
+    "say": "lumi-war-eifersuechtig.mp3"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 212771,
+    "mark": "Q10 coping"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 212944,
+    "kind": "stimme",
+    "say": "Lumi ist sehr eifersüchtig. Darüber reden, das ist eine gute Idee!"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 216689,
+    "mark": "Q10 weiter"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 216804,
+    "cut": "Lumi ist sehr eifersüchtig. Darüber reden, das ist eine gute Idee!",
+    "playedMs": 3861
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 216944,
+    "kind": "audio",
+    "say": "es-regnet-und-lumi-kann-draussen-nicht-spielen.mp3"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 221950,
+    "mark": "Q11 wrong-click Aufgeregt"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 222337,
+    "kind": "stimme",
+    "say": "Aufgeregt"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 227775,
+    "kind": "stimme",
+    "say": "Aufgeregt"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 228683,
+    "mark": "Q11 right-click Traurig"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 228979,
+    "kind": "audio",
+    "say": "lumi-war-traurig.mp3"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 230834,
+    "kind": "audio",
+    "say": "enttaeuschungen-koennen-uns-traurig-machen.mp3"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 232995,
+    "mark": "Q11 coping"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 233428,
+    "kind": "stimme",
+    "say": "Lumi ist sehr traurig. Trost holen, das ist eine gute Idee!"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 236993,
+    "mark": "Q11 weiter"
+   },
+   {
+    "file": "run_emotions_l9.json",
+    "t": 245731,
+    "kind": "audio",
+    "say": "das-hast-du-super-gemacht.mp3"
+   }
+  ]
+ },
+ "Gefühlsdetektiv (empathy)": {
+  "runs": [
+   "run_empathy_l5.json"
+  ],
+  "notes": [
+   "GESPROCHEN (alles TTS): '<Situation> Wie fühlt sich das Kind?'; falsch: 'Schau nochmal, wie das Kind dasteht.'; richtig: 'Genau, <gefühl>. Was kannst du tun?'; Hilfe nicht-best: 'Das ist nett. Aber was hilft gerade jetzt am meisten?'; Hilfe best: 'Das hilft wirklich. Gut gemacht!'; 🔊-Knopf liest alle Optionen vor (funktioniert).",
+   "NICHT GESPROCHEN: Hilfe-Optionen werden nicht automatisch vorgelesen (nur per 🔊), keine Begründung, warum die beste Hilfe am besten ist.",
+   "Problematisch: 'Das ist nett.' auch nach 'Ich spiele einfach weiter.' / 'Ich sage ihr, sie soll nicht traurig sein.' Abschneiden der Frage durch schnelle Antwort ist erwartbar (Kind antwortet), kein Fehler."
+  ],
+  "utterances": [
+   {
+    "text": "Jonas hat sein Kuscheltier verloren. Wie fühlt sich das Kind?",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 1
+   },
+   {
+    "text": "Schau nochmal, wie das Kind dasteht.",
+    "kind": "stimme",
+    "count": 8,
+    "cut": 8
+   },
+   {
+    "text": "Genau, traurig. Was kannst du tun?",
+    "kind": "stimme",
+    "count": 2,
+    "cut": 0
+   },
+   {
+    "text": "Ich helfe ihm suchen.",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Ich leihe ihm meins.",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Ich sage, dass es sicher wieder auftaucht.",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Das ist nett. Aber was hilft gerade jetzt am meisten?",
+    "kind": "stimme",
+    "count": 8,
+    "cut": 8
+   },
+   {
+    "text": "Das hilft wirklich. Gut gemacht!",
+    "kind": "stimme",
+    "count": 8,
+    "cut": 0
+   },
+   {
+    "text": "Tim hat es zum ersten Mal ganz nach oben geschafft. Wie fühlt sich das Kind?",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 1
+   },
+   {
+    "text": "Genau, fröhlich. Was kannst du tun?",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Es donnert laut und Nele macht sich ganz klein. Wie fühlt sich das Kind?",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 1
+   },
+   {
+    "text": "Genau, ängstlich. Was kannst du tun?",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Ben steht am Rand und schaut den anderen beim Spielen zu. Wie fühlt sich das Kind?",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 1
+   },
+   {
+    "text": "Genau, einsam. Was kannst du tun?",
+    "kind": "stimme",
+    "count": 2,
+    "cut": 0
+   },
+   {
+    "text": "Die neue Anna kennt noch niemanden im Kindergarten. Wie fühlt sich das Kind?",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 1
+   },
+   {
+    "text": "Mia sitzt allein auf der Bank. Ihr Bild ist zerrissen. Wie fühlt sich das Kind?",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 1
+   },
+   {
+    "text": "Jemand hat Leos Turm umgeworfen. Wie fühlt sich das Kind?",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Genau, wütend. Was kannst du tun?",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Ida zeigt ihr fertiges Bild und stellt sich ganz gerade hin. Wie fühlt sich das Kind?",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 1
+   },
+   {
+    "text": "Genau, stolz. Was kannst du tun?",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "ja-super.mp3",
+    "kind": "audio",
+    "count": 1,
+    "cut": 0
+   }
+  ],
+  "cuts": [
+   {
+    "file": "run_empathy_l5.json",
+    "t": 19560,
+    "kind": "stimme",
+    "text": "Jonas hat sein Kuscheltier verloren. Wie fühlt sich das Kind?",
+    "playedMs": 3978
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 22383,
+    "kind": "stimme",
+    "text": "Schau nochmal, wie das Kind dasteht.",
+    "playedMs": 2641
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 38668,
+    "kind": "stimme",
+    "text": "Das ist nett. Aber was hilft gerade jetzt am meisten?",
+    "playedMs": 3626
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 47092,
+    "kind": "stimme",
+    "text": "Tim hat es zum ersten Mal ganz nach oben geschafft. Wie fühlt sich das Kind?",
+    "playedMs": 4772
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 49739,
+    "kind": "stimme",
+    "text": "Schau nochmal, wie das Kind dasteht.",
+    "playedMs": 2465
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 56525,
+    "kind": "stimme",
+    "text": "Das ist nett. Aber was hilft gerade jetzt am meisten?",
+    "playedMs": 3621
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 64752,
+    "kind": "stimme",
+    "text": "Es donnert laut und Nele macht sich ganz klein. Wie fühlt sich das Kind?",
+    "playedMs": 4685
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 67365,
+    "kind": "stimme",
+    "text": "Schau nochmal, wie das Kind dasteht.",
+    "playedMs": 2432
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 74082,
+    "kind": "stimme",
+    "text": "Das ist nett. Aber was hilft gerade jetzt am meisten?",
+    "playedMs": 3599
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 82587,
+    "kind": "stimme",
+    "text": "Ben steht am Rand und schaut den anderen beim Spielen zu. Wie fühlt sich das Kind?",
+    "playedMs": 4909
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 85171,
+    "kind": "stimme",
+    "text": "Schau nochmal, wie das Kind dasteht.",
+    "playedMs": 2403
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 91920,
+    "kind": "stimme",
+    "text": "Das ist nett. Aber was hilft gerade jetzt am meisten?",
+    "playedMs": 3650
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 100303,
+    "kind": "stimme",
+    "text": "Die neue Anna kennt noch niemanden im Kindergarten. Wie fühlt sich das Kind?",
+    "playedMs": 4803
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 102915,
+    "kind": "stimme",
+    "text": "Schau nochmal, wie das Kind dasteht.",
+    "playedMs": 2432
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 109753,
+    "kind": "stimme",
+    "text": "Das ist nett. Aber was hilft gerade jetzt am meisten?",
+    "playedMs": 3604
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 118100,
+    "kind": "stimme",
+    "text": "Mia sitzt allein auf der Bank. Ihr Bild ist zerrissen. Wie fühlt sich das Kind?",
+    "playedMs": 4791
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 120688,
+    "kind": "stimme",
+    "text": "Schau nochmal, wie das Kind dasteht.",
+    "playedMs": 2407
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 127382,
+    "kind": "stimme",
+    "text": "Das ist nett. Aber was hilft gerade jetzt am meisten?",
+    "playedMs": 3600
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 138255,
+    "kind": "stimme",
+    "text": "Schau nochmal, wie das Kind dasteht.",
+    "playedMs": 2588
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 145034,
+    "kind": "stimme",
+    "text": "Das ist nett. Aber was hilft gerade jetzt am meisten?",
+    "playedMs": 3633
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 153643,
+    "kind": "stimme",
+    "text": "Ida zeigt ihr fertiges Bild und stellt sich ganz gerade hin. Wie fühlt sich das Kind?",
+    "playedMs": 5053
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 156335,
+    "kind": "stimme",
+    "text": "Schau nochmal, wie das Kind dasteht.",
+    "playedMs": 2511
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 163231,
+    "kind": "stimme",
+    "text": "Das ist nett. Aber was hilft gerade jetzt am meisten?",
+    "playedMs": 3623
+   }
+  ],
+  "timeline": [
+   {
+    "file": "run_empathy_l5.json",
+    "t": 15582,
+    "kind": "stimme",
+    "say": "Jonas hat sein Kuscheltier verloren. Wie fühlt sich das Kind?"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 19423,
+    "mark": "Q0 wrong einsam"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 19560,
+    "cut": "Jonas hat sein Kuscheltier verloren. Wie fühlt sich das Kind?",
+    "playedMs": 3978
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 19742,
+    "kind": "stimme",
+    "say": "Schau nochmal, wie das Kind dasteht."
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 22114,
+    "mark": "Q0 right traurig"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 22383,
+    "cut": "Schau nochmal, wie das Kind dasteht.",
+    "playedMs": 2641
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 22564,
+    "kind": "stimme",
+    "say": "Genau, traurig. Was kannst du tun?"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 25786,
+    "mark": "hearoptions"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 25916,
+    "kind": "stimme",
+    "say": "Ich helfe ihm suchen."
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 27906,
+    "kind": "stimme",
+    "say": "Ich leihe ihm meins."
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 29831,
+    "kind": "stimme",
+    "say": "Ich sage, dass es sicher wieder auftaucht."
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 34970,
+    "mark": "Q0 help-wrong Ich leihe ihm meins."
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 35042,
+    "kind": "stimme",
+    "say": "Das ist nett. Aber was hilft gerade jetzt am meisten?"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 38616,
+    "mark": "Q0 help-right"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 38668,
+    "cut": "Das ist nett. Aber was hilft gerade jetzt am meisten?",
+    "playedMs": 3626
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 38848,
+    "kind": "stimme",
+    "say": "Das hilft wirklich. Gut gemacht!"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 42320,
+    "kind": "stimme",
+    "say": "Tim hat es zum ersten Mal ganz nach oben geschafft. Wie fühlt sich das Kind?"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 47016,
+    "mark": "Q1 wrong stolz"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 47092,
+    "cut": "Tim hat es zum ersten Mal ganz nach oben geschafft. Wie fühlt sich das Kind?",
+    "playedMs": 4772
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 47274,
+    "kind": "stimme",
+    "say": "Schau nochmal, wie das Kind dasteht."
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 49615,
+    "mark": "Q1 right fröhlich"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 49739,
+    "cut": "Schau nochmal, wie das Kind dasteht.",
+    "playedMs": 2465
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 49918,
+    "kind": "stimme",
+    "say": "Genau, fröhlich. Was kannst du tun?"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 52784,
+    "mark": "Q1 help-wrong Ich klettere auch nach oben."
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 52904,
+    "kind": "stimme",
+    "say": "Das ist nett. Aber was hilft gerade jetzt am meisten?"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 56452,
+    "mark": "Q1 help-right"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 56525,
+    "cut": "Das ist nett. Aber was hilft gerade jetzt am meisten?",
+    "playedMs": 3621
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 56716,
+    "kind": "stimme",
+    "say": "Das hilft wirklich. Gut gemacht!"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 60067,
+    "kind": "stimme",
+    "say": "Es donnert laut und Nele macht sich ganz klein. Wie fühlt sich das Kind?"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 64669,
+    "mark": "Q2 wrong fröhlich"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 64752,
+    "cut": "Es donnert laut und Nele macht sich ganz klein. Wie fühlt sich das Kind?",
+    "playedMs": 4685
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 64933,
+    "kind": "stimme",
+    "say": "Schau nochmal, wie das Kind dasteht."
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 67312,
+    "mark": "Q2 right ängstlich"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 67365,
+    "cut": "Schau nochmal, wie das Kind dasteht.",
+    "playedMs": 2432
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 67546,
+    "kind": "stimme",
+    "say": "Genau, ängstlich. Was kannst du tun?"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 70433,
+    "mark": "Q2 help-wrong Ich mache das Fenster zu."
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 70483,
+    "kind": "stimme",
+    "say": "Das ist nett. Aber was hilft gerade jetzt am meisten?"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 74004,
+    "mark": "Q2 help-right"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 74082,
+    "cut": "Das ist nett. Aber was hilft gerade jetzt am meisten?",
+    "playedMs": 3599
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 74283,
+    "kind": "stimme",
+    "say": "Das hilft wirklich. Gut gemacht!"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 77679,
+    "kind": "stimme",
+    "say": "Ben steht am Rand und schaut den anderen beim Spielen zu. Wie fühlt sich das Kind?"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 82316,
+    "mark": "Q3 wrong wütend"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 82587,
+    "cut": "Ben steht am Rand und schaut den anderen beim Spielen zu. Wie fühlt sich das Kind?",
+    "playedMs": 4909
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 82768,
+    "kind": "stimme",
+    "say": "Schau nochmal, wie das Kind dasteht."
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 85115,
+    "mark": "Q3 right einsam"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 85171,
+    "cut": "Schau nochmal, wie das Kind dasteht.",
+    "playedMs": 2403
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 85350,
+    "kind": "stimme",
+    "say": "Genau, einsam. Was kannst du tun?"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 88216,
+    "mark": "Q3 help-wrong Ich rufe den anderen zu, dass Ben da steht."
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 88270,
+    "kind": "stimme",
+    "say": "Das ist nett. Aber was hilft gerade jetzt am meisten?"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 91799,
+    "mark": "Q3 help-right"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 91920,
+    "cut": "Das ist nett. Aber was hilft gerade jetzt am meisten?",
+    "playedMs": 3650
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 92101,
+    "kind": "stimme",
+    "say": "Das hilft wirklich. Gut gemacht!"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 95499,
+    "kind": "stimme",
+    "say": "Die neue Anna kennt noch niemanden im Kindergarten. Wie fühlt sich das Kind?"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 100153,
+    "mark": "Q4 wrong traurig"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 100303,
+    "cut": "Die neue Anna kennt noch niemanden im Kindergarten. Wie fühlt sich das Kind?",
+    "playedMs": 4803
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 100483,
+    "kind": "stimme",
+    "say": "Schau nochmal, wie das Kind dasteht."
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 102824,
+    "mark": "Q4 right einsam"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 102915,
+    "cut": "Schau nochmal, wie das Kind dasteht.",
+    "playedMs": 2432
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 103097,
+    "kind": "stimme",
+    "say": "Genau, einsam. Was kannst du tun?"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 106096,
+    "mark": "Q4 help-wrong Ich winke ihr von weitem zu."
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 106149,
+    "kind": "stimme",
+    "say": "Das ist nett. Aber was hilft gerade jetzt am meisten?"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 109684,
+    "mark": "Q4 help-right"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 109753,
+    "cut": "Das ist nett. Aber was hilft gerade jetzt am meisten?",
+    "playedMs": 3604
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 109949,
+    "kind": "stimme",
+    "say": "Das hilft wirklich. Gut gemacht!"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 113310,
+    "kind": "stimme",
+    "say": "Mia sitzt allein auf der Bank. Ihr Bild ist zerrissen. Wie fühlt sich das Kind?"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 117971,
+    "mark": "Q5 wrong wütend"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 118100,
+    "cut": "Mia sitzt allein auf der Bank. Ihr Bild ist zerrissen. Wie fühlt sich das Kind?",
+    "playedMs": 4791
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 118281,
+    "kind": "stimme",
+    "say": "Schau nochmal, wie das Kind dasteht."
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 120632,
+    "mark": "Q5 right traurig"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 120688,
+    "cut": "Schau nochmal, wie das Kind dasteht.",
+    "playedMs": 2407
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 120870,
+    "kind": "stimme",
+    "say": "Genau, traurig. Was kannst du tun?"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 123733,
+    "mark": "Q5 help-wrong Ich sage ihr, sie soll nicht traurig sein."
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 123782,
+    "kind": "stimme",
+    "say": "Das ist nett. Aber was hilft gerade jetzt am meisten?"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 127319,
+    "mark": "Q5 help-right"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 127382,
+    "cut": "Das ist nett. Aber was hilft gerade jetzt am meisten?",
+    "playedMs": 3600
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 127570,
+    "kind": "stimme",
+    "say": "Das hilft wirklich. Gut gemacht!"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 130943,
+    "kind": "stimme",
+    "say": "Jemand hat Leos Turm umgeworfen. Wie fühlt sich das Kind?"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 135618,
+    "mark": "Q6 wrong traurig"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 135667,
+    "kind": "stimme",
+    "say": "Schau nochmal, wie das Kind dasteht."
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 138175,
+    "mark": "Q6 right wütend"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 138255,
+    "cut": "Schau nochmal, wie das Kind dasteht.",
+    "playedMs": 2588
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 138434,
+    "kind": "stimme",
+    "say": "Genau, wütend. Was kannst du tun?"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 141301,
+    "mark": "Q6 help-wrong Ich sage ihm, er soll sich beruhigen."
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 141401,
+    "kind": "stimme",
+    "say": "Das ist nett. Aber was hilft gerade jetzt am meisten?"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 144926,
+    "mark": "Q6 help-right"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 145034,
+    "cut": "Das ist nett. Aber was hilft gerade jetzt am meisten?",
+    "playedMs": 3633
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 145214,
+    "kind": "stimme",
+    "say": "Das hilft wirklich. Gut gemacht!"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 148591,
+    "kind": "stimme",
+    "say": "Ida zeigt ihr fertiges Bild und stellt sich ganz gerade hin. Wie fühlt sich das Kind?"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 153566,
+    "mark": "Q7 wrong fröhlich"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 153643,
+    "cut": "Ida zeigt ihr fertiges Bild und stellt sich ganz gerade hin. Wie fühlt sich das Kind?",
+    "playedMs": 5053
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 153823,
+    "kind": "stimme",
+    "say": "Schau nochmal, wie das Kind dasteht."
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 156248,
+    "mark": "Q7 right stolz"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 156335,
+    "cut": "Schau nochmal, wie das Kind dasteht.",
+    "playedMs": 2511
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 156516,
+    "kind": "stimme",
+    "say": "Genau, stolz. Was kannst du tun?"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 159463,
+    "mark": "Q7 help-wrong Ich male auch schnell ein Bild."
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 159609,
+    "kind": "stimme",
+    "say": "Das ist nett. Aber was hilft gerade jetzt am meisten?"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 163145,
+    "mark": "Q7 help-right"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 163231,
+    "cut": "Das ist nett. Aber was hilft gerade jetzt am meisten?",
+    "playedMs": 3623
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 163412,
+    "kind": "stimme",
+    "say": "Das hilft wirklich. Gut gemacht!"
+   },
+   {
+    "file": "run_empathy_l5.json",
+    "t": 168080,
+    "kind": "audio",
+    "say": "ja-super.mp3"
+   }
+  ]
+ },
+ "Lumis Abenteuer (stories)": {
+  "runs": [
+   "run_stories_l9.json"
+  ],
+  "notes": [
+   "GESPROCHEN: nur die Lehre am Ende jeder Geschichte (TTS), z.B. 'Ein einfaches Hallo kann jemandes Tag komplett verändern!', 'Die Wahrheit zu sagen ist mutig, und macht das Herz viel leichter!'. Die Einzelsätze 'Lumi geht hin und sagt Hallo' usw. sind Maus-Hover-Vorschauen der Optionen – auf dem Tablet nicht vorhanden.",
+   "NICHT GESPROCHEN: Titel, alle Erzähl-Panels (8 pro Geschichte), die Frage 'Was macht Lumi?', die Optionen (Touch), 'Und wenn Lumi anders entschieden hätte?' samt anderem Weg, 'Nächste Geschichte'. Für Nichtleser ist die Geschichte stumm."
+  ],
+  "utterances": [
+   {
+    "text": "Lumi geht hin und sagt Hallo",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Ein einfaches Hallo kann jemandes Tag komplett verändern!",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Lumi versucht es, mutig!",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Lumi bleibt lieber unten",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Jeden Tag ein kleiner Schritt weiter, das ist echter Mut!",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Lumi erzählt Oma sofort die Wahrheit",
+    "kind": "stimme",
+    "count": 2,
+    "cut": 0
+   },
+   {
+    "text": "Die Wahrheit zu sagen ist mutig, und macht das Herz viel leichter!",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Lumi hilft Oma beim Backen",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Lumi liest alleine in der Ecke",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Lesen und Fantasie sind Superkräfte!",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Lumi wartet in der Reihe",
+    "kind": "stimme",
+    "count": 2,
+    "cut": 0
+   },
+   {
+    "text": "Geduld und Fairness machen Freundschaften!",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "das-hast-du-super-gemacht.mp3",
+    "kind": "audio",
+    "count": 1,
+    "cut": 0
+   }
+  ],
+  "cuts": [],
+  "timeline": [
+   {
+    "file": "run_stories_l9.json",
+    "t": 17508,
+    "mark": "S0 pick 👋 Lumi geht hin und sagt Hallo"
+   },
+   {
+    "file": "run_stories_l9.json",
+    "t": 17795,
+    "kind": "stimme",
+    "say": "Lumi geht hin und sagt Hallo"
+   },
+   {
+    "file": "run_stories_l9.json",
+    "t": 25086,
+    "kind": "stimme",
+    "say": "Ein einfaches Hallo kann jemandes Tag komplett verändern!"
+   },
+   {
+    "file": "run_stories_l9.json",
+    "t": 33416,
+    "mark": "S0 next"
+   },
+   {
+    "file": "run_stories_l9.json",
+    "t": 43497,
+    "kind": "stimme",
+    "say": "Lumi versucht es, mutig!"
+   },
+   {
+    "file": "run_stories_l9.json",
+    "t": 46747,
+    "mark": "S1 pick 🌳 Lumi bleibt lieber unten"
+   },
+   {
+    "file": "run_stories_l9.json",
+    "t": 47039,
+    "kind": "stimme",
+    "say": "Lumi bleibt lieber unten"
+   },
+   {
+    "file": "run_stories_l9.json",
+    "t": 54015,
+    "kind": "stimme",
+    "say": "Jeden Tag ein kleiner Schritt weiter, das ist echter Mut!"
+   },
+   {
+    "file": "run_stories_l9.json",
+    "t": 62272,
+    "mark": "S1 next"
+   },
+   {
+    "file": "run_stories_l9.json",
+    "t": 72177,
+    "kind": "stimme",
+    "say": "Lumi erzählt Oma sofort die Wahrheit"
+   },
+   {
+    "file": "run_stories_l9.json",
+    "t": 75423,
+    "mark": "S2 pick 🗣️ Lumi erzählt Oma sofort die Wahrheit"
+   },
+   {
+    "file": "run_stories_l9.json",
+    "t": 75707,
+    "kind": "stimme",
+    "say": "Lumi erzählt Oma sofort die Wahrheit"
+   },
+   {
+    "file": "run_stories_l9.json",
+    "t": 82710,
+    "kind": "stimme",
+    "say": "Die Wahrheit zu sagen ist mutig, und macht das Herz viel leichter!"
+   },
+   {
+    "file": "run_stories_l9.json",
+    "t": 90940,
+    "mark": "S2 next"
+   },
+   {
+    "file": "run_stories_l9.json",
+    "t": 100861,
+    "kind": "stimme",
+    "say": "Lumi hilft Oma beim Backen"
+   },
+   {
+    "file": "run_stories_l9.json",
+    "t": 104113,
+    "mark": "S3 pick 📚 Lumi liest alleine in der Ecke"
+   },
+   {
+    "file": "run_stories_l9.json",
+    "t": 104419,
+    "kind": "stimme",
+    "say": "Lumi liest alleine in der Ecke"
+   },
+   {
+    "file": "run_stories_l9.json",
+    "t": 111545,
+    "kind": "stimme",
+    "say": "Lesen und Fantasie sind Superkräfte!"
+   },
+   {
+    "file": "run_stories_l9.json",
+    "t": 119889,
+    "mark": "S3 next"
+   },
+   {
+    "file": "run_stories_l9.json",
+    "t": 130024,
+    "kind": "stimme",
+    "say": "Lumi wartet in der Reihe"
+   },
+   {
+    "file": "run_stories_l9.json",
+    "t": 133208,
+    "mark": "S4 pick ⏳ Lumi wartet in der Reihe"
+   },
+   {
+    "file": "run_stories_l9.json",
+    "t": 133508,
+    "kind": "stimme",
+    "say": "Lumi wartet in der Reihe"
+   },
+   {
+    "file": "run_stories_l9.json",
+    "t": 140683,
+    "kind": "stimme",
+    "say": "Geduld und Fairness machen Freundschaften!"
+   },
+   {
+    "file": "run_stories_l9.json",
+    "t": 149040,
+    "mark": "S4 next"
+   },
+   {
+    "file": "run_stories_l9.json",
+    "t": 152650,
+    "kind": "audio",
+    "say": "das-hast-du-super-gemacht.mp3"
+   }
+  ]
+ },
+ "Sortier-Spaß (sort)": {
+  "runs": [
+   "run_sort_l1.json",
+   "run_sort_l6.json",
+   "run_sort_l10.json"
+  ],
+  "notes": [
+   "GESPROCHEN: einmal zu Beginn 'Sortiere! <A> oder <B>' (L10: 'Sortiere! Warm Heiß oder Kalt Kühl' – Schrägstriche entfernt, klingt holprig). Danach nur Geräusche.",
+   "NICHT GESPROCHEN: Namen der Gegenstände, Rückmeldung richtig/falsch, Erklärung, Kategorien beim Antippen, Abschluss 'Super! Alles richtig sortiert!' (auch nach Fehlern angezeigt)."
+  ],
+  "utterances": [
+   {
+    "text": "Sortiere! Tiere oder Spielzeug",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "das-hast-du-super-gemacht.mp3",
+    "kind": "audio",
+    "count": 3,
+    "cut": 0
+   },
+   {
+    "text": "Sortiere! Gerade oder Ungerade",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Sortiere! Warm Heiß oder Kalt Kühl",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   }
+  ],
+  "cuts": [],
+  "timeline": [
+   {
+    "file": "run_sort_l1.json",
+    "t": 5937,
+    "kind": "stimme",
+    "say": "Sortiere! Tiere oder Spielzeug"
+   },
+   {
+    "file": "run_sort_l1.json",
+    "t": 40372,
+    "kind": "audio",
+    "say": "das-hast-du-super-gemacht.mp3"
+   },
+   {
+    "file": "run_sort_l6.json",
+    "t": 7435,
+    "kind": "stimme",
+    "say": "Sortiere! Gerade oder Ungerade"
+   },
+   {
+    "file": "run_sort_l6.json",
+    "t": 38386,
+    "kind": "audio",
+    "say": "das-hast-du-super-gemacht.mp3"
+   },
+   {
+    "file": "run_sort_l10.json",
+    "t": 6088,
+    "kind": "stimme",
+    "say": "Sortiere! Warm Heiß oder Kalt Kühl"
+   },
+   {
+    "file": "run_sort_l10.json",
+    "t": 40484,
+    "kind": "audio",
+    "say": "das-hast-du-super-gemacht.mp3"
+   }
+  ]
+ },
+ "Farbenreich (shapes)": {
+  "runs": [
+   "run_shapes_l1.json"
+  ],
+  "notes": [
+   "GESPROCHEN: pro Bild nur der Hinweis 'Male das Haus!' / 'Male den Apfel!' usw. (TTS).",
+   "NICHT GESPROCHEN: Farbnamen (weder beim Eimer-Tipp noch als Vorgabe), 'Wähle einen Farbeimer und male drauf los!', 'Orange gewählt — einfach über die leuchtende Fläche fahren!', Fläche fertig, 'Super gemalt! Weiter geht's!', Rückmeldung bei falscher Farbe."
+  ],
+  "utterances": [
+   {
+    "text": "Male den Apfel!",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Male den Ballon!",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "das-hast-du-super-gemacht.mp3",
+    "kind": "audio",
+    "count": 1,
+    "cut": 0
+   }
+  ],
+  "cuts": [],
+  "timeline": [
+   {
+    "file": "run_shapes_l1.json",
+    "t": 4655,
+    "kind": "stimme",
+    "say": "Male den Apfel!"
+   },
+   {
+    "file": "run_shapes_l1.json",
+    "t": 8627,
+    "mark": "wrong colour Lila"
+   },
+   {
+    "file": "run_shapes_l1.json",
+    "t": 10695,
+    "mark": "colour Rot"
+   },
+   {
+    "file": "run_shapes_l1.json",
+    "t": 39953,
+    "mark": "colour Grün"
+   },
+   {
+    "file": "run_shapes_l1.json",
+    "t": 70793,
+    "mark": "colour Braun"
+   },
+   {
+    "file": "run_shapes_l1.json",
+    "t": 79244,
+    "kind": "stimme",
+    "say": "Male den Ballon!"
+   },
+   {
+    "file": "run_shapes_l1.json",
+    "t": 104666,
+    "mark": "colour Rot"
+   },
+   {
+    "file": "run_shapes_l1.json",
+    "t": 131823,
+    "mark": "colour Gelb"
+   },
+   {
+    "file": "run_shapes_l1.json",
+    "t": 159945,
+    "mark": "colour Grau"
+   },
+   {
+    "file": "run_shapes_l1.json",
+    "t": 188778,
+    "kind": "audio",
+    "say": "das-hast-du-super-gemacht.mp3"
+   }
+  ]
+ },
+ "Mal-Atelier (coloring)": {
+  "runs": [
+   "run_coloring_l1.json"
+  ],
+  "notes": [
+   "GESPROCHEN: nichts (keine einzige Spiel-Äußerung im Lauf).",
+   "NICHT GESPROCHEN: Begrüßung/Anleitung, Werkzeugnamen, 'Im Album!', 'Fertig'. InfoButton zeigt generischen Quiz-Text."
+  ],
+  "utterances": [],
+  "cuts": [],
+  "timeline": []
+ },
+ "Formen-Werkstatt (shape-build)": {
+  "runs": [
+   "run_shapebuild_l1.json",
+   "run_shapebuild_l8.json"
+  ],
+  "notes": [
+   "GESPROCHEN (TTS): 'Baue ein Haus! Welche Form passt wohin?' (Artikel korrekt: ein Haus/einen Baum/eine Kerze), Fehler 'Das Rechteck passt da nicht.' bzw. 'Der Kreis ist zu groß/klein für diesen Platz.', Abschluss 'Fertig! Das ist ein Haus.'. Sprachlich korrekt.",
+   "NICHT GESPROCHEN: Formname beim Auswählen eines Teils ('Wohin gehört das Dreieck?' nur Text), 'Weiter'. Fehler-Hinweis 'Der Kreis ist zu klein' bei der Blume für 20 vs. 22 Einheiten – optisch nicht unterscheidbar."
+  ],
+  "utterances": [
+   {
+    "text": "Baue ein Haus! Welche Form passt wohin?",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Fertig! Das ist ein Haus.",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Baue ein Eis! Welche Form passt wohin?",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Fertig! Das ist ein Eis.",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Baue einen Baum! Welche Form passt wohin?",
+    "kind": "stimme",
+    "count": 3,
+    "cut": 2
+   },
+   {
+    "text": "Fertig! Das ist ein Baum.",
+    "kind": "stimme",
+    "count": 3,
+    "cut": 0
+   },
+   {
+    "text": "Baue ein Boot! Welche Form passt wohin?",
+    "kind": "stimme",
+    "count": 2,
+    "cut": 0
+   },
+   {
+    "text": "Fertig! Das ist ein Boot.",
+    "kind": "stimme",
+    "count": 2,
+    "cut": 0
+   },
+   {
+    "text": "Baue eine Kerze! Welche Form passt wohin?",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 1
+   },
+   {
+    "text": "Das Rechteck passt da nicht.",
+    "kind": "stimme",
+    "count": 5,
+    "cut": 0
+   },
+   {
+    "text": "Fertig! Das ist eine Kerze.",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "das-hast-du-super-gemacht.mp3",
+    "kind": "audio",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Baue einen Schneemann! Welche Form passt wohin?",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Der Kreis ist zu groß für diesen Platz.",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Fertig! Das ist ein Schneemann.",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Baue eine Rakete! Welche Form passt wohin?",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Das Dreieck passt da nicht.",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Fertig! Das ist eine Rakete.",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Baue eine Blume! Welche Form passt wohin?",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Der Kreis ist zu klein für diesen Platz.",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Fertig! Das ist eine Blume.",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "Baue einen Turm! Welche Form passt wohin?",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 1
+   },
+   {
+    "text": "Das Quadrat passt da nicht.",
+    "kind": "stimme",
+    "count": 2,
+    "cut": 1
+   },
+   {
+    "text": "Das Quadrat ist zu groß für diesen Platz.",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 1
+   },
+   {
+    "text": "Fertig! Das ist ein Turm.",
+    "kind": "stimme",
+    "count": 1,
+    "cut": 0
+   },
+   {
+    "text": "ja-super.mp3",
+    "kind": "audio",
+    "count": 1,
+    "cut": 0
+   }
+  ],
+  "cuts": [
+   {
+    "file": "run_shapebuild_l1.json",
+    "t": 54297,
+    "kind": "stimme",
+    "text": "Baue eine Kerze! Welche Form passt wohin?",
+    "playedMs": 2935
+   },
+   {
+    "file": "run_shapebuild_l1.json",
+    "t": 64558,
+    "kind": "stimme",
+    "text": "Baue einen Baum! Welche Form passt wohin?",
+    "playedMs": 2932
+   },
+   {
+    "file": "run_shapebuild_l8.json",
+    "t": 24443,
+    "kind": "stimme",
+    "text": "Baue einen Baum! Welche Form passt wohin?",
+    "playedMs": 2975
+   },
+   {
+    "file": "run_shapebuild_l8.json",
+    "t": 85812,
+    "kind": "stimme",
+    "text": "Baue einen Turm! Welche Form passt wohin?",
+    "playedMs": 2932
+   },
+   {
+    "file": "run_shapebuild_l8.json",
+    "t": 87143,
+    "kind": "stimme",
+    "text": "Das Quadrat passt da nicht.",
+    "playedMs": 1151
+   },
+   {
+    "file": "run_shapebuild_l8.json",
+    "t": 90177,
+    "kind": "stimme",
+    "text": "Das Quadrat ist zu groß für diesen Platz.",
+    "playedMs": 2853
+   }
+  ],
+  "timeline": [
+   {
+    "file": "run_shapebuild_l1.json",
+    "t": 6743,
+    "kind": "stimme",
+    "say": "Baue ein Haus! Welche Form passt wohin?"
+   },
+   {
+    "file": "run_shapebuild_l1.json",
+    "t": 14980,
+    "kind": "stimme",
+    "say": "Fertig! Das ist ein Haus."
+   },
+   {
+    "file": "run_shapebuild_l1.json",
+    "t": 19743,
+    "kind": "stimme",
+    "say": "Baue ein Eis! Welche Form passt wohin?"
+   },
+   {
+    "file": "run_shapebuild_l1.json",
+    "t": 26070,
+    "kind": "stimme",
+    "say": "Fertig! Das ist ein Eis."
+   },
+   {
+    "file": "run_shapebuild_l1.json",
+    "t": 30589,
+    "kind": "stimme",
+    "say": "Baue einen Baum! Welche Form passt wohin?"
+   },
+   {
+    "file": "run_shapebuild_l1.json",
+    "t": 36689,
+    "kind": "stimme",
+    "say": "Fertig! Das ist ein Baum."
+   },
+   {
+    "file": "run_shapebuild_l1.json",
+    "t": 41037,
+    "kind": "stimme",
+    "say": "Baue ein Boot! Welche Form passt wohin?"
+   },
+   {
+    "file": "run_shapebuild_l1.json",
+    "t": 47041,
+    "kind": "stimme",
+    "say": "Fertig! Das ist ein Boot."
+   },
+   {
+    "file": "run_shapebuild_l1.json",
+    "t": 51361,
+    "kind": "stimme",
+    "say": "Baue eine Kerze! Welche Form passt wohin?"
+   },
+   {
+    "file": "run_shapebuild_l1.json",
+    "t": 54297,
+    "cut": "Baue eine Kerze! Welche Form passt wohin?",
+    "playedMs": 2935
+   },
+   {
+    "file": "run_shapebuild_l1.json",
+    "t": 54476,
+    "kind": "stimme",
+    "say": "Das Rechteck passt da nicht."
+   },
+   {
+    "file": "run_shapebuild_l1.json",
+    "t": 57307,
+    "kind": "stimme",
+    "say": "Fertig! Das ist eine Kerze."
+   },
+   {
+    "file": "run_shapebuild_l1.json",
+    "t": 61626,
+    "kind": "stimme",
+    "say": "Baue einen Baum! Welche Form passt wohin?"
+   },
+   {
+    "file": "run_shapebuild_l1.json",
+    "t": 64558,
+    "cut": "Baue einen Baum! Welche Form passt wohin?",
+    "playedMs": 2932
+   },
+   {
+    "file": "run_shapebuild_l1.json",
+    "t": 64738,
+    "kind": "stimme",
+    "say": "Das Rechteck passt da nicht."
+   },
+   {
+    "file": "run_shapebuild_l1.json",
+    "t": 67559,
+    "kind": "stimme",
+    "say": "Fertig! Das ist ein Baum."
+   },
+   {
+    "file": "run_shapebuild_l1.json",
+    "t": 72922,
+    "kind": "audio",
+    "say": "das-hast-du-super-gemacht.mp3"
+   },
+   {
+    "file": "run_shapebuild_l8.json",
+    "t": 5742,
+    "kind": "stimme",
+    "say": "Baue einen Schneemann! Welche Form passt wohin?"
+   },
+   {
+    "file": "run_shapebuild_l8.json",
+    "t": 9545,
+    "kind": "stimme",
+    "say": "Der Kreis ist zu groß für diesen Platz."
+   },
+   {
+    "file": "run_shapebuild_l8.json",
+    "t": 16999,
+    "kind": "stimme",
+    "say": "Fertig! Das ist ein Schneemann."
+   },
+   {
+    "file": "run_shapebuild_l8.json",
+    "t": 21468,
+    "kind": "stimme",
+    "say": "Baue einen Baum! Welche Form passt wohin?"
+   },
+   {
+    "file": "run_shapebuild_l8.json",
+    "t": 24443,
+    "cut": "Baue einen Baum! Welche Form passt wohin?",
+    "playedMs": 2975
+   },
+   {
+    "file": "run_shapebuild_l8.json",
+    "t": 24624,
+    "kind": "stimme",
+    "say": "Das Rechteck passt da nicht."
+   },
+   {
+    "file": "run_shapebuild_l8.json",
+    "t": 27467,
+    "kind": "stimme",
+    "say": "Fertig! Das ist ein Baum."
+   },
+   {
+    "file": "run_shapebuild_l8.json",
+    "t": 31798,
+    "kind": "stimme",
+    "say": "Baue ein Boot! Welche Form passt wohin?"
+   },
+   {
+    "file": "run_shapebuild_l8.json",
+    "t": 34748,
+    "kind": "stimme",
+    "say": "Das Rechteck passt da nicht."
+   },
+   {
+    "file": "run_shapebuild_l8.json",
+    "t": 37756,
+    "kind": "stimme",
+    "say": "Fertig! Das ist ein Boot."
+   },
+   {
+    "file": "run_shapebuild_l8.json",
+    "t": 42079,
+    "kind": "stimme",
+    "say": "Baue eine Rakete! Welche Form passt wohin?"
+   },
+   {
+    "file": "run_shapebuild_l8.json",
+    "t": 48045,
+    "kind": "stimme",
+    "say": "Das Dreieck passt da nicht."
+   },
+   {
+    "file": "run_shapebuild_l8.json",
+    "t": 58149,
+    "kind": "stimme",
+    "say": "Fertig! Das ist eine Rakete."
+   },
+   {
+    "file": "run_shapebuild_l8.json",
+    "t": 62480,
+    "kind": "stimme",
+    "say": "Baue eine Blume! Welche Form passt wohin?"
+   },
+   {
+    "file": "run_shapebuild_l8.json",
+    "t": 65487,
+    "kind": "stimme",
+    "say": "Der Kreis ist zu klein für diesen Platz."
+   },
+   {
+    "file": "run_shapebuild_l8.json",
+    "t": 72860,
+    "kind": "stimme",
+    "say": "Das Rechteck passt da nicht."
+   },
+   {
+    "file": "run_shapebuild_l8.json",
+    "t": 78553,
+    "kind": "stimme",
+    "say": "Fertig! Das ist eine Blume."
+   },
+   {
+    "file": "run_shapebuild_l8.json",
+    "t": 82880,
+    "kind": "stimme",
+    "say": "Baue einen Turm! Welche Form passt wohin?"
+   },
+   {
+    "file": "run_shapebuild_l8.json",
+    "t": 85812,
+    "cut": "Baue einen Turm! Welche Form passt wohin?",
+    "playedMs": 2932
+   },
+   {
+    "file": "run_shapebuild_l8.json",
+    "t": 85992,
+    "kind": "stimme",
+    "say": "Das Quadrat passt da nicht."
+   },
+   {
+    "file": "run_shapebuild_l8.json",
+    "t": 87143,
+    "cut": "Das Quadrat passt da nicht.",
+    "playedMs": 1151
+   },
+   {
+    "file": "run_shapebuild_l8.json",
+    "t": 87323,
+    "kind": "stimme",
+    "say": "Das Quadrat ist zu groß für diesen Platz."
+   },
+   {
+    "file": "run_shapebuild_l8.json",
+    "t": 90177,
+    "cut": "Das Quadrat ist zu groß für diesen Platz.",
+    "playedMs": 2853
+   },
+   {
+    "file": "run_shapebuild_l8.json",
+    "t": 90357,
+    "kind": "stimme",
+    "say": "Das Quadrat passt da nicht."
+   },
+   {
+    "file": "run_shapebuild_l8.json",
+    "t": 93184,
+    "kind": "stimme",
+    "say": "Fertig! Das ist ein Turm."
+   },
+   {
+    "file": "run_shapebuild_l8.json",
+    "t": 98540,
+    "kind": "audio",
+    "say": "ja-super.mp3"
+   }
+  ]
+ }
+}

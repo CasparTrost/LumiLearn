@@ -1,0 +1,2390 @@
+{
+ "_hinweis": "Mitschnitt mit Playwright + audio-probe (window.__ev). Einträge: Text = Sprachsynthese-Start bzw. MP3-Dateiname; '[cut]' = abgebrochen (ms gespielt); '[missing]' = Datei fehlt; '[mark]' = Markierung des Testskripts (Runde, Aufgabe). Viele 'cut' entstehen, weil der Bot schneller tippt als ein Kind; inhaltlich relevant sind v.a. die [missing]-Einträge und die Texte selbst. Die ersten Zeilen (Begrüßung, background.mp3, 'Weiter mit Level N') stammen vom Startbildschirm/Levelwähler.",
+ "Zahlen entdecken (number-intro)": {
+  "L1": [
+   "Guten Morgen, Mia! Was möchtest du heute lernen?",
+   "background.mp3",
+   "[cut] Guten Morgen, Mia! Was möchtest du heute lernen? (2939ms)",
+   "eins.mp3",
+   "[mark] GAME_START",
+   "[mark] ROUND 0",
+   "eins.mp3",
+   "[cut] eins.mp3 (237ms)",
+   "zwei.mp3",
+   "Das sind zu viele. Zähle noch einmal bis eins.",
+   "[cut] Das sind zu viele. Zähle noch einmal bis eins. (3096ms)",
+   "eins.mp3",
+   "zwei.mp3",
+   "[mark] ROUND 1",
+   "eins.mp3",
+   "[cut] eins.mp3 (289ms)",
+   "zwei.mp3",
+   "[cut] zwei.mp3 (243ms)",
+   "drei.mp3",
+   "Das sind zu viele. Zähle noch einmal bis zwei.",
+   "[cut] Das sind zu viele. Zähle noch einmal bis zwei. (3014ms)",
+   "eins.mp3",
+   "[cut] eins.mp3 (245ms)",
+   "zwei.mp3",
+   "drei.mp3",
+   "[mark] ROUND 2",
+   "eins.mp3",
+   "[cut] eins.mp3 (249ms)",
+   "zwei.mp3",
+   "[cut] zwei.mp3 (246ms)",
+   "drei.mp3",
+   "eins.mp3",
+   "[mark] ROUND 3",
+   "eins.mp3",
+   "zwei.mp3",
+   "[mark] ROUND 4",
+   "eins.mp3",
+   "[cut] eins.mp3 (251ms)",
+   "zwei.mp3",
+   "drei.mp3",
+   "[mark] ROUND 5",
+   "eins.mp3",
+   "[cut] eins.mp3 (275ms)",
+   "zwei.mp3",
+   "[cut] zwei.mp3 (252ms)",
+   "drei.mp3",
+   "das-hast-du-super-gemacht.mp3"
+  ],
+  "L4": [
+   "Guten Morgen, Mia! Was möchtest du heute lernen?",
+   "background.mp3",
+   "Weiter mit Level 4",
+   "[mark] GAME_START",
+   "[cut] Weiter mit Level 4 (372ms)",
+   "eins.mp3",
+   "[mark] ROUND 0",
+   "eins.mp3",
+   "[cut] eins.mp3 (249ms)",
+   "zwei.mp3",
+   "Das sind zu viele. Zähle noch einmal bis eins.",
+   "[cut] Das sind zu viele. Zähle noch einmal bis eins. (3069ms)",
+   "eins.mp3",
+   "sechs.mp3",
+   "[mark] ROUND 1",
+   "eins.mp3",
+   "[cut] eins.mp3 (251ms)",
+   "zwei.mp3",
+   "[cut] zwei.mp3 (248ms)",
+   "drei.mp3",
+   "[cut] drei.mp3 (238ms)",
+   "vier.mp3",
+   "[cut] vier.mp3 (244ms)",
+   "fuenf.mp3",
+   "[cut] fuenf.mp3 (241ms)",
+   "sechs.mp3",
+   "[cut] sechs.mp3 (249ms)",
+   "sieben.mp3",
+   "Das sind zu viele. Zähle noch einmal bis sechs.",
+   "[cut] Das sind zu viele. Zähle noch einmal bis sechs. (3012ms)",
+   "eins.mp3",
+   "[cut] eins.mp3 (249ms)",
+   "zwei.mp3",
+   "[cut] zwei.mp3 (246ms)",
+   "drei.mp3",
+   "[cut] drei.mp3 (251ms)",
+   "vier.mp3",
+   "[cut] vier.mp3 (251ms)",
+   "fuenf.mp3",
+   "[cut] fuenf.mp3 (234ms)",
+   "sechs.mp3",
+   "zwei.mp3",
+   "[mark] ROUND 2",
+   "eins.mp3",
+   "[cut] eins.mp3 (250ms)",
+   "zwei.mp3",
+   "zehn.mp3",
+   "[mark] ROUND 3",
+   "eins.mp3",
+   "[cut] eins.mp3 (250ms)",
+   "zwei.mp3",
+   "[cut] zwei.mp3 (251ms)",
+   "drei.mp3",
+   "[cut] drei.mp3 (248ms)",
+   "vier.mp3",
+   "[cut] vier.mp3 (245ms)",
+   "fuenf.mp3",
+   "[cut] fuenf.mp3 (250ms)",
+   "sechs.mp3",
+   "[cut] sechs.mp3 (249ms)",
+   "sieben.mp3",
+   "[cut] sieben.mp3 (249ms)",
+   "acht.mp3",
+   "[cut] acht.mp3 (240ms)",
+   "neun.mp3",
+   "[cut] neun.mp3 (229ms)",
+   "zehn.mp3",
+   "[cut] zehn.mp3 (251ms)",
+   "[missing] undefined.mp3",
+   "[missing] undefined.mp3",
+   "[missing] undefined.mp3",
+   "Das sind zu viele. Zähle noch einmal bis zehn.",
+   "[cut] Das sind zu viele. Zähle noch einmal bis zehn. (3017ms)",
+   "eins.mp3",
+   "[cut] eins.mp3 (245ms)",
+   "zwei.mp3",
+   "[cut] zwei.mp3 (248ms)",
+   "drei.mp3",
+   "[cut] drei.mp3 (249ms)",
+   "vier.mp3",
+   "[cut] vier.mp3 (248ms)",
+   "fuenf.mp3",
+   "[cut] fuenf.mp3 (250ms)",
+   "sechs.mp3",
+   "[cut] sechs.mp3 (252ms)",
+   "sieben.mp3",
+   "[cut] sieben.mp3 (247ms)",
+   "acht.mp3",
+   "[cut] acht.mp3 (250ms)",
+   "neun.mp3",
+   "[cut] neun.mp3 (248ms)",
+   "zehn.mp3",
+   "neun.mp3",
+   "[mark] ROUND 4",
+   "eins.mp3",
+   "[cut] eins.mp3 (248ms)",
+   "zwei.mp3",
+   "[cut] zwei.mp3 (247ms)",
+   "drei.mp3",
+   "[cut] drei.mp3 (243ms)",
+   "vier.mp3",
+   "[cut] vier.mp3 (245ms)",
+   "fuenf.mp3",
+   "[cut] fuenf.mp3 (247ms)",
+   "sechs.mp3",
+   "[cut] sechs.mp3 (262ms)",
+   "sieben.mp3",
+   "[cut] sieben.mp3 (237ms)",
+   "acht.mp3",
+   "[cut] acht.mp3 (245ms)",
+   "neun.mp3",
+   "fuenf.mp3",
+   "[mark] ROUND 5",
+   "eins.mp3",
+   "[cut] eins.mp3 (239ms)",
+   "zwei.mp3",
+   "[cut] zwei.mp3 (249ms)",
+   "drei.mp3",
+   "[cut] drei.mp3 (234ms)",
+   "vier.mp3",
+   "[cut] vier.mp3 (253ms)",
+   "fuenf.mp3",
+   "drei.mp3",
+   "[mark] ROUND 6",
+   "eins.mp3",
+   "[cut] eins.mp3 (227ms)",
+   "zwei.mp3",
+   "[cut] zwei.mp3 (250ms)",
+   "drei.mp3",
+   "vier.mp3",
+   "[mark] ROUND 7",
+   "eins.mp3",
+   "[cut] eins.mp3 (257ms)",
+   "zwei.mp3",
+   "[cut] zwei.mp3 (222ms)",
+   "drei.mp3",
+   "[cut] drei.mp3 (267ms)",
+   "vier.mp3",
+   "sieben.mp3",
+   "[mark] ROUND 8",
+   "eins.mp3",
+   "[cut] eins.mp3 (231ms)",
+   "zwei.mp3",
+   "[cut] zwei.mp3 (250ms)",
+   "drei.mp3",
+   "[cut] drei.mp3 (248ms)",
+   "vier.mp3",
+   "[cut] vier.mp3 (246ms)",
+   "fuenf.mp3",
+   "[cut] fuenf.mp3 (226ms)",
+   "sechs.mp3",
+   "[cut] sechs.mp3 (256ms)",
+   "sieben.mp3",
+   "acht.mp3",
+   "[mark] ROUND 9",
+   "eins.mp3",
+   "[cut] eins.mp3 (237ms)",
+   "zwei.mp3",
+   "[cut] zwei.mp3 (239ms)",
+   "drei.mp3",
+   "[cut] drei.mp3 (239ms)",
+   "vier.mp3",
+   "[cut] vier.mp3 (238ms)",
+   "fuenf.mp3",
+   "[cut] fuenf.mp3 (243ms)",
+   "sechs.mp3",
+   "[cut] sechs.mp3 (251ms)",
+   "sieben.mp3",
+   "[cut] sieben.mp3 (241ms)",
+   "acht.mp3",
+   "das-hast-du-super-gemacht.mp3"
+  ]
+ },
+ "Zahlenland (numbers)": {
+  "L1": [
+   "Guten Morgen, Mia! Was möchtest du heute lernen?",
+   "background.mp3",
+   "Ich brauche zwei Donuts.",
+   "[mark] GAME_START",
+   "[mark] ROUND 0 \"Ich brauche 2 Donuts!🔊 Nochmal\"",
+   "Das sind zu viele Donuts. Es sollen 2 sein.",
+   "Danke!",
+   "Ich brauche zwei Karotten.",
+   "[mark] ROUND 1 \"Ich brauche 2 Karotten!🔊 Nochmal\"",
+   "Da fehlen noch Karotten. Es sollen 2 sein.",
+   "Danke schön!",
+   "Gib mir bitte eine Karotte.",
+   "[mark] ROUND 2 \"Gib mir bitte 1 Karotte!🔊 Nochmal\"",
+   "[cut] Gib mir bitte eine Karotte. (2034ms)",
+   "Perfekt!",
+   "Ich möchte bitte zwei Muffins.",
+   "[mark] ROUND 3 \"Ich möchte bitte 2 Muffins!🔊 Nochmal\"",
+   "Danke!",
+   "Gib mir bitte vier Trauben.",
+   "[mark] ROUND 4 \"Gib mir bitte 4 Trauben!🔊 Nochmal\"",
+   "Super!",
+   "Ich hätte gerne drei Trauben.",
+   "[mark] ROUND 5 \"Ich hätte gerne 3 Trauben!🔊 Nochmal\"",
+   "Toll!",
+   "Ich hätte gerne drei Donuts.",
+   "[mark] ROUND 6 \"Ich hätte gerne 3 Donuts!🔊 Nochmal\"",
+   "Super!",
+   "Ich brauche vier Eiswaffeln.",
+   "[mark] ROUND 7 \"Ich brauche 4 Eiswaffeln!🔊 Nochmal\"",
+   "Danke schön!",
+   "das-hast-du-super-gemacht.mp3"
+  ],
+  "L4": [
+   "Guten Morgen, Mia! Was möchtest du heute lernen?",
+   "background.mp3",
+   "Weiter mit Level 4",
+   "[mark] GAME_START",
+   "[cut] Weiter mit Level 4 (1229ms)",
+   "Gib mir bitte zwei Eiswaffeln und zwei Fische.",
+   "[mark] ROUND 0 \"Gib mir bitte 2 Eiswaffeln und 2 Fische!🔊 Nochmal\"",
+   "Das sind zu viele Eiswaffeln. Es sollen 2 sein.",
+   "Das sind zu viele Fische. Es sollen 2 sein.",
+   "[mark] ROUND 1 \"Gib mir bitte 2 Eiswaffeln und 2 Fische!🔊 Nochmal\"",
+   "Das sind zu viele Eiswaffeln. Es sollen 2 sein.",
+   "Das sind zu viele Fische. Es sollen 2 sein.",
+   "[mark] ROUND 2 \"Gib mir bitte 2 Eiswaffeln und 2 Fische!🔊 Nochmal\"",
+   "Das sind zu viele Eiswaffeln. Es sollen 2 sein.",
+   "background.mp3",
+   "background.mp3"
+  ],
+  "L8": [
+   "Guten Morgen, Mia! Was möchtest du heute lernen?",
+   "background.mp3",
+   "background.mp3",
+   "Weiter mit Level 8",
+   "[mark] GAME_START",
+   "Gib mir bitte vier Muffins und drei Zitronen und fünf Trauben.",
+   "[mark] ROUND 0 \"Gib mir bitte 4 Muffins, 3 Zitronen und 5 Trauben!🔊 Nochmal\"",
+   "Das sind zu viele Muffins. Es sollen 4 sein.",
+   "Das sind zu viele Zitronen. Es sollen 3 sein.",
+   "[mark] ROUND 1 \"Gib mir bitte 4 Muffins, 3 Zitronen und 5 Trauben!🔊 Nochmal\"",
+   "Das sind zu viele Muffins. Es sollen 4 sein.",
+   "Das sind zu viele Zitronen. Es sollen 3 sein.",
+   "[mark] ROUND 2 \"Gib mir bitte 4 Muffins, 3 Zitronen und 5 Trauben!🔊 Nochmal\"",
+   "background.mp3",
+   "Das sind zu viele Muffins. Es sollen 4 sein.",
+   "background.mp3"
+  ]
+ },
+ "Rechen-Rakete (rocket-math)": {
+  "L1": [
+   "Guten Morgen, Mia! Was möchtest du heute lernen?",
+   "background.mp3",
+   "acht plus eins. Wo landet die Rakete?",
+   "[mark] GAME_START",
+   "[mark] ROUND 0: 8 + 1 = ?",
+   "Das ist zu weit.",
+   "acht plus eins ist neun.",
+   "sieben plus zwei. Wo landet die Rakete?",
+   "[mark] ROUND 1: 7 + 2 = ?",
+   "[cut] sieben plus zwei. Wo landet die Rakete? (1508ms)",
+   "Das ist zu weit.",
+   "background.mp3",
+   "Das ist noch nicht weit genug.",
+   "sieben plus zwei ist neun.",
+   "null plus eins. Wo landet die Rakete?",
+   "[mark] ROUND 2: 0 + 1 = ?",
+   "[cut] null plus eins. Wo landet die Rakete? (1746ms)",
+   "Das ist zu weit.",
+   "null plus eins ist eins.",
+   "acht plus eins. Wo landet die Rakete?",
+   "[mark] ROUND 3: 8 + 1 = ?",
+   "[cut] acht plus eins. Wo landet die Rakete? (2318ms)",
+   "acht plus eins ist neun.",
+   "sechs plus zwei. Wo landet die Rakete?",
+   "[mark] ROUND 4: 6 + 2 = ?",
+   "[cut] sechs plus zwei. Wo landet die Rakete? (2290ms)",
+   "sechs plus zwei ist acht.",
+   "null plus zwei. Wo landet die Rakete?",
+   "[mark] ROUND 5: 0 + 2 = ?",
+   "[cut] null plus zwei. Wo landet die Rakete? (2230ms)",
+   "null plus zwei ist zwei.",
+   "zwei plus eins. Wo landet die Rakete?",
+   "[mark] ROUND 6: 2 + 1 = ?",
+   "[cut] zwei plus eins. Wo landet die Rakete? (2036ms)",
+   "zwei plus eins ist drei.",
+   "sieben plus zwei. Wo landet die Rakete?",
+   "[mark] ROUND 7: 7 + 2 = ?",
+   "[cut] sieben plus zwei. Wo landet die Rakete? (2866ms)",
+   "sieben plus zwei ist neun.",
+   "das-hast-du-super-gemacht.mp3"
+  ],
+  "L7": [
+   "Guten Morgen, Mia! Was möchtest du heute lernen?",
+   "background.mp3",
+   "Weiter mit Level 7",
+   "[mark] GAME_START",
+   "[cut] Weiter mit Level 7 (1510ms)",
+   "fünf minus fünf. Wo landet die Rakete?",
+   "[mark] ROUND 0: 5 − 5 = ?",
+   "[cut] fünf minus fünf. Wo landet die Rakete? (1128ms)",
+   "Das ist zu weit.",
+   "Das ist zu weit.",
+   "fünf minus fünf ist null.",
+   "acht minus vier. Wo landet die Rakete?",
+   "[mark] ROUND 1: 8 − 4 = ?",
+   "[cut] acht minus vier. Wo landet die Rakete? (1516ms)",
+   "Das ist zu weit.",
+   "Das ist noch nicht weit genug.",
+   "acht minus vier ist vier.",
+   "vier minus zwei. Wo landet die Rakete?",
+   "[mark] ROUND 2: 4 − 2 = ?",
+   "[cut] vier minus zwei. Wo landet die Rakete? (1676ms)",
+   "Das ist zu weit.",
+   "Das ist noch nicht weit genug.",
+   "vier minus zwei ist zwei.",
+   "neun minus fünf. Wo landet die Rakete?",
+   "[mark] ROUND 3: 9 − 5 = ?",
+   "neun minus fünf ist vier.",
+   "background.mp3",
+   "neun minus fünf. Wo landet die Rakete?",
+   "[mark] ROUND 4: 9 − 5 = ?",
+   "neun minus fünf ist vier.",
+   "vier minus eins. Wo landet die Rakete?",
+   "[mark] ROUND 5: 4 − 1 = ?",
+   "[cut] vier minus eins. Wo landet die Rakete? (2114ms)",
+   "vier minus eins ist drei.",
+   "vier minus zwei. Wo landet die Rakete?",
+   "[mark] ROUND 6: 4 − 2 = ?",
+   "[cut] vier minus zwei. Wo landet die Rakete? (2471ms)",
+   "vier minus zwei ist zwei.",
+   "acht minus drei. Wo landet die Rakete?",
+   "[mark] ROUND 7: 8 − 3 = ?",
+   "[cut] acht minus drei. Wo landet die Rakete? (2780ms)",
+   "acht minus drei ist fünf.",
+   "das-hast-du-super-gemacht.mp3"
+  ],
+  "L9": [
+   "Guten Morgen, Mia! Was möchtest du heute lernen?",
+   "background.mp3",
+   "Weiter mit Level 9",
+   "[mark] GAME_START",
+   "[cut] Weiter mit Level 9 (1198ms)",
+   "zwölf plus wie viel ergibt siebzehn?",
+   "[mark] ROUND 0: 12 + ? = 17",
+   "[cut] zwölf plus wie viel ergibt siebzehn? (2065ms)",
+   "Das ist noch nicht weit genug.",
+   "Das ist zu weit.",
+   "Das ist noch nicht weit genug.",
+   "background.mp3",
+   "zwölf plus fünf ist siebzehn.",
+   "sechs plus wie viel ergibt neun?",
+   "[mark] ROUND 1: 6 + ? = 9",
+   "[cut] sechs plus wie viel ergibt neun? (1755ms)",
+   "Das ist noch nicht weit genug.",
+   "Das ist zu weit.",
+   "Das ist noch nicht weit genug.",
+   "sechs plus drei ist neun.",
+   "zwei plus wie viel ergibt sieben?",
+   "[mark] ROUND 2: 2 + ? = 7",
+   "[cut] zwei plus wie viel ergibt sieben? (1611ms)",
+   "Das ist noch nicht weit genug.",
+   "[cut] Das ist noch nicht weit genug. (2192ms)",
+   "Das ist zu weit.",
+   "Das ist noch nicht weit genug.",
+   "zwei plus fünf ist sieben.",
+   "fünfzehn plus wie viel ergibt siebzehn?",
+   "[mark] ROUND 3: 15 + ? = 17",
+   "[cut] fünfzehn plus wie viel ergibt siebzehn? (2272ms)",
+   "fünfzehn plus zwei ist siebzehn.",
+   "sechs plus wie viel ergibt zwölf?",
+   "[mark] ROUND 4: 6 + ? = 12",
+   "sechs plus sechs ist zwölf.",
+   "zehn plus wie viel ergibt sechzehn?",
+   "[mark] ROUND 5: 10 + ? = 16",
+   "zehn plus sechs ist sechzehn.",
+   "zwei plus wie viel ergibt sieben?",
+   "[mark] ROUND 6: 2 + ? = 7",
+   "zwei plus fünf ist sieben.",
+   "siebzehn plus wie viel ergibt achtzehn?",
+   "[mark] ROUND 7: 17 + ? = 18",
+   "[cut] siebzehn plus wie viel ergibt achtzehn? (2059ms)",
+   "siebzehn plus eins ist achtzehn.",
+   "ja-super.mp3"
+  ],
+  "L9_mobile": [
+   "Guten Morgen, Mia! Was möchtest du heute lernen?",
+   "background.mp3",
+   "Weiter mit Level 9",
+   "[mark] GAME_START",
+   "[cut] Weiter mit Level 9 (1111ms)",
+   "vier plus wie viel ergibt sieben?",
+   "[mark] ROUND 0: 4 + ? = 7",
+   "Das ist zu weit.",
+   "Das ist noch nicht weit genug."
+  ]
+ },
+ "Blasen-Blitz (bubbles)": {
+  "L1": [
+   "Guten Morgen, Mia! Was möchtest du heute lernen?",
+   "background.mp3",
+   "Finde die 3!",
+   "[mark] GAME_START",
+   "background.mp3",
+   "[mark] ROUND 0 target 3; bubbles [3,3,1,1,2,2,2]; glowing=[]",
+   "background.mp3",
+   "Finde die 2!",
+   "[mark] ROUND 1 target 2; bubbles [2,2,1,1,1,1]; glowing=[]",
+   "Finde die 2!",
+   "[mark] ROUND 2 target 2; bubbles [2,2,1,1,1,3,3]; glowing=[]",
+   "ja-super.mp3"
+  ],
+  "L10": [
+   "Guten Morgen, Mia! Was möchtest du heute lernen?",
+   "background.mp3",
+   "Weiter mit Level 10",
+   "[mark] GAME_START",
+   "[cut] Weiter mit Level 10 (1759ms)",
+   "background.mp3",
+   "Finde die 12!",
+   "[mark] ROUND 0 target 12; bubbles [12,12,12,12,12,20,21,34,2,23,16,14,19,37,25,10,2,10,28,9]; glowing=[]",
+   "Finde die 31!",
+   "[mark] ROUND 1 target 31; bubbles [31,31,31,31,31,31,31,37,20,8,21,5,7,37,40,29,16,29,3,7]; glowing=[]",
+   "background.mp3",
+   "Finde die 10!",
+   "[mark] ROUND 2 target 10; bubbles [10,10,10,10,10,8,18,32,11,15,4,26,35,13,30,15,34,33,5,19]; glowing=[]",
+   "das-hast-du-super-gemacht.mp3",
+   "das-hast-du-super-gemacht.mp3"
+  ]
+ },
+ "Waage-Welt (weight)": {
+  "L1": [
+   "Guten Morgen, Mia! Was möchtest du heute lernen?",
+   "background.mp3",
+   "Was ist schwerer? Kokosnuss oder Blaubeere?",
+   "[mark] GAME_START",
+   "background.mp3",
+   "Was ist schwerer? Haus oder Volleyball?",
+   "Was ist schwerer? Pizza oder Gummibärchen?",
+   "[cut] Was ist schwerer? Pizza oder Gummibärchen? (3013ms)",
+   "Was ist schwerer? Hantel oder Luftballon?",
+   "Was ist schwerer? Softeis oder Croissant?",
+   "[cut] Was ist schwerer? Softeis oder Croissant? (2904ms)",
+   "Was ist schwerer? Schiff oder Segelboot?",
+   "Was ist schwerer? Zug oder Roller?",
+   "Was ist schwerer? Melone oder Traube?",
+   "das-hast-du-super-gemacht.mp3",
+   "das-hast-du-super-gemacht.mp3"
+  ],
+  "L3": [
+   "Guten Morgen, Mia! Was möchtest du heute lernen?",
+   "background.mp3",
+   "background.mp3",
+   "Weiter mit Level 3",
+   "[mark] GAME_START",
+   "[cut] Weiter mit Level 3 (1359ms)",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "ja-super.mp3"
+  ],
+  "L6": [
+   "Guten Morgen, Mia! Was möchtest du heute lernen?",
+   "background.mp3",
+   "background.mp3",
+   "Weiter mit Level 6",
+   "[mark] GAME_START",
+   "Rechne. Welche Seite ist schwerer?",
+   "[cut] Rechne. Welche Seite ist schwerer? (2681ms)",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "ja-super.mp3"
+  ],
+  "L8": [
+   "Guten Morgen, Mia! Was möchtest du heute lernen?",
+   "background.mp3",
+   "Weiter mit Level 8",
+   "background.mp3",
+   "[mark] GAME_START",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "klasse-versuch-es-direkt-noch-einmal.mp3"
+  ],
+  "L10": [
+   "Guten Morgen, Mia! Was möchtest du heute lernen?",
+   "background.mp3",
+   "Weiter mit Level 10",
+   "background.mp3",
+   "[mark] GAME_START",
+   "Rechne. Welche Seite ist schwerer?",
+   "[cut] Rechne. Welche Seite ist schwerer? (2236ms)",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "[cut] Rechne. Welche Seite ist schwerer? (2432ms)",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "background.mp3",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "Rechne. Welche Seite ist schwerer?",
+   "ja-super.mp3",
+   "ja-super.mp3"
+  ],
+  "_runden_immer_links_getippt": {
+   "1": [
+    {
+     "labels": [
+      "🥥",
+      "Kokosnuss",
+      "🫐",
+      "Blaubeere"
+     ],
+     "bubble": "Super!  Kokosnuss ist schwerer."
+    },
+    {
+     "labels": [
+      "🏠",
+      "Haus",
+      "🏐",
+      "Volleyball"
+     ],
+     "bubble": "Super!  Haus ist schwerer."
+    },
+    {
+     "labels": [
+      "🍕",
+      "Pizza",
+      "🍬",
+      "Gummibärchen"
+     ],
+     "bubble": "Super!  Pizza ist schwerer."
+    },
+    {
+     "labels": [
+      "🏋️",
+      "Hantel",
+      "🎈",
+      "Luftballon"
+     ],
+     "bubble": "Super!  Hantel ist schwerer."
+    },
+    {
+     "labels": [
+      "🍦",
+      "Softeis",
+      "🥐",
+      "Croissant"
+     ],
+     "bubble": "Fast!  Croissant ist schwerer."
+    },
+    {
+     "labels": [
+      "🚢",
+      "Schiff",
+      "⛵",
+      "Segelboot"
+     ],
+     "bubble": "Super!  Schiff ist schwerer."
+    },
+    {
+     "labels": [
+      "🚂",
+      "Zug",
+      "🛴",
+      "Roller"
+     ],
+     "bubble": "Super!  Zug ist schwerer."
+    },
+    {
+     "labels": [
+      "🍉",
+      "Melone",
+      "🍇",
+      "Traube"
+     ],
+     "bubble": "Super!  Melone ist schwerer."
+    }
+   ],
+   "3": [
+    {
+     "labels": [
+      "💻",
+      "4 kg",
+      "🍐",
+      "2 kg"
+     ],
+     "bubble": "Super!  4 kg ist 2 kg schwerer."
+    },
+    {
+     "labels": [
+      "🧱",
+      "11 kg",
+      "📚",
+      "6 kg"
+     ],
+     "bubble": "Super!  11 kg ist 5 kg schwerer."
+    },
+    {
+     "labels": [
+      "🛹",
+      "2 kg",
+      "📦",
+      "15 kg"
+     ],
+     "bubble": "Fast!  15 kg ist 13 kg schwerer."
+    },
+    {
+     "labels": [
+      "📦",
+      "15 kg",
+      "🍔",
+      "6 kg"
+     ],
+     "bubble": "Super!  15 kg ist 9 kg schwerer."
+    },
+    {
+     "labels": [
+      "🚗",
+      "2 kg",
+      "🐍",
+      "6 kg"
+     ],
+     "bubble": "Fast!  6 kg ist 4 kg schwerer."
+    },
+    {
+     "labels": [
+      "🚗",
+      "6 kg",
+      "🍔",
+      "10 kg"
+     ],
+     "bubble": "Fast!  10 kg ist 4 kg schwerer."
+    },
+    {
+     "labels": [
+      "🧳",
+      "7 kg",
+      "🎱",
+      "11 kg"
+     ],
+     "bubble": "Fast!  11 kg ist 4 kg schwerer."
+    },
+    {
+     "labels": [
+      "🪨",
+      "1 kg",
+      "🛹",
+      "15 kg"
+     ],
+     "bubble": "Fast!  15 kg ist 14 kg schwerer."
+    }
+   ],
+   "6": [
+    {
+     "labels": [
+      "📦",
+      "3 + 6 kg",
+      "📦",
+      "9 kg"
+     ],
+     "bubble": "Fast!  Beide sind gleich schwer!"
+    },
+    {
+     "labels": [
+      "📦",
+      "2 + 6 kg",
+      "📦",
+      "9 kg"
+     ],
+     "bubble": "Fast!  9 kg ist 1 kg schwerer."
+    },
+    {
+     "labels": [
+      "📦",
+      "1 + 1 kg",
+      "📦",
+      "10 kg"
+     ],
+     "bubble": "Fast!  10 kg ist 8 kg schwerer."
+    },
+    {
+     "labels": [
+      "📦",
+      "7 + 2 kg",
+      "📦",
+      "11 kg"
+     ],
+     "bubble": "Fast!  11 kg ist 2 kg schwerer."
+    },
+    {
+     "labels": [
+      "📦",
+      "3 + 8 kg",
+      "📦",
+      "9 kg"
+     ],
+     "bubble": "Super!  3 + 8 kg ist 2 kg schwerer."
+    },
+    {
+     "labels": [
+      "📦",
+      "8 + 8 kg",
+      "📦",
+      "13 kg"
+     ],
+     "bubble": "Super!  8 + 8 kg ist 3 kg schwerer."
+    },
+    {
+     "labels": [
+      "📦",
+      "7 + 3 kg",
+      "📦",
+      "5 kg"
+     ],
+     "bubble": "Super!  7 + 3 kg ist 5 kg schwerer."
+    },
+    {
+     "labels": [
+      "📦",
+      "4 + 8 kg",
+      "📦",
+      "5 kg"
+     ],
+     "bubble": "Super!  4 + 8 kg ist 7 kg schwerer."
+    },
+    {
+     "labels": [
+      "📦",
+      "6 + 7 kg",
+      "📦",
+      "13 kg"
+     ],
+     "bubble": "Fast!  Beide sind gleich schwer!"
+    },
+    {
+     "labels": [
+      "📦",
+      "7 + 1 kg",
+      "📦",
+      "8 kg"
+     ],
+     "bubble": "Fast!  Beide sind gleich schwer!"
+    }
+   ],
+   "8": [
+    {
+     "labels": [
+      "📦",
+      "12 − 3 kg",
+      "📦",
+      "9 kg"
+     ],
+     "bubble": "Fast!  Beide sind gleich schwer!"
+    },
+    {
+     "labels": [
+      "📦",
+      "8 − 7 kg",
+      "📦",
+      "14 kg"
+     ],
+     "bubble": "Fast!  14 kg ist 13 kg schwerer."
+    },
+    {
+     "labels": [
+      "📦",
+      "14 − 13 kg",
+      "📦",
+      "2 kg"
+     ],
+     "bubble": "Fast!  2 kg ist 1 kg schwerer."
+    },
+    {
+     "labels": [
+      "📦",
+      "14 − 9 kg",
+      "📦",
+      "10 kg"
+     ],
+     "bubble": "Fast!  10 kg ist 5 kg schwerer."
+    },
+    {
+     "labels": [
+      "📦",
+      "14 − 6 kg",
+      "📦",
+      "3 kg"
+     ],
+     "bubble": "Super!  14 − 6 kg ist 5 kg schwerer."
+    },
+    {
+     "labels": [
+      "📦",
+      "7 − 2 kg",
+      "📦",
+      "5 kg"
+     ],
+     "bubble": "Fast!  Beide sind gleich schwer!"
+    },
+    {
+     "labels": [
+      "📦",
+      "12 − 9 kg",
+      "📦",
+      "10 kg"
+     ],
+     "bubble": "Fast!  10 kg ist 7 kg schwerer."
+    },
+    {
+     "labels": [
+      "📦",
+      "14 − 7 kg",
+      "📦",
+      "4 kg"
+     ],
+     "bubble": "Super!  14 − 7 kg ist 3 kg schwerer."
+    },
+    {
+     "labels": [
+      "📦",
+      "11 − 8 kg",
+      "📦",
+      "3 kg"
+     ],
+     "bubble": "Fast!  Beide sind gleich schwer!"
+    },
+    {
+     "labels": [
+      "📦",
+      "8 − 6 kg",
+      "📦",
+      "1 kg"
+     ],
+     "bubble": "Super!  8 − 6 kg ist 1 kg schwerer."
+    },
+    {
+     "labels": [
+      "📦",
+      "11 − 10 kg",
+      "📦",
+      "11 kg"
+     ],
+     "bubble": "Fast!  11 kg ist 10 kg schwerer."
+    },
+    {
+     "labels": [
+      "📦",
+      "15 − 3 kg",
+      "📦",
+      "2 kg"
+     ],
+     "bubble": "Super!  15 − 3 kg ist 10 kg schwerer."
+    }
+   ],
+   "10": [
+    {
+     "labels": [
+      "📦",
+      "6 × 4 kg",
+      "📦",
+      "20 kg"
+     ],
+     "bubble": "Super!  6 × 4 kg ist 4 kg schwerer."
+    },
+    {
+     "labels": [
+      "📦",
+      "3 × 3 kg",
+      "📦",
+      "17 kg"
+     ],
+     "bubble": "Fast!  17 kg ist 8 kg schwerer."
+    },
+    {
+     "labels": [
+      "📦",
+      "3 × 4 kg",
+      "📦",
+      "19 kg"
+     ],
+     "bubble": "Fast!  19 kg ist 7 kg schwerer."
+    },
+    {
+     "labels": [
+      "📦",
+      "6 × 2 kg",
+      "📦",
+      "7 kg"
+     ],
+     "bubble": "Super!  6 × 2 kg ist 5 kg schwerer."
+    },
+    {
+     "labels": [
+      "📦",
+      "6 × 2 kg",
+      "📦",
+      "26 kg"
+     ],
+     "bubble": "Fast!  26 kg ist 14 kg schwerer."
+    },
+    {
+     "labels": [
+      "📦",
+      "2 × 5 kg",
+      "📦",
+      "22 kg"
+     ],
+     "bubble": "Fast!  22 kg ist 12 kg schwerer."
+    },
+    {
+     "labels": [
+      "📦",
+      "5 × 5 kg",
+      "📦",
+      "24 kg"
+     ],
+     "bubble": "Super!  5 × 5 kg ist 1 kg schwerer."
+    },
+    {
+     "labels": [
+      "📦",
+      "4 × 2 kg",
+      "📦",
+      "6 kg"
+     ],
+     "bubble": "Super!  4 × 2 kg ist 2 kg schwerer."
+    },
+    {
+     "labels": [
+      "📦",
+      "4 × 3 kg",
+      "📦",
+      "26 kg"
+     ],
+     "bubble": "Fast!  26 kg ist 14 kg schwerer."
+    },
+    {
+     "labels": [
+      "📦",
+      "4 × 5 kg",
+      "📦",
+      "25 kg"
+     ],
+     "bubble": "Fast!  25 kg ist 5 kg schwerer."
+    },
+    {
+     "labels": [
+      "📦",
+      "2 × 3 kg",
+      "📦",
+      "23 kg"
+     ],
+     "bubble": "Fast!  23 kg ist 17 kg schwerer."
+    },
+    {
+     "labels": [
+      "📦",
+      "6 × 5 kg",
+      "📦",
+      "21 kg"
+     ],
+     "bubble": "Super!  6 × 5 kg ist 9 kg schwerer."
+    }
+   ]
+  }
+ },
+ "Uhren-Uhr (clock)": {
+  "L1": [
+   "Guten Morgen, Mia! Was möchtest du heute lernen?",
+   "background.mp3",
+   "[mark] GAME_START",
+   "Schau auf die Uhr. Wie viel Uhr ist es?",
+   "[mark] ROUND 0 read: Uhren-Uhr Level 1/10? 0 / 8 ganze Stunden🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐1212345678910111:00 Uhr2:00 Uhr11:00 Uhr10:00 Uhr🎵",
+   "Stelle die Uhr auf sieben Uhr.",
+   "[mark] ROUND 1 set: Stelle die Uhr auf 7:00 Uhr! Ziehe die Zeiger oder tippe ➕➖! 🖐️",
+   "Schau auf die Uhr. Was macht Lumi um diese Zeit?",
+   "[mark] ROUND 2 daily: 💡 Tipp: Der kurze Zeiger = Stunden, der lange = Minuten. Es ist 7 Uhr!",
+   "[cut] Schau auf die Uhr. Was macht Lumi um diese Zeit? (3377ms)",
+   "Schau auf die Uhr. Wie viel Uhr ist es?",
+   "[mark] ROUND 3 read: 💡 Tipp: Der kurze Zeiger = Stunden, der lange = Minuten. Es ist 1 Uhr!",
+   "[cut] Schau auf die Uhr. Wie viel Uhr ist es? (2230ms)",
+   "Stelle die Uhr auf fünf Uhr.",
+   "[mark] ROUND 4 set: 💡 Tipp: Der kurze Zeiger = Stunden, der lange = Minuten. Es ist 5 Uhr!",
+   "Schau auf die Uhr. Was macht Lumi um diese Zeit?",
+   "[mark] ROUND 5 daily: Uhren-Uhr Level 1/10? 1 / 8 ganze Stunden🔊 NochmalEs ist 9 Uhr. Was macht Lumi jetzt? 🤔121234567891011🌅AufstehenKindergartenAbendessen🎵",
+   "Schau auf die Uhr. Wie viel Uhr ist es?",
+   "[mark] ROUND 6 read: Uhren-Uhr Level 1/10? 2 / 8 ganze Stunden🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐1212345678910112:00 Uhr10:00 Uhr4:00 Uhr11:00 Uhr🎵",
+   "Stelle die Uhr auf drei Uhr.",
+   "[mark] ROUND 7 set: Stelle die Uhr auf 3:00 Uhr! Ziehe die Zeiger oder tippe ➕➖! 🖐️",
+   "background.mp3",
+   "ja-super.mp3"
+  ],
+  "L3": [
+   "Guten Morgen, Mia! Was möchtest du heute lernen?",
+   "background.mp3",
+   "Weiter mit Level 3",
+   "[mark] GAME_START",
+   "[cut] Weiter mit Level 3 (1022ms)",
+   "Schau auf die Uhr. Wie viel Uhr ist es?",
+   "background.mp3",
+   "[mark] ROUND 0 read: Uhren-Uhr Level 3/10? 0 / 8 halbe Stunden🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐1212345678910111:00 Uhr9:45 Uhr7:00 Uhr3:00 Uhr🎵",
+   "Stelle die Uhr auf halb fünf.",
+   "[mark] ROUND 1 set: Stelle die Uhr auf 4:30 Uhr! Ziehe die Zeiger oder tippe ➕➖! 🖐️",
+   "Schau auf die Uhr. Was macht Lumi um diese Zeit?",
+   "[mark] ROUND 2 daily: 💡 Tipp: Der kurze Zeiger = Stunden, der lange = Minuten. Es ist 7 Uhr!",
+   "Schau auf die Uhr. Wie viel Uhr ist es?",
+   "[mark] ROUND 3 read: Uhren-Uhr Level 3/10? 1 / 8 halbe Stunden🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐1212345678910113:00 Uhr1:30 Uhr1:45 Uhr10:30 Uhr🎵",
+   "[cut] Schau auf die Uhr. Wie viel Uhr ist es? (3028ms)",
+   "Stelle die Uhr auf halb vier.",
+   "[mark] ROUND 4 set: Stelle die Uhr auf 3:30 Uhr! Ziehe die Zeiger oder tippe ➕➖! 🖐️",
+   "Schau auf die Uhr. Was macht Lumi um diese Zeit?",
+   "[mark] ROUND 5 daily: Uhren-Uhr Level 3/10? 2 / 8 halbe Stunden🔊 NochmalEs ist 9 Uhr. Was macht Lumi jetzt? 🤔121234567891011🌅AufstehenKindergartenSpielplatz🎵",
+   "Schau auf die Uhr. Wie viel Uhr ist es?",
+   "[mark] ROUND 6 read: Uhren-Uhr Level 3/10? 3 / 8 halbe Stunden🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐1212345678910115:30 Uhr8:45 Uhr5:15 Uhr11:00 Uhr🎵",
+   "[cut] Schau auf die Uhr. Wie viel Uhr ist es? (2789ms)",
+   "Stelle die Uhr auf drei Uhr.",
+   "[mark] ROUND 7 set: Stelle die Uhr auf 3:00 Uhr! Ziehe die Zeiger oder tippe ➕➖! 🖐️",
+   "ja-super.mp3"
+  ],
+  "L5": [
+   "Guten Morgen, Mia! Was möchtest du heute lernen?",
+   "background.mp3",
+   "Weiter mit Level 5",
+   "[mark] GAME_START",
+   "[cut] Weiter mit Level 5 (1199ms)",
+   "Schau auf die Uhr. Wie viel Uhr ist es?",
+   "background.mp3",
+   "[mark] ROUND 0 read: Uhren-Uhr Level 5/10? 0 / 10 Viertelstunden🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐12123456789101151015202530354045505512:30 Uhr6:15 Uhr7:25 Uhr7:30 Uhr🎵",
+   "Stelle die Uhr auf Viertel nach sieben.",
+   "[mark] ROUND 1 set: Stelle die Uhr auf 7:15 Uhr! Ziehe die Zeiger oder tippe ➕➖! 🖐️",
+   "Schau auf die Uhr. Was macht Lumi um diese Zeit?",
+   "[mark] ROUND 2 daily: Es ist 7 Uhr. Was macht Lumi jetzt? 🤔",
+   "Schau auf die Uhr. Wie viel Uhr ist es?",
+   "[mark] ROUND 3 read: Uhren-Uhr Level 5/10? 2 / 10 Viertelstunden🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐1212345678910115101520253035404550555:00 Uhr4:15 Uhr1:30 Uhr12:20 Uhr🎵",
+   "Stelle die Uhr auf vier Uhr.",
+   "[mark] ROUND 4 set: Stelle die Uhr auf 4:00 Uhr! Ziehe die Zeiger oder tippe ➕➖! 🖐️",
+   "Schau auf die Uhr. Was macht Lumi um diese Zeit?",
+   "[mark] ROUND 5 daily: Es ist 9 Uhr. Was macht Lumi jetzt? 🤔",
+   "Schau auf die Uhr. Wie viel Uhr ist es?",
+   "[mark] ROUND 6 read: Uhren-Uhr Level 5/10? 5 / 10 Viertelstunden🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐1212345678910115101520253035404550555:45 Uhr11:00 Uhr12:55 Uhr11:15 Uhr🎵",
+   "Stelle die Uhr auf Viertel nach zwei.",
+   "[mark] ROUND 7 set: Stelle die Uhr auf 2:15 Uhr! Ziehe die Zeiger oder tippe ➕➖! 🖐️",
+   "Schau auf die Uhr. Was macht Lumi um diese Zeit?",
+   "[mark] ROUND 8 daily: Es ist 12 Uhr. Was macht Lumi jetzt? 🤔",
+   "Schau auf die Uhr. Wie viel Uhr ist es?",
+   "[mark] ROUND 9 read: Uhren-Uhr Level 5/10? 8 / 10 Viertelstunden🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐1212345678910115101520253035404550558:50 Uhr8:40 Uhr10:15 Uhr9:45 Uhr🎵",
+   "das-hast-du-super-gemacht.mp3"
+  ],
+  "L9": [
+   "Guten Morgen, Mia! Was möchtest du heute lernen?",
+   "background.mp3",
+   "Weiter mit Level 9",
+   "[mark] GAME_START",
+   "[cut] Weiter mit Level 9 (1301ms)",
+   "Schau auf die Uhr. Wie viel Uhr ist es?",
+   "[mark] ROUND 0 read: Uhren-Uhr Level 9/10? 0 / 12 jede Minute🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐1212345678910115101520253035404550556:40 Uhr1:35 Uhr2:15 Uhr7:35 Uhr🎵",
+   "Stelle die Uhr auf drei Uhr neunundfünfzig.",
+   "[mark] ROUND 1 set: Stelle die Uhr auf 3:59 Uhr! Ziehe die Zeiger oder tippe ➕➖! 🖐️",
+   "Schau auf die Uhr. Was macht Lumi um diese Zeit?",
+   "[mark] ROUND 2 daily: Uhren-Uhr Level 9/10? 1 / 12 jede Minute🔊 NochmalEs ist 7 Uhr. Was macht Lumi jetzt? 🤔121234567891011510152025303540455055MittagessenKindergarten🌅Aufstehen",
+   "Schau auf die Uhr. Wie viel Uhr ist es?",
+   "[mark] ROUND 3 read: Uhren-Uhr Level 9/10? 2 / 12 jede Minute🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐1212345678910115101520253035404550551:13 Uhr8:15 Uhr10:30 Uhr7:55 Uhr🎵",
+   "Stelle die Uhr auf fünf Uhr acht.",
+   "[mark] ROUND 4 set: Stelle die Uhr auf 5:08 Uhr! Ziehe die Zeiger oder tippe ➕➖! 🖐️",
+   "Schau auf die Uhr. Was macht Lumi um diese Zeit?",
+   "[mark] ROUND 5 daily: Uhren-Uhr Level 9/10? 4 / 12 jede Minute🔊 NochmalEs ist 9 Uhr. Was macht Lumi jetzt? 🤔121234567891011510152025303540455055SpielplatzMittagessenKindergarten🎵",
+   "[cut] Schau auf die Uhr. Was macht Lumi um diese Zeit? (3433ms)",
+   "Schau auf die Uhr. Wie viel Uhr ist es?",
+   "[mark] ROUND 6 read: Uhren-Uhr Level 9/10? 5 / 12 jede Minute🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐1212345678910115101520253035404550556:55 Uhr6:15 Uhr4:15 Uhr7:58 Uhr🎵",
+   "[cut] Schau auf die Uhr. Wie viel Uhr ist es? (2566ms)",
+   "Stelle die Uhr auf zwölf Uhr achtzehn.",
+   "[mark] ROUND 7 set: Stelle die Uhr auf 12:18 Uhr! Ziehe die Zeiger oder tippe ➕➖! 🖐️",
+   "Schau auf die Uhr. Was macht Lumi um diese Zeit?",
+   "[mark] ROUND 8 daily: Uhren-Uhr Level 9/10? 6 / 12 jede Minute🔊 NochmalEs ist 12 Uhr. Was macht Lumi jetzt? 🤔121234567891011510152025303540455055🌅AufstehenMittagessenKindergarten",
+   "[cut] Schau auf die Uhr. Was macht Lumi um diese Zeit? (3455ms)",
+   "Schau auf die Uhr. Wie viel Uhr ist es?",
+   "[mark] ROUND 9 read: Uhren-Uhr Level 9/10? 7 / 12 jede Minute🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐12123456789101151015202530354045505510:30 Uhr10:05 Uhr8:58 Uhr9:40 Uhr🎵",
+   "[cut] Schau auf die Uhr. Wie viel Uhr ist es? (2550ms)",
+   "Stelle die Uhr auf neun Uhr zwölf.",
+   "[mark] ROUND 10 set: Stelle die Uhr auf 9:12 Uhr! Ziehe die Zeiger oder tippe ➕➖! 🖐️",
+   "Schau auf die Uhr. Was macht Lumi um diese Zeit?",
+   "[mark] ROUND 11 daily: Uhren-Uhr Level 9/10? 8 / 12 jede Minute🔊 NochmalEs ist 3 Uhr. Was macht Lumi jetzt? 🤔121234567891011510152025303540455055AbendessenSpielplatz🌅Aufstehen🎵",
+   "das-hast-du-super-gemacht.mp3"
+  ],
+  "_rundenprotokoll": [
+   {
+    "level": 1,
+    "r": 0,
+    "mode": "read",
+    "bubble": "Uhren-Uhr Level 1/10? 0 / 8 ganze Stunden🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐1212345678910111:00 Uhr2:00 Uhr11:00 Uhr10:00 Uhr🎵"
+   },
+   {
+    "level": 1,
+    "r": 0,
+    "opts": [
+     "1:00 Uhr",
+     "2:00 Uhr",
+     "11:00 Uhr",
+     "10:00 Uhr"
+    ]
+   },
+   {
+    "level": 1,
+    "r": 0,
+    "after": "Uhren-Uhr Level 1/10? 0 / 8 ganze Stunden🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐1212345678910111:00 Uhr2:00 Uhr11:00 Uhr10:00 Uhr🎵"
+   },
+   {
+    "level": 1,
+    "r": 1,
+    "mode": "set",
+    "bubble": "Stelle die Uhr auf 7:00 Uhr! Ziehe die Zeiger oder tippe ➕➖! 🖐️"
+   },
+   {
+    "level": 1,
+    "r": 1,
+    "after": "💡 Tipp: Der kurze Zeiger = Stunden, der lange = Minuten. Es ist 7 Uhr!"
+   },
+   {
+    "level": 1,
+    "r": 2,
+    "mode": "daily",
+    "bubble": "💡 Tipp: Der kurze Zeiger = Stunden, der lange = Minuten. Es ist 7 Uhr!"
+   },
+   {
+    "level": 1,
+    "r": 2,
+    "opts": [
+     "Schlafengehen",
+     "Mittagessen",
+     "🌅Aufstehen"
+    ]
+   },
+   {
+    "level": 1,
+    "r": 2,
+    "after": "💡 Tipp: Der kurze Zeiger = Stunden, der lange = Minuten. Es ist 7 Uhr!"
+   },
+   {
+    "level": 1,
+    "r": 3,
+    "mode": "read",
+    "bubble": "💡 Tipp: Der kurze Zeiger = Stunden, der lange = Minuten. Es ist 1 Uhr!"
+   },
+   {
+    "level": 1,
+    "r": 3,
+    "opts": [
+     "8:00 Uhr",
+     "1:00 Uhr",
+     "12:00 Uhr",
+     "10:00 Uhr"
+    ]
+   },
+   {
+    "level": 1,
+    "r": 3,
+    "after": "💡 Tipp: Der kurze Zeiger = Stunden, der lange = Minuten. Es ist 1 Uhr!"
+   },
+   {
+    "level": 1,
+    "r": 4,
+    "mode": "set",
+    "bubble": "💡 Tipp: Der kurze Zeiger = Stunden, der lange = Minuten. Es ist 5 Uhr!"
+   },
+   {
+    "level": 1,
+    "r": 4,
+    "after": "Uhren-Uhr Level 1/10?🌟✨⭐🎉🌟✨ 1 / 8 ganze Stunden🔊 Nochmal⭐ Richtig! Es war 5 Uhr!121234567891011SM5:00 Uhr Stunde−+ Minute−+✅ Fertig!🎉Weiter! →🎵"
+   },
+   {
+    "level": 1,
+    "r": 5,
+    "mode": "daily",
+    "bubble": "Uhren-Uhr Level 1/10? 1 / 8 ganze Stunden🔊 NochmalEs ist 9 Uhr. Was macht Lumi jetzt? 🤔121234567891011🌅AufstehenKindergartenAbendessen🎵"
+   },
+   {
+    "level": 1,
+    "r": 5,
+    "opts": [
+     "🌅Aufstehen",
+     "Kindergarten",
+     "Abendessen"
+    ]
+   },
+   {
+    "level": 1,
+    "r": 5,
+    "after": "Uhren-Uhr Level 1/10?🌟✨⭐🎉🌟✨ 2 / 8 ganze Stunden🔊 Nochmal⭐ Richtig! Es war 9 Uhr!121234567891011🌅AufstehenKindergartenAbendessenWeiter! →🎵"
+   },
+   {
+    "level": 1,
+    "r": 6,
+    "mode": "read",
+    "bubble": "Uhren-Uhr Level 1/10? 2 / 8 ganze Stunden🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐1212345678910112:00 Uhr10:00 Uhr4:00 Uhr11:00 Uhr🎵"
+   },
+   {
+    "level": 1,
+    "r": 6,
+    "opts": [
+     "2:00 Uhr",
+     "10:00 Uhr",
+     "4:00 Uhr",
+     "11:00 Uhr"
+    ]
+   },
+   {
+    "level": 1,
+    "r": 6,
+    "after": "Uhren-Uhr Level 1/10?🌟✨⭐🎉🌟✨ 3 / 8 ganze Stunden🔊 Nochmal⭐ Richtig! Es war 2 Uhr!1212345678910112:00 Uhr10:00 Uhr4:00 Uhr11:00 UhrWeiter! →🎵"
+   },
+   {
+    "level": 1,
+    "r": 7,
+    "mode": "set",
+    "bubble": "Stelle die Uhr auf 3:00 Uhr! Ziehe die Zeiger oder tippe ➕➖! 🖐️"
+   },
+   {
+    "level": 1,
+    "r": 7,
+    "after": "Uhren-Uhr Level 1/10?🌟✨⭐🎉🌟✨ 4 / 8 ganze Stunden🔊 Nochmal⭐ Richtig! Es war 3 Uhr!121234567891011SM3:00 Uhr Stunde−+ Minute−+✅ Fertig!🎉Weiter! →🎵"
+   },
+   {
+    "level": 3,
+    "r": 0,
+    "mode": "read",
+    "bubble": "Uhren-Uhr Level 3/10? 0 / 8 halbe Stunden🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐1212345678910111:00 Uhr9:45 Uhr7:00 Uhr3:00 Uhr🎵"
+   },
+   {
+    "level": 3,
+    "r": 0,
+    "opts": [
+     "1:00 Uhr",
+     "9:45 Uhr",
+     "7:00 Uhr",
+     "3:00 Uhr"
+    ]
+   },
+   {
+    "level": 3,
+    "r": 0,
+    "after": "Uhren-Uhr Level 3/10? 0 / 8 halbe Stunden🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐1212345678910111:00 Uhr9:45 Uhr7:00 Uhr3:00 Uhr🎵"
+   },
+   {
+    "level": 3,
+    "r": 1,
+    "mode": "set",
+    "bubble": "Stelle die Uhr auf 4:30 Uhr! Ziehe die Zeiger oder tippe ➕➖! 🖐️"
+   },
+   {
+    "level": 3,
+    "r": 1,
+    "dragTest": "target 4:30 Uhr; dragged hour hand to where it should point → readout 5:30 Uhr"
+   },
+   {
+    "level": 3,
+    "r": 1,
+    "after": "💡 Tipp: Der kurze Zeiger = Stunden, der lange = Minuten. Es ist halb 5!"
+   },
+   {
+    "level": 3,
+    "r": 2,
+    "mode": "daily",
+    "bubble": "💡 Tipp: Der kurze Zeiger = Stunden, der lange = Minuten. Es ist 7 Uhr!"
+   },
+   {
+    "level": 3,
+    "r": 2,
+    "opts": [
+     "🌅Aufstehen",
+     "Spielplatz",
+     "Kindergarten"
+    ]
+   },
+   {
+    "level": 3,
+    "r": 2,
+    "after": "Uhren-Uhr Level 3/10?🌟✨⭐🎉🌟✨ 1 / 8 halbe Stunden🔊 Nochmal⭐ Richtig! Es war 7 Uhr!121234567891011🌅AufstehenSpielplatzKindergartenWeiter! →🎵"
+   },
+   {
+    "level": 3,
+    "r": 3,
+    "mode": "read",
+    "bubble": "Uhren-Uhr Level 3/10? 1 / 8 halbe Stunden🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐1212345678910113:00 Uhr1:30 Uhr1:45 Uhr10:30 Uhr🎵"
+   },
+   {
+    "level": 3,
+    "r": 3,
+    "opts": [
+     "3:00 Uhr",
+     "1:30 Uhr",
+     "1:45 Uhr",
+     "10:30 Uhr"
+    ]
+   },
+   {
+    "level": 3,
+    "r": 3,
+    "after": "Uhren-Uhr Level 3/10? 1 / 8 halbe Stunden🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐1212345678910113:00 Uhr1:30 Uhr1:45 Uhr10:30 Uhr🎵"
+   },
+   {
+    "level": 3,
+    "r": 4,
+    "mode": "set",
+    "bubble": "Stelle die Uhr auf 3:30 Uhr! Ziehe die Zeiger oder tippe ➕➖! 🖐️"
+   },
+   {
+    "level": 3,
+    "r": 4,
+    "dragTest": "target 3:30 Uhr; dragged hour hand to where it should point → readout 3:30 Uhr"
+   },
+   {
+    "level": 3,
+    "r": 4,
+    "after": "Uhren-Uhr Level 3/10?🌟✨⭐🎉🌟✨ 2 / 8 halbe Stunden🔊 Nochmal⭐ Richtig! Es war halb 4!121234567891011SM3:30 Uhr Stunde−+ Minute−+✅ Fertig!🎉Weiter! →🎵"
+   },
+   {
+    "level": 3,
+    "r": 5,
+    "mode": "daily",
+    "bubble": "Uhren-Uhr Level 3/10? 2 / 8 halbe Stunden🔊 NochmalEs ist 9 Uhr. Was macht Lumi jetzt? 🤔121234567891011🌅AufstehenKindergartenSpielplatz🎵"
+   },
+   {
+    "level": 3,
+    "r": 5,
+    "opts": [
+     "🌅Aufstehen",
+     "Kindergarten",
+     "Spielplatz"
+    ]
+   },
+   {
+    "level": 3,
+    "r": 5,
+    "after": "Uhren-Uhr Level 3/10?🌟✨⭐🎉🌟✨ 3 / 8 halbe Stunden🔊 Nochmal⭐ Richtig! Es war 9 Uhr!121234567891011🌅AufstehenKindergartenSpielplatzWeiter! →🎵"
+   },
+   {
+    "level": 3,
+    "r": 6,
+    "mode": "read",
+    "bubble": "Uhren-Uhr Level 3/10? 3 / 8 halbe Stunden🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐1212345678910115:30 Uhr8:45 Uhr5:15 Uhr11:00 Uhr🎵"
+   },
+   {
+    "level": 3,
+    "r": 6,
+    "opts": [
+     "5:30 Uhr",
+     "8:45 Uhr",
+     "5:15 Uhr",
+     "11:00 Uhr"
+    ]
+   },
+   {
+    "level": 3,
+    "r": 6,
+    "after": "Uhren-Uhr Level 3/10? 3 / 8 halbe Stunden🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐1212345678910115:30 Uhr8:45 Uhr5:15 Uhr11:00 Uhr🎵"
+   },
+   {
+    "level": 3,
+    "r": 7,
+    "mode": "set",
+    "bubble": "Stelle die Uhr auf 3:00 Uhr! Ziehe die Zeiger oder tippe ➕➖! 🖐️"
+   },
+   {
+    "level": 3,
+    "r": 7,
+    "after": "Uhren-Uhr Level 3/10?🌟✨⭐🎉🌟✨ 4 / 8 halbe Stunden🔊 Nochmal⭐ Richtig! Es war 3 Uhr!121234567891011SM3:00 Uhr Stunde−+ Minute−+✅ Fertig!🎉Weiter! →🎵"
+   },
+   {
+    "level": 5,
+    "r": 0,
+    "mode": "read",
+    "bubble": "Uhren-Uhr Level 5/10? 0 / 10 Viertelstunden🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐12123456789101151015202530354045505512:30 Uhr6:15 Uhr7:25 Uhr7:30 Uhr🎵"
+   },
+   {
+    "level": 5,
+    "r": 0,
+    "opts": [
+     "12:30 Uhr",
+     "6:15 Uhr",
+     "7:25 Uhr",
+     "7:30 Uhr"
+    ]
+   },
+   {
+    "level": 5,
+    "r": 0,
+    "after": "Uhren-Uhr Level 5/10? 0 / 10 Viertelstunden🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐12123456789101151015202530354045505512:30 Uhr6:15 Uhr7:25 Uhr7:30 Uhr🎵"
+   },
+   {
+    "level": 5,
+    "r": 1,
+    "mode": "set",
+    "bubble": "Stelle die Uhr auf 7:15 Uhr! Ziehe die Zeiger oder tippe ➕➖! 🖐️"
+   },
+   {
+    "level": 5,
+    "r": 1,
+    "dragTest": "target 7:15 Uhr; dragged hour hand to where it should point → readout 7:15 Uhr"
+   },
+   {
+    "level": 5,
+    "r": 1,
+    "after": "⭐ Richtig! Es war Viertel nach 7!"
+   },
+   {
+    "level": 5,
+    "r": 2,
+    "mode": "daily",
+    "bubble": "Es ist 7 Uhr. Was macht Lumi jetzt? 🤔"
+   },
+   {
+    "level": 5,
+    "r": 2,
+    "opts": [
+     "🌅Aufstehen",
+     "Abendessen",
+     "Kindergarten"
+    ]
+   },
+   {
+    "level": 5,
+    "r": 2,
+    "after": "⭐ Richtig! Es war 7 Uhr!"
+   },
+   {
+    "level": 5,
+    "r": 3,
+    "mode": "read",
+    "bubble": "Uhren-Uhr Level 5/10? 2 / 10 Viertelstunden🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐1212345678910115101520253035404550555:00 Uhr4:15 Uhr1:30 Uhr12:20 Uhr🎵"
+   },
+   {
+    "level": 5,
+    "r": 3,
+    "opts": [
+     "5:00 Uhr",
+     "4:15 Uhr",
+     "1:30 Uhr",
+     "12:20 Uhr"
+    ]
+   },
+   {
+    "level": 5,
+    "r": 3,
+    "after": "⭐ Richtig! Es war 5 Uhr!"
+   },
+   {
+    "level": 5,
+    "r": 4,
+    "mode": "set",
+    "bubble": "Stelle die Uhr auf 4:00 Uhr! Ziehe die Zeiger oder tippe ➕➖! 🖐️"
+   },
+   {
+    "level": 5,
+    "r": 4,
+    "after": "⭐ Richtig! Es war 4 Uhr!"
+   },
+   {
+    "level": 5,
+    "r": 5,
+    "mode": "daily",
+    "bubble": "Es ist 9 Uhr. Was macht Lumi jetzt? 🤔"
+   },
+   {
+    "level": 5,
+    "r": 5,
+    "opts": [
+     "Kindergarten",
+     "Abendessen",
+     "Mittagessen"
+    ]
+   },
+   {
+    "level": 5,
+    "r": 5,
+    "after": "⭐ Richtig! Es war 9 Uhr!"
+   },
+   {
+    "level": 5,
+    "r": 6,
+    "mode": "read",
+    "bubble": "Uhren-Uhr Level 5/10? 5 / 10 Viertelstunden🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐1212345678910115101520253035404550555:45 Uhr11:00 Uhr12:55 Uhr11:15 Uhr🎵"
+   },
+   {
+    "level": 5,
+    "r": 6,
+    "opts": [
+     "5:45 Uhr",
+     "11:00 Uhr",
+     "12:55 Uhr",
+     "11:15 Uhr"
+    ]
+   },
+   {
+    "level": 5,
+    "r": 6,
+    "after": "⭐ Richtig! Es war Viertel vor 6!"
+   },
+   {
+    "level": 5,
+    "r": 7,
+    "mode": "set",
+    "bubble": "Stelle die Uhr auf 2:15 Uhr! Ziehe die Zeiger oder tippe ➕➖! 🖐️"
+   },
+   {
+    "level": 5,
+    "r": 7,
+    "dragTest": "target 2:15 Uhr; dragged hour hand to where it should point → readout 2:15 Uhr"
+   },
+   {
+    "level": 5,
+    "r": 7,
+    "after": "⭐ Richtig! Es war Viertel nach 2!"
+   },
+   {
+    "level": 5,
+    "r": 8,
+    "mode": "daily",
+    "bubble": "Es ist 12 Uhr. Was macht Lumi jetzt? 🤔"
+   },
+   {
+    "level": 5,
+    "r": 8,
+    "opts": [
+     "Schlafengehen",
+     "🌅Aufstehen",
+     "Mittagessen"
+    ]
+   },
+   {
+    "level": 5,
+    "r": 8,
+    "after": "⭐ Richtig! Es war 12 Uhr!"
+   },
+   {
+    "level": 5,
+    "r": 9,
+    "mode": "read",
+    "bubble": "Uhren-Uhr Level 5/10? 8 / 10 Viertelstunden🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐1212345678910115101520253035404550558:50 Uhr8:40 Uhr10:15 Uhr9:45 Uhr🎵"
+   },
+   {
+    "level": 5,
+    "r": 9,
+    "opts": [
+     "8:50 Uhr",
+     "8:40 Uhr",
+     "10:15 Uhr",
+     "9:45 Uhr"
+    ]
+   },
+   {
+    "level": 5,
+    "r": 9,
+    "after": "Uhren-Uhr Level 5/10? 8 / 10 Viertelstunden🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐1212345678910115101520253035404550558:50 Uhr8:40 Uhr10:15 Uhr9:45 Uhr🎵"
+   },
+   {
+    "level": 9,
+    "r": 0,
+    "mode": "read",
+    "bubble": "Uhren-Uhr Level 9/10? 0 / 12 jede Minute🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐1212345678910115101520253035404550556:40 Uhr1:35 Uhr2:15 Uhr7:35 Uhr🎵"
+   },
+   {
+    "level": 9,
+    "r": 0,
+    "opts": [
+     "6:40 Uhr",
+     "1:35 Uhr",
+     "2:15 Uhr",
+     "7:35 Uhr"
+    ]
+   },
+   {
+    "level": 9,
+    "r": 0,
+    "after": "Uhren-Uhr Level 9/10? 0 / 12 jede Minute🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐1212345678910115101520253035404550556:40 Uhr1:35 Uhr2:15 Uhr7:35 Uhr🎵"
+   },
+   {
+    "level": 9,
+    "r": 1,
+    "mode": "set",
+    "bubble": "Stelle die Uhr auf 3:59 Uhr! Ziehe die Zeiger oder tippe ➕➖! 🖐️"
+   },
+   {
+    "level": 9,
+    "r": 1,
+    "dragTest": "target 3:59 Uhr; dragged hour hand to where it should point → readout 4:00 Uhr"
+   },
+   {
+    "level": 9,
+    "r": 1,
+    "after": "⭐ Richtig! Es war 3:59 Uhr!"
+   },
+   {
+    "level": 9,
+    "r": 2,
+    "mode": "daily",
+    "bubble": "Uhren-Uhr Level 9/10? 1 / 12 jede Minute🔊 NochmalEs ist 7 Uhr. Was macht Lumi jetzt? 🤔121234567891011510152025303540455055MittagessenKindergarten🌅Aufstehen"
+   },
+   {
+    "level": 9,
+    "r": 2,
+    "opts": [
+     "Mittagessen",
+     "Kindergarten",
+     "🌅Aufstehen"
+    ]
+   },
+   {
+    "level": 9,
+    "r": 2,
+    "after": "⭐ Richtig! Es war 7 Uhr!"
+   },
+   {
+    "level": 9,
+    "r": 3,
+    "mode": "read",
+    "bubble": "Uhren-Uhr Level 9/10? 2 / 12 jede Minute🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐1212345678910115101520253035404550551:13 Uhr8:15 Uhr10:30 Uhr7:55 Uhr🎵"
+   },
+   {
+    "level": 9,
+    "r": 3,
+    "opts": [
+     "1:13 Uhr",
+     "8:15 Uhr",
+     "10:30 Uhr",
+     "7:55 Uhr"
+    ]
+   },
+   {
+    "level": 9,
+    "r": 3,
+    "after": "⭐ Richtig! Es war 1:13 Uhr!"
+   },
+   {
+    "level": 9,
+    "r": 4,
+    "mode": "set",
+    "bubble": "Stelle die Uhr auf 5:08 Uhr! Ziehe die Zeiger oder tippe ➕➖! 🖐️"
+   },
+   {
+    "level": 9,
+    "r": 4,
+    "dragTest": "target 5:08 Uhr; dragged hour hand to where it should point → readout 5:10 Uhr"
+   },
+   {
+    "level": 9,
+    "r": 4,
+    "after": "⭐ Richtig! Es war 5:08 Uhr!"
+   },
+   {
+    "level": 9,
+    "r": 5,
+    "mode": "daily",
+    "bubble": "Uhren-Uhr Level 9/10? 4 / 12 jede Minute🔊 NochmalEs ist 9 Uhr. Was macht Lumi jetzt? 🤔121234567891011510152025303540455055SpielplatzMittagessenKindergarten🎵"
+   },
+   {
+    "level": 9,
+    "r": 5,
+    "opts": [
+     "Spielplatz",
+     "Mittagessen",
+     "Kindergarten"
+    ]
+   },
+   {
+    "level": 9,
+    "r": 5,
+    "after": "⭐ Richtig! Es war 9 Uhr!"
+   },
+   {
+    "level": 9,
+    "r": 6,
+    "mode": "read",
+    "bubble": "Uhren-Uhr Level 9/10? 5 / 12 jede Minute🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐1212345678910115101520253035404550556:55 Uhr6:15 Uhr4:15 Uhr7:58 Uhr🎵"
+   },
+   {
+    "level": 9,
+    "r": 6,
+    "opts": [
+     "6:55 Uhr",
+     "6:15 Uhr",
+     "4:15 Uhr",
+     "7:58 Uhr"
+    ]
+   },
+   {
+    "level": 9,
+    "r": 6,
+    "after": "Uhren-Uhr Level 9/10? 5 / 12 jede Minute🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐1212345678910115101520253035404550556:55 Uhr6:15 Uhr4:15 Uhr7:58 Uhr🎵"
+   },
+   {
+    "level": 9,
+    "r": 7,
+    "mode": "set",
+    "bubble": "Stelle die Uhr auf 12:18 Uhr! Ziehe die Zeiger oder tippe ➕➖! 🖐️"
+   },
+   {
+    "level": 9,
+    "r": 7,
+    "dragTest": "target 12:18 Uhr; dragged hour hand to where it should point → readout 12:20 Uhr"
+   },
+   {
+    "level": 9,
+    "r": 7,
+    "after": "⭐ Richtig! Es war 12:18 Uhr!"
+   },
+   {
+    "level": 9,
+    "r": 8,
+    "mode": "daily",
+    "bubble": "Uhren-Uhr Level 9/10? 6 / 12 jede Minute🔊 NochmalEs ist 12 Uhr. Was macht Lumi jetzt? 🤔121234567891011510152025303540455055🌅AufstehenMittagessenKindergarten"
+   },
+   {
+    "level": 9,
+    "r": 8,
+    "opts": [
+     "🌅Aufstehen",
+     "Mittagessen",
+     "Kindergarten"
+    ]
+   },
+   {
+    "level": 9,
+    "r": 8,
+    "after": "⭐ Richtig! Es war 12 Uhr!"
+   },
+   {
+    "level": 9,
+    "r": 9,
+    "mode": "read",
+    "bubble": "Uhren-Uhr Level 9/10? 7 / 12 jede Minute🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐12123456789101151015202530354045505510:30 Uhr10:05 Uhr8:58 Uhr9:40 Uhr🎵"
+   },
+   {
+    "level": 9,
+    "r": 9,
+    "opts": [
+     "10:30 Uhr",
+     "10:05 Uhr",
+     "8:58 Uhr",
+     "9:40 Uhr"
+    ]
+   },
+   {
+    "level": 9,
+    "r": 9,
+    "after": "Uhren-Uhr Level 9/10? 7 / 12 jede Minute🔊 NochmalWelche Uhrzeit zeigt die Uhr? 🕐12123456789101151015202530354045505510:30 Uhr10:05 Uhr8:58 Uhr9:40 Uhr🎵"
+   },
+   {
+    "level": 9,
+    "r": 10,
+    "mode": "set",
+    "bubble": "Stelle die Uhr auf 9:12 Uhr! Ziehe die Zeiger oder tippe ➕➖! 🖐️"
+   },
+   {
+    "level": 9,
+    "r": 10,
+    "dragTest": "target 9:12 Uhr; dragged hour hand to where it should point → readout 9:10 Uhr"
+   },
+   {
+    "level": 9,
+    "r": 10,
+    "after": "⭐ Richtig! Es war 9:12 Uhr!"
+   },
+   {
+    "level": 9,
+    "r": 11,
+    "mode": "daily",
+    "bubble": "Uhren-Uhr Level 9/10? 8 / 12 jede Minute🔊 NochmalEs ist 3 Uhr. Was macht Lumi jetzt? 🤔121234567891011510152025303540455055AbendessenSpielplatz🌅Aufstehen🎵"
+   },
+   {
+    "level": 9,
+    "r": 11,
+    "opts": [
+     "Abendessen",
+     "Spielplatz",
+     "🌅Aufstehen"
+    ]
+   },
+   {
+    "level": 9,
+    "r": 11,
+    "after": "Uhren-Uhr Level 9/10?🌟✨⭐🎉🌟✨ 9 / 12 jede Minute🔊 Nochmal⭐ Richtig! Es war 3 Uhr!121234567891011510152025303540455055AbendessenSpielplatz🌅AufstehenWeiter! →"
+   }
+  ]
+ },
+ "Formen-Land (shapes-land)": {
+  "L1": [
+   "Guten Morgen, Mia! Was möchtest du heute lernen?",
+   "background.mp3",
+   "Finde das Quadrat!",
+   "[mark] GAME_START",
+   "[mark] ROUND 0: Formen-Land Level 1/10?Finde das Quadrat! 🔍🔊🎵",
+   "Das ist ein Kreis.",
+   "Quadrat! Richtig.",
+   "Finde den Kreis!",
+   "[mark] ROUND 1: Formen-Land Level 1/10?Finde den Kreis! 🔍🔊🎵",
+   "[cut] Finde den Kreis! (568ms)",
+   "Das ist ein Quadrat.",
+   "Kreis! Richtig.",
+   "Finde das Quadrat!",
+   "[mark] ROUND 2: Formen-Land Level 1/10?Finde das Quadrat! 🔍🔊🎵",
+   "[cut] Finde das Quadrat! (940ms)",
+   "Das ist ein Kreis.",
+   "Quadrat! Richtig.",
+   "Finde das Quadrat!",
+   "[mark] ROUND 3: Formen-Land Level 1/10?Finde das Quadrat! 🔍🔊🎵",
+   "[cut] Finde das Quadrat! (637ms)",
+   "Quadrat! Richtig.",
+   "Finde den Kreis!",
+   "[mark] ROUND 4: Formen-Land Level 1/10?Finde den Kreis! 🔍🔊🎵",
+   "background.mp3",
+   "[cut] Finde den Kreis! (623ms)",
+   "Kreis! Richtig.",
+   "Finde das Dreieck!",
+   "[mark] ROUND 5: Formen-Land Level 1/10?Finde das Dreieck! 🔍🔊🎵",
+   "[cut] Finde das Dreieck! (584ms)",
+   "Dreieck! Richtig.",
+   "Finde das Quadrat!",
+   "[mark] ROUND 6: Formen-Land Level 1/10?Finde das Quadrat! 🔍🔊🎵",
+   "[cut] Finde das Quadrat! (753ms)",
+   "Quadrat! Richtig.",
+   "Finde das Quadrat!",
+   "[mark] ROUND 7: Formen-Land Level 1/10?Finde das Quadrat! 🔍🔊🎵",
+   "[cut] Finde das Quadrat! (848ms)",
+   "Quadrat! Richtig.",
+   "das-hast-du-super-gemacht.mp3"
+  ],
+  "L5": [
+   "Guten Morgen, Mia! Was möchtest du heute lernen?",
+   "background.mp3",
+   "background.mp3",
+   "Weiter mit Level 5",
+   "[mark] GAME_START",
+   "[cut] Weiter mit Level 5 (1183ms)",
+   "Finde das Dreieck!",
+   "[mark] ROUND 0: Formen-Land Level 5/10?Finde das Dreieck! 🔍🔊🎵",
+   "[cut] Finde das Dreieck! (675ms)",
+   "Das ist ein Stern.",
+   "Dreieck! Richtig.",
+   "Tippe die Formen von klein nach groß!",
+   "[mark] ROUND 1: Tippe die Formen von klein nach groß! 📏",
+   "[cut] Tippe die Formen von klein nach groß! (1365ms)",
+   "Fang mit der kleinsten an!",
+   "Von klein nach groß. Super!",
+   "Finde den Kreis!",
+   "[mark] ROUND 2: Formen-Land Level 5/10?Finde den Kreis! 🔍🔊🎵",
+   "[cut] Finde den Kreis! (620ms)",
+   "Das ist ein Rechteck.",
+   "Kreis! Richtig.",
+   "Tippe die Formen von klein nach groß!",
+   "[mark] ROUND 3: Tippe die Formen von klein nach groß! 📏",
+   "[cut] Tippe die Formen von klein nach groß! (1272ms)",
+   "Fang mit der kleinsten an!",
+   "Von klein nach groß. Super!",
+   "Finde den Kreis!",
+   "[mark] ROUND 4: Formen-Land Level 5/10?Finde den Kreis! 🔍🔊🎵",
+   "[cut] Finde den Kreis! (603ms)",
+   "Kreis! Richtig.",
+   "Tippe die Formen von klein nach groß!",
+   "[mark] ROUND 5: Tippe die Formen von klein nach groß! 📏",
+   "[cut] Tippe die Formen von klein nach groß! (1138ms)",
+   "Fang mit der kleinsten an!",
+   "Von klein nach groß. Super!",
+   "Finde das Quadrat!",
+   "[mark] ROUND 6: Formen-Land Level 5/10?Finde das Quadrat! 🔍🔊🎵",
+   "[cut] Finde das Quadrat! (712ms)",
+   "Quadrat! Richtig.",
+   "Tippe die Formen von klein nach groß!",
+   "[mark] ROUND 7: Tippe die Formen von klein nach groß! 📏",
+   "[cut] Tippe die Formen von klein nach groß! (1217ms)",
+   "Fang mit der kleinsten an!",
+   "Von klein nach groß. Super!",
+   "das-hast-du-super-gemacht.mp3"
+  ],
+  "L9": [
+   "Guten Morgen, Mia! Was möchtest du heute lernen?",
+   "background.mp3",
+   "Weiter mit Level 9",
+   "[mark] GAME_START",
+   "Finde das Quadrat!",
+   "[mark] ROUND 0: Formen-Land Level 9/10?Finde das Quadrat! 🔍🔊🎵",
+   "[cut] Finde das Quadrat! (405ms)",
+   "Das ist ein Rechteck.",
+   "Quadrat! Richtig.",
+   "Was kommt als Nächstes?",
+   "[mark] ROUND 1: Formen-Land Level 9/10?Was kommt als Nächstes? 🔮?🎵",
+   "[cut] Was kommt als Nächstes? (626ms)",
+   "Schau dir das Muster nochmal an.",
+   "[cut] Schau dir das Muster nochmal an. (1443ms)",
+   "Schau dir das Muster nochmal an.",
+   "[cut] Schau dir das Muster nochmal an. (1513ms)",
+   "Genau, so geht das Muster weiter!",
+   "background.mp3",
+   "Tippe die Formen von klein nach groß!",
+   "[mark] ROUND 2: Tippe die Formen von klein nach groß! 📏",
+   "[cut] Tippe die Formen von klein nach groß! (1252ms)",
+   "Fang mit der kleinsten an!",
+   "Von klein nach groß. Super!",
+   "Finde das Dreieck!",
+   "[mark] ROUND 3: Formen-Land Level 9/10?Finde das Dreieck! 🔍🔊🎵",
+   "[cut] Finde das Dreieck! (818ms)",
+   "Dreieck! Richtig.",
+   "Was kommt als Nächstes?",
+   "[mark] ROUND 4: Formen-Land Level 9/10?Was kommt als Nächstes? 🔮?🎵",
+   "[cut] Was kommt als Nächstes? (756ms)",
+   "Genau, so geht das Muster weiter!",
+   "Tippe die Formen von klein nach groß!",
+   "[mark] ROUND 5: Tippe die Formen von klein nach groß! 📏",
+   "[cut] Tippe die Formen von klein nach groß! (1317ms)",
+   "Fang mit der kleinsten an!",
+   "Von klein nach groß. Super!",
+   "Finde das Rechteck!",
+   "[mark] ROUND 6: Formen-Land Level 9/10?Finde das Rechteck! 🔍🔊🎵",
+   "[cut] Finde das Rechteck! (1161ms)",
+   "Rechteck! Richtig.",
+   "[cut] Rechteck! Richtig. (1490ms)",
+   "Was kommt als Nächstes?",
+   "[mark] ROUND 7: Formen-Land Level 9/10?Was kommt als Nächstes? 🔮?🎵",
+   "[cut] Was kommt als Nächstes? (369ms)",
+   "Schau dir das Muster nochmal an.",
+   "[cut] Schau dir das Muster nochmal an. (1419ms)",
+   "Schau dir das Muster nochmal an.",
+   "[cut] Schau dir das Muster nochmal an. (1604ms)",
+   "Genau, so geht das Muster weiter!",
+   "das-hast-du-super-gemacht.mp3"
+  ],
+  "_rundenprotokoll": [
+   {
+    "level": 1,
+    "r": 0,
+    "mode": "match",
+    "name": "Quadrat",
+    "opts": [
+     "Quadrat",
+     "Kreis",
+     "Dreieck"
+    ]
+   },
+   {
+    "level": 1,
+    "r": 1,
+    "mode": "match",
+    "name": "Kreis",
+    "opts": [
+     "Kreis",
+     "Quadrat",
+     "Dreieck"
+    ]
+   },
+   {
+    "level": 1,
+    "r": 2,
+    "mode": "match",
+    "name": "Quadrat",
+    "opts": [
+     "Kreis",
+     "Quadrat",
+     "Dreieck"
+    ]
+   },
+   {
+    "level": 1,
+    "r": 3,
+    "mode": "match",
+    "name": "Quadrat",
+    "opts": [
+     "Quadrat",
+     "Kreis",
+     "Dreieck"
+    ]
+   },
+   {
+    "level": 1,
+    "r": 4,
+    "mode": "match",
+    "name": "Kreis",
+    "opts": [
+     "Quadrat",
+     "Kreis",
+     "Dreieck"
+    ]
+   },
+   {
+    "level": 1,
+    "r": 5,
+    "mode": "match",
+    "name": "Dreieck",
+    "opts": [
+     "Dreieck",
+     "Quadrat",
+     "Kreis"
+    ]
+   },
+   {
+    "level": 1,
+    "r": 6,
+    "mode": "match",
+    "name": "Quadrat",
+    "opts": [
+     "Kreis",
+     "Quadrat",
+     "Dreieck"
+    ]
+   },
+   {
+    "level": 1,
+    "r": 7,
+    "mode": "match",
+    "name": "Quadrat",
+    "opts": [
+     "Kreis",
+     "Quadrat",
+     "Dreieck"
+    ]
+   },
+   {
+    "level": 5,
+    "r": 0,
+    "mode": "match",
+    "name": "Dreieck",
+    "opts": [
+     "Stern",
+     "Dreieck",
+     "Quadrat",
+     "Rechteck"
+    ]
+   },
+   {
+    "level": 5,
+    "r": 1,
+    "mode": "size",
+    "sizes": [
+     70,
+     52,
+     34
+    ]
+   },
+   {
+    "level": 5,
+    "r": 2,
+    "mode": "match",
+    "name": "Kreis",
+    "opts": [
+     "Rechteck",
+     "Quadrat",
+     "Kreis",
+     "Dreieck"
+    ]
+   },
+   {
+    "level": 5,
+    "r": 3,
+    "mode": "size",
+    "sizes": [
+     34,
+     70,
+     52
+    ]
+   },
+   {
+    "level": 5,
+    "r": 4,
+    "mode": "match",
+    "name": "Kreis",
+    "opts": [
+     "Stern",
+     "Quadrat",
+     "Rechteck",
+     "Kreis"
+    ]
+   },
+   {
+    "level": 5,
+    "r": 5,
+    "mode": "size",
+    "sizes": [
+     52,
+     70,
+     34
+    ]
+   },
+   {
+    "level": 5,
+    "r": 6,
+    "mode": "match",
+    "name": "Quadrat",
+    "opts": [
+     "Kreis",
+     "Quadrat",
+     "Rechteck",
+     "Stern"
+    ]
+   },
+   {
+    "level": 5,
+    "r": 7,
+    "mode": "size",
+    "sizes": [
+     52,
+     34,
+     70
+    ]
+   },
+   {
+    "level": 9,
+    "r": 0,
+    "mode": "match",
+    "name": "Quadrat",
+    "opts": [
+     "Rechteck",
+     "Herz",
+     "Quadrat",
+     "Kreis"
+    ]
+   },
+   {
+    "level": 9,
+    "r": 1,
+    "mode": "pattern",
+    "seqLen": 6,
+    "correctWasSeqFirst": true,
+    "opts": [
+     {
+      "l": "Kreis",
+      "same": false
+     },
+     {
+      "l": "Quadrat",
+      "same": false
+     },
+     {
+      "l": "Stern",
+      "same": true
+     }
+    ]
+   },
+   {
+    "level": 9,
+    "r": 2,
+    "mode": "size",
+    "sizes": [
+     52,
+     70,
+     88,
+     34,
+     106
+    ]
+   },
+   {
+    "level": 9,
+    "r": 3,
+    "mode": "match",
+    "name": "Dreieck",
+    "opts": [
+     "Rechteck",
+     "Kreis",
+     "Stern",
+     "Dreieck"
+    ]
+   },
+   {
+    "level": 9,
+    "r": 4,
+    "mode": "pattern",
+    "seqLen": 6,
+    "correctWasSeqFirst": true,
+    "opts": [
+     {
+      "l": "Herz",
+      "same": true
+     },
+     {
+      "l": "Kreis",
+      "same": false
+     },
+     {
+      "l": "Quadrat",
+      "same": false
+     }
+    ]
+   },
+   {
+    "level": 9,
+    "r": 5,
+    "mode": "size",
+    "sizes": [
+     52,
+     106,
+     34,
+     88,
+     70
+    ]
+   },
+   {
+    "level": 9,
+    "r": 6,
+    "mode": "match",
+    "name": "Rechteck",
+    "opts": [
+     "Herz",
+     "Rechteck",
+     "Quadrat",
+     "Kreis"
+    ]
+   },
+   {
+    "level": 9,
+    "r": 7,
+    "mode": "pattern",
+    "seqLen": 6,
+    "correctWasSeqFirst": true,
+    "opts": [
+     {
+      "l": "Herz",
+      "same": false
+     },
+     {
+      "l": "Rechteck",
+      "same": false
+     },
+     {
+      "l": "Kreis",
+      "same": true
+     }
+    ]
+   }
+  ]
+ },
+ "Musterpark (patterns)": {
+  "L1": [
+   "Guten Morgen, Mia! Was möchtest du heute lernen?",
+   "background.mp3",
+   "Was kommt als Nächstes?",
+   "background.mp3",
+   "[mark] GAME_START",
+   "Was kommt als Nächstes?",
+   "Was kommt als Nächstes?",
+   "Was kommt als Nächstes?",
+   "Was kommt als Nächstes?",
+   "Was kommt als Nächstes?",
+   "Was kommt als Nächstes?",
+   "Was kommt als Nächstes?",
+   "Was kommt als Nächstes?",
+   "Was kommt als Nächstes?",
+   "klasse-versuch-es-direkt-noch-einmal.mp3"
+  ],
+  "L10": [
+   "Guten Morgen, Mia! Was möchtest du heute lernen?",
+   "background.mp3",
+   "Weiter mit Level 10",
+   "[cut] Weiter mit Level 10 (511ms)",
+   "[mark] GAME_START",
+   "Was kommt nach dem Lücken-Muster?",
+   "background.mp3",
+   "Was kommt als Nächstes?",
+   "Was kommt als Nächstes?",
+   "Was kommt als Nächstes?",
+   "Was kommt nach dem Lücken-Muster?",
+   "Was kommt als Nächstes?",
+   "Was kommt als Nächstes?",
+   "Was kommt nach dem Lücken-Muster?",
+   "Was kommt nach dem Lücken-Muster?",
+   "Was kommt als Nächstes?",
+   "klasse-versuch-es-direkt-noch-einmal.mp3"
+  ],
+  "L6_mobile": [
+   "Guten Morgen, Mia! Was möchtest du heute lernen?",
+   "background.mp3",
+   "Weiter mit Level 6",
+   "[cut] Weiter mit Level 6 (536ms)",
+   "[mark] GAME_START",
+   "Was kommt als Nächstes?"
+  ]
+ },
+ "Lumi-Labyrinth (maze)": {
+  "L1": [
+   "Guten Morgen, Mia! Was möchtest du heute lernen?",
+   "background.mp3",
+   "background.mp3",
+   "Sammle drei Zaubertränke und finde den Ausgang!",
+   "[mark] GAME_START",
+   "[mark] GO TO EXIT WITHOUT POTIONS",
+   "Zaubertrank 1 von 3!",
+   "Zaubertrank 2 von 3!",
+   "Zaubertrank 3 von 3!",
+   "[mark] TO EXIT",
+   "Super! Du hast das Labyrinth gemeistert!",
+   "das-hast-du-super-gemacht.mp3"
+  ],
+  "L5": [
+   "Guten Morgen, Mia! Was möchtest du heute lernen?",
+   "background.mp3",
+   "Weiter mit Level 5",
+   "[mark] GAME_START",
+   "background.mp3",
+   "Sammle drei Zaubertränke und finde den Ausgang, pass auf den Drachen auf!",
+   "Zaubertrank 1 von 3!",
+   "Zaubertrank 2 von 3!",
+   "Zaubertrank 3 von 3!",
+   "[mark] TO EXIT",
+   "background.mp3",
+   "Super! Du hast das Labyrinth gemeistert!",
+   "das-hast-du-super-gemacht.mp3"
+  ],
+  "L10_mobile": [
+   "Guten Morgen, Mia! Was möchtest du heute lernen?",
+   "background.mp3",
+   "Level 6",
+   "Weiter mit Level 10",
+   "[mark] GAME_START",
+   "background.mp3",
+   "[cut] Weiter mit Level 10 (1280ms)",
+   "Sammle drei Zaubertränke und finde den Ausgang, pass auf den Drachen auf!",
+   "background.mp3"
+  ]
+ }
+}
