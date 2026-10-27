@@ -1,38 +1,41 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useApp } from '../AppContext.jsx'
 import { useT } from '../i18n.js'
-import { PixelLumi, uiSpr } from '../components/PixelUI.jsx'
+import { PixelLumi, PxIcon, uiSpr } from '../components/PixelUI.jsx'
+import { narrate } from '../narrator.js'
+import { hearable } from '../lib/hearable.js'
+import { sayNumber } from '../tts.js'
 
-export const AVATARS = ['🐻','🐼','🦁','🐨','🦊','🐧','🦋','🐬','🦄','🐸','🐙','🐯','🐮','🐷','🐔','🦉']
-export const AGES = [3, 4, 5, 6, 7]
-const COLORS = ['#FF6B6B','#FF9F43','#FFD93D','#6BCB77','#4ECDC4','#74B9FF','#A29BFE','#FD79A8','#FF6B6B','#00B894','#6C63FF','#E17055','#0984E3','#00CEC9','#FDCB6E','#E84393']
+// The animals a child can be, with the name Lumi says when it is tapped and
+// the name a profile gets when nobody types one in.
+export const AVATAR_INFO = [
+  { e: '🐻', name: 'Bär',   art: 'der' }, { e: '🐼', name: 'Panda',   art: 'der' },
+  { e: '🦁', name: 'Löwe',  art: 'der' }, { e: '🐨', name: 'Koala',   art: 'der' },
+  { e: '🦊', name: 'Fuchs', art: 'der' }, { e: '🐧', name: 'Pinguin', art: 'der' },
+  { e: '🦋', name: 'Schmetterling', art: 'der' }, { e: '🐬', name: 'Delfin', art: 'der' },
+  { e: '🦄', name: 'Einhorn', art: 'das' }, { e: '🐸', name: 'Frosch', art: 'der' },
+  { e: '🐙', name: 'Krake', art: 'die' }, { e: '🐯', name: 'Tiger',  art: 'der' },
+  { e: '🐮', name: 'Kuh',   art: 'die' }, { e: '🐷', name: 'Schwein', art: 'das' },
+  { e: '🐔', name: 'Huhn',  art: 'das' }, { e: '🦉', name: 'Eule',    art: 'die' },
+]
+export const AVATARS = AVATAR_INFO.map(a => a.e)
+export const avatarName = e => AVATAR_INFO.find(a => a.e === e)?.name ?? 'Kind'
+const sayAvatar = e => { const a = AVATAR_INFO.find(x => x.e === e); return a ? `${a.art[0].toUpperCase()}${a.art.slice(1)} ${a.name}!` : '' }
+// The app is made for children from 4 to 7
+export const AGES = [4, 5, 6, 7]
 
-function SimpleBtn({ onClick, disabled, gold, green, ghost, small, children }) {
-  const bg = disabled ? 'rgba(255,255,255,0.15)'
-    : gold ? 'linear-gradient(135deg,#FFD93D,#FF9F43)'
-    : green ? 'linear-gradient(135deg,#6BCB77,#00B894)'
-    : 'rgba(255,255,255,0.08)'
-  const color = disabled ? 'rgba(255,255,255,0.4)' : (gold ? '#1A1040' : 'white')
-  const shadow = disabled ? 'none' : gold ? '0 8px 24px rgba(255,180,0,0.35)' : green ? '0 8px 24px rgba(0,184,148,0.4)' : 'none'
+const SAY_PICK = 'Welches Tier möchtest du sein? Tippe auf ein Bild.'
+const SAY_AGE  = 'Wie alt bist du? Tippe auf die Zahl. Dann tippe auf den grünen Knopf.'
+const SAY_WHO  = 'Wer spielt heute? Tippe auf dein Bild.'
 
-  return (
-    <motion.button
-      whileHover={disabled ? {} : { scale: 1.02 }}
-      whileTap={disabled ? {} : { scale: 0.97 }}
-      onClick={disabled ? undefined : onClick}
-      style={{
-        flex: 1, padding: small ? '14px' : '18px', borderRadius: 22,
-        fontFamily: 'var(--font-heading)', fontSize: small ? 16 : 18,
-        fontWeight: 700, border: 'none', cursor: disabled ? 'not-allowed' : 'pointer',
-        background: bg, color, boxShadow: shadow, transition: 'all 0.2s', width: '100%',
-      }}
-    >
-      {children}
-    </motion.button>
-  )
-}
+// Avatar tiles are sized by the height as well, so the grid fits on a small
+// phone without scrolling
+const TILE = 'min(19vw, 10dvh, 88px)'
 
+// Two short steps: tap an animal (that already moves on), then the age and
+// "Los geht's!". The name is for the parents and may stay empty — typing it
+// was impossible for a child who can't write yet, and blocked the start.
 function CreateProfileForm({ onSave, onCancel, showCancel }) {
   const t = useT()
   const [name, setName] = useState('')
@@ -40,60 +43,54 @@ function CreateProfileForm({ onSave, onCancel, showCancel }) {
   const [avatar, setAvatar] = useState(null)
   const [step, setStep] = useState(0)
 
-  const canStep1 = avatar !== null
-  const canSubmit = name.trim().length >= 1 && age !== null && avatar !== null
+  useEffect(() => {
+    const id = setTimeout(() => narrate([{ text: step === 0 ? SAY_PICK : SAY_AGE }]), 350)
+    return () => clearTimeout(id)
+  }, [step])
+
+  const pickAvatar = (a) => {
+    setAvatar(a)
+    narrate([{ text: sayAvatar(a) }])
+    setTimeout(() => setStep(1), 650)
+  }
+  const pickAge = (a) => {
+    setAge(a)
+    narrate([{ text: `${sayNumber(a)}!` }])
+  }
+  const save = () => onSave({ name: name.trim() || avatarName(avatar), age, avatar })
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:28 }}>
-      {/* Step indicator */}
-      <div style={{ display:'flex', gap:8, justifyContent:'center' }}>
-        {[0,1].map(i => (
-          <motion.div key={i}
-            animate={{ width: i === step ? 32 : 10, background: i === step ? '#FFD93D' : 'rgba(255,255,255,0.3)' }}
-            style={{ height:10, borderRadius:99 }}
-          />
-        ))}
-      </div>
-
+    <div style={{ display:'flex', flexDirection:'column', gap:'clamp(12px,2.5dvh,22px)' }}>
       <AnimatePresence mode="wait">
         {step === 0 ? (
           <motion.div key="step0"
             initial={{ opacity:0, x:40 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-40 }}
-            transition={{ duration:0.3 }}
-            style={{ display:'flex', flexDirection:'column', gap:20 }}
+            transition={{ duration:0.25 }}
+            style={{ display:'flex', flexDirection:'column', gap:'clamp(10px,2dvh,18px)', alignItems:'center' }}
           >
             <div style={{ textAlign:'center' }}>
-              <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(20px,5vw,28px)', color:'white', fontWeight:700 }}>
+              <div className="px-title" style={{ fontSize:'clamp(21px,5vw,30px)', lineHeight:1.15 }}>
                 {t('profile.pickCharacter')}
               </div>
-              <div style={{ color:'rgba(255,255,255,0.65)', fontSize:15, marginTop:4 }}>
+              <div className="px-title" style={{ fontSize:17, marginTop:6 }}>
                 {t('profile.whoDoYouWant')}
               </div>
             </div>
 
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12 }}>
-              {AVATARS.map((a, i) => {
+            <div style={{ display:'grid', gridTemplateColumns:`repeat(4, ${TILE})`, gap:'clamp(8px,1.6dvh,12px)' }}>
+              {AVATARS.map(a => {
                 const sel = avatar === a
                 return (
-                  <motion.button key={a} whileHover={{ scale:1.12, y:-4 }} whileTap={{ scale:0.9 }}
-                    onClick={() => setAvatar(a)}
-                    style={{
-                      aspectRatio:'1', borderRadius:24, fontSize:'clamp(24px,6vw,36px)',
-                      background: sel ? `linear-gradient(135deg,${COLORS[i%16]},${COLORS[(i+3)%16]})` : 'rgba(255,255,255,0.1)',
-                      border: sel ? '3px solid white' : '3px solid transparent',
-                      boxShadow: sel ? '0 8px 24px rgba(0,0,0,0.3)' : 'none',
-                      display:'flex', alignItems:'center', justifyContent:'center',
-                      cursor:'pointer', backdropFilter:'blur(8px)', position:'relative',
-                    }}
+                  <button key={a}
+                    className={`px-btn ${sel ? 'px-btn--gold' : 'px-btn--parch'}`}
+                    onClick={() => pickAvatar(a)}
+                    {...hearable(sayAvatar(a))}
+                    aria-label={avatarName(a)}
+                    aria-pressed={sel}
+                    style={{ width:TILE, height:TILE, padding:0, fontSize:`calc(${TILE} * 0.5)`, lineHeight:1 }}
                   >
                     {a}
-                    {sel && (
-                      <motion.div initial={{ scale:0 }} animate={{ scale:1 }}
-                        style={{ position:'absolute', top:-8, right:-8, background:'#FFD93D', borderRadius:'50%', width:22, height:22, fontSize:13, display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 8px rgba(0,0,0,0.3)' }}>
-                        ✓
-                      </motion.div>
-                    )}
-                  </motion.button>
+                  </button>
                 )
               })}
             </div>
@@ -101,93 +98,70 @@ function CreateProfileForm({ onSave, onCancel, showCancel }) {
         ) : (
           <motion.div key="step1"
             initial={{ opacity:0, x:40 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-40 }}
-            transition={{ duration:0.3 }}
-            style={{ display:'flex', flexDirection:'column', gap:24 }}
+            transition={{ duration:0.25 }}
+            style={{ display:'flex', flexDirection:'column', gap:'clamp(12px,2.5dvh,20px)' }}
           >
-            <div style={{ textAlign:'center' }}>
-              <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(20px,5vw,28px)', color:'white', fontWeight:700 }}>
-                {avatar ? avatar + ' ' + t('profile.almostThere') : t('profile.almostThere')}
-              </div>
-              <div style={{ color:'rgba(255,255,255,0.65)', fontSize:15, marginTop:4 }}>
-                {t('profile.tellUs')}
-              </div>
-            </div>
-
-            {/* Name */}
-            <div>
-              <div style={{ fontFamily:'var(--font-heading)', fontSize:15, color:'rgba(255,255,255,0.7)', marginBottom:10, letterSpacing:0.5, textTransform:'uppercase' }}>
-                {t('profile.whatsName')}
-              </div>
-              <div style={{ position:'relative' }}>
-                <input
-                  type="text" value={name} maxLength={20}
-                  placeholder={t('profile.namePlaceholder')}
-                  onChange={e => setName(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && canSubmit && onSave({ name:name.trim(), age, avatar })}
-                  style={{
-                    width:'100%', padding:'16px 20px', fontSize:20,
-                    fontFamily:'var(--font-heading)', fontWeight:600, borderRadius:20,
-                    border: name ? '3px solid #FFD93D' : '3px solid rgba(255,255,255,0.2)',
-                    outline:'none', background:'rgba(255,255,255,0.12)', color:'white',
-                    backdropFilter:'blur(8px)', transition:'border-color 0.2s', boxSizing:'border-box',
-                  }}
-                />
-                {name && <div style={{ position:'absolute', right:16, top:'50%', transform:'translateY(-50%)', fontSize:22 }}>✨</div>}
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:14 }}>
+              <button className="px-btn px-btn--gold" onClick={() => setStep(0)}
+                aria-label={t('profile.back')} title={t('profile.back')}
+                style={{ width:76, height:76, padding:0, fontSize:42, lineHeight:1 }}>
+                {avatar}
+              </button>
+              <div style={{ textAlign:'left' }}>
+                <div className="px-title" style={{ fontSize:'clamp(21px,5vw,30px)', lineHeight:1.15 }}>
+                  {t('profile.almostThere')}
+                </div>
+                <div className="px-title" style={{ fontSize:17, marginTop:4 }}>
+                  {t('profile.tellUs')}
+                </div>
               </div>
             </div>
 
             {/* Age */}
-            <div>
-              <div style={{ fontFamily:'var(--font-heading)', fontSize:15, color:'rgba(255,255,255,0.7)', marginBottom:10, letterSpacing:0.5, textTransform:'uppercase' }}>
-                {t('profile.howOld')}
-              </div>
-              <div style={{ display:'flex', gap:10 }}>
-                {AGES.map(a => (
-                  <motion.button key={a} whileHover={{ scale:1.1, y:-4 }} whileTap={{ scale:0.92 }}
-                    onClick={() => setAge(a)}
-                    style={{
-                      flex:1, padding:'14px 0', borderRadius:20,
-                      fontFamily:'var(--font-heading)', fontSize:24, fontWeight:800,
-                      background: age === a ? 'linear-gradient(135deg,#FFD93D,#FF9F43)' : 'rgba(255,255,255,0.1)',
-                      color: age === a ? '#1A1040' : 'rgba(255,255,255,0.8)',
-                      border: age === a ? '3px solid white' : '3px solid transparent',
-                      boxShadow: age === a ? '0 8px 24px rgba(255,180,0,0.4)' : 'none',
-                      cursor:'pointer', backdropFilter:'blur(8px)',
-                    }}
-                  >
-                    {a}
-                  </motion.button>
-                ))}
-              </div>
+            <div style={{ display:'flex', gap:10 }}>
+              {AGES.map(a => (
+                <button key={a}
+                  className={`px-btn ${age === a ? 'px-btn--gold' : 'px-btn--parch'}`}
+                  onClick={() => pickAge(a)}
+                  {...hearable(sayNumber(a))}
+                  aria-pressed={age === a}
+                  style={{ flex:1, minHeight:'clamp(56px,9dvh,72px)', fontSize:30 }}
+                >
+                  {a}
+                </button>
+              ))}
             </div>
+
+            {/* Name, for the parents */}
+            <label style={{ display:'flex', flexDirection:'column', gap:6 }}>
+              <span className="px-title" style={{ fontSize:15 }}>{t('profile.whatsName')}</span>
+              <input
+                type="text" value={name} maxLength={20}
+                placeholder={t('profile.namePlaceholder')}
+                onChange={e => setName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && save()}
+                style={{
+                  width:'100%', padding:'12px 16px', fontSize:20, minHeight:52,
+                  fontFamily:'var(--font-heading)', fontWeight:600, borderRadius:10,
+                  border:'3px solid var(--px-ink)', outline:'none',
+                  background:'var(--px-parch)', color:'var(--px-ink)', boxSizing:'border-box',
+                  boxShadow:'inset 0 3px 0 rgba(42,27,61,0.12)',
+                }}
+              />
+            </label>
+
+            <button className="px-btn px-btn--green px-btn--lg" onClick={save} style={{ width:'100%' }}>
+              <PxIcon name="play" size={20} /> {t('profile.letsGo')}
+            </button>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Navigation buttons */}
-      <div style={{ display:'flex', flexDirection:'column', gap:10, marginTop:8 }}>
-        {step === 0 ? (
-          <SimpleBtn gold disabled={!canStep1} onClick={() => setStep(1)}>
-            {t('profile.next')}
-          </SimpleBtn>
-        ) : (
-          <SimpleBtn green disabled={!canSubmit} onClick={() => canSubmit && onSave({ name:name.trim(), age, avatar })}>
-            {avatar && name ? avatar + ' ' + t('profile.letsGo') : t('profile.letsGo')}
-          </SimpleBtn>
-        )}
-        <div style={{ display:'flex', gap:8 }}>
-          {step > 0 && (
-            <SimpleBtn ghost small onClick={() => setStep(0)}>
-              {t('profile.back')}
-            </SimpleBtn>
-          )}
-          {showCancel && (
-            <SimpleBtn ghost small onClick={onCancel}>
-              {t('profile.cancel')}
-            </SimpleBtn>
-          )}
-        </div>
-      </div>
+      {showCancel && (
+        <button className="px-btn px-btn--parch px-btn--sm" onClick={onCancel} style={{ alignSelf:'center' }}>
+          {t('profile.cancel')}
+        </button>
+      )}
     </div>
   )
 }
@@ -198,7 +172,14 @@ export default function ProfileScreen() {
   // Support both old array format and new object format
   const profilesObj = state.profiles ?? {}
   const profiles = Array.isArray(profilesObj) ? profilesObj : Object.values(profilesObj)
-  const [mode, setMode] = useState(profiles.length === 0 ? 'create' : 'select')
+  // "Neues Kind" in the profile switcher goes straight to the form
+  const [mode, setMode] = useState(profiles.length === 0 || state.profileCreate ? 'create' : 'select')
+
+  useEffect(() => {
+    if (mode !== 'select') return
+    const id = setTimeout(() => narrate([{ text: SAY_WHO }]), 500)
+    return () => clearTimeout(id)
+  }, [mode])
 
   const selectProfile = (p) => {
     dispatch({ type: 'SET_ACTIVE_PROFILE', payload: p.id })
@@ -210,86 +191,69 @@ export default function ProfileScreen() {
     dispatch({ type: 'NAVIGATE', payload: 'home' })
   }
 
+  const cancelCreate = () => {
+    if (state.profileCreate && state.activeProfileId) dispatch({ type: 'NAVIGATE', payload: 'home' })
+    else setMode('select')
+  }
+
   return (
     <div style={{
       minHeight:'100dvh',
-      backgroundColor: '#2a1b3d',
-      backgroundImage: `linear-gradient(rgba(42,27,61,0.62), rgba(42,27,61,0.62)), url(${uiSpr('landscape.png')})`,
+      backgroundColor: 'var(--px-ink)',
+      backgroundImage: `linear-gradient(rgba(42,27,61,0.45), rgba(42,27,61,0.45)), url(${uiSpr('landscape.png')})`,
       backgroundSize: 'cover', backgroundPosition: 'center 70%', imageRendering: 'pixelated',
-      display:'flex', flexDirection:'column', alignItems:'center',
-      justifyContent: mode === 'create' ? 'flex-start' : 'center',
-      padding:'32px 24px 48px', position:'relative', overflow:'hidden',
+      display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+      padding:'clamp(16px,3dvh,32px) 16px', position:'relative', overflow:'hidden',
     }}>
-      {/* Background orbs */}
-      {[{x:'5%',y:'8%',s:180,c:'rgba(167,139,250,0.2)',d:0},{x:'70%',y:'15%',s:130,c:'rgba(255,107,107,0.15)',d:1},{x:'60%',y:'65%',s:220,c:'rgba(108,99,255,0.18)',d:0.6}].map((o,i) => (
-        <motion.div key={i}
-          animate={{ y:[0,-16,0], x:[0,8,0] }}
-          transition={{ duration:5+o.d, repeat:Infinity, ease:'easeInOut', delay:o.d }}
-          style={{ position:'absolute', left:o.x, top:o.y, width:o.s, height:o.s, borderRadius:'50%', background:o.c, filter:`blur(${o.s*0.35}px)`, pointerEvents:'none', zIndex:0 }}
-        />
-      ))}
-
       <div style={{ position:'relative', zIndex:1, width:'100%', maxWidth:480 }}>
         <AnimatePresence mode="wait">
           {mode === 'select' ? (
             <motion.div key="select"
               initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-20 }}
-              style={{ display:'flex', flexDirection:'column', gap:16 }}
+              style={{ display:'flex', flexDirection:'column', gap:14 }}
             >
-              <div style={{ textAlign:'center', marginBottom:8 }}>
-                <PixelLumi size={96} style={{ margin: "0 auto" }} />
-                <h1 className="px-title" style={{ fontSize:'clamp(24px,6vw,36px)', marginTop:12, marginBottom:8 }}>
+              <div style={{ textAlign:'center', marginBottom:4 }}>
+                <PixelLumi size={84} style={{ margin: '0 auto' }} />
+                <h1 className="px-title" style={{ fontSize:'clamp(24px,6vw,36px)', marginTop:10, marginBottom:6 }}>
                   {t('profile.who')}
                 </h1>
-                <p style={{ color:'rgba(255,255,255,0.65)', fontSize:15 }}>
+                <p className="px-title" style={{ fontSize:17 }}>
                   {t('profile.tapName')}
                 </p>
               </div>
 
-              <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+              <div style={{ display:'flex', flexDirection:'column', gap:12, maxHeight:'58dvh', overflowY:'auto', padding:'2px 2px 8px' }}>
                 {profiles.map((p, i) => (
-                  <motion.button key={i}
+                  <motion.button key={p.id ?? i}
+                    className="px-panel"
                     initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} transition={{ delay:i*0.07 }}
-                    whileHover={{ scale:1.03, y:-3 }} whileTap={{ scale:0.97 }}
                     onClick={() => selectProfile(p)}
-                    style={{
-                      display:'flex', alignItems:'center', gap:16, padding:'18px 22px', borderRadius:26,
-                      background:'rgba(255,255,255,0.12)', border:'2px solid rgba(255,255,255,0.18)',
-                      backdropFilter:'blur(16px)', cursor:'pointer', textAlign:'left',
-                      boxShadow:'0 4px 20px rgba(0,0,0,0.2)',
-                    }}
+                    {...hearable(p.name)}
+                    style={{ display:'flex', alignItems:'center', gap:16, padding:'12px 16px', cursor:'pointer', textAlign:'left', flexShrink:0 }}
                   >
-                    <div style={{ width:60, height:60, borderRadius:20, background:'linear-gradient(135deg,rgba(255,217,61,0.3),rgba(108,99,255,0.3))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:34, flexShrink:0, border:'2px solid rgba(255,255,255,0.2)' }}>
+                    <div className="px-btn px-btn--gold" aria-hidden="true" style={{ width:60, height:60, padding:0, fontSize:36, flexShrink:0, pointerEvents:'none' }}>
                       {p.avatar}
                     </div>
-                    <div style={{ flex:1 }}>
-                      <div style={{ fontFamily:'var(--font-heading)', fontSize:22, color:'white', fontWeight:700, lineHeight:1.2 }}>{p.name}</div>
-                      <div style={{ fontSize:13, color:'rgba(255,255,255,0.55)', marginTop:2 }}>{p.age} {t('profile.ageLabel')}</div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontFamily:'var(--font-heading)', fontSize:24, color:'var(--px-ink)', fontWeight:700, lineHeight:1.2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</div>
+                      {p.age ? <div style={{ fontSize:16, color:'var(--text-secondary)', fontWeight:600, marginTop:2 }}>{p.age} {t('profile.ageLabel')}</div> : null}
                     </div>
-                    <motion.div animate={{ x:[0,4,0] }} transition={{ duration:1.5, repeat:Infinity, ease:'easeInOut' }} style={{ fontSize:22, color:'rgba(255,255,255,0.6)' }}>
-                      →
-                    </motion.div>
+                    <PxIcon name="play" size={22} color="var(--px-ink)" />
                   </motion.button>
                 ))}
               </div>
 
-              <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:0.97 }} onClick={() => setMode('create')}
-                style={{ padding:'18px', borderRadius:26, background:'rgba(255,255,255,0.07)', border:'2px dashed rgba(255,255,255,0.25)', cursor:'pointer', fontFamily:'var(--font-heading)', fontSize:17, color:'rgba(255,255,255,0.7)', display:'flex', alignItems:'center', justifyContent:'center', gap:10, backdropFilter:'blur(8px)' }}>
-                <span style={{ fontSize:22 }}>+</span> {t('profile.addLearner')}
-              </motion.button>
+              <button className="px-btn px-btn--parch px-btn--md" onClick={() => setMode('create')} style={{ alignSelf:'center' }}>
+                ➕ {t('profile.addLearner')}
+              </button>
             </motion.div>
           ) : (
             <motion.div key="create"
               initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-20 }}
+              style={{ display:'flex', flexDirection:'column', alignItems:'stretch', gap:'clamp(8px,1.6dvh,14px)' }}
             >
-              <div style={{ textAlign:'center', marginBottom:28 }}>
-                <PixelLumi size={84} style={{ margin: "0 auto" }} />
-                <h1 className="px-title" style={{ fontSize:'clamp(22px,5vw,32px)', marginTop:10, marginBottom:8 }}>
-                  {t('profile.create')}
-                </h1>
-              </div>
-              <CreateProfileForm onSave={createProfile} onCancel={() => setMode('select')} showCancel={profiles.length > 0} />
-
+              <PixelLumi size={64} style={{ margin:'0 auto' }} />
+              <CreateProfileForm onSave={createProfile} onCancel={cancelCreate} showCancel={profiles.length > 0} />
             </motion.div>
           )}
         </AnimatePresence>

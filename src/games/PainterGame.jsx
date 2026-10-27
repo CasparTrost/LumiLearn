@@ -1,60 +1,70 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo, useLayoutEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
-import { speak } from '../tts.js'
+import { narrate, afterNarration, lockPreviews } from '../narrator.js'
+import { sayTask, sayWrong } from '../lib/feedback.js'
+import { result } from '../lib/score.js'
+import { usePaused } from '../lib/pause.js'
 import { pxCard, pxPanel, pxBubble, pxSegment, INK } from './px.js'
 
-// ─── Brush constants ──────────────────────────────────────────────────────────
-const BRUSH_R    = 8                       // brush dot radius in SVG user-units (viewBox 200×200)
-const MIN_DIST   = 4                       // min distance (SVG units) between consecutive stroke points
-const GRID       = 8                       // coverage grid cell size in SVG units
-const COLS       = Math.ceil(200 / GRID)   // 25
-const ROWS       = Math.ceil(200 / GRID)   // 25
-const COVER_FRAC  = 0.90                    // fraction of inside-cells that must be painted
-const EDGE_MARGIN = 3                       // extra px margin so edge cells are included in inside set
+/**
+ * Farbenreich — Farbwörter beim Malen nach Vorgabe.
+ *
+ * Tap a bucket, then the glowing part of the picture: it fills at once.
+ * Painting used to mean rubbing 90 % of a region with the finger (a mouse
+ * painted by merely hovering), a wrong colour did nothing at all, and not a
+ * single colour word was ever spoken. Now every bucket says its colour, every
+ * finished part says what it became ("Das Dach ist jetzt rot!"), and a wrong
+ * colour gets a gentle hint which colour that part wants.
+ */
 
 // ─── Colours ──────────────────────────────────────────────────────────────────
+// `near`: colours a child easily mixes up; as distractors they only come from
+// level 7 on.
 const ALL_COLORS = [
-  { name: 'Rot',      value: '#E53935' },
-  { name: 'Blau',     value: '#1E88E5' },
-  { name: 'Grün',     value: '#43A047' },
-  { name: 'Gelb',     value: '#FDD835' },
-  { name: 'Orange',   value: '#FB8C00' },
-  { name: 'Lila',     value: '#8E24AA' },
-  { name: 'Pink',     value: '#E91E63' },
-  { name: 'Braun',    value: '#6D4C41' },
-  { name: 'Türkis',   value: '#00ACC1' },
-  { name: 'Grau',     value: '#90A4AE' },
-  { name: 'Hellgrün', value: '#7CB342' },
-  { name: 'Schwarz',  value: '#37474F' },
-  { name: 'Weiß',    value: '#FAFAFA' },
+  { name: 'Rot',       value: '#E53935', near: ['Pink'] },
+  { name: 'Blau',      value: '#1E88E5', near: ['Türkis'] },
+  { name: 'Grün',      value: '#43A047', near: ['Hellgrün'] },
+  { name: 'Gelb',      value: '#FDD835', near: ['Orange'] },
+  { name: 'Orange',    value: '#FB8C00', near: ['Gelb'] },
+  { name: 'Lila',      value: '#8E24AA', near: ['Pink'] },
+  { name: 'Pink',      value: '#E91E63', near: ['Rot', 'Lila'] },
+  { name: 'Braun',     value: '#6D4C41', near: ['Hellbraun'] },
+  { name: 'Hellbraun', value: '#C49A6C', near: ['Braun', 'Orange'] },
+  { name: 'Türkis',    value: '#00ACC1', near: ['Blau'] },
+  { name: 'Grau',      value: '#90A4AE', near: ['Weiß'] },
+  { name: 'Hellgrün',  value: '#9CCC65', near: ['Grün'] },
+  { name: 'Schwarz',   value: '#37474F', near: [] },
+  { name: 'Weiß',      value: '#FFFFFF', near: ['Grau'] },
 ]
+const MAX_BUCKETS = 10
 
 function getColor(name) {
   return ALL_COLORS.find(c => c.name === name) ?? ALL_COLORS[0]
 }
 
-function isLight(hex) {
-  if (!hex || hex.length < 7) return true
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  return (r * 299 + g * 587 + b * 114) / 1000 > 155
-}
-
 function buildPalette(scene, level) {
   const needed = [...new Set(scene.regions.map(r => r.target))].map(getColor)
-  // Distractor-colour count used to cap at 5 from level 3 onward (level 3
-  // and level 10 had the exact same palette size) — now grows across the
-  // whole 1-10 range instead of plateauing two-thirds of the way in.
-  // slice() safely returns fewer if the (13-colour) pool runs out.
-  const extra  = shuffle(ALL_COLORS.filter(c => !needed.find(n => n.name === c.name)))
-    .slice(0, Math.min(1 + level, 10))
+  // More distractors as the levels rise (one on level 1 up to the bucket
+  // limit); colours easily confused with a needed one only from level 7.
+  const pool = ALL_COLORS.filter(c => !needed.includes(c) &&
+    (level >= 7 || !needed.some(n => n.near.includes(c.name))))
+  const extra = shuffle(pool).slice(0, Math.max(0, Math.min(level, MAX_BUCKETS - needed.length)))
   return shuffle([...needed, ...extra])
 }
 
 function shuffle(a) { return [...a].sort(() => Math.random() - 0.5) }
+
+// ─── Words ────────────────────────────────────────────────────────────────────
+// Region names carry their article; pairs (ears, eyes) are one plural name,
+// so "Die Ohren sind jetzt braun!" is said once both are painted.
+const cap = s => s[0].toUpperCase() + s.slice(1)
+const acc = r => (!r.pl && r.name.startsWith('der ') ? 'den ' + r.name.slice(4) : r.name)
+const verb = (r, sg, pl) => (r.pl ? pl : sg)
+function listWords(words) {
+  return words.length < 2 ? words[0] : `${words.slice(0, -1).join(', ')} und ${words[words.length - 1]}`
+}
 
 // ─── Convert screen coords → SVG user-space ───────────────────────────────────
 function clientToSVG(svgEl, clientX, clientY) {
@@ -68,7 +78,7 @@ function clientToSVG(svgEl, clientX, clientY) {
   }
 }
 
-// ─── Coverage helpers: point-in-region & grid cell pre-computation ────────────
+// ─── Hit test: point-in-region ────────────────────────────────────────────────
 function pointInPolygon(px, py, points) {
   let inside = false
   for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
@@ -79,6 +89,11 @@ function pointInPolygon(px, py, points) {
   }
   return inside
 }
+
+const polyPoints = region => region.points.trim().split(/\s+/).map(p => {
+  const [x, y] = p.split(',').map(Number)
+  return { x, y }
+})
 
 function isInsideRegion(region, px, py, margin = 0) {
   switch (region.element) {
@@ -104,10 +119,7 @@ function isInsideRegion(region, px, py, margin = 0) {
       return px >= region.x - margin && px <= region.x + region.width  + margin &&
              py >= region.y - margin && py <= region.y + region.height + margin
     case 'polygon': {
-      const pts = region.points.trim().split(/\s+/).map(p => {
-        const [x, y] = p.split(',').map(Number)
-        return { x, y }
-      })
+      const pts = polyPoints(region)
       // For polygon: check exact boundary + margin via distance to edges
       if (pointInPolygon(px, py, pts)) return true
       if (margin <= 0) return false
@@ -134,160 +146,146 @@ function regionArea(region) {
     case 'ellipse': return Math.PI * region.rx * region.ry
     case 'rect':    return region.width * region.height
     case 'polygon': {
-      const pts = region.points.trim().split(/\s+/).map(p => {
-        const [x, y] = p.split(',').map(Number); return { x, y }
-      })
-      let xs = pts.map(p => p.x), ys = pts.map(p => p.y)
+      const pts = polyPoints(region)
+      const xs = pts.map(p => p.x), ys = pts.map(p => p.y)
       return (Math.max(...xs) - Math.min(...xs)) * (Math.max(...ys) - Math.min(...ys))
     }
     default: return Infinity
   }
 }
 
-function computeInsideCells(region) {
-  const cells = new Set()
-  for (let row = 0; row < ROWS; row++) {
-    for (let col = 0; col < COLS; col++) {
-      const cx = col * GRID + GRID / 2
-      const cy = row * GRID + GRID / 2
-      if (isInsideRegion(region, cx, cy, 0)) cells.add(row * COLS + col)
-    }
-  }
-  return cells
+// The region under a point: among all regions containing it, the smallest
+// (the sun's disc, not the rays behind it). The margin makes thin parts —
+// the balloon's string, the apple's stem — easy to hit with a finger.
+function regionAt(scene, x, y) {
+  const hits = scene.regions.filter(r => isInsideRegion(r, x, y, 5))
+  if (!hits.length) return null
+  const exact = hits.filter(r => isInsideRegion(r, x, y, 0))
+  const list = exact.length ? exact : hits
+  return list.sort((a, b) => regionArea(a) - regionArea(b))[0]
 }
 
 // ─── Scenes — clean SVG primitives only ─────────────────────────────────────
 const SCENES = [
   // ── Level 1 ──
   {
-    id: 'house', hint: 'Male das Haus! 🏠', level: 1,
-    viewBox: '0 0 200 200',
+    id: 'house', hint: 'Male das Haus! 🏠', thing: 'das Haus', level: 1,
     regions: [
-      { id: 'wall',   target: 'Orange', label: '🟧 Wand',    element: 'rect',    x: 30,  y: 110, width: 140, height: 70 },
-      { id: 'roof',   target: 'Rot',    label: '🔴 Dach',    element: 'polygon', points: '15,115 100,36 185,115' },
-      { id: 'door',   target: 'Braun',  label: '🚪 Tür',     element: 'rect',    x: 83,  y: 140, width: 34,  height: 40 },
-      { id: 'window', target: 'Blau',   label: '🪟 Fenster', element: 'rect',    x: 42,  y: 120, width: 34,  height: 28, rx: 4 },
+      { id: 'wall',   target: 'Orange', name: 'die Wand',    element: 'rect',    x: 30,  y: 110, width: 140, height: 70 },
+      { id: 'roof',   target: 'Rot',    name: 'das Dach',    element: 'polygon', points: '15,115 100,36 185,115' },
+      { id: 'door',   target: 'Braun',  name: 'die Tür',     element: 'rect',    x: 83,  y: 140, width: 34,  height: 40 },
+      { id: 'window', target: 'Blau',   name: 'das Fenster', element: 'rect',    x: 42,  y: 120, width: 34,  height: 28, rx: 4 },
     ],
   },
   {
-    id: 'apple', hint: 'Male den Apfel! 🍎', level: 1,
-    viewBox: '0 0 200 200',
+    id: 'apple', hint: 'Male den Apfel! 🍎', thing: 'der Apfel', level: 1,
     regions: [
-      { id: 'body', target: 'Rot',   label: '🍎 Apfel', element: 'circle',  cx: 100, cy: 118, r: 65 },
-      { id: 'leaf', target: 'Grün',  label: '🌿 Blatt', element: 'ellipse', cx: 122, cy: 52,  rx: 22, ry: 12, transform: 'rotate(-35,122,52)' },
-      { id: 'stem', target: 'Braun', label: '🪵 Stiel', element: 'rect',    x: 97,   y: 38,   width: 7, height: 20, rx: 3 },
+      { id: 'body', target: 'Rot',   name: 'der Apfel', element: 'circle',  cx: 100, cy: 118, r: 65 },
+      { id: 'leaf', target: 'Grün',  name: 'das Blatt', element: 'ellipse', cx: 122, cy: 52,  rx: 22, ry: 12, transform: 'rotate(-35,122,52)' },
+      { id: 'stem', target: 'Braun', name: 'der Stiel', element: 'rect',    x: 97,   y: 38,   width: 7, height: 20, rx: 3 },
     ],
   },
   {
-    id: 'sun', hint: 'Male die Sonne! ☀️', level: 1,
-    viewBox: '0 0 200 200',
+    id: 'sun', hint: 'Male die Sonne! ☀️', thing: 'die Sonne', level: 1,
     regions: [
-      { id: 'rays', target: 'Orange', label: '✨ Strahlen', element: 'polygon',
+      { id: 'rays', target: 'Orange', name: 'die Strahlen', pl: true, element: 'polygon',
         points: '100,10 117,58 164,36 142,83 190,100 142,117 164,164 117,142 100,190 83,142 36,164 58,117 10,100 58,83 36,36 83,58' },
-      { id: 'disc', target: 'Gelb',   label: '☀️ Sonne',   element: 'circle', cx: 100, cy: 100, r: 44 },
+      { id: 'disc', target: 'Gelb',   name: 'die Sonne',   element: 'circle', cx: 100, cy: 100, r: 44 },
+    ],
+  },
+  {
+    id: 'balloon', hint: 'Male den Ballon! 🎈', thing: 'der Ballon', level: 1,
+    regions: [
+      { id: 'ball',   target: 'Rot',  name: 'der Ballon',  element: 'ellipse', cx: 100, cy: 80, rx: 55, ry: 65 },
+      { id: 'knot',   target: 'Gelb', name: 'der Knoten',  element: 'circle',  cx: 100, cy: 145, r: 7 },
+      { id: 'string', target: 'Grau', name: 'die Schnur',  element: 'rect',    x: 98, y: 152, width: 4, height: 44, rx: 2 },
+    ],
+  },
+  {
+    id: 'star', hint: 'Male den Stern! ⭐', thing: 'der Stern', level: 1,
+    regions: [
+      { id: 'body', target: 'Gelb', name: 'der Stern', element: 'polygon',
+        points: '100,18 121,70 176,70 132,103 148,158 100,125 52,158 68,103 24,70 79,70' },
     ],
   },
   // ── Level 2 ──
   {
-    id: 'butterfly', hint: 'Male den Schmetterling! 🦋', level: 2,
-    viewBox: '0 0 200 200',
+    id: 'butterfly', hint: 'Male den Schmetterling! 🦋', thing: 'der Schmetterling', level: 2,
     regions: [
-      { id: 'wing-tl', target: 'Lila',   label: '💜 Obere Flügel',  element: 'ellipse', cx: 62,  cy: 76,  rx: 48, ry: 30, transform: 'rotate(-30,62,76)'  },
-      { id: 'wing-tr', target: 'Lila',   label: '💜 Obere Flügel',  element: 'ellipse', cx: 138, cy: 76,  rx: 48, ry: 30, transform: 'rotate(30,138,76)'   },
-      { id: 'wing-bl', target: 'Orange', label: '🟠 Untere Flügel', element: 'ellipse', cx: 68,  cy: 138, rx: 38, ry: 24, transform: 'rotate(25,68,138)'   },
-      { id: 'wing-br', target: 'Orange', label: '🟠 Untere Flügel', element: 'ellipse', cx: 132, cy: 138, rx: 38, ry: 24, transform: 'rotate(-25,132,138)' },
-      { id: 'body',    target: 'Braun',  label: '🤎 Körper',         element: 'ellipse', cx: 100, cy: 107, rx: 8,  ry: 36 },
+      { id: 'wing-tl', target: 'Lila',   name: 'die oberen Flügel',  pl: true, element: 'ellipse', cx: 62,  cy: 76,  rx: 48, ry: 30, transform: 'rotate(-30,62,76)'  },
+      { id: 'wing-tr', target: 'Lila',   name: 'die oberen Flügel',  pl: true, element: 'ellipse', cx: 138, cy: 76,  rx: 48, ry: 30, transform: 'rotate(30,138,76)'   },
+      { id: 'wing-bl', target: 'Orange', name: 'die unteren Flügel', pl: true, element: 'ellipse', cx: 68,  cy: 138, rx: 38, ry: 24, transform: 'rotate(25,68,138)'   },
+      { id: 'wing-br', target: 'Orange', name: 'die unteren Flügel', pl: true, element: 'ellipse', cx: 132, cy: 138, rx: 38, ry: 24, transform: 'rotate(-25,132,138)' },
+      { id: 'body',    target: 'Braun',  name: 'der Körper',         element: 'ellipse', cx: 100, cy: 107, rx: 8,  ry: 36 },
     ],
   },
   {
-    id: 'fish', hint: 'Male den Fisch! 🐟', level: 2,
-    viewBox: '0 0 200 200',
+    id: 'fish', hint: 'Male den Fisch! 🐟', thing: 'der Fisch', level: 2,
     regions: [
-      { id: 'body', target: 'Blau',     label: '🐟 Körper',        element: 'ellipse', cx: 88,  cy: 100, rx: 62, ry: 42 },
-      { id: 'tail', target: 'Türkis',   label: '🩵 Schwanzflosse', element: 'polygon', points: '148,100 178,68 178,132' },
-      { id: 'fin',  target: 'Hellgrün', label: '🟢 Rückenflosse',  element: 'polygon', points: '72,58 88,42 108,56' },
-      { id: 'eye',  target: 'Schwarz',  label: '👁️ Auge',           element: 'circle',  cx: 52,  cy: 93,  r: 10 },
+      { id: 'body', target: 'Blau',     name: 'der Fisch',          element: 'ellipse', cx: 88,  cy: 100, rx: 62, ry: 42 },
+      { id: 'tail', target: 'Türkis',   name: 'die Schwanzflosse',  element: 'polygon', points: '148,100 178,68 178,132' },
+      { id: 'fin',  target: 'Hellgrün', name: 'die Rückenflosse',   element: 'polygon', points: '72,58 88,42 108,56' },
+      { id: 'eye',  target: 'Schwarz',  name: 'das Auge',           element: 'circle',  cx: 52,  cy: 93,  r: 10 },
     ],
   },
   {
-    id: 'bear', hint: 'Male den Bären! 🐻', level: 2,
-    viewBox: '0 0 200 200',
+    id: 'bear', hint: 'Male den Bären! 🐻', thing: 'der Bär', level: 2,
     regions: [
-      { id: 'ear-l',  target: 'Braun',   label: '🤎 Ohren',    element: 'circle',  cx: 65,  cy: 45,  r: 22 },
-      { id: 'ear-r',  target: 'Braun',   label: '🤎 Ohren',    element: 'circle',  cx: 135, cy: 45,  r: 22 },
-      { id: 'body',   target: 'Braun',   label: '🤎 Körper',   element: 'ellipse', cx: 100, cy: 148, rx: 52, ry: 45 },
-      { id: 'head',   target: 'Braun',   label: '🤎 Kopf',     element: 'circle',  cx: 100, cy: 80,  r: 44 },
-      { id: 'muzzle', target: 'Orange',  label: '🟠 Schnauze', element: 'ellipse', cx: 100, cy: 94,  rx: 22, ry: 15 },
-      { id: 'eye-l',  target: 'Schwarz', label: '👁️ Augen',    element: 'circle',  cx: 86,  cy: 73,  r: 7 },
-      { id: 'eye-r',  target: 'Schwarz', label: '👁️ Augen',    element: 'circle',  cx: 114, cy: 73,  r: 7 },
+      { id: 'ear-l',  target: 'Braun',     name: 'die Ohren',    pl: true, element: 'circle',  cx: 65,  cy: 45,  r: 22 },
+      { id: 'ear-r',  target: 'Braun',     name: 'die Ohren',    pl: true, element: 'circle',  cx: 135, cy: 45,  r: 22 },
+      { id: 'body',   target: 'Braun',     name: 'der Körper',   element: 'ellipse', cx: 100, cy: 148, rx: 52, ry: 45 },
+      { id: 'head',   target: 'Braun',     name: 'der Kopf',     element: 'circle',  cx: 100, cy: 80,  r: 44 },
+      { id: 'muzzle', target: 'Hellbraun', name: 'die Schnauze', element: 'ellipse', cx: 100, cy: 94,  rx: 22, ry: 15 },
+      { id: 'eye-l',  target: 'Schwarz',   name: 'die Augen',    pl: true, element: 'circle',  cx: 86,  cy: 73,  r: 7 },
+      { id: 'eye-r',  target: 'Schwarz',   name: 'die Augen',    pl: true, element: 'circle',  cx: 114, cy: 73,  r: 7 },
+    ],
+  },
+  {
+    id: 'frog', hint: 'Male den Frosch! 🐸', thing: 'der Frosch', level: 2,
+    regions: [
+      { id: 'body',    target: 'Grün',    name: 'der Frosch',   element: 'ellipse', cx: 100, cy: 125, rx: 55, ry: 45 },
+      { id: 'eye-l',   target: 'Weiß',    name: 'die Augen',    pl: true, element: 'circle',  cx: 75,  cy: 80,  r: 18 },
+      { id: 'eye-r',   target: 'Weiß',    name: 'die Augen',    pl: true, element: 'circle',  cx: 125, cy: 80,  r: 18 },
+      { id: 'pupil-l', target: 'Schwarz', name: 'die Pupillen', pl: true, element: 'circle',  cx: 75,  cy: 83,  r: 8 },
+      { id: 'pupil-r', target: 'Schwarz', name: 'die Pupillen', pl: true, element: 'circle',  cx: 125, cy: 83,  r: 8 },
+      { id: 'mouth',   target: 'Rot',     name: 'der Mund',     element: 'ellipse', cx: 100, cy: 145, rx: 22, ry: 10 },
     ],
   },
   // ── Level 3 ──
   {
-    id: 'rocket', hint: 'Male die Rakete! 🚀', level: 3,
-    viewBox: '0 0 200 200',
+    id: 'rocket', hint: 'Male die Rakete! 🚀', thing: 'die Rakete', level: 3,
     regions: [
-      { id: 'body',   target: 'Grau',   label: '⬜ Körper',  element: 'rect',    x: 72,  y: 70, width: 56, height: 88, rx: 8 },
-      { id: 'nose',   target: 'Rot',    label: '🔴 Spitze',  element: 'polygon', points: '72,70 100,14 128,70' },
-      { id: 'wing-l', target: 'Orange', label: '🟠 Flügel',  element: 'polygon', points: '72,128 38,170 72,158' },
-      { id: 'wing-r', target: 'Orange', label: '🟠 Flügel',  element: 'polygon', points: '128,128 162,170 128,158' },
-      { id: 'window', target: 'Blau',   label: '🪟 Fenster', element: 'circle',  cx: 100, cy: 98, r: 20 },
-      { id: 'flame',  target: 'Gelb',   label: '🔥 Flamme',  element: 'polygon', points: '80,158 100,196 120,158' },
+      { id: 'body',   target: 'Grau',   name: 'der Rumpf',   element: 'rect',    x: 72,  y: 70, width: 56, height: 88, rx: 8 },
+      { id: 'nose',   target: 'Rot',    name: 'die Spitze',  element: 'polygon', points: '72,70 100,14 128,70' },
+      { id: 'wing-l', target: 'Orange', name: 'die Flügel',  pl: true, element: 'polygon', points: '72,128 38,170 72,158' },
+      { id: 'wing-r', target: 'Orange', name: 'die Flügel',  pl: true, element: 'polygon', points: '128,128 162,170 128,158' },
+      { id: 'window', target: 'Blau',   name: 'das Fenster', element: 'circle',  cx: 100, cy: 98, r: 20 },
+      { id: 'flame',  target: 'Gelb',   name: 'die Flamme',  element: 'polygon', points: '80,158 100,196 120,158' },
     ],
   },
   {
-    id: 'penguin', hint: 'Male den Pinguin! 🐧', level: 3,
-    viewBox: '0 0 200 200',
+    id: 'penguin', hint: 'Male den Pinguin! 🐧', thing: 'der Pinguin', level: 3,
     regions: [
-      { id: 'body',  target: 'Schwarz', label: '🖤 Körper',   element: 'ellipse', cx: 100, cy: 120, rx: 56, ry: 66 },
-      { id: 'belly', target: 'Grau',    label: '🩶 Bauch',    element: 'ellipse', cx: 100, cy: 125, rx: 32, ry: 48 },
-      { id: 'beak',  target: 'Orange',  label: '🟠 Schnabel', element: 'polygon', points: '88,96 100,111 112,96 100,84' },
-      { id: 'feet',  target: 'Orange',  label: '🟠 Füße',     element: 'polygon', points: '60,178 50,193 82,189 78,178 122,178 118,189 150,193 140,178' },
-      { id: 'eye-l', target: 'Schwarz', label: '👁️ Augen',    element: 'circle',  cx: 86,  cy: 96,  r: 6 },
-      { id: 'eye-r', target: 'Schwarz', label: '👁️ Augen',    element: 'circle',  cx: 114, cy: 96,  r: 6 },
+      { id: 'body',  target: 'Schwarz', name: 'der Körper',   element: 'ellipse', cx: 100, cy: 120, rx: 56, ry: 66 },
+      { id: 'belly', target: 'Weiß',    name: 'der Bauch',    element: 'ellipse', cx: 100, cy: 125, rx: 32, ry: 48 },
+      { id: 'beak',  target: 'Orange',  name: 'der Schnabel', element: 'polygon', points: '88,96 100,111 112,96 100,84' },
+      { id: 'feet',  target: 'Orange',  name: 'die Füße',     pl: true, element: 'polygon', points: '60,178 50,193 82,189 78,178 122,178 118,189 150,193 140,178' },
+      // white eyes: black ones on the black body could not be seen
+      { id: 'eye-l', target: 'Weiß',    name: 'die Augen',    pl: true, element: 'circle',  cx: 86,  cy: 96,  r: 6 },
+      { id: 'eye-r', target: 'Weiß',    name: 'die Augen',    pl: true, element: 'circle',  cx: 114, cy: 96,  r: 6 },
     ],
   },
   {
-    id: 'flower', hint: 'Male die Blume! 🌸', level: 3,
-    viewBox: '0 0 200 200',
+    id: 'flower', hint: 'Male die Blume! 🌸', thing: 'die Blume', level: 3,
     regions: [
-      { id: 'petals', target: 'Pink', label: '🌸 Blüte', element: 'polygon',
+      { id: 'petals', target: 'Pink', name: 'die Blüte', element: 'polygon',
         points: '100,25 115,63 153,47 137,85 175,100 137,115 153,153 115,137 100,175 85,137 47,153 63,115 25,100 63,85 47,47 85,63' },
-      { id: 'center', target: 'Gelb', label: '🌼 Mitte', element: 'circle',  cx: 100, cy: 100, r: 30 },
-      { id: 'stem',   target: 'Grün', label: '🌿 Stiel', element: 'rect',    x: 96,   y: 128,  width: 8, height: 68, rx: 4 },
-      { id: 'leaf',   target: 'Grün', label: '🌿 Blatt', element: 'ellipse', cx: 128, cy: 165, rx: 28, ry: 13, transform: 'rotate(-30,128,165)' },
+      { id: 'center', target: 'Gelb', name: 'die Mitte', element: 'circle',  cx: 100, cy: 100, r: 30 },
+      { id: 'stem',   target: 'Grün', name: 'der Stiel', element: 'rect',    x: 96,   y: 128,  width: 8, height: 68, rx: 4 },
+      { id: 'leaf',   target: 'Grün', name: 'das Blatt', element: 'ellipse', cx: 128, cy: 165, rx: 28, ry: 13, transform: 'rotate(-30,128,165)' },
     ],
   },
-  {
-    id: 'balloon', hint: 'Male den Ballon! 🎈', level: 1,
-    viewBox: '0 0 200 200',
-    regions: [
-      { id: 'ball', target: 'Rot', label: '🎈 Ballon', element: 'ellipse', cx: 100, cy: 80, rx: 55, ry: 65 },
-      { id: 'knot', target: 'Gelb', label: '🔵 Knoten', element: 'circle',  cx: 100, cy: 145, r: 7 },
-      { id: 'string', target: 'Grau', label: '〰️ Faden', element: 'rect',   x: 98, y: 152, width: 4, height: 44, rx: 2 },
-    ],
-  },
-  {
-    id: 'star', hint: 'Male den Stern! ⭐', level: 1,
-    viewBox: '0 0 200 200',
-    regions: [
-      { id: 'body', target: 'Gelb', label: '⭐ Stern', element: 'polygon',
-        points: '100,18 121,70 176,70 132,103 148,158 100,125 52,158 68,103 24,70 79,70' },
-    ],
-  },
-  {
-    id: 'frog', hint: 'Male den Frosch! 🐸', level: 2,
-    viewBox: '0 0 200 200',
-    regions: [
-      { id: 'body',    target: 'Grün',  label: '🐸 Körper', element: 'ellipse', cx: 100, cy: 125, rx: 55, ry: 45 },
-      { id: 'eye-l',   target: 'Weiß',  label: '👁️ Auge l',  element: 'circle',  cx: 75,  cy: 80,  r: 18 },
-      { id: 'eye-r',   target: 'Weiß',  label: '👁️ Auge r',  element: 'circle',  cx: 125, cy: 80,  r: 18 },
-      { id: 'pupil-l', target: 'Schwarz',label: '● Pupille', element: 'circle',  cx: 75,  cy: 83,  r: 8 },
-      { id: 'pupil-r', target: 'Schwarz',label: '● Pupille', element: 'circle',  cx: 125, cy: 83,  r: 8 },
-      { id: 'mouth',   target: 'Rot',   label: '👅 Mund',    element: 'ellipse', cx: 100, cy: 145, rx: 22, ry: 10 },
-    ],
-  },
-] 
+]
 
 function buildScenes(level) {
   // Only 3 scene-difficulty tiers exist (12 scenes total), so this maxes
@@ -303,21 +301,18 @@ function buildScenes(level) {
 }
 
 // ─── SVG shape renderer  ──────────────────────────────────────────────────────
-// `hitTarget` prop: if true, renders a transparent wider version for easier hit detection
-function ShapeEl({ region, fill, stroke, strokeWidth, hitTarget = false }) {
-  const extra = hitTarget ? { fill: 'transparent', stroke: 'transparent', strokeWidth: 18, 'data-regionid': region.id } : {}
-  const common = hitTarget ? extra : { fill, stroke, strokeWidth, 'data-regionid': region.id }
+function ShapeEl({ region, ...paint }) {
   switch (region.element) {
     case 'circle':
-      return <circle  cx={region.cx} cy={region.cy} r={region.r} {...common} />
+      return <circle  cx={region.cx} cy={region.cy} r={region.r} {...paint} />
     case 'ellipse':
       return <ellipse cx={region.cx} cy={region.cy} rx={region.rx} ry={region.ry}
-               transform={region.transform} {...common} />
+               transform={region.transform} {...paint} />
     case 'rect':
       return <rect    x={region.x}   y={region.y}   width={region.width} height={region.height}
-               rx={region.rx ?? 0} {...common} />
+               rx={region.rx ?? 0} {...paint} />
     case 'polygon':
-      return <polygon points={region.points} {...common} />
+      return <polygon points={region.points} {...paint} />
     default: return null
   }
 }
@@ -326,510 +321,375 @@ function ShapeEl({ region, fill, stroke, strokeWidth, hitTarget = false }) {
 function PaintBucket({ color, name, selected, onClick }) {
   return (
     <motion.button
-      whileHover={{ scale: 1.15, y: -6 }}
       whileTap={{ scale: 0.88 }}
+      animate={{ y: selected ? -6 : 0 }}
       onClick={onClick}
-      title={name}
+      aria-label={name}
+      aria-pressed={selected}
       style={{
         background: 'none', border: 'none', cursor: 'pointer',
-        padding: 0, outline: 'none',
+        padding: '2px 0', outline: 'none', minWidth: 56, minHeight: 56,
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-        filter: selected ? 'drop-shadow(0 4px 0 rgba(42,27,61,0.45))' : 'none',
-        transition: 'filter 0.2s',
       }}
     >
-      <svg width="46" height="50" viewBox="0 0 44 48">
+      <svg width="52" height="54" viewBox="0 0 44 46" style={{ overflow: 'visible' }}>
         <path d="M6 18 L10 42 L34 42 L38 18 Z" fill={color}
-          stroke={selected ? 'white' : 'rgba(0,0,0,0.2)'} strokeWidth={selected ? 2.5 : 1.5} strokeLinejoin="round" />
-        <ellipse cx="22" cy="18" rx="16" ry="5" fill={color}
-          stroke={selected ? 'white' : 'rgba(0,0,0,0.2)'} strokeWidth={selected ? 2.5 : 1.5} />
-        <ellipse cx="14" cy="25" rx="3" ry="5" fill="white" opacity="0.28" transform="rotate(-15 14 25)" />
-        <path d="M12 16 C12 8 32 8 32 16" fill="none"
-          stroke={selected ? 'white' : '#999'} strokeWidth={selected ? 2.5 : 2} strokeLinecap="round" />
-        {selected && <circle cx="34" cy="12" r="7" fill="#4CAF50" />}
-        {selected && <path d="M30 12 L33 15 L38 9" stroke="white" strokeWidth="2.2" strokeLinecap="round" fill="none" />}
+          stroke={INK} strokeWidth={selected ? 3 : 2} strokeLinejoin="round" />
+        <ellipse cx="22" cy="18" rx="16" ry="5" fill={color} stroke={INK} strokeWidth={selected ? 3 : 2} />
+        <ellipse cx="14" cy="27" rx="3" ry="5" fill="white" opacity="0.3" transform="rotate(-15 14 27)" />
+        <path d="M12 16 C12 7 32 7 32 16" fill="none" stroke={INK} strokeWidth="2" strokeLinecap="round" />
+        {selected && <circle cx="37" cy="9" r="7" fill="#2F8F3A" stroke={INK} strokeWidth="1.5" />}
+        {selected && <path d="M33.5 9 L36 11.5 L40.5 6.5" stroke="white" strokeWidth="2.2" strokeLinecap="round" fill="none" />}
       </svg>
       <span style={{
-        fontFamily: 'var(--font-heading)', fontSize: 11, fontWeight: 700,
-        whiteSpace: 'nowrap',
-        background: selected ? color : '#FFFDF7',
-        padding: '2px 6px', borderRadius: 6,
-        border: `2px solid ${selected ? INK : 'rgba(42,27,61,0.25)'}`,
-        color: selected ? (isLight(color) ? '#222' : 'white') : 'var(--text-primary)',
-        transition: 'all 0.2s',
-        boxShadow: selected ? `0 2px 0 ${INK}` : 'none',
+        fontFamily: 'var(--font-heading)', fontSize: 13, fontWeight: 700, lineHeight: 1.2,
+        whiteSpace: 'nowrap', color: INK,
+        background: selected ? 'var(--px-gold)' : 'transparent',
+        padding: '1px 6px', borderRadius: 6,
+        border: `2px solid ${selected ? INK : 'transparent'}`,
       }}>{name}</span>
     </motion.button>
   )
 }
 
-// ─── Colour group badge ───────────────────────────────────────────────────────
-function ColorBadge({ group, isActive, progress, onClick }) {
+// ─── What still needs painting: one chip per colour ──────────────────────────
+function ColorChip({ group, active }) {
   const allDone = group.done === group.total
   return (
-    <motion.button
-      onClick={onClick}
-      whileHover={allDone ? {} : { scale: 1.08 }}
-      whileTap={allDone ? {} : { scale: 0.93 }}
-      style={{
-        ...pxCard(allDone ? 'right' : isActive ? 'selected' : undefined),
-        borderRadius: 10, padding: '4px 9px',
-        fontFamily: 'var(--font-heading)', fontSize: 12, fontWeight: 700,
-        display: 'flex', alignItems: 'center', gap: 6,
-        cursor: allDone ? 'default' : 'pointer', outline: 'none',
-        transition: 'all 0.2s', pointerEvents: allDone ? 'none' : 'auto',
-        color: 'var(--text-primary)', position: 'relative', overflow: 'hidden',
-      }}
-    >
-      {/* progress fill behind label */}
-      {!allDone && progress > 0 && (
-        <div style={{
-          position: 'absolute', left: 0, top: 0, bottom: 0,
-          width: `${progress * 100}%`,
-          background: `${group.color.value}22`,
-          transition: 'width 0.1s',
-          pointerEvents: 'none',
-        }} />
-      )}
-      {allDone
-        ? <span>✅</span>
-        : <span style={{
-            width: 14, height: 14, borderRadius: '50%', flexShrink: 0,
-            background: group.color.value, border: `2px solid ${INK}`,
-            display: 'inline-block',
-          }} />
-      }
-      <span style={{ position: 'relative' }}>{group.target}</span>
-      {!allDone && <span style={{ fontSize: 10, opacity: 0.4, position: 'relative' }}>🖌️</span>}
-    </motion.button>
+    <div style={{
+      ...pxCard(allDone ? 'right' : active ? 'selected' : undefined),
+      borderRadius: 10, padding: '3px 10px', minHeight: 32,
+      fontFamily: 'var(--font-heading)', fontSize: 14, fontWeight: 700,
+      display: 'flex', alignItems: 'center', gap: 6, color: INK,
+    }}>
+      <span style={{
+        width: 16, height: 16, borderRadius: '50%', flexShrink: 0,
+        background: group.color.value, border: `2px solid ${INK}`,
+      }} />
+      {group.target}
+      {allDone && <span>✅</span>}
+    </div>
   )
 }
 
 // ─── Canvas ───────────────────────────────────────────────────────────────────
-function PaintCanvas({ scene, strokes, completed, selectedColor, svgRef, onPointerMove, onPointerLeave }) {
-  const size = typeof window !== 'undefined' ? Math.min(window.innerWidth - 48, 460) : 320
-
+function PaintCanvas({ scene, size, filled, selectedColor, flash, svgRef, onPointerDown, onPointerMove }) {
   return (
     <div style={{ ...pxPanel, overflow: 'hidden', lineHeight: 0 }}>
-    <svg
-      ref={svgRef}
-      // the frame's 3px border sits inside the old footprint (NO_SCALE game)
-      width={size - 6}
-      height={size - 6}
-      viewBox={scene.viewBox}
-      onPointerMove={onPointerMove}
-      onPointerLeave={onPointerLeave}
-      style={{
-        display: 'block', borderRadius: 11, background: '#FAFAFA',
-        touchAction: 'none',
-        cursor: selectedColor ? 'none' : 'default',
-        userSelect: 'none',
-      }}
-    >
-      {/* ── Clip paths (one per region, defines the paintable boundary) ── */}
-      <defs>
-        {scene.regions.map(region => (
-          <clipPath key={region.id} id={`clip-${scene.id}-${region.id}`}>
-            {/* Shape geometry only — fill/stroke don't matter inside clipPath */}
-            <ShapeEl region={region} fill="white" stroke="none" strokeWidth={0} />
-          </clipPath>
-        ))}
-      </defs>
+      <svg
+        ref={svgRef}
+        // the frame's 3px border sits inside the measured box
+        width={size - 6}
+        height={size - 6}
+        viewBox="0 0 200 200"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        style={{ display: 'block', borderRadius: 11, touchAction: 'none', cursor: 'pointer', userSelect: 'none' }}
+      >
+        <defs>
+          {/* Unpainted parts are hatched: a painted white part (the frog's
+              eyes) used to look exactly like an empty one. */}
+          <pattern id="px-hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect width="8" height="8" fill="#FFFAF0" />
+            <line x1="0" y1="0" x2="0" y2="8" stroke="rgba(42,27,61,0.12)" strokeWidth="3" />
+          </pattern>
+          {scene.regions.map(region => (
+            <clipPath key={region.id} id={`clip-${scene.id}-${region.id}`}>
+              <ShapeEl region={region} />
+            </clipPath>
+          ))}
+        </defs>
 
-      <rect width="200" height="200" fill="#FAFAFA" />
+        {/* a soft sky behind the picture, so white stands out from it */}
+        <rect width="200" height="200" fill="#DCEBF5" />
 
-      {scene.regions.map(region => {
-        const tc       = getColor(region.target)
-        const isDone   = !!completed[region.id]
-        const isHinted = selectedColor === region.target && !isDone
-        const dots     = strokes[region.id] ?? []
+        {scene.regions.map(region => {
+          const tc     = getColor(region.target)
+          const origin = filled[region.id]
+          const hinted = selectedColor === region.target && !origin
+          return (
+            <g key={region.id}>
+              <ShapeEl region={region} fill="url(#px-hatch)" />
 
-        return (
-          <g key={region.id}>
-            {/* 1. Base shape — always shows unpainted background; green border when done */}
-            <ShapeEl
-              region={region}
-              fill={isHinted ? tc.value + '22' : '#ECEAF8'}
-              stroke={isDone ? '#6BCB77' : isHinted ? tc.value : '#C0B8DC'}
-              strokeWidth={isDone ? 4 : isHinted ? 3 : 2}
-            />
+              {/* fills from where it was tapped, like paint poured in */}
+              {origin && (
+                <g clipPath={`url(#clip-${scene.id}-${region.id})`}>
+                  <motion.circle cx={origin.x} cy={origin.y} fill={tc.value}
+                    initial={{ r: 0 }} animate={{ r: 260 }} transition={{ duration: 0.5, ease: 'easeOut' }} />
+                </g>
+              )}
 
-            {/* 2. Brush stroke dots — always visible (no auto-fill on completion) */}
-            {dots.length > 0 && (
-              <g
-                clipPath={`url(#clip-${scene.id}-${region.id})`}
-                style={{ pointerEvents: 'none' }}
-              >
-                {dots.map((pt, i) => (
-                  <circle
-                    key={i}
-                    cx={pt.x} cy={pt.y}
-                    r={BRUSH_R}
-                    fill={tc.value}
-                    opacity={0.88}
-                  />
-                ))}
-              </g>
-            )}
+              {/* the parts the chosen colour belongs to glow */}
+              {hinted && (
+                <motion.g animate={{ opacity: [0.15, 0.45, 0.15] }} transition={{ duration: 1.4, repeat: Infinity }}>
+                  <ShapeEl region={region} fill={tc.value} />
+                </motion.g>
+              )}
 
-            {/* 3. Auto-complete overlay: fills the last ~10% once threshold reached */}
-            {isDone && (
-              <ShapeEl
-                region={region}
-                fill={tc.value}
-                stroke="#6BCB77"
-                strokeWidth={4}
-              />
-            )}
+              {/* a wrong colour: the part shows the colour it wants */}
+              {flash?.id === region.id && (
+                <motion.g key={flash.n} initial={{ opacity: 0 }} animate={{ opacity: [0, 0.85, 0.2, 0.85, 0] }} transition={{ duration: 1.3 }}>
+                  <ShapeEl region={region} fill={tc.value} />
+                </motion.g>
+              )}
 
-            {/* 4. Wide invisible hit-target on top (easier to hover small shapes) */}
-            <ShapeEl region={region} hitTarget />
-          </g>
-        )
-      })}
-    </svg>
+              <ShapeEl region={region} fill="none" stroke={INK} strokeWidth={hinted ? 3 : 2} strokeLinejoin="round"
+                strokeDasharray={hinted ? '6 4' : undefined} />
+            </g>
+          )
+        })}
+      </svg>
     </div>
   )
+}
+
+// Measures the box the canvas may fill, so it fits the height as well as the
+// width (it used to take the window width only and pushed the buckets off the
+// bottom of a landscape tablet).
+function useBoxSize(ref) {
+  const [size, setSize] = useState(0)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const measure = () => setSize(Math.floor(Math.min(el.clientWidth, el.clientHeight, 520)))
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [ref])
+  return size
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function PainterGame({ level = 1, onComplete }) {
   const [scenes]    = useState(() => buildScenes(level))
   const [sceneIdx,  setSceneIdx]  = useState(0)
-  const [strokes,   setStrokes]   = useState({})   // { regionId: [{x,y},...] }
-  const [completed, setCompleted] = useState({})   // { regionId: bool }
+  const [filled,    setFilled]    = useState({})   // { regionId: { x, y } } — where the paint was poured in
   const [selected,  setSelected]  = useState(null) // color name
-  const brushDivRef = useRef(null)  // direct DOM ref for cursor — avoids 60fps re-renders
-  const [score,     setScore]     = useState(0)
+  const [flash,     setFlash]     = useState(null) // { id, n } — part that showed its colour after a mix-up
   const [mood,      setMood]      = useState('happy')
-  const [advancing, setAdvancing] = useState(false)
+  const [sceneDone, setSceneDone] = useState(false)
+  const [advance,   setAdvance]   = useState(false) // the praise was said, go on when not paused
+  const paused = usePaused()
 
-  const svgRef          = useRef(null)
-  const lastPtRef       = useRef(null)       // last SVG point painted
-  const insideCellsRef  = useRef(null)       // { regionId: Set<number> } — pre-computed inside cells
-  const paintedCellsRef = useRef({})         // { regionId: Set<number> } — cells covered by brush
-  const completedRef    = useRef({})         // mirrors completed for use in callbacks
-  const advRef          = useRef(false)
-  const sceneRef        = useRef(scenes[0])
-  const scoreRef        = useRef(0)
+  const svgRef    = useRef(null)
+  const boxRef    = useRef(null)
+  const missed    = useRef(new Set())               // `${scene}/${region}` painted wrong first
+  const filledRef = useRef({})
+  const dragging  = useRef(false)
+  const size      = useBoxSize(boxRef)
 
   const scene   = scenes[sceneIdx]
   const palette = useMemo(() => buildPalette(scene, level), [scene, level])
+  const total   = useMemo(() => scenes.reduce((n, s) => n + s.regions.length, 0), [scenes])
 
-  useEffect(() => { sceneRef.current = scene },   [scene])
-  useEffect(() => { advRef.current = advancing },  [advancing])
-  useEffect(() => { scoreRef.current = score },    [score])
-
-  // Reset everything when scene changes
+  // New picture: say the task
   useEffect(() => {
-    setStrokes({})
-    setCompleted({})
-    completedRef.current = {}
-    paintedCellsRef.current = {}
-    lastPtRef.current = null
-    // TTS: announce scene task
-    const s = scenes[sceneIdx]
-    if (s?.hint) setTimeout(() => speak(s.hint, { rate: 0.8, pitch: 1.05, lang: 'de-DE' }), 500)
+    setFilled({}); filledRef.current = {}
+    setSelected(null); setFlash(null); setSceneDone(false); setMood('happy')
+    lockPreviews()
+    const id = setTimeout(() => sayTask(`${scene.hint} Tippe zuerst auf einen Farbeimer.`), 450)
+    return () => clearTimeout(id)
   }, [sceneIdx]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Pre-compute which grid cells are inside each region whenever scene changes.
-  // Each cell is assigned to the SMALLEST region that contains it — matching the
-  // hit-test logic — so "inside" cells are exactly the ones the brush can actually paint.
+  // After the praise: next picture or the end — held while the help is open
   useEffect(() => {
-    if (!scene) return
-    // Raw inside cells per region (no ownership yet)
-    const rawCells = {}
-    scene.regions.forEach(r => { rawCells[r.id] = computeInsideCells(r) })
-    // Assign each cell to its smallest (highest-priority) owner
-    const map = {}
-    scene.regions.forEach(r => { map[r.id] = new Set() })
-    for (let row = 0; row < ROWS; row++) {
-      for (let col = 0; col < COLS; col++) {
-        const idx = row * COLS + col
-        const owners = scene.regions.filter(r => rawCells[r.id].has(idx))
-        if (owners.length === 0) continue
-        owners.sort((a, b) => regionArea(a) - regionArea(b))
-        map[owners[0].id].add(idx)
-      }
+    if (!advance || paused) return
+    const id = setTimeout(() => {
+      setAdvance(false)
+      if (sceneIdx + 1 >= scenes.length) onComplete(result(total - missed.current.size, total))
+      else setSceneIdx(i => i + 1)
+    }, 400)
+    return () => clearTimeout(id)
+  }, [advance, paused]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const remainingOf = useCallback(colorName => scene.regions.filter(r => r.target === colorName && !filledRef.current[r.id]), [scene])
+
+  const chooseColor = (c) => {
+    if (sceneDone) return
+    setSelected(c.name)
+    const open = remainingOf(c.name)
+    const needed = scene.regions.some(r => r.target === c.name)
+    const names = [...new Set(open.map(acc))]
+    narrate([{ text: !needed ? `${c.name}. ${c.name} brauchen wir hier nicht.`
+      : open.length ? `${c.name}! Damit malst du ${listWords(names)}.`
+      : `${c.name}. Das ist schon fertig.` }])
+  }
+
+  const fill = useCallback((region, pt) => {
+    filledRef.current = { ...filledRef.current, [region.id]: pt }
+    setFilled(filledRef.current)
+    sfx.correct()
+    const colour = getColor(region.target)
+    const said = []
+    // say what it became once the whole part is painted (both ears)
+    if (scene.regions.every(r => r.name !== region.name || filledRef.current[r.id])) {
+      said.push({ text: `${cap(region.name)} ${verb(region, 'ist', 'sind')} jetzt ${colour.name.toLowerCase()}!` })
     }
-    insideCellsRef.current = map
-  }, [sceneIdx]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (scene.regions.every(r => filledRef.current[r.id])) {
+      setSceneDone(true)
+      setSelected(null)
+      setMood('excited')
+      sfx.complete?.()
+      said.push({ text: `Super gemalt! ${cap(scene.thing)} ist fertig.`, gap: 200 })
+      narrate(said)
+      afterNarration(() => setAdvance(true), { minMs: 900 })
+    } else if (said.length) {
+      narrate(said)
+    }
+  }, [scene])
 
-  // ── Check for scene completion ──────────────────────────────────────────────
-  useEffect(() => {
-    if (!scene || advRef.current) return
-    const allDone = scene.regions.every(r => completed[r.id])
-    if (!allDone) return
-    setMood('excited')
-    sfx.complete?.()
-    advRef.current = true
-    setAdvancing(true)
-    const ns = scoreRef.current + 1
-    setScore(ns)
-    setTimeout(() => {
-      advRef.current = false
-      setAdvancing(false)
-      if (sceneIdx + 1 >= scenes.length) {
-        onComplete({ score: ns, total: scenes.length })
-      } else {
-        setSceneIdx(i => i + 1)
-        setSelected(null)
-        setMood('happy')
-      }
-    }, 1500)
-  }, [completed]) // eslint-disable-line react-hooks/exhaustive-deps
+  const handlePointerDown = useCallback((e) => {
+    if (sceneDone) return
+    const pt = clientToSVG(svgRef.current, e.clientX, e.clientY)
+    const region = pt && regionAt(scene, pt.x, pt.y)
+    if (!region || filledRef.current[region.id]) return
+    const want = getColor(region.target).name
+    const wants = `${cap(region.name)} ${verb(region, 'möchte', 'möchten')} ${want}.`
+    if (!selected) {
+      setFlash({ id: region.id, n: Date.now() })
+      narrate([{ text: `${wants} Tippe auf den Eimer mit ${want}.` }])
+      return
+    }
+    if (selected !== region.target) {
+      // gently: show and say the colour this part wants
+      missed.current.add(`${scene.id}/${region.id}`)
+      setFlash({ id: region.id, n: Date.now() })
+      setMood('encouraging')
+      setTimeout(() => setMood('happy'), 1300)
+      sayWrong(wants)
+      return
+    }
+    dragging.current = true
+    try { e.currentTarget.setPointerCapture?.(e.pointerId) } catch { /* not supported */ }
+    fill(region, pt)
+  }, [scene, selected, sceneDone, fill])
 
-  // ── Pointer move: painting ──────────────────────────────────────────────────
+  // Dragging on with the right colour fills every glowing part it touches.
   const handlePointerMove = useCallback((e) => {
-    if (!selected) return
+    if (!dragging.current || !e.buttons || sceneDone) return
+    const pt = clientToSVG(svgRef.current, e.clientX, e.clientY)
+    const region = pt && regionAt(scene, pt.x, pt.y)
+    if (region && !filledRef.current[region.id] && region.target === selected) fill(region, pt)
+  }, [scene, selected, sceneDone, fill])
 
-    // Update brush cursor position — mutate DOM directly to avoid 60fps re-renders
-    const bd = brushDivRef.current
-    if (bd) {
-      bd.style.left = (e.clientX - 11) + 'px'
-      bd.style.top  = (e.clientY - 11) + 'px'
-      bd.hidden = false
-    }
-
-    if (advRef.current) return
-
-    // Convert to SVG coordinate space
-    const svgPt = clientToSVG(svgRef.current, e.clientX, e.clientY)
-    if (!svgPt) return
-
-    // Hit test: among ALL regions containing the point, pick the smallest (tightest fit).
-    // This prevents a large background shape (rays polygon) from stealing clicks
-    // that are geometrically inside a smaller overlapping shape (disc circle).
-    const sc = sceneRef.current
-    if (!sc) return
-    const hits = sc.regions.filter(r =>
-      !completedRef.current[r.id] &&
-      isInsideRegion(r, svgPt.x, svgPt.y, EDGE_MARGIN)
-    )
-    if (hits.length === 0) return
-    // Sort by approximate area ascending — smallest shape wins
-    hits.sort((a, b) => regionArea(a) - regionArea(b))
-    const topRegion = hits[0]
-    // Only paint if the selected colour matches the tightest region under the cursor
-    if (selected !== topRegion.target) return
-    const region = topRegion
-    const rid = region.id
-
-    // Already completed (double-guard — also checked in the find above)
-    if (completedRef.current[rid]) return
-
-    // Distance throttle: skip if pointer barely moved
-    const last = lastPtRef.current
-    if (last) {
-      const dx = svgPt.x - last.x
-      const dy = svgPt.y - last.y
-      if (dx * dx + dy * dy < MIN_DIST * MIN_DIST) return
-    }
-    lastPtRef.current = svgPt
-
-    // Append stroke point (triggers re-render to show new dot)
-    setStrokes(s => ({
-      ...s,
-      [rid]: [...(s[rid] ?? []), { x: svgPt.x, y: svgPt.y }],
-    }))
-
-    // Mark grid cells within brush radius as painted, then check coverage
-    if (!paintedCellsRef.current[rid]) paintedCellsRef.current[rid] = new Set()
-    const painted = paintedCellsRef.current[rid]
-    const inside  = insideCellsRef.current?.[rid]
-
-    if (inside && inside.size > 0) {
-      const colMin = Math.max(0, Math.floor((svgPt.x - BRUSH_R) / GRID))
-      const colMax = Math.min(COLS - 1, Math.floor((svgPt.x + BRUSH_R) / GRID))
-      const rowMin = Math.max(0, Math.floor((svgPt.y - BRUSH_R) / GRID))
-      const rowMax = Math.min(ROWS - 1, Math.floor((svgPt.y + BRUSH_R) / GRID))
-
-      for (let row = rowMin; row <= rowMax; row++) {
-        for (let col = colMin; col <= colMax; col++) {
-          // Use nearest-point distance: mark the cell if the brush OVERLAPS any part of it,
-          // not just if the cell center is inside the brush circle.
-          // This correctly handles thin tips where the center sits just outside the brush.
-          const nearX = Math.max(col * GRID, Math.min((col + 1) * GRID, svgPt.x))
-          const nearY = Math.max(row * GRID, Math.min((row + 1) * GRID, svgPt.y))
-          const d2 = (nearX - svgPt.x) ** 2 + (nearY - svgPt.y) ** 2
-          if (d2 <= BRUSH_R * BRUSH_R) {
-            const idx = row * COLS + col
-            if (inside.has(idx)) painted.add(idx)
-          }
-        }
-      }
-
-      const coverage = painted.size / inside.size
-      if (coverage >= COVER_FRAC && !completedRef.current[rid]) {
-        completedRef.current[rid] = true
-        sfx.correct()
-        setCompleted(c => ({ ...c, [rid]: true }))
-        lastPtRef.current = null
-      }
-    }
-  }, [selected])
-
-  const handlePointerLeave = useCallback(() => {
-    if (brushDivRef.current) brushDivRef.current.hidden = true
+  useEffect(() => {
+    const up = () => { dragging.current = false }
+    window.addEventListener('pointerup', up)
+    window.addEventListener('pointercancel', up)
+    return () => { window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up) }
   }, [])
 
-  // When the selected colour changes, update the brush div colour directly in the DOM.
-  // This useEffect must live before the early return to satisfy rules-of-hooks.
-  const selColorForEffect = selected ? getColor(selected) : null
-  useEffect(() => {
-    const el = brushDivRef.current
-    if (!el) return
-    if (!selColorForEffect) { el.hidden = true; return }
-    el.style.background  = selColorForEffect.value
-    el.style.boxShadow   = `0 3px 10px rgba(0,0,0,0.35), 0 0 0 3px ${selColorForEffect.value}44`
-  }, [selColorForEffect])
-
-  if (!scene) return null
-
-  // Build colour groups for badges + progress
+  // One chip per colour the picture needs, with what is done
   const colorGroups = useMemo(() => {
     const map = {}
     scene.regions.forEach(r => {
       if (!map[r.target]) map[r.target] = { target: r.target, color: getColor(r.target), regions: [] }
       map[r.target].regions.push(r)
     })
-    return Object.values(map).map(g => ({
-      ...g,
-      done:  g.regions.filter(r => completed[r.id]).length,
-      total: g.regions.length,
-    }))
-  }, [scene, completed])
+    return Object.values(map).map(g => ({ ...g, done: g.regions.filter(r => filled[r.id]).length, total: g.regions.length }))
+  }, [scene, filled])
 
-  const selColor   = selected ? getColor(selected) : null
-  const allSceneDone = colorGroups.every(g => g.done === g.total)
-
-  // Progress per region (for badge fill bar) — ratio of painted cells to required
-  function regionProgress(target) {
-    const rids = scene.regions.filter(r => r.target === target)
-    const avg = rids.reduce((sum, r) => {
-      const painted = paintedCellsRef.current[r.id]?.size ?? 0
-      const inside  = insideCellsRef.current?.[r.id]?.size ?? 1
-      return sum + Math.min(painted / (inside * COVER_FRAC), 1)
-    }, 0) / rids.length
-    return avg
-  }
+  const selColor = selected ? getColor(selected) : null
+  const selNeeded = selected && remainingOf(selected).length > 0
 
   let lumiMsg
-  if (allSceneDone) {
-    lumiMsg = '🎉 Super gemalt! Weiter geht\'s!'
-  } else if (!selected) {
-    lumiMsg = `${scene.hint} Wähle einen Farbeimer und male drauf los! 🖌️`
+  if (sceneDone) {
+    lumiMsg = '🎉 Super gemalt!'
+  } else if (!selColor) {
+    lumiMsg = `${scene.hint} Tippe auf einen Farbeimer.`
   } else {
     lumiMsg = (
-      <span>
-        <strong style={{ color: selColor.value }}>{selColor.name}</strong>
-        {' '}gewählt — einfach über die leuchtende Fläche fahren! ✨
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <span style={{ width: 20, height: 20, borderRadius: '50%', background: selColor.value, border: `2px solid ${INK}`, flexShrink: 0 }} />
+        <strong>{selColor.name}</strong>
+        {selNeeded ? '— tippe auf die Fläche, die leuchtet!' : '— die brauchen wir hier nicht.'}
       </span>
     )
   }
 
   return (
     <div style={{
-      flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-      padding: 'clamp(8px,1.5vw,18px) clamp(10px,2.5vw,24px)',
-      gap: 'clamp(8px,1.2vw,14px)',
+      flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center',
+      padding: 'clamp(8px,1.5vw,16px) clamp(10px,2.5vw,24px)',
+      gap: 'clamp(6px,1.2vh,12px)',
       userSelect: 'none',
     }}>
 
       {/* Progress bar */}
-      <div style={{ display: 'flex', gap: 5, width: '100%', maxWidth: 660 }}>
+      <div style={{ display: 'flex', gap: 5, width: '100%', maxWidth: 660, flexShrink: 0 }}>
         {scenes.map((_, i) => (
           <div key={i} style={{
-            flex: 1, ...pxSegment(i < sceneIdx ? 'done' : i === sceneIdx ? 'current' : 'todo'), height: 10,
+            flex: 1, ...pxSegment(i < sceneIdx || (i === sceneIdx && sceneDone) ? 'done' : i === sceneIdx ? 'current' : 'todo'), height: 10,
             transition: 'background 0.3s',
           }} />
         ))}
       </div>
 
       {/* Lumi + speech bubble */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, width: '100%', maxWidth: 660 }}>
-        <LumiCharacter mood={mood} size={68} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', maxWidth: 660, flexShrink: 0 }}>
+        <LumiCharacter mood={mood} size={56} />
         <div style={{
           flex: 1, ...pxBubble,
-          padding: '7px 16px',
-          fontFamily: 'var(--font-heading)', fontSize: 'clamp(13px,2.7vw,18px)',
+          padding: '7px 14px',
+          fontFamily: 'var(--font-heading)', fontSize: 'clamp(15px,2.7vw,19px)',
           color: 'var(--text-primary)',
         }}>
           {lumiMsg}
         </div>
       </div>
 
-      {/* Colour badges with progress */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, justifyContent: 'center', width: '100%', maxWidth: 660 }}>
+      {/* Colours the picture needs */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center', width: '100%', maxWidth: 660, flexShrink: 0 }}>
         {colorGroups.map(group => (
-          <ColorBadge
-            key={group.target}
-            group={group}
-            isActive={selected === group.target}
-            progress={regionProgress(group.target)}
-            onClick={() => setSelected(s => s === group.target ? null : group.target)}
-          />
+          <ColorChip key={group.target} group={group} active={selected === group.target} />
         ))}
       </div>
 
-      {/* Paint canvas */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={scene.id}
-          initial={{ scale: 0.88, opacity: 0 }}
-          animate={{ scale: 1,    opacity: 1 }}
-          exit={{   scale: 0.88, opacity: 0 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 24 }}
-        >
-          <PaintCanvas
-            scene={scene}
-            strokes={strokes}
-            completed={completed}
-            selectedColor={selected}
-            svgRef={svgRef}
-            onPointerMove={handlePointerMove}
-            onPointerLeave={handlePointerLeave}
-          />
-        </motion.div>
-      </AnimatePresence>
+      {/* Paint canvas — takes whatever height is left */}
+      <div ref={boxRef} style={{ flex: 1, minHeight: 120, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <AnimatePresence mode="wait">
+          {size > 0 && (
+            <motion.div
+              key={scene.id}
+              initial={{ scale: 0.88, opacity: 0 }}
+              animate={{ scale: 1,    opacity: 1 }}
+              exit={{   scale: 0.88, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 24 }}
+            >
+              <PaintCanvas
+                scene={scene}
+                size={size}
+                filled={filled}
+                selectedColor={selected}
+                flash={flash}
+                svgRef={svgRef}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       {/* Paint buckets */}
       <div style={{
-        ...pxPanel,
-        padding: 'calc(clamp(8px,1.2vw,14px) - 3px) calc(clamp(10px,2vw,18px) - 3px)',
+        ...pxPanel, flexShrink: 0,
+        padding: '6px 8px',
         width: '100%', maxWidth: 660,
       }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'clamp(5px,1.2vw,10px)', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px clamp(2px,1vw,10px)', justifyContent: 'center' }}>
           {palette.map(color => (
             <PaintBucket
               key={color.name}
               color={color.value}
               name={color.name}
               selected={selected === color.name}
-              onClick={() => setSelected(s => s === color.name ? null : color.name)}
+              onClick={() => chooseColor(color)}
             />
           ))}
         </div>
       </div>
-
-      {/* Floating brush tip — teardrop, follows cursor; position updated imperatively */}
-      <div
-        ref={brushDivRef}
-        aria-hidden
-        hidden
-        style={{
-          position: 'fixed',
-          left: 0, top: 0,
-          width: 22, height: 22,
-          borderRadius: '50% 50% 50% 0',
-          transform: 'rotate(-45deg)',
-          background: selColor?.value ?? 'transparent',
-          border: `2.5px solid ${INK}`,
-          boxShadow: selColor ? `0 3px 10px rgba(0,0,0,0.35), 0 0 0 3px ${selColor.value}44` : 'none',
-          pointerEvents: 'none',
-          zIndex: 9999,
-        }}
-      />
     </div>
   )
 }

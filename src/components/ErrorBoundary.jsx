@@ -1,4 +1,13 @@
 import React from 'react'
+import { narrate } from '../narrator.js'
+import { PixelLumi } from './PixelUI.jsx'
+
+// A game that could not be loaded is not a broken game. Without a
+// connection the old message claimed "Dieses Spiel hat einen kleinen
+// Fehler"; now the child hears that Lumi needs the internet.
+export const isLoadError = err =>
+  (typeof navigator !== 'undefined' && navigator.onLine === false) ||
+  /dynamically imported module|Importing a module script failed|Loading chunk|Failed to fetch/i.test(String(err?.message ?? err))
 
 export class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -12,6 +21,11 @@ export class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, info) {
     console.error('LumiLearn Error:', error, info)
+    const offline = isLoadError(error)
+    narrate([{ text: offline
+      ? 'Oh, Lumi braucht Internet, um dieses Spiel zu holen. Versuch es gleich noch einmal.'
+      : 'Ups, Lumi ist gestolpert. Versuch es noch einmal.' }])
+    if (offline) return
     // Store error in localStorage for parent panel debugging
     try {
       const errors = JSON.parse(localStorage.getItem('lumilearn_errors') || '[]')
@@ -25,45 +39,42 @@ export class ErrorBoundary extends React.Component {
     } catch(e) {}
   }
 
+  retry = () => {
+    this.setState({ hasError: false, error: null })
+    this.props.onRetry?.()
+  }
+
   render() {
     if (this.state.hasError) {
+      const offline = isLoadError(this.state.error)
       return (
         <div style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center',
-          justifyContent: 'center', minHeight: '200px', padding: '32px',
-          textAlign: 'center', gap: '16px'
+          flex: 1, minHeight: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 24, background: 'var(--bg)',
         }}>
-          <div style={{ fontSize: '48px' }}>🌟</div>
-          <h3 style={{ color: '#4A00E0', fontFamily: 'Fredoka, sans-serif', fontSize: '22px', margin: 0 }}>
-            {this.props.title || 'Ups, Lumi ist gestolpert!'}
-          </h3>
-          <p style={{ color: '#666', fontFamily: 'Nunito, sans-serif', fontSize: '16px', margin: 0 }}>
-            {this.props.message || 'Dieses Spiel hat einen kleinen Fehler. Versuch es nochmal!'}
-          </p>
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
-            <button
-              onClick={() => this.setState({ hasError: false, error: null })}
-              style={{
-                padding: '12px 24px', background: 'linear-gradient(135deg, #6BCB77, #4A9E52)',
-                color: 'white', border: 'none', borderRadius: '16px', cursor: 'pointer',
-                fontFamily: 'Fredoka, sans-serif', fontSize: '18px', fontWeight: 600
-              }}
-            >
-              🔄 Nochmal
-            </button>
-            {this.props.onHome && (
-              <button
-                onClick={this.props.onHome}
-                style={{
-                  padding: '12px 24px', background: 'rgba(74,0,224,0.1)',
-                  color: '#4A00E0', border: '2px solid rgba(74,0,224,0.3)',
-                  borderRadius: '16px', cursor: 'pointer',
-                  fontFamily: 'Fredoka, sans-serif', fontSize: '18px', fontWeight: 600
-                }}
-              >
-                🏠 Zum Menü
+          <div className="px-panel" style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
+            padding: '24px 22px', maxWidth: 420, width: '100%', textAlign: 'center',
+          }}>
+            <PixelLumi size={96} />
+            <h3 style={{ color: 'var(--px-ink)', fontFamily: 'var(--font-heading)', fontSize: 24, margin: 0 }}>
+              {offline ? 'Keine Internetverbindung' : (this.props.title || 'Ups, Lumi ist gestolpert!')}
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-body)', fontSize: 17, margin: 0, fontWeight: 600 }}>
+              {offline
+                ? 'Lumi braucht Internet, um dieses Spiel zu holen. Lumi wartet auf dich!'
+                : (this.props.message || 'Etwas ist schiefgegangen. Versuch es nochmal!')}
+            </p>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+              <button className="px-btn px-btn--green px-btn--md" onClick={this.props.onReload ?? this.retry}>
+                🔄 Nochmal
               </button>
-            )}
+              {this.props.onHome && (
+                <button className="px-btn px-btn--parch px-btn--md" onClick={this.props.onHome}>
+                  🏠 Startseite
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )

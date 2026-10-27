@@ -1,8 +1,12 @@
-// gameEngine.js — question generators for ChoiceGame (numbers + patterns)
+// gameEngine.js — question generator for ChoiceGame (Musterpark)
 // Every call uses fresh Math.random() so each game session is unique.
+//
+// A question is { kind, prompt, tokens, gapAt, options, answer, unit, names }:
+//   tokens  the row, one entry per place; '❓' marks the place asked for
+//   unit    the repeating part, for the spoken feedback ("Frosch, Hund")
+//   names   emoji → spoken name, for every symbol in the row and the options
 
 export function generateQuestions(moduleId, level, count = 10) {
-  if (moduleId === 'numbers')  return Array.from({ length: count }, () => numbersQ(level))
   if (moduleId === 'patterns') return Array.from({ length: count }, () => patternsQ(level))
   return []
 }
@@ -10,241 +14,210 @@ export function generateQuestions(moduleId, level, count = 10) {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min }
 function shuffle(arr)    { return [...arr].sort(() => Math.random() - 0.5) }
-function uniqueWrong(correct, count, min, max) {
-  const s = new Set()
-  // Guard: can't produce more unique values than the range holds (minus the correct one)
-  const available = Math.max(0, max - min)
-  const need = Math.min(count, available)
-  let tries = 0
-  while (s.size < need && tries < 400) {
-    const n = rand(min, max)
-    if (n !== correct) s.add(n)
-    tries++
-  }
-  return [...s].map(String)
-}
-
-const COUNT_EMOJIS = ['⭐','🍎','🐟','🦋','🌸','🍭','🎈','🐶','🌙','🦁','🍕','❤️','🌻','🎵','🦄','🐸','🍓','🐠','🍩','🎀']
-
-// ─── Numbers ────────────────────────────────────────────────────────────────
-function numbersQ(level) {
-  // Question types available per level
-  const types1 = ['count','count','add']
-  const types2 = ['count','add','add','missing']
-  const types3 = ['count','add','sub','missing','missing']
-  const types4 = ['add','sub','sub','multiply','compare','missing_step']
-  const types5 = ['add','sub','multiply','multiply','compare','missing_step','missing_step']
-
-  const typePool = level <= 1 ? types1 : level <= 2 ? types2 : level <= 3 ? types3 : level <= 4 ? types4 : types5
-  const type     = shuffle(typePool)[0]
-  const maxN     = level <= 1 ? 5 : level <= 2 ? 10 : level <= 3 ? 20 : level <= 4 ? 50 : 100
-
-  // ── Count ──
-  if (type === 'count') {
-    const n     = rand(1, Math.min(maxN, 15)) // visual limit
-    const emoji = COUNT_EMOJIS[rand(0, COUNT_EMOJIS.length - 1)]
-    const wrong = uniqueWrong(n, 3, Math.max(1, n - 3), n + 5)
-    return {
-      prompt:  `Wie viele ${emoji} siehst du?`,
-      visual:  emoji.repeat(n),
-      options: shuffle([String(n), ...wrong]),
-      answer:  String(n),
-    }
-  }
-
-  // ── Addition ──
-  if (type === 'add') {
-    const half = Math.max(2, Math.floor(maxN / 2))
-    const a    = rand(1, half)
-    const b    = rand(1, half)
-    const ans  = a + b
-    const wrong = uniqueWrong(ans, 3, Math.max(1, ans - 4), ans + 6)
-    const showVisual = ans <= 12
-    return {
-      prompt:  `${a} + ${b} = ?`,
-      visual:  showVisual ? ('⭐'.repeat(a) + '  +  ' + '⭐'.repeat(b)) : null,
-      options: shuffle([String(ans), ...wrong]),
-      answer:  String(ans),
-    }
-  }
-
-  // ── Subtraction ──
-  if (type === 'sub') {
-    const b   = rand(1, Math.floor(maxN / 2))
-    const ans = rand(0, Math.floor(maxN / 2))
-    const a   = ans + b
-    const wrong = uniqueWrong(ans, 3, Math.max(0, ans - 4), ans + 6)
-    const showVisual = a <= 12
-    return {
-      prompt:  `${a} − ${b} = ?`,
-      visual:  showVisual ? ('🍎'.repeat(a) + '\n−  ' + '🍎'.repeat(b)) : null,
-      options: shuffle([String(ans), ...wrong]),
-      answer:  String(ans),
-    }
-  }
-
-  // ── Multiplication (simple: 2×, 5×, 10× tables) ──
-  if (type === 'multiply') {
-    const multiplier = shuffle([2, 5, 10])[0]
-    const n   = rand(1, level <= 4 ? 5 : 10)
-    const ans = multiplier * n
-    const wrong = uniqueWrong(ans, 3, Math.max(0, ans - multiplier * 2), ans + multiplier * 3)
-    return {
-      prompt:  `${multiplier} × ${n} = ?`,
-      visual:  n <= 5 ? (Array.from({ length: n }, (_, i) => '⭐'.repeat(multiplier)).join('  +  ')) : null,
-      options: shuffle([String(ans), ...wrong]),
-      answer:  String(ans),
-    }
-  }
-
-  // ── Comparison (greater / less) ──
-  if (type === 'compare') {
-    const a = rand(1, maxN)
-    let b
-    do { b = rand(1, maxN) } while (b === a)
-    const ans = a > b ? String(a) : String(b)
-    const wrong = [String(a > b ? b : a)]
-    // Add two more distractors near the actual values
-    const extras = uniqueWrong(Number(ans), 2, Math.max(1, Math.min(a,b) - 3), Math.max(a,b) + 4)
-    // Every other question type carries an emoji quantity to look at; compare
-    // and missing_step were bare numerals, which is the most abstract form
-    // exactly where the game otherwise leans on pictures. Small numbers get
-    // dots so the comparison can be seen, not only read.
-    const dots = n => '●'.repeat(n)
-    const visual = (a <= 12 && b <= 12)
-      ? `${a} ${dots(a)}   vs   ${b} ${dots(b)}`
-      : `${a}  vs  ${b}`
-    return {
-      prompt:  `Welche Zahl ist größer? 🔍`,
-      visual,
-      options: shuffle([ans, ...wrong, ...extras]).slice(0, 4),
-      answer:  ans,
-    }
-  }
-
-  // ── Missing number in a sequence ──
-  if (type === 'missing') {
-    const start = rand(1, Math.max(1, maxN - 4))
-    const seq   = [start, start + 1, start + 2, start + 3]
-    const hide  = rand(0, 3)
-    const ans   = seq[hide]
-    const disp  = seq.map((n, i) => i === hide ? '?' : String(n))
-    const wrong = uniqueWrong(ans, 3, Math.max(1, ans - 4), ans + 6)
-    return {
-      prompt:  'Welche Zahl fehlt? 🔢',
-      visual:  disp.join('  →  '),
-      options: shuffle([String(ans), ...wrong]),
-      answer:  String(ans),
-    }
-  }
-
-  // ── Missing number in a STEP sequence (by 2, 5, or 10) ──
-  if (type === 'missing_step') {
-    const step  = shuffle([2, 5, 10])[0]
-    const start = rand(0, Math.floor((maxN - step * 4) / step)) * step
-    const seq   = [start, start + step, start + step * 2, start + step * 3]
-    const hide  = rand(0, 3)
-    const ans   = seq[hide]
-    const disp  = seq.map((n, i) => i === hide ? '?' : String(n))
-    const wrong = uniqueWrong(ans, 3, Math.max(0, ans - step * 2), ans + step * 3)
-    return {
-      prompt:  `Welche Zahl fehlt? (+${step} Schritte)`,
-      // The jump size is named in the prompt but was invisible in the row
-      // itself, so the child had to hold "+5" in mind while scanning.
-      visual:  disp.join(`  —+${step}→  `),
-      options: shuffle([String(ans), ...wrong]),
-      answer:  String(ans),
-    }
-  }
-
-  // fallback
-  return numbersQ(Math.max(1, level - 1))
-}
 
 // ─── Patterns ────────────────────────────────────────────────────────────────
+// Every symbol once, each with the word a child would use for it, so the
+// feedback can say the pattern out loud. The pool used to hold duplicates
+// (🐸, 🌸, 🏆 twice: the same picture twice among the answers) and
+// look-alikes (🔷/🔹, ⭐/🌟, 🍁/🍂, 🔵/💙). Symbols that still look alike in
+// the pixel pictures share a family (`fam`); a question takes at most one
+// symbol per family.
 const PATTERN_POOL = [
-  // Shapes & Colours
-  '🔴','🔵','🟡','🟢','🟠','🟣','🟤','⚫','⚪',
-  '🔷','🔶','🔸','🔹','🔺','🔻','🟥','🟦','🟨','🟩','🟧','🟪','🟫',
-  '💎','⭐','🌟','✨','💫','❤️','🧡','💛','💚','💙','💜','🖤','🤍',
-  // Animals
-  '🐸','🐶','🐱','🐻','🐼','🐨','🦊','🐰','🐯','🦁','🐮','🐷','🐸',
-  '🐔','🦄','🐙','🦋','🐝','🦎','🐢','🦀','🦞','🐟','🦈','🐬','🦜',
-  // Nature
-  '🌸','🌺','🌻','🌹','🌷','🍀','🌿','🍁','🍂','🌴','🌵','🌾','🎋',
-  '🍄','🌙','☀️','🌈','⛄','🌊','🌋','🌸',
-  // Food
-  '🍎','🍊','🍋','🍇','🍓','🍒','🍑','🥝','🍕','🍩','🎂','🍭','🍦',
-  '🍪','🥐','🌮','🍔','🌽','🥕','🥦','🍆','🧁',
-  // Objects & Fun
-  '🎈','🎁','🏆','💡','🔑','⚡','🎵','🎸','🎪','🚀','🌍','🏠','🎨',
-  '🎲','⚽','🏀','🎾','🏆','🧩','🪄',
+  { e: '🔴', n: 'Rot',        fam: 'red' },
+  { e: '🔵', n: 'Blau' },
+  { e: '🟡', n: 'Gelb',       fam: 'yellow' },
+  { e: '🟢', n: 'Grün' },
+  { e: '🟠', n: 'Orange',     fam: 'orange' },
+  { e: '🟣', n: 'Lila',       fam: 'purple' },
+  { e: '⭐', n: 'Stern',      fam: 'yellow' },
+  { e: '🌙', n: 'Mond',       fam: 'yellow' },
+  { e: '☀️', n: 'Sonne',      fam: 'yellow' },
+  { e: '❤️', n: 'Herz',       fam: 'red' },
+  { e: '🐸', n: 'Frosch' },
+  { e: '🐶', n: 'Hund' },
+  { e: '🐱', n: 'Katze' },
+  { e: '🐻', n: 'Bär' },
+  { e: '🐼', n: 'Panda' },
+  { e: '🐰', n: 'Hase' },
+  { e: '🐯', n: 'Tiger' },
+  { e: '🦁', n: 'Löwe' },
+  { e: '🐮', n: 'Kuh' },
+  { e: '🐷', n: 'Schwein' },
+  { e: '🐔', n: 'Huhn' },
+  { e: '🦄', n: 'Einhorn' },
+  { e: '🐙', n: 'Krake' },
+  { e: '🦋', n: 'Schmetterling' },
+  { e: '🐝', n: 'Biene' },
+  { e: '🐢', n: 'Schildkröte' },
+  { e: '🦀', n: 'Krebs',      fam: 'red' },
+  { e: '🐟', n: 'Fisch',      fam: 'sea' },
+  { e: '🐳', n: 'Wal',        fam: 'sea' },
+  { e: '🦆', n: 'Ente' },
+  { e: '🐘', n: 'Elefant' },
+  { e: '🐞', n: 'Marienkäfer', fam: 'red' },
+  { e: '🌸', n: 'Blüte' },
+  { e: '🌻', n: 'Sonnenblume' },
+  { e: '🍀', n: 'Kleeblatt' },
+  { e: '🍁', n: 'Blatt' },
+  { e: '🌵', n: 'Kaktus' },
+  { e: '🍄', n: 'Pilz' },
+  { e: '🌈', n: 'Regenbogen' },
+  { e: '⛄', n: 'Schneemann' },
+  { e: '🍎', n: 'Apfel',      fam: 'red' },
+  { e: '🍊', n: 'Orange',     fam: 'orange' },
+  { e: '🍋', n: 'Zitrone',    fam: 'yellow' },
+  { e: '🍇', n: 'Trauben',    fam: 'purple' },
+  { e: '🍓', n: 'Erdbeere',   fam: 'red' },
+  { e: '🍒', n: 'Kirschen',   fam: 'red' },
+  { e: '🍌', n: 'Banane' },
+  { e: '🥕', n: 'Möhre' },
+  { e: '🌽', n: 'Mais' },
+  { e: '🍕', n: 'Pizza' },
+  { e: '🎂', n: 'Torte' },
+  { e: '🍦', n: 'Eis' },
+  { e: '🍪', n: 'Keks' },
+  { e: '🥨', n: 'Brezel' },
+  { e: '🎈', n: 'Luftballon', fam: 'red' },
+  { e: '🎁', n: 'Geschenk' },
+  { e: '🔑', n: 'Schlüssel' },
+  { e: '🎵', n: 'Note' },
+  { e: '🚀', n: 'Rakete' },
+  { e: '🏠', n: 'Haus' },
+  { e: '⚽', n: 'Ball' },
+  { e: '🎲', n: 'Würfel' },
+  { e: '🧩', n: 'Puzzle' },
+  { e: '🚗', n: 'Auto',       fam: 'red' },
 ]
 
-function patternsQ(level) {
-  const typesByLevel = [
-    ['AB','AB','ABB'],                                        // L1
-    ['AB','ABC','AAB','ABB'],                                 // L2
-    ['AB','ABC','AAB','ABB','AABB'],                         // L3
-    ['ABC','AAB','AABB','ABBC','ABCA'],                      // L4
-    ['ABC','AAB','AABB','ABBC','ABCA'],                      // L5
-    ['ABC','AABB','ABBC','ABCA','ABC_skip'],                 // L6
-    ['AABB','ABBC','ABCA','ABC_skip'],                       // L7
-    ['AABB','ABBC','ABCA','ABC_skip','ABCD'],                // L8
-    ['ABBC','ABCA','ABC_skip','ABCD'],                       // L9
-    ['ABCA','ABC_skip','ABCD'],                              // L10
-  ]
-  const typePool = typesByLevel[Math.min(level - 1, typesByLevel.length - 1)]
-  const type     = shuffle(typePool)[0]
-  const pool     = shuffle(PATTERN_POOL)
+// Symbols for one question: all different, never two of one family.
+function pickSymbols(count) {
+  const out = [], fams = new Set()
+  for (const s of shuffle(PATTERN_POOL)) {
+    if (s.fam && fams.has(s.fam)) continue
+    out.push(s)
+    if (s.fam) fams.add(s.fam)
+    if (out.length === count) break
+  }
+  return out
+}
 
-  let pattern
-  switch (type) {
-    case 'ABC':      pattern = [pool[0], pool[1], pool[2]];                          break
-    case 'AAB':      pattern = [pool[0], pool[0], pool[1]];                          break
-    case 'ABB':      pattern = [pool[0], pool[1], pool[1]];                          break
-    case 'AABB':     pattern = [pool[0], pool[0], pool[1], pool[1]];                 break
-    case 'ABBC':     pattern = [pool[0], pool[1], pool[1], pool[2]];                 break
-    case 'ABCA':     pattern = [pool[0], pool[1], pool[2], pool[0]];                 break
-    case 'ABCD':     pattern = [pool[0], pool[1], pool[2], pool[3]];                 break
-    case 'ABC_skip': {
-      // Show A_B_C_ (skip every other), answer is next non-skipped element.
-      // Randomise how many full+partial cycles are shown so the answer isn't always base[0].
-      const base = [pool[0], pool[1], pool[2]]
-      const extra = rand(0, base.length - 1)          // 0, 1, or 2 extra visible elements
-      const showLen = base.length * 2 + extra * 2     // 6, 8, or 10 interleaved slots
-      const seq = Array.from({ length: showLen }, (_, i) =>
-        i % 2 === 0 ? base[Math.floor(i / 2) % base.length] : '⬜'
-      )
-      const answer = base[(showLen / 2) % base.length]
-      const otherBase = [...new Set(base)].filter(e => e !== answer)
-      const neededB   = Math.max(0, 3 - otherBase.length)
-      const padB      = shuffle(PATTERN_POOL.filter(e => e !== answer && !otherBase.includes(e))).slice(0, neededB)
-      const wrong     = shuffle([...otherBase, ...padB])
-      return {
-        prompt:  'Was kommt nach dem Lücken-Muster? 🔍',
-        visual:  [...seq, '❓'].join(' '),
-        options: shuffle([answer, ...wrong]),
-        answer,
-      }
+// Each level adds something new. L4 and L5 used to be identical; ABCA
+// ("A B C A A B C A") reads like a broken ABC to a child and now only comes
+// at the very end.
+//   gap  — a place in the middle of the row is missing
+//   grow — a growing row: one, two, three …
+const TYPES_BY_LEVEL = [
+  ['AB', 'AB', 'ABB'],                          // L1
+  ['AB', 'ABB', 'AAB', 'ABC'],                  // L2
+  ['AAB', 'ABB', 'ABC', 'AABB'],                // L3
+  ['ABC', 'AABB', 'ABBC', 'gap'],               // L4
+  ['ABC', 'AABB', 'ABBC', 'gap', 'grow'],       // L5
+  ['AABB', 'ABBC', 'ABAC', 'gap', 'grow'],      // L6
+  ['ABBC', 'ABAC', 'ABCD', 'gap', 'grow'],      // L7
+  ['ABAC', 'ABCD', 'AABC', 'gap', 'grow'],      // L8
+  ['ABCD', 'AABC', 'ABCA', 'gap', 'grow'],      // L9
+  ['ABCD', 'ABCA', 'AABBC', 'gap', 'grow'],     // L10
+]
+// The units a gap row is built from: simple ones first.
+const GAP_UNITS = level => (level <= 5 ? ['AB', 'ABC'] : ['AB', 'ABB', 'AAB', 'ABC', 'AABB'])
+
+const LETTER = { A: 0, B: 1, C: 2, D: 3 }
+
+// The unit, started at a random place of the cycle: otherwise a row of two
+// full rounds always asks for the unit's first symbol, and "tap the first
+// picture of the row" wins every time.
+function unitOf(type, syms) {
+  const unit = [...type].map(ch => syms[LETTER[ch]].e)
+  const o = rand(0, unit.length - 1)
+  return [...unit.slice(o), ...unit.slice(0, o)]
+}
+
+function namesOf(syms) {
+  return Object.fromEntries(syms.map(s => [s.e, s.n]))
+}
+
+// Wrong options: the other symbols of the row, padded with fresh ones from
+// other families, three in all.
+function wrongOptions(answer, rowSyms) {
+  const others = rowSyms.filter(s => s.e !== answer)
+  const fams = new Set(rowSyms.map(s => s.fam).filter(Boolean))
+  const pad = shuffle(PATTERN_POOL)
+    .filter(s => !rowSyms.some(r => r.e === s.e) && !(s.fam && fams.has(s.fam)))
+    .slice(0, Math.max(0, 3 - others.length))
+  return [...others, ...pad].slice(0, 3)
+}
+
+function patternsQ(level) {
+  const pool = TYPES_BY_LEVEL[Math.min(level - 1, TYPES_BY_LEVEL.length - 1)]
+  const type = pool[rand(0, pool.length - 1)]
+
+  if (type === 'grow') return growQ(level)
+
+  if (type === 'gap') {
+    const units = GAP_UNITS(level)
+    const uType = units[rand(0, units.length - 1)]
+    const syms  = pickSymbols(new Set(uType).size)
+    const unit  = unitOf(uType, syms)
+    // Two full rounds and a bit more, so the row goes on after the gap
+    const len   = Math.max(unit.length * 2 + 1, Math.min(10, unit.length * 2 + rand(1, unit.length)))
+    const row   = Array.from({ length: len }, (_, i) => unit[i % unit.length])
+    // Never in the first round (the pattern has to be visible before the
+    // gap) and never the last place (that would be "what comes next")
+    const gapAt = rand(unit.length, len - 2)
+    const answer = row[gapAt]
+    const opts = [syms.find(s => s.e === answer), ...wrongOptions(answer, syms)]
+    return {
+      kind:    'gap',
+      prompt:  'Welches Bild fehlt in der Lücke?',
+      tokens:  row.map((e, i) => (i === gapAt ? '❓' : e)),
+      gapAt,
+      options: shuffle(opts.map(s => s.e)),
+      answer,
+      unit,
+      names:   namesOf([...syms, ...opts]),
     }
-    default:         pattern = [pool[0], pool[1]] // AB
   }
 
-  const extra   = rand(0, pattern.length - 1)
-  const showLen = pattern.length * 2 + extra
-  const nextIdx = showLen % pattern.length
-  const answer  = pattern[nextIdx]
-  const seq     = Array.from({ length: showLen }, (_, i) => pattern[i % pattern.length])
-  const otherSymbols = [...new Set(pattern)].filter(e => e !== answer)
-  const needed   = Math.max(0, 3 - otherSymbols.length)
-  const padWrong = shuffle(PATTERN_POOL.filter(e => e !== answer && !otherSymbols.includes(e))).slice(0, needed)
-  const wrong    = shuffle([...otherSymbols, ...padWrong])
-
+  const syms   = pickSymbols(new Set(type).size)
+  const unit   = unitOf(type, syms)
+  // Two full rounds plus at most a part of one, and no more than nine
+  // places: longer rows broke into two or three lines on a phone, right in
+  // the middle of the pattern.
+  const len    = Math.min(Math.max(9, unit.length * 2), unit.length * 2 + rand(0, unit.length - 1))
+  const row    = Array.from({ length: len }, (_, i) => unit[i % unit.length])
+  const answer = unit[len % unit.length]
+  const opts   = [syms.find(s => s.e === answer), ...wrongOptions(answer, syms)]
   return {
-    prompt:  'Was kommt als Nächstes? 🤔',
-    visual:  [...seq, '❓'].join('  '),
-    options: shuffle([answer, ...wrong]),
+    kind:    'next',
+    prompt:  'Was kommt als Nächstes?',
+    tokens:  [...row, '❓'],
+    gapAt:   row.length,
+    options: shuffle(opts.map(s => s.e)),
     answer,
+    unit,
+    names:   namesOf([...syms, ...opts]),
+  }
+}
+
+// One, two, three … of the same thing: the step from repeating to growing
+// patterns. The answer is the next amount.
+function growQ(level) {
+  const [sym] = pickSymbols(1)
+  const start = level <= 7 ? 1 : rand(1, 2)
+  const steps = [start, start + 1, start + 2]
+  const next  = start + 3
+  const group = n => sym.e.repeat(n)
+  const wrong = shuffle([next - 1, next + 1, next - 2].filter(n => n >= 1)).slice(0, 3)
+  return {
+    kind:    'grow',
+    prompt:  'Was kommt als Nächstes?',
+    tokens:  [...steps.map(group), '❓'],
+    gapAt:   steps.length,
+    options: shuffle([next, ...wrong].map(group)),
+    answer:  group(next),
+    unit:    null,
+    names:   {},
+    counts:  [...steps, next],
+    sym:     sym.e,
   }
 }
