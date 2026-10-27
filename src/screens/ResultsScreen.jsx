@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { useApp, missionDef, todayMs } from '../AppContext.jsx'
 import { PixelLumi, PxStar, PxIcon, uiSpr } from '../components/PixelUI.jsx'
 import Confetti from '../components/Confetti.jsx'
-import { animalsFor, nextAnimal, getFarmLevel, FARM_LEVEL_LABELS, einTier, zumTier, farmAsset } from '../components/FarmProgress.jsx'
+import { animalsFor, nextAnimal, einTier, zumTier, farmAsset } from '../components/FarmProgress.jsx'
 import { sfx } from '../sfx.js'
 import { afterNarration, narrate, stopNarration } from '../narrator.js'
 import { sayNumber, sayCount } from '../tts.js'
@@ -46,7 +46,6 @@ export default function ResultsScreen() {
 
   // What the round meant for the farm
   const newAnimals = animalsFor(farmAfter).slice(animalsFor(farmBefore).length)
-  const farmGrew   = getFarmLevel(farmAfter) > getFarmLevel(farmBefore)
   const next       = nextAnimal(farmAfter)
 
   // "7 von 7 richtig" next to one star was a contradiction: the line now
@@ -225,7 +224,8 @@ export default function ResultsScreen() {
               {newAnimals.map(a => (
                 <img key={a.instanceId} src={farmAsset(a.gif)} alt={a.name} className="px-art" style={{ width:40, height:40, objectFit:'contain' }} />
               ))}
-              <span>Neu auf deinem Hof{farmGrew ? `: ${FARM_LEVEL_LABELS[getFarmLevel(farmAfter)]}` : '!'}</span>
+              {/* the animals by name; the farm's level name ("Wachsender Hof") read as if it were the new animal */}
+              <span>Neu auf deinem Hof: {newAnimals.map(einTier).join(' und ')}!</span>
             </div>
           ) : next && farmAfter > farmBefore ? (
             <div style={{ ...newsChip, background:'var(--px-parch-light)' }}>
