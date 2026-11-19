@@ -97,3 +97,13 @@ describe('games', () => {
     for (const f of files) expect(existsSync(join(PUBLIC, 'images', 'coloring', f)), f).toBe(true)
   })
 })
+
+describe('installable app', () => {
+  it('the manifest is valid and its icons exist', () => {
+    const m = JSON.parse(readFileSync(join(PUBLIC, 'manifest.webmanifest'), 'utf8'))
+    expect(m.start_url).toBe('/LumiLearn/')
+    expect(m.icons.some(i => i.sizes === '512x512' && i.purpose === 'maskable')).toBe(true)
+    for (const i of m.icons) expect(existsSync(join(PUBLIC, i.src)), i.src).toBe(true)
+    expect(readFileSync(join(ROOT, 'index.html'), 'utf8')).toMatch(/rel="manifest"/)
+  })
+})
