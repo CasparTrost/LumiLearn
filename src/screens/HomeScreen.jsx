@@ -18,7 +18,7 @@ import { sayNumber } from '../tts.js'
 import { hearable } from '../lib/hearable.js'
 import { lazyWithReload } from '../lib/lazyWithReload.js'
 import { WORLDS, recommend, sortForAge, visibleModules } from '../modules.js'
-import { prefetchGame, isGameLoaded } from './GameScreen.jsx'
+import { prefetchGame, isGameLoaded, ensureGame } from './GameScreen.jsx'
 
 // Rarely opened (only via the settings gear) and pulls in its own sizeable
 // UI (PIN gate, stats, error log, profile management) — no reason to ship
@@ -277,11 +277,14 @@ export default function HomeScreen() {
   }, [picks])
 
   const startModule = (mod, level) => {
-    // Without a connection a game that is not loaded yet can't start; the
-    // page used to reload silently and then show "Fehler im Spiel".
+    // Without a connection a game's code may still be saved for offline play
+    // (public/sw.js): try it, and only if it isn't there say so — the page
+    // used to reload silently and then show "Fehler im Spiel".
     if (navigator.onLine === false && !isGameLoaded(mod.id)) {
-      setOffline(true)
-      narrate([{ text: 'Oh, Lumi braucht Internet, um dieses Spiel zu holen. Spiel solange ein anderes Spiel, oder versuch es gleich noch einmal.' }])
+      ensureGame(mod.id).then(() => startModule(mod, level), () => {
+        setOffline(true)
+        narrate([{ text: 'Oh, Lumi braucht Internet, um dieses Spiel zu holen. Spiel solange ein anderes Spiel, oder versuch es gleich noch einmal.' }])
+      })
       return
     }
     // the greeting ran on into the game (it ended after the game was shown)

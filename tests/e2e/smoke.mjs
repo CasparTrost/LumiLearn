@@ -1,6 +1,7 @@
 // Browser smoke test against a production build (npm run build; npx vite preview).
 // Fresh child on a phone through onboarding; every game opened at phone,
-// tablet and desktop size; one game played to the results. Fails on page
+// tablet and desktop size; one game played to the results; the app and
+// unopened games started again without a network. Fails on page
 // errors, pictures that don't load, sideways scrolling and buttons off the
 // screen.
 //
@@ -110,6 +111,37 @@ for (const [size, dim] of Object.entries(SIZES)) {
   if (!/8 von 8 gleich beim ersten Mal richtig/.test(text)) problems.push(`full game: results not as expected: ${text.slice(0, 120).replace(/\n/g, ' | ')}`)
   await check(page, 'results')
   problems.push(...page.errors.map(e => `full game: ${e}`))
+  await page.context().close()
+}
+
+// 4. Offline: once opened online, the app and games never opened before
+// still start without a network (public/sw.js)
+{
+  const page = await newPage(SIZES.tablet, save)
+  await page.goto(URL); await page.waitForTimeout(1500)
+  const saved = await page.evaluate(async () => {
+    await navigator.serviceWorker?.ready
+    const pictures = (await (await fetch('media-manifest.json')).json()).length
+    for (let i = 0; i < 240; i++) {                 // the worker saves the app and every picture
+      const media = (await (await caches.open('lumi-media-v1')).keys()).length
+      if (media >= pictures) return media
+      await new Promise(r => setTimeout(r, 500))
+    }
+    return null
+  })
+  if (!saved) problems.push('offline: the service worker did not save the app')
+  await page.context().setOffline(true)
+  await page.reload(); await page.waitForTimeout(2000)
+  await check(page, 'offline home')
+  for (const t of ['Waage-Welt', 'Lumi-Labyrinth', 'Mal-Atelier', 'Formen-Land']) {
+    try {
+      await page.getByRole('button', { name: new RegExp(`^${t}, Level`) }).last().click(); await page.waitForTimeout(1800)
+      await check(page, `offline ${t}`)
+      await page.getByRole('button', { name: 'Spiel verlassen' }).click(); await page.waitForTimeout(300)
+      await page.getByRole('button', { name: /Aufhören/ }).click(); await page.waitForTimeout(800)
+    } catch (e) { problems.push(`offline ${t}: ${String(e).split('\n')[0]}`) }
+  }
+  problems.push(...page.errors.filter(e => !/net::ERR_INTERNET_DISCONNECTED|Failed to load resource/.test(e)).map(e => `offline: ${e}`))
   await page.context().close()
 }
 

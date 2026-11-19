@@ -45,6 +45,8 @@ const LOADERS = {
 const loaded = new Set()
 const load = id => (LOADERS[id] ?? LOADERS.patterns)().then(m => { loaded.add(id); return m })
 export const isGameLoaded = id => loaded.has(id)
+/** The game's code, from the network or from the offline copy (public/sw.js). */
+export const ensureGame = id => (loaded.has(id) ? Promise.resolve() : load(id))
 
 // A lazy component remembers a failed load for good, so "Nochmal" after a
 // lost connection needs a fresh one: one per game and attempt.
