@@ -4,6 +4,12 @@ import App from './App.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import './index.css'
 import './styles/pixel.css'
+import { installErrorLog } from './lib/errorLog.js'
+
+// errors outside drawing (tap handlers, timers, promises) go into the
+// parent area's error log too, named by the game on screen (GameScreen
+// marks itself with data-module)
+installErrorLog(() => document.querySelector('[data-module]')?.getAttribute('data-module') ?? 'app')
 
 // Offline play (public/sw.js). Only in the built app: in development a
 // worker would serve stale modules.

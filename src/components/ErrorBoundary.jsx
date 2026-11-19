@@ -1,6 +1,7 @@
 import React from 'react'
 import { narrate } from '../narrator.js'
 import { PixelLumi } from './PixelUI.jsx'
+import { logError } from '../lib/errorLog.js'
 
 // A game that could not be loaded is not a broken game. Without a
 // connection the old message claimed "Dieses Spiel hat einen kleinen
@@ -26,17 +27,7 @@ export class ErrorBoundary extends React.Component {
       ? 'Oh, Lumi braucht Internet, um dieses Spiel zu holen. Versuch es gleich noch einmal.'
       : 'Ups, Lumi ist gestolpert. Versuch es noch einmal.' }])
     if (offline) return
-    // Store error in localStorage for parent panel debugging
-    try {
-      const errors = JSON.parse(localStorage.getItem('lumilearn_errors') || '[]')
-      errors.unshift({
-        ts: new Date().toISOString(),
-        message: error.message,
-        stack: error.stack?.slice(0, 500),
-        module: this.props.moduleId || 'unknown'
-      })
-      localStorage.setItem('lumilearn_errors', JSON.stringify(errors.slice(0, 20)))
-    } catch { /* storage blocked or full: the error log is only a diagnostic */ }
+    logError(error, this.props.moduleId || 'unknown')
   }
 
   retry = () => {

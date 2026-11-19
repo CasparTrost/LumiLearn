@@ -131,7 +131,7 @@ export default function GameScreen() {
   const quit = () => { stopNarration(); dispatch({ type: 'NAVIGATE', payload: 'home' }) }
 
   return (
-    <div style={{
+    <div data-module={moduleId} style={{
       height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden',
       // Parchment with a faint pixel grid, the table the game is played on
       background: 'var(--bg)',
