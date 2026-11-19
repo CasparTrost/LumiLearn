@@ -31,8 +31,6 @@ import { pxCard, pxPanel, pxBubble, pxButton, pxSegment, ACCENT, INK } from './p
 
 function shuffle(a) { return [...a].sort(() => Math.random() - 0.5) }
 
-const say = (text, opts) => narrate([{ text, rate: 0.8 }], opts)
-
 // Words inside a group rhyme with each other (matching from the stressed
 // vowel onward, not merely a shared last letter). Every picture shows its
 // word and appears once. `v` is the rhyming vowel: groups with the same one

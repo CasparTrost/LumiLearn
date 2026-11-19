@@ -49,7 +49,7 @@ function resolveAsset(src) {
 }
 
 // Emojis und Sonderzeichen raus, sonst buchstabiert die Stimme sie aus.
-function cleanText(text) {
+export function cleanText(text) {
   return String(text)
     // eigene Bilder (:px-tisch:, siehe lib/emojiArt.jsx) sind nur zum Ansehen
     .replace(/:px-[a-z0-9-]+:/g, '')

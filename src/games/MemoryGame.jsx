@@ -8,7 +8,7 @@ import { usePaused } from '../lib/pause.js'
 import { INK, pxCard, pxPanel, pxBubble } from './px.js'
 
 // Sparkle burst that fires when a pair is found
-function SparkBurst({ id }) {
+function SparkBurst() {
   const sparks = Array.from({ length: 10 }, (_, i) => ({
     angle: (i / 10) * 360,
     dist:  55 + Math.random() * 40,
@@ -330,7 +330,7 @@ export default function MemoryGame({ level = 1, onComplete }) {
       </AnimatePresence>
 
       {/* Sparkle burst on match */}
-      <AnimatePresence>{sparkKey && <SparkBurst key={sparkKey} id={sparkKey} />}</AnimatePresence>
+      <AnimatePresence>{sparkKey && <SparkBurst key={sparkKey} />}</AnimatePresence>
 
       {/* Trophy shelf */}
       <div style={{

@@ -36,7 +36,7 @@ export class ErrorBoundary extends React.Component {
         module: this.props.moduleId || 'unknown'
       })
       localStorage.setItem('lumilearn_errors', JSON.stringify(errors.slice(0, 20)))
-    } catch(e) {}
+    } catch { /* storage blocked or full: the error log is only a diagnostic */ }
   }
 
   retry = () => {

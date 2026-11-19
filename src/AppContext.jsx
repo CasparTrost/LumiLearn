@@ -154,7 +154,7 @@ function freshProfile(overrides = {}) {
 
 const DEFAULT_SETTINGS = { parentPin: '1234', pinIsDefault: true, voiceVolume: 1, dailyLimitMin: 0 }
 
-const initialState = {
+export const initialState = {
   screen:          'welcome',
   language:        'de',
   activeProfileId: null,
@@ -185,7 +185,7 @@ function pruneLog(log) {
   return keys.length <= 35 ? log : Object.fromEntries(keys.slice(-35).map(k => [k, log[k]]))
 }
 
-function reducer(state, action) {
+export function reducer(state, action) {
   switch (action.type) {
 
     case 'RESET_ALL':
@@ -503,7 +503,7 @@ function dropRetired(profile) {
 // "en" falls back to German.
 const savedLanguage = lang => (ENGLISH_ENABLED && lang) || 'de'
 
-function migrateToV2(data) {
+export function migrateToV2(data) {
   if (data.version === 2) {
     // Ensure all profiles have all module progress keys. New fields
     // (farmBonus, playLog, the day counters of the missions) come from

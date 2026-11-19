@@ -263,9 +263,10 @@ function BalanceScale({ tiltDeg, q, sizes, answered, heavy, onPick, blocks }) {
   // alike — the scale comes alive without giving the answer away.
   useEffect(() => {
     if (reduceMotion) return
+    const anims = running.current
     play('fall', fall, 0, { duration: 0.32, ease: 'easeIn', delay: 0.3 })
     play('drop', drop, [0, 9, -3, 0], { duration: 0.7, times: [0, 0.3, 0.65, 1], ease: 'easeOut', delay: 0.62 })
-    return () => Object.values(running.current).forEach(c => c.stop())
+    return () => Object.values(anims).forEach(c => c.stop())
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // After the answer (and in level 10 with the blocks) the beam tips for real.

@@ -146,14 +146,14 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }) // eslint-disable-line react-hooks/exhaustive-deps
+  })  
 
   useEffect(() => {
     if (!done) return
     setBoom(true)
     const t = setTimeout(() => setShowWeiter(true), 800)
     return () => clearTimeout(t)
-  }, [done]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [done])  
 
   const weiterClick = () => {
     setShowWeiter(false)

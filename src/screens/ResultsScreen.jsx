@@ -38,7 +38,6 @@ export default function ResultsScreen() {
   const justCompleted  = gameResult?.justCompleted  ?? false
   const masteredWell   = gameResult?.masteredWell   ?? false
   const isFirstPass    = gameResult?.isFirstPass    ?? false
-  const maxLevel       = gameResult?.maxLevel       ?? 5
   const newMissionsCompleted = gameResult?.newMissionsCompleted ?? []
   const streakCount    = gameResult?.streakCount ?? 0
   const farmBefore     = gameResult?.farmBefore ?? 0
