@@ -68,7 +68,7 @@ export function MusicProvider({ children }) {
     // Browsers block sound until the first touch; load and start then
     window.addEventListener('pointerdown', start, { once: true })
     return () => window.removeEventListener('pointerdown', start)
-  }, [enabled]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [enabled])  
 
   const fadeTo = (target, ms = 280) => {
     const audio = audioRef.current
@@ -99,7 +99,7 @@ export function MusicProvider({ children }) {
       }
     })
     return () => { off(); clearTimeout(releaseRef.current); cancelAnimationFrame(fadeRef.current) }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [volume])
 
   // Sync volume

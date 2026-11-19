@@ -577,7 +577,7 @@ export default function ParentScreen({ onClose }) {
                   {errorLog.map((e, i) => (
                     <div key={i} style={{ border:'2px solid var(--px-parch-dark)', borderRadius:8, padding:'8px 10px', background:'var(--px-parch-light)' }}>
                       <div style={{ display:'flex', justifyContent:'space-between', gap:8, fontFamily:'var(--font-heading)', fontSize:14, color:'var(--px-ink)', fontWeight:700 }}>
-                        <span>{moduleTitle(e.module) ?? 'Unbekannt'}</span>
+                        <span>{e.module === 'app' ? 'Außerhalb eines Spiels' : moduleTitle(e.module) ?? 'Unbekannt'}</span>
                         <span style={{ ...SMALL, fontSize:13 }}>{e.ts ? new Date(e.ts).toLocaleString('de-DE') : ''}</span>
                       </div>
                       <div style={{ ...SMALL, fontSize:14, wordBreak:'break-word' }}>{e.message || 'Unbekannter Fehler'}</div>

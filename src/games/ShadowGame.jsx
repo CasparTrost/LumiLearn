@@ -190,7 +190,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
     : level <= 5 ? (idx % 2 === 0 ? -16 : 16)
     : (idx % 3 === 0 ? -32 : idx % 3 === 1 ? 32 : -16)
   // Where in the card the shadow hides, 0..1 across the free space
-  const spot = useMemo(() => ({ u: Math.random(), v: Math.random() }), [idx])
+  const spot = useMemo(() => ({ u: Math.random(), v: Math.random() }), [idx]) // eslint-disable-line react-hooks/exhaustive-deps -- a new place each round
 
   // Flashlight — direct DOM mutation, zero React re-renders
   const cardRef    = useRef(null)

@@ -25,7 +25,7 @@ function tone(f, type, t0, dur, vol = 0.14) {
     g.gain.setValueAtTime(vol, t0)
     g.gain.exponentialRampToValueAtTime(0.001, t0 + dur)
     o.start(t0); o.stop(t0 + dur + 0.05)
-  } catch {}
+  } catch { /* no audio: the farm stays silent */ }
 }
 const sfx = {
   moo()   { const ac=getAc();if(!ac)return;const t=ac.currentTime;tone(130,'sine',t,.5,.2) },
@@ -45,7 +45,7 @@ const sfx = {
       vib.connect(vibGain); vibGain.connect(o.frequency)
       o.connect(g); g.connect(ac.destination)
       vib.start(t+0.1); vib.stop(t+0.7); o.start(t); o.stop(t+0.7)
-    } catch {}
+    } catch { /* no audio */ }
   },
 }
 
@@ -147,7 +147,6 @@ function RoamingAnimal({ def, farmScale = 1, delay = 0 }) {
   const visibleRef = useFarmVisible()
   const [pos, setPos] = useState(posRef.current)
   const [movingRight, setMovingRight] = useState(false)
-  const [paused, setPaused] = useState(false)
 
   useEffect(() => {
     let lastTick = 0
@@ -164,8 +163,8 @@ function RoamingAnimal({ def, farmScale = 1, delay = 0 }) {
       if (dist < 3) {
         targetRef.current = randomInZone(def.zone)
         if (Math.random() < 0.3) {
-          pauseRef.current = true; setPaused(true)
-          pauseTimerRef.current = setTimeout(() => { pauseRef.current = false; setPaused(false) }, 800 + Math.random()*1500)
+          pauseRef.current = true
+          pauseTimerRef.current = setTimeout(() => { pauseRef.current = false }, 800 + Math.random()*1500)
         }
       } else {
         const newX = posRef.current.x + (dx/dist)*0.8
@@ -184,7 +183,7 @@ function RoamingAnimal({ def, farmScale = 1, delay = 0 }) {
     return () => { cancelAnimationFrame(rafId); if(pauseTimerRef.current) clearTimeout(pauseTimerRef.current) }
   }, [def.zone]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const click = () => { try { def.sfx() } catch {} narrate([{ text: `${def.art === 'die' ? 'Die' : 'Das'} ${def.name}!` }]) }
+  const click = () => { try { def.sfx() } catch { /* no audio */ } narrate([{ text: `${def.art === 'die' ? 'Die' : 'Das'} ${def.name}!` }]) }
 
   const currentGif = def.facesRight
     ? (movingRight ? asset(def.gif) : asset(def.gifRight || def.gif))

@@ -1,0 +1,30 @@
+name: CI
+
+# Lint, unit tests, build and the browser smoke test. Runs on every pull
+# request and is called by the deploy workflow, so nothing reaches the
+# children unchecked.
+on:
+  pull_request:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: Browser smoke test
+        run: |
+          npx vite preview --port 4173 --strictPort &
+          for i in $(seq 30); do curl -sf http://localhost:4173/LumiLearn/ > /dev/null && break; sleep 1; done
+          npm run test:e2e
