@@ -66,9 +66,9 @@ describe('pattern park questions', () => {
 })
 
 describe('game list', () => {
-  it('has unique ids and all 24 games', () => {
+  it('has unique ids and all 25 games', () => {
     expect(new Set(MODULES.map(m => m.id)).size).toBe(MODULES.length)
-    expect(MODULES.length).toBe(24)
+    expect(MODULES.length).toBe(25)
   })
   it('never hides every game', () => {
     const all = MODULES.map(m => m.id)

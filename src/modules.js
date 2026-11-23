@@ -43,6 +43,7 @@ export const MODULES = [
   { id: 'initial-sound', title: 'Anlaut-Detektiv',  sub: 'Der erste Laut',         emoji: '🕵️', world: 'buchstaben', minAge: 5, color: 'var(--px-gold)',   say: 'Anlaut-Detektiv. Mit welchem Laut fängt das Wort an?' },
   { id: 'empathy',       title: 'Gefühlsdetektiv',  sub: 'Anderen helfen',         emoji: '🕵️‍♀️', world: 'gefuehle', minAge: 5, color: 'var(--px-red)',    say: 'Gefühlsdetektiv. Wie geht es dem Kind, und wie kannst du helfen?' },
   { id: 'shape-build',   title: 'Formen-Werkstatt', sub: 'Aus Formen bauen',       emoji: '🧩', world: 'denken',     minAge: 5, color: 'var(--px-orange)', say: 'Formen-Werkstatt. Baue Bilder aus Formen.' },
+  { id: 'trace',         title: 'Buchstaben-Spuren', sub: 'Mit dem Finger schreiben', emoji: '📝', world: 'buchstaben', minAge: 4, color: 'var(--px-sky)', say: 'Buchstaben-Spuren. Fahre die Buchstaben mit dem Finger nach.' },
   { id: 'coloring',      title: 'Mal-Atelier',      sub: 'Frei malen',             emoji: '🖍️', world: 'malen',      minAge: 4, color: 'var(--px-purple)', say: 'Mal-Atelier. Male, was du möchtest.' },
 ]
 
@@ -63,7 +64,7 @@ export function visibleModules(profile) {
 // The order in which a child new to the app meets the games: first
 // counting, letters and feelings, the clock and the number line last.
 const PATH = [
-  'number-intro', 'letter-intro', 'emotions', 'listen', 'shapes', 'shapes-land',
+  'number-intro', 'letter-intro', 'trace', 'emotions', 'listen', 'shapes', 'shapes-land',
   'words', 'sort', 'patterns', 'shadows', 'maze', 'coloring', 'rhyme', 'initial-sound',
   'numbers', 'words2', 'bubbles', 'weight', 'empathy', 'stories', 'shape-build',
   'letters', 'clock', 'rocket-math',

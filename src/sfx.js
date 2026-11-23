@@ -38,9 +38,14 @@ function tone(freq, type, delay, dur, vol = 0.26) {
   } catch { /* ignore */ }
 }
 
+// Games that only play a sound for an answer still let Lumi react
+// (components/LumiBuddy.jsx ignores the second of two signals for one answer)
+const announce = kind => typeof window !== 'undefined' && window.dispatchEvent(new CustomEvent('lumi:feedback', { detail: kind }))
+
 export const sfx = {
   /** Rising chime — correct answer */
   correct() {
+    announce('right')
     tone(523, 'sine', 0,    0.12, 0.22)
     tone(659, 'sine', 0.08, 0.14, 0.20)
     tone(784, 'sine', 0.17, 0.18, 0.18)
@@ -48,6 +53,7 @@ export const sfx = {
 
   /** Low buzz — wrong answer */
   wrong() {
+    announce('wrong')
     tone(280, 'sawtooth', 0,    0.13, 0.14)
     tone(220, 'sawtooth', 0.09, 0.17, 0.10)
   },
@@ -60,6 +66,7 @@ export const sfx = {
 
   /** Sparkly ascending arp — memory match */
   match() {
+    announce('right')
     tone(660,  'sine', 0,    0.10, 0.22)
     tone(880,  'sine', 0.09, 0.13, 0.22)
     tone(1100, 'sine', 0.19, 0.16, 0.20)

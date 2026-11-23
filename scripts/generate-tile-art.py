@@ -57,6 +57,7 @@ TILES = {
     'empathy':       ("a cute brown bear hugging and comforting a sad little bunny, a small heart above them", False),
     'shape-build':   ("a tiny house built from toy shapes: a red triangle roof, a yellow square wall and a blue rectangle door", False),
     'coloring':      ("three colorful crayons next to a half colored-in flower drawing", False),
+    'trace':         ("a fat yellow pencil drawing a big dotted capital letter A on a sheet of paper, a green start dot at the bottom of the letter", True),
 }
 
 

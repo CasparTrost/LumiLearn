@@ -11,6 +11,7 @@ import { MODULES, moduleTitle } from '../modules.js'
 import { ENGLISH_ENABLED } from '../i18n.js'
 import { readStore, removeStore } from '../hooks/safeStorage.js'
 import { useFocusTrap } from '../hooks/useFocusTrap.js'
+import LearningReport from '../components/LearningReport.jsx'
 
 // ── Styles of the parent area: pixel panels, ink text, ≥4.5:1 contrast ──
 const H2 = { fontFamily:'var(--font-heading)', fontSize:19, fontWeight:700, color:'var(--px-ink)', margin:'0 0 10px' }
@@ -415,6 +416,9 @@ export default function ParentScreen({ onClose }) {
             ))}
           </div>
         </div>
+
+        {/* Lernbericht des gewählten Kindes */}
+        {view && <LearningReport profile={view} />}
 
         {/* Einstellungen */}
         <div className="px-panel" style={SECTION}>
