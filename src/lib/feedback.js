@@ -22,12 +22,15 @@
  * game's top bar can cheer or think along (components/LumiBuddy.jsx).
  */
 import { narrate } from '../narrator.js'
+import { line } from './lumiLines.js'
 
-const RIGHT = ['Super!', 'Richtig!', 'Genau!', 'Klasse!', 'Prima!', 'Ja, richtig!', 'Gut überlegt!', 'Gut aufgepasst!', 'Genau hingeschaut!']
+// Lumi's recordings (lib/lumiLines.js): rueckmeldung/richtig-1 … -9 and so on
+const recorded = (prefix, n) => Array.from({ length: n }, (_, i) => line(`rueckmeldung/${prefix}-${i + 1}`))
+const RIGHT = recorded('richtig', 9)
 // a right answer after a miss: the child kept going
-const PERSIST = ['Du hast nicht aufgegeben. Super!', 'Drangeblieben! Jetzt stimmt es.', 'Siehst du? Weiterprobieren hilft!', 'Geschafft! Gut, dass du weitergemacht hast.']
+const PERSIST = recorded('drangeblieben', 4)
 // No "try again" here: some games move on to the next task after a miss
-const WRONG = ['Hm, noch nicht.', 'Fast!', 'Nicht ganz.', 'Hm, das war es nicht.', 'Schau mal genau.']
+const WRONG = recorded('noch-nicht', 5)
 
 let lastRight = -1, lastWrong = -1, lastPersist = -1
 // misses in a row since the last right answer
@@ -58,7 +61,7 @@ export function sayRight(extra, opts = {}) {
   let head
   if (kept) { lastPersist = pick(PERSIST, lastPersist); head = PERSIST[lastPersist] }
   else { lastRight = pick(RIGHT, lastRight); head = RIGHT[lastRight] }
-  return narrate([{ text: extra ? `${head} ${extra}` : head }], opts)
+  return narrate(extra ? [head, { text: extra }] : [head], opts)
 }
 
 /** Gentle correction, optionally with the hint or the right answer. */
@@ -66,6 +69,6 @@ export function sayWrong(hint, opts = {}) {
   missed++
   announce('wrong')
   lastWrong = pick(WRONG, lastWrong)
-  const head = missed === 2 ? 'Nicht schlimm, Fehler gehören zum Lernen.' : WRONG[lastWrong]
-  return narrate([{ text: hint ? `${head} ${hint}` : head }], opts)
+  const head = missed === 2 ? line('rueckmeldung/fehler-lernen') : WRONG[lastWrong]
+  return narrate(hint ? [head, { text: hint }] : [head], opts)
 }

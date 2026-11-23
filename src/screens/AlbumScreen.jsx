@@ -5,8 +5,8 @@ import { HudBar, PxIcon } from '../components/PixelUI.jsx'
 import { journeyArt } from '../components/JourneyPath.jsx'
 import { STICKER_PAGES, STICKERS } from '../lib/stickers.js'
 import { narrate, stopNarration } from '../narrator.js'
-import { sayNumber } from '../tts.js'
 import { emojiSrc } from '../lib/emojiArt.jsx'
+import { line, LINES } from '../lib/lumiLines.js'
 
 /**
  * The sticker album: every finished journey adds one (lib/stickers.js).
@@ -21,9 +21,7 @@ export default function AlbumScreen() {
 
   useEffect(() => {
     const n = owned.size
-    narrate([{ text: n
-      ? `Dein Sticker-Album! Du hast schon ${n === 1 ? 'einen' : sayNumber(n)} Sticker. Für jede Reise mit Lumi gibt es einen neuen.`
-      : 'Dein Sticker-Album ist noch leer. Am Ende jeder Reise mit Lumi gibt es einen Sticker aus der Schatztruhe!' }])
+    narrate([line(n ? 'reise/album' : 'reise/album-leer')])
     return stopNarration
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -51,7 +49,7 @@ export default function AlbumScreen() {
                   const got = owned.has(emoji)
                   return (
                     <motion.button key={emoji} whileTap={{ scale: 0.9 }}
-                      onClick={() => narrate([{ text: got ? `${name[0].toUpperCase()}${name.slice(1)}!` : 'Den hast du noch nicht. Vielleicht ist er bald in der Schatztruhe!' }])}
+                      onClick={() => narrate([{ text: got ? `${name[0].toUpperCase()}${name.slice(1)}!` : LINES['reise/sticker-fehlt'], src: got ? undefined : line('reise/sticker-fehlt').src }])}
                       aria-label={got ? name : 'Noch nicht gefunden'}
                       style={{
                         aspectRatio: '1', borderRadius: 12, cursor: 'pointer', padding: 6,

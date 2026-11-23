@@ -6,10 +6,11 @@ import Confetti from '../components/Confetti.jsx'
 import { animalsFor, nextAnimal, einTier, zumTier, farmAsset } from '../components/FarmProgress.jsx'
 import { sfx } from '../sfx.js'
 import { afterNarration, narrate, stopNarration } from '../narrator.js'
-import { sayNumber, sayCount } from '../tts.js'
+import { sayCount } from '../tts.js'
 import { starsFor } from '../lib/score.js'
 import { useT } from '../i18n.js'
 import { startStop } from '../lib/journeyNav.js'
+import { line } from '../lib/lumiLines.js'
 
 // One star means the level is done and the next one is open — the texts
 // say so ("Üb weiter!" next to an unlocked level was a contradiction).
@@ -22,7 +23,6 @@ const MESSAGES = {
 const PRAISE_CLIP = s => s >= 2 ? 'audio/allgemein/das-hast-du-super-gemacht.mp3'
   : s >= 1 ? 'audio/allgemein/ja-super.mp3'
   : 'audio/allgemein/klasse-versuch-es-direkt-noch-einmal.mp3'
-const cap = s => s[0].toUpperCase() + s.slice(1)
 
 const NO_FRACTION = new Set(['coloring', 'maze'])
 
@@ -84,21 +84,23 @@ export default function ResultsScreen() {
     // The praise, then what is new — all of it was only on screen before,
     // and mastering a whole game sounded like a narrow pass.
     const news = []
-    if (justCompleted) news.push(masteredWell ? 'Du hast alle Level geschafft. Du bist ein Meister!' : 'Du hast alle Level geschafft! Hol dir noch mehr Sterne.')
-    else if (isFirstPass && nextLevel) news.push(`Level ${sayNumber(nextLevel)} ist jetzt offen.`)
+    // Lumi's recordings (lib/lumiLines.js) where the sentence is always the
+    // same; the browser voice only where a number is part of it
+    if (justCompleted) news.push(line(masteredWell ? 'ergebnis/meister' : 'ergebnis/alle-level'))
+    else if (isFirstPass && nextLevel) news.push(line('ergebnis/level-offen'))
     if (stars === 0) {
-      if (score > 0) news.push(`Du hattest schon ${sayCount(score, 'Aufgabe', 'f')} richtig.`)
-      news.push(level > 1 ? 'Versuch es noch einmal, oder spiel das leichtere Level.' : 'Versuch es noch einmal.')
+      if (score > 0) news.push({ text: `Du hattest schon ${sayCount(score, 'Aufgabe', 'f')} richtig.` })
+      news.push(line(level > 1 ? 'ergebnis/nochmal-leichter' : 'ergebnis/nochmal'))
     }
-    if (easier) news.push(`Probier mal Level ${sayNumber(suggested)}. Das macht dich sicherer, und dann geht es weiter.`)
-    else if (practise && !journey) news.push('Noch einmal üben, dann wirst du richtig sicher.')
-    if (journey) news.push(journey.next === -1 ? 'Das war die letzte Station! Jetzt wartet die Schatztruhe auf dich.' : 'Station geschafft! Weiter geht die Reise.')
-    if (newMissionsCompleted.length) news.push(newMissionsCompleted.length === 1 ? 'Du hast eine Tagesaufgabe geschafft!' : 'Du hast Tagesaufgaben geschafft!')
-    newAnimals.forEach(a => news.push(`${cap(einTier(a))} zieht auf deinen Hof!`))
+    if (easier) news.push(line('ergebnis/leichter'))
+    else if (practise && !journey) news.push(line('ergebnis/ueben'))
+    if (journey) news.push(line(journey.next === -1 ? 'ergebnis/letzte-station' : 'ergebnis/station'))
+    if (newMissionsCompleted.length) news.push(line(newMissionsCompleted.length === 1 ? 'ergebnis/tagesaufgabe' : 'ergebnis/tagesaufgaben'))
+    if (newAnimals.length) news.push(line('ergebnis/neues-tier'))
     const stop = afterNarration(() => {
       narrate([
         { src: PRAISE_CLIP(stars) },
-        ...news.map((text, i) => ({ text, gap: i === 0 ? 250 : 150 })),
+        ...news.map((part, i) => ({ ...part, gap: i === 0 ? 250 : 150 })),
       ])
     }, { minMs: 900 })
     return () => { clearTimeout(tm); stop(); stopNarration() }

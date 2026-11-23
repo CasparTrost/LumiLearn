@@ -4,7 +4,7 @@ import { useApp, MAX_LEVELS, missionDef, farmPoints, todayMs } from '../AppConte
 import { useT } from '../i18n.js'
 import { PxStar, PxIcon, HudBar, uiSpr } from '../components/PixelUI.jsx'
 import TileArt from '../components/TileArt.jsx'
-import FarmProgress, { animalsFor, einTier } from '../components/FarmProgress.jsx'
+import FarmProgress from '../components/FarmProgress.jsx'
 import ProfileSwitcher from '../components/ProfileSwitcher.jsx'
 import LevelPicker, { unlockedUpTo } from '../components/LevelPicker.jsx'
 import MusicButton from '../components/MusicControls.jsx'
@@ -21,6 +21,7 @@ import { WORLDS, recommend, sortForAge, visibleModules } from '../modules.js'
 import { prefetchGame, isGameLoaded, ensureGame } from './GameScreen.jsx'
 import JourneyPath, { journeySay } from '../components/JourneyPath.jsx'
 import { startStop } from '../lib/journeyNav.js'
+import { line, gameLine, LINES } from '../lib/lumiLines.js'
 import { nextStopIndex } from '../lib/learning.js'
 
 // Rarely opened (only via the settings gear) and pulls in its own sizeable
@@ -45,29 +46,31 @@ function timeGreeting(t) {
   const h = new Date().getHours()
   return h < 12 ? t('home.morning') : h < 17 ? t('home.afternoon') : t('home.evening')
 }
+// the same in Lumi's recorded voice
+const timeLine = () => {
+  const h = new Date().getHours()
+  return line(h < 12 ? 'begruessung/morgen' : h < 17 ? 'begruessung/tag' : 'begruessung/abend')
+}
 
-/** What Lumi says when a child arrives — not the same sentence every time. */
-function greetingParts({ t, profile, streak, lastPlayed, openMission, animals, journey }) {
-  const name = profile.name
-  const hello = `${timeGreeting(t)}, ${name}!`
-  const isNew = !lastPlayed
+/**
+ * What Lumi says when a child arrives — not the same sentence every time.
+ * All in Lumi's recorded voice (lib/lumiLines.js); a recording can't say
+ * the child's name, so the greeting doesn't either — a name read by the
+ * browser voice in the middle of Lumi's sentence sounded like a second
+ * speaker.
+ */
+function greetingParts({ lastPlayed, openMission, journey }) {
   // today's journey not started yet: Lumi invites to it
   const fresh = journey && !(journey.done ?? []).length && nextStopIndex(journey) !== -1
-  if (isNew) {
-    const farm = animals.length ? ` Auf deinem Hof wohnt schon ${einTier(animals[0])}.` : ''
-    return [{ text: `${hello} Ich bin Lumi.${farm} ${fresh ? journeySay(journey) : 'Tippe auf ein Spiel, dann spielen wir zusammen.'}` }]
-  }
-  if (fresh) return [{ text: `${hello} Schön, dass du da bist. ${journeySay(journey)}` }]
+  if (!lastPlayed) return [line('begruessung/neu'), ...(fresh ? journeySay(journey) : [])]
+  if (fresh) return [timeLine(), ...journeySay(journey)]
   const n = parseInt(readStore('lumi_greet_n', '0'), 10) || 0
   writeStore('lumi_greet_n', n + 1)
-  // not a game the parents have switched off since
-  const lastTitle = visibleModules(profile).find(m => m.id === lastPlayed.moduleId)?.title
   const options = [
     // the recording "Hallo du, willkommen zurück zu Lumi! …"
-    [{ src: WELCOME_BACK, text: `Hallo ${name}, willkommen zurück! Mach direkt da weiter, wo wir aufgehört haben, oder versuche etwas Neues.` }],
-    [{ text: `${hello} Schön, dass du wieder da bist.${lastTitle ? ` Beim letzten Mal hast du ${lastTitle} gespielt.` : ''}` }],
-    streak >= 2 && [{ text: `${hello} Du spielst schon ${sayNumber(streak)} Tage hintereinander. Super!` }],
-    openMission && [{ text: `${hello} Heute wartet eine Aufgabe auf dich. ${t('mission.say.' + openMission.id)}` }],
+    [{ src: WELCOME_BACK, text: 'Hallo du, willkommen zurück! Mach direkt da weiter, wo wir aufgehört haben, oder versuche etwas Neues.' }],
+    [line('begruessung/wieder-da'), ...journeySay(journey)],
+    openMission && LINES[`tagesaufgaben/aufgabe-${openMission.id}`] && [timeLine(), line(`tagesaufgaben/aufgabe-${openMission.id}`)],
   ].filter(Boolean)
   return options[n % options.length]
 }
@@ -99,7 +102,7 @@ function GameTile({ mod, p, index, badge, onPlay, onLevels, big = false }) {
         onClick={() => onPlay(mod)}
         onPointerEnter={() => prefetchGame(mod.id)}
         onFocus={() => prefetchGame(mod.id)}
-        {...hearable(mod.say)}
+        {...hearable(mod.say, { src: gameLine(mod.id)?.src })}
         aria-label={`${mod.title}, Level ${curLevel} von ${maxLvl}, ${bestTotal} Sterne. Spielen`}
         style={{ display:'flex', flexDirection:'column', textAlign:'left', flex:1, padding:0, background:'none', border:'none', minHeight:0, cursor:'pointer' }}
       >
@@ -152,7 +155,7 @@ function GameTile({ mod, p, index, badge, onPlay, onLevels, big = false }) {
       </button>
 
       {/* Hear the game */}
-      <button className="px-btn px-btn--parch" onClick={() => narrate([{ text: mod.say }])}
+      <button className="px-btn px-btn--parch" onClick={() => narrate([gameLine(mod.id) ?? { text: mod.say }])}
         aria-label={`${mod.title} vorlesen`}
         style={{ position:'absolute', top:6, left:6, width:44, height:44, padding:0, fontSize:20, zIndex:2 }}>
         🔊
@@ -188,9 +191,10 @@ function MissionChip({ m, day, t }) {
   if (!def) return null
   const have = Math.min(def.goal, def.count(day))
   const done = (day.completedIds ?? []).includes(m.id) || have >= def.goal
-  const say = () => narrate([{ text: done
-    ? `${t('mission.say.' + m.id)} Geschafft! Super!`
-    : `${t('mission.say.' + m.id)}${def.goal > 1 ? ` Du hast schon ${sayNumber(have)} von ${sayNumber(def.goal)}.` : ''}` }])
+  const task = LINES[`tagesaufgaben/aufgabe-${m.id}`] ? line(`tagesaufgaben/aufgabe-${m.id}`) : { text: t('mission.say.' + m.id) }
+  const say = () => narrate(done
+    ? [task, line('tagesaufgaben/aufgabe-geschafft')]
+    : [task, ...(def.goal > 1 ? [{ text: `Du hast schon ${sayNumber(have)} von ${sayNumber(def.goal)}.` }] : [])])
   return (
     <button className="px-panel" onClick={say}
       aria-label={`${t('mission.' + m.id)}: ${done ? 'geschafft' : `${have} von ${def.goal}`}`}
@@ -227,7 +231,6 @@ export default function HomeScreen() {
   const offlineRef = useFocusTrap(offline, { onEscape: () => setOffline(false) })
 
   const points  = farmPoints(activeProfile)
-  const animals = animalsFor(points)
   const totalStarsCount = Object.values(progress)
     .reduce((sum, p) => sum + Object.values(p?.levelStars ?? {}).reduce((a, b) => a + (b ?? 0), 0), 0)
 
@@ -262,7 +265,7 @@ export default function HomeScreen() {
     greeted.add(activeProfile.id)
     const id = setTimeout(() => {
       if (timeUp) return
-      narrate(greetingParts({ t, profile, streak: streak.count, lastPlayed, openMission, animals, journey: activeProfile?.journey }))
+      narrate(greetingParts({ lastPlayed, openMission, journey: activeProfile?.journey }))
     }, 800)
     return () => clearTimeout(id)
   }, [activeProfile?.id]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -270,7 +273,7 @@ export default function HomeScreen() {
   // Time is up: Lumi says so, kindly
   useEffect(() => {
     if (!timeUp) return
-    const id = setTimeout(() => narrate([{ text: 'Für heute ist die Spielzeit vorbei. Lumi ruht sich jetzt aus. Morgen spielen wir weiter!' }]), 600)
+    const id = setTimeout(() => narrate([line('menue/spielzeit-vorbei')]), 600)
     return () => clearTimeout(id)
   }, [timeUp])
 
@@ -310,7 +313,7 @@ export default function HomeScreen() {
     if (navigator.onLine === false && !isGameLoaded(mod.id)) {
       ensureGame(mod.id).then(() => startModule(mod, level), () => {
         setOffline(true)
-        narrate([{ text: 'Oh, Lumi braucht Internet, um dieses Spiel zu holen. Spiel solange ein anderes Spiel, oder versuch es gleich noch einmal.' }])
+        narrate([line('menue/internet-spiel')])
       })
       return
     }
@@ -323,7 +326,7 @@ export default function HomeScreen() {
   const chooseWorld = (id) => {
     setActiveWorld(id)
     const w = WORLDS.find(x => x.id === id)
-    narrate([{ text: w ? w.say : 'Alle Spiele.' }])
+    narrate([line(w ? `menue/welt-${w.id}` : 'menue/alle-spiele')])
   }
 
   const greetingLine = timeGreeting(t)
@@ -404,7 +407,7 @@ export default function HomeScreen() {
               Lumi ruht sich jetzt aus. Morgen spielen wir weiter!
             </div>
             <button className="px-btn px-btn--gold px-btn--md"
-              onClick={() => narrate([{ text: 'Für heute ist die Spielzeit vorbei. Lumi ruht sich jetzt aus. Morgen spielen wir weiter!' }])}>
+              onClick={() => narrate([line('menue/spielzeit-vorbei')])}>
               🔊 Nochmal hören
             </button>
           </div>

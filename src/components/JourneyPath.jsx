@@ -10,6 +10,7 @@ import { narrate } from '../narrator.js'
 import { hearable } from '../lib/hearable.js'
 import { sfx } from '../sfx.js'
 import { emojiSrc } from '../lib/emojiArt.jsx'
+import { line, gameLine } from '../lib/lumiLines.js'
 
 const BASE = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '')
 export const journeyArt = f => `${BASE}/sprites/journey/${f}`
@@ -39,16 +40,12 @@ function stopTitle(stop) {
   return stop.kind === 'move' ? 'Bewegungspause' : MODULE_BY_ID[stop.moduleId]?.title ?? ''
 }
 
-/** What Lumi says about the journey (the 🔊 button, and the greeting). */
+/** What Lumi says about the journey (the 🔊 button, and the greeting), recorded. */
 export function journeySay(journey) {
-  const stops = journey?.stops ?? []
   const next = nextStopIndex(journey)
-  if (next === -1) return journey?.chest ? 'Die Reise für heute ist geschafft! Morgen geht es weiter.' : 'Du hast alle Stationen geschafft! Tippe auf die Schatztruhe!'
-  const games = stops.filter(s => s.kind !== 'move').map(s => MODULE_BY_ID[s.moduleId]?.title).filter(Boolean)
-  if (!(journey.done ?? []).length) {
-    return `Heute reisen wir zusammen! Wir spielen ${games.slice(0, -1).join(', ')} und ${games[games.length - 1]}, und dazwischen bewegen wir uns. Am Ende wartet eine Schatztruhe. Tippe auf die leuchtende Station!`
-  }
-  return `Weiter geht's! Als Nächstes: ${stopTitle(stops[next])}.`
+  if (!journey?.stops?.length) return []
+  if (next === -1) return [line(journey.chest ? 'reise/geschafft' : 'reise/zur-truhe')]
+  return [line((journey.done ?? []).length ? 'reise/weiter' : 'reise/start')]
 }
 
 export default function JourneyPath({ journey, profileId, stickers = 0, onStart, onChest, onAlbum }) {
@@ -93,7 +90,7 @@ export default function JourneyPath({ journey, profileId, stickers = 0, onStart,
   const [chestBurst, setChestBurst] = useState(false)
   const openChest = () => {
     if (!finished) {
-      narrate([{ text: 'Die Schatztruhe öffnet sich, wenn du alle Stationen geschafft hast.' }])
+      narrate([line('reise/truhe-zu')])
       return
     }
     if (chestOpen) { onAlbum(); return }
@@ -114,7 +111,7 @@ export default function JourneyPath({ journey, profileId, stickers = 0, onStart,
             {stops.map((_, i) => <span key={i} className={`px-pip${done.has(i) ? ' px-pip--gold' : ''}`} style={{ width: 14, height: 10 }} />)}
           </div>
         </div>
-        <button className="px-btn px-btn--parch" onClick={() => narrate([{ text: journeySay(journey) }])}
+        <button className="px-btn px-btn--parch" onClick={() => narrate(journeySay(journey))}
           aria-label="Reise vorlesen" style={{ width: 44, height: 44, padding: 0, fontSize: 20 }}>🔊</button>
         <button className="px-btn px-btn--gold" onClick={onAlbum} aria-label={`Sticker-Album, ${stickers} Sticker`}
           style={{ height: 44, padding: '0 10px', gap: 6, fontSize: 16 }}>
@@ -146,7 +143,7 @@ export default function JourneyPath({ journey, profileId, stickers = 0, onStart,
             <motion.button key={i}
               data-stop={i}
               onClick={() => onStart(i)}
-              {...hearable(`${title}. ${STOP_LABEL[stop.kind] ?? ''}`)}
+              {...hearable(stop.kind === 'move' ? 'Bewegungspause' : mod?.say ?? title, { src: stop.kind === 'move' ? undefined : gameLine(stop.moduleId)?.src })}
               aria-label={`Station ${i + 1}: ${title}, ${STOP_LABEL[stop.kind]}${isDone ? ', geschafft' : isNext ? ', jetzt dran' : ''}`}
               initial={{ scale: 0 }}
               animate={{ scale: isNext ? [1, 1.08, 1] : 1 }}
@@ -223,7 +220,7 @@ function ChestReveal({ emoji, onClose }) {
   useEffect(() => {
     if (said.current || !sticker) return
     said.current = true
-    narrate([{ text: `Wow! In der Truhe ist ${sticker.name}! Der Sticker kommt in dein Album. Morgen geht die Reise weiter.` }])
+    narrate([line('reise/neuer-sticker')])
   }, [sticker])
   if (!sticker) return null
   return (

@@ -13,6 +13,7 @@ import { lazyWithReload } from '../lib/lazyWithReload.js'
 import { PauseContext } from '../lib/pause.js'
 import { result } from '../lib/score.js'
 import { MODULE_BY_ID } from '../modules.js'
+import { line } from '../lib/lumiLines.js'
 
 const LOADERS = {
   numbers:         () => import('../games/NumbersGame.jsx'),
@@ -83,7 +84,7 @@ function GameLoadingFallback() {
 // Sie bemessen sich stattdessen selbst an ihrem Container.
 const NO_SCALE = new Set(['trace', 'bubbles', 'clock', 'coloring', 'numbers', 'shapes', 'shadows', 'maze'])
 
-const SAY_QUIT = 'Möchtest du wirklich aufhören? Tippe auf den grünen Knopf, dann spielst du weiter.'
+const SAY_QUIT = line('menue/wirklich-aufhoeren')
 
 export default function GameScreen() {
   const { state, dispatch } = useApp()

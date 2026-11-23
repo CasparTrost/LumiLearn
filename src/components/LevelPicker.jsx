@@ -7,6 +7,7 @@ import { hearable } from '../lib/hearable.js'
 import { narrate, lockPreviews } from '../narrator.js'
 import { sayNumber } from '../tts.js'
 import { useFocusTrap } from '../hooks/useFocusTrap.js'
+import { line } from '../lib/lumiLines.js'
 
 /**
  * Levelauswahl für ein Spiel.
@@ -36,8 +37,8 @@ export default function LevelPicker({ mod, title, progress, maxLevel, onPick, on
   // The sheet says what it is for; on a tablet the level buttons can't be
   // heard by pointing at them.
   useEffect(() => {
-    narrate([{ text: `${title}. Welches Level möchtest du spielen? Der grüne Knopf spielt Level ${sayNumber(current)}.` }])
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    narrate([line('menue/welches-level')])
+  }, [])
 
   // Tab stays in the sheet, Escape closes it
   const trapRef = useFocusTrap(true, { onEscape: onClose })

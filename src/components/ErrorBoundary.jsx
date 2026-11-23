@@ -2,6 +2,7 @@ import React from 'react'
 import { narrate } from '../narrator.js'
 import { PixelLumi } from './PixelUI.jsx'
 import { logError } from '../lib/errorLog.js'
+import { line } from '../lib/lumiLines.js'
 
 // A game that could not be loaded is not a broken game. Without a
 // connection the old message claimed "Dieses Spiel hat einen kleinen
@@ -23,9 +24,7 @@ export class ErrorBoundary extends React.Component {
   componentDidCatch(error, info) {
     console.error('LumiLearn Error:', error, info)
     const offline = isLoadError(error)
-    narrate([{ text: offline
-      ? 'Oh, Lumi braucht Internet, um dieses Spiel zu holen. Versuch es gleich noch einmal.'
-      : 'Ups, Lumi ist gestolpert. Versuch es noch einmal.' }])
+    narrate([line(offline ? 'menue/internet-fehler' : 'menue/gestolpert')])
     if (offline) return
     logError(error, this.props.moduleId || 'unknown')
   }

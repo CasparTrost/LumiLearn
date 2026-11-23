@@ -9,6 +9,7 @@ import { sayNumber } from '../tts.js'
 import { sfx } from '../sfx.js'
 import { startStop } from '../lib/journeyNav.js'
 import { nextStopIndex } from '../lib/learning.js'
+import { line } from '../lib/lumiLines.js'
 
 /**
  * The movement break in the middle of the journey: Lumi and the frog show
@@ -23,15 +24,18 @@ const BASE = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '')
 const LUMI = `${BASE}/sprites/maze/lumi_happy.png`
 
 // kind: how the picture moves; count: spoken numbers, one per move
+// say: the recording (lib/lumiLines.js); its text is shown too
 const MOVES = [
-  { id: 'frog',   say: 'Spring wie ein Frosch! Fünfmal. Los geht\'s!', pic: 'frog', count: 5, beat: 1200 },
-  { id: 'tree',   say: 'Streck dich ganz hoch, wie ein großer Baum! Die Arme nach oben, so hoch du kannst.', pic: 'stretch', hold: 6000 },
-  { id: 'bird',   say: 'Flieg wie ein Vogel! Breite die Arme aus und flattere.', pic: 'fly', hold: 6000 },
-  { id: 'clap',   say: 'Klatsch mit Lumi in die Hände! Sechsmal.', pic: 'clap', count: 6, beat: 900 },
-  { id: 'turn',   say: 'Dreh dich einmal ganz langsam im Kreis.', pic: 'turn', hold: 5000 },
-  { id: 'stamp',  say: 'Stampf wie ein Elefant! Viermal, ganz fest.', pic: 'stamp', count: 4, beat: 1100 },
+  { id: 'frog',   say: line('bewegung/frosch'),    pic: 'frog', count: 5, beat: 1200 },
+  { id: 'tree',   say: line('bewegung/baum'),      pic: 'stretch', hold: 6000 },
+  { id: 'bird',   say: line('bewegung/vogel'),     pic: 'fly', hold: 6000 },
+  { id: 'clap',   say: line('bewegung/klatschen'), pic: 'clap', count: 6, beat: 900 },
+  { id: 'turn',   say: line('bewegung/drehen'),    pic: 'turn', hold: 5000 },
+  { id: 'stamp',  say: line('bewegung/elefant'),   pic: 'stamp', count: 4, beat: 1100 },
 ]
-const BREATH = { id: 'breath', say: 'Und jetzt ganz ruhig. Atme tief ein … und langsam wieder aus.', pic: 'breath', hold: 7000 }
+const BREATH = { id: 'breath', say: line('bewegung/atmen'), pic: 'breath', hold: 7000 }
+// counting along in the recorded number words (public/audio/zahlen-entdecken)
+const NUMBER_CLIP = ['', 'eins', 'zwei', 'drei', 'vier', 'fuenf', 'sechs', 'sieben', 'acht', 'neun', 'zehn']
 
 /** Three moves for today (a different mix each day), then the calm breath. */
 export function movesFor(seedText) {
@@ -93,14 +97,14 @@ export default function MoveBreakScreen() {
       setFinished(true)
       sfx.complete()
       if (typeof idx === 'number') dispatch({ type: 'JOURNEY_STOP_DONE', payload: idx })
-      narrate([{ text: 'Super gemacht! Jetzt sind wir wieder fit für die Reise.' }])
+      narrate([line('bewegung/fertig')])
       return
     }
     setCount(0)
-    narrate([{ text: m.say }], { onEnd: () => {
+    narrate([m.say], { onEnd: () => {
       if (m.count) {
         for (let i = 1; i <= m.count; i++) {
-          later(() => { setCount(i); sfx.pop(); narrate([{ text: sayNumber(i) }]) }, i * m.beat - m.beat / 2)
+          later(() => { setCount(i); sfx.pop(); narrate([{ src: `audio/zahlen-entdecken/${NUMBER_CLIP[i]}.mp3`, text: sayNumber(i) }]) }, i * m.beat - m.beat / 2)
         }
         later(() => setStep(s => s + 1), m.count * m.beat + 900)
       } else {
@@ -145,7 +149,7 @@ export default function MoveBreakScreen() {
               style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
               <Figure pic={m.pic} beat={m.beat} />
               <div className="px-panel" style={{ padding: '10px 16px', maxWidth: 520, fontFamily: 'var(--font-heading)', fontSize: 'clamp(18px,3vw,24px)', fontWeight: 700, color: 'var(--px-ink)' }}>
-                {m.say}
+                {m.say.text}
               </div>
               {m.count && (
                 <div aria-live="polite" style={{ display: 'flex', gap: 8 }}>
