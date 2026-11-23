@@ -9,7 +9,7 @@ welcher es ist, wo er im Code steckt und worauf er sich stützt.
 
 Die Startseite ist eine lebendige Wiese.
 - **Oben:** Lumi hat eine Idee, das nächste Spiel aus dem Tagesplan, mit einem großen „Spielen!“-Knopf.
-- **Darunter:** die fünf Welten, jede auf ihrer eigenen kleinen Bühne mit ihren Spielen als runde Bilder. Alle Spiele bleiben frei wählbar.
+- **Darunter:** die fünf Welten, jede als eigene farbige Zeile mit gleich großen Spielkacheln. Alle Spiele bleiben frei wählbar.
 
 Der Tagesplan hat diese Teile:
 
