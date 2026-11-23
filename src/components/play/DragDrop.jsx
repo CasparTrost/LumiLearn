@@ -133,7 +133,7 @@ function makeGhost(item, r) {
  * While it is being carried, the thing in its place fades (`hidden` lets
  * the game hide it entirely once it was taken).
  */
-export function Draggable({ id, data, children, disabled = false, label, style, className = '' }) {
+export function Draggable({ id, data, children, disabled = false, label, style, className = '', ...rest }) {
   const ctx = useContext(Ctx)
   const el = useRef(null)
   const drag = useRef(null)
@@ -184,7 +184,7 @@ export function Draggable({ id, data, children, disabled = false, label, style, 
 
   const isPicked = ctx.picked?.id === id
   return (
-    <div ref={el} role="button" tabIndex={off ? -1 : 0} aria-label={label} aria-pressed={isPicked}
+    <div {...rest} ref={el} role="button" tabIndex={off ? -1 : 0} aria-label={label} aria-pressed={isPicked}
       className={`pl-drag ${className}`} data-picked={isPicked ? 1 : 0}
       onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={end}
       onPointerCancel={() => { drag.current = null; setCarrying(false); ctx.setGhost(null); ctx.setHover(null) }}

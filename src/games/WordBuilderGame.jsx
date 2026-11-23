@@ -1,17 +1,26 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { useState, useCallback, useEffect, useLayoutEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import LumiCharacter from '../components/LumiCharacter.jsx'
 import HearOptions from '../components/HearOptions.jsx'
+import { Art, Critter, useMood, DragArea, Draggable, DropZone, RoundTrail, useBursts } from '../components/play/index.js'
 import { sfx } from '../sfx.js'
-import { narrate, afterNarration } from '../narrator.js'
+import { narrate, afterNarration, lockPreviews } from '../narrator.js'
 import { sayRight, sayWrong } from '../lib/feedback.js'
 import { hearable } from '../lib/hearable.js'
 import { result } from '../lib/score.js'
+import { usePaused } from '../lib/pause.js'
 import { sayNumber } from '../tts.js'
-import { INK, pxCard, pxPanel, pxBubble, pxButton, pxSegment } from './px.js'
+import { Pad, Water, Bank, Splash } from './frosch/Pond.jsx'
 
 /**
- * Silben-Spaß — Silben hören, klatschen und zu Wörtern zusammenbauen
+ * Silben-Spaß: "Frosch-Hüpfen". A frog wants to get across the pond, to
+ * the thing waiting on the other bank. It hops one lily pad per syllable
+ * and says the syllable as it lands ("Ba – na – ne").
+ *   • Clapping rounds: the child picks the path with the right number of
+ *     pads. Too few, and the frog runs out of pads and splashes into the
+ *     water; too many, and the pad left over sinks under it. Then it climbs
+ *     out and tries again.
+ *   • Building rounds: the child lays the syllable pads in order (drag, or
+ *     tap), and the frog hops across them.
  *
  * Scientific basis:
  *   • Phonological Awareness (Adams 1990; Goswami 2001) — explicit manipulation
@@ -153,409 +162,344 @@ function buildRounds(level) {
   return claps.flatMap((c, i) => [c, rounds[i]]).filter(Boolean)
 }
 
-// ── Tile ────────────────────────────────────────────────────────────────────
-function SyllableTile({ text, used, rejected, hinted, onClick }) {
-  return (
-    <motion.button
-      layout
-      initial={{ scale: 0, opacity: 0 }}
-      animate={
-        rejected ? { x: [0, -9, 9, -7, 7, 0], scale: 1, opacity: 1, y: 0 }
-        : used   ? { scale: 0.7, opacity: 0.3, y: 0 }
-        : hinted ? { scale: [1, 1.1, 1], opacity: 1, y: 0, transition: { duration: 1.1, repeat: Infinity } }
-                 : { scale: 1, opacity: 1, y: 0 }
-      }
-      whileHover={!used ? { scale: 1.12, y: -5 } : {}}
-      whileTap={!used ? { scale: 0.88 } : {}}
-      onClick={onClick}
-      {...hearable(say(text), { rate: 0.6, enabled: !used })}
-      style={{
-        // 3px less padding than before: the ink frame takes its place
-        minWidth: 64, minHeight: 56, padding: '13px 19px',
-        fontFamily: 'var(--font-heading)', fontSize: 'clamp(22px,5vw,32px)', fontWeight: 900,
-        letterSpacing: 2,
-        ...pxCard(rejected ? 'wrong' : hinted ? 'selected' : undefined),
-        ...(hinted && !rejected ? { background: 'var(--px-gold)' } : null),
-        ...(used && !rejected ? { background: '#FFF1D6', boxShadow: 'none' } : null),
-        color: rejected ? '#C2412D' : used ? 'var(--px-ink-soft)' : INK,
-        cursor: used ? 'default' : 'pointer',
-        transition: 'background 0.25s, color 0.25s',
-        pointerEvents: used ? 'none' : 'auto',
-      }}
-    >{text}</motion.button>
-  )
+
+// Where an element's middle is, in the coordinates of `root` (layout
+// pixels: the FitBox scale does not matter)
+function centerIn(el, root) {
+  let x = el.offsetWidth / 2, y = el.offsetHeight / 2
+  for (let e = el; e && e !== root; e = e.offsetParent) { x += e.offsetLeft; y += e.offsetTop }
+  return { x, y }
 }
 
-// ── Word slots ─────────────────────────────────────────────────────────────
-function WordSlot({ text, isDone, isFirst, isLast, only }) {
-  // When merged: remove inner padding so letters sit flush against each other
-  const pad = 'clamp(12px,3vw,24px)'
-  const pl = isDone && !isFirst && !only ? '0' : pad
-  const pr = isDone && !isLast  && !only ? '0' : pad
-
-  const br = isDone
-    ? only    ? '12px'
-    : isFirst ? '12px 0 0 12px'
-    : isLast  ? '0 12px 12px 0'
-    : '0'
-    : '12px'
-
-  return (
-    <motion.div
-      transition={{ duration: 0.4 }}
-      style={{
-        padding: `16px ${pr} 16px ${pl}`,
-        fontFamily: 'var(--font-heading)', fontSize: 'clamp(22px,5vw,32px)', fontWeight: 900,
-        letterSpacing: isDone ? 0 : 2,
-        ...pxCard(isDone ? 'right' : text ? 'selected' : undefined),
-        ...(!isDone && !text ? { background: '#FFF1D6', border: `3px dashed ${INK}`, boxShadow: 'inset 0 4px 0 rgba(42,27,61,0.08)' } : null),
-        // merged word: one frame around all parts, no seams between them
-        ...(isDone && !only ? {
-          borderLeftWidth:  isFirst ? 3 : 0,
-          borderRightWidth: isLast  ? 3 : 0,
-        } : null),
-        color: isDone ? '#1F6B2A' : text ? INK : 'var(--px-ink-soft)',
-        borderRadius: br,
-        outline: 'none',
-        transition: 'background 0.35s, border-radius 0.35s, box-shadow 0.35s, border 0.35s, padding 0.35s, letter-spacing 0.35s',
-        minHeight: 60, minWidth: isDone ? 0 : 64,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        whiteSpace: 'nowrap', boxSizing: 'border-box',
-      }}
-    >
-      {text || '?'}
-    </motion.div>
-  )
+function useWidth(ref) {
+  const [w, setW] = useState(0)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const measure = () => setW(el.clientWidth)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [ref])
+  return w
 }
 
-// Hands for the clapping answers: "👏👏👏" reads without reading
-function Claps({ n, size }) {
-  return <span style={{ fontSize: size, lineHeight: 1, letterSpacing: -2 }}>{'👏'.repeat(n)}</span>
-}
+const HOP_MS = 720
 
 // ── Main Game ──────────────────────────────────────────────────────────────
 export default function WordBuilderGame({ level = 1, onComplete }) {
   const [rounds]   = useState(() => buildRounds(level))
   const cfg        = LEVELS[level] ?? LEVELS[1]
   const total      = rounds.length
+  const paused     = usePaused()
+  const [bursts, burst] = useBursts()
 
   const [idx,        setIdx]        = useState(0)
-  const [placed,     setPlaced]     = useState([])   // tiles placed so far
-  const [rejectedId, setRejectedId] = useState(null)
-  const [slotMisses, setSlotMisses] = useState(0)    // wrong taps for the current slot
+  const [placed,     setPlaced]     = useState([])   // syllable pads laid so far
+  const [slotMisses, setSlotMisses] = useState(0)    // wrong pads for the current place
   const [roundMiss,  setRoundMiss]  = useState(false)
-  const [wrongClaps, setWrongClaps] = useState([])
+  const [wrongRows,  setWrongRows]  = useState([])   // paths already tried in a clapping round
   const [solved,     setSolved]     = useState(false)
-  const [mood,       setMood]       = useState('happy')
-  const [showWeiter, setShowWeiter] = useState(false)
-  const feedbackTimeout = useRef(null)
-  const firstTryRef     = useRef(0)
+  const [hop,        setHop]        = useState(null) // { route, i, ok } while the frog is on its way
+  const [splash,     setSplash]     = useState(null)
+  const [sunk,       setSunk]       = useState(null) // the pad that went under
+  const [frog,       setFrog]       = useState(null) // { x, y, arc } where the frog is
+  const [duck,       setDuck]       = useState(false)
+  const [dunk,       setDunk]       = useState(false) // the frog is in the water
+  const [frogMood,   setFrogMood]   = useMood()
+  const [thingMood,  setThingMood]  = useMood()
+  const firstTryRef = useRef(0)
+  const waterRef    = useRef(null)
+  const homeRef     = useRef(null)
+  const goalRef     = useRef(null)
+  const padRefs     = useRef({})
 
   const round = rounds[idx]
   const isBuild = round.kind === 'build'
   const usedIds = useMemo(() => new Set(placed.map(t => t.id)), [placed])
   const expected = isBuild ? round.syllables[placed.length] : null
+  const busy = !!hop || solved
 
-  // What the word sounds like, for the 🔊 next to the picture
+  // Sizes from the width of the pond: a phone gets narrower banks
+  const waterW = useWidth(waterRef)
+  const wide   = waterW > 600
+  const bankW  = wide ? 130 : 58
+  const frogS  = wide ? 86 : 54
+  const laneW  = Math.max(120, waterW - bankW * 2)
+  const rowH   = wide ? 78 : 62
+  const rows   = isBuild ? 1 : round.max
+  const padW   = isBuild
+    ? Math.min(wide ? 118 : 96, laneW / round.syllables.length - 6)
+    : Math.min(wide ? 86 : 60, laneW / (round.max + 1) - 6)
+
+  // What the word sounds like, for the 🔊 and a tap on the thing
   const wordParts = useMemo(() => (round.kind === 'clap' && round.max === 4
     ? [{ text: round.name }]
     : [{ text: round.name }, ...syllableParts(round)]), [round])
 
+  // The frog sits on its bank, also after the screen changed size
+  const frogAt = useCallback((el, arc = false, dx = 0) => {
+    if (!el || !waterRef.current) return
+    const c = centerIn(el, waterRef.current)
+    setFrog(f => ({ x: c.x + dx - frogS / 2, y: c.y - frogS * 0.82, arc, from: f && { x: f.x, y: f.y } }))
+  }, [frogS])
+  useLayoutEffect(() => { if (!hop) frogAt(homeRef.current) }, [waterW, idx, rows, frogAt]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // The task, at the start of every round. For a child who cannot read the
-  // tiles, hearing the word in its parts is what makes it solvable at all.
+  // pads, hearing the word in its parts is what makes it solvable at all.
   useEffect(() => {
+    lockPreviews()
+    setDuck(Math.random() < 0.3)
     const firstOfKind = rounds.findIndex(r => r.kind === round.kind) === idx
     if (round.kind === 'clap') {
       // Early levels clap along with Lumi; from three-syllable words on the
       // child hears only the word and finds the parts alone.
       const modelled = round.max < 4
       narrate([
-        { text: firstOfKind ? 'Hör gut zu und klatsch mit!' : 'Klatsch mit!' },
+        { text: firstOfKind ? 'Hilf dem Frosch über den Teich! Er hüpft bei jeder Silbe einen Stein weit. Hör gut zu und klatsch mit!' : 'Klatsch mit!' },
         { text: round.name, gap: 200 },
         ...(modelled ? syllableParts(round) : []),
-        { text: 'Wie oft hast du geklatscht?', gap: 300 },
+        { text: 'Wie viele Steine braucht der Frosch?', gap: 300 },
       ])
     } else {
       const extraNote = cfg.extra === 1 ? ' Eine Silbe gehört nicht dazu.' : cfg.extra > 1 ? ' Zwei Silben gehören nicht dazu.' : ''
       narrate([
-        ...(firstOfKind ? [{ text: `Bau das Wort aus den Silben!${extraNote}` }] : []),
+        ...(firstOfKind ? [{ text: `Bau dem Frosch einen Weg aus Silben!${extraNote}` }] : []),
         { text: round.name, gap: firstOfKind ? 200 : 0 },
         ...syllableParts(round),
       ])
     }
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const roundDone = useCallback((firstTry) => {
-    clearTimeout(feedbackTimeout.current)
-    if (firstTry) firstTryRef.current += 1
-    setSolved(true)
-    setMood('excited')
-    sfx.correct()
-  }, [])
+  // ── The frog on its way: one hop per syllable ──
+  // route: [{ el | pt, syl, kind: 'pad' | 'bank' | 'water' | 'sink', key }]
+  const startHop = (route, ok) => setHop({ route, i: 0, ok })
 
-  // ── Building ──
-  const clickTile = useCallback((tile) => {
-    if (solved) return
+  useEffect(() => {
+    if (!hop || paused) return
+    const t = setTimeout(() => {
+      const step = hop.route[hop.i]
+      if (!step) { hopDone(hop.ok); return }
+      // on the far bank the frog lands next to the thing, not on it
+      if (step.el) frogAt(step.el, true, step.kind === 'bank' ? -bankW * 0.32 : 0)
+      else setFrog(f => ({ x: step.pt.x - frogS / 2, y: step.pt.y - frogS * 0.82, arc: true, from: f && { x: f.x, y: f.y } }))
+      if (step.syl) narrate([{ text: say(step.syl), rate: 0.6 }])
+      if (step.kind === 'pad') { sfx.drum(hop.i % 2 === 1); if (step.el) burst(step.el, 'stars', 4) }
+      if (step.kind === 'bank') sfx.slideUp()
+      if (step.kind === 'water' || step.kind === 'sink') {
+        setTimeout(() => {
+          sfx.splash()
+          setSplash({ ...(step.pt ?? centerIn(step.el, waterRef.current)), id: Date.now() })
+          if (step.kind === 'sink') setSunk(step.key)
+          setDunk(true)
+          setFrogMood('oops', 1600)
+        }, 380)
+      }
+      setHop(h => h && { ...h, i: h.i + 1 })
+    }, hop.i === 0 ? 150 : HOP_MS)
+    return () => clearTimeout(t)
+  }, [hop, paused]) // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Check the syllable against the slot it would fill, right now. Comparing
-    // by text (not id) keeps words with a repeated syllable working: either
-    // PA tile fits either slot of PA-PA-GEI.
+  const [ready, setReady] = useState(false)
+  useEffect(() => {
+    if (!ready || paused) return
+    setReady(false)
+    if (idx + 1 >= total) { sfx.complete(); onComplete(result(firstTryRef.current, total)); return }
+    setIdx(i => i + 1)
+    setPlaced([]); setSlotMisses(0); setRoundMiss(false); setWrongRows([])
+    setSolved(false); setSunk(null); setSplash(null)
+  }, [ready, paused]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function hopDone(ok) {
+    setHop(null)
+    if (ok) {
+      setSolved(true)
+      setFrogMood('happy', 1600)
+      setThingMood('happy', 1600)
+      sfx.tada()
+      if (goalRef.current) burst(goalRef.current, 'confetti', 16)
+      const firstTry = isBuild ? !roundMiss : wrongRows.length === 0
+      if (firstTry) firstTryRef.current += 1
+      sayRight(isBuild ? `${round.name}!` : `${round.name}. ${countSentence(round.syllables.length)}`)
+      afterNarration(() => setReady(true), { minMs: 1400 })
+      return
+    }
+    // back to the start, dripping, and the word once more in its parts
+    frogAt(homeRef.current, true)
+    setDunk(false)
+    setTimeout(() => setSunk(null), 600)
+    sayWrong(`Platsch! Hör noch mal genau hin: ${round.name}. ${spokenSyllables(round)}.`)
+  }
+
+  // ── Clapping: pick a path ──
+  const choosePath = (n) => {
+    if (busy || wrongRows.includes(n)) return
+    const s = round.syllables.length
+    const pads = Array.from({ length: n }, (_, i) => padRefs.current[`${n}-${i}`])
+    const route = []
+    for (let i = 0; i < Math.min(n, s); i++) route.push({ el: pads[i], syl: round.syllables[i], kind: 'pad' })
+    if (n === s) route.push({ el: goalRef.current, kind: 'bank' })
+    else if (n < s) {
+      // out of pads with syllables left: into the water between the last pad and the bank
+      const a = centerIn(pads[n - 1], waterRef.current), b = centerIn(goalRef.current, waterRef.current)
+      route.push({ pt: { x: (a.x + b.x) / 2, y: a.y + 6 }, syl: round.syllables[n], kind: 'water' })
+    } else route.push({ el: pads[s], kind: 'sink', key: `${n}-${s}` })
+    if (n !== s) setWrongRows(w => [...w, n])
+    startHop(route, n === s)
+  }
+
+  // ── Building: lay the next syllable pad ──
+  const dropTile = (tile) => {
+    if (busy) return false
+    // Check the syllable against the place it would fill. Comparing by text
+    // (not id) keeps words with a repeated syllable working: either PA pad
+    // fits either place of PA-PA-GEI.
     if (tile.text !== expected) {
-      clearTimeout(feedbackTimeout.current)
-      setRejectedId(tile.id)
       setSlotMisses(m => m + 1)
       setRoundMiss(true)
-      setMood('encouraging')
-      sfx.wrong()
-      // say what the tile was, and what is wanted — that is how a child who
-      // cannot read the tiles finds the right one
+      setFrogMood('oops', 1000)
+      // say what the pad was, and what is wanted — that is how a child who
+      // cannot read the pads finds the right one
       sayWrong(tile.extra
         ? `Das ist ${say(tile.text)}. Das gehört nicht zu ${round.name}.`
         : `Das ist ${say(tile.text)}. Hör mal, ${spokenSyllables(round)}. Jetzt kommt ${say(expected)}.`)
-      feedbackTimeout.current = setTimeout(() => {
-        setRejectedId(null)
-        setMood('happy')
-      }, 700)
-      return
+      return false
     }
-
-    setRejectedId(null)
+    const next = [...placed, tile]
+    setPlaced(next)
     setSlotMisses(0)
-    const newPlaced = [...placed, tile]
-    setPlaced(newPlaced)
-
-    if (newPlaced.length === round.syllables.length) {
-      roundDone(!roundMiss)
-      // The last syllable finishes before the whole word is read back — a
-      // fixed 600 ms cut it off in almost every round.
-      narrate([{ text: say(tile.text), rate: 0.6 }], {
-        onEnd: () => sayRight(`${spokenSyllables(round)}, ${round.name}!`),
-      })
-      afterNarration(() => setShowWeiter(true), { minMs: 1200, maxMs: 9000 })
-    } else {
+    sfx.pop()
+    if (next.length < round.syllables.length) {
       narrate([{ text: say(tile.text), rate: 0.6 }])
+      return true
     }
-  }, [solved, expected, placed, round, roundMiss, roundDone])
-
-  // ── Clapping ──
-  const clickClap = useCallback((n) => {
-    if (solved || wrongClaps.includes(n)) return
-    if (n !== round.syllables.length) {
-      setWrongClaps(w => [...w, n])
-      setMood('encouraging')
-      sfx.wrong()
-      narrate([{ text: 'Hör noch mal genau hin.' }, { text: round.name, gap: 200 }, ...syllableParts(round, 520)])
-      setTimeout(() => setMood('happy'), 700)
-      return
-    }
-    roundDone(wrongClaps.length === 0)
-    sayRight(`${spokenSyllables(round)}. ${countSentence(n)}`)
-    afterNarration(() => setShowWeiter(true), { minMs: 1200, maxMs: 9000 })
-  }, [solved, wrongClaps, round, roundDone])
-
-  const weiterClick = () => {
-    setShowWeiter(false)
-    if (idx + 1 >= total) {
-      sfx.complete()
-      onComplete(result(firstTryRef.current, total))
-      return
-    }
-    setIdx(i => i + 1)
-    setPlaced([])
-    setRejectedId(null)
-    setSlotMisses(0)
-    setRoundMiss(false)
-    setWrongClaps([])
-    setSolved(false)
-    setMood('happy')
+    // all laid: the frog hops across, saying each part, and lands on the bank
+    setTimeout(() => startHop([
+      ...round.syllables.map((syl, i) => ({ el: padRefs.current[`b-${i}`], syl, kind: 'pad' })),
+      { el: goalRef.current, kind: 'bank' },
+    ], true), 450)
+    return true
   }
 
-  const bubble = round.kind === 'clap'
-    ? (solved ? <><strong style={{ color: '#2F8F3A' }}>Richtig!</strong> {countSentence(round.syllables.length)}</>
-              : <>Klatsch mit! Wie viele Silben hörst du? 👏</>)
-    : (solved ? <><strong style={{ color: '#2F8F3A' }}>Bravo! 🎉</strong>{' ' + round.word + ' — richtig!'}</>
-              : <>Bau das Wort aus den Silben! 👇</>)
+  // pads across the lane: a path's pads leave room to the banks, the places
+  // of a word being built fill the lane
+  const lane = (n, i) => ({ left: `${((i + 1) / (n + 1)) * 100}%` })
+  const fill = (n, i) => ({ left: `${((i + 0.5) / n) * 100}%` })
 
   return (
     <div style={{
-      flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-      padding: 'clamp(14px,2.5vw,28px) clamp(14px,3vw,32px)',
-      gap: 'clamp(12px,2vw,20px)',
-      userSelect: 'none',
+      flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      padding: 'clamp(8px,1.8vw,20px) clamp(10px,3vw,32px)', gap: 'clamp(10px,2vw,20px)', userSelect: 'none',
     }}>
-
-      {/* Flash overlay */}
-      <AnimatePresence>
-        {solved && (
-          <motion.div key={'ok' + idx}
-            initial={{ opacity: 0.3 }} animate={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
-            style={{
-              position: 'fixed', inset: 0, zIndex: 150, pointerEvents: 'none',
-              background: '#6BCB77',
-            }}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Progress bar */}
-      <div style={{ display: 'flex', gap: 5, width: '100%', maxWidth: 680 }}>
-        {rounds.map((_, i) => (
-          <div key={i} style={{
-            flex: 1, ...pxSegment(i < idx ? 'done' : i === idx ? 'current' : 'todo'),
-            transition: 'background 0.3s',
-          }} />
-        ))}
-      </div>
-
-      {/* Lumi speech bubble */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, width: '100%', maxWidth: 680 }}>
-        <LumiCharacter mood={mood} size={72} />
-        <AnimatePresence mode="wait">
-          <motion.div key={idx}
-            initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0 }}
-            style={{
-              flex: 1, ...pxBubble,
-              padding: '13px 18px',
-              fontFamily: 'var(--font-heading)', fontSize: 'clamp(16px,3vw,21px)',
-              color: 'var(--text-primary)',
-            }}
-          >
-            {bubble}
-          </motion.div>
-        </AnimatePresence>
-      </div>
-
-      {/* The picture, and the word once more to hear */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        <AnimatePresence mode="wait">
-          <motion.div key={round.emoji + idx}
-            initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-            style={{
-              fontSize: 'clamp(80px,18vw,120px)', lineHeight: 1,
-              filter: 'drop-shadow(0 5px 0 rgba(42,27,61,0.22))',
-            }}
-          >
-            {round.emoji}
-          </motion.div>
-        </AnimatePresence>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', maxWidth: 900, flexShrink: 0 }}>
+        <RoundTrail total={total} done={idx + (solved ? 1 : 0)} walker="🐸" goal="🌸" style={{ flex: 1 }} />
         <HearOptions items={wordParts} label="Wort noch einmal hören" size={52} />
       </div>
 
-      {isBuild ? (
-        <>
-          {/* Word slots — slide together and merge when correct */}
-          <div style={{
-            display: 'flex', flexWrap: solved ? 'nowrap' : 'wrap',
-            gap: solved ? 0 : 10,
-            justifyContent: 'center', alignItems: 'center',
-            minHeight: 72, maxWidth: '100%',
-            transition: 'gap 0.35s ease',
-          }}>
-            {round.syllables.map((_, i) => (
-              <WordSlot key={i}
-                text={placed[i]?.text || ''}
-                isDone={solved}
-                isFirst={i === 0}
-                isLast={i === round.syllables.length - 1}
-                only={round.syllables.length === 1}
-              />
-            ))}
-          </div>
+      <DragArea autoTarget={isBuild ? `slot-${placed.length}` : null} disabled={busy}>
+        <div ref={waterRef} data-word={round.syllables.join('-')} style={{ position: 'relative', width: '100%', maxWidth: 900, flexShrink: 0 }}>
+          <Water>
+            {/* The crossing: the frog's bank, the pads, the other bank */}
+            <div style={{ position: 'relative', height: rows * rowH + 40, padding: `20px ${bankW}px`, boxSizing: 'border-box' }}>
+              <Bank side="left" width={bankW}><div ref={homeRef} style={{ width: 10, height: 10 }} /></Bank>
+              <Bank side="right" width={bankW}>
+                <div ref={goalRef} style={{ display: 'flex', marginLeft: bankW * 0.25 }}>
+                  <Critter art={round.emoji} size={wide ? 96 : 50} mood={thingMood} label={round.name}
+                    onTap={() => { setThingMood('wow', 900); narrate(wordParts) }} />
+                </div>
+              </Bank>
 
-          {/* Syllable tiles */}
-          <div style={{
-            display: 'flex', flexWrap: 'wrap', gap: 'clamp(8px,2vw,14px)',
-            justifyContent: 'center', alignItems: 'center',
-            width: '100%', maxWidth: 680, boxSizing: 'border-box',
-            ...pxPanel, padding: 'clamp(12px,2vw,20px)',
-          }}>
-            {round.tiles.map(tile => (
-              <SyllableTile
-                key={`${idx}-${tile.id}`}
-                text={tile.text}
-                used={usedIds.has(tile.id)}
-                rejected={rejectedId === tile.id}
-                // after two wrong taps the right tile shows itself
-                hinted={!solved && slotMisses >= 2 && tile.text === expected && !usedIds.has(tile.id)}
-                onClick={() => clickTile(tile)}
-              />
-            ))}
-            {!solved && (
-              <HearOptions
-                items={round.tiles.filter(t => !usedIds.has(t.id)).map(t => ({ text: say(t.text), rate: 0.6 }))}
-                label="Silben vorlesen" size={52}
-              />
+              {isBuild ? (
+                <div style={{ position: 'relative', height: rowH }}>
+                  {round.syllables.map((_, i) => (
+                    <div key={i} style={{ position: 'absolute', top: '50%', transform: 'translate(-50%, -50%)', ...fill(round.syllables.length, i) }}>
+                      <DropZone id={`slot-${i}`} onDrop={dropTile} label={`Platz ${i + 1}`}>
+                        {hover => (
+                          <div ref={el => { padRefs.current[`b-${i}`] = el }} style={{ transform: hover ? 'scale(1.1)' : undefined, transition: 'transform .15s' }}>
+                            <Pad w={padW} h={Math.max(52, padW * 0.6)} text={placed[i]?.text} empty={!placed[i]} glow={solved}
+                              flower={i === round.syllables.length - 1 && !!placed[i]} />
+                          </div>
+                        )}
+                      </DropZone>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                Array.from({ length: round.max }, (_, r) => r + 1).map(n => {
+                  const tried = wrongRows.includes(n)
+                  return (
+                    <motion.button key={n} type="button" onClick={() => choosePath(n)}
+                      aria-label={COUNT_WORDS[n - 1]} {...hearable(COUNT_WORDS[n - 1])}
+                      whileHover={busy || tried ? {} : { scale: 1.02 }} whileTap={busy || tried ? {} : { scale: 0.98 }}
+                      style={{
+                        all: 'unset', position: 'relative', display: 'block', width: '100%', height: rowH, cursor: busy || tried ? 'default' : 'pointer',
+                        borderRadius: 30, background: tried ? 'transparent' : 'rgba(255,255,255,0.10)',
+                      }}>
+                      {Array.from({ length: n }, (_, i) => (
+                        <div key={i} ref={el => { padRefs.current[`${n}-${i}`] = el }}
+                          style={{ position: 'absolute', top: '50%', transform: 'translate(-50%, -50%)', ...lane(n, i) }}>
+                          <Pad w={padW} dim={tried} sunk={sunk === `${n}-${i}`} flower={(n + i) % 3 === 0} />
+                        </div>
+                      ))}
+                    </motion.button>
+                  )
+                })
+              )}
+            </div>
+
+            {/* Building rounds: the syllable pads float in the water below */}
+            {isBuild && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: wide ? 18 : 10, justifyContent: 'center', alignItems: 'center', padding: '6px 14px 22px' }}>
+                {round.tiles.map((tile, i) => {
+                  const used = usedIds.has(tile.id)
+                  const hinted = !solved && slotMisses >= 2 && tile.text === expected && !used
+                  return (
+                    <div key={`${idx}-${tile.id}`} className="fr-bob" style={{ animationDelay: `${i * -0.4}s`, visibility: used ? 'hidden' : 'visible' }}>
+                      <Draggable id={`${idx}-${tile.id}`} data={tile} label={say(tile.text)} disabled={used}>
+                        <span {...hearable(say(tile.text), { rate: 0.6, enabled: !used })} style={{ display: 'block' }}>
+                          <motion.div animate={hinted ? { scale: [1, 1.12, 1] } : { scale: 1 }} transition={hinted ? { duration: 1, repeat: Infinity } : {}}>
+                            <Pad w={wide ? 112 : 84} h={wide ? 66 : 56} text={tile.text} glow={hinted} />
+                          </motion.div>
+                        </span>
+                      </Draggable>
+                    </div>
+                  )
+                })}
+                {!solved && (
+                  <HearOptions items={round.tiles.filter(t => !usedIds.has(t.id)).map(t => ({ text: say(t.text), rate: 0.6 }))}
+                    label="Silben vorlesen" size={52} />
+                )}
+              </div>
             )}
-          </div>
-        </>
-      ) : (
-        <>
-          {/* After the answer: the word in its parts, one clap each */}
-          <div style={{ minHeight: 64, display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
-            {solved && round.syllables.map((s, i) => (
-              <motion.div key={i}
-                initial={{ scale: 0, y: 10 }} animate={{ scale: 1, y: 0 }}
-                transition={{ delay: i * 0.35, type: 'spring', stiffness: 300 }}
-                style={{
-                  ...pxCard('right'), padding: '10px 16px',
-                  fontFamily: 'var(--font-heading)', fontSize: 'clamp(20px,4.5vw,28px)', fontWeight: 900,
-                  color: '#1F6B2A', display: 'flex', alignItems: 'center', gap: 8,
-                }}
-              >
-                <span>👏</span>{s}
+
+            {/* a duck paddles by now and then */}
+            {duck && (
+              <div key={'duck' + idx} className="fr-swim" aria-hidden="true"
+                style={{ position: 'absolute', left: 0, bottom: 2, pointerEvents: 'none', zIndex: 2 }}>
+                <Art art="🦆" size={wide ? 44 : 34} />
+              </div>
+            )}
+          </Water>
+
+          {/* The frog, above the water and the banks */}
+          {frog && (
+            <motion.div aria-hidden={busy}
+              initial={false}
+              animate={frog.arc && frog.from
+                ? { x: [frog.from.x, frog.x], y: [frog.from.y, Math.min(frog.from.y, frog.y) - frogS * 0.7, frog.y] }
+                : { x: frog.x, y: frog.y }}
+              transition={frog.arc ? { duration: 0.42, ease: 'easeOut', y: { duration: 0.42, times: [0, 0.45, 1] } } : { duration: 0 }}
+              style={{ position: 'absolute', left: 0, top: 0, width: frogS, height: frogS, zIndex: 5 }}>
+              <motion.div animate={dunk ? { y: frogS * 0.35, scale: 0.75, opacity: 0.55 } : { y: 0, scale: 1, opacity: 1 }} transition={{ duration: 0.3 }}>
+                <Critter art="🐸" size={frogS} mood={frogMood} label="Frosch" />
               </motion.div>
-            ))}
-          </div>
-
-          {/* How many claps? Pictures of hands, so no number has to be read */}
-          <div style={{
-            display: 'grid', gridTemplateColumns: `repeat(${round.max},1fr)`,
-            gap: 'clamp(8px,2vw,14px)', width: '100%', maxWidth: 680,
-          }}>
-            {Array.from({ length: round.max }, (_, i) => i + 1).map(n => {
-              const wrong = wrongClaps.includes(n)
-              const right = solved && n === round.syllables.length
-              return (
-                <motion.button key={n}
-                  whileHover={!solved && !wrong ? { scale: 1.05 } : {}}
-                  whileTap={!solved && !wrong ? { scale: 0.93 } : {}}
-                  animate={{ opacity: wrong || (solved && !right) ? 0.45 : 1 }}
-                  onClick={() => clickClap(n)}
-                  aria-label={COUNT_WORDS[n - 1]}
-                  {...hearable(COUNT_WORDS[n - 1])}
-                  style={{
-                    ...pxCard(right ? 'right' : wrong ? 'wrong' : undefined),
-                    minHeight: 84, padding: '12px 6px',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: solved ? 'default' : 'pointer',
-                  }}
-                >
-                  <Claps n={n} size={n > 3 ? 'clamp(20px,4.4vw,34px)' : 'clamp(24px,5.5vw,40px)'} />
-                </motion.button>
-              )
-            })}
-          </div>
-        </>
-      )}
-
-      {/* Weiter button */}
-      {showWeiter && (
-        <motion.button
-          initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }}
-          onClick={weiterClick}
-          {...hearable(idx + 1 >= total ? 'Fertig' : 'Weiter')}
-          style={{
-            ...pxButton('green'),
-            // dark text: white on the light green was hard to read
-            color: INK, textShadow: '0 1px 0 rgba(255,255,255,0.45)',
-            padding:'13px 44px', fontSize:20, minHeight: 52,
-          }}
-        >
-          {idx + 1 >= total ? '🏁 Fertig!' : 'Weiter! →'}
-        </motion.button>
-      )}
+            </motion.div>
+          )}
+          <AnimatePresence>{splash && <Splash key={splash.id} x={splash.x} y={splash.y} />}</AnimatePresence>
+        </div>
+      </DragArea>
+      {bursts}
     </div>
   )
 }

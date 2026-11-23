@@ -256,7 +256,7 @@ function buildQ(level) {
   return {
     kind:    'build',
     prompt:  'Leg die Reihe weiter!',
-    say:     'Leg die Reihe weiter! Tipp die Bilder unten der Reihe nach an.',
+    say:     'Leg die Reihe weiter! Zieh die Bilder der Reihe nach in die Parade.',
     tokens:  [...row.slice(0, shown), ...Array(slots).fill('❓')],
     gapAt:   shown,
     fill:    row.slice(shown),

@@ -171,6 +171,9 @@ export default function GameScreen() {
           that moves and cheers along (components/play/Scene.jsx) */}
       <div style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       <Scene theme={mod.scene} />
+      {/* positioned, above the scene: games that lay themselves out
+          (NO_SCALE) were painted underneath the absolutely placed scene */}
+      <div style={{ position: 'relative', zIndex: 1, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       <ErrorBoundary key={`${moduleId}-${attempt}`} moduleId={moduleId}
         onRetry={() => setAttempt(a => a + 1)}
         onHome={() => dispatch({ type: 'NAVIGATE', payload: 'home' })}>
@@ -186,6 +189,7 @@ export default function GameScreen() {
         </Suspense>
         </PauseContext.Provider>
       </ErrorBoundary>
+      </div>
       </div>
 
       {/* The back arrow sits where small hands hold a tablet: it asks first

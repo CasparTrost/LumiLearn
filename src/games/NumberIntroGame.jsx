@@ -1,64 +1,66 @@
-import { useState, useEffect, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { narrate, afterNarration, lockPreviews, stopNarration } from '../narrator.js'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
+import { narrate, lockPreviews, stopNarration } from '../narrator.js'
 import { sayNumber, sayCount } from '../tts.js'
 import { sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
-import { hearable } from '../lib/hearable.js'
-import { pxCard, pxPanel, pxButton, INK } from './px.js'
+import { sfx } from '../sfx.js'
+import { Critter, Art, useMood, DragArea, Draggable, DropZone, RoundTrail, useBursts } from '../components/play/index.js'
+import { Stage, useLater, DoneButton, Pips } from './zahlen/stage.jsx'
 
-const NUMBER_WORDS   = ['null','eins','zwei','drei','vier','fünf','sechs','sieben','acht','neun','zehn']
-const NUMBER_AUDIO   = ['','eins','zwei','drei','vier','fuenf','sechs','sieben','acht','neun','zehn']
+/**
+ * Zahlen entdecken — "Bruno hat Hunger"
+ *
+ * A hungry animal holds up a sign with a number. The child lays exactly
+ * that many things on its plate (each one counted aloud) and taps the
+ * tick. Then the animal eats: just right gives a burp, a giggle or a
+ * dance; too few and it is still hungry, too many and it is stuffed and
+ * the rest rolls back. Counting out n of more things and deciding when to
+ * stop is the "give me n" task, the measure of cardinality.
+ */
+
+const NUMBER_WORDS = ['null','eins','zwei','drei','vier','fünf','sechs','sieben','acht','neun','zehn']
+const NUMBER_AUDIO = ['','eins','zwei','drei','vier','fuenf','sechs','sieben','acht','neun','zehn']
 // Content colours for the numerals; the ink outline keeps even the light ones
-// readable on parchment.
-const NUM_COLORS   = ['#9AB0CC','#FF6B5B','#FF9F43','#FFC93C','#5CC45A','#4AA3FF','#8E6CF0','#FD79A8','#2FB8A6','#E8663A','#3E7BD6']
-// Every thing has its noun, so the task can be said: "Tippe genau sechs Sterne an".
-const THINGS = [
-  { emoji: '⭐', one: 'Stern',         many: 'Sterne',         g: 'm' },
-  { emoji: '🍎', one: 'Apfel',         many: 'Äpfel',          g: 'm' },
-  { emoji: '🐟', one: 'Fisch',         many: 'Fische',         g: 'm' },
-  { emoji: '🦋', one: 'Schmetterling', many: 'Schmetterlinge', g: 'm' },
-  { emoji: '🌸', one: 'Blüte',         many: 'Blüten',         g: 'f' },
-  { emoji: '🍭', one: 'Lutscher',      many: 'Lutscher',       g: 'm' },
-  { emoji: '🎈', one: 'Ballon',        many: 'Ballons',        g: 'm' },
-  { emoji: '🐶', one: 'Hund',          many: 'Hunde',          g: 'm' },
-  { emoji: '🦁', one: 'Löwe',          many: 'Löwen',          g: 'm' },
-  { emoji: '🍕', one: 'Pizzastück',    many: 'Pizzastücke',    g: 'n' },
-  { emoji: '🌻', one: 'Sonnenblume',   many: 'Sonnenblumen',   g: 'f' },
-  { emoji: '🦄', one: 'Einhorn',       many: 'Einhörner',      g: 'n' },
-  { emoji: '🐸', one: 'Frosch',        many: 'Frösche',        g: 'm' },
-  { emoji: '🐰', one: 'Hase',          many: 'Hasen',          g: 'm' },
-  { emoji: '🍓', one: 'Erdbeere',      many: 'Erdbeeren',      g: 'f' },
-  { emoji: '🎀', one: 'Schleife',      many: 'Schleifen',      g: 'f' },
-  { emoji: '🍩', one: 'Donut',         many: 'Donuts',         g: 'm' },
-  { emoji: '🐨', one: 'Koala',         many: 'Koalas',         g: 'm' },
-  { emoji: '🍦', one: 'Eistüte',       many: 'Eistüten',       g: 'f' },
-  { emoji: '🎁', one: 'Geschenk',      many: 'Geschenke',      g: 'n' },
-  { emoji: '🧁', one: 'Muffin',        many: 'Muffins',        g: 'm' },
-  { emoji: '🍇', one: 'Weintraube',    many: 'Weintrauben',    g: 'f' },
-  { emoji: '🐞', one: 'Marienkäfer',   many: 'Marienkäfer',    g: 'm' },
-  { emoji: '🍌', one: 'Banane',        many: 'Bananen',        g: 'f' },
-  { emoji: '🚗', one: 'Auto',          many: 'Autos',          g: 'n' },
-  { emoji: '🦆', one: 'Ente',          many: 'Enten',          g: 'f' },
-]
+// readable.
+const NUM_COLORS = ['#9AB0CC','#FF6B5B','#FF9F43','#FFC93C','#5CC45A','#4AA3FF','#8E6CF0','#FD79A8','#2FB8A6','#E8663A','#3E7BD6']
 
-// "Tippe genau einen Stern an" — the object of a sentence needs the accusative,
-// which sayCount (nominative "ein") does not give for masculine nouns.
-const countAcc = (n, t) => n === 1
-  ? `${t.g === 'm' ? 'einen' : t.g === 'f' ? 'eine' : 'ein'} ${t.one}`
-  : `${sayNumber(n)} ${t.many}`
-// Counting along: recordings up to ten, the voice from eleven on (a board
-// holds up to thirteen things, and "undefined.mp3" used to fall silent).
-const countPart = n => (n >= 1 && n <= 10 ? { src: `audio/zahlen-entdecken/${NUMBER_AUDIO[n]}.mp3`, text: NUMBER_WORDS[n] } : { text: sayNumber(n) })
+// Who is hungry, and for what. Only food that is one thing in its picture
+// (no cherry pairs, no grape bunches), so every picture counts as one.
+const EATERS = [
+  { art: '🐻', label: 'Bruno, der Bär', foods: [['🍓', 'Erdbeere', 'Erdbeeren', 'f'], ['🍎', 'Apfel', 'Äpfel', 'm'], ['🧁', 'Muffin', 'Muffins', 'm']] },
+  { art: '🐰', label: 'Hase',         foods: [['🥕', 'Karotte', 'Karotten', 'f']] },
+  { art: '🐒', label: 'Affe',         foods: [['🍌', 'Banane', 'Bananen', 'f']] },
+  { art: '🐭', label: 'Maus',         foods: [['🧀', 'Käsestück', 'Käsestücke', 'n']] },
+  { art: '🐶', label: 'Hund',         foods: [['🦴', 'Knochen', 'Knochen', 'm']] },
+  { art: '🐱', label: 'Katze',        foods: [['🐟', 'Fisch', 'Fische', 'm']] },
+  { art: '🐿️', label: 'Eichhörnchen', foods: [['🌰', 'Kastanie', 'Kastanien', 'f']] },
+  { art: '🦛', label: 'Nilpferd',     foods: [['🍉', 'Melonenstück', 'Melonenstücke', 'n']] },
+  { art: '🐷', label: 'Schwein',      foods: [['🍩', 'Donut', 'Donuts', 'm']] },
+  { art: '🦖', label: 'Dino',         foods: [['🍕', 'Pizzastück', 'Pizzastücke', 'n']] },
+  { art: '🐼', label: 'Panda',        foods: [['🍪', 'Keks', 'Kekse', 'm']] },
+  { art: '🐘', label: 'Elefant',      foods: [['🥨', 'Brezel', 'Brezeln', 'f']] },
+  { art: '🐧', label: 'Pinguin',      foods: [['🍦', 'Eistüte', 'Eistüten', 'f']] },
+  { art: '🦔', label: 'Igel',         foods: [['🍐', 'Birne', 'Birnen', 'f']] },
+]
+const food = ([emoji, one, many, g]) => ({ emoji, one, many, g })
+
+const N = sayNumber
+// "Ich habe Hunger auf einen Apfel": the object needs the accusative, which
+// sayCount (nominative "ein") does not give for masculine nouns.
+const countAcc = (n, f) => n === 1
+  ? `${f.g === 'm' ? 'einen' : f.g === 'f' ? 'eine' : 'ein'} ${f.one}`
+  : `${N(n)} ${f.many}`
+const them = (n, f) => (n > 1 ? 'sie' : f.g === 'm' ? 'ihn' : f.g === 'f' ? 'sie' : 'es')
+// Counting along: recordings up to ten, the voice from eleven on.
+const countPart = n => (n >= 1 && n <= 10 ? { src: `audio/zahlen-entdecken/${NUMBER_AUDIO[n]}.mp3`, text: NUMBER_WORDS[n] } : { text: N(n) })
 
 function rnd(arr) { return [...arr].sort(() => Math.random() - 0.5) }
 
-// The zero round: nothing to tap, Fertig straight away. Said in full, because
-// "null Sterne" alone would leave a child waiting for something to count.
-const ZERO_TASK = 'Null heißt: gar keins! Tippe auf Fertig, ohne etwas anzutippen.'
-const taskParts = (n, thing) => n === 0
-  ? [{ text: 'Null.' }, { text: ZERO_TASK, gap: 250 }]
-  : [countPart(n), { text: `Tippe genau ${countAcc(n, thing)} an.`, gap: 250 }]
+// The zero round: nothing on the plate, the tick straight away.
+const taskParts = r => r.n === 0
+  ? [{ text: 'Null.' }, { text: 'Ich bin schon pappsatt und möchte gar nichts! Null heißt: gar keins. Tippe auf den Haken, ohne etwas auf den Teller zu legen.', gap: 250 }]
+  : [countPart(r.n), { text: `${r.hello ? 'Hallo, ich bin Bruno! ' : ''}Ich habe Hunger auf ${countAcc(r.n, r.food)}! Leg ${them(r.n, r.food)} auf meinen Teller, dann tippe auf den Haken.`, gap: 250 }]
 
 // Zero comes in once the counting is familiar, never as the opening round.
 const withZero = seq => { const at = 2 + Math.floor(Math.random() * (seq.length - 1)); return [...seq.slice(0, at), 0, ...seq.slice(at)] }
@@ -71,405 +73,308 @@ function buildRounds(level) {
   // The last level is about the hard numbers: all of six to ten, two smaller
   // ones and the zero in between — eight rounds instead of ten long ones.
   else seq = withZero(rnd([6, 7, 8, 9, 10, ...rnd([2, 3, 4, 5]).slice(0, 2)]))
-  const pool = rnd(THINGS)
-  // Extra objects beyond the target count. The board used to hold exactly n
-  // items, so tapping everything was always right and the round could not be
-  // failed — the link between quantity and numeral was never actually tested.
-  // With a few spares the child has to count out n of them and stop, which is
-  // the classic "give me n" task and the real measure of cardinality.
+  // Bruno opens every level; his friends follow, a new one each round.
+  const [bruno, ...friends] = EATERS
+  const eaters = [bruno, ...rnd(friends)]
+  // A few things more than wanted: tapping everything must not be right,
+  // the child has to count out n and stop.
   const extra = level <= 1 ? 1 : level <= 2 ? 2 : 3
-  return seq.map((n, i) => ({
-    n,
-    total: n + extra,
-    thing: pool[i % pool.length],
-    color: NUM_COLORS[n],
-  }))
+  return seq.map((n, i) => {
+    const eater = eaters[i % eaters.length]
+    return { n, total: n + extra, eater, food: food(eater.foods[Math.floor(Math.random() * eater.foods.length)]), color: NUM_COLORS[n], hello: i === 0 }
+  })
 }
 
 export default function NumberIntroGame({ level = 1, onComplete }) {
   const rounds = useMemo(() => buildRounds(level), [level])
+  const reduce = useReducedMotion()
+  const { later, afterSpeech, clear } = useLater()
+  const [mood, setMood] = useMood()
+  const [bursts, burst] = useBursts()
+  const critterRef = useRef(null)
 
   const [idx,    setIdx]    = useState(0)
-  const [tapped, setTapped] = useState(() => new Map()) // Map<index → tapOrder (1-based)>
-  const [boom,   setBoom]   = useState(false)
-  const [showWeiter, setShowWeiter] = useState(false)
-  const [checkResult, setCheckResult] = useState(null) // null | 'ok' | 'wrong'
-  const [roundMisses, setRoundMisses] = useState(0)
-  const [firstTry, setFirstTry] = useState(0)
-
-  // Stop narration when game unmounts
-  useEffect(() => stopNarration, [])
+  const [pile,   setPile]   = useState(() => [...Array(rounds[0].total).keys()])
+  const [plate,  setPlate]  = useState([])        // ids, in the order they were laid down
+  const [eaten,  setEaten]  = useState(0)
+  const [phase,  setPhase]  = useState('play')    // play | eat | done
+  const [misses, setMisses] = useState(0)         // on this round
+  const firstTry = useRef(0)
 
   const round = rounds[idx]
-  const done  = checkResult === 'ok'
+  const { n, food: f, eater } = round
 
-  // Say the task when a new round starts: the number in the recorded voice,
-  // then what to do with it. The number alone left a child who cannot read
-  // the hint guessing what was wanted.
+  useEffect(() => stopNarration, [])
+
+  // A new animal walks in and says what it wants.
   useEffect(() => {
-    if (!round) return
     lockPreviews()
-    narrate(round.n === 0
-      ? taskParts(0)
-      : [countPart(round.n), { text: `Tippe genau ${countAcc(round.n, round.thing)} an. Dann drück auf Fertig!`, gap: 250 }])
+    later(500, () => narrate(taskParts(round)))
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Taking a thing back renumbers the later ones, so the badges always read
-  // 1, 2, 3 … and the child can fix a slip instead of starting over.
-  const toggle = (i) => {
-    if (done || checkResult === 'wrong') return
-    const order = tapped.get(i)
-    const m = new Map(tapped)
-    if (order === undefined) m.set(i, tapped.size + 1)
-    else {
-      m.delete(i)
-      for (const [k, o] of m) if (o > order) m.set(k, o - 1)
-    }
-    setTapped(m)
-    // In the zero round a tap is not counted along but gently taken back to
-    // the task; it is no mistake until Fertig is pressed.
-    if (round.n === 0) narrate([{ text: m.size > 0
-      ? 'Null heißt: gar keins! Tippe es noch einmal an, dann ist es wieder weg.'
-      : 'Gut, jetzt ist wieder keins angetippt. Tippe auf Fertig!' }])
-    // Count along in the same recorded voice that announces the round.
-    else if (m.size > 0) narrate([countPart(m.size)])
+  const next = () => {
+    if (idx + 1 >= rounds.length) { onComplete(result(firstTry.current, rounds.length)); return }
+    clear()
+    setIdx(idx + 1)
+    setPile([...Array(rounds[idx + 1].total).keys()])
+    setPlate([])
+    setEaten(0)
+    setMisses(0)
+    setPhase('play')
+  }
+
+  // Something lands on the plate: counted along in the recorded voice,
+  // going on from what was eaten already.
+  const lay = id => {
+    if (phase !== 'play') return false
+    const k = plate.length + 1
+    setPile(p => p.filter(x => x !== id))
+    setPlate(p => [...p, id])
+    sfx.pop()
+    if (n === 0) narrate([{ text: 'Null heißt: gar keins! Tippe es auf dem Teller an, dann ist es wieder weg.' }])
+    else narrate([countPart(eaten + k)])
+    return true
+  }
+  // A tap on the plate takes that thing back, so a slip is easy to fix.
+  const takeBack = id => {
+    if (phase !== 'play') return
+    const rest = plate.filter(x => x !== id)
+    setPlate(rest)
+    setPile(p => [...p, id].sort((a, b) => a - b))
+    sfx.slideUp()
+    if (n === 0) narrate([{ text: rest.length ? 'Noch eins wegnehmen!' : 'Gut, jetzt ist der Teller leer. Tippe auf den Haken!' }])
+    else if (eaten + rest.length > 0) narrate([countPart(eaten + rest.length)])
     else stopNarration()
   }
 
-  // Spacebar taps the next untapped item
-  useEffect(() => {
-    const handleKey = (e) => {
-      if (e.code !== 'Space' || done) return
-      e.preventDefault()
-      const nextIdx = Array.from({ length: round.total }, (_, i) => i).find(i => !tapped.has(i))
-      if (nextIdx !== undefined) toggle(nextIdx)
-    }
-    window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
-  })  
+  const miss = () => setMisses(m => m + 1)
 
-  useEffect(() => {
-    if (!done) return
-    setBoom(true)
-    const t = setTimeout(() => setShowWeiter(true), 800)
-    return () => clearTimeout(t)
-  }, [done])  
-
-  const weiterClick = () => {
-    setShowWeiter(false)
-    setBoom(false)
-    const next = idx + 1
-    setCheckResult(null)
-    if (next >= rounds.length) {
-      onComplete(result(firstTry, rounds.length))
-    } else {
-      setIdx(next)
-      setTapped(new Map())
-      setRoundMisses(0)
-    }
-  }
-
-  if (!round) return null
-
-  const objs = Array.from({ length: round.total }, (_, i) => i)
-  const { n, thing } = round
-
-  const checkCount = () => {
-    const k = tapped.size
-    if (k === n) {
-      setCheckResult('ok')
-      if (roundMisses === 0) setFirstTry(f => f + 1)
-      sayRight(n === 0 ? 'Null heißt gar keins, und du hast gar keins angetippt.'
-        : n === 1 ? `Das ist genau ${sayCount(1, thing.one, thing.g)}.` : `Das sind genau ${sayNumber(n)} ${thing.many}.`)
+  const check = () => {
+    if (phase !== 'play') return
+    const k = plate.length, t = eaten + k
+    if (n === 0) {
+      if (k === 0) {
+        setPhase('done')
+        if (misses === 0) firstTry.current++
+        setMood('sleep', 2600)
+        sayRight('Null heißt gar keins, und du hast mir gar keins gegeben. Danke!')
+        afterSpeech(next, 1400)
+      } else {
+        // Full already: everything is pushed back to the pile.
+        miss()
+        setMood('oops', 1600)
+        sfx.boing()
+        setPile(p => [...p, ...plate].sort((a, b) => a - b))
+        setPlate([])
+        setPhase('eat')
+        sayWrong('Null heißt: gar keins. Ich bin doch schon satt! Tippe nur auf den Haken.')
+        afterSpeech(() => setPhase('play'))
+      }
       return
     }
-    setCheckResult('wrong')
-    setRoundMisses(m => m + 1)
-    sayWrong(k > n
-      ? (n === 0
-          ? `Null heißt: gar keins. Wir lassen alle liegen und tippen nur auf Fertig!`
-        : n === 1
-          ? `Das sind zu viele. Wir brauchen nur ${countAcc(1, thing)}.`
-          : `Das waren ${sayNumber(k)}. Wir brauchen nur ${sayNumber(n)}. Wir zählen nochmal!`)
-      : `Das ${k === 1 ? 'war erst eins' : `waren erst ${sayNumber(k)}`}. Wir brauchen ${sayNumber(n)}. Wir zählen nochmal!`)
-    // Start over only once the sentence is through — it used to be cut off by
-    // a fixed 1.9 s reset as soon as the child tapped again.
-    afterNarration(() => { setCheckResult(null); setTapped(new Map()) }, { minMs: 1200 })
+    setPhase('eat')
+    // A wrong amount is eaten bite by bite and counted aloud, so the child
+    // hears where it went wrong; the right one goes munch-munch-munch.
+    const bites = Math.min(k, n - eaten), counted = t !== n, e0 = eaten
+    const bite = i => {
+      if (i >= bites) { ate(t); return }
+      setPlate(p => p.slice(1))
+      setEaten(e0 + i + 1)
+      setMood('eat', 700)
+      sfx.chomp()
+      if (counted) narrate([countPart(e0 + i + 1)])
+      later(counted ? 700 : 320, () => bite(i + 1))
+    }
+    later(200, () => bite(0))
   }
 
-  // After two miscounts the row of dots shows how many are wanted. Shown from
-  // the start it gave the end away: tap until every dot is full.
-  const showDots = roundMisses >= 2
-  // Fertig waits for a first tap — except for zero, where no tap is the answer.
-  const canCheck = tapped.size > 0 || n === 0
+  const ate = t => {
+    if (t === n) {
+      setPhase('done')
+      if (misses === 0) firstTry.current++
+      // A little surprise, so the twentieth meal is still fun
+      const treat = ['burp', 'burp', 'dance', 'happy'][Math.floor(Math.random() * 4)]
+      const what = n === 1 ? `Das war genau ${sayCount(1, f.one, f.g)}.` : `Das waren genau ${N(n)} ${f.many}.`
+      if (treat === 'burp') {
+        sfx.burp()
+        setMood('wow', 700)
+        later(700, () => { sfx.giggle(); setMood('happy', 1400) })
+      } else setMood(treat, treat === 'dance' ? 3000 : 1400)
+      burst(critterRef.current, 'hearts')
+      sayRight(treat === 'burp' ? `Hoppla! Entschuldigung! ${what}` : `Mmh, lecker! ${what}`)
+      afterSpeech(next, 1200)
+    } else if (t > n) {
+      // Stuffed: the rest rolls back off the plate.
+      miss()
+      setMood('oops', 2200)
+      sfx.boing()
+      setPile(p => [...p, ...plate.slice(n - eaten)].sort((a, b) => a - b))
+      setPlate([])
+      setPhase('done')
+      sayWrong(`Uff, ich bin pappsatt! Ich wollte nur ${N(n)}. Das waren ${N(t)}.`)
+      afterSpeech(next, 1400)
+    } else {
+      // Still hungry: what was eaten stays eaten, the child gives the rest.
+      miss()
+      setMood('hungry', 0)
+      sayWrong(`Ich habe noch Hunger! Das ${t === 1 ? 'war erst eins' : `waren erst ${N(t)}`}. Ich möchte ${N(n)}. Gib mir noch ${countAcc(n - t, f)}!`)
+      afterSpeech(() => { setMood('idle'); setPhase('play') })
+    }
+  }
+
+  const repeat = () => narrate(taskParts(round))
+  const canCheck = phase === 'play' && (plate.length > 0 || n === 0)
+  // After two misses a row of dots fills with what was given — shown from
+  // the start, it would give the end away: fill until every dot is full.
+  const helpDots = misses >= 2 && n > 0
+  const belly = 1 + Math.min(eaten, 10) * 0.035
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:16, padding:'clamp(12px,3vw,24px)', width:'100%' }}>
-
-      {/* Progress */}
-      <div style={{ width:'100%', maxWidth:520, height:12, background:'rgba(42,27,61,0.12)', border:`2px solid ${INK}`, borderRadius:4, overflow:'hidden' }}>
-        <motion.div
-          animate={{ width:`${((idx + (done ? 1 : 0)) / rounds.length) * 100}%` }}
-          style={{ height:'100%', background:round.color, borderRadius:2 }}
-          transition={{ duration:0.4 }}
-        />
-      </div>
-
-      {/* Big number — tap it to hear the task again */}
-      <AnimatePresence mode="wait">
-        <motion.button
-          key={idx}
-          initial={{ y:40, scale:0.5, opacity:0 }}
-          animate={{ y:0, scale:1, opacity:1 }}
-          exit={{ y:-40, scale:0.5, opacity:0 }}
-          transition={{ type:'spring', stiffness:380, damping:20 }}
-          onClick={() => narrate(taskParts(n, thing))}
-          aria-label={`Aufgabe noch einmal hören: ${NUMBER_WORDS[n]}`}
-          style={{ textAlign:'center', lineHeight:1, background:'none', border:'none', padding:0, cursor:'pointer', color:'inherit' }}
-        >
-          <div style={{
-            fontFamily:'var(--font-heading)',
-            fontSize:'clamp(150px,34vw,260px)',
-            lineHeight:1, userSelect:'none',
-            color: round.color,
-            // Ink outline: a yellow or light numeral otherwise melts into
-            // the parchment background
-            textShadow:'-5px -5px 0 var(--px-ink), 5px -5px 0 var(--px-ink), -5px 5px 0 var(--px-ink), 5px 5px 0 var(--px-ink), 0 -5px 0 var(--px-ink), 0 5px 0 var(--px-ink), -5px 0 0 var(--px-ink), 5px 0 0 var(--px-ink), 0 11px 0 rgba(42,27,61,0.3)',
-          }}>
-            {n}
-          </div>
-          <div style={{fontFamily:'var(--font-heading)',fontSize:'clamp(38px,8vw,58px)',color:'var(--text-secondary)',marginTop:-4,letterSpacing:1}}>
-            {NUMBER_WORDS[n]}
-          </div>
-          {/* Ten frame for 7..10 — the dice pattern below only reaches six,
-              so exactly the numbers that are hardest to grasp at a glance had
-              no structure to lean on. Five per row makes "five and some more"
-              visible instead of forcing a one-by-one count. */}
-          {n >= 7 && (
-            <svg width={132} height={62} viewBox="0 0 220 100" style={{marginTop:6}}>
-              {Array.from({ length: 10 }, (_, i) => {
-                const col = i % 5, row = Math.floor(i / 5)
-                const x = 6 + col * 42, y = 6 + row * 44
-                return (
-                  <g key={i}>
-                    <rect x={x} y={y} width={38} height={40} rx={5}
-                      fill="#FFFDF7" stroke="#2a1b3d" strokeWidth={3}/>
-                    {i < n && (
-                      <circle cx={x + 19} cy={y + 20} r={12} fill={round.color} stroke="#2a1b3d" strokeWidth={2}/>
-                    )}
-                  </g>
-                )
-              })}
-            </svg>
-          )}
-          {/* Dice pattern for n <= 6 */}
-          {n <= 6 && (
-            <svg width={80} height={80} viewBox="0 0 100 100" style={{marginTop:4}}>
-              <rect x={3} y={3} width={94} height={94} rx={12}
-                fill="#FFFDF7" stroke="#2a1b3d" strokeWidth={5}/>
-              {[
-                [],
-                [[50,50]],
-                [[25,25],[75,75]],
-                [[25,25],[50,50],[75,75]],
-                [[25,25],[75,25],[25,75],[75,75]],
-                [[25,25],[75,25],[50,50],[25,75],[75,75]],
-                [[25,25],[75,25],[25,50],[75,50],[25,75],[75,75]],
-              ][n].map(([cx,cy],i) => (
-                <circle key={i} cx={cx} cy={cy} r={9} fill={round.color} stroke="#2a1b3d" strokeWidth={2}/>
-              ))}
-            </svg>
-          )}
-        </motion.button>
-      </AnimatePresence>
-
-      {/* Objects OR celebration */}
-      <AnimatePresence mode="wait">
-        {boom ? (
-          <motion.div
-            key="boom"
-            initial={{ scale:0.6, opacity:0 }}
-            animate={{ scale:1, opacity:1 }}
-            exit={{ scale:0.8, opacity:0 }}
-            transition={{ type:'spring', stiffness:400, damping:18 }}
-            style={{
-              display:'flex', flexDirection:'column', alignItems:'center', gap:12,
-              padding:'24px 44px',
-              ...pxPanel,
-            }}
-          >
-            <div style={{ fontSize:'clamp(48px,11vw,70px)', lineHeight:1 }}>🎉</div>
-            <div style={{
-              fontFamily:'var(--font-heading)',
-              fontSize:'clamp(22px,5vw,30px)',
-              color:INK, fontWeight:800,
-            }}>
-              {n} — {NUMBER_WORDS[n]}!
+    <DragArea autoTarget="plate" disabled={phase !== 'play'}>
+      <Stage wide={[780, 540]} tall={[440, 720]}>
+        {wide => {
+          const sign = (
+            <Sign key={`s${idx}`} n={n} color={round.color} onTap={repeat}
+              help={helpDots ? eaten + plate.length : null} />
+          )
+          const animal = (
+            <DropZone id="plate" onDrop={lay} label={`Teller von ${eater.label}`}
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              {(hover, { ready }) => (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16 }}>
+                    {!wide && sign}
+                    <AnimatePresence mode="wait">
+                      <motion.div key={idx} ref={critterRef}
+                        initial={reduce ? { opacity: 0 } : { x: 260, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1, scaleX: belly, scaleY: 1 + (belly - 1) * 0.3 }}
+                        exit={reduce ? { opacity: 0 } : { x: -260, opacity: 0, transition: { duration: 0.35 } }}
+                        transition={{ type: 'spring', stiffness: 160, damping: 18 }}
+                        style={{ transformOrigin: '50% 100%' }}>
+                        <Critter art={eater.art} size={wide ? 200 : 170} label={eater.label} talks flip={wide}
+                          wish={n > 0 && phase === 'play' ? <Art art={f.emoji} size={40} /> : null} wishSide={wide ? 'right' : 'top'}
+                          mood={phase === 'play' && (hover || ready) && n > 0 ? 'hungry' : mood} />
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
+                  <Plate items={plate} food={f} start={eaten} onTake={takeBack} glow={hover} width={wide ? 300 : 380} />
+                </>
+              )}
+            </DropZone>
+          )
+          const heap = (
+            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignContent: 'center', gap: 6, maxWidth: wide ? 250 : 420 }}>
+              <AnimatePresence>
+                {pile.map(id => (
+                  <motion.div key={`${idx}-${id}`} layout={!reduce}
+                    initial={{ scale: 0, rotate: -30 }} animate={{ scale: 1, rotate: ((id * 37) % 21) - 10 }} exit={{ scale: 0, transition: { duration: 0.1 } }}
+                    transition={{ type: 'spring', stiffness: 380, damping: 18, delay: phase === 'play' && plate.length === 0 && eaten === 0 ? id * 0.05 : 0 }}>
+                    <Draggable id={`${idx}-${id}`} data={id} label={f.one} style={{ padding: 3, borderRadius: 14 }}>
+                      <Art art={f.emoji} size={wide ? 56 : 54} />
+                    </Draggable>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             </div>
-          </motion.div>
-        ) : (
-          <motion.div
-            key={`objs-${idx}`}
-            initial={{ opacity:0 }}
-            animate={{ opacity:1 }}
-            exit={{ opacity:0 }}
-            style={{
-              display:'flex', flexWrap:'wrap',
-              justifyContent:'center',
-              gap:'clamp(4px,1.6vw,10px)',
-              maxWidth:500,
-            }}
-          >
-            {objs.map(i => {
-              const tapOrder = tapped.get(i)  // undefined if not tapped, else 1-based order
-              const isTapped = tapOrder !== undefined
-              return (
-                // The button keeps its full size; only the picture shrinks,
-                // so a counted thing stays easy to tap again to put it back.
-                <button
-                  key={i}
-                  onClick={() => toggle(i)}
-                  aria-label={isTapped ? `${thing.one} ${tapOrder}, zurücklegen` : thing.one}
-                  aria-pressed={isTapped}
-                  style={{
-                    position:'relative', background:'none', border:'none',
-                    cursor:'pointer', padding:4, lineHeight:1,
-                    minWidth:52, minHeight:52,
-                    WebkitTapHighlightColor:'transparent',
-                  }}
-                >
-                  <motion.span
-                    initial={{ scale:0, rotate:-20 }}
-                    animate={isTapped ? { scale:0.8, rotate:12, opacity:0.45 } : { scale:1, rotate:0, opacity:1 }}
-                    transition={{
-                      type:'spring', stiffness:400, damping:15,
-                      delay: isTapped ? 0 : i * 0.08,
-                    }}
-                    whileHover={!isTapped ? { scale:1.2 } : {}}
-                    whileTap={{ scale:0.75 }}
-                    style={{ display:'inline-block', fontSize:'clamp(44px,9vw,60px)' }}
-                  >
-                    {thing.emoji}
-                  </motion.span>
-                  {/* Tap-order badge */}
-                  <AnimatePresence>
-                    {isTapped && (
-                      <motion.span
-                        initial={{ scale:0, y:4, opacity:0 }}
-                        animate={{ scale:1, y:0, opacity:1 }}
-                        exit={{ scale:0, opacity:0 }}
-                        transition={{ type:'spring', stiffness:500, damping:18 }}
-                        style={{
-                          position:'absolute',
-                          top:-6, left:'50%', marginLeft:'clamp(-15px,-2.25vw,-11px)',
-                          background:'#FFFDF7',
-                          color:INK,
-                          fontFamily:'var(--font-heading)',
-                          fontSize:'clamp(13px,2.5vw,17px)',
-                          fontWeight:800,
-                          lineHeight:1,
-                          borderRadius:'50%',
-                          width:'clamp(22px,4.5vw,30px)',
-                          height:'clamp(22px,4.5vw,30px)',
-                          display:'flex', alignItems:'center', justifyContent:'center',
-                          border:`2px solid ${INK}`,
-                          boxShadow:`0 2px 0 ${INK}`,
-                          pointerEvents:'none',
-                        }}
-                      >
-                        {tapOrder}
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
-                </button>
-              )
-            })}
-          </motion.div>
-        )}
+          )
+          const trail = <RoundTrail total={rounds.length} done={idx + (phase === 'done' ? 1 : 0)} walker="🐻" goal="🍯" size={wide ? 38 : 34} style={{ margin: '6px 48px 0 24px' }} />
+          return wide ? (
+            <>
+              {trail}
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 40, padding: '0 12px 12px' }}>
+                {sign}
+                {animal}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18 }}>
+                  <Blanket>{heap}</Blanket>
+                  <DoneButton onClick={check} disabled={!canCheck} />
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              {trail}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-evenly', padding: '0 10px 12px' }}>
+                {animal}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <Blanket>{heap}</Blanket>
+                  <DoneButton onClick={check} disabled={!canCheck} size={76} />
+                </div>
+              </div>
+            </>
+          )
+        }}
+      </Stage>
+      {bursts}
+    </DragArea>
+  )
+}
+
+// The sign the animal holds up: the numeral, its word and its dots.
+// A tap says the task again.
+function Sign({ n, color, onTap, help }) {
+  return (
+    <motion.button type="button" onClick={onTap} aria-label={`Aufgabe noch einmal hören: ${NUMBER_WORDS[n]}`}
+      initial={{ y: -40, rotate: -8, opacity: 0 }} animate={{ y: 0, rotate: -3, opacity: 1 }}
+      whileTap={{ scale: 0.94 }} transition={{ type: 'spring', stiffness: 300, damping: 14 }}
+      style={{ all: 'unset', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <div style={{
+        position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+        padding: '6px 18px 12px', minWidth: 140, borderRadius: 18,
+        background: '#fffdf7', border: '5px solid #8a4f22', boxShadow: '0 0 0 3px #2a1b3d, 0 8px 0 3px rgba(42,27,61,0.3)',
+      }}>
+        <span style={{
+          fontFamily: 'var(--font-heading)', fontSize: 112, lineHeight: 1, color,
+          textShadow: '-4px -4px 0 #2a1b3d, 4px -4px 0 #2a1b3d, -4px 4px 0 #2a1b3d, 4px 4px 0 #2a1b3d, 0 -4px 0 #2a1b3d, 0 4px 0 #2a1b3d, -4px 0 0 #2a1b3d, 4px 0 0 #2a1b3d, 0 9px 0 rgba(42,27,61,0.3)',
+        }}>{n}</span>
+        <span style={{ fontFamily: 'var(--font-heading)', fontSize: 28, color: '#5b4a6e', marginTop: -6 }}>{NUMBER_WORDS[n]}</span>
+        <Pips n={n} size={66} color={color} fill={help ?? n} />
+        <span aria-hidden="true" style={{ position: 'absolute', top: -14, right: -16 }}><Art art="🔊" size={34} /></span>
+      </div>
+      <div aria-hidden="true" style={{ width: 14, height: 46, background: '#8a4f22', border: '3px solid #2a1b3d', borderTop: 'none', borderRadius: '0 0 6px 6px' }} />
+    </motion.button>
+  )
+}
+
+// The plate in front of the animal; everything on it is numbered on, from
+// what was eaten already.
+function Plate({ items, food: f, start, onTake, glow, width }) {
+  return (
+    <div style={{
+      marginTop: -8, width, minHeight: 96, padding: '14px 22px', boxSizing: 'border-box',
+      display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignContent: 'center', gap: 4,
+      background: 'radial-gradient(ellipse at 50% 40%, #ffffff 55%, #e4f1ff 100%)', borderRadius: 999,
+      border: '4px solid #2a1b3d', boxShadow: `inset 0 0 0 7px ${glow ? '#ffc93c' : '#bcdcff'}, 0 6px 0 rgba(42,27,61,0.3)`,
+      transition: 'box-shadow .2s',
+    }}>
+      <AnimatePresence>
+        {items.map((id, i) => (
+          <motion.button key={id} type="button" onClick={e => { e.stopPropagation(); onTake(id) }}
+            aria-label={`${f.one} ${start + i + 1}, zurücklegen`}
+            initial={{ scale: 0, y: -30 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0, y: -40, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 20 }}
+            style={{ all: 'unset', cursor: 'pointer', position: 'relative', width: 46, height: 46, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Art art={f.emoji} size={42} />
+            <span style={{
+              position: 'absolute', top: -6, right: -6, minWidth: 22, height: 22, borderRadius: 11, padding: '0 3px', boxSizing: 'border-box',
+              background: '#fffdf7', border: '2px solid #2a1b3d', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, lineHeight: '18px', textAlign: 'center', color: '#2a1b3d',
+            }}>{start + i + 1}</span>
+          </motion.button>
+        ))}
       </AnimatePresence>
+    </div>
+  )
+}
 
-      {/* Dot counter — a help after two miscounts: one dot per wanted item,
-          filling as the child taps. */}
-      {!boom && showDots && (
-        <div style={{ display:'flex', gap:10, flexWrap:'wrap', justifyContent:'center', minHeight:30 }}>
-          {Array.from({ length: n }, (_, i) => (
-            <motion.div
-              key={i}
-              animate={{
-                scale: i < tapped.size ? 1.2 : 0.75,
-                background: i < tapped.size ? round.color : 'rgba(0,0,0,0.12)',
-              }}
-              transition={{ type:'spring', stiffness:500, damping:18 }}
-              style={{
-                width:22, height:22, borderRadius:'50%',
-                border:`2px solid ${INK}`,
-                boxShadow: i < tapped.size ? `0 2px 0 ${INK}` : 'none',
-              }}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Hint */}
-      {!boom && (
-        <p style={{
-          fontFamily:'var(--font-heading)',
-          fontSize:'clamp(16px,3vw,20px)',
-          color:'var(--text-secondary)',
-          textAlign:'center', margin:0,
-        }}>
-          {n === 0 ? <>Null heißt: gar keins! Tippe nur auf Fertig. ✅</> : <>Tippe genau {n} {thing.emoji} an! 👆</>}
-        </p>
-      )}
-
-      {/* The child decides when the count is complete — that decision is the
-          whole assessment. Auto-finishing at n made every attempt correct. */}
-      {!boom && checkResult !== 'wrong' && (
-        <motion.button
-          animate={{ opacity: canCheck ? 1 : 0.45, scale: canCheck ? 1 : 0.96 }}
-          whileHover={canCheck ? { scale: 1.06 } : {}}
-          whileTap={canCheck ? { scale: 0.94 } : {}}
-          onClick={() => { if (canCheck) checkCount() }}
-          {...hearable('Fertig')}
-          style={{
-            ...pxButton('green'), color:INK, textShadow:'none',
-            padding:'12px 40px', minHeight:52, cursor: canCheck ? 'pointer' : 'default',
-            fontSize:'clamp(18px,3.6vw,22px)', fontWeight:800,
-          }}
-        >✅ Fertig!</motion.button>
-      )}
-
-      {checkResult === 'wrong' && (
-        <motion.div
-          initial={{ scale:0.8, opacity:0 }} animate={{ scale:1, opacity:1 }}
-          style={{
-            ...pxCard('wrong'),
-            padding:'12px 26px', textAlign:'center',
-            fontFamily:'var(--font-heading)', fontSize:'clamp(16px,3.2vw,20px)',
-            color:'#A93226', fontWeight:700,
-          }}
-        >
-          {n === 0
-            ? 'Null heißt: gar keins. Nur auf Fertig tippen! 🔁'
-            : tapped.size > n
-            ? `Das waren ${tapped.size} — das sind zu viele. Wir zählen nochmal! 🔁`
-            : `Das waren erst ${tapped.size}. Wir zählen nochmal! 🔁`}
-        </motion.div>
-      )}
-
-      {showWeiter && (
-        <motion.button
-          initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }}
-          onClick={weiterClick}
-          {...hearable(idx + 1 >= rounds.length ? 'Fertig' : 'Weiter')}
-          style={{
-            ...pxButton('green'), color:INK, textShadow:'none',
-            padding:'13px 44px', minHeight:52, fontSize:20,
-          }}
-        >
-          {idx + 1 >= rounds.length ? '🏁 Fertig!' : 'Weiter! →'}
-        </motion.button>
-      )}
+// The picnic blanket the food lies on
+function Blanket({ children }) {
+  return (
+    <div style={{
+      padding: 12, borderRadius: 22, border: '4px solid #2a1b3d', minHeight: 90, minWidth: 150,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'repeating-conic-gradient(#ff8a7a 0 25%, #fff3e6 0 50%) 0 0 / 44px 44px',
+      boxShadow: '0 6px 0 rgba(42,27,61,0.3)',
+    }}>
+      {children}
     </div>
   )
 }

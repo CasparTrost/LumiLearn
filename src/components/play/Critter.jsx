@@ -48,11 +48,12 @@ export function Art({ art, size = 64, style, alt = '' }) {
  *   sleep  slow breathing, Zzz
  *
  * Tapping it tickles it (a giggle and a wiggle) unless `onTap` says
- * otherwise. `wish` shows a speech bubble with a picture of what it wants.
+ * otherwise. `wish` shows a speech bubble with a picture of what it wants;
+ * `accessory` (a hat, a wand) is drawn on the character and moves with it.
  */
 export default function Critter({
   art = '🐻', size = 140, mood = 'idle', flip = false, wish = null, wishSide = 'top',
-  onTap, talks = false, label, style, children, shadow = true,
+  onTap, talks = false, label, style, children, accessory = null, shadow = true,
 }) {
   const controls = useAnimationControls()
   const [tickle, setTickle] = useState(0)
@@ -90,10 +91,11 @@ export default function Critter({
       {shadow && <div aria-hidden="true" style={{ position: 'absolute', bottom: -size * 0.03, width: size * 0.6, height: size * 0.08, borderRadius: '50%', background: 'rgba(42,27,61,0.18)' }} />}
       <motion.button type="button" onClick={tap} aria-label={label} tabIndex={label ? 0 : -1}
         animate={controls}
-        style={{ all: 'unset', cursor: 'pointer', width: '100%', height: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', transformOrigin: '50% 100%' }}>
+        style={{ all: 'unset', position: 'relative', cursor: 'pointer', width: '100%', height: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', transformOrigin: '50% 100%' }}>
         <div style={{ width: '100%', height: '100%', transform: flip ? 'scaleX(-1)' : undefined, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
           <Art art={art} size={size} style={{ filter: mood === 'sad' ? 'saturate(0.55)' : undefined, transition: 'filter .4s' }} />
         </div>
+        {accessory}
       </motion.button>
       <MoodMark mood={shown} size={size} tickle={tickle} />
       {wish && <Wish side={wishSide} size={size}>{wish}</Wish>}

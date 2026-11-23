@@ -1,47 +1,26 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
 import { narrate, afterNarration } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { usePaused } from '../lib/pause.js'
-import { INK, pxCard, pxPanel, pxBubble } from './px.js'
-
-// Sparkle burst that fires when a pair is found
-function SparkBurst() {
-  const sparks = Array.from({ length: 10 }, (_, i) => ({
-    angle: (i / 10) * 360,
-    dist:  55 + Math.random() * 40,
-    emoji: ['⭐','✨','🌟','💫'][i % 4],
-    size:  16 + Math.random() * 14,
-  }))
-  return (
-    <div style={{ position:'fixed', top:'50%', left:'50%', pointerEvents:'none', zIndex:999 }}>
-      {sparks.map((s, i) => (
-        <motion.span
-          key={i}
-          initial={{ x:0, y:0, scale:0, opacity:1 }}
-          animate={{
-            x: Math.cos(s.angle * Math.PI/180) * s.dist,
-            y: Math.sin(s.angle * Math.PI/180) * s.dist,
-            scale:[0,1.3,0.8,0], opacity:[1,1,1,0],
-          }}
-          transition={{ duration:0.7, delay: i*0.03, ease:'easeOut' }}
-          style={{ position:'absolute', fontSize:s.size, lineHeight:1, marginLeft:-s.size/2, marginTop:-s.size/2 }}
-        >{s.emoji}</motion.span>
-      ))}
-    </div>
-  )
-}
+import HearOptions from '../components/HearOptions.jsx'
+import { Art, useBursts } from '../components/play/index.js'
+import { INK, pxCard } from './px.js'
 
 /**
- * Memo-Welt — Gedächtnistraining
+ * Memo-Welt: "Tierparty". The cards are little presents. Turned over, the
+ * one inside jumps up and says its name. Two that belong together hug and
+ * dance off to the party meadow at the top; at the end everybody there
+ * dances together.
  * Scientific basis:
  *   • Spacing Effect (Ebbinghaus, 1885) — repeated retrieval over time prevents forgetting.
  *   • Working Memory Training (Klingberg, 2010) — improving working memory capacity
  *     transfers to reading & math performance in children.
  *   • Episodic Memory (Tulving, 1972) — visual context (emoji) creates rich episodic traces.
  */
+
+const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
 // Picture pairs by theme, one theme per level: before, the pool was simply
 // the first 8–26 entries of one long list, so the later 104 pictures never
@@ -130,13 +109,58 @@ function missLine(list) {
 // Keyboard help only where there is a keyboard
 const FINE_POINTER = typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (pointer: fine)').matches
 
+function useSize(ref) {
+  const [size, setSize] = useState({ w: 0, h: 0 })
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const measure = () => setSize(s => (s.w === el.clientWidth && s.h === el.clientHeight ? s : { w: el.clientWidth, h: el.clientHeight }))
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [ref])
+  return size
+}
+
+/** The back of a card: a present with a ribbon and a bow. */
+function Present({ s }) {
+  return (
+    <svg viewBox="0 0 100 100" width={s} height={s} aria-hidden="true" style={{ display: 'block' }}>
+      <rect x={3} y={3} width={94} height={94} rx={14} fill="#8e6cf0" stroke={INK} strokeWidth={5} />
+      {[[22, 24], [70, 30], [30, 72], [76, 76], [50, 14], [14, 50], [86, 52]].map(([x, y], i) => (
+        <circle key={i} cx={x} cy={y} r={4} fill={['#ffc93c', '#ff8fb8', '#3fc1a8'][i % 3]} />
+      ))}
+      <rect x={42} y={3} width={16} height={94} fill="#ffc93c" stroke={INK} strokeWidth={3} />
+      <rect x={3} y={42} width={94} height={16} fill="#ffc93c" stroke={INK} strokeWidth={3} />
+      <path d="M50 46 C34 28 24 40 34 50 C40 56 46 52 50 50 C54 52 60 56 66 50 C76 40 66 28 50 46 Z" fill="#ff6b8a" stroke={INK} strokeWidth={3} strokeLinejoin="round" />
+      <circle cx={50} cy={49} r={5} fill="#ff6b8a" stroke={INK} strokeWidth={2.5} />
+    </svg>
+  )
+}
+
+/** A string of party flags along the top of the party meadow. */
+function Bunting() {
+  const colors = ['#ff6b5b', '#ffc93c', '#4aa3ff', '#5cc45a', '#ff8fb8', '#8e6cf0']
+  return (
+    <svg viewBox="0 0 400 24" preserveAspectRatio="none" aria-hidden="true"
+      style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: 22, pointerEvents: 'none' }}>
+      <path d="M0 2 Q200 14 400 2" fill="none" stroke={INK} strokeWidth={2} />
+      {Array.from({ length: 16 }, (_, i) => {
+        const x = 6 + i * 25, y = 2 + Math.sin((x / 400) * Math.PI) * 12 * 0.8
+        return <path key={i} d={`M${x} ${y} L${x + 18} ${y} L${x + 9} ${y + 12} Z`} fill={colors[i % colors.length]} stroke={INK} strokeWidth={1.2} />
+      })}
+    </svg>
+  )
+}
+
 export default function MemoryGame({ level = 1, onComplete }) {
   const paused = usePaused()
+  const [bursts, burst] = useBursts()
   // Scale difficulty across 10 levels
   const pairCount   = level <= 2 ? 4 : level <= 4 ? 6 : level <= 6 ? 8 : level <= 8 ? 10 : 12
-  // On a phone six columns made 48-px cards; four columns keep them large
-  // (the board grows taller, and the frame scales it to fit). A landscape
-  // screen gets a wider board instead of a tall one that would be shrunk.
+  // On a phone six columns made 48-px cards; four columns keep them large.
+  // A landscape screen gets a wider board instead of a tall one.
   const [screen]    = useState(() => ({
     narrow:    window.matchMedia('(max-width: 600px)').matches,
     landscape: window.innerWidth > window.innerHeight,
@@ -144,12 +168,10 @@ export default function MemoryGame({ level = 1, onComplete }) {
   const gridCols    = screen.narrow ? 4
     : screen.landscape ? { 4: 4, 6: 6, 8: 4, 10: 5, 12: 6 }[pairCount]
     : pairCount <= 8 ? 4 : pairCount <= 10 ? 5 : 6
-  // The preview used to shrink with the level while the board grew: one
-  // single second for twelve pairs, i.e. twenty-four cards. Nobody can encode
-  // that, so the phase became decorative and the game turned into pure trial
-  // and error at exactly the levels meant to train memory. It now scales with
-  // the number of cards (a constant glance per card), which keeps higher
-  // levels harder — there is simply more to hold — without being impossible.
+  const gridRows    = Math.ceil((pairCount * 2) / gridCols)
+  // The preview scales with the number of cards (a constant glance per
+  // card): higher levels stay harder — there is more to hold — without
+  // being impossible.
   const previewSecs = Math.round(Math.min(8, Math.max(3, pairCount * 2 * 0.3)))
   // Association pairs (cow/milk) instead of identical ones from level 5 on.
   const useAssociations = level >= 5
@@ -159,33 +181,36 @@ export default function MemoryGame({ level = 1, onComplete }) {
   const [flipped,  setFlipped]  = useState([])
   const [locked,   setLocked]   = useState(false)
   const [moves,    setMoves]    = useState(0)
-  const [matches,  setMatches]  = useState(0)
-  const [mood,     setMood]     = useState('happy')
-  const [trophies,       setTrophies]       = useState([])
-  const [sparkKey,       setSparkKey]       = useState(null)
-  const [justMatched,    setJustMatched]    = useState(() => new Set())
-  const [justMismatched, setJustMismatched] = useState(() => new Set())
-  const [mismatchCount,  setMismatchCount]  = useState(0)
-  const [matchPopup,     setMatchPopup]     = useState({ visible: false, text: '' })
-  const [cursor,         setCursor]         = useState(0)
-  const [usingKeys,      setUsingKeys]      = useState(false)
+  const [guests,   setGuests]   = useState([])            // pairs at the party: [{ key, pics }]
+  const [hug,      setHug]      = useState(null)          // { a, b, dx, dy } two cards meeting
+  const [shaking,  setShaking]  = useState(() => new Set())
+  const [jumps,    setJumps]    = useState({})            // card id -> how often it was turned
+  const [mismatchCount, setMismatchCount] = useState(0)
+  const [cursor,   setCursor]   = useState(0)
+  const [usingKeys, setUsingKeys] = useState(false)
+  const [allDance, setAllDance] = useState(false)
   // Preview phase: all cards face up. The countdown starts once the task has
   // been said, so the child gets the whole time to look.
-  const [phase,          setPhase]          = useState('preview') // 'preview' | 'playing'
-  const [counting,       setCounting]       = useState(false)
-  const [countdown,      setCountdown]      = useState(previewSecs)
+  const [phase,     setPhase]     = useState('preview') // 'preview' | 'playing'
+  const [counting,  setCounting]  = useState(false)
+  const [countdown, setCountdown] = useState(previewSecs)
   const doneRef = useRef(false)
   // pairs one of whose cards was part of a wrong pair before it was found
   const missedRef = useRef(new Set())
+  const cardRefs  = useRef({})
+  const partyRef  = useRef(null)
+  const boardRef  = useRef(null)
+  const board     = useSize(boardRef)
+
+  const task = useAssociations
+    ? `${level === 5 ? 'Jetzt wird es knifflig! ' : ''}Finde zwei Karten, die zusammengehören, wie die Kuh und die Milch. Merk dir, wo die Bilder liegen! Jedes Paar darf zur Party.`
+    : 'Merk dir, wo die Bilder liegen! Gleich drehen sich die Karten um. Jedes Paar darf zur Party.'
 
   // The task. From level 5 on the rule changes, so it is explained with an
-  // example — before, the bubble still said "Finde alle Paare" and a child
-  // turning over a cow and a glass of milk could not know they belong.
+  // example.
   useEffect(() => {
-    sayTask(useAssociations
-      ? `${level === 5 ? 'Jetzt wird es knifflig! ' : ''}Finde zwei Karten, die zusammengehören, wie die Kuh und die Milch. Merk dir, wo die Bilder liegen!`
-      : 'Merk dir, wo die Bilder liegen! Gleich drehen sich die Karten um.')
-    return afterNarration(() => setCounting(true), { minMs: 300, maxMs: 10000 })
+    sayTask(task)
+    return afterNarration(() => setCounting(true), { minMs: 300, maxMs: 12000 })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const flip = useCallback((id) => {
@@ -198,6 +223,7 @@ export default function MemoryGame({ level = 1, onComplete }) {
     const newFlipped = [...flipped, id]
     setCards(next)
     setFlipped(newFlipped)
+    setJumps(j => ({ ...j, [id]: (j[id] ?? 0) + 1 }))
     // Name what is on the card: words to go with the pictures
     narrate([{ text: card.name }])
 
@@ -211,37 +237,42 @@ export default function MemoryGame({ level = 1, onComplete }) {
     const [a, b] = newFlipped
     const match  = next[a].pairKey === next[b].pairKey
 
-    const delay = match ? 520 : 940
     setTimeout(() => {
       if (match) {
         sfx.match()
         setMismatchCount(0)
-        const newMatches = matches + 1
-        setMatches(newMatches)
-        setMood('excited')
-        setCards(prev => prev.map(c => (c.id === a || c.id === b) ? { ...c, matched: true } : c))
-        setJustMatched(new Set([a, b]))
-        setTimeout(() => setJustMatched(new Set()), 700)
+        // the two run to each other and hug …
+        const ea = cardRefs.current[a], eb = cardRefs.current[b]
+        const dx = ea && eb ? (eb.offsetLeft - ea.offsetLeft) / 2 : 0
+        const dy = ea && eb ? (eb.offsetTop - ea.offsetTop) / 2 : 0
+        setHug({ a, b, dx, dy })
+        if (ea) burst(ea, 'hearts', 8)
+        if (eb) burst(eb, 'hearts', 8)
         const found = next[a].found
-        setMatchPopup({ visible: true, text: found.join(' ') + ' Paar! 🎉' })
-        setTimeout(() => setMatchPopup({ visible: false, text: '' }), 950)
-        setTrophies(prev => [...prev, found.join('')])
-        setSparkKey(k => (k ?? 0) + 1)
-        const last = newMatches >= pairCount && !doneRef.current
-        if (last) { doneRef.current = true; sfx.complete() }
+        const newCount = guests.length + 1
+        const last = newCount >= pairCount && !doneRef.current
+        // … and dance off to the party
+        setTimeout(() => {
+          setCards(prev => prev.map(c => (c.id === a || c.id === b) ? { ...c, matched: true } : c))
+          setHug(null)
+          setGuests(g => [...g, { key: next[a].pairKey, pics: found.length > 1 ? found : [found[0], found[0]] }])
+          sfx.boing()
+          if (partyRef.current) burst(partyRef.current, 'confetti', 12)
+        }, reduceMotion() ? 0 : 900)
+        if (last) doneRef.current = true
         // the name of the second card first, then why they are a pair
         afterNarration(() => {
           sayRight(next[a].say)
           if (!last) return
-          // Memo keeps its own rating, by moves: perfect play is exactly
-          // pairCount moves, so the slack grows with the board. The score is
-          // the pairs found without a wrong try on either of their cards.
+          // Memo keeps its own rating, shown as the tries on the board: perfect
+          // play is exactly pairCount moves, so the slack grows with the board.
+          // The score is the pairs found without a wrong try on either card.
           const stars = finalMoves <= Math.round(pairCount * 1.5) ? 3
                       : finalMoves <= Math.round(pairCount * 2.5) ? 2 : 1
           const firstTry = pairCount - missedRef.current.size
-          afterNarration(() => onComplete({ score: firstTry, total: pairCount, stars }), { minMs: 900 })
+          setTimeout(() => { setAllDance(true); sfx.tada(); if (partyRef.current) burst(partyRef.current, 'confetti', 24) }, 900)
+          afterNarration(() => onComplete({ score: firstTry, total: pairCount, stars }), { minMs: 2600 })
         }, { maxMs: 1500 })
-        if (!last) setTimeout(() => setMood('happy'), 800)
       } else {
         sfx.mismatch()
         missedRef.current.add(next[a].pairKey).add(next[b].pairKey)
@@ -250,16 +281,14 @@ export default function MemoryGame({ level = 1, onComplete }) {
         afterNarration(() => (newCount === 4
           ? sayWrong('Schau noch mal genau hin! Du schaffst das!')
           : narrate([{ text: missLine(useAssociations ? NO_MATCH : NO_PAIR) }])), { maxMs: 1500 })
-        setMood('encouraging')
         setCards(prev => prev.map(c => (c.id === a || c.id === b) ? { ...c, flipped: false } : c))
-        setJustMismatched(new Set([a, b]))
-        setTimeout(() => setJustMismatched(new Set()), 640)
-        setTimeout(() => setMood('happy'), 700)
+        setShaking(new Set([a, b]))
+        setTimeout(() => setShaking(new Set()), 640)
       }
       setFlipped([])
       setLocked(false)
-    }, delay)
-  }, [locked, phase, cards, flipped, matches, moves, mismatchCount, pairCount, useAssociations, onComplete])
+    }, match ? 520 : 1000)
+  }, [locked, phase, cards, flipped, guests, moves, mismatchCount, pairCount, useAssociations, onComplete, burst])
 
   // Preview phase countdown (held while the help is open)
   useEffect(() => {
@@ -267,6 +296,7 @@ export default function MemoryGame({ level = 1, onComplete }) {
     if (countdown <= 0) {
       setCards(prev => prev.map(c => ({ ...c, flipped: false })))
       setPhase('playing')
+      sfx.whoosh()
       narrate([{ text: useAssociations ? 'Los! Finde, was zusammengehört.' : 'Los! Finde die Paare.' }])
       return
     }
@@ -290,184 +320,134 @@ export default function MemoryGame({ level = 1, onComplete }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [cursor, flip, cards.length, gridCols])
 
-  const bubble = phase === 'preview'
-    ? (useAssociations ? 'Finde, was zusammengehört: 🐄 + 🥛. Merk dir die Bilder! 👀' : 'Merk dir, wo die Bilder liegen! 👀')
-    : mismatchCount >= 5
-      ? 'Kein Stress! Schau genau hin — du schaffst das! 💪'
-      : mismatchCount >= 3
-        ? 'Fast! Versuch es nochmal! 🔍'
-        : useAssociations
-          ? 'Finde, was zusammengehört! 🧠'
-          : 'Finde zwei gleiche Bilder! 🧠'
+  // Card size from the room the board has, in both directions
+  const gap   = screen.narrow ? 10 : 16
+  const cardS = Math.max(40, Math.floor(Math.min(
+    (board.w - gap * (gridCols - 1)) / gridCols,
+    (board.h - gap * (gridRows - 1)) / gridRows,
+    170)))
+  const perRow = screen.narrow ? Math.ceil(pairCount / 2) : pairCount
+  const guestS = Math.max(24, Math.min(48, ((board.w || 320) - 120) / perRow / 2.3))
 
   return (
     <div style={{
-      flex:1, display:'flex', flexDirection:'column', alignItems:'center',
-      padding:'clamp(14px,2.5vw,28px) clamp(16px,4vw,40px)',
-      gap:'clamp(14px,2vw,22px)',
+      flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center',
+      padding: 'clamp(8px,1.6vw,18px) clamp(10px,3vw,32px)', gap: 'clamp(8px,1.4vw,14px)',
     }}>
-
-      {/* Floating "Paar!" popup */}
-      <AnimatePresence>
-        {matchPopup.visible && (
-          <motion.div
-            key={`mp-${sparkKey}`}
-            initial={{ y: 0, opacity: 1, scale: 0.7 }}
-            animate={{ y: -100, opacity: 0, scale: 1.35 }}
-            transition={{ duration: 0.85, ease: 'easeOut' }}
-            style={{
-              position: 'fixed', top: '46%', left: '50%',
-              transform: 'translateX(-50%)',
-              zIndex: 300, pointerEvents: 'none',
-              fontFamily: 'var(--font-heading)', fontSize: 36, fontWeight: 800,
-              color: 'var(--px-gold)', WebkitTextStroke: `1.5px ${INK}`, textShadow: `0 4px 0 ${INK}`,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {matchPopup.text}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Sparkle burst on match */}
-      <AnimatePresence>{sparkKey && <SparkBurst key={sparkKey} />}</AnimatePresence>
-
-      {/* Trophy shelf */}
-      <div style={{
-        width:'100%', maxWidth:780,
-        minHeight:52,
-        ...pxPanel, background:'#FFF1C9',
-        padding:'8px 16px',
-        display:'flex', alignItems:'center', gap:8, flexWrap:'wrap',
-      }}>
-        <span style={{ fontFamily:'var(--font-heading)', fontSize:15, color:INK, whiteSpace:'nowrap' }}>🏆 Gefunden:</span>
-        <AnimatePresence>
-          {trophies.map((emoji, i) => (
-            <motion.span
-              key={i}
-              initial={{ scale:0, rotate:-30, y:-20 }}
-              animate={{ scale:1, rotate:0, y:0 }}
-              transition={{ type:'spring', stiffness:420, damping:16 }}
-              style={{ fontSize:28, lineHeight:1, filter:'drop-shadow(0 2px 0 rgba(42,27,61,0.25))' }}
-            >{emoji}</motion.span>
-          ))}
-        </AnimatePresence>
-        {trophies.length === 0 && (
-          <span style={{ fontFamily:'var(--font-heading)', fontSize:15, color:'#6b5640' }}>Noch keine Paare</span>
-        )}
-      </div>
-
-      {/* Stats row */}
-      <div style={{ display:'flex', gap:'clamp(10px,3vw,20px)', alignItems:'center', flexWrap:'wrap', justifyContent:'center' }}>
-        <div style={{
-          ...pxCard(), padding:'8px 20px',
-          fontFamily:'var(--font-heading)', fontSize:17, color:INK,
-        }}>
-          ✨ {matches} von {pairCount} Paaren
+      {/* The party meadow: every pair found dances here */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', maxWidth: 1000, flexShrink: 0 }}>
+        <div ref={partyRef} aria-label={`${guests.length} von ${pairCount} Paaren auf der Party`}
+          style={{
+            position: 'relative', flex: 1, minHeight: screen.narrow ? 92 : 84, borderRadius: 22, border: `3px solid ${INK}`,
+            background: 'linear-gradient(180deg, #fffdf7, #a4e278)',
+            boxShadow: '0 5px 0 rgba(42,27,61,0.25)', padding: '20px 10px 6px',
+            display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'center', gap: '2px 10px', boxSizing: 'border-box',
+          }}>
+          <Bunting />
+          {guests.length === 0 && (
+            <div aria-hidden="true" style={{ display: 'flex', gap: 18, opacity: 0.85 }}>
+              <Art art="🎂" size={44} /><Art art="🎈" size={44} /><Art art="🎁" size={44} />
+            </div>
+          )}
+          <AnimatePresence>
+            {guests.map((g, i) => (
+              <motion.div key={g.key}
+                initial={{ y: -60, scale: 0.3, opacity: 0 }} animate={{ y: 0, scale: 1, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 14 }}
+                style={{ display: 'flex', alignItems: 'flex-end' }}>
+                {g.pics.map((p, k) => (
+                  <motion.div key={k}
+                    animate={reduceMotion() ? {} : { rotate: k ? [6, -6] : [-6, 6], y: [0, allDance ? -16 : -5, 0] }}
+                    transition={{ duration: allDance ? 0.4 : 0.8, repeat: Infinity, repeatType: 'mirror', delay: (i % 3) * 0.13 }}
+                    style={{ marginLeft: k ? -guestS * 0.18 : 0, transformOrigin: '50% 100%' }}>
+                    <Art art={p} size={guestS} />
+                  </motion.div>
+                ))}
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
-        <div style={{
-          ...pxCard(), padding:'8px 20px',
-          fontFamily:'var(--font-heading)', fontSize:17, color:INK,
-        }}>
-          👆 {moves} Versuche
-        </div>
-      </div>
-
-      {/* Lumi callout — during the preview it holds the countdown, so
-          nothing covers the cards the child is meant to memorise */}
-      <div style={{ display:'flex', alignItems:'flex-end', gap:12, width:'100%', maxWidth:760 }}>
-        <LumiCharacter mood={mood} size={80} />
-        <div style={{
-          flex:1, ...pxBubble,
-          padding:'14px 20px',
-          fontFamily:'var(--font-heading)',
-          fontSize:'clamp(16px,3.5vw,24px)',
-          color:'var(--text-primary)',
-          display:'flex', alignItems:'center', gap:14,
-        }}>
-          <span style={{ flex:1 }}>{bubble}</span>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <HearOptions items={[task]} label="Aufgabe noch einmal hören" size={52} />
+          {/* the preview's countdown, then the tries: Memo's own rating comes from them */}
           {phase === 'preview' && counting && (
-            <motion.span
-              key={countdown}
-              initial={{ scale:1.5, opacity:0 }} animate={{ scale:1, opacity:1 }}
-              aria-label={`noch ${countdown} Sekunden`}
+            <motion.div key={countdown} aria-label={`noch ${countdown} Sekunden`}
+              initial={{ scale: 1.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
               style={{
-                fontFamily:'var(--font-heading)', fontSize:'clamp(30px,6vw,44px)', fontWeight:800, lineHeight:1,
-                color:INK, background:'var(--px-gold)', border:`3px solid ${INK}`, borderRadius:12,
-                minWidth:56, padding:'6px 10px', textAlign:'center',
-              }}
-            >
-              {countdown}
-            </motion.span>
+                display: 'flex', alignItems: 'center', gap: 2,
+                fontFamily: 'var(--font-heading)', fontSize: 26, fontWeight: 800, color: INK, background: 'var(--px-gold)',
+                border: `3px solid ${INK}`, borderRadius: 14, padding: '0 8px', boxShadow: '0 4px 0 rgba(42,27,61,0.3)',
+              }}>
+              <Art art="⏳" size={24} />{countdown}
+            </motion.div>
+          )}
+          {phase === 'playing' && (
+            <div aria-label={`${moves} Versuche`} style={{ ...pxCard(), padding: '2px 10px', fontFamily: 'var(--font-heading)', fontSize: 17, color: INK, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Art art="👆" size={20} />{moves}
+            </div>
           )}
         </div>
       </div>
 
-      {/* Card grid */}
-      <div style={{
-        display:'grid',
-        gridTemplateColumns:`repeat(${gridCols},1fr)`,
-        gap:'clamp(10px,2vw,18px)',
-        width:'100%', maxWidth: screen.landscape && gridCols > 4 ? 960 : 780,
-      }}>
-        {cards.map((card) => (
-          <motion.div key={card.id}
-            onClick={() => flip(card.id)}
-            whileHover={!card.matched && !card.flipped && phase === 'playing' ? {scale:1.06} : {}}
-            animate={
-              justMatched.has(card.id)    ? { scale:[1,1.28,0.92,1.10,1] } :
-              justMismatched.has(card.id) ? { x:[0,-11,11,-8,8,-4,4,0], rotate:[0,-3,3,-2,2,0] } :
-              {}
-            }
-            transition={{ duration: 0.50 }}
-            style={{ cursor: card.matched ? 'default' : 'pointer', perspective:700,
-                     outline: usingKeys && card.id === cursor ? `3px solid ${INK}` : 'none',
-                     outlineOffset: 4, borderRadius: 14 }}
-          >
-            <motion.div
-              animate={{ rotateY: (card.flipped || card.matched || phase === 'preview') ? 0 : 180 }}
-              transition={{ type:'spring', stiffness:260, damping:22 }}
-              style={{ position:'relative', transformStyle:'preserve-3d', width:'100%', aspectRatio:'1' }}
-            >
-              {/* Front — the picture sized by the card, not the window */}
-              <div style={{
-                position:'absolute', inset:0, backfaceVisibility:'hidden',
-                ...pxCard(card.matched ? 'right' : undefined),
-                display:'flex', alignItems:'center', justifyContent:'center',
-                containerType:'inline-size', fontSize:'52cqw',
-              }}>
-                {card.emoji}
-              </div>
-              {/* Back */}
-              <div style={{
-                position:'absolute', inset:0, backfaceVisibility:'hidden',
-                transform:'rotateY(180deg)',
-                borderRadius:12,
-                background:'linear-gradient(180deg,#9A7BF5 0%,#8e6cf0 45%,#6a48cf 100%)',
-                border:`3px solid ${INK}`,
-                boxShadow:'inset 0 3px 0 rgba(255,255,255,0.3), inset 0 -5px 0 rgba(0,0,0,0.22), 0 5px 0 rgba(42,27,61,0.35)',
-                display:'flex', alignItems:'center', justifyContent:'center',
-                fontSize:'clamp(22px,5vw,38px)',
-                overflow:'hidden',
-              }}>
-                {/* dot pattern */}
-                <div style={{
-                  position:'absolute', inset:0, borderRadius:9, pointerEvents:'none', opacity:0.18,
-                  backgroundImage:'radial-gradient(circle, white 1px, transparent 1px)',
-                  backgroundSize:'14px 14px',
-                }} />
-                ✨
-              </div>
-            </motion.div>
-          </motion.div>
-        ))}
+      {/* The cards */}
+      <div ref={boardRef} style={{ position: 'relative', flex: 1, minHeight: 0, width: '100%', maxWidth: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {cardS > 0 && board.w > 0 && (
+          <div style={{ position: 'relative', display: 'grid', gridTemplateColumns: `repeat(${gridCols}, ${cardS}px)`, gap }}>
+            {cards.map(card => {
+              const face = card.flipped || phase === 'preview'
+              const inHug = hug && (hug.a === card.id || hug.b === card.id)
+              const sign = hug?.a === card.id ? 1 : -1
+              if (card.matched) {
+                return <div key={card.id} ref={el => { cardRefs.current[card.id] = el }} aria-hidden="true"
+                  style={{ width: cardS, height: cardS, borderRadius: 16, border: '3px dashed rgba(42,27,61,0.18)', boxSizing: 'border-box' }} />
+              }
+              return (
+                <motion.div key={card.id} ref={el => { cardRefs.current[card.id] = el }}
+                  role="button" tabIndex={-1} aria-label={face ? card.name : 'Karte'} data-pair={card.pairKey}
+                  onClick={() => flip(card.id)}
+                  whileHover={!face && phase === 'playing' ? { scale: 1.05, rotate: -2 } : {}}
+                  whileTap={!face && phase === 'playing' ? { scale: 0.92 } : {}}
+                  animate={inHug && !reduceMotion()
+                    ? { x: [0, hug.dx * sign * 0.9, hug.dx * sign * 0.9], y: [0, hug.dy * sign * 0.9, hug.dy * sign * 0.9 - 20], rotate: [0, sign * 10, -sign * 10], scale: [1, 1.08, 0.2], opacity: [1, 1, 0] }
+                    : shaking.has(card.id) ? { x: [0, -10, 10, -8, 8, 0], rotate: [0, -4, 4, -2, 0] } : { x: 0, y: 0, rotate: 0, scale: 1, opacity: 1 }}
+                  transition={inHug ? { duration: 0.9, times: [0, 0.45, 1] } : { duration: 0.5 }}
+                  style={{
+                    width: cardS, height: cardS, cursor: face ? 'default' : 'pointer', perspective: 700, zIndex: inHug ? 2 : 1,
+                    outline: usingKeys && card.id === cursor ? `4px solid ${INK}` : 'none', outlineOffset: 4, borderRadius: 16,
+                  }}>
+                  <motion.div
+                    animate={{ rotateY: face ? 0 : 180 }}
+                    transition={{ type: 'spring', stiffness: 260, damping: 22 }}
+                    style={{ position: 'relative', transformStyle: 'preserve-3d', width: '100%', height: '100%' }}>
+                    {/* Front: the guest inside, who jumps up when found */}
+                    <div style={{
+                      position: 'absolute', inset: 0, backfaceVisibility: 'hidden', ...pxCard(), borderRadius: 16,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <motion.div key={jumps[card.id] ?? 0}
+                        animate={jumps[card.id] && !reduceMotion() ? { y: [0, -cardS * 0.18, 0, -cardS * 0.06, 0], rotate: [0, -10, 10, -4, 0], scale: [0.8, 1.1, 1] } : {}}
+                        transition={{ duration: 0.8, delay: 0.15 }}>
+                        <Art art={card.emoji} size={cardS * 0.72} />
+                      </motion.div>
+                    </div>
+                    {/* Back: a present */}
+                    <div style={{ position: 'absolute', inset: 0, backfaceVisibility: 'hidden', transform: 'rotateY(180deg)', filter: 'drop-shadow(0 5px 0 rgba(42,27,61,0.3))' }}>
+                      <Present s={cardS} />
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {FINE_POINTER && (
-        <p style={{ fontFamily:'var(--font-heading)', fontSize:14, color:'#6b5640' }}>
+        <p style={{ fontFamily: 'var(--font-heading)', fontSize: 14, color: '#2a1b3d', flexShrink: 0, margin: 0, opacity: 0.75 }}>
           ⌨️ Pfeiltasten: wählen · Enter oder Leertaste: umdrehen
         </p>
       )}
+      {bursts}
     </div>
   )
 }
