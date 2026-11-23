@@ -207,14 +207,14 @@ function Garland({ total, found, party }) {
         return (
           <div key={i} style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <svg viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true" style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: 20 }}>
-              <path d="M0 3 Q50 26 100 3" fill="none" stroke={INK} strokeWidth="3" vectorEffect="non-scaling-stroke" />
+              <path d="M0 3 Q50 26 100 3" fill="none" stroke="#cfc4ee" strokeWidth="3" vectorEffect="non-scaling-stroke" />
             </svg>
             <motion.div aria-hidden="true"
               animate={party && f && !reduceMotion() ? { scale: [1, 1.3, 1] } : { scale: 1 }}
               transition={{ duration: 0.6, repeat: party ? Infinity : 0, delay: i * 0.08 }}
               style={{
                 marginTop: 9, width: 14, height: 18, borderRadius: '50% 50% 45% 45%', border: `2px solid ${INK}`, boxSizing: 'border-box',
-                background: f ? color : '#5b5470', boxShadow: f ? `0 0 12px 4px ${color}` : 'none', transition: 'background .4s, box-shadow .4s',
+                background: f ? color : '#8d84ab', boxShadow: f ? `0 0 12px 4px ${color}` : 'none', transition: 'background .4s, box-shadow .4s',
               }} />
             {f && (
               <motion.button type="button" aria-label={f.name}

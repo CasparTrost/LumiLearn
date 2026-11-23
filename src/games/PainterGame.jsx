@@ -201,7 +201,7 @@ const SCENES = [
   },
   {
     id: 'penguin', thing: 'der Pinguin', level: 3,
-    client: '🐤', intro: 'Das Küken wünscht sich einen Pinguin als Freund.', done: 'Das Küken und der Pinguin watscheln los!', seat: [150, 178], act: 'swim',
+    client: '🐼', intro: 'Der Panda wünscht sich einen Pinguin als Freund.', done: 'Der Panda und der Pinguin watscheln los!', seat: [150, 178], act: 'swim',
     regions: [
       { id: 'body',  target: 'Schwarz', name: 'der Körper',   element: 'ellipse', cx: 100, cy: 120, rx: 56, ry: 66 },
       { id: 'belly', target: 'Weiß',    name: 'der Bauch',    element: 'ellipse', cx: 100, cy: 125, rx: 32, ry: 48 },
@@ -535,7 +535,7 @@ export default function PainterGame({ level = 1, onComplete }) {
         </div>
 
         {/* the paint pots */}
-        <div style={{ ...pxPanel, flexShrink: 0, padding: '6px 8px', width: '100%', maxWidth: 760, boxSizing: 'border-box' }}>
+        <div style={{ ...pxPanel, flexShrink: 0, padding: '6px 8px', width: '100%', maxWidth: 900, boxSizing: 'border-box' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px clamp(4px,1.2vw,14px)', justifyContent: 'center' }}>
             {palette.map(c => (
               <Draggable key={c.name} id={c.name} data={c} label={c.name}>

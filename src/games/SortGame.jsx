@@ -631,26 +631,26 @@ export default function SortGame({ level = 1, onComplete }) {
           </AnimatePresence>
         </Belt>
 
-      {/* Done: on to the stars, or sort any way you like (not rated) */}
-      <AnimatePresence>
-        {phase === 'done' && (
-          <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}
-            style={{ position: 'absolute', left: 0, right: 0, bottom: 18, display: 'flex', justifyContent: 'center', zIndex: 5 }}>
-            <div style={{ ...pxPanel, padding: '12px 18px', display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' }}>
-              <motion.button whileTap={{ scale: 0.94 }} onClick={() => setPhase('free')}
-                {...hearable('Selbst sortieren')} aria-label="Selbst sortieren"
-                style={{ ...pxButton('gold'), padding: '10px 20px', minHeight: 56, fontSize: 20 }}>
-                {'🧺 Selbst sortieren'}
-              </motion.button>
-              <motion.button whileTap={{ scale: 0.94 }} onClick={() => onComplete(final.current)}
-                {...hearable('Weiter')} aria-label="Weiter"
-                style={{ ...pxButton('green'), padding: '10px 28px', minHeight: 56, fontSize: 20 }}>
-                {'Weiter ➡️'}
-              </motion.button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        {/* Done: on to the stars, or sort any way you like (not rated) */}
+        <AnimatePresence>
+          {phase === 'done' && (
+            <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}
+              style={{ position: 'absolute', left: 0, right: 0, bottom: 18, display: 'flex', justifyContent: 'center', zIndex: 5 }}>
+              <div style={{ ...pxPanel, padding: '12px 18px', display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' }}>
+                <motion.button whileTap={{ scale: 0.94 }} onClick={() => setPhase('free')}
+                  {...hearable('Selbst sortieren')} aria-label="Selbst sortieren"
+                  style={{ ...pxButton('gold'), padding: '10px 20px', minHeight: 56, fontSize: 20 }}>
+                  {'🧺 Selbst sortieren'}
+                </motion.button>
+                <motion.button whileTap={{ scale: 0.94 }} onClick={() => onComplete(final.current)}
+                  {...hearable('Weiter')} aria-label="Weiter"
+                  style={{ ...pxButton('green'), padding: '10px 28px', minHeight: 56, fontSize: 20 }}>
+                  {'Weiter ➡️'}
+                </motion.button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
       {bursts}
     </DragArea>

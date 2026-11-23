@@ -99,7 +99,7 @@ async function playShadows(page) {
     const target = await page.evaluate(() => [...document.querySelectorAll('img.emo')]
       .sort((a, b) => b.getBoundingClientRect().width - a.getBoundingClientRect().width)[0]?.src.split('/').pop())
     if (!target || !(await page.getByRole('button', { name: 'Spiel verlassen' }).count())) break
-    await page.locator(`button:has(img[src$="${target}"])`).first().click(); await page.waitForTimeout(1200)
+    await page.locator(`[role="button"]:has(img[src$="${target}"]), button:has(img[src$="${target}"])`).first().click(); await page.waitForTimeout(1200)
     const next = page.getByRole('button', { name: /Weiter|Fertig/ })
     if (await next.count()) { await next.first().click(); await page.waitForTimeout(1500) }
   }
