@@ -6,6 +6,7 @@ import { PixelLumi, PxIcon, uiSpr } from '../components/PixelUI.jsx'
 import { narrate } from '../narrator.js'
 import { hearable } from '../lib/hearable.js'
 import { sayNumber } from '../tts.js'
+import { line } from '../lib/lumiLines.js'
 
 // The animals a child can be, with the name Lumi says when it is tapped and
 // the name a profile gets when nobody types one in.
@@ -25,9 +26,11 @@ const sayAvatar = e => { const a = AVATAR_INFO.find(x => x.e === e); return a ? 
 // The app is made for children from 4 to 7
 export const AGES = [4, 5, 6, 7]
 
-const SAY_PICK = 'Welches Tier möchtest du sein? Tippe auf ein Bild.'
-const SAY_AGE  = 'Wie alt bist du? Tippe auf die Zahl. Dann tippe auf den grünen Knopf.'
-const SAY_WHO  = 'Wer spielt heute? Tippe auf dein Bild.'
+const SAY_PICK = line('menue/welches-tier')
+const SAY_AGE  = line('menue/wie-alt')
+const SAY_WHO  = line('menue/wer-spielt-heute')
+// the ages as recorded numbers (public/audio/zahlen-entdecken)
+const AGE_CLIP = { 4: 'vier', 5: 'fuenf', 6: 'sechs', 7: 'sieben' }
 
 // Avatar tiles are sized by the height as well, so the grid fits on a small
 // phone without scrolling
@@ -44,7 +47,7 @@ function CreateProfileForm({ onSave, onCancel, showCancel }) {
   const [step, setStep] = useState(0)
 
   useEffect(() => {
-    const id = setTimeout(() => narrate([{ text: step === 0 ? SAY_PICK : SAY_AGE }]), 350)
+    const id = setTimeout(() => narrate([step === 0 ? SAY_PICK : SAY_AGE]), 350)
     return () => clearTimeout(id)
   }, [step])
 
@@ -55,7 +58,7 @@ function CreateProfileForm({ onSave, onCancel, showCancel }) {
   }
   const pickAge = (a) => {
     setAge(a)
-    narrate([{ text: `${sayNumber(a)}!` }])
+    narrate([{ src: AGE_CLIP[a] && `audio/zahlen-entdecken/${AGE_CLIP[a]}.mp3`, text: `${sayNumber(a)}!` }])
   }
   const save = () => onSave({ name: name.trim() || avatarName(avatar), age, avatar })
 
@@ -177,7 +180,7 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     if (mode !== 'select') return
-    const id = setTimeout(() => narrate([{ text: SAY_WHO }]), 500)
+    const id = setTimeout(() => narrate([SAY_WHO]), 500)
     return () => clearTimeout(id)
   }, [mode])
 

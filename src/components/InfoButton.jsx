@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { narrate, stopNarration } from '../narrator.js'
 import { MODULE_BY_ID } from '../modules.js'
 import { useFocusTrap } from '../hooks/useFocusTrap.js'
+import { helpLine } from '../lib/lumiLines.js'
 
 // Help per game. Read aloud when the dialog opens (most children who play
 // can't read yet), so the texts are written to be heard: short sentences,
@@ -43,7 +44,7 @@ export default function InfoButton({ moduleId, onOpenChange }) {
   const setOpen = v => {
     setOpenState(v)
     onOpenChange?.(v)
-    if (v) narrate([{ text: `${info.title}. ${info.text}` }])
+    if (v) narrate([helpLine(moduleId) ?? { text: `${info.title}. ${info.text}` }])
     else stopNarration()
   }
   const help = INFO[moduleId] ?? { emoji: '❓', title: 'Wie geht das?', text: 'Schau dir die Aufgabe an und tippe auf die richtige Antwort!' }

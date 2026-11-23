@@ -18,7 +18,8 @@ export default function ConfirmDialog({
   yesLabel = 'Ja', noLabel = 'Nein', onYes, onNo,
 }) {
   useEffect(() => {
-    if (say) narrate([{ text: say }])
+    // a sentence, or a recording ({ src, text }, lib/lumiLines.js)
+    if (say) narrate([typeof say === 'string' ? { text: say } : say])
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
   // the safe answer (the first button) gets the focus; Escape means "no"
   const trapRef = useFocusTrap(true, { onEscape: onNo })

@@ -5,8 +5,9 @@ import { useT, LANGUAGES_OFFERED } from '../i18n.js'
 import Button from '../components/Button.jsx'
 import { PixelLumi, uiSpr } from '../components/PixelUI.jsx'
 import { narrate } from '../narrator.js'
+import { line } from '../lib/lumiLines.js'
 
-const HELLO = 'Hallo, ich bin Lumi! Tippe auf den gelben Knopf, dann geht es los.'
+const HELLO = line('menue/hallo')
 
 export default function WelcomeScreen() {
   const { dispatch } = useApp()
@@ -16,7 +17,7 @@ export default function WelcomeScreen() {
   // Browsers may hold speech back until the first touch, so tapping Lumi
   // says it (again).
   useEffect(() => {
-    const id = setTimeout(() => narrate([{ text: HELLO }]), 700)
+    const id = setTimeout(() => narrate([HELLO]), 700)
     return () => clearTimeout(id)
   }, [])
 
@@ -58,7 +59,7 @@ export default function WelcomeScreen() {
           {t('welcome.tagline')}
         </div>
 
-        <button onClick={() => narrate([{ text: HELLO }])} aria-label="Lumi sprechen lassen"
+        <button onClick={() => narrate([HELLO])} aria-label="Lumi sprechen lassen"
           style={{ padding: 0, background: 'none', border: 'none' }}>
           <PixelLumi size={176} happy />
         </button>
