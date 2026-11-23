@@ -1,22 +1,27 @@
-import { useState, useCallback, useRef, useEffect, useMemo, useLayoutEffect } from 'react'
+import { useState, useRef, useEffect, useMemo, useLayoutEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import LumiCharacter from '../components/LumiCharacter.jsx'
+import HearOptions from '../components/HearOptions.jsx'
+import { Critter, Art, useMood, DragArea, Draggable, DropZone, RoundTrail, useBursts, useDragState } from '../components/play/index.js'
 import { sfx } from '../sfx.js'
 import { narrate, afterNarration, lockPreviews } from '../narrator.js'
-import { sayTask, sayWrong } from '../lib/feedback.js'
+import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
-import { pxCard, pxPanel, pxBubble, pxSegment, INK } from './px.js'
+import { pxPanel, INK } from './px.js'
 
 /**
- * Farbenreich — Farbwörter beim Malen nach Vorgabe.
+ * Farbenreich: "Malerauftrag" — Farbwörter beim Malen nach Wunsch.
  *
- * Tap a bucket, then the glowing part of the picture: it fills at once.
- * Painting used to mean rubbing 90 % of a region with the finger (a mouse
- * painted by merely hovering), a wrong colour did nothing at all, and not a
- * single colour word was ever spoken. Now every bucket says its colour, every
- * finished part says what it became ("Das Dach ist jetzt rot!"), and a wrong
- * colour gets a gentle hint which colour that part wants.
+ * A customer comes to the paint shop: the mouse wants a house, the
+ * caterpillar an apple. It wishes for one part at a time ("Mach das Dach
+ * bitte rot!"); its speech bubble shows the picture with that part in the
+ * colour. The child drags the paint pot of that colour onto the picture
+ * (or taps the pot, then the picture), and the part fills with paint. A
+ * wrong pot bounces back and splashes the customer, and the part shows the
+ * colour it wants. When everything is painted, the customer moves in: it
+ * hops onto the picture, and off they go. Every pot says its colour when
+ * picked up, and every painted part says what it became ("Das Dach ist
+ * jetzt rot!").
  */
 
 // ─── Colours ──────────────────────────────────────────────────────────────────
@@ -57,119 +62,41 @@ function buildPalette(scene, level) {
 function shuffle(a) { return [...a].sort(() => Math.random() - 0.5) }
 
 // ─── Words ────────────────────────────────────────────────────────────────────
-// Region names carry their article; pairs (ears, eyes) are one plural name,
-// so "Die Ohren sind jetzt braun!" is said once both are painted.
+// Region names carry their article; pairs (ears, eyes) are one plural name
+// and one wish: "Mach die Ohren bitte braun!" paints both.
 const cap = s => s[0].toUpperCase() + s.slice(1)
-const acc = r => (!r.pl && r.name.startsWith('der ') ? 'den ' + r.name.slice(4) : r.name)
-const verb = (r, sg, pl) => (r.pl ? pl : sg)
-function listWords(words) {
-  return words.length < 2 ? words[0] : `${words.slice(0, -1).join(', ')} und ${words[words.length - 1]}`
+const acc = p => (!p.pl && p.name.startsWith('der ') ? 'den ' + p.name.slice(4) : p.name)
+const verb = (p, sg, pl) => (p.pl ? pl : sg)
+const word = colorName => colorName.toLowerCase()
+const wish = p => `Mach ${acc(p)} bitte ${word(p.target)}!`
+
+// The parts of a picture in order: regions with the same name are one part
+function partsOf(scene) {
+  const parts = []
+  scene.regions.forEach(r => {
+    const p = parts.find(x => x.name === r.name)
+    if (p) p.regions.push(r)
+    else parts.push({ name: r.name, pl: !!r.pl, target: r.target, regions: [r] })
+  })
+  return parts
 }
 
-// ─── Convert screen coords → SVG user-space ───────────────────────────────────
-function clientToSVG(svgEl, clientX, clientY) {
-  if (!svgEl) return null
-  const ctm = svgEl.getScreenCTM()
-  if (!ctm) return null
-  const inv = ctm.inverse()
-  return {
-    x: inv.a * clientX + inv.c * clientY + inv.e,
-    y: inv.b * clientX + inv.d * clientY + inv.f,
+// Where paint poured into a region starts: its middle
+function centerOf(r) {
+  if (r.element === 'rect') return { x: r.x + r.width / 2, y: r.y + r.height / 2 }
+  if (r.element === 'polygon') {
+    const pts = r.points.trim().split(/\s+/).map(p => p.split(',').map(Number))
+    return { x: pts.reduce((s, p) => s + p[0], 0) / pts.length, y: pts.reduce((s, p) => s + p[1], 0) / pts.length }
   }
-}
-
-// ─── Hit test: point-in-region ────────────────────────────────────────────────
-function pointInPolygon(px, py, points) {
-  let inside = false
-  for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
-    const xi = points[i].x, yi = points[i].y
-    const xj = points[j].x, yj = points[j].y
-    const cross = ((yi > py) !== (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi)
-    if (cross) inside = !inside
-  }
-  return inside
-}
-
-const polyPoints = region => region.points.trim().split(/\s+/).map(p => {
-  const [x, y] = p.split(',').map(Number)
-  return { x, y }
-})
-
-function isInsideRegion(region, px, py, margin = 0) {
-  switch (region.element) {
-    case 'circle':
-      return (px - region.cx) ** 2 + (py - region.cy) ** 2 <= (region.r + margin) ** 2
-    case 'ellipse': {
-      let tx = px, ty = py
-      if (region.transform) {
-        const m = region.transform.match(/rotate\(([-\d.]+),\s*([-\d.]+),\s*([-\d.]+)\)/)
-        if (m) {
-          // Inverse of rotate(a, ox, oy): apply rotate(-a, ox, oy)
-          const rad = parseFloat(m[1]) * Math.PI / 180
-          const ox  = parseFloat(m[2]), oy = parseFloat(m[3])
-          const dx  = px - ox, dy = py - oy
-          tx = dx * Math.cos(rad) + dy * Math.sin(rad) + ox
-          ty = -dx * Math.sin(rad) + dy * Math.cos(rad) + oy
-        }
-      }
-      const mrx = region.rx + margin, mry = region.ry + margin
-      return ((tx - region.cx) / mrx) ** 2 + ((ty - region.cy) / mry) ** 2 <= 1
-    }
-    case 'rect':
-      return px >= region.x - margin && px <= region.x + region.width  + margin &&
-             py >= region.y - margin && py <= region.y + region.height + margin
-    case 'polygon': {
-      const pts = polyPoints(region)
-      // For polygon: check exact boundary + margin via distance to edges
-      if (pointInPolygon(px, py, pts)) return true
-      if (margin <= 0) return false
-      for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
-        // Distance from point to segment
-        const ax = pts[j].x, ay = pts[j].y, bx = pts[i].x, by = pts[i].y
-        const dx = bx - ax, dy = by - ay
-        const len2 = dx * dx + dy * dy
-        if (len2 === 0) continue
-        const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len2))
-        const nx = ax + t * dx - px, ny = ay + t * dy - py
-        if (nx * nx + ny * ny <= margin * margin) return true
-      }
-      return false
-    }
-    default: return false
-  }
-}
-
-// Approximate bounding-box area for a region — used to rank overlapping shapes
-function regionArea(region) {
-  switch (region.element) {
-    case 'circle':  return Math.PI * region.r * region.r
-    case 'ellipse': return Math.PI * region.rx * region.ry
-    case 'rect':    return region.width * region.height
-    case 'polygon': {
-      const pts = polyPoints(region)
-      const xs = pts.map(p => p.x), ys = pts.map(p => p.y)
-      return (Math.max(...xs) - Math.min(...xs)) * (Math.max(...ys) - Math.min(...ys))
-    }
-    default: return Infinity
-  }
-}
-
-// The region under a point: among all regions containing it, the smallest
-// (the sun's disc, not the rays behind it). The margin makes thin parts —
-// the balloon's string, the apple's stem — easy to hit with a finger.
-function regionAt(scene, x, y) {
-  const hits = scene.regions.filter(r => isInsideRegion(r, x, y, 5))
-  if (!hits.length) return null
-  const exact = hits.filter(r => isInsideRegion(r, x, y, 0))
-  const list = exact.length ? exact : hits
-  return list.sort((a, b) => regionArea(a) - regionArea(b))[0]
+  return { x: r.cx, y: r.cy }
 }
 
 // ─── Scenes — clean SVG primitives only ─────────────────────────────────────
 const SCENES = [
   // ── Level 1 ──
   {
-    id: 'house', hint: 'Male das Haus! 🏠', thing: 'das Haus', level: 1,
+    id: 'house', thing: 'das Haus', level: 1,
+    client: '🐭', intro: 'Die Maus sucht ein neues Haus.', done: 'Die Maus zieht ein!', seat: [100, 174], act: 'bounce',
     regions: [
       { id: 'wall',   target: 'Orange', name: 'die Wand',    element: 'rect',    x: 30,  y: 110, width: 140, height: 70 },
       { id: 'roof',   target: 'Rot',    name: 'das Dach',    element: 'polygon', points: '15,115 100,36 185,115' },
@@ -178,7 +105,8 @@ const SCENES = [
     ],
   },
   {
-    id: 'apple', hint: 'Male den Apfel! 🍎', thing: 'der Apfel', level: 1,
+    id: 'apple', thing: 'der Apfel', level: 1,
+    client: '🐛', intro: 'Die Raupe hat Hunger auf einen Apfel.', done: 'Die Raupe zieht in den Apfel ein!', seat: [122, 112], act: 'bounce',
     regions: [
       { id: 'body', target: 'Rot',   name: 'der Apfel', element: 'circle',  cx: 100, cy: 118, r: 65 },
       { id: 'leaf', target: 'Grün',  name: 'das Blatt', element: 'ellipse', cx: 122, cy: 52,  rx: 22, ry: 12, transform: 'rotate(-35,122,52)' },
@@ -186,7 +114,8 @@ const SCENES = [
     ],
   },
   {
-    id: 'sun', hint: 'Male die Sonne! ☀️', thing: 'die Sonne', level: 1,
+    id: 'sun', thing: 'die Sonne', level: 1,
+    client: '🦔', intro: 'Dem Igel ist kalt. Er wünscht sich eine Sonne.', done: 'Der Igel wärmt sich in der Sonne.', seat: [100, 182], act: 'float',
     regions: [
       { id: 'rays', target: 'Orange', name: 'die Strahlen', pl: true, element: 'polygon',
         points: '100,10 117,58 164,36 142,83 190,100 142,117 164,164 117,142 100,190 83,142 36,164 58,117 10,100 58,83 36,36 83,58' },
@@ -194,7 +123,8 @@ const SCENES = [
     ],
   },
   {
-    id: 'balloon', hint: 'Male den Ballon! 🎈', thing: 'der Ballon', level: 1,
+    id: 'balloon', thing: 'der Ballon', level: 1,
+    client: '🐰', intro: 'Der Hase möchte fliegen und braucht einen Ballon.', done: 'Der Hase fliegt mit dem Ballon davon!', seat: [100, 192], act: 'float',
     regions: [
       { id: 'ball',   target: 'Rot',  name: 'der Ballon',  element: 'ellipse', cx: 100, cy: 80, rx: 55, ry: 65 },
       { id: 'knot',   target: 'Gelb', name: 'der Knoten',  element: 'circle',  cx: 100, cy: 145, r: 7 },
@@ -202,7 +132,8 @@ const SCENES = [
     ],
   },
   {
-    id: 'star', hint: 'Male den Stern! ⭐', thing: 'der Stern', level: 1,
+    id: 'star', thing: 'der Stern', level: 1,
+    client: '🦉', intro: 'Die Eule wünscht sich einen Stern für die Nacht.', done: 'Die Eule sitzt auf ihrem Stern.', seat: [100, 104], act: 'float',
     regions: [
       { id: 'body', target: 'Gelb', name: 'der Stern', element: 'polygon',
         points: '100,18 121,70 176,70 132,103 148,158 100,125 52,158 68,103 24,70 79,70' },
@@ -210,7 +141,8 @@ const SCENES = [
   },
   // ── Level 2 ──
   {
-    id: 'butterfly', hint: 'Male den Schmetterling! 🦋', thing: 'der Schmetterling', level: 2,
+    id: 'butterfly', thing: 'der Schmetterling', level: 2,
+    client: '🐞', intro: 'Der Marienkäfer sucht einen Freund zum Fliegen.', done: 'Der Marienkäfer fliegt mit dem Schmetterling davon!', seat: [100, 84], act: 'float',
     regions: [
       { id: 'wing-tl', target: 'Lila',   name: 'die oberen Flügel',  pl: true, element: 'ellipse', cx: 62,  cy: 76,  rx: 48, ry: 30, transform: 'rotate(-30,62,76)'  },
       { id: 'wing-tr', target: 'Lila',   name: 'die oberen Flügel',  pl: true, element: 'ellipse', cx: 138, cy: 76,  rx: 48, ry: 30, transform: 'rotate(30,138,76)'   },
@@ -220,7 +152,8 @@ const SCENES = [
     ],
   },
   {
-    id: 'fish', hint: 'Male den Fisch! 🐟', thing: 'der Fisch', level: 2,
+    id: 'fish', thing: 'der Fisch', level: 2,
+    client: '🐙', intro: 'Der Krake wünscht sich einen Fisch zum Spielen.', done: 'Der Krake und der Fisch schwimmen um die Wette!', seat: [158, 150], act: 'swim',
     regions: [
       { id: 'body', target: 'Blau',     name: 'der Fisch',          element: 'ellipse', cx: 88,  cy: 100, rx: 62, ry: 42 },
       { id: 'tail', target: 'Türkis',   name: 'die Schwanzflosse',  element: 'polygon', points: '148,100 178,68 178,132' },
@@ -229,7 +162,8 @@ const SCENES = [
     ],
   },
   {
-    id: 'bear', hint: 'Male den Bären! 🐻', thing: 'der Bär', level: 2,
+    id: 'bear', thing: 'der Bär', level: 2,
+    client: '🐿️', intro: 'Das Eichhörnchen wünscht sich einen Teddybären.', done: 'Das Eichhörnchen kuschelt mit dem Bären!', seat: [100, 160], act: 'bounce',
     regions: [
       { id: 'ear-l',  target: 'Braun',     name: 'die Ohren',    pl: true, element: 'circle',  cx: 65,  cy: 45,  r: 22 },
       { id: 'ear-r',  target: 'Braun',     name: 'die Ohren',    pl: true, element: 'circle',  cx: 135, cy: 45,  r: 22 },
@@ -241,7 +175,8 @@ const SCENES = [
     ],
   },
   {
-    id: 'frog', hint: 'Male den Frosch! 🐸', thing: 'der Frosch', level: 2,
+    id: 'frog', thing: 'der Frosch', level: 2,
+    client: '🦆', intro: 'Die Ente wünscht sich einen Frosch zum Spielen.', done: 'Die Ente und der Frosch hüpfen in den Teich!', seat: [158, 120], act: 'bounce',
     regions: [
       { id: 'body',    target: 'Grün',    name: 'der Frosch',   element: 'ellipse', cx: 100, cy: 125, rx: 55, ry: 45 },
       { id: 'eye-l',   target: 'Weiß',    name: 'die Augen',    pl: true, element: 'circle',  cx: 75,  cy: 80,  r: 18 },
@@ -253,7 +188,8 @@ const SCENES = [
   },
   // ── Level 3 ──
   {
-    id: 'rocket', hint: 'Male die Rakete! 🚀', thing: 'die Rakete', level: 3,
+    id: 'rocket', thing: 'die Rakete', level: 3,
+    client: '👨‍🚀', intro: 'Der Astronaut möchte zum Mond fliegen.', done: 'Der Astronaut steigt ein. Drei, zwei, eins, los!', seat: [100, 104], act: 'float',
     regions: [
       { id: 'body',   target: 'Grau',   name: 'der Rumpf',   element: 'rect',    x: 72,  y: 70, width: 56, height: 88, rx: 8 },
       { id: 'nose',   target: 'Rot',    name: 'die Spitze',  element: 'polygon', points: '72,70 100,14 128,70' },
@@ -264,7 +200,8 @@ const SCENES = [
     ],
   },
   {
-    id: 'penguin', hint: 'Male den Pinguin! 🐧', thing: 'der Pinguin', level: 3,
+    id: 'penguin', thing: 'der Pinguin', level: 3,
+    client: '🐤', intro: 'Das Küken wünscht sich einen Pinguin als Freund.', done: 'Das Küken und der Pinguin watscheln los!', seat: [150, 178], act: 'swim',
     regions: [
       { id: 'body',  target: 'Schwarz', name: 'der Körper',   element: 'ellipse', cx: 100, cy: 120, rx: 56, ry: 66 },
       { id: 'belly', target: 'Weiß',    name: 'der Bauch',    element: 'ellipse', cx: 100, cy: 125, rx: 32, ry: 48 },
@@ -276,7 +213,8 @@ const SCENES = [
     ],
   },
   {
-    id: 'flower', hint: 'Male die Blume! 🌸', thing: 'die Blume', level: 3,
+    id: 'flower', thing: 'die Blume', level: 3,
+    client: '🐝', intro: 'Die Biene sucht eine Blume.', done: 'Die Biene landet auf der Blume. Summ, summ!', seat: [100, 96], act: 'bounce',
     regions: [
       { id: 'petals', target: 'Pink', name: 'die Blüte', element: 'polygon',
         points: '100,25 115,63 153,47 137,85 175,100 137,115 153,153 115,137 100,175 85,137 47,153 63,115 25,100 63,85 47,47 85,63' },
@@ -300,6 +238,7 @@ function buildScenes(level) {
   return shuffle(available).slice(0, Math.min(count, available.length))
 }
 
+
 // ─── SVG shape renderer  ──────────────────────────────────────────────────────
 function ShapeEl({ region, ...paint }) {
   switch (region.element) {
@@ -317,378 +256,301 @@ function ShapeEl({ region, ...paint }) {
   }
 }
 
-// ─── Paint bucket  ─────────────────────────────────────────────────────────────
-function PaintBucket({ color, name, selected, onClick }) {
+// ─── Paint pot  ───────────────────────────────────────────────────────────────
+function Pot({ color, name, size = 60 }) {
   return (
-    <motion.button
-      whileTap={{ scale: 0.88 }}
-      animate={{ y: selected ? -6 : 0 }}
-      onClick={onClick}
-      aria-label={name}
-      aria-pressed={selected}
-      style={{
-        background: 'none', border: 'none', cursor: 'pointer',
-        padding: '2px 0', outline: 'none', width: 58, minHeight: 56,
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-      }}
-    >
-      <svg width="52" height="54" viewBox="0 0 44 46" style={{ overflow: 'visible' }}>
-        <path d="M6 18 L10 42 L34 42 L38 18 Z" fill={color}
-          stroke={INK} strokeWidth={selected ? 3 : 2} strokeLinejoin="round" />
-        <ellipse cx="22" cy="18" rx="16" ry="5" fill={color} stroke={INK} strokeWidth={selected ? 3 : 2} />
-        <ellipse cx="14" cy="27" rx="3" ry="5" fill="white" opacity="0.3" transform="rotate(-15 14 27)" />
-        <path d="M12 16 C12 7 32 7 32 16" fill="none" stroke={INK} strokeWidth="2" strokeLinecap="round" />
-        {selected && <circle cx="37" cy="9" r="7" fill="#2F8F3A" stroke={INK} strokeWidth="1.5" />}
-        {selected && <path d="M33.5 9 L36 11.5 L40.5 6.5" stroke="white" strokeWidth="2.2" strokeLinecap="round" fill="none" />}
+    <div style={{ width: size + 4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+      <svg width={size} height={size * 1.05} viewBox="0 0 44 46" style={{ overflow: 'visible' }} aria-hidden="true">
+        <path d="M6 18 L10 42 L34 42 L38 18 Z" fill={color} stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+        <ellipse cx="22" cy="18" rx="16" ry="5" fill={color} stroke={INK} strokeWidth="2.5" />
+        <path d="M10 19 Q12 30 9 33 Q7 35 8 28" fill={color} stroke={INK} strokeWidth="1.5" />
+        <ellipse cx="15" cy="28" rx="3" ry="5" fill="white" opacity="0.35" transform="rotate(-15 15 28)" />
+        <path d="M12 16 C12 6 32 6 32 16" fill="none" stroke={INK} strokeWidth="2.2" strokeLinecap="round" />
       </svg>
-      <span style={{
-        fontFamily: 'var(--font-heading)', fontSize: 12, fontWeight: 700, lineHeight: 1.2,
-        whiteSpace: 'nowrap', color: INK, letterSpacing: -0.2,
-        background: selected ? 'var(--px-gold)' : 'transparent',
-        padding: '1px 6px', borderRadius: 6,
-        border: `2px solid ${selected ? INK : 'transparent'}`,
-      }}>{name}</span>
-    </motion.button>
-  )
-}
-
-// ─── What still needs painting: one dot per colour, ticked when done ─────────
-function ColorChip({ group, active }) {
-  const allDone = group.done === group.total
-  return (
-    <div title={group.target} style={{
-      ...pxCard(allDone ? 'right' : active ? 'selected' : undefined),
-      borderRadius: 10, width: 40, height: 32,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative',
-    }}>
-      <span style={{
-        width: 20, height: 20, borderRadius: '50%',
-        background: group.color.value, border: `2px solid ${INK}`,
-      }} />
-      {allDone && <span style={{ position: 'absolute', right: -8, top: -8, fontSize: 16, lineHeight: 1 }}>✅</span>}
+      <span style={{ fontFamily: 'var(--font-heading)', fontSize: 12, fontWeight: 700, lineHeight: 1.1, whiteSpace: 'nowrap', color: INK }}>{name}</span>
     </div>
   )
 }
 
-// ─── Canvas ───────────────────────────────────────────────────────────────────
-function PaintCanvas({ scene, size, filled, selectedColor, flash, svgRef, onPointerDown, onPointerMove }) {
+// ─── The picture: hatched where unpainted, paint poured in where painted ─────
+// `want` is the part being wished for: on the easel it pulses with a dashed
+// outline; in the wish bubble (`mini`) it is shown in its colour.
+function Picture({ scene, size, filled, want, flash, mini = false }) {
+  const pid = `${mini ? 'mini' : 'big'}-${scene.id}`
+  const wanted = r => want?.regions.includes(r)
   return (
-    <div style={{ ...pxPanel, overflow: 'hidden', lineHeight: 0 }}>
-      <svg
-        ref={svgRef}
-        // the frame's 3px border sits inside the measured box
-        width={size - 6}
-        height={size - 6}
-        viewBox="0 0 200 200"
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        style={{ display: 'block', borderRadius: 11, touchAction: 'none', cursor: 'pointer', userSelect: 'none' }}
-      >
-        <defs>
-          {/* Unpainted parts are hatched: a painted white part (the frog's
-              eyes) used to look exactly like an empty one. */}
-          <pattern id="px-hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-            <rect width="8" height="8" fill="#FFFAF0" />
-            <line x1="0" y1="0" x2="0" y2="8" stroke="rgba(42,27,61,0.12)" strokeWidth="3" />
-          </pattern>
-          {scene.regions.map(region => (
-            <clipPath key={region.id} id={`clip-${scene.id}-${region.id}`}>
-              <ShapeEl region={region} />
-            </clipPath>
-          ))}
-        </defs>
-
-        {/* a soft sky behind the picture, so white stands out from it */}
-        <rect width="200" height="200" fill="#DCEBF5" />
-
-        {scene.regions.map(region => {
-          const tc     = getColor(region.target)
-          const origin = filled[region.id]
-          const hinted = selectedColor === region.target && !origin
-          return (
-            <g key={region.id}>
-              <ShapeEl region={region} fill="url(#px-hatch)" />
-
-              {/* fills from where it was tapped, like paint poured in */}
-              {origin && (
-                <g clipPath={`url(#clip-${scene.id}-${region.id})`}>
-                  <motion.circle cx={origin.x} cy={origin.y} fill={tc.value}
-                    initial={{ r: 0 }} animate={{ r: 260 }} transition={{ duration: 0.5, ease: 'easeOut' }} />
-                </g>
-              )}
-
-              {/* the parts the chosen colour belongs to glow */}
-              {hinted && (
-                <motion.g animate={{ opacity: [0.15, 0.45, 0.15] }} transition={{ duration: 1.4, repeat: Infinity }}>
-                  <ShapeEl region={region} fill={tc.value} />
-                </motion.g>
-              )}
-
-              {/* a wrong colour: the part shows the colour it wants */}
-              {flash?.id === region.id && (
-                <motion.g key={flash.n} initial={{ opacity: 0 }} animate={{ opacity: [0, 0.85, 0.2, 0.85, 0] }} transition={{ duration: 1.3 }}>
-                  <ShapeEl region={region} fill={tc.value} />
-                </motion.g>
-              )}
-
-              <ShapeEl region={region} fill="none" stroke={INK} strokeWidth={hinted ? 3 : 2} strokeLinejoin="round"
-                strokeDasharray={hinted ? '6 4' : undefined} />
-            </g>
-          )
-        })}
-      </svg>
-    </div>
+    <svg width={size} height={size} viewBox="0 0 200 200" style={{ display: 'block', overflow: 'visible' }} aria-hidden="true">
+      <defs>
+        <pattern id={`${pid}-hatch`} width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <rect width="8" height="8" fill="#FFFAF0" />
+          <line x1="0" y1="0" x2="0" y2="8" stroke="rgba(42,27,61,0.12)" strokeWidth="3" />
+        </pattern>
+        {!mini && scene.regions.map(region => (
+          <clipPath key={region.id} id={`${pid}-clip-${region.id}`}>
+            <ShapeEl region={region} />
+          </clipPath>
+        ))}
+      </defs>
+      {scene.regions.map(region => {
+        const tc = getColor(region.target).value
+        const done = filled[region.id]
+        const c = centerOf(region)
+        return (
+          <g key={region.id}>
+            <ShapeEl region={region} fill={mini && (done || wanted(region)) ? tc : `url(#${pid}-hatch)`} />
+            {/* fills from the middle, like paint poured in */}
+            {!mini && done && (
+              <g clipPath={`url(#${pid}-clip-${region.id})`}>
+                <motion.circle cx={c.x} cy={c.y} fill={tc} initial={{ r: 0 }} animate={{ r: 260 }} transition={{ duration: 0.6, ease: 'easeOut' }} />
+              </g>
+            )}
+            {/* a wrong colour: the part shows the colour it wants */}
+            {!mini && flash && wanted(region) && (
+              <motion.g key={flash} initial={{ opacity: 0 }} animate={{ opacity: [0, 0.85, 0.2, 0.85, 0] }} transition={{ duration: 1.3 }}>
+                <ShapeEl region={region} fill={tc} />
+              </motion.g>
+            )}
+            <ShapeEl region={region} fill="none" stroke={INK} strokeWidth={mini ? 4 : 2} strokeLinejoin="round" />
+          </g>
+        )
+      })}
+      {/* the wished part, on top: a dancing dashed outline */}
+      {!mini && want && want.regions.map(region => (
+        <motion.g key={`want-${region.id}`} animate={{ opacity: [1, 0.35, 1] }} transition={{ duration: 1.2, repeat: Infinity }}>
+          <ShapeEl region={region} fill="none" stroke="#ffc93c" strokeWidth="7" strokeLinejoin="round" />
+          <ShapeEl region={region} fill="none" stroke={INK} strokeWidth="3" strokeDasharray="7 5" strokeLinejoin="round" />
+        </motion.g>
+      ))}
+    </svg>
   )
 }
 
-// Measures the box the canvas may fill, so it fits the height as well as the
-// width (it used to take the window width only and pushed the buckets off the
-// bottom of a landscape tablet).
-function useBoxSize(ref) {
-  const [size, setSize] = useState(0)
+// A splash of the wrong colour on the customer's face
+function Splat({ color, size }) {
+  return (
+    <motion.svg viewBox="0 0 60 60" width={size * 0.5} height={size * 0.5} aria-hidden="true"
+      initial={{ scale: 0, opacity: 1 }} animate={{ scale: [0, 1.2, 1], opacity: [1, 1, 1, 0] }} transition={{ duration: 1.6, times: [0, 0.15, 0.3, 1] }}
+      style={{ position: 'absolute', left: '28%', top: '22%', pointerEvents: 'none', zIndex: 4 }}>
+      <path d="M30 6 Q36 18 44 10 Q42 22 56 22 Q44 30 54 42 Q40 38 38 54 Q30 42 22 54 Q20 40 6 44 Q16 32 4 22 Q18 22 16 10 Q24 18 30 6 Z"
+        fill={color} stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+    </motion.svg>
+  )
+}
+
+// Says a pot's colour when the child picks it up with a tap
+function SayPicked() {
+  const { picked } = useDragState()
+  const name = picked?.data?.name
+  useEffect(() => { if (name) narrate([{ text: `${name}.` }], { skipIfSame: true }) }, [name])
+  return null
+}
+
+// The area left for customer and easel, measured
+function useBox() {
+  const ref = useRef(null)
+  const [box, setBox] = useState({ w: 0, h: 0 })
   useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
-    const measure = () => setSize(Math.floor(Math.min(el.clientWidth, el.clientHeight, 520)))
+    const measure = () => setBox(b => (b.w === el.clientWidth && b.h === el.clientHeight ? b : { w: el.clientWidth, h: el.clientHeight }))
     measure()
     const ro = new ResizeObserver(measure)
     ro.observe(el)
     return () => ro.disconnect()
-  }, [ref])
-  return size
+  }, [])
+  return [ref, box]
 }
+
+// How the picture and its new owner leave together
+const ACT = {
+  bounce: { y: [0, -30, 0, -16, 0], rotate: [0, -4, 4, 0, 0], transition: { duration: 1.2, delay: 0.7 } },
+  float:  { y: [0, -24, -60, -30, 0], rotate: [0, 3, -3, 2, 0], transition: { duration: 2.2, delay: 0.7 } },
+  swim:   { x: [0, -24, 24, -16, 0], rotate: [0, -5, 5, -3, 0], transition: { duration: 1.8, delay: 0.7 } },
+}
+const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function PainterGame({ level = 1, onComplete }) {
   const [scenes]    = useState(() => buildScenes(level))
   const [sceneIdx,  setSceneIdx]  = useState(0)
-  const [filled,    setFilled]    = useState({})   // { regionId: { x, y } } — where the paint was poured in
-  const [selected,  setSelected]  = useState(null) // color name
-  const [flash,     setFlash]     = useState(null) // { id, n } — part that showed its colour after a mix-up
-  const [mood,      setMood]      = useState('happy')
-  const [sceneDone, setSceneDone] = useState(false)
-  const [advance,   setAdvance]   = useState(false) // the praise was said, go on when not paused
+  const [partIdx,   setPartIdx]   = useState(0)
+  const [filled,    setFilled]    = useState({})     // { regionId: true }
+  const [flash,     setFlash]     = useState(0)      // the wished part shows its colour (after a mix-up)
+  const [splat,     setSplat]     = useState(null)   // { color, n }: paint on the customer
+  const [movedIn,   setMovedIn]   = useState(false)  // the picture is done, the customer moved in
+  const [next,      setNext]      = useState(null)   // 'part' | 'scene': what comes once the praise was said
+  const [mood,      setMood]      = useMood()
   const paused = usePaused()
-
-  const svgRef    = useRef(null)
-  const boxRef    = useRef(null)
-  const missed    = useRef(new Set())               // `${scene}/${region}` painted wrong first
-  const filledRef = useRef({})
-  const dragging  = useRef(false)
-  const size      = useBoxSize(boxRef)
+  const [bursts, burst] = useBursts()
+  const [boxRef, box] = useBox()
+  const easelRef = useRef(null)
+  const missed   = useRef(new Set())                  // `${scene}/${part}` painted wrong first
+  const waiting  = useRef(null)
 
   const scene   = scenes[sceneIdx]
+  const parts   = useMemo(() => partsOf(scene), [scene])
+  const part    = movedIn ? null : parts[partIdx]
   const palette = useMemo(() => buildPalette(scene, level), [scene, level])
-  const total   = useMemo(() => scenes.reduce((n, s) => n + s.regions.length, 0), [scenes])
+  const total   = useMemo(() => scenes.reduce((n, s) => n + partsOf(s).length, 0), [scenes])
+  useEffect(() => () => waiting.current?.(), [])
 
-  // New picture: say the task
+  // A new customer: who it is and its first wish
   useEffect(() => {
-    setFilled({}); filledRef.current = {}
-    setSelected(null); setFlash(null); setSceneDone(false); setMood('happy')
     lockPreviews()
-    const id = setTimeout(() => sayTask(`${scene.hint} Tippe zuerst auf einen Farbeimer.`), 450)
+    const first = partsOf(scene)[0]
+    const how = sceneIdx === 0 ? ' Zieh den richtigen Farbtopf auf das Bild.' : ''
+    const id = setTimeout(() => sayTask(`${scene.intro} ${wish(first)}${how}`), 650)
     return () => clearTimeout(id)
   }, [sceneIdx]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // After the praise: next picture or the end — held while the help is open
+  // After the praise: the next wish, or the next customer — held while the
+  // help is open
   useEffect(() => {
-    if (!advance || paused) return
+    if (!next || paused) return
     const id = setTimeout(() => {
-      setAdvance(false)
-      if (sceneIdx + 1 >= scenes.length) onComplete(result(total - missed.current.size, total))
-      else setSceneIdx(i => i + 1)
-    }, 400)
+      setNext(null)
+      if (next === 'part') {
+        sayTask(wish(parts[partIdx + 1]))
+        setPartIdx(i => i + 1)
+      } else if (sceneIdx + 1 >= scenes.length) {
+        onComplete(result(total - missed.current.size, total))
+      } else {
+        setSceneIdx(i => i + 1)
+        setPartIdx(0)
+        setFilled({})
+        setMovedIn(false)
+      }
+    }, 300)
     return () => clearTimeout(id)
-  }, [advance, paused]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [next, paused]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const remainingOf = useCallback(colorName => scene.regions.filter(r => r.target === colorName && !filledRef.current[r.id]), [scene])
-
-  const chooseColor = (c) => {
-    if (sceneDone) return
-    setSelected(c.name)
-    const open = remainingOf(c.name)
-    const needed = scene.regions.some(r => r.target === c.name)
-    const names = [...new Set(open.map(acc))]
-    narrate([{ text: !needed ? `${c.name}. ${c.name} brauchen wir hier nicht.`
-      : open.length ? `${c.name}! Damit malst du ${listWords(names)}.`
-      : `${c.name}. Das ist schon fertig.` }])
+  const waitThen = (what, minMs) => {
+    waiting.current?.()
+    waiting.current = afterNarration(() => setNext(what), { minMs })
   }
 
-  const fill = useCallback((region, pt) => {
-    filledRef.current = { ...filledRef.current, [region.id]: pt }
-    setFilled(filledRef.current)
-    sfx.correct()
-    const colour = getColor(region.target)
-    const said = []
-    // say what it became once the whole part is painted (both ears)
-    if (scene.regions.every(r => r.name !== region.name || filledRef.current[r.id])) {
-      said.push({ text: `${cap(region.name)} ${verb(region, 'ist', 'sind')} jetzt ${colour.name.toLowerCase()}!` })
+  // A pot poured onto the picture: taken if it is the wished colour
+  const pour = (color) => {
+    if (!part || next) return false
+    const want = getColor(part.target)
+    if (color.name !== part.target) {
+      missed.current.add(`${scene.id}/${part.name}`); console.warn("MISS", color.name, part.target, part.name)
+      setFlash(Date.now())
+      setSplat({ color: color.value, n: Date.now() })
+      setMood('oops', 1500)
+      sfx.splash()
+      sayWrong(`Das ist ${word(color.name)}. ${cap(part.name)} ${verb(part, 'soll', 'sollen')} ${word(want.name)} sein.`)
+      return false
     }
-    if (scene.regions.every(r => filledRef.current[r.id])) {
-      setSceneDone(true)
-      setSelected(null)
-      setMood('excited')
-      sfx.complete?.()
-      said.push({ text: `Super gemalt! ${cap(scene.thing)} ist fertig.`, gap: 200 })
-      narrate(said)
-      afterNarration(() => setAdvance(true), { minMs: 900 })
-    } else if (said.length) {
-      narrate(said)
+    setFilled(f => ({ ...f, ...Object.fromEntries(part.regions.map(r => [r.id, true])) }))
+    burst(easelRef.current, 'stars')
+    const said = `${cap(part.name)} ${verb(part, 'ist', 'sind')} jetzt ${word(want.name)}!`
+    if (partIdx + 1 < parts.length) {
+      setMood('happy', 1200)
+      sayRight(said)
+      waitThen('part', 500)
+    } else {
+      // all painted: the customer moves in
+      setMovedIn(true)
+      setMood('dance', 4000)
+      sfx.tada()
+      setTimeout(() => burst(easelRef.current, 'confetti', 16), 700)
+      sayRight(`${said} Super gemalt! ${cap(scene.thing)} ist fertig. ${scene.done}`)
+      waitThen('scene', 2200)
     }
-  }, [scene])
-
-  const handlePointerDown = useCallback((e) => {
-    if (sceneDone) return
-    const pt = clientToSVG(svgRef.current, e.clientX, e.clientY)
-    const region = pt && regionAt(scene, pt.x, pt.y)
-    if (!region || filledRef.current[region.id]) return
-    const want = getColor(region.target).name
-    const wants = `${cap(region.name)} ${verb(region, 'möchte', 'möchten')} ${want}.`
-    if (!selected) {
-      setFlash({ id: region.id, n: Date.now() })
-      narrate([{ text: `${wants} Tippe auf den Eimer mit ${want}.` }])
-      return
-    }
-    if (selected !== region.target) {
-      // gently: show and say the colour this part wants
-      missed.current.add(`${scene.id}/${region.id}`)
-      setFlash({ id: region.id, n: Date.now() })
-      setMood('encouraging')
-      setTimeout(() => setMood('happy'), 1300)
-      sfx.mismatch()
-      sayWrong(wants)
-      return
-    }
-    dragging.current = true
-    try { e.currentTarget.setPointerCapture?.(e.pointerId) } catch { /* not supported */ }
-    fill(region, pt)
-  }, [scene, selected, sceneDone, fill])
-
-  // Dragging on with the right colour fills every glowing part it touches.
-  const handlePointerMove = useCallback((e) => {
-    if (!dragging.current || !e.buttons || sceneDone) return
-    const pt = clientToSVG(svgRef.current, e.clientX, e.clientY)
-    const region = pt && regionAt(scene, pt.x, pt.y)
-    if (region && !filledRef.current[region.id] && region.target === selected) fill(region, pt)
-  }, [scene, selected, sceneDone, fill])
-
-  useEffect(() => {
-    const up = () => { dragging.current = false }
-    window.addEventListener('pointerup', up)
-    window.addEventListener('pointercancel', up)
-    return () => { window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up) }
-  }, [])
-
-  // One chip per colour the picture needs, with what is done
-  const colorGroups = useMemo(() => {
-    const map = {}
-    scene.regions.forEach(r => {
-      if (!map[r.target]) map[r.target] = { target: r.target, color: getColor(r.target), regions: [] }
-      map[r.target].regions.push(r)
-    })
-    return Object.values(map).map(g => ({ ...g, done: g.regions.filter(r => filled[r.id]).length, total: g.regions.length }))
-  }, [scene, filled])
-
-  const selColor = selected ? getColor(selected) : null
-  const selNeeded = selected && remainingOf(selected).length > 0
-
-  let lumiMsg
-  if (sceneDone) {
-    lumiMsg = '🎉 Super gemalt!'
-  } else if (!selColor) {
-    lumiMsg = `${scene.hint} Tippe auf einen Farbeimer.`
-  } else {
-    lumiMsg = (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <span style={{ width: 20, height: 20, borderRadius: '50%', background: selColor.value, border: `2px solid ${INK}`, flexShrink: 0 }} />
-        <strong>{selColor.name}</strong>
-        {selNeeded ? '— tippe auf die Fläche, die leuchtet!' : '— die brauchen wir hier nicht.'}
-      </span>
-    )
+    return true
   }
+
+  // Customer beside the easel when there is room, above it otherwise
+  const wide = box.w > box.h * 1.15
+  const critter = Math.round(Math.max(84, Math.min(170, wide ? box.w * 0.2 : box.h * 0.2)))
+  const easel = Math.max(120, Math.floor(Math.min(560,
+    wide ? Math.min(box.w - critter * 1.6, box.h - 8) : Math.min(box.w - 8, box.h - critter * 1.25))))
+  const mini = Math.round(Math.max(56, Math.min(96, critter * 0.6)))
+  const colour = part && getColor(part.target)
 
   return (
-    <div style={{
-      flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center',
-      padding: 'clamp(8px,1.5vw,16px) clamp(10px,2.5vw,24px)',
-      gap: 'clamp(6px,1.2vh,12px)',
-      userSelect: 'none',
-    }}>
-
-      {/* Progress bar */}
-      <div style={{ display: 'flex', gap: 5, width: '100%', maxWidth: 660, flexShrink: 0 }}>
-        {scenes.map((_, i) => (
-          <div key={i} style={{
-            flex: 1, ...pxSegment(i < sceneIdx || (i === sceneIdx && sceneDone) ? 'done' : i === sceneIdx ? 'current' : 'todo'), height: 10,
-            transition: 'background 0.3s',
-          }} />
-        ))}
-      </div>
-
-      {/* Lumi + speech bubble */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', maxWidth: 660, flexShrink: 0 }}>
-        <LumiCharacter mood={mood} size={56} />
-        <div style={{
-          flex: 1, ...pxBubble,
-          padding: '7px 14px',
-          fontFamily: 'var(--font-heading)', fontSize: 'clamp(15px,2.7vw,19px)',
-          color: 'var(--text-primary)',
-        }}>
-          {lumiMsg}
-        </div>
-      </div>
-
-      {/* Colours the picture needs */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', width: '100%', maxWidth: 660, flexShrink: 0, paddingTop: 4 }}>
-        {colorGroups.map(group => (
-          <ColorChip key={group.target} group={group} active={selected === group.target} />
-        ))}
-      </div>
-
-      {/* Paint canvas — takes whatever height is left */}
-      <div ref={boxRef} style={{ flex: 1, minHeight: 120, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <AnimatePresence mode="wait">
-          {size > 0 && (
-            <motion.div
-              key={scene.id}
-              initial={{ scale: 0.88, opacity: 0 }}
-              animate={{ scale: 1,    opacity: 1 }}
-              exit={{   scale: 0.88, opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 24 }}
-            >
-              <PaintCanvas
-                scene={scene}
-                size={size}
-                filled={filled}
-                selectedColor={selected}
-                flash={flash}
-                svgRef={svgRef}
-                onPointerDown={handlePointerDown}
-                onPointerMove={handlePointerMove}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* Paint buckets */}
+    <DragArea disabled={paused || !!next || movedIn}>
+      <SayPicked />
+      {/* relative + zIndex: above GameScreen's backdrop, which is positioned */}
       <div style={{
-        ...pxPanel, flexShrink: 0,
-        padding: '6px 8px',
-        width: '100%', maxWidth: 720,
+        position: 'relative', zIndex: 1,
+        flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center',
+        padding: 'clamp(8px,1.5vw,16px) clamp(10px,2.5vw,24px)',
+        gap: 'clamp(6px,1.2vh,12px)', userSelect: 'none',
       }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px clamp(2px,0.8vw,10px)', justifyContent: 'center' }}>
-          {palette.map(color => (
-            <PaintBucket
-              key={color.name}
-              color={color.value}
-              name={color.name}
-              selected={selected === color.name}
-              onClick={() => chooseColor(color)}
-            />
-          ))}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', maxWidth: 760, flexShrink: 0 }}>
+          <RoundTrail total={scenes.length} done={sceneIdx + (movedIn ? 1 : 0)} walker="🖌️" goal="🖼️" style={{ flex: 1 }} />
+          <HearOptions items={[part ? wish(part) : scene.done]} label="Wunsch anhören" size={52} />
+        </div>
+
+        {/* the customer and the easel */}
+        <div ref={boxRef} style={{
+          flex: 1, minHeight: 0, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexDirection: wide ? 'row' : 'column', gap: wide ? critter * 0.4 : 8,
+        }}>
+          <div style={{ width: wide ? critter * 1.2 : '100%', height: critter * (wide ? 1.9 : 1.15), flexShrink: 0, display: 'flex', alignItems: 'flex-end', justifyContent: wide ? 'center' : 'flex-start', paddingLeft: wide ? 0 : '6%' }}>
+            <AnimatePresence mode="wait">
+              {!movedIn && box.w > 0 && (
+                <motion.div key={scene.id}
+                  initial={{ x: -260, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
+                  exit={{ x: wide ? 220 : 80, y: wide ? 0 : 120, scale: 0.4, opacity: 0, transition: { duration: 0.45 } }}
+                  transition={{ type: 'spring', stiffness: 140, damping: 16 }}>
+                  <Critter art={scene.client} size={critter} mood={mood} talks
+                    wishSide={wide ? 'top' : 'right'}
+                    wish={part && (
+                      <motion.div key={part.name} initial={{ scale: 0.6 }} animate={{ scale: 1 }} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Picture scene={scene} size={mini} filled={filled} want={part} mini />
+                        <svg width={mini * 0.42} height={mini * 0.5} viewBox="0 0 20 24" aria-hidden="true">
+                          <path d="M10 1 Q19 13 18 16 A8 8 0 0 1 2 16 Q1 13 10 1 Z" fill={colour.value} stroke={INK} strokeWidth="1.6" />
+                        </svg>
+                      </motion.div>
+                    )}>
+                    {splat && <Splat key={splat.n} color={splat.color} size={critter} />}
+                  </Critter>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <DropZone id="easel" onDrop={pour} label="Bild" style={{ flexShrink: 0 }}>
+            {hover => (
+              <AnimatePresence mode="wait">
+                <motion.div key={scene.id} ref={easelRef}
+                  initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.85, opacity: 0 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 24 }}
+                  style={{ position: 'relative' }}>
+                  <motion.div animate={movedIn && !reduceMotion() ? ACT[scene.act] : { x: 0, y: 0, rotate: 0 }}
+                    style={{ ...pxPanel, background: '#fffdf7', padding: easel * 0.04, lineHeight: 0, position: 'relative',
+                      boxShadow: hover ? '0 0 0 6px #ffc93c, 0 5px 0 rgba(42,27,61,0.35)' : pxPanel.boxShadow, transition: 'box-shadow .2s' }}>
+                    <Picture scene={scene} size={easel - easel * 0.08 - 6} filled={filled} want={part} flash={flash} />
+                    {/* the customer, moved in */}
+                    {movedIn && (
+                      <motion.div initial={{ x: -easel * 0.6, y: -easel * 0.3, scale: 1.6, opacity: 0 }}
+                        animate={{ x: 0, y: 0, scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 160, damping: 14 }}
+                        style={{ position: 'absolute', left: `${4 + scene.seat[0] / 200 * 92}%`, top: `${4 + scene.seat[1] / 200 * 92}%`, marginLeft: -easel * 0.12, marginTop: -easel * 0.2 }}>
+                        <Art art={scene.client} size={Math.round(easel * 0.24)} />
+                      </motion.div>
+                    )}
+                  </motion.div>
+                </motion.div>
+              </AnimatePresence>
+            )}
+          </DropZone>
+        </div>
+
+        {/* the paint pots */}
+        <div style={{ ...pxPanel, flexShrink: 0, padding: '6px 8px', width: '100%', maxWidth: 760, boxSizing: 'border-box' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px clamp(4px,1.2vw,14px)', justifyContent: 'center' }}>
+            {palette.map(c => (
+              <Draggable key={c.name} id={c.name} data={c} label={c.name}>
+                <Pot color={c.value} name={c.name} />
+              </Draggable>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
+      {bursts}
+    </DragArea>
   )
 }

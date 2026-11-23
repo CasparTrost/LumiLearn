@@ -1,16 +1,26 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import LumiCharacter from '../components/LumiCharacter.jsx'
 import HearOptions from '../components/HearOptions.jsx'
+import { Art, DragArea, Draggable, DropZone, RoundTrail, useBursts, useDragState } from '../components/play/index.js'
+import Korbmonster from './sort/Korbmonster.jsx'
 import { sfx } from '../sfx.js'
 import { narrate, afterNarration, lockPreviews } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { hearable } from '../lib/hearable.js'
+import { usePaused } from '../lib/pause.js'
 import { result } from '../lib/score.js'
-import { INK, pxCard, pxPanel, pxBubble, pxButton, pxSegment } from './px.js'
+import { INK, pxPanel, pxBubble, pxButton } from './px.js'
 
 /**
- * Sortier-Spaß — Kategorisieren & Konzeptbildung
+ * Sortier-Spaß: "Wer will was?" — Kategorisieren & Konzeptbildung
+ *
+ * Each category is a basket monster (sort/Korbmonster.jsx) with a sign: one
+ * collects animals, one food, one toys. Things arrive on a conveyor belt;
+ * the child drags (or taps, then taps the monster) each thing to the one
+ * that wants it. The right monster grins and the thing peeks out of its
+ * basket, so the group visibly grows; the wrong one pulls a face ("Bäh!"),
+ * the thing bounces back onto the belt, and the right monster jumps.
+ *
  * Scientific basis:
  *   • Concept Formation (Bruner, 1956) — categorisation is a core cognitive skill underlying
  *     all higher-order thinking and early science/math literacy.
@@ -24,11 +34,8 @@ import { INK, pxCard, pxPanel, pxBubble, pxButton, pxSegment } from './px.js'
  *     one (Bruner's concept attainment); it is not rated, there is no wrong answer.
  */
 
-const ZONE_DROP = '0 5px 0 rgba(42,27,61,0.35)'
-
-// Basket tints: light enough for ink text on top (the titles used to be
-// written in the category colour itself, 1.8:1 on the tint), with a darker
-// ring of the same hue for "it flies in here" and "this is where it goes".
+// Monster tints: a light face plate (bg) and a darker weave (ring) of the
+// same hue; the ring also lights up the sign of the monster a thing belongs to.
 const TINT = {
   green:  { bg: '#E3F6DA', ring: '#2F8F3A' },
   orange: { bg: '#FFEBD2', ring: '#C25E12' },
@@ -329,375 +336,323 @@ function buildRound(level) {
   return { cats, items: shuffleArr(items) }
 }
 
-const FREE_TINT = [TINT.lilac, TINT.brown]
-const FREE_TASK = 'Jetzt bestimmst du! Sortiere die Sachen in die zwei Körbe, ganz wie du willst. Dann rät Lumi, wie du sortiert hast.'
 
-// The bonus round: tap a thing (the next one is already chosen), then a
-// basket. Once all are in, tap a thing in a basket and then the other basket
-// to move it; before that, a tap on a basket's things counts as a tap on the
-// basket. "Fertig" lets Lumi guess. Not rated — the level ends with the
-// result of the sorting before.
+const FREE_TINT = [TINT.lilac, TINT.brown]
+const FREE_TASK = 'Jetzt bestimmst du! Gib den zwei Korbmonstern die Sachen, ganz wie du willst. Dann rät Lumi, wie du sortiert hast.'
+const BIG = 108   // the thing at the front of the belt
+const GAP = 124   // from one place on the belt to the next
+
+// One basket monster as a place to drop things: it opens its mouth while
+// something is held over it or picked up, and says what it collects when
+// tapped with empty hands.
+function MonsterZone({ id, width, onDrop, label, say, monsterRef, mood, ...monster }) {
+  const { picked } = useDragState()
+  const [tickled, setTickled] = useState(false)
+  useEffect(() => {
+    if (!tickled) return
+    const t = setTimeout(() => setTickled(false), 800)
+    return () => clearTimeout(t)
+  }, [tickled])
+  const tap = () => {
+    if (picked) return
+    sfx.giggle()
+    setTickled(true)
+    if (say) narrate([{ text: say }], { skipIfSame: true })
+  }
+  return (
+    <DropZone id={id} onDrop={onDrop} label={label}>
+      {(hover, { ready }) => (
+        <div ref={monsterRef} onClick={tap} style={{ cursor: 'pointer' }}>
+          <Korbmonster width={width} mood={hover || ready ? 'hungry' : tickled ? 'happy' : mood} {...monster} />
+        </div>
+      )}
+    </DropZone>
+  )
+}
+
+// The size of a monster: as large as the row allows, at most 250 wide
+function useMonsterWidth(n) {
+  const ref = useRef(null)
+  const [w, setW] = useState(160)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const measure = () => setW(Math.floor(Math.max(90, Math.min(250, (el.clientWidth - 18 * (n - 1)) / n, el.clientHeight / 1.3))))
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [n])
+  return [ref, w]
+}
+
+// Says a thing's name when the child picks it up with a tap
+function SayPicked({ name }) {
+  const { picked } = useDragState()
+  const id = picked?.id
+  useEffect(() => { if (id) narrate([{ text: `${cap(name(id))}.` }], { skipIfSame: true }) }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
+  return null
+}
+
+// The conveyor belt; the stripes move on by one place per `rolls`. Without
+// a `height`, the things on it stand in the flow and set it.
+function Belt({ rolls, height = 'auto', children }) {
+  return (
+    <div style={{ position: 'relative', width: '100%', height, flexShrink: 0, overflow: 'hidden' }}>
+      {children}
+      <div style={{ position: 'absolute', left: 8, right: 8, bottom: 14, height: 34, background: '#6d6a7c', border: `3px solid ${INK}`, borderRadius: 20, boxShadow: '0 5px 0 rgba(42,27,61,0.35)', overflow: 'hidden' }}>
+        <motion.div initial={false} animate={{ backgroundPositionX: -rolls * GAP }} transition={{ duration: 0.6, ease: 'easeInOut' }}
+          style={{ position: 'absolute', inset: 0, backgroundImage: 'repeating-linear-gradient(90deg, #8d8a9e 0 22px, #5d5a6c 22px 31px)' }} />
+      </div>
+      {[0.1, 0.3, 0.5, 0.7, 0.9].map(x => (
+        <motion.div key={x} initial={false} animate={{ rotate: rolls * 180 }} transition={{ duration: 0.6 }}
+          style={{ position: 'absolute', left: `calc(${x * 100}% - 9px)`, bottom: 4, width: 18, height: 18, borderRadius: '50%', background: '#c9c5d6', border: `3px solid ${INK}`, boxSizing: 'border-box', backgroundImage: `linear-gradient(90deg, transparent 6px, ${INK} 6px 9px, transparent 9px)` }} />
+      ))}
+    </div>
+  )
+}
+
+// The bonus round: six things on the belt, two monsters without a sign. The
+// child gives each thing to either monster, and may move one from basket to
+// basket. "Fertig" lets Lumi guess the rule. Not rated — the level ends with
+// the result of the sorting before.
 function FreeSort({ onDone }) {
   const [things] = useState(buildFree)
-  const [where,  setWhere]  = useState(() => things.map(() => null))   // basket 0 | 1, or null
-  const [sel,    setSel]    = useState(0)
-  const [guess,  setGuess]  = useState(null)
+  const [where,  setWhere] = useState(() => things.map(() => null))   // basket 0 | 1, or null
+  const [moods,  setMoods] = useState(['idle', 'idle'])
+  const [guess,  setGuess] = useState(null)
+  const [mw, setMw] = useState(160)
+  const rowRef = useRef(null)
   const allIn = where.every(w => w !== null)
+
+  useLayoutEffect(() => {
+    const el = rowRef.current
+    if (!el) return
+    const measure = () => setMw(Math.floor(Math.max(110, Math.min(230, (el.clientWidth - 24) / 2, el.clientHeight / 1.3))))
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   useEffect(() => {
     lockPreviews()
-    const id = setTimeout(() => sayTask(`${FREE_TASK} Zuerst: ${things[0].name}.`), 400)
+    const id = setTimeout(() => sayTask(FREE_TASK), 400)
     return () => clearTimeout(id)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
-  const put = useCallback((b) => {
-    if (guess || sel === null) return
-    const next = where.map((x, j) => (j === sel ? b : x))
-    const nextSel = next.indexOf(null)
+  const put = (b, t) => {
+    const i = things.indexOf(t)
+    if (guess || where[i] === b) return false
+    const next = where.map((x, j) => (j === i ? b : x))
     setWhere(next)
-    setSel(nextSel === -1 ? null : nextSel)
+    setMoods(m => m.map((x, j) => (j === b ? 'happy' : x)))
+    setTimeout(() => setMoods(['idle', 'idle']), 800)
     sfx.pop()
-    narrate([{ text: nextSel === -1 ? 'Fertig? Dann tippe auf den grünen Haken.' : `Und jetzt: ${things[nextSel].name}.` }])
-  }, [guess, sel, where, things])
-
-  const pick = (i, e) => {
-    e?.stopPropagation()
-    if (guess) return
-    if (where[i] !== null && sel !== null && where[sel] === null) { put(where[i]); return }
-    setSel(i)
-    narrate([{ text: `${cap(things[i].name)}.` }], { skipIfSame: true })
+    if (next.every(w => w !== null)) narrate([{ text: 'Fertig? Dann tippe auf den grünen Haken.' }])
+    return true
   }
 
   const check = () => {
     const g = guessRule([0, 1].map(b => things.filter((_, i) => where[i] === b)))
     setGuess(g)
+    setMoods(['dance', 'dance'])
     sfx.match()
     lockPreviews()
     narrate([{ text: g }])
   }
 
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === 'ArrowLeft')  { e.preventDefault(); put(0) }
-      if (e.key === 'ArrowRight') { e.preventDefault(); put(1) }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [put])
-
-  const bubble = guess ?? (allIn && sel === null ? 'Fertig? Tippe auf den Haken!' : 'Sortiere, wie du willst!')
+  const thing = (t, size) => (
+    <Draggable id={t.emoji} data={t} label={t.name} disabled={!!guess}>
+      <Art art={t.emoji} size={size} />
+    </Draggable>
+  )
 
   return (
-    <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', padding:'clamp(10px,2vw,20px) clamp(12px,3vw,28px)', gap:'clamp(10px,1.8vw,16px)', userSelect:'none' }}>
-      <div style={{ display:'flex', alignItems:'center', gap:12, width:'100%', maxWidth:700 }}>
-        <LumiCharacter mood={guess ? 'excited' : 'happy'} size={66} />
-        <div style={{ flex:1, ...pxBubble, padding:'10px 16px', fontFamily:'var(--font-heading)', fontSize:'clamp(15px,3vw,20px)', color:'var(--text-primary)' }}>
-          {bubble}
+    <DragArea disabled={!!guess}>
+      <SayPicked name={id => things.find(t => t.emoji === id).name} />
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 16px 0', gap: 10, userSelect: 'none' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', maxWidth: 760 }}>
+          <Art art="lumi" size={60} />
+          <div style={{ flex: 1, ...pxBubble, padding: '10px 16px', fontFamily: 'var(--font-heading)', fontSize: 19, color: INK }}>
+            {guess ?? (allIn ? 'Fertig? Tippe auf den Haken!' : 'Sortiere, wie du willst!')}
+          </div>
+          <HearOptions items={[guess ?? FREE_TASK]} label="Vorlesen" size={52} />
         </div>
-        <HearOptions items={[guess ?? FREE_TASK]} label="Vorlesen" size={48} />
-      </div>
 
-      {/* The six things; a placed one leaves an empty slot */}
-      <div style={{ width:'100%', maxWidth:700, display:'grid', gridTemplateColumns:'repeat(6, minmax(0, 1fr))', gap:'clamp(6px,1.4vw,12px)' }}>
-        {things.map((t, i) => (
-          where[i] === null ? (
-            <motion.button key={t.emoji} onClick={e => pick(i, e)} aria-label={t.name}
-              whileTap={{ scale:0.94 }}
-              animate={{ scale: sel === i ? 1.08 : 1 }}
-              style={{
-                aspectRatio:'1', minWidth:44, padding:0, cursor:'pointer',
-                ...pxCard(sel === i ? 'selected' : undefined),
-                ...(sel === i ? { boxShadow:`inset 0 0 0 3px ${INK}, ${ZONE_DROP}` } : {}),
-                display:'flex', alignItems:'center', justifyContent:'center',
-                fontSize:'clamp(28px,7vw,60px)', lineHeight:1,
-              }}>
-              {t.emoji}
-            </motion.button>
-          ) : (
-            <div key={t.emoji} style={{ aspectRatio:'1', borderRadius:12, border:'3px dashed rgba(42,27,61,0.25)' }} />
-          )
-        ))}
-      </div>
+        <div ref={rowRef} style={{ flex: 1, minHeight: 0, width: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 24 }}>
+          {FREE_TINT.map((tint, b) => (
+            <MonsterZone key={b} id={`free${b}`} width={mw} onDrop={t => put(b, t)}
+              label={b === 0 ? 'Linkes Korbmonster' : 'Rechtes Korbmonster'}
+              tint={tint} look={b + 1} mood={moods[b]}
+              items={things.filter((_, i) => where[i] === b).map(t => ({ id: t.emoji, emoji: t.emoji, t }))}
+              renderItem={guess ? undefined : (it, s) => thing(it.t, s)} />
+          ))}
+        </div>
 
-      {/* Two baskets, no names: the child decides what goes where */}
-      <div style={{ width:'100%', maxWidth:700, display:'grid', gridTemplateColumns:'1fr 1fr', gap:'clamp(8px,2.4vw,20px)' }}>
-        {FREE_TINT.map((c, b) => (
-          <motion.div key={b} role="button" tabIndex={0}
-            aria-label={b === 0 ? 'Linker Korb' : 'Rechter Korb'}
-            onClick={() => put(b)}
-            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); put(b) } }}
-            whileTap={!guess && sel !== null ? { scale:0.97 } : {}}
-            style={{
-              minHeight:'clamp(150px,26vw,220px)', minWidth:0, cursor: guess || sel === null ? 'default' : 'pointer',
-              background:c.bg, border:`3px solid ${INK}`, borderRadius:14,
-              boxShadow:`inset 0 -6px 0 ${c.ring}33, ${ZONE_DROP}`,
-              display:'flex', flexDirection:'column', alignItems:'center', gap:8,
-              padding:'clamp(8px,1.5vw,14px) 6px',
-            }}>
-            <span style={{ fontSize:'clamp(34px,6.5vw,48px)', lineHeight:1 }}>{'🧺'}</span>
-            <span style={{ display:'flex', flexWrap:'wrap', gap:6, justifyContent:'center' }}>
-              <AnimatePresence>
-                {things.map((t, i) => where[i] === b && (
-                  <motion.button key={t.emoji} onClick={e => pick(i, e)} aria-label={t.name}
-                    initial={{ scale:0, y:-10 }} animate={{ scale:1, y:0 }} exit={{ scale:0 }}
-                    transition={{ type:'spring', stiffness:420, damping:18 }}
-                    disabled={!!guess}
-                    style={{ minWidth:44, minHeight:44, padding:2, borderRadius:10, cursor: guess ? 'default' : 'pointer',
-                      background: sel === i ? '#FFF0B8' : 'transparent', border: sel === i ? `3px solid ${INK}` : '3px solid transparent',
-                      display:'flex', alignItems:'center', justifyContent:'center', fontSize:'clamp(28px,5.5vw,40px)', lineHeight:1 }}>
-                    {t.emoji}
-                  </motion.button>
-                ))}
-              </AnimatePresence>
-            </span>
-          </motion.div>
-        ))}
+        {/* the belt with what is left, then "Fertig" / "Weiter" in its place */}
+        <Belt rolls={where.filter(w => w !== null).length}>
+          <div style={{ padding: '4px 0 50px', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'flex-end', gap: '4px 10px' }}>
+            {things.map((t, i) => where[i] === null && <div key={t.emoji}>{thing(t, 76)}</div>)}
+            {allIn && !guess && (
+              <motion.button key="check" initial={{ scale: 0 }} animate={{ scale: 1 }} whileTap={{ scale: 0.94 }}
+                onClick={check} {...hearable('Fertig')} aria-label="Fertig"
+                style={{ ...pxButton('green'), padding: '8px 34px', minHeight: 52, fontSize: 21 }}>
+                {'✅ Fertig!'}
+              </motion.button>
+            )}
+            {guess && (
+              <motion.button key="next" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.4 }} whileTap={{ scale: 0.94 }}
+                onClick={onDone} {...hearable('Weiter')} aria-label="Weiter"
+                style={{ ...pxButton('green'), padding: '8px 40px', minHeight: 52, fontSize: 21 }}>
+                {'Weiter! ➡️'}
+              </motion.button>
+            )}
+          </div>
+        </Belt>
       </div>
-
-      {/* Fixed slot: "Fertig" when everything is in a basket, then "Weiter" */}
-      <div style={{ height:62, display:'flex', alignItems:'center', justifyContent:'center' }}>
-        {allIn && !guess && (
-          <motion.button key="check" initial={{ scale:0 }} animate={{ scale:1 }} whileTap={{ scale:0.94 }}
-            onClick={check} {...hearable('Fertig')} aria-label="Fertig"
-            style={{ ...pxButton('green'), padding:'10px 34px', minHeight:52, fontSize:'clamp(17px,3.4vw,21px)' }}>
-            {'✅ Fertig!'}
-          </motion.button>
-        )}
-        {guess && (
-          <motion.button key="next" initial={{ scale:0 }} animate={{ scale:1 }} transition={{ delay:0.4 }} whileTap={{ scale:0.94 }}
-            onClick={onDone} {...hearable('Weiter')} aria-label="Weiter"
-            style={{ ...pxButton('green'), padding:'10px 40px', minHeight:52, fontSize:'clamp(17px,3.4vw,21px)' }}>
-            {'Weiter! ➡️'}
-          </motion.button>
-        )}
-      </div>
-    </div>
+    </DragArea>
   )
 }
 
 export default function SortGame({ level = 1, onComplete }) {
   const [{ cats, items }] = useState(() => buildRound(level))
-  const [curIdx,   setCurIdx]   = useState(0)
-  const [sorted,   setSorted]   = useState(() => cats.map(() => []))
-  // Which basket the item actually belonged to, shown after a mis-sort.
-  const [revealCat, setRevealCat] = useState(null)
-  const [fly,      setFly]      = useState(null)    // { cat, dx, dy } while the item flies in
-  const [feedback, setFeedback] = useState(null)    // 'ok' | 'wrong'
-  const [mood,     setMood]     = useState('happy')
-  const [phase,    setPhase]    = useState('playing')
-  const missed     = useRef(new Set())               // items that needed more than one try
-  const final      = useRef(null)                     // the level's result, kept through the bonus round
-  const itemRef    = useRef(null)
-  const basketRefs = useRef([])
-  const busy       = useRef(false)
+  const [curIdx, setCurIdx] = useState(0)
+  const [sorted, setSorted] = useState(() => cats.map(() => []))
+  const [moods,  setMoods]  = useState(() => cats.map(() => 'idle'))
+  const [phase,  setPhase]  = useState('playing')    // playing | done | free
+  const [busy,   setBusy]   = useState(false)        // the belt is moving on
+  const paused   = usePaused()
+  const missed   = useRef(new Set())                  // things that needed more than one try
+  const final    = useRef(null)                       // the level's result, kept through the bonus round
+  const monsters = useRef([])
+  const timers   = useRef([])
+  const moodT    = useRef([])
+  const [bursts, burst] = useBursts()
+  const [rowRef, mw] = useMonsterWidth(cats.length)
   const total   = items.length
   const current = items[curIdx] ?? null
 
-  const sortItem = useCallback((target) => {
-    if (!current || busy.current || phase !== 'playing') return
-    busy.current = true
-    const c = cats[current.cat]
-    const sentence = `${cap(current.name)} ${c.says}.`
+  const later = (fn, ms) => timers.current.push(setTimeout(fn, ms))
+  useEffect(() => () => { timers.current.forEach(clearTimeout); moodT.current.forEach(clearTimeout) }, [])
 
-    if (current.cat === target) {
-      sfx.correct()
-      setFeedback('ok')
-      setMood('excited')
-      // fly into the basket that was tapped; `k` undoes the FitBox scale,
-      // the measured rects are on screen, the motion is in the game's units
-      const from = itemRef.current?.getBoundingClientRect()
-      const to   = basketRefs.current[target]?.getBoundingClientRect()
-      const k    = from?.width ? itemRef.current.offsetWidth / from.width : 1
-      setFly(from && to
-        ? { cat: target, dx: (to.left + to.width / 2 - (from.left + from.width / 2)) * k, dy: (to.top + to.height / 2 - (from.top + from.height / 2)) * k }
-        : { cat: target, dx: 0, dy: 120 })
-      const next = items[curIdx + 1]
-      lockPreviews()
-      sayRight(next ? `${sentence} Und jetzt: ${next.name}.` : sentence)
-      setTimeout(() => {
-        setSorted(prev => prev.map((list, i) => (i === target ? [...list, current] : list)))
-        setFly(null)
-        setFeedback(null)
-        setMood('happy')
-        busy.current = false
-        if (!next) {
-          final.current = result(total - missed.current.size, total)
-          setPhase('done')
-          sfx.complete()
-          afterNarration(() => {
-            narrate([{ text: 'Geschafft! Alles ist sortiert. Möchtest du jetzt selbst sortieren, ganz wie du willst? Dann tippe auf den Korb. Sonst tippe auf den Pfeil.' }])
-          }, { minMs: 300 })
-        } else {
-          setCurIdx(curIdx + 1)
-        }
-      }, 650)
-    } else {
-      // The item stays and can be sorted again, but it no longer counts as
-      // right on the first try — before, every level ended "Alles richtig!".
-      missed.current.add(current.id)
-      sfx.wrong()
-      setFeedback('wrong')
-      setMood('encouraging')
-      setRevealCat(current.cat)
-      sayWrong(sentence)
-      setTimeout(() => {
-        setFeedback(null)
-        setRevealCat(null)
-        setMood('happy')
-        busy.current = false
-      }, 1300)
-    }
-  }, [current, cats, items, curIdx, phase, total])
+  // A monster's mood, back to idle after `ms`
+  const setMood = useCallback((i, m, ms = 1200) => {
+    clearTimeout(moodT.current[i])
+    setMoods(list => list.map((x, j) => (j === i ? m : x)))
+    if (ms) moodT.current[i] = setTimeout(() => setMoods(list => list.map((x, j) => (j === i ? 'idle' : x))), ms)
+  }, [])
 
-  // Keyboard for desktop: ← first basket, → last, ↓ the middle one
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === 'ArrowLeft')  { e.preventDefault(); sortItem(0) }
-      if (e.key === 'ArrowRight') { e.preventDefault(); sortItem(cats.length - 1) }
-      if (e.key === 'ArrowDown' && cats.length === 3) { e.preventDefault(); sortItem(1) }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [sortItem, cats.length])
+  const task = cur => `Die Korbmonster sammeln: ${cats.map(c => c.label).join(' und ')}. Wer bekommt ${cur.name}?`
 
   // The task, then the first thing by name
   useEffect(() => {
     lockPreviews()
-    const id = setTimeout(() => sayTask(`Was gehört wohin? ${cats.map(c => c.label).join(' oder ')}? Das ist ${items[0].name}.`), 400)
+    const id = setTimeout(() => sayTask(task(items[0])), 400)
     return () => clearTimeout(id)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const sayItem = () => current && narrate([{ text: `${cap(current.name)}.` }], { skipIfSame: true })
-  const three = cats.length === 3
+  // A thing given to monster `target`: taken if it belongs there
+  const give = (target, it) => {
+    if (!current || it.id !== current.id) return false
+    const sentence = `${cap(it.name)} ${cats[it.cat].says}.`
+
+    if (it.cat !== target) {
+      // It goes back onto the belt and can be given again, but no longer
+      // counts as right on the first try.
+      missed.current.add(it.id)
+      setMood(target, 'bah', 1300)
+      later(() => setMood(it.cat, 'point', 1400), 450)
+      sayWrong(sentence)
+      return false
+    }
+
+    sfx.pop()
+    setSorted(prev => prev.map((list, i) => (i === target ? [...list, it] : list)))
+    setMood(target, 'happy', 900)
+    burst(monsters.current[target], 'stars')
+    // now and then a full basket burps (a surprise, not a reward)
+    if (Math.random() < 0.2) later(() => { sfx.burp(); setMood(target, 'burp', 900) }, 950)
+    const next = items[curIdx + 1]
+    sayRight(next ? `${sentence} Und jetzt: ${next.name}.` : sentence)
+    setCurIdx(curIdx + 1)
+    if (next) {
+      setBusy(true)
+      later(() => setBusy(false), 650)
+    } else {
+      final.current = result(total - missed.current.size, total)
+      later(() => {
+        setPhase('done')
+        sfx.complete()
+        cats.forEach((_, i) => setMood(i, 'dance', 3600))
+        afterNarration(() => {
+          narrate([{ text: 'Geschafft! Alles ist sortiert. Möchtest du jetzt selbst sortieren, ganz wie du willst? Dann tippe auf den Korb. Sonst tippe auf den Pfeil.' }])
+        }, { minMs: 300 })
+      }, 900)
+    }
+    return true
+  }
 
   if (phase === 'free') return <FreeSort onDone={() => onComplete(final.current)} />
 
+  const queue = items.slice(curIdx, curIdx + 3)
+
   return (
-    <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', padding:'clamp(10px,2vw,20px) clamp(12px,3vw,28px)', gap:'clamp(10px,1.8vw,16px)', userSelect:'none' }}>
-
-      {/* Progress bar */}
-      <div style={{ display:'flex', gap:4, width:'100%', maxWidth:700 }}>
-        {items.map((_, i) => (
-          <div key={i} style={{ flex:1, ...pxSegment(i < curIdx || phase === 'done' ? 'done' : i === curIdx ? 'current' : 'todo'), transition:'background 0.3s' }} />
-        ))}
-      </div>
-
-      {/* Lumi */}
-      <div style={{ display:'flex', alignItems:'center', gap:12, width:'100%', maxWidth:700 }}>
-        <LumiCharacter mood={mood} size={66} />
-        <div style={{ flex:1, ...pxBubble, padding:'10px 16px', fontFamily:'var(--font-heading)', fontSize:'clamp(15px,3vw,20px)', color:'var(--text-primary)' }}>
-          {phase === 'done' ? '🎉 Geschafft! Alles ist sortiert.' : `Wohin gehört ${current?.name}?`}
+    <DragArea disabled={paused || busy || phase !== 'playing'}>
+      <SayPicked name={id => items.find(it => it.id === id).name} />
+      <div style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 16px 0', gap: 6, userSelect: 'none' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', maxWidth: 760 }}>
+          <RoundTrail total={total} done={curIdx} walker="🐭" goal="🧀" style={{ flex: 1 }} />
+          <HearOptions items={[current ? task(current) : cats.map(c => c.label).join(' und ')]} label="Aufgabe anhören" size={52} />
         </div>
-        <HearOptions items={cats.map(c => c.label)} label="Körbe vorlesen" size={48} />
-      </div>
 
-      {/* The thing to sort — tap it to hear its name again */}
-      <div style={{ width:'clamp(116px,24vw,168px)', height:'clamp(116px,24vw,168px)', position:'relative', zIndex:10 }}>
-        <AnimatePresence mode="wait">
-          {current && phase === 'playing' && (
-            <motion.button
-              key={current.id}
-              ref={itemRef}
-              onClick={sayItem}
-              aria-label={current.name}
-              initial={{ scale:0, opacity:0, x:0, y:0 }}
-              animate={
-                fly ? { x: fly.dx, y: fly.dy, scale:0.35, opacity:0 } :
-                feedback === 'wrong' ? { x:[0,-20,20,-16,16,-10,10,-5,5,0], y:0, scale:1, opacity:1 } :
-                { scale:1, opacity:1, x:0, y:0 }
-              }
-              exit={{ scale:0, opacity:0, transition:{ duration:0.12 } }}
-              transition={feedback === 'wrong' ? { duration:0.55, ease:'easeInOut' } : { type:'spring', stiffness:300, damping:26 }}
-              style={{
-                width:'100%', height:'100%', padding:0, cursor:'pointer',
-                ...pxCard(feedback === 'wrong' ? 'wrong' : feedback === 'ok' ? 'right' : undefined),
-                borderRadius:14,
-                display:'flex', alignItems:'center', justifyContent:'center',
-                fontSize:'clamp(60px,13vw,100px)', lineHeight:1,
-              }}
-            >
-              {current.emoji}
-            </motion.button>
-          )}
-        </AnimatePresence>
-      </div>
+        {/* the monsters, each with the sign of what it collects */}
+        <div ref={rowRef} style={{ flex: 1, minHeight: 0, width: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 18 }}>
+          {cats.map((c, i) => (
+            <MonsterZone key={c.label} id={`cat${i}`} width={mw} onDrop={it => give(i, it)}
+              monsterRef={el => { monsters.current[i] = el }}
+              label={c.label} say={`${c.label}!`}
+              tint={c} sign={{ emoji: c.emoji, label: c.label }} look={i} mood={moods[i]} items={sorted[i]} />
+          ))}
+        </div>
 
-      {/* Baskets — tap the one it belongs in */}
-      <div style={{ width:'100%', maxWidth:700, display:'grid', gridTemplateColumns:`repeat(${cats.length}, 1fr)`, gap:'clamp(8px,2.4vw,20px)' }}>
-        {cats.map((c, i) => {
-          const revealed = revealCat === i
-          const target   = fly?.cat === i
-          return (
-            <motion.button
-              key={c.label}
-              ref={el => { basketRefs.current[i] = el }}
-              whileTap={{ scale:0.96 }}
-              onClick={() => sortItem(i)}
-              aria-label={c.label}
-              {...hearable(c.label)}
-              animate={revealed ? { scale:[1, 1.05, 1, 1.05, 1] } : { scale:1 }}
-              transition={{ duration:0.9 }}
-              style={{
-                minHeight:'clamp(150px,26vw,220px)', minWidth:0, cursor:'pointer',
-                background:c.bg, border:`3px solid ${INK}`, borderRadius:14,
-                boxShadow: revealed ? `inset 0 0 0 5px ${c.ring}, 0 0 0 4px ${c.ring}, ${ZONE_DROP}`
-                         : target   ? `inset 0 0 0 5px ${c.ring}, ${ZONE_DROP}`
-                         : `inset 0 -6px 0 ${c.ring}33, ${ZONE_DROP}`,
-                display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', gap:6,
-                padding:'clamp(8px,1.5vw,14px) 6px',
-                transition:'box-shadow 0.2s',
-                color:INK,
-              }}
-            >
-              <span style={{ fontSize: three ? 'clamp(30px,6vw,44px)' : 'clamp(34px,6.5vw,48px)', lineHeight:1 }}>{c.emoji}</span>
-              <span style={{ fontFamily:'var(--font-heading)', fontSize: three ? 'clamp(14px,3.2vw,22px)' : 'clamp(17px,3.8vw,26px)', fontWeight:700, lineHeight:1.15, textAlign:'center', overflowWrap:'anywhere' }}>
-                {c.label}
-              </span>
-              <span style={{ display:'flex', flexWrap:'wrap', gap:4, justifyContent:'center' }}>
-                <AnimatePresence>
-                  {sorted[i].map(it => (
-                    <motion.span key={it.id} initial={{ scale:0, y:-10 }} animate={{ scale:1, y:0 }} transition={{ type:'spring', stiffness:420, damping:18 }}
-                      style={{ fontSize: three ? 'clamp(22px,4.6vw,34px)' : 'clamp(26px,5.5vw,40px)', lineHeight:1 }}>
-                      {it.emoji}
-                    </motion.span>
-                  ))}
-                </AnimatePresence>
-              </span>
-            </motion.button>
-          )
-        })}
-      </div>
+        {/* the belt: the front thing can be picked up, the next ones wait */}
+        <Belt rolls={curIdx} height={BIG + 52}>
+          <AnimatePresence>
+            {phase === 'playing' && queue.map((it, i) => (
+              <motion.div key={it.id} initial={{ x: 640 }} animate={{ x: i * GAP - BIG / 2, scale: i ? 0.72 : 1, opacity: i ? 0.9 : 1 }}
+                exit={{ opacity: 0, transition: { duration: 0.1 } }} transition={{ type: 'spring', stiffness: 170, damping: 22 }}
+                style={{ position: 'absolute', left: '50%', bottom: 40, width: BIG, height: BIG, transformOrigin: '50% 100%' }}>
+                {i === 0
+                  ? <Draggable id={it.id} data={it} label={it.name}><Art art={it.emoji} size={BIG} /></Draggable>
+                  : <Art art={it.emoji} size={BIG} />}
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </Belt>
 
-      {/* Done */}
+      {/* Done: on to the stars, or sort any way you like (not rated) */}
       <AnimatePresence>
         {phase === 'done' && (
-          <motion.div
-            initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
-            style={{ position:'fixed', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(42,27,61,0.25)', zIndex:50 }}
-          >
-            <motion.div initial={{ scale:0.7 }} animate={{ scale:1 }}
-              style={{ ...pxPanel, padding:'24px clamp(16px,4vw,36px)', margin:16, display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
-              <div style={{ fontSize:72, lineHeight:1 }}>{'🎉'}</div>
-              <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(26px,7vw,44px)', fontWeight:800, color:INK }}>
-                {'Geschafft!'}
-              </div>
-              {/* Bonus: sort any way you like (not rated) — or on to the stars */}
-              <div style={{ display:'flex', gap:12, flexWrap:'wrap', justifyContent:'center', marginTop:6 }}>
-                <motion.button whileTap={{ scale:0.94 }} onClick={() => setPhase('free')}
-                  {...hearable('Selbst sortieren')} aria-label="Selbst sortieren"
-                  style={{ ...pxButton('gold'), padding:'10px 20px', minHeight:52, fontSize:'clamp(16px,3.2vw,20px)' }}>
-                  {'🧺 Selbst sortieren'}
-                </motion.button>
-                <motion.button whileTap={{ scale:0.94 }} onClick={() => onComplete(final.current)}
-                  {...hearable('Weiter')} aria-label="Weiter"
-                  style={{ ...pxButton('green'), padding:'10px 28px', minHeight:52, fontSize:'clamp(16px,3.2vw,20px)' }}>
-                  {'Weiter ➡️'}
-                </motion.button>
-              </div>
-            </motion.div>
+          <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}
+            style={{ position: 'absolute', left: 0, right: 0, bottom: 18, display: 'flex', justifyContent: 'center', zIndex: 5 }}>
+            <div style={{ ...pxPanel, padding: '12px 18px', display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' }}>
+              <motion.button whileTap={{ scale: 0.94 }} onClick={() => setPhase('free')}
+                {...hearable('Selbst sortieren')} aria-label="Selbst sortieren"
+                style={{ ...pxButton('gold'), padding: '10px 20px', minHeight: 56, fontSize: 20 }}>
+                {'🧺 Selbst sortieren'}
+              </motion.button>
+              <motion.button whileTap={{ scale: 0.94 }} onClick={() => onComplete(final.current)}
+                {...hearable('Weiter')} aria-label="Weiter"
+                style={{ ...pxButton('green'), padding: '10px 28px', minHeight: 56, fontSize: 20 }}>
+                {'Weiter ➡️'}
+              </motion.button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+      </div>
+      {bursts}
+    </DragArea>
   )
 }
