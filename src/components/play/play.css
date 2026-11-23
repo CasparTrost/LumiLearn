@@ -1,0 +1,54 @@
+/* Play kit (components/play): the moving backdrops, characters and bursts.
+   Everything that moves by itself is a CSS animation, so a tablet keeps
+   60 fps; all of it stops for prefers-reduced-motion. */
+
+.pl-scene { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.pl-scene svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.pl-scene .pl-tap { pointer-events: auto; cursor: pointer; }
+
+@keyframes pl-drift   { from { transform: translateX(-260px); } to { transform: translateX(1260px); } }
+@keyframes pl-sway    { 0%,100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+@keyframes pl-bob     { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes pl-rise    { from { transform: translateY(0); opacity: 0; } 10% { opacity: .8; } to { transform: translateY(-640px); opacity: 0; } }
+@keyframes pl-twinkle { 0%,100% { opacity: .25; } 50% { opacity: 1; } }
+@keyframes pl-blink   { 0%,92%,100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
+@keyframes pl-spin    { to { transform: rotate(360deg); } }
+@keyframes pl-fly     { 0% { transform: translate(-120px, 0); } 25% { transform: translate(250px, -40px); } 50% { transform: translate(550px, 10px); } 75% { transform: translate(850px, -50px); } 100% { transform: translate(1150px, 0); } }
+@keyframes pl-flap    { 0%,100% { transform: scaleY(1); } 50% { transform: scaleY(0.3); } }
+@keyframes pl-swim    { from { transform: translateX(-160px); } to { transform: translateX(1160px); } }
+@keyframes pl-cheer   { 0% { transform: scale(1); } 30% { transform: scale(1.18) rotate(-6deg); } 60% { transform: scale(0.96) rotate(4deg); } 100% { transform: scale(1); } }
+@keyframes pl-hop     { 0%,100% { transform: translateY(0); } 40% { transform: translateY(-18px); } }
+@keyframes pl-comet   { 0% { transform: translate(1100px, -60px); opacity: 0; } 5% { opacity: 1; } 30% { transform: translate(-200px, 360px); opacity: 0; } 100% { transform: translate(-200px, 360px); opacity: 0; } }
+@keyframes pl-glow    { 0%,100% { opacity: .35; } 50% { opacity: .9; } }
+
+.pl-drift   { animation: pl-drift linear infinite; }
+.pl-sway    { animation: pl-sway 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
+.pl-bob     { animation: pl-bob 3s ease-in-out infinite; }
+.pl-rise    { animation: pl-rise linear infinite; }
+.pl-twinkle { animation: pl-twinkle 2.4s ease-in-out infinite; }
+.pl-blink   { animation: pl-blink 4.5s infinite; transform-box: fill-box; transform-origin: center; }
+.pl-spin    { animation: pl-spin 40s linear infinite; transform-box: fill-box; transform-origin: center; }
+.pl-fly     { animation: pl-fly 16s linear infinite; }
+.pl-flap    { animation: pl-flap .35s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+.pl-swim    { animation: pl-swim linear infinite; }
+.pl-comet   { animation: pl-comet 11s ease-in infinite; }
+.pl-glow    { animation: pl-glow 2.6s ease-in-out infinite; }
+
+/* A right answer anywhere: the sun, the moon and the flowers cheer along */
+.pl-cheerable { transform-box: fill-box; transform-origin: center; }
+.pl-scene[data-cheer='1'] .pl-cheerable { animation: pl-cheer .7s ease-out; }
+.pl-scene[data-cheer='1'] .pl-hopper    { animation: pl-hop .5s ease-out; transform-box: fill-box; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pl-scene *, .pl-critter, .pl-critter * { animation: none !important; }
+}
+
+/* Characters */
+.pl-critter { position: relative; display: inline-flex; align-items: flex-end; justify-content: center; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+.pl-critter img { pointer-events: none; -webkit-user-drag: none; }
+
+/* Drag and drop */
+.pl-drag { touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; }
+.pl-drag[data-picked='1'] { outline: 4px solid #ffc93c; outline-offset: 3px; border-radius: 14px; }
+.pl-drag:focus-visible, .pl-drop:focus-visible { outline: 4px solid #4aa3ff; outline-offset: 3px; border-radius: 14px; }
+.pl-ghost { position: fixed; left: 0; top: 0; z-index: 9999; pointer-events: none; will-change: transform; filter: drop-shadow(0 10px 6px rgba(42,27,61,.3)); }

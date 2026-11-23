@@ -17,8 +17,8 @@
  *    try; after two rounds under 40 % on the same level Lumi suggests the
  *    level before. The child can still pick any open level itself.
  *
- * 3. A daily journey with an end ("Reise mit Lumi"). A few short stations
- *    instead of a wall of 25 games (too many choices overwhelm young
+ * 3. A daily plan with an end ("Lumis Ideen", one after the other). A few games
+ *    instead of a wall of 25 (too many choices overwhelm young
  *    children: Iyengar & Lepper 2000), mixed from different worlds
  *    (interleaving: Rohrer & Taylor 2007), opened with an easy review so
  *    the day starts with a success (self-efficacy, Bandura 1977), with a

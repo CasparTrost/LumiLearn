@@ -6,7 +6,7 @@
  * this text, cut to the speech and brought to the loudness of the older
  * recordings (-17 LUFS, ffmpeg silenceremove + loudnorm, mono 96 kbit/s).
  *
- *   narrate([line('ergebnis/station')])     // { src, text }
+ *   narrate([line('ergebnis/meister')])     // { src, text }
  *
  * Change a text here and the recording no longer fits: make it again.
  * The text is also what the browser voice says if the file can't be played.
@@ -62,16 +62,6 @@ export const LINES = {
   'begruessung/abend': 'Guten Abend! Schön, dass du da bist.',
   'begruessung/neu': 'Hallo! Ich bin Lumi. Ich freue mich, dass wir zusammen spielen.',
   'begruessung/wieder-da': 'Schön, dass du wieder da bist!',
-  // reise
-  'reise/start': 'Heute gehen wir zusammen auf eine Reise! Wir spielen vier Spiele, und dazwischen bewegen wir uns. Am Ende wartet eine Schatztruhe. Tippe auf die leuchtende Station!',
-  'reise/weiter': 'Weiter geht\'s! Tippe auf die leuchtende Station.',
-  'reise/zur-truhe': 'Du hast alle Stationen geschafft! Tippe auf die Schatztruhe!',
-  'reise/geschafft': 'Die Reise für heute ist geschafft! Morgen geht es weiter.',
-  'reise/truhe-zu': 'Die Schatztruhe öffnet sich, wenn du alle Stationen geschafft hast.',
-  'reise/neuer-sticker': 'Wow! Ein neuer Sticker für dein Album! Morgen geht die Reise weiter.',
-  'reise/album': 'Dein Sticker-Album! Für jede Reise mit Lumi gibt es einen neuen Sticker.',
-  'reise/album-leer': 'Dein Sticker-Album ist noch leer. Am Ende jeder Reise mit Lumi gibt es einen Sticker aus der Schatztruhe!',
-  'reise/sticker-fehlt': 'Den hast du noch nicht. Vielleicht ist er bald in der Schatztruhe!',
   // bewegung
   'bewegung/frosch': 'Spring wie ein Frosch! Fünfmal. Los geht\'s!',
   'bewegung/baum': 'Streck dich ganz hoch, wie ein großer Baum! Die Arme nach oben, so hoch du kannst.',
@@ -109,20 +99,6 @@ export const LINES = {
   'ergebnis/nochmal': 'Versuch es noch einmal.',
   'ergebnis/ueben': 'Noch einmal üben, dann wirst du richtig sicher.',
   'ergebnis/leichter': 'Probier mal das leichtere Level. Das macht dich sicherer, und dann geht es weiter.',
-  'ergebnis/station': 'Station geschafft! Weiter geht die Reise.',
-  'ergebnis/letzte-station': 'Das war die letzte Station! Jetzt wartet die Schatztruhe auf dich.',
-  'ergebnis/tagesaufgabe': 'Du hast eine Tagesaufgabe geschafft!',
-  'ergebnis/tagesaufgaben': 'Du hast Tagesaufgaben geschafft!',
-  'ergebnis/neues-tier': 'Ein neues Tier zieht auf deinen Hof!',
-  // tagesaufgaben
-  'tagesaufgaben/aufgabe-play3': 'Spiel heute drei Runden.',
-  'tagesaufgaben/aufgabe-stars3': 'Hol drei Sterne in einem Spiel.',
-  'tagesaufgaben/aufgabe-play2diff': 'Spiel heute zwei verschiedene Spiele.',
-  'tagesaufgaben/aufgabe-level3': 'Schaffe heute drei Level.',
-  'tagesaufgaben/aufgabe-newgame': 'Probier ein Spiel aus, das du noch nicht kennst.',
-  'tagesaufgaben/aufgabe-world-zahlen': 'Spiel etwas aus der Zahlen-Welt.',
-  'tagesaufgaben/aufgabe-world-buchstaben': 'Spiel etwas aus der Buchstaben-Welt.',
-  'tagesaufgaben/aufgabe-geschafft': 'Geschafft! Super!',
   // hilfe
   'hilfe/hilfe-number-intro': 'Zahlen entdecken. Lumi sagt dir eine Zahl. Tippe genau so viele Dinge an. Jedes Mal, wenn du tippst, zählt Lumi mit. Bist du fertig, tippe auf Fertig.',
   'hilfe/hilfe-letter-intro': 'ABC-Abenteuer. Ein Buchstabe kommt groß ins Bild, und Lumi erzählt dir etwas über ihn. Dann tippst du auf das Bild, dessen Wort mit diesem Buchstaben anfängt.',

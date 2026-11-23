@@ -7,12 +7,3 @@ export function startStop(dispatch, journey, idx) {
   else dispatch({ type: 'START_GAME', payload: { moduleId: stop.moduleId, level: stop.level, journeyStop: idx } })
   return true
 }
-
-// What a stop is, in words a child hears
-export const STOP_LABEL = {
-  warmup: 'Aufwärmen',
-  learn:  'Üben',
-  new:    'Neu!',
-  review: 'Wiederholen',
-  move:   'Bewegen',
-}

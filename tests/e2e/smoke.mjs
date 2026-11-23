@@ -1,6 +1,6 @@
 // Browser smoke test against a production build (npm run build; npx vite preview).
 // Fresh child on a phone through onboarding; every game opened at phone,
-// tablet and desktop size; one game played to the results; the journey to the treasure chest; the app and
+// tablet and desktop size; one game played to the results; Lumi's ideas to the sticker; the app and
 // unopened games started again without a network. Fails on page
 // errors, pictures that don't load, sideways scrolling and buttons off the
 // screen.
@@ -93,11 +93,8 @@ for (const [size, dim] of Object.entries(SIZES)) {
   await page.context().close()
 }
 
-// 3. One game to the end: the shadow riddle, answered from the picture shown
-{
-  const page = await newPage(SIZES.phone, save)
-  await page.goto(URL); await page.waitForTimeout(1500)
-  await page.getByRole('button', { name: /^Schattenrätsel, Level/ }).last().click(); await page.waitForTimeout(2000)
+// Plays the shadow riddle to the results, answering from the picture shown
+async function playShadows(page) {
   for (let round = 0; round < 12; round++) {
     const target = await page.evaluate(() => [...document.querySelectorAll('img.emo')]
       .sort((a, b) => b.getBoundingClientRect().width - a.getBoundingClientRect().width)[0]?.src.split('/').pop())
@@ -107,6 +104,14 @@ for (const [size, dim] of Object.entries(SIZES)) {
     if (await next.count()) { await next.first().click(); await page.waitForTimeout(1500) }
   }
   await page.waitForTimeout(2500)
+}
+
+// 3. One game to the end
+{
+  const page = await newPage(SIZES.phone, save)
+  await page.goto(URL); await page.waitForTimeout(1500)
+  await page.getByRole('button', { name: /^Schattenrätsel, Level/ }).last().click(); await page.waitForTimeout(2000)
+  await playShadows(page)
   const text = await page.evaluate(() => document.body.innerText)
   if (!/8 von 8 gleich beim ersten Mal richtig/.test(text)) problems.push(`full game: results not as expected: ${text.slice(0, 120).replace(/\n/g, ' | ')}`)
   await check(page, 'results')
@@ -114,30 +119,32 @@ for (const [size, dim] of Object.entries(SIZES)) {
   await page.context().close()
 }
 
-// 4. Today's journey: the movement break, the treasure chest, the album
+// 4. Lumi's ideas for today: the last idea from the home screen, the
+// movement break the results suggest, the sticker, the album
 {
   const p2 = n => String(n).padStart(2, '0')
   const d = new Date(), today = `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`
   const stops = [{ kind: 'warmup', moduleId: 'number-intro', level: 1 }, { kind: 'new', moduleId: 'letter-intro', level: 1 },
-    { kind: 'move' }, { kind: 'new', moduleId: 'emotions', level: 1 }, { kind: 'new', moduleId: 'trace', level: 1 }]
+    { kind: 'move' }, { kind: 'new', moduleId: 'emotions', level: 1 }, { kind: 'new', moduleId: 'shadows', level: 1 }]
   const seeded = structuredClone(save)
-  seeded.profiles.p1.journey = { date: today, stops, done: [0, 1, 3, 4], chest: null }
+  seeded.profiles.p1.journey = { date: today, stops, done: [0, 1, 3], chest: null }
   const page = await newPage(SIZES.phone, seeded)
   try {
     await page.goto(URL); await page.waitForTimeout(1500)
-    await check(page, 'journey home')
-    await page.click('[data-stop="2"]', { force: true }); await page.waitForTimeout(1200)
+    await check(page, 'ideas home')
+    await page.getByRole('button', { name: /^Lumis Idee: Schattenrätsel/ }).click(); await page.waitForTimeout(2000)
+    await playShadows(page)
+    await check(page, 'ideas results')
+    await page.getByRole('button', { name: /Bewegungspause/ }).click(); await page.waitForTimeout(1200)
     await check(page, 'movement break')
     await page.getByRole('button', { name: 'Überspringen' }).click(); await page.waitForTimeout(1000)
-    await page.getByRole('button', { name: /Weiter auf der Reise/ }).click(); await page.waitForTimeout(1500)
-    await page.click('[data-chest]', { force: true }); await page.waitForTimeout(1500)
-    await page.getByRole('button', { name: 'Toll!' }).click(); await page.waitForTimeout(500)
-    await page.click('[data-chest]', { force: true }); await page.waitForTimeout(1200)
-    await check(page, 'album')
+    await page.getByRole('button', { name: /Weiter spielen/ }).click(); await page.waitForTimeout(1500)
     const got = await page.evaluate(() => JSON.parse(localStorage.getItem('lumilearn_save')).profiles.p1.stickers?.length)
-    if (got !== 1) problems.push(`journey: ${got} stickers after the chest, expected 1`)
-  } catch (e) { problems.push(`journey: ${String(e).split('\n')[0]}`) }
-  problems.push(...page.errors.map(e => `journey: ${e}`))
+    if (got !== 1) problems.push(`ideas: ${got} stickers after all ideas, expected 1`)
+    await page.getByRole('button', { name: /^Mein Album/ }).first().click(); await page.waitForTimeout(1200)
+    await check(page, 'album')
+  } catch (e) { problems.push(`ideas: ${String(e).split('\n')[0]}`) }
+  problems.push(...page.errors.map(e => `ideas: ${e}`))
   await page.context().close()
 }
 

@@ -19,14 +19,16 @@ function reviewText(p, today) {
 }
 
 export const PRINCIPLES = [
-  ['Tägliche Reise statt Spiele-Wand',
-    'Statt 25 Spiele gleichzeitig zu zeigen, plant Lumi jeden Tag eine kurze Reise: vier Spiele aus verschiedenen Bereichen und eine Bewegungspause. Zu viel Auswahl überfordert kleine Kinder (Iyengar & Lepper 2000). Gemischte Bereiche festigen das Gelernte besser als lange Blöcke vom selben (Interleaving, Rohrer & Taylor 2007). Alle Spiele bleiben unten frei wählbar.'],
+  ['Lumis Ideen statt Spiele-Wand',
+    'Statt 25 Spiele gleich laut zu zeigen, hat Lumi jeden Tag ein paar Ideen: vier Spiele aus verschiedenen Bereichen und eine Bewegungspause, immer eine nach der anderen. Zu viel Auswahl überfordert kleine Kinder (Iyengar & Lepper 2000). Gemischte Bereiche festigen das Gelernte besser als lange Blöcke vom selben (Interleaving, Rohrer & Taylor 2007). Alle Spiele bleiben in ihren Welten frei wählbar.'],
+  ['Spielen statt Abfragen',
+    'Jedes Spiel ist eine kleine Geschichte mit einer Figur, die etwas will: Das Kind füttert, baut, sortiert und hilft, statt Antwortkarten anzutippen. Lernen, das aktiv, engagiert und bedeutsam ist, wirkt am besten (Hirsh-Pasek et al. 2015).'],
   ['Wiederholen, kurz bevor es vergessen wird',
     'Jedes Spiel ist eine Fähigkeit mit einem Wiederholungsplan (1, 2, 4, 7, 14, 30 Tage). Klappt es gut, kommt es später wieder, sonst früher. Abrufen im Abstand ist eine der am besten belegten Lernstrategien (Cepeda et al. 2006; Roediger & Karpicke 2006).'],
   ['Die richtige Schwierigkeit',
     'Am meisten lernt ein Kind, wenn es etwa vier von fünf Aufgaben schafft (Wilson et al. 2019; „Zone der nächsten Entwicklung“, Wygotski). Das nächste Level wird erst nach einer Runde mit mindestens 60 % auf Anhieb vorgeschlagen; nach zwei sehr schweren Runden schlägt Lumi das leichtere Level vor.'],
   ['Mit einem Erfolg starten',
-    'Die Reise beginnt mit einer Wiederholung, die sicher klappt. Erfolgserlebnisse stärken das Zutrauen, auch Schweres zu probieren (Selbstwirksamkeit, Bandura 1977).'],
+    'Der Tag beginnt mit einer Wiederholung, die sicher klappt. Erfolgserlebnisse stärken das Zutrauen, auch Schweres zu probieren (Selbstwirksamkeit, Bandura 1977).'],
   ['Anstrengung loben, nicht Talent',
     'Lumi lobt, was das Kind getan hat („Gut überlegt!“, „Du hast nicht aufgegeben!“), nie, wie klug es ist. Prozess-Lob lässt Kinder nach Fehlern weitermachen; Lob für Klugheit macht sie vorsichtig (Mueller & Dweck 1998; Gunderson et al. 2013).'],
   ['Lumi als Begleiter',
@@ -36,14 +38,14 @@ export const PRINCIPLES = [
   ['Buchstaben mit dem Finger schreiben',
     'Buchstaben nachzuspuren verankert sie besser als nur Ansehen oder Tippen (Longcamp et al. 2005; James & Engelhardt 2012). Darum gibt es die Buchstaben-Spuren.'],
   ['Belohnung fürs Mitmachen, ein klares Ende',
-    'Den Sticker gibt es für jede geschaffte Reise, unabhängig von den Sternen: Belohnungen für Leistung können die Freude am Spiel selbst verdrängen (Deci, Koestner & Ryan 1999). Die Reise hat ein Ende („Morgen geht es weiter“), das macht das Aufhören leichter (Empfehlungen der American Academy of Pediatrics 2016).'],
+    'Den Sticker gibt es, wenn alle Ideen des Tages gespielt sind, unabhängig von den Sternen: Belohnungen für Leistung können die Freude am Spiel selbst verdrängen (Deci, Koestner & Ryan 1999). Die Ideen haben ein Ende („Morgen hat Lumi neue“), das macht das Aufhören leichter (Empfehlungen der American Academy of Pediatrics 2016).'],
 ]
 
 export const TIPS = [
   'Spielen Sie ab und zu mit, und fragen Sie: „Wie hast du das herausgefunden?“ Gemeinsames Spielen und Darüber-Reden verstärkt den Lerneffekt (Joint Media Engagement, Takeuchi & Stevens 2011).',
   'Schauen Sie zusammen das Sticker-Album an: Was ist das? Wo lebt es? Welches Geräusch macht es?',
   'Greifen Sie Gelerntes im Alltag auf: Buchstaben auf Schildern suchen, beim Tischdecken zählen, Gefühle benennen.',
-  'Eine Reise am Tag genügt. 15 bis 20 Minuten sind für Kinder dieses Alters eine gute Menge.',
+  'Lumis Ideen für einen Tag genügen. 15 bis 20 Minuten sind für Kinder dieses Alters eine gute Menge.',
 ]
 
 export default function LearningReport({ profile }) {
@@ -57,7 +59,7 @@ export default function LearningReport({ profile }) {
     <div className="px-panel" style={{ padding: '16px 14px', marginBottom: 14 }}>
       <div style={H2}>Lernbericht: {profile?.name}</div>
       <div style={{ ...SMALL, marginBottom: 10 }}>
-        🗺️ {journeys} {journeys === 1 ? 'Reise' : 'Reisen'} geschafft
+        ⭐ {journeys} {journeys === 1 ? 'Tag' : 'Tage'} mit allen Ideen geschafft
         {due.length > 0 && <> · 🔁 Heute zum Wiederholen: {due.map(m => m.title).join(', ')}</>}
       </div>
       {WORLDS.map(w => {

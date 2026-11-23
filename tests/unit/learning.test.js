@@ -173,6 +173,16 @@ describe('journey in the app state', () => {
     expect(again.profiles.p1.stickers).toHaveLength(1)
   })
 
+  it('counts a planned game the child picked freely on the home screen', () => {
+    const s = start()
+    const idx = s.profiles.p1.journey.stops.findIndex(st => st.moduleId)
+    const id = s.profiles.p1.journey.stops[idx].moduleId
+    const playing = reducer(s, { type: 'START_GAME', payload: { moduleId: id, level: 1 } })
+    const after = reducer(playing, { type: 'FINISH_GAME', payload: { moduleId: id, level: 1, stars: 3, score: 5, total: 5 } })
+    expect(after.profiles.p1.journey.done).toContain(idx)
+    expect(after.gameResult.journey).not.toBeNull()
+  })
+
   it('does not open the chest before the journey is done', () => {
     const s = reducer(start(), { type: 'OPEN_CHEST' })
     expect(s.profiles.p1.stickers).toHaveLength(0)

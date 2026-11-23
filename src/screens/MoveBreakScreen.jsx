@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useApp, todayStr } from '../AppContext.jsx'
 import { HudBar, PxIcon } from '../components/PixelUI.jsx'
 import Confetti from '../components/Confetti.jsx'
-import { journeyArt } from '../components/JourneyPath.jsx'
+import { journeyArt } from '../lib/assets.js'
 import { narrate, stopNarration } from '../narrator.js'
 import { sayNumber } from '../tts.js'
 import { sfx } from '../sfx.js'
@@ -12,8 +12,9 @@ import { nextStopIndex } from '../lib/learning.js'
 import { line } from '../lib/lumiLines.js'
 
 /**
- * The movement break in the middle of the journey: Lumi and the frog show
- * three short moves, about a minute in all, the child does them along.
+ * The movement break, which Lumi suggests after a while of playing (results
+ * screen): Lumi and the frog show three short moves, about a minute in all,
+ * and the child does them along.
  *
  * Short bursts of movement between learning tasks help young children
  * concentrate afterwards (Mahar et al. 2006; Donnelly & Lambourne 2011),
@@ -97,6 +98,8 @@ export default function MoveBreakScreen() {
       setFinished(true)
       sfx.complete()
       if (typeof idx === 'number') dispatch({ type: 'JOURNEY_STOP_DONE', payload: idx })
+      // the last of today's ideas: the sticker is in the album now
+      dispatch({ type: 'OPEN_CHEST' })
       narrate([line('bewegung/fertig')])
       return
     }
@@ -119,7 +122,7 @@ export default function MoveBreakScreen() {
     stopNarration()
     setStep(moves.length)
   }
-  // straight on to the next stop of the journey
+  // straight on to Lumi's next idea
   const goOn = () => {
     stopNarration()
     const j = profile?.journey
@@ -142,7 +145,7 @@ export default function MoveBreakScreen() {
             <motion.div key="done" initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
               <Figure pic="clap" beat={700} />
               <div className="px-title" style={{ fontSize: 'clamp(26px,5vw,40px)' }}>Super gemacht!</div>
-              <button className="px-btn px-btn--green px-btn--lg" onClick={goOn}><PxIcon name="play" size={22} /> Weiter auf der Reise</button>
+              <button className="px-btn px-btn--green px-btn--lg" onClick={goOn}><PxIcon name="play" size={22} /> Weiter spielen</button>
             </motion.div>
           ) : m && (
             <motion.div key={m.id} initial={{ x: 80, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -80, opacity: 0 }}
