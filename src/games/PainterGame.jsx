@@ -403,16 +403,14 @@ export default function PainterGame({ level = 1, onComplete }) {
     return () => clearTimeout(id)
   }, [sceneIdx]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // After the praise: the next wish, or the next customer — held while the
-  // help is open
+  // The next wish (it was already said with the praise), or after the
+  // customer moved in the next customer — held while the help is open
   useEffect(() => {
     if (!next || paused) return
     const id = setTimeout(() => {
       setNext(null)
-      if (next === 'part') {
-        sayTask(wish(parts[partIdx + 1]))
-        setPartIdx(i => i + 1)
-      } else if (sceneIdx + 1 >= scenes.length) {
+      if (next === 'part') setPartIdx(i => i + 1)
+      else if (sceneIdx + 1 >= scenes.length) {
         onComplete(result(total - missed.current.size, total))
       } else {
         setSceneIdx(i => i + 1)
@@ -420,21 +418,16 @@ export default function PainterGame({ level = 1, onComplete }) {
         setFilled({})
         setMovedIn(false)
       }
-    }, 300)
+    }, next === 'part' ? 900 : 300)
     return () => clearTimeout(id)
   }, [next, paused]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const waitThen = (what, minMs) => {
-    waiting.current?.()
-    waiting.current = afterNarration(() => setNext(what), { minMs })
-  }
 
   // A pot poured onto the picture: taken if it is the wished colour
   const pour = (color) => {
     if (!part || next) return false
     const want = getColor(part.target)
     if (color.name !== part.target) {
-      missed.current.add(`${scene.id}/${part.name}`); console.warn("MISS", color.name, part.target, part.name)
+      missed.current.add(`${scene.id}/${part.name}`)
       setFlash(Date.now())
       setSplat({ color: color.value, n: Date.now() })
       setMood('oops', 1500)
@@ -446,9 +439,10 @@ export default function PainterGame({ level = 1, onComplete }) {
     burst(easelRef.current, 'stars')
     const said = `${cap(part.name)} ${verb(part, 'ist', 'sind')} jetzt ${word(want.name)}!`
     if (partIdx + 1 < parts.length) {
+      // the next wish right away, while the paint still flows
       setMood('happy', 1200)
-      sayRight(said)
-      waitThen('part', 500)
+      sayRight(`${said} ${wish(parts[partIdx + 1])}`)
+      setNext('part')
     } else {
       // all painted: the customer moves in
       setMovedIn(true)
@@ -456,7 +450,8 @@ export default function PainterGame({ level = 1, onComplete }) {
       sfx.tada()
       setTimeout(() => burst(easelRef.current, 'confetti', 16), 700)
       sayRight(`${said} Super gemalt! ${cap(scene.thing)} ist fertig. ${scene.done}`)
-      waitThen('scene', 2200)
+      waiting.current?.()
+      waiting.current = afterNarration(() => setNext('scene'), { minMs: 2200 })
     }
     return true
   }
@@ -489,7 +484,7 @@ export default function PainterGame({ level = 1, onComplete }) {
           flex: 1, minHeight: 0, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
           flexDirection: wide ? 'row' : 'column', gap: wide ? critter * 0.4 : 8,
         }}>
-          <div style={{ width: wide ? critter * 1.2 : '100%', height: critter * (wide ? 1.9 : 1.15), flexShrink: 0, display: 'flex', alignItems: 'flex-end', justifyContent: wide ? 'center' : 'flex-start', paddingLeft: wide ? 0 : '6%' }}>
+          <div style={{ width: wide ? critter * 1.2 : '100%', height: critter * (wide ? 1.9 : 1.25), flexShrink: 0, display: 'flex', alignItems: 'flex-end', justifyContent: wide ? 'center' : 'flex-start', paddingLeft: wide ? 0 : '6%' }}>
             <AnimatePresence mode="wait">
               {!movedIn && box.w > 0 && (
                 <motion.div key={scene.id}
@@ -544,7 +539,7 @@ export default function PainterGame({ level = 1, onComplete }) {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px clamp(4px,1.2vw,14px)', justifyContent: 'center' }}>
             {palette.map(c => (
               <Draggable key={c.name} id={c.name} data={c} label={c.name}>
-                <Pot color={c.value} name={c.name} />
+                <Pot color={c.value} name={c.name} size={box.w < 420 ? 52 : 60} />
               </Draggable>
             ))}
           </div>

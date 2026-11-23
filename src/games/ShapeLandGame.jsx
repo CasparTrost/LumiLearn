@@ -629,7 +629,7 @@ function Picture({ r, found, shake, solved, onTap }) {
 // ── The photo: the family lines up from small to big ──
 // Tapped shapes hop onto the steps in order; the camera flashes at the end.
 function Photo({ r, picked, wrong, shake, solved, onPick }) {
-  const max = 'min(17vw, 120px)'
+  const max = 'min(22vw, 120px)'
   const waiting = r.items.filter(it => !picked.includes(it.id))
   const order = picked.map(id => r.items.find(it => it.id === id))
   const unit = it => `calc(${max} * ${it.size.toFixed(3)})`

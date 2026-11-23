@@ -214,13 +214,15 @@ function describeBuild(pieces) {
     : `Ich sehe ${list}. Toll gebaut!`
 }
 
+const FREE_TASK = 'Jetzt darfst du frei bauen! Tippe auf eine Form und schieb sie hin, wo du willst.'
+
 function FreeBuild({ onDone }) {
   const [pieces, setPieces] = useState([])
   const [done, setDone]     = useState(false)
   const svgRef = useRef(null)
   const drag   = useRef(null)    // { id, dx, dy, moved }
 
-  useEffect(() => { sayTask('Jetzt darfst du frei bauen! Tippe auf eine Form und schieb sie hin, wo du willst.') }, [])
+  useEffect(() => { sayTask(FREE_TASK) }, [])
 
   const toSvg = e => {
     const m = svgRef.current?.getScreenCTM()?.inverse()
@@ -457,11 +459,12 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
   const rotOf = i => (tray[i]?.rot ?? 0) + (turns[i] ?? 0)
 
   const speakTask = useCallback(() => {
+    if (freeMode) { sayTask(FREE_TASK); return }
     const extra = idx > 0 ? ''
       : rules.turn ? ' Tippe auf den Pfeil, dann dreht sich ein Teil.'
       : rules.distractor ? ' Ein Teil gehört nicht dazu.' : ''
     sayTask(`Baue ${art(fig, 'akk')} ${fig.name}! Zieh die Formen in das Bild.${extra}`)
-  }, [idx, fig, rules.turn, rules.distractor])
+  }, [idx, fig, freeMode, rules.turn, rules.distractor])
 
   useEffect(() => {
     if (!fig) return
