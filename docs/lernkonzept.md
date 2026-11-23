@@ -5,29 +5,51 @@ Jede Entscheidung darüber, *was* ein Kind wann spielt und *wie* die App reagier
 einem belegten Mechanismus aus der Lern- oder Entwicklungspsychologie. Diese Seite sagt,
 welcher es ist, wo er im Code steckt und worauf er sich stützt.
 
-## 1. Die tägliche Reise („Reise mit Lumi“)
+## 1. Lumis Ideen für heute
 
-Die Startseite zeigt keine Wand aus 25 Spielen mehr, sondern eine kurze **Reise** über eine Wiese.
-Die Reise hat diese Stationen:
+Die Startseite ist eine lebendige Wiese.
+- **Oben:** Lumi hat eine Idee, das nächste Spiel aus dem Tagesplan, mit einem großen „Spielen!“-Knopf.
+- **Darunter:** die fünf Welten, jede auf ihrer eigenen kleinen Bühne mit ihren Spielen als runde Bilder. Alle Spiele bleiben frei wählbar.
+
+Der Tagesplan hat diese Teile:
 
 1. **Aufwärmen.** Eine Fähigkeit, deren Wiederholung fällig ist. Ist keine fällig, kommt eine, die das Kind sicher kann, ein Level tiefer.
 2. **Üben.** Das Spiel, in dem das Kind gerade steckt.
-3. **Bewegungspause.** Drei kurze Bewegungen und eine Atemübung.
-4. **Neu.** Ein Spiel, das zum Alter passt und noch nicht gespielt wurde.
-5. **Wiederholen.** Eine weitere fällige Fähigkeit aus einem anderen Bereich.
-6. **Schatztruhe.** Ein Sticker fürs Album.
+3. **Neu.** Ein Spiel, das zum Alter passt und noch nicht gespielt wurde.
+4. **Wiederholen.** Eine weitere fällige Fähigkeit aus einem anderen Bereich.
+5. **Bewegungspause.** Drei kurze Bewegungen und eine Atemübung. Lumi schlägt sie nach dem zweiten Spiel vor, spätestens nach zehn Minuten Spielzeit.
+6. **Sticker.** Sind alle Ideen gespielt, kommt als Überraschung ein Sticker fürs Album.
+
+Wählt das Kind ein Spiel aus dem Plan selbst aus, zählt es genauso.
 
 | Mechanismus | Umsetzung | Quelle |
 |---|---|---|
-| Zu viel Auswahl lähmt | Vier Stationen statt 25 Kacheln. Alle Spiele bleiben darunter frei wählbar. | Iyengar & Lepper 2000 |
-| Interleaving | Die Stationen kommen aus verschiedenen Welten. | Rohrer & Taylor 2007 |
-| Selbstwirksamkeit | Die Reise beginnt mit einem sicheren Erfolg. | Bandura 1977 |
-| Bewegungspausen | Eine Station in der Mitte ist Bewegung. | Mahar et al. 2006; Donnelly & Lambourne 2011 |
-| Gesunde Mediennutzung | Die Reise hat ein Ende („Morgen geht es weiter“), etwa 15 bis 20 Minuten. | AAP Council on Communications and Media 2016 |
-| Belohnung ohne Leistungsdruck | Der Sticker gibt es fürs Mitmachen, nicht für Sterne, und welcher es ist, bleibt eine Überraschung. | Deci, Koestner & Ryan 1999 |
+| Zu viel Auswahl lähmt | Ein großer Vorschlag statt 25 gleich lauter Kacheln. Alle Spiele bleiben frei wählbar. | Iyengar & Lepper 2000 |
+| Interleaving | Die Ideen kommen aus verschiedenen Welten. | Rohrer & Taylor 2007 |
+| Selbstwirksamkeit | Der Tag beginnt mit einem sicheren Erfolg. | Bandura 1977 |
+| Bewegungspausen | Nach etwa zehn Minuten kommt eine Bewegungspause. | Mahar et al. 2006; Donnelly & Lambourne 2011 |
+| Gesunde Mediennutzung | Die Ideen haben ein Ende („Morgen hat Lumi neue“), etwa 15 bis 20 Minuten. | AAP Council on Communications and Media 2016 |
+| Belohnung ohne Leistungsdruck | Den Sticker gibt es fürs Mitmachen, nicht für Sterne, und welcher es ist, bleibt eine Überraschung. | Deci, Koestner & Ryan 1999 |
 
-Code: `src/lib/learning.js` (`planJourney`), `src/components/JourneyPath.jsx`,
-`src/screens/MoveBreakScreen.jsx`, `src/screens/AlbumScreen.jsx`, `src/lib/stickers.js`.
+Code: `src/lib/learning.js` (`planJourney`), `src/screens/HomeScreen.jsx` (`nextIdea`),
+`src/screens/ResultsScreen.jsx`, `src/screens/MoveBreakScreen.jsx`, `src/screens/AlbumScreen.jsx`, `src/lib/stickers.js`.
+
+## 1a. Spielen statt Abfragen
+
+Jedes Spiel ist eine kleine Handlung mit einer Figur, die etwas will.
+- Das Kind zieht, füttert, baut und sortiert, statt Antwortkarten anzutippen.
+- Die Welt antwortet auf jedes Antippen.
+- Ein Fehler ist lustig statt peinlich.
+
+Die Lernlogik, die Levels und die Auswertung bleiben gleich. Was sich je Spiel geändert hat und warum, steht in `docs/spielideen.md`.
+
+| Mechanismus | Umsetzung | Quelle |
+|---|---|---|
+| Aktiv, engagiert, bedeutsam | Handlung statt Quiz: Die Aufgabe ist ein Gefallen für eine Figur. | Hirsh-Pasek et al. 2015 |
+| Beziehung zu Figuren | Figuren reagieren mit Freude, Hunger, Staunen und Verwirrung. | Calvert et al. 2014; Gola et al. 2013 |
+| Handeln mit Objekten | Mengen werden gefüttert, Formen gebaut, Dinge sortiert. | Embodied Cognition, z. B. Mix 1999 zum Mengenverständnis |
+
+Code: `src/components/play/` (Bühne, Figuren, Ziehen und Ablegen).
 
 ## 2. Wiederholen im Abstand (Spaced Retrieval)
 
@@ -35,7 +57,7 @@ Jedes Spiel ist eine Fähigkeit in einer Leitner-Box (0–5).
 
 - **Box nach einer Runde:** Mit mindestens 85 % auf Anhieb rückt die Fähigkeit eine Box höher. Unter 60 % geht sie eine Box tiefer.
 - **Wartezeit:** Die Box bestimmt, wann das Spiel wiederkommt: nach 1, 2, 4, 7, 14 oder 30 Tagen.
-- **Was die Reise daraus macht:** Fällige Fähigkeiten kommen als „Aufwärmen“ und „Wiederholen“ auf die Reise.
+- **Was der Tagesplan daraus macht:** Fällige Fähigkeiten kommen als „Aufwärmen“ und „Wiederholen“ unter Lumis Ideen.
 
 Quellen: Cepeda et al. 2006 (Metaanalyse zum verteilten Lernen); Roediger & Karpicke 2006
 (Testeffekt); Fritz et al. 2007 (Abrufübung bei Kindern).
@@ -113,6 +135,7 @@ Code: `src/components/LearningReport.jsx`.
 - James, K. H., & Engelhardt, L. (2012). The effects of handwriting experience on functional brain development in pre-literate children. *Trends in Neuroscience and Education*, 1(1).
 - Longcamp, M., Zerbato-Poudou, M.-T., & Velay, J.-L. (2005). The influence of writing practice on letter recognition in preschool children. *Acta Psychologica*, 119(1).
 - Mahar, M. T., et al. (2006). Effects of a classroom-based program on physical activity and on-task behavior. *Medicine & Science in Sports & Exercise*, 38(12).
+- Mix, K. S. (1999). Similarity and numerical equivalence: Appearances count. *Cognitive Development*, 14(2).
 - Mueller, C. M., & Dweck, C. S. (1998). Praise for intelligence can undermine children's motivation and performance. *Journal of Personality and Social Psychology*, 75(1).
 - Roediger, H. L., & Karpicke, J. D. (2006). Test-enhanced learning. *Psychological Science*, 17(3).
 - Rohrer, D., & Taylor, K. (2007). The shuffling of mathematics problems improves learning. *Instructional Science*, 35(6).

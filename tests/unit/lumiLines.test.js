@@ -3,8 +3,6 @@ import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { LINES, line, gameLine, helpLine } from '../../src/lib/lumiLines.js'
 import { MODULES, WORLDS } from '../../src/modules.js'
-import { ALL_MISSIONS } from '../../src/AppContext.jsx'
-import { translations } from '../../src/i18n.js'
 
 const ROOT = join(import.meta.dirname, '..', '..')
 const list = dir => readdirSync(dir).flatMap(f => {
@@ -28,12 +26,6 @@ describe("Lumi's recorded sentences", () => {
       expect(helpLine(m.id)?.text.startsWith(`${m.title}. `), m.id).toBe(true)
     }
     for (const w of WORLDS) expect(LINES[`menue/welt-${w.id}`], w.id).toBe(w.say)
-  })
-
-  it('the daily tasks say what the mission text says', () => {
-    for (const m of ALL_MISSIONS.filter(x => !x.retired)) {
-      expect(LINES[`tagesaufgaben/aufgabe-${m.id}`], m.id).toBe(translations.de['mission.say.' + m.id])
-    }
   })
 
   it('every sentence the code asks for exists', () => {

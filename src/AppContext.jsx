@@ -44,8 +44,7 @@ const ALL_MODULE_IDS = Object.keys(MAX_LEVELS)
 // Münzen gab es hier einmal. Sie waren ein reiner Zähler ohne Laden: man
 // sammelte sie, sah sie an drei Stellen, und mehr passierte nicht. Ein Etikett,
 // das eine Währung verspricht und keine ist, wirft bei jedem, der es sieht,
-// dieselbe Frage auf — wofür? Fortschritt zeigen jetzt allein die Sterne und
-// der Bauernhof, der mit den Sternen wächst (FarmProgress.jsx).
+// dieselbe Frage auf — wofür? Fortschritt zeigen jetzt allein die Sterne.
 
 // ── Datum ────────────────────────────────────────────────────────────────────
 // Lokales Datum. toISOString() rechnet in UTC — in Deutschland begann der
@@ -121,10 +120,10 @@ function ensureDay(dm, profile) {
   return freshDay(today, profile)
 }
 
-// ── Hof ──────────────────────────────────────────────────────────────────────
-// Der Hof wächst mit den Sternen (dem besten Ergebnis je Level) und mit zwei
-// Extra-Sternen für jede geschaffte Tagesaufgabe — vorher erschien das erste
-// Tier erst nach drei komplett gemeisterten Spielen.
+// ── Sterne-Bonus ─────────────────────────────────────────────────────────────
+// Früher wuchs damit ein Bauernhof auf der Startseite (mit den Sternen und
+// Extra-Sternen für Tagesaufgaben). Der Hof ist weg, die Zählung bleibt im
+// Spielstand, damit alte Spielstände gültig bleiben.
 export const MISSION_BONUS = 2
 export function totalStars(progress) {
   return Object.values(progress ?? {})
@@ -132,9 +131,9 @@ export function totalStars(progress) {
 }
 export const farmPoints = profile => totalStars(profile?.progress) + (profile?.farmBonus ?? 0)
 
-// ── Reise mit Lumi ───────────────────────────────────────────────────────────
-// Die Tagesreise (lib/learning.js): vier Spiele und eine Bewegungspause,
-// danach eine Schatztruhe mit einem Sticker. Pro Kind und Tag eine.
+// ── Lumis Ideen für heute ────────────────────────────────────────────────────
+// Der Tagesplan (lib/learning.js): vier Spiele und eine Bewegungspause,
+// danach ein Sticker als Überraschung. Pro Kind und Tag einer.
 export const JOURNEY_BONUS = 3
 export function journeyContext(profile) {
   return { mods: sortForAge(visibleModules(profile), profile), maxLevels: MAX_LEVELS, today: todayStr() }
@@ -455,10 +454,14 @@ export function reducer(state, action) {
       const log = { ...(profile.playLog ?? {}) }
       log[today] = { ms: 0, ...log[today], games: (log[today]?.games ?? 0) + 1 }
 
-      // The journey: this game was one of today's stops
-      const stopIdx = state.currentGame?.journeyStop
+      // Today's plan: this game was one of Lumi's ideas — started from the
+      // idea, or picked freely on the home screen (the same game counts)
+      const j0 = profile.journey
+      const stopIdx = state.currentGame?.journeyStop ?? (j0?.date === today
+        ? (j0.stops ?? []).findIndex((st, i) => st.moduleId === moduleId && !(j0.done ?? []).includes(i))
+        : -1)
       const journey = markStop(profile.journey, stopIdx)
-      const onJourney = journey !== profile.journey || (typeof stopIdx === 'number' && profile.journey?.date === today)
+      const onJourney = journey !== profile.journey || (typeof stopIdx === 'number' && stopIdx >= 0 && profile.journey?.date === today)
 
       const updatedProfile = {
         ...profile,

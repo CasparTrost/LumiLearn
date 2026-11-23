@@ -1,15 +1,22 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
 import { narrate, afterNarration, lockPreviews } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { sayNumber } from '../tts.js'
 import { result } from '../lib/score.js'
-import { pxCard, pxPanel, pxBubble, pxButton, pxSegment, ACCENT, INK } from './px.js'
+import { usePaused } from '../lib/pause.js'
+import { Critter, Art, useMood, DragArea, Draggable, DropZone, RoundTrail, useBursts, useDragState } from '../components/play/index.js'
+import { pxCard, pxPanel, pxButton, INK } from './px.js'
 
 /**
  * Formen-Werkstatt — aus Formen ein Bild zusammensetzen
+ *
+ * An animal comes into the workshop and wants something: a boat, a house,
+ * a rocket. The child drags the shapes into the outline on the workbench;
+ * when the last piece is in, the thing comes alive — it gets a face, the
+ * boat sails, the rocket lifts off, a bee visits the flower — and the
+ * customer cheers.
  *
  * Formen-Land asks which shape something *is*; this asks which shapes
  * something is *made of*. Part-whole composition ("a house is a square and a
@@ -22,9 +29,10 @@ import { pxCard, pxPanel, pxBubble, pxButton, pxSegment, ACCENT, INK } from './p
  *     The levels follow it: matching outlined places first, then a piece that
  *     does not belong, then pieces that have to be turned, and at the top
  *     only the silhouette of the whole figure, with no lines between parts.
- *   • Tap-to-place instead of dragging: the same reason ClockGame and SortGame
- *     offer tap controls — a four-year-old's drag is imprecise, and a missed
- *     drag would look like a wrong answer when it is only a slipped finger.
+ *   • Dragging and tapping both work (components/play DragArea): a piece
+ *     can be pulled into place, or tapped and then its place tapped. A piece
+ *     let go over empty space just goes back — a slipped finger is never
+ *     counted as a wrong answer.
  */
 
 function shuffle(a) { return [...a].sort(() => Math.random() - 0.5) }
@@ -67,37 +75,41 @@ function ShapePath({ shape, x, y, w, h, rot = 0, ...paint }) {
 //
 // `g` ist das Geschlecht für den Artikel: "Baue einen Baum", nicht "Baue Baum".
 // `part` sagt, was das Teil im Bild ist: "Das Dreieck ist das Dach!"
+//
+// `icon` is what the customer asks for, `face` where the finished thing gets
+// its eyes ([x, y, scale]), `alive` how it moves then and who or what joins
+// it (`extra` at `at`).
 const FIGURES = [
-  { name: 'Haus', g: 'n', parts: [
+  { name: 'Haus', g: 'n', icon: '🏠', face: [50, 66, 0.3], alive: { move: 'hop', extra: '🐦', at: [62, 10] }, parts: [
     { shape: 'triangle',  x: 22, y: 18, w: 56, h: 28, color: '#FF6B6B', part: 'das Dach' },    // Dach sitzt auf …
     { shape: 'square',    x: 30, y: 46, w: 40, h: 40, color: '#FFD93D', part: 'die Wand' }] }, // … der Wand ab y46
-  { name: 'Baum', g: 'm', parts: [
+  { name: 'Baum', g: 'm', icon: '🌳', face: [50, 44, 0.28], alive: { move: 'sway', extra: '🍎', at: [34, 34] }, parts: [
     { shape: 'triangle',  x: 20, y: 14, w: 60, h: 48, color: '#6BCB77', part: 'die Krone' },   // Krone endet bei y62
     { shape: 'rectangle', x: 43, y: 62, w: 14, h: 26, color: '#8D6E63', part: 'der Stamm' }] },// Stamm beginnt dort
-  { name: 'Boot', g: 'n', parts: [
+  { name: 'Boot', g: 'n', icon: '⛵', face: [50, 72, 0.18], alive: { move: 'sail', extra: '🌊', at: [50, 90] }, parts: [
     { shape: 'triangle',  x: 42, y: 16, w: 32, h: 46, color: '#FF9F43', part: 'das Segel' },   // Segel steht auf …
     { shape: 'rectangle', x: 16, y: 62, w: 68, h: 20, color: '#74B9FF', part: 'der Rumpf' }] },// … dem Rumpf
-  { name: 'Kerze', g: 'f', parts: [
+  { name: 'Kerze', g: 'f', icon: '🕯️', face: [50, 62, 0.14], alive: { move: 'hop', extra: '✨', at: [66, 10] }, parts: [
     { shape: 'triangle',  x: 42, y: 10, w: 16, h: 24, color: '#FF9F43', part: 'die Flamme' },  // Flamme genau so …
     { shape: 'rectangle', x: 42, y: 34, w: 16, h: 56, color: '#FFD93D', part: 'das Wachs' }] },// … breit wie die Kerze
-  { name: 'Eis', g: 'n', parts: [
+  { name: 'Eis', g: 'n', icon: '🍦', face: [50, 36, 0.24], alive: { move: 'hop', extra: '✨', at: [70, 18] }, parts: [
     { shape: 'circle',    x: 34, y: 20, w: 32, h: 32, color: '#FD79A8', part: 'die Kugel' },   // Kugel in der Waffel
     { shape: 'triangle',  x: 38, y: 46, w: 24, h: 40, rot: 180, color: '#D9A066', part: 'die Waffel' }] },
-  { name: 'Lolli', g: 'm', parts: [
+  { name: 'Lolli', g: 'm', icon: '🍭', face: [50, 32, 0.34], alive: { move: 'spin' }, parts: [
     { shape: 'circle',    x: 28, y: 10, w: 44, h: 44, color: '#E84393', part: 'das Bonbon' },  // Bonbon auf …
     { shape: 'rectangle', x: 46, y: 54, w: 8,  h: 36, color: '#D9A066', part: 'der Stiel' }] },// … dem Stiel
-  { name: 'Fahne', g: 'f', parts: [
+  { name: 'Fahne', g: 'f', icon: '🚩', face: [52, 24, 0.18], alive: { move: 'sway', extra: '💨', at: [84, 20] }, parts: [
     { shape: 'rectangle', x: 24, y: 10, w: 8,  h: 80, color: '#8D6E63', part: 'die Stange' },  // Stange, an ihr …
     { shape: 'triangle',  x: 40, y: 4,  w: 30, h: 46, rot: 90, color: '#FF6B6B', part: 'die Fahne' }] }, // … das Tuch (Spitze nach rechts)
-  { name: 'Schneemann', g: 'm', parts: [
+  { name: 'Schneemann', g: 'm', icon: '⛄', face: [50, 19, 0.17], alive: { move: 'hop', extra: '🎩', at: [50, 2] }, parts: [
     { shape: 'circle',    x: 39, y: 8,  w: 22, h: 22, color: '#EAF6FF', part: 'der Kopf' },          // drei Kugeln, jede
     { shape: 'circle',    x: 34, y: 28, w: 32, h: 32, color: '#CFE7FF', part: 'die mittlere Kugel' },// auf der nächsten
     { shape: 'circle',    x: 29, y: 54, w: 42, h: 42, color: '#AED4F7', part: 'die untere Kugel' }] },
-  { name: 'Turm', g: 'm', parts: [
+  { name: 'Turm', g: 'm', icon: '🗼', face: [50, 76, 0.26], alive: { move: 'hop', extra: '🐦', at: [64, 4] }, parts: [
     { shape: 'triangle',  x: 30, y: 6,  w: 40, h: 28, color: '#FF6B6B', part: 'die Spitze' },  // Spitze  6–34
     { shape: 'square',    x: 38, y: 34, w: 24, h: 24, color: '#4AA3FF', part: 'das Fenster' }, // Mitte  34–58
     { shape: 'square',    x: 32, y: 58, w: 36, h: 36, color: '#B0BEC5', part: 'der Sockel' }] },// Sockel 58–94
-  { name: 'Rakete', g: 'f', parts: [
+  { name: 'Rakete', g: 'f', icon: '🚀', face: [50, 50, 0.16], alive: { move: 'launch', extra: '🔥', at: [50, 84] }, parts: [
     { shape: 'triangle',  x: 36, y: 6,  w: 28, h: 24, color: '#FF6B6B', part: 'die Spitze' },  // Spitze auf dem Rumpf
     { shape: 'rectangle', x: 40, y: 30, w: 20, h: 44, color: '#B0BEC5', part: 'der Rumpf' },
     // Flossen: rechtwinklig, die senkrechte Kante liegt am Rumpf (x 40 / 60),
@@ -105,7 +117,7 @@ const FIGURES = [
     // eine Dreivierteldrehung weiter.
     { shape: 'rtriangle', x: 20, y: 54, w: 20, h: 20, rot: 270, color: '#4AA3FF', part: 'eine Flosse' },
     { shape: 'rtriangle', x: 60, y: 54, w: 20, h: 20, color: '#4AA3FF', part: 'eine Flosse' }] },
-  { name: 'Blume', g: 'f', parts: [
+  { name: 'Blume', g: 'f', icon: '🌸', face: [50, 36, 0.12], alive: { move: 'sway', extra: '🐝', at: [80, 12] }, parts: [
     // vier große Blütenblätter um eine deutlich kleinere Mitte
     { shape: 'circle',    x: 38, y: 5,  w: 24, h: 24, color: '#FD79A8', part: 'ein Blütenblatt' },
     { shape: 'circle',    x: 19, y: 24, w: 24, h: 24, color: '#FD79A8', part: 'ein Blütenblatt' },
@@ -113,7 +125,7 @@ const FIGURES = [
     { shape: 'circle',    x: 38, y: 43, w: 24, h: 24, color: '#FD79A8', part: 'ein Blütenblatt' },
     { shape: 'circle',    x: 43, y: 29, w: 14, h: 14, color: '#FFD93D', part: 'die Mitte' },
     { shape: 'rectangle', x: 46, y: 67, w: 8,  h: 27, color: '#6BCB77', part: 'der Stiel' }] },// Stiel ab dem unteren Blatt
-  { name: 'Zug', g: 'm', parts: [
+  { name: 'Zug', g: 'm', icon: '🚂', face: [70, 60, 0.18], alive: { move: 'drive', extra: '💨', at: [84, 34] }, parts: [
     { shape: 'rectangle', x: 12, y: 44, w: 46, h: 28, color: '#74B9FF', part: 'der Wagen' },   // Wagen 12–58
     { shape: 'square',    x: 58, y: 48, w: 24, h: 24, color: '#FF9F43', part: 'die Lok' },     // Lok schließt bei 58 an
     { shape: 'circle',    x: 18, y: 72, w: 16, h: 16, color: '#444', part: 'ein Rad' },        // Räder auf der
@@ -202,13 +214,15 @@ function describeBuild(pieces) {
     : `Ich sehe ${list}. Toll gebaut!`
 }
 
+const FREE_TASK = 'Jetzt darfst du frei bauen! Tippe auf eine Form und schieb sie hin, wo du willst.'
+
 function FreeBuild({ onDone }) {
   const [pieces, setPieces] = useState([])
   const [done, setDone]     = useState(false)
   const svgRef = useRef(null)
   const drag   = useRef(null)    // { id, dx, dy, moved }
 
-  useEffect(() => { sayTask('Jetzt darfst du frei bauen! Tippe auf eine Form und schieb sie hin, wo du willst.') }, [])
+  useEffect(() => { sayTask(FREE_TASK) }, [])
 
   const toSvg = e => {
     const m = svgRef.current?.getScreenCTM()?.inverse()
@@ -294,23 +308,132 @@ function FreeBuild({ onDone }) {
 }
 
 const sayShape = p => `${SHAPE[p.shape].art} ${SHAPE[p.shape].name}`
+const CUSTOMERS = ['🐰', '🐻', '🐸', '🐱', '🐶', '🐭', '🐷', '🦔']
+const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+
+// How a finished figure moves when it comes alive
+const ALIVE = {
+  hop:    { y: [0, -22, 0, -10, 0], scaleY: [1, 1.06, 0.94, 1.03, 1] },
+  sway:   { rotate: [0, -7, 6, -4, 0] },
+  spin:   { rotate: [0, 360] },
+  sail:   { x: [0, 26, -10, 0], rotate: [0, 5, -5, 3, 0] },
+  drive:  { x: [0, 30, 30, 0] },
+  launch: { y: [0, 6, -60, -40, 0] },
+}
+
+// Eyes and a smile for the finished thing, in the figure's 100-unit space
+function Face({ x, y, s }) {
+  return (
+    <g transform={`translate(${x - 50 * s} ${y - 46 * s}) scale(${s})`} pointerEvents="none">
+      <circle cx="36" cy="42" r="10" fill="#fff" stroke={INK} strokeWidth="3" />
+      <circle cx="64" cy="42" r="10" fill="#fff" stroke={INK} strokeWidth="3" />
+      <circle cx="38" cy="44" r="5" fill={INK} />
+      <circle cx="66" cy="44" r="5" fill={INK} />
+      <path d="M38 60 Q50 72 62 60" stroke={INK} strokeWidth="4" fill="none" strokeLinecap="round" />
+    </g>
+  )
+}
+
+// The box a slot covers on the board, turned with the slot; never smaller
+// than 18 units, so a thin stem is still a place a finger can find.
+function slotBox(p) {
+  const turned = (p.rot ?? 0) % 180 !== 0
+  const w = Math.max(18, turned ? p.h : p.w), h = Math.max(18, turned ? p.w : p.h)
+  const cx = p.x + p.w / 2, cy = p.y + p.h / 2
+  return { left: cx - w / 2, top: cy - h / 2, w, h }
+}
+
+// The workbench: the outline to fill, one drop place per part
+function Board({ fig, rules, filled, wrongSlot, complete, onDrop, size }) {
+  const { hover, picked } = useDragState()
+  const zones = fig.parts.map((p, i) => ({ i, box: slotBox(p) }))
+    .filter(z => !filled.has(z.i))
+    .sort((a, b) => b.box.w * b.box.h - a.box.w * a.box.h)   // small places on top
+  return (
+    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+      <svg viewBox="0 0 100 100" width={size} height={size} style={{ display: 'block', overflow: 'visible' }} aria-hidden="true">
+        {/* the blueprint grid of the workbench */}
+        <rect x="-4" y="-4" width="108" height="108" rx="8" fill="#DCEBFA" stroke={INK} strokeWidth="1.6" />
+        {Array.from({ length: 9 }, (_, i) => <path key={i} d={`M${(i + 1) * 10} -4 V104 M-4 ${(i + 1) * 10} H104`} stroke="#B7D2EE" strokeWidth="0.5" />)}
+        <motion.g initial={false}
+          animate={complete && !reduceMotion() ? ALIVE[fig.alive.move] : { x: 0, y: 0, rotate: 0, scaleY: 1 }}
+          transition={{ duration: fig.alive.move === 'spin' ? 0.9 : 1.2, delay: 0.3 }}
+          style={{ originX: 0.5, originY: 1 }}>
+          {/* top levels: only the outline of the whole figure, no lines between the parts */}
+          {rules.silhouette && (
+            <g pointerEvents="none">
+              {fig.parts.map((p, i) => <ShapePath key={`o${i}`} {...p} fill="none" stroke={INK} strokeWidth={2.4} strokeLinejoin="round" />)}
+              {fig.parts.map((p, i) => <ShapePath key={`f${i}`} {...p} fill="#C9D9EA" />)}
+            </g>
+          )}
+          {fig.parts.map((p, i) => {
+            const done = filled.has(i)
+            const glow = !done && (hover === `slot${i}` || (picked && !hover))
+            if (!done && rules.silhouette && wrongSlot !== i && hover !== `slot${i}`) return null
+            return (
+              <ShapePath key={i} {...p}
+                fill={done ? p.color : glow ? 'rgba(255,201,60,0.45)' : 'transparent'}
+                stroke={wrongSlot === i ? '#C2412D' : done ? INK : glow ? '#E0A000' : 'var(--px-ink-soft)'}
+                strokeWidth={done ? 1.6 : wrongSlot === i ? 3 : 2.2}
+                strokeDasharray={done ? undefined : '6 5'} strokeLinejoin="round" />
+            )
+          })}
+          {complete && <Face x={fig.face[0]} y={fig.face[1]} s={fig.face[2]} />}
+        </motion.g>
+      </svg>
+      {/* who or what joins the living thing */}
+      <AnimatePresence>
+        {complete && fig.alive.extra && (
+          <motion.div key="extra" aria-hidden="true" initial={{ scale: 0, y: -30, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }}
+            transition={{ delay: 0.6, type: 'spring', stiffness: 300, damping: 14 }}
+            style={{ position: 'absolute', left: `${fig.alive.at[0]}%`, top: `${fig.alive.at[1]}%`, marginLeft: -size * 0.09, marginTop: -size * 0.09, pointerEvents: 'none' }}>
+            <Art art={fig.alive.extra} size={size * 0.18} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {/* the places, as drop targets over the drawing */}
+      {zones.map(({ i, box }) => (
+        <DropZone key={i} id={`slot${i}`} slop={4} label={`Platz ${i + 1}`} onDrop={piece => onDrop(piece, i)}
+          style={{ position: 'absolute', left: `${box.left}%`, top: `${box.top}%`, width: `${box.w}%`, height: `${box.h}%` }}>
+          {null}
+        </DropZone>
+      ))}
+    </div>
+  )
+}
+
+function useViewportWidth() {
+  const [w, setW] = useState(() => window.innerWidth)
+  useEffect(() => {
+    const on = () => setW(window.innerWidth)
+    window.addEventListener('resize', on)
+    return () => window.removeEventListener('resize', on)
+  }, [])
+  return w
+}
 
 export default function ShapeBuildGame({ level = 1, onComplete }) {
   const rules  = levelRules(level)
-  const rounds = useState(() => buildRounds(level))[0]
+  const rounds = useState(() => buildRounds(level).map((f, i) => ({ ...f, customer: CUSTOMERS[i % CUSTOMERS.length] })))[0]
+  const paused = usePaused()
+  const pausedRef = useRef(paused)
+  pausedRef.current = paused
   const [idx,      setIdx]      = useState(0)
   // Each entry pairs the slot that was filled with the tray piece that filled
   // it — the two indices differ whenever a figure has interchangeable pieces
-  // (Rakete's two fins, Blume's petals), so tracking only one of them greys
-  // out the wrong tile.
+  // (Rakete's two fins, Blume's petals), so tracking only one of them hides
+  // the wrong piece.
   const [placed,   setPlaced]   = useState([])     // [{ slot, tray }]
-  const [selected, setSelected] = useState(null)   // tray index
   const [turns,    setTurns]    = useState({})     // tray index -> extra turn the child gave it
   const [wrongSlot, setWrongSlot] = useState(null)
-  const [mood,     setMood]     = useState('happy')
-  const [showWeiter, setShowWeiter] = useState(false)
+  const [mood,     setMood]     = useMood()
+  const [lastDone, setLastDone] = useState(false)  // the last figure is finished: build freely?
   const [freeMode, setFreeMode] = useState(false)
+  const [bursts, burst] = useBursts()
   const misses = useRef(0)
+  const timer  = useRef(null)
+  const boardRef = useRef(null)
+  const vw = useViewportWidth()
   const totalParts = useMemo(() => rounds.reduce((n, f) => n + f.parts.length, 0), [rounds])
 
   const fig = rounds[idx]
@@ -335,219 +458,171 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
 
   const rotOf = i => (tray[i]?.rot ?? 0) + (turns[i] ?? 0)
 
+  const speakTask = useCallback(() => {
+    if (freeMode) { sayTask(FREE_TASK); return }
+    const extra = idx > 0 ? ''
+      : rules.turn ? ' Tippe auf den Pfeil, dann dreht sich ein Teil.'
+      : rules.distractor ? ' Ein Teil gehört nicht dazu.' : ''
+    sayTask(`Baue ${art(fig, 'akk')} ${fig.name}! Zieh die Formen in das Bild.${extra}`)
+  }, [idx, fig, freeMode, rules.turn, rules.distractor])
+
   useEffect(() => {
     if (!fig) return
-    setPlaced([]); setSelected(null); setTurns({}); setWrongSlot(null); setMood('happy')
+    setPlaced([]); setTurns({}); setWrongSlot(null)
     lockPreviews()
-    const extra = idx > 0 ? ''
-      : rules.turn ? ' Tippe ein Teil noch einmal an, dann dreht es sich.'
-      : rules.distractor ? ' Ein Teil gehört nicht dazu.' : ''
-    const id = setTimeout(() => sayTask(`Baue ${art(fig, 'akk')} ${fig.name}! Welche Form passt wohin?${extra}`), 450)
+    const id = setTimeout(speakTask, 650)
     return () => clearTimeout(id)
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const pick = (i) => {
-    if (showWeiter) return
-    if (selected === i && rules.turn) {
-      // tapping the chosen piece again turns it a quarter
-      setTurns(t => ({ ...t, [i]: (t[i] ?? 0) + 90 }))
-      sfx.flip?.()
-      return
-    }
-    setSelected(selected === i ? null : i)
-    if (selected !== i) {
-      const s = SHAPE[tray[i].shape]
-      narrate([{ text: `${s.art} ${s.name}. Wohin gehört ${s.pro}?` }])
-    }
-  }
+  useEffect(() => () => clearTimeout(timer.current), [])
 
-  const placeAt = useCallback((slotIdx) => {
-    if (selected === null || !fig || placed.some(pl => pl.slot === slotIdx)) return
-    const piece = tray[selected]
+  const last = idx + 1 >= rounds.length
+  // every piece is one task; a piece that first went to a wrong place does
+  // not count as right on the first try. Free building is a bonus, not rated.
+  const finishLevel = useCallback(() => {
+    sfx.complete()
+    afterNarration(() => onComplete(result(totalParts - misses.current, totalParts)), { minMs: 300 })
+  }, [onComplete, totalParts])
+
+  // A piece let go over a place: it snaps in, or it is handed back with a word
+  const dropPiece = useCallback((trayIdx, slotIdx) => {
+    if (!fig || placed.some(pl => pl.slot === slotIdx)) return false
+    const piece = tray[trayIdx]
     // A piece fits a slot when it is the same kind of shape, the same size
     // and turned the same way — two identical circles are interchangeable,
     // which is intended.
     const slot = fig.parts[slotIdx]
     const sameShape = piece.shape === slot.shape
     const sameSize  = sameShape && piece.w === slot.w && piece.h === slot.h
-    if (!sameSize || !sameTurn(slot.shape, rotOf(selected), slot.rot)) {
+    if (!sameSize || !sameTurn(slot.shape, rotOf(trayIdx), slot.rot)) {
       const s = SHAPE[piece.shape]
       // Right kind of shape, wrong size (the snowman's three circles) is a
       // different mistake from the wrong shape entirely — say which one it is,
       // so the child learns that size is part of "fitting".
       const msg = sameSize
-        ? 'Die Form passt, aber sie liegt falsch herum. Tippe noch einmal auf das Teil, dann dreht es sich.'
+        ? 'Die Form passt, aber sie liegt falsch herum. Tippe auf den Pfeil, dann dreht sie sich.'
         : sameShape
           ? `${s.art} ${s.name} ist zu ${piece.w * piece.h > slot.w * slot.h ? 'groß' : 'klein'} für diesen Platz.`
           : `${s.art} ${s.name} passt da nicht.`
       setWrongSlot(slotIdx)
       misses.current++
-      setMood('encouraging')
-      sfx.mismatch()
+      setMood('oops')
       sayWrong(msg)
-      setTimeout(() => { setWrongSlot(null); setMood('happy') }, 900)
-      return
+      timer.current = setTimeout(() => setWrongSlot(null), 900)
+      return false
     }
-    const next = [...placed, { slot: slotIdx, tray: selected }]
+    const next = [...placed, { slot: slotIdx, tray: trayIdx }]
     setPlaced(next)
-    setSelected(null)
-    sfx.pop?.()
-    if (next.length === fig.parts.length) {
-      setMood('excited')
-      sfx.correct()
-      sayRight(`${sayShape(piece)} ist ${slot.part}. Das ist ${art(fig, 'nom')} ${fig.name}.${idx + 1 >= rounds.length ? ' Willst du jetzt noch frei bauen?' : ''}`)
-      setTimeout(() => setShowWeiter(true), 700)
-    } else {
+    sfx.pop()
+    if (next.length < fig.parts.length) {
+      setMood('wow', 700)
       narrate([{ text: `${sayShape(piece)} ist ${slot.part}!` }])
+      return true
     }
-  }, [selected, fig, placed, tray, turns]) // eslint-disable-line react-hooks/exhaustive-deps
+    // the last piece: the thing comes alive, the customer cheers
+    timer.current = setTimeout(() => {
+      sfx.tada()
+      if (fig.alive.move === 'launch' || fig.alive.move === 'drive' || fig.alive.move === 'sail') sfx.whoosh()
+      setMood('dance', 2600)
+      burst(boardRef.current, 'confetti', 16)
+    }, 300)
+    sfx.correct()
+    sayRight(`${sayShape(piece)} ist ${slot.part}. Das ist ${art(fig, 'nom')} ${fig.name}.${last ? ' Willst du jetzt noch frei bauen?' : ''}`, {
+      onEnd: () => {
+        if (last) { setLastDone(true); return }
+        const go = () => { timer.current = setTimeout(() => (pausedRef.current ? go() : setIdx(i => i + 1)), 700) }
+        go()
+      },
+    })
+    return true
+  }, [fig, placed, tray, turns, last, burst, setMood]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const missTap = () => {
-    if (selected !== null && !showWeiter) narrate([{ text: 'Tippe auf einen Platz im Bild.' }], { skipIfSame: true })
-  }
-
-  const last = idx + 1 >= rounds.length
-  // every piece is one task; a piece that first went to a wrong place does
-  // not count as right on the first try. Free building is a bonus, not rated.
-  const finishLevel = () => {
-    sfx.complete()
-    afterNarration(() => onComplete(result(totalParts - misses.current, totalParts)), { minMs: 300 })
-  }
-
-  const weiterClick = () => {
-    setShowWeiter(false)
-    if (last) finishLevel()
-    else setIdx(i => i + 1)
+  const turn = i => {
+    setTurns(t => ({ ...t, [i]: (t[i] ?? 0) + 90 }))
+    sfx.flip()
   }
 
   if (!fig) return null
   const filledSlots = new Set(placed.map(pl => pl.slot))
   const usedTiles   = new Set(placed.map(pl => pl.tray))
   const complete    = filledSlots.size === fig.parts.length
-  const sel         = selected !== null ? tray[selected] : null
+  const tile = 'clamp(68px,13vw,92px)'
+  const boardPx = Math.round(Math.min(330, Math.max(230, vw * 0.44)))
 
   return (
     <div style={{
       flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-      padding: 'clamp(14px,2.5vw,28px) clamp(14px,3vw,32px)', gap: 'clamp(10px,2vw,18px)',
+      padding: 'clamp(10px,2vw,22px) clamp(12px,3vw,28px)', gap: 'clamp(10px,2vw,18px)',
     }}>
-      <div style={{ display: 'flex', gap: 5, width: '100%', maxWidth: 680 }}>
-        {rounds.map((_, i) => (
-          <div key={i} style={{
-            flex: 1, ...pxSegment(i < idx || (i === idx && complete) ? 'done' : i === idx ? 'current' : 'todo'),
-          }} />
-        ))}
+      {bursts}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', maxWidth: 720 }}>
+        <RoundTrail total={rounds.length} done={idx + (complete ? 1 : 0)} walker="🔨" goal="🏠" style={{ flex: 1 }} />
+        <motion.button whileTap={{ scale: 0.9 }} onClick={speakTask} aria-label="Aufgabe noch einmal hören"
+          style={{
+            width: 52, height: 52, flexShrink: 0, background: 'var(--px-gold)', border: `3px solid ${INK}`, borderRadius: 12,
+            boxShadow: `inset 0 3px 0 rgba(255,255,255,0.45), inset 0 -5px 0 rgba(0,0,0,0.2), 0 4px 0 ${INK}`,
+            cursor: 'pointer', fontSize: 26, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>🔊</motion.button>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, width: '100%', maxWidth: 680 }}>
-        <LumiCharacter mood={mood} size={64} />
-        <div style={{
-          flex: 1, ...pxBubble, padding: '11px 16px',
-          fontFamily: 'var(--font-heading)', fontSize: 'clamp(15px,3vw,20px)', color: 'var(--text-primary)',
-        }}>
-          {freeMode
-            ? <>🧩 Bau, was du willst! Tippe eine Form an und schieb sie hin.</>
-            : complete
-            ? <>🎉 Fertig! Das ist {art(fig, 'nom')} <strong style={{ color: ACCENT }}>{fig.name}</strong>.</>
-            : sel
-              ? <>Wohin gehört {SHAPE[sel.shape].art.toLowerCase()} <strong style={{ color: ACCENT }}>{SHAPE[sel.shape].name}</strong>?{rules.turn && ' Noch einmal tippen: drehen.'}</>
-              : <>Baue {art(fig, 'akk')} <strong style={{ color: ACCENT }}>{fig.name}</strong> — wähle unten eine Form! 🧩</>}
-        </div>
-      </div>
+      {freeMode ? <FreeBuild onDone={finishLevel} /> : (
+        <DragArea disabled={complete}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 'clamp(8px,3vw,28px)', flexWrap: 'wrap' }}>
+            {/* the customer, and what it would like */}
+            <AnimatePresence mode="wait">
+              <motion.div key={idx} initial={{ x: -120, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 160, opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 200, damping: 18 }} style={{ paddingTop: 70 }}>
+                <Critter art={fig.customer} size={110} mood={mood} talks label="Kunde"
+                  wish={<Art art={fig.icon} size={44} />} />
+              </motion.div>
+            </AnimatePresence>
+            <div ref={boardRef} style={{ ...pxPanel, padding: 'clamp(8px,1.6vw,14px)', background: '#8A5A33' }}>
+              <Board fig={fig} rules={rules} filled={filledSlots} wrongSlot={wrongSlot} complete={complete}
+                size={boardPx} onDrop={(piece, slot) => dropPiece(piece, slot)} />
+            </div>
+          </div>
 
-      {freeMode ? <FreeBuild onDone={finishLevel} /> : <>
-      {/* The figure being assembled */}
-      <div style={{ ...pxPanel, padding: 'clamp(8px,2vw,16px)' }}>
-        <svg viewBox="0 0 100 100" style={{ width: 'clamp(220px,46vw,300px)', height: 'clamp(220px,46vw,300px)', display: 'block' }}>
-          <rect width="100" height="100" fill="transparent" onClick={missTap} />
-          {/* top levels: only the outline of the whole figure, no lines between the parts */}
-          {rules.silhouette && (
-            <g pointerEvents="none">
-              {fig.parts.map((p, i) => <ShapePath key={`o${i}`} {...p} fill="none" stroke={INK} strokeWidth={2.4} strokeLinejoin="round" />)}
-              {fig.parts.map((p, i) => <ShapePath key={`f${i}`} {...p} fill="#E8DCC4" />)}
-            </g>
-          )}
-          {fig.parts.map((p, i) => {
-            const done = filledSlots.has(i)
-            if (!done && rules.silhouette && wrongSlot !== i) return null
-            return (
-              <ShapePath key={i} {...p} pointerEvents="none"
-                fill={done ? p.color : 'transparent'}
-                stroke={wrongSlot === i ? '#C2412D' : done ? 'rgba(42,27,61,0.45)' : 'var(--px-ink-soft)'}
-                strokeWidth={done ? 1.5 : wrongSlot === i ? 3 : 2.2}
-                strokeDasharray={done ? undefined : '6 5'} />
-            )
-          })}
-          {/* hit areas: a wide invisible edge around thin places (stem,
-              flame) first, the places themselves on top */}
-          {fig.parts.map((p, i) => !filledSlots.has(i) && (
-            <ShapePath key={`h${i}`} {...p} fill="none" stroke="transparent" strokeWidth={12} pointerEvents="stroke"
-              onClick={() => placeAt(i)} style={{ cursor: sel ? 'pointer' : 'default' }} />
-          ))}
-          {fig.parts.map((p, i) => !filledSlots.has(i) && (
-            <ShapePath key={`t${i}`} {...p} fill="transparent" pointerEvents="fill"
-              onClick={() => placeAt(i)} style={{ cursor: sel ? 'pointer' : 'default' }} />
-          ))}
-        </svg>
-      </div>
+          {/* Piece tray */}
+          <div style={{ display: 'flex', gap: 'clamp(8px,2.5vw,16px)', flexWrap: 'wrap', justifyContent: 'center', maxWidth: 720, minHeight: 100 }}>
+            {tray.map((p, i) => {
+              const used = usedTiles.has(i)
+              return (
+                <div key={`${idx}-${i}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, visibility: used ? 'hidden' : 'visible', opacity: complete ? 0.35 : 1, transition: 'opacity .4s' }}>
+                  <Draggable id={`${idx}-${i}`} data={i} label={SHAPE[p.shape].name} disabled={used || complete}>
+                    <div style={{ width: tile, height: tile, ...pxCard(), padding: 6, boxSizing: 'border-box' }}>
+                      <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+                        <motion.g animate={{ rotate: rotOf(i) }} transition={{ type: 'spring', stiffness: 260, damping: 20 }}>
+                          <ShapePath shape={p.shape}
+                            x={(100 - p.dw) / 2} y={(100 - p.dh) / 2} w={p.dw} h={p.dh}
+                            fill={p.color} stroke={INK} strokeWidth={2.5} strokeLinejoin="round" />
+                        </motion.g>
+                      </svg>
+                    </div>
+                  </Draggable>
+                  {rules.turn && p.shape !== 'circle' && p.shape !== 'square' && (
+                    <motion.button whileTap={{ scale: 0.88, rotate: 90 }} onClick={() => turn(i)} disabled={used || complete}
+                      aria-label={`${SHAPE[p.shape].name} drehen`}
+                      style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--px-gold)', border: `3px solid ${INK}`, boxShadow: `0 3px 0 ${INK}`, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-3-6.2M20 4v5h-5" fill="none" stroke={INK} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    </motion.button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </DragArea>
+      )}
 
-      {/* Piece tray */}
-      <div style={{ display: 'flex', gap: 'clamp(8px,2.5vw,16px)', flexWrap: 'wrap', justifyContent: 'center', maxWidth: 680 }}>
-        {tray.map((p, i) => {
-          const used = usedTiles.has(i)
-          const isSel = selected === i
-          return (
-            <motion.button key={i}
-              whileTap={!used ? { scale: 0.93 } : {}}
-              onClick={() => { if (!used) pick(i) }}
-              aria-label={`${SHAPE[p.shape].name} auswählen`}
-              disabled={used || complete}
-              style={{
-                width: 'clamp(64px,13vw,84px)', height: 'clamp(64px,13vw,84px)', position: 'relative',
-                ...pxCard(isSel ? 'selected' : undefined),
-                cursor: used ? 'default' : 'pointer', opacity: used ? 0.35 : 1,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 6,
-              }}
-            >
-              <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
-                <motion.g animate={{ rotate: rotOf(i) }} transition={{ type: 'spring', stiffness: 260, damping: 20 }}>
-                  <ShapePath shape={p.shape}
-                    x={(100 - p.dw) / 2} y={(100 - p.dh) / 2} w={p.dw} h={p.dh}
-                    fill={p.color} stroke={INK} strokeWidth={2.5} strokeLinejoin="round" />
-                </motion.g>
-              </svg>
-              {isSel && rules.turn && (
-                <span aria-hidden style={{ position: 'absolute', top: -10, right: -10, width: 26, height: 26, borderRadius: '50%', background: 'var(--px-gold)', border: `2px solid ${INK}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-3-6.2M20 4v5h-5" fill="none" stroke={INK} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                </span>
-              )}
-            </motion.button>
-          )
-        })}
-      </div>
-
-      </>}
-
+      {/* After the last figure: build freely, or finish */}
       <AnimatePresence>
-        {showWeiter && !freeMode && last && (
-          <motion.button key="free"
-            initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ opacity: 0 }}
-            whileTap={{ scale: 0.94 }}
-            onClick={() => { setShowWeiter(false); setFreeMode(true) }}
-            style={{ ...pxButton('gold'), padding: '12px 32px', fontSize: 'clamp(16px,3.4vw,21px)' }}
-          >🧩 Frei bauen</motion.button>
-        )}
-        {showWeiter && !freeMode && (
-          <motion.button key="next"
-            initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ opacity: 0 }}
-            whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
-            onClick={weiterClick}
-            aria-label="Weiter"
-            style={{
-              ...pxButton('green'), color: INK, textShadow: 'none', padding: '12px 40px',
-              fontSize: 'clamp(16px,3.4vw,21px)',
-            }}
-          >Weiter! →</motion.button>
+        {lastDone && !freeMode && (
+          <motion.div key="end" initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ display: 'flex', gap: 14, flexWrap: 'wrap', justifyContent: 'center' }}>
+            <motion.button whileTap={{ scale: 0.94 }} onClick={() => setFreeMode(true)}
+              style={{ ...pxButton('gold'), padding: '12px 28px', fontSize: 'clamp(16px,3.4vw,21px)' }}>🧩 Frei bauen</motion.button>
+            <motion.button whileTap={{ scale: 0.94 }} onClick={finishLevel} aria-label="Weiter"
+              style={{ ...pxButton('green'), color: INK, textShadow: 'none', padding: '12px 40px', fontSize: 'clamp(16px,3.4vw,21px)' }}>Weiter! →</motion.button>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

@@ -1,17 +1,24 @@
 import { useState, useCallback, useEffect, useLayoutEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import LumiCharacter from '../components/LumiCharacter.jsx'
-import HearOptions from '../components/HearOptions.jsx'
 import { sfx } from '../sfx.js'
 import { sayNumber } from '../tts.js'
-import { afterNarration, lockPreviews } from '../narrator.js'
+import { narrate, afterNarration, lockPreviews } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { hearable } from '../lib/hearable.js'
 import { result } from '../lib/score.js'
-import { pxCard, pxPanel, pxBubble, pxButton, pxSegment, ACCENT, INK } from './px.js'
+import { usePaused } from '../lib/pause.js'
+import { Critter, Art, Wish, useMood, DragArea, Draggable, DropZone, RoundTrail, useBursts } from '../components/play/index.js'
+import { pxButton, INK } from './px.js'
 
 /**
- * Uhrzeiten-Meister — Uhrzeit lesen & stellen
+ * Kuckucks-Uhr — Uhrzeit lesen & stellen
+ *
+ * A cuckoo lives in a wooden clock and wants to come out at a certain time
+ * ("Um drei Uhr gibt es Kuchen!"). The child turns the hands with a finger;
+ * when the time is right the cuckoo pops out, calls as often as the hour
+ * says and gets its treat. In between, four animals guess the time shown and
+ * the child says who is right, or Lumi asks what happens at that time.
+ *
  * Scientific basis:
  *   • Concrete-Pictorial-Abstract (Bruner) — manipulating analog clock hands
  *     builds deep conceptual understanding before abstract notation.
@@ -56,21 +63,31 @@ function randomTime(tier) {
 
 // Times of day a preschooler recognises, each at its own place on the
 // 12-hour face. The half-hour ones join from level 4. `does` finishes the
-// sentence "Um sieben Uhr …". Soft hyphens (\u00AD) let the long words
-// break on a narrow card; speech drops them.
+// sentence "Um sieben Uhr …"; `mood` is what Lumi then does on the stage.
+// Soft hyphens (­) let the long words break on a narrow card; speech
+// drops them.
 const DAILY_ACTIVITIES = [
-  { id: 'aufstehen',    icon: '⏰',  label: 'Aufstehen',     does: 'steht Lumi auf',             h: 7,  m: 0 },
-  { id: 'kindergarten', icon: '🏫',  label: 'Kinder\u00ADgarten',  does: 'geht Lumi in den Kindergarten', h: 9, m: 0 },
-  { id: 'mittagessen',  icon: '🍽️', label: 'Mittag\u00ADessen',   does: 'isst Lumi zu Mittag',        h: 12, m: 0 },
-  { id: 'spielplatz',   icon: '🛝',  label: 'Spiel\u00ADplatz',    does: 'geht Lumi auf den Spielplatz', h: 3, m: 0 },
-  { id: 'abendessen',   icon: '🍲',  label: 'Abend\u00ADessen',    does: 'isst Lumi zu Abend',         h: 6,  m: 0 },
-  { id: 'schlafen',     icon: '🛏️', label: 'Schlafen\u00ADgehen', does: 'geht Lumi schlafen',         h: 8,  m: 0 },
-  { id: 'obst',         icon: '🍎',  label: 'Obst essen',    does: 'isst Lumi Obst',             h: 4,  m: 30 },
-  { id: 'baden',        icon: '🛁',  label: 'Baden',         does: 'badet Lumi',                 h: 5,  m: 30 },
-  { id: 'zaehne',       icon: '🪥',  label: 'Zähne putzen',  does: 'putzt Lumi die Zähne',       h: 7,  m: 30 },
+  { id: 'aufstehen',    icon: '⏰',  label: 'Aufstehen',          does: 'steht Lumi auf',                h: 7,  m: 0,  mood: 'wow' },
+  { id: 'kindergarten', icon: '🏫',  label: 'Kinder­garten',  does: 'geht Lumi in den Kindergarten', h: 9,  m: 0,  mood: 'happy' },
+  { id: 'mittagessen',  icon: '🍽️', label: 'Mittag­essen',   does: 'isst Lumi zu Mittag',           h: 12, m: 0,  mood: 'eat' },
+  { id: 'spielplatz',   icon: '🛝',  label: 'Spiel­platz',    does: 'geht Lumi auf den Spielplatz',  h: 3,  m: 0,  mood: 'dance' },
+  { id: 'abendessen',   icon: '🍲',  label: 'Abend­essen',    does: 'isst Lumi zu Abend',            h: 6,  m: 0,  mood: 'eat' },
+  { id: 'schlafen',     icon: '🛏️', label: 'Schlafen­gehen', does: 'geht Lumi schlafen',            h: 8,  m: 0,  mood: 'sleep' },
+  { id: 'obst',         icon: '🍎',  label: 'Obst essen',         does: 'isst Lumi Obst',                h: 4,  m: 30, mood: 'eat' },
+  { id: 'baden',        icon: '🛁',  label: 'Baden',              does: 'badet Lumi',                    h: 5,  m: 30, mood: 'happy' },
+  { id: 'zaehne',       icon: '🪥',  label: 'Zähne putzen',       does: 'putzt Lumi die Zähne',          h: 7,  m: 30, mood: 'happy' },
 ]
-const plain = text => text.replace(/\u00AD/g, '')
+const plain = text => text.replace(/­/g, '')
 const activitiesFor = level => DAILY_ACTIVITIES.filter(a => level >= 4 || a.m === 0)
+
+// What the cuckoo is waiting for in a setting round: "Um drei Uhr gibt es …"
+const TREATS = [
+  { icon: '🍰', name: 'Kuchen' }, { icon: '🍦', name: 'Eis' }, { icon: '🍪', name: 'Kekse' },
+  { icon: '🍕', name: 'Pizza' }, { icon: '🧁', name: 'Muffins' }, { icon: '🍓', name: 'Erdbeeren' },
+]
+
+// The four animals who guess the time in a reading round
+const GUESSERS = ['🐰', '🐻', '🐸', '🦉']
 
 // Every third round asks what happens at a time instead of reading or
 // setting it, so the face connects to the child's own day. The activity is
@@ -80,6 +97,7 @@ function generateRounds(level) {
   const tier  = tierFor(level)
   const count = level <= 5 ? 8 : 10
   const acts  = shuffle(activitiesFor(level))
+  const treats = shuffle(TREATS)
   const seen  = new Set()
   const rounds = []
   for (let i = 0; i < count; i++) {
@@ -92,7 +110,7 @@ function generateRounds(level) {
     let t, tries = 0
     do { t = randomTime(tier) } while (seen.has(`${t.h}:${t.m}`) && ++tries < 50)
     seen.add(`${t.h}:${t.m}`)
-    rounds.push(t)
+    rounds.push({ ...t, treat: treats[i % treats.length] })
   }
   return rounds
 }
@@ -125,7 +143,7 @@ function fmt(h, m) {
   return `${h}:${String(m).padStart(2, '0')} Uhr`
 }
 
-// What the child reads on a card: the spoken form up to level 6, the
+// What the child sees in a bubble: the spoken form up to level 6, the
 // digital one from level 7.
 const label = (t, level) => (showDigital(level) ? fmt(t.h, t.m) : toGermanTime(t.h, t.m))
 
@@ -193,6 +211,29 @@ function readOptions(t, level) {
   return shuffle([t, ...wrongs])
 }
 
+// How often the cuckoo calls: the hour at a full hour, once otherwise —
+// like a real cuckoo clock, so the calls count the hour out loud.
+const callsFor = t => (t.m === 0 ? (t.h % 12 || 12) : 1)
+
+// The cuckoo's own call, two falling notes. Local, because no game but
+// this one has a cuckoo.
+let audio = null
+function cuckooCall() {
+  try {
+    audio ??= new (window.AudioContext || window.webkitAudioContext)()
+    if (audio.state === 'suspended') audio.resume().catch(() => {})
+    ;[[784, 0], [622, 0.17]].forEach(([f, d]) => {
+      const o = audio.createOscillator(), g = audio.createGain(), t0 = audio.currentTime + d
+      o.type = 'triangle'; o.frequency.setValueAtTime(f, t0)
+      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.28, t0 + 0.02)
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.16)
+      o.connect(g); g.connect(audio.destination); o.start(t0); o.stop(t0 + 0.18)
+    })
+  } catch { /* no audio */ }
+}
+
+const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+
 // Hand colours: hour hand blue, minute hand red — the same in every round,
 // and on the ± buttons. (They used to be the old lilac #4A00E0/#6C63FF.)
 const HOUR_C = '#2F6FC4'
@@ -245,10 +286,10 @@ function StepButton({ label, onPress, color, ariaLabel, disabled }) {
       aria-label={ariaLabel}
       disabled={disabled}
       style={{
-        width: 52, height: 52, borderRadius: 12,
+        width: 56, height: 56, borderRadius: 14,
         background: color, color: 'white', border: `3px solid ${INK}`,
         textShadow: '0 2px 0 rgba(0,0,0,0.3)',
-        fontSize: 26, fontWeight: 800, lineHeight: 1,
+        fontSize: 28, fontWeight: 800, lineHeight: 1,
         cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.5 : 1,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none',
@@ -263,7 +304,7 @@ function StepButton({ label, onPress, color, ariaLabel, disabled }) {
 function HandIcon({ kind }) {
   const long = kind === 'minute'
   return (
-    <svg width={40} height={40} viewBox="0 0 34 34" aria-hidden="true" style={{ flexShrink: 0 }}>
+    <svg width={44} height={44} viewBox="0 0 34 34" aria-hidden="true" style={{ flexShrink: 0 }}>
       <circle cx="17" cy="17" r="15" fill="#FFFDF7" stroke={INK} strokeWidth="2.5" />
       <line x1="17" y1="17" x2={long ? 17 : 24} y2={long ? 4 : 12}
         stroke={long ? MIN_C : HOUR_C} strokeWidth={long ? 3 : 4.5} strokeLinecap="round" />
@@ -362,7 +403,6 @@ function ClockFace({ value, onChange, interactive, level, highlightHands, size }
         width: size, height: size,
         display: 'block',
         borderRadius: '50%',
-        filter: 'drop-shadow(0 5px 0 rgba(42,27,61,0.35))',
         cursor: dragging ? 'grabbing' : interactive ? 'grab' : 'default',
         touchAction: 'none',
         userSelect: 'none',
@@ -468,6 +508,166 @@ function ClockFace({ value, onChange, interactive, level, highlightHands, size }
   )
 }
 
+// ── The cuckoo clock ─────────────────────────────────────────────────────────
+// A wooden house (viewBox 300 × 360) around the face: a roof with the
+// cuckoo's door in the gable, the body with the face, a pendulum and two
+// pine-cone weights below. The face sits at (150, 192) in a 216-unit box,
+// so the house is 300/216 of the face wide and 360/216 high.
+const HOUSE_W = 300 / 216, HOUSE_H = 360 / 216
+const WOOD = '#B5733A', WOOD_DARK = '#8A4F22', WOOD_LIGHT = '#D9A066'
+
+const CLOCK_CSS = `
+@keyframes cu-swing { 0%,100% { transform: rotate(13deg); } 50% { transform: rotate(-13deg); } }
+.cu-pend { animation: cu-swing 1.6s ease-in-out infinite; transform-origin: 150px 298px; }
+.cu-paused .cu-pend { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .cu-pend { animation: none; } }
+`
+
+/**
+ * bird: 'in' behind the closed door · 'peek' looking out, waiting ·
+ * 'out' popped out on its perch · 'puzzled' out, but it is not time yet ·
+ * 'eat' out, eating its treat
+ */
+function CuckooClock({ size, bird, calls, treat, wish, paused, onDoor, children }) {
+  const w = size * HOUSE_W, h = size * HOUSE_H
+  const out = bird === 'out' || bird === 'puzzled' || bird === 'eat'
+  const doorOpen = out ? 0.12 : bird === 'peek' ? 0.55 : 1
+  const birdPx = w * 0.3
+  return (
+    <div className={paused ? 'cu-paused' : undefined} style={{ position: 'relative', width: w, height: h, flexShrink: 0 }}>
+      <style>{CLOCK_CSS}</style>
+      <svg viewBox="0 0 300 360" width={w} height={h} aria-hidden="true" style={{ position: 'absolute', inset: 0, overflow: 'visible', filter: 'drop-shadow(0 6px 0 rgba(42,27,61,0.25))' }}>
+        {/* pendulum and weights hang behind the body */}
+        <g className="cu-pend">
+          <line x1="150" y1="290" x2="150" y2="340" stroke={INK} strokeWidth="4" />
+          <circle cx="150" cy="344" r="14" fill="#FFC93C" stroke={INK} strokeWidth="3.5" />
+          <circle cx="146" cy="340" r="4" fill="#fff" opacity="0.7" />
+        </g>
+        {[96, 204].map(x => (
+          <g key={x}>
+            <line x1={x} y1="290" x2={x} y2="318" stroke={INK} strokeWidth="2.5" strokeDasharray="4 3" />
+            <ellipse cx={x} cy="334" rx="10" ry="17" fill="#7A4A22" stroke={INK} strokeWidth="3" />
+            <path d={`M${x - 8} 326 h16 M${x - 9} 334 h18 M${x - 8} 342 h16`} stroke="#5A3416" strokeWidth="2" />
+          </g>
+        ))}
+        {/* body */}
+        <rect x="24" y="86" width="252" height="212" rx="16" fill={WOOD} stroke={INK} strokeWidth="4" />
+        <rect x="34" y="96" width="232" height="192" rx="12" fill="none" stroke={WOOD_LIGHT} strokeWidth="3" opacity="0.7" />
+        {/* roof with the door in the gable */}
+        <polygon points="2,100 150,4 298,100" fill={WOOD_DARK} stroke={INK} strokeWidth="4" strokeLinejoin="round" />
+        <polygon points="34,90 150,26 266,90" fill={WOOD_LIGHT} />
+        <path d="M70 76 L150 32 L230 76" fill="none" stroke={WOOD} strokeWidth="3" />
+        <rect x="122" y="40" width="56" height="44" rx="7" fill="#2a1b3d" />
+        {/* two carved leaves on the peak */}
+        <ellipse cx="136" cy="10" rx="14" ry="6" fill="#5CC45A" stroke={INK} strokeWidth="2.5" transform="rotate(-25 136 10)" />
+        <ellipse cx="164" cy="10" rx="14" ry="6" fill="#5CC45A" stroke={INK} strokeWidth="2.5" transform="rotate(25 164 10)" />
+        {/* the perch the cuckoo stands on */}
+        {out && <rect x="128" y="82" width="44" height="7" rx="3" fill={WOOD_DARK} stroke={INK} strokeWidth="2.5" />}
+      </svg>
+
+      {/* the face */}
+      <div style={{ position: 'absolute', left: '14%', top: `${(84 / 360) * 100}%`, width: size, height: size }}>
+        {children}
+      </div>
+
+      {/* the cuckoo */}
+      <motion.div aria-hidden="true"
+        initial={false}
+        animate={{
+          opacity: bird === 'in' ? 0 : 1,
+          scale: out ? 1 : bird === 'peek' ? 0.5 : 0.3,
+          y: out ? -birdPx * 0.12 : birdPx * 0.12,
+          rotate: bird === 'puzzled' ? [0, -16, 12, -10, 0] : 0,
+        }}
+        transition={{ type: 'spring', stiffness: 420, damping: 15 }}
+        style={{ position: 'absolute', left: (w - birdPx) / 2, top: h * (62 / 360) - birdPx * 0.62, width: birdPx, height: birdPx, pointerEvents: 'none', zIndex: 2 }}>
+        <motion.div key={calls} initial={{ scaleY: 1 }} animate={calls ? { scaleY: [1, 0.8, 1.12, 1], y: [0, 4, -6, 0] } : {}} transition={{ duration: 0.28 }}>
+          <motion.div animate={bird === 'eat' && !reduceMotion() ? { scaleY: [1, 0.85, 1.08, 0.88, 1.04, 1] } : {}} transition={{ duration: 0.9 }}>
+            <Art art="🐦" size={birdPx} />
+          </motion.div>
+        </motion.div>
+        {bird === 'puzzled' && (
+          <span style={{ position: 'absolute', top: -birdPx * 0.25, right: -birdPx * 0.1, fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: birdPx * 0.45, color: '#6b3fd6', WebkitTextStroke: `2px ${INK}` }}>?</span>
+        )}
+      </motion.div>
+
+      {/* the door's two leaves, over the bird while it is inside; a tap peeks */}
+      <svg viewBox="0 0 300 360" width={w} height={h} style={{ position: 'absolute', inset: 0, overflow: 'visible', pointerEvents: 'none', zIndex: 3 }}>
+        {[122, 150].map(x => (
+          <motion.rect key={x} x={x} y="40" width="28" height="44" rx="4"
+            fill={WOOD} stroke={INK} strokeWidth="3"
+            initial={false} animate={{ scaleX: doorOpen }} transition={{ type: 'spring', stiffness: 300, damping: 18 }}
+            style={{ originX: x === 122 ? 0 : 1, originY: 0.5 }} />
+        ))}
+        <rect x="114" y="34" width="72" height="56" fill="transparent" style={{ pointerEvents: onDoor ? 'auto' : 'none', cursor: 'pointer' }} onClick={onDoor} />
+      </svg>
+
+      {/* how many times it has called */}
+      <AnimatePresence>
+        {calls > 0 && (
+          <motion.div key={calls} aria-hidden="true"
+            initial={{ scale: 0.3, opacity: 0, y: 10 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 1.4 }}
+            transition={{ duration: 0.18 }}
+            style={{
+              position: 'absolute', top: h * 0.02, left: w * 0.06, zIndex: 4,
+              width: w * 0.2, height: w * 0.2, borderRadius: '50%', background: '#FFC93C', border: `3px solid ${INK}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: w * 0.11, color: INK,
+            }}>{calls}</motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* the treat lands on the perch */}
+      <AnimatePresence>
+        {treat && (
+          <motion.div aria-hidden="true" key="treat"
+            initial={{ y: -h * 0.3, opacity: 0, scale: 0.6 }} animate={{ y: 0, opacity: 1, scale: [0.6, 1, 1, 0.7, 0.4] }} exit={{ scale: 0, opacity: 0 }}
+            transition={{ duration: 1.6, y: { type: 'spring', stiffness: 380, damping: 14 } }}
+            style={{ position: 'absolute', left: w * 0.2, top: h * 0.12, zIndex: 4, pointerEvents: 'none' }}>
+            <Art art={treat} size={w * 0.2} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* what the cuckoo is waiting for */}
+      {wish && (
+        <div style={{ position: 'absolute', left: '50%', top: 0, width: 0, height: 0, zIndex: 5 }}>
+          <Wish side="top" size={110}>{wish}</Wish>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// One of the animals guessing the time in a reading round. The whole card
+// is the answer; the time stands in its speech bubble, and the animal bobs
+// while its guess is read out.
+function Guesser({ art, text, speaking, state, onPick, hear, compact }) {
+  const dim = state === 'tried' || state === 'oops'
+  return (
+    <motion.button
+      onClick={onPick} {...hearable(hear)} aria-label={hear}
+      whileTap={state ? {} : { scale: 0.94 }}
+      animate={state === 'right' ? { y: [0, -26, 0, -10, 0] } : state === 'oops' ? { rotate: [0, -10, 8, -5, 0] } : speaking ? { y: [0, -6, 0] } : { y: 0, rotate: 0 }}
+      transition={speaking ? { duration: 0.5, repeat: Infinity } : { duration: 0.7 }}
+      style={{
+        all: 'unset', boxSizing: 'border-box', cursor: state ? 'default' : 'pointer',
+        display: 'flex', alignItems: 'center', gap: 4, minHeight: 64, minWidth: 0,
+        opacity: dim ? 0.45 : 1, transition: 'opacity .3s',
+      }}>
+      <Art art={art} size={compact ? 52 : 64} />
+      <span style={{
+        position: 'relative', flex: 1, minWidth: 0, padding: compact ? '8px 8px' : '10px 12px', borderRadius: 16,
+        background: state === 'right' ? '#DDF6CF' : speaking ? '#FFF1BF' : '#FFFDF7',
+        border: `3px solid ${state === 'right' ? '#2F8F3A' : INK}`,
+        boxShadow: '0 4px 0 rgba(42,27,61,0.25)',
+        fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: compact ? 17 : 21, color: INK, textAlign: 'center',
+        transition: 'background .2s',
+      }}>{text}</span>
+    </motion.button>
+  )
+}
+
 // Size of an element, for laying the clock out against the real height.
 function useSize(ref) {
   const [size, setSize] = useState({ w: 0, h: 0 })
@@ -490,26 +690,45 @@ function useSize(ref) {
 export default function ClockGame({ level = 1, onComplete }) {
   const [times]   = useState(() => generateRounds(level))
   const tier      = tierFor(level)
+  const paused    = usePaused()
+  const pausedRef = useRef(paused)
+  pausedRef.current = paused
   const [idx,     setIdx]     = useState(0)
   // null · 'hint' after a first miss · 'right' · 'shown' after a second miss
   const [status,  setStatus]  = useState(null)
   const [tried,   setTried]   = useState([])       // options already tapped this round
-  const [missed,  setMissed]  = useState([])       // rounds with a miss
-  const [mood,    setMood]    = useState('happy')
-  const [flash,   setFlash]   = useState(null)     // { kind, key }
   const [hands,   setHands]   = useState(0)        // the set-mode hands, minutes since 12:00
+  const [bird,    setBird]    = useState('in')
+  const [calls,   setCalls]   = useState(0)
+  const [treatOut, setTreatOut] = useState(false)
+  const [speaking, setSpeaking] = useState(null)   // guesser being read out
+  const [picked,  setPicked]  = useState(null)     // guesser / activity just tapped
+  const [lumiMood, setLumiMood] = useMood()
+  const [lumiDoes, setLumiDoes] = useState(null)   // activity Lumi is doing
+  const [bursts, burst] = useBursts()
+  const missed    = useRef(new Set())               // rounds with a miss
   const tweenRef  = useRef(null)
+  const timers    = useRef([])
+  const areaRef   = useRef(null)
+  const area      = useSize(areaRef)
 
   const t = times[idx]
-  // 'read' = pick the time · 'set' = put the hands there ·
-  // 'daily' = say what happens at this time of day
+  // 'read' = who says the right time · 'set' = put the hands there ·
+  // 'daily' = what happens at this time of day
   const mode = t?.activity ? 'daily' : (idx % 3 === 0 ? 'read' : 'set')
   const resolved = status === 'right' || status === 'shown'
 
+  // Timers of the round: they wait while the help is open and end with it
+  const later = useCallback((fn, ms) => {
+    const run = () => { if (pausedRef.current) timers.current.push(setTimeout(run, 250)); else fn() }
+    timers.current.push(setTimeout(run, ms))
+  }, [])
+  const clearTimers = () => { timers.current.forEach(clearTimeout); timers.current = [] }
+
   const task = !t ? ''
-    : mode === 'read'  ? 'Schau auf die Uhr. Wie viel Uhr ist es?'
+    : mode === 'read'  ? 'Wie spät ist es? Wer hat recht?'
     : mode === 'daily' ? 'Was macht Lumi, wenn die Uhr so aussieht?'
-    :                    `Stelle die Uhr auf ${say(t)}.`
+    :                    `Um ${say(t)} gibt es ${t.treat.name}! Stell die Uhr auf ${say(t)}.`
 
   const options      = useMemo(() => (t && mode === 'read' ? readOptions(t, level) : []), [idx]) // eslint-disable-line react-hooks/exhaustive-deps
   const dailyOptions = useMemo(() => {
@@ -518,24 +737,75 @@ export default function ClockGame({ level = 1, onComplete }) {
     return shuffle([t.activity, ...others])
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // The task; in a reading round each animal's guess follows, and the
+  // animal bobs while it is read
+  const readout = useRef(0)       // a tap ends the reading of the guesses
+  const speakTask = useCallback(() => {
+    if (mode !== 'read') { sayTask(task); return }
+    const run = ++readout.current
+    const next = i => {
+      if (run !== readout.current) return
+      if (i >= options.length) { setSpeaking(null); return }
+      setSpeaking(i)
+      narrate([{ text: say(options[i]), gap: 200 }], { onEnd: () => next(i + 1) })
+    }
+    sayTask(task, { onEnd: () => next(0) })
+  }, [mode, task, options])
+
   // New round: hands somewhere clearly wrong, then the task
   useEffect(() => {
     if (!t) return
-    setStatus(null); setTried([]); setMood('happy')
+    setStatus(null); setTried([]); setCalls(0); setTreatOut(false); setSpeaking(null); setPicked(null); setLumiDoes(null)
+    setBird(mode === 'set' ? 'peek' : 'in')
     cancelAnimationFrame(tweenRef.current)
     let start
     do { start = fromHM(rand(1, 12), rand(0, 11) * 5) }
     while (timeDiffMin(toHM(start).h, toHM(start).m, t.h, t.m) <= 60)
     setHands(start)
     lockPreviews()
-    const id = setTimeout(() => sayTask(task), 450)
-    return () => clearTimeout(id)
+    const id = setTimeout(speakTask, 450)
+    return () => { clearTimeout(id); clearTimers() }
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => () => cancelAnimationFrame(tweenRef.current), [])
+  useEffect(() => () => { cancelAnimationFrame(tweenRef.current); clearTimers() }, [])
+
+  // The cuckoo pops out and calls: as often as the hour at a full hour
+  const ring = useCallback((then) => {
+    setBird('out')
+    sfx.slideUp()
+    const n = callsFor(t)
+    const call = k => {
+      if (k > n) { setCalls(0); then?.(); return }
+      setCalls(k); cuckooCall()
+      later(() => call(k + 1), 420)
+    }
+    later(() => call(1), 380)
+  }, [t, later])
+
+  const nextRound = useCallback(() => {
+    if (idx + 1 >= times.length) {
+      sfx.complete()
+      afterNarration(() => onComplete(result(times.length - missed.current.size, times.length)), { minMs: 500 })
+    } else {
+      setIdx(i => i + 1)
+    }
+  }, [idx, times.length, onComplete])
+
+  // After a right answer the next round comes by itself
+  const right = useCallback((praise, at) => {
+    setStatus('right')
+    setSpeaking(null)
+    sfx.correct()
+    if (at) burst(at, 'stars')
+    ring(() => {
+      // now and then a full cuckoo burps — the classic giggle
+      if (mode === 'set') { setTreatOut(true); setBird('eat'); sfx.chomp(); if (Math.random() < 0.3) later(sfx.burp, 900) }
+      sayRight(praise, { onEnd: () => later(nextRound, 700) })
+    })
+  }, [mode, ring, burst, later, nextRound])
 
   // After a second miss in set mode the hands glide to the right place
-  const showOnClock = useCallback(() => {
+  const showOnClock = useCallback((then) => {
     const from = hands, to = fromHM(t.h, t.m)
     let delta = ((to - from) % 720 + 720) % 720
     if (delta > 360) delta -= 720
@@ -545,51 +815,58 @@ export default function ClockGame({ level = 1, onComplete }) {
       const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2
       setHands(((Math.round(from + delta * e) % 720) + 720) % 720)
       if (k < 1) tweenRef.current = requestAnimationFrame(step)
+      else then?.()
     }
     tweenRef.current = requestAnimationFrame(step)
   }, [hands, t])
 
-  const right = useCallback((praise) => {
-    setStatus('right')
-    setMood('excited')
-    setFlash({ kind: 'ok', key: Date.now() })
-    sfx.correct()
-    sayRight(praise)
-  }, [])
-
   // First miss: a hint and another try. Second miss: show and say the answer.
+  // The cuckoo looks out, puzzled — it is not its time yet.
   const wrong = useCallback((hint, reveal) => {
-    setMissed(ms => (ms.includes(idx) ? ms : [...ms, idx]))
-    setMood('encouraging')
-    setFlash({ kind: 'wrong', key: Date.now() })
-    sfx.wrong()
+    missed.current.add(idx)
+    setSpeaking(null)
+    sfx.boing()
+    setBird('puzzled')
     if (status === 'hint') {
       setStatus('shown')
       sayWrong(reveal)
+      later(() => ring(), 900)
     } else {
       setStatus('hint')
       sayWrong(hint)
+      later(() => setBird(mode === 'set' ? 'peek' : 'in'), 1300)
     }
-  }, [idx, status])
+  }, [idx, status, mode, later, ring])
 
-  const pickDigital = useCallback((opt) => {
-    if (resolved || tried.includes(opt)) return
-    setTried(tr => [...tr, opt])
-    if (opt === t) right(`Es ist ${say(t)}.`)
+  const pickGuess = useCallback((opt, i, e) => {
+    if (resolved || tried.includes(i)) return
+    readout.current++
+    setTried(tr => [...tr, i])
+    setPicked(i)
+    if (opt === t) right(`Es ist ${say(t)}.`, e.currentTarget)
     else wrong(readHint(t.m), `Es ist ${say(t)}. ${describeHands(t.h, t.m)}`)
   }, [resolved, tried, t, right, wrong])
 
-  const pickActivity = useCallback((act) => {
-    if (resolved || tried.includes(act.id)) return
+  // An activity given to Lumi: Lumi does it, or hands it back
+  const giveActivity = useCallback((act) => {
+    if (resolved || tried.includes(act.id)) return false
     setTried(tr => [...tr, act.id])
-    if (act.id === t.activity.id) right(`Um ${say(t)} ${act.does}.`)
-    else wrong(`Es ist ${say(t)}. Was macht Lumi da?`, `Um ${say(t)} ${t.activity.does}.`)
-  }, [resolved, tried, t, right, wrong])
+    if (act.id === t.activity.id) {
+      setLumiDoes(act); setLumiMood(act.mood, 0)
+      right(`Um ${say(t)} ${act.does}.`)
+      return true
+    }
+    setLumiMood('oops')
+    const last = status === 'hint'
+    wrong(`Es ist ${say(t)}. Was macht Lumi da?`, `Um ${say(t)} ${t.activity.does}.`)
+    if (last) { setLumiDoes(t.activity); setLumiMood(t.activity.mood, 0) }
+    return false
+  }, [resolved, tried, t, status, right, wrong, setLumiMood])
 
-  const submitAnalog = useCallback(() => {
-    if (resolved) return
+  const submitAnalog = useCallback((e) => {
+    if (resolved || bird === 'puzzled') return
     const cur = toHM(hands)
-    if (timeDiffMin(cur.h, cur.m, t.h, t.m) <= TOLERANCE[tier]) { right(`Es ist ${say(t)}.`); return }
+    if (timeDiffMin(cur.h, cur.m, t.h, t.m) <= TOLERANCE[tier]) { right(`Es ist ${say(t)}.`, e.currentTarget); return }
     // Which hand is off? The minute hand alone decides "halb", "Viertel" …
     const minuteOk = Math.min(Math.abs(cur.m - t.m), 60 - Math.abs(cur.m - t.m)) <= TOLERANCE[tier]
     const hint = minuteOk
@@ -597,144 +874,94 @@ export default function ClockGame({ level = 1, onComplete }) {
       : cur.h % 12 === t.h % 12
         ? 'Der kurze Zeiger stimmt schon. Schau noch einmal auf den langen Zeiger.'
         : 'Der kurze Zeiger zeigt die Stunde, der lange Zeiger die Minuten. Versuch es noch einmal.'
-    if (status === 'hint') showOnClock()
-    wrong(hint, `Schau, so sieht ${say(t)} aus. ${describeHands(t.h, t.m)}`)
-  }, [resolved, hands, t, tier, status, right, wrong, showOnClock])
-
-  const weiterClick = () => {
-    if (idx + 1 >= times.length) {
-      sfx.complete()
-      afterNarration(() => onComplete(result(times.length - missed.length, times.length)), { minMs: 500 })
-    } else {
-      setIdx(i => i + 1)
+    if (status === 'hint') {
+      missed.current.add(idx)
+      setStatus('shown')
+      sfx.boing()
+      sayWrong(`Schau, so sieht ${say(t)} aus. ${describeHands(t.h, t.m)}`)
+      showOnClock(() => ring())
+      return
     }
+    wrong(hint)
+  }, [resolved, bird, hands, t, tier, status, idx, right, wrong, showOnClock, ring])
+
+  // A tap on the closed door: the cuckoo peeks out and giggles
+  const peek = () => {
+    if (bird !== 'in') return
+    sfx.giggle(); setBird('peek')
+    later(() => setBird(b => (b === 'peek' ? 'in' : b)), 900)
   }
 
   // ── Layout: the clock takes what is left of the height ───────────────────
-  const areaRef = useRef(null)
-  const area    = useSize(areaRef)
-  const wide    = area.w > area.h * 1.2 && area.w >= 560
-  const side    = mode === 'read'  ? (wide ? { w: 360, h: 0 } : { w: 0, h: 150 })
-                : mode === 'daily' ? (wide ? { w: 250, h: 0 } : { w: 0, h: 108 })
-                :                    (wide ? { w: 150, h: 0 } : { w: 0, h: 64 })
+  const wide    = area.w > area.h * 1.15 && area.w >= 560
+  const compact = area.w < 520
+  const side    = mode === 'read'  ? (wide ? { w: 340, h: 0 } : { w: 0, h: compact ? 150 : 160 })
+                : mode === 'daily' ? (wide ? { w: 300, h: 0 } : { w: 0, h: compact ? 140 : 150 })
+                :                    (wide ? { w: 230, h: 0 } : { w: 0, h: compact ? 136 : 80 })
   const gap     = 16
-  const panelPad = 12
-  const clockPx = Math.max(150, Math.floor(Math.min(
-    wide ? area.h : area.h - side.h - gap,
-    wide ? area.w - side.w - gap : area.w,
-    560,
-  ) - panelPad * 2 - 6))
+  const headroom = 58     // the cuckoo's wish bubble above the roof
+  const clockPx = Math.max(120, Math.floor(Math.min(
+    ((wide ? area.h : area.h - side.h - gap) - headroom) / HOUSE_H,
+    (wide ? area.w - side.w - gap : area.w) / HOUSE_W,
+    420,
+  )))
 
   if (!t) return null
 
-  const hearItems = [task, ...(
-    mode === 'read'  ? options.map(o => say(o))
-    : mode === 'daily' ? dailyOptions.map(a => plain(a.label))
-    : [])]
+  const wish = mode === 'set' && !resolved
+    ? <><Art art={t.treat.icon} size={38} /><span>{label(t, level)}</span></>
+    : null
 
-  const target = showDigital(level)
-    ? <><strong style={{ color: ACCENT }}>{fmt(t.h, t.m)}</strong> ({toGermanTime(t.h, t.m)})</>
-    : <strong style={{ color: ACCENT }}>{toGermanTime(t.h, t.m)}</strong>
+  const fertig = (
+    <motion.button key="fertig"
+      whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.94 }}
+      onClick={submitAnalog} disabled={resolved}
+      {...hearable('Fertig')} aria-label="Fertig"
+      style={{
+        ...pxButton('green'), color: INK, textShadow: '0 1px 0 rgba(255,255,255,0.35)',
+        padding: '6px 22px 6px 12px', minHeight: 60, fontSize: 22, opacity: resolved ? 0.5 : 1,
+        display: 'flex', alignItems: 'center', gap: 8,
+      }}><Art art="🐦" size={44} />Fertig!</motion.button>
+  )
 
-  const bubble = status === 'right'
-    ? <>⭐ Richtig! Es ist <strong style={{ color: ACCENT }}>{toGermanTime(t.h, t.m)}</strong>.</>
-    : status === 'shown'
-      ? (mode === 'daily'
-          ? <>👀 Um <strong style={{ color: ACCENT }}>{toGermanTime(t.h, t.m)}</strong>: {t.activity.label}.</>
-          : <>👀 So sieht <strong style={{ color: ACCENT }}>{toGermanTime(t.h, t.m)}</strong> aus.</>)
-      : status === 'hint'
-        ? (mode === 'daily'
-            ? <>💡 Es ist <strong style={{ color: ACCENT }}>{toGermanTime(t.h, t.m)}</strong>. Was macht Lumi da?</>
-            : <>💡 Schau auf die Zeiger: der kurze zeigt die Stunde, der lange die Minuten.</>)
-        : mode === 'read'
-          ? <>Wie viel Uhr ist es? 🕐</>
-          : mode === 'daily'
-            ? <>Was macht Lumi, wenn die Uhr so aussieht? 🤔</>
-            : <>Stelle die Uhr auf {target}!</>
-
-  const doneSeg = (i) => i < idx || (i === idx && resolved)
+  const steppers = [['hour', 'Stundenzeiger', 60, HOUR_C], ['minute', 'Minutenzeiger', 5, MIN_C]].map(([kind, name, stepBy, color]) => (
+    <div key={kind} {...hearable(kind === 'hour' ? 'Der kurze Zeiger' : 'Der lange Zeiger')}
+      style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <HandIcon kind={kind} />
+      <StepButton label="−" color={color} disabled={resolved}
+        onPress={() => setHands(v => (v - stepBy + 720) % 720)} ariaLabel={`${name} zurück`} />
+      <StepButton label="+" color={color} disabled={resolved}
+        onPress={() => setHands(v => (v + stepBy) % 720)} ariaLabel={`${name} vor`} />
+    </div>
+  ))
 
   return (
     <div style={{
       flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center',
-      padding: 'clamp(10px,2vw,22px) clamp(12px,3vw,32px)',
-      gap: 'clamp(8px,1.6dvh,16px)', overflow: 'hidden',
+      padding: 'clamp(8px,1.6vw,18px) clamp(12px,3vw,32px) clamp(14px,2vw,22px)',
+      gap: 'clamp(6px,1.2dvh,12px)', overflow: 'hidden', position: 'relative',
     }}>
-
-      {/* Confetti on correct */}
-      <AnimatePresence>
-        {flash?.kind === 'ok' && (
-          <motion.div key={'confetti-' + flash.key}
-            initial={{ opacity: 1 }} animate={{ opacity: 0 }} transition={{ delay: 0.8, duration: 0.3 }}
-            style={{ position: 'fixed', inset: 0, zIndex: 160, pointerEvents: 'none',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 60 }}>
-            {['🌟','✨','⭐','🎉','🌟','✨'].map((e, i) => (
-              <motion.span key={i}
-                initial={{ y: 0, x: 0, scale: 0, opacity: 1 }}
-                animate={{ y: -(80 + i * 25), x: (i % 2 === 0 ? 1 : -1) * (40 + i * 30), scale: [0, 1.3, 0], opacity: [1, 1, 0] }}
-                transition={{ duration: 0.7, delay: i * 0.06 }}
-                style={{ position: 'absolute' }}>{e}</motion.span>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-      {/* Flash overlay */}
-      <AnimatePresence>
-        {flash && (
-          <motion.div key={flash.key}
-            initial={{ opacity: flash.kind === 'ok' ? 0.35 : 0.22 }} animate={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
-            style={{ position: 'fixed', inset: 0, zIndex: 150, pointerEvents: 'none',
-                     background: flash.kind === 'ok' ? '#6BCB77' : '#FF6B6B' }}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Progress — a round solved only on a later try turns light red */}
-      <div style={{ display: 'flex', gap: 5, width: '100%', maxWidth: 680, flexShrink: 0 }}>
-        {times.map((_, i) => (
-          <div key={i} style={{
-            flex: 1, ...pxSegment(doneSeg(i) ? 'done' : i === idx ? 'current' : 'todo'),
-            ...(doneSeg(i) && missed.includes(i) ? { background: '#F3A091' } : {}),
-            transition: 'background 0.3s',
-          }} />
-        ))}
-      </div>
-
-      {/* Lumi + task; the speaker reads the task and every answer */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, width: '100%', maxWidth: 680, flexShrink: 0 }}>
-        <LumiCharacter mood={mood} size={60} />
-        <motion.div
-          key={idx}
-          initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }}
+      {bursts}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', maxWidth: 760, flexShrink: 0 }}>
+        <RoundTrail total={times.length} done={idx + (resolved ? 1 : 0)} walker="🐦" goal="🎂" style={{ flex: 1 }} />
+        <motion.button whileTap={{ scale: 0.9 }} onClick={speakTask} aria-label="Aufgabe noch einmal hören"
           style={{
-            flex: 1, ...pxBubble,
-            padding: '10px 16px',
-            fontFamily: 'var(--font-heading)', fontSize: 'clamp(16px,3.2vw,22px)',
-            color: 'var(--text-primary)',
-          }}
-        >{bubble}</motion.div>
-        <HearOptions items={hearItems} size={52} label="Aufgabe und Antworten vorlesen" style={{ alignSelf: 'center' }} />
+            width: 52, height: 52, flexShrink: 0, background: 'var(--px-gold)', border: `3px solid ${INK}`, borderRadius: 12,
+            boxShadow: `inset 0 3px 0 rgba(255,255,255,0.45), inset 0 -5px 0 rgba(0,0,0,0.2), 0 4px 0 ${INK}`,
+            cursor: 'pointer', fontSize: 26, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>🔊</motion.button>
       </div>
 
-      {/* Main interaction area */}
+      <DragArea autoTarget="lumi" disabled={resolved}>
       <div ref={areaRef} style={{
-        flex: 1, minHeight: 0, width: '100%', maxWidth: 1100,
+        flex: 1, minHeight: 0, width: '100%', maxWidth: 1180,
         display: 'flex', flexDirection: wide ? 'row' : 'column',
         alignItems: 'center', justifyContent: 'center', gap,
       }}>
-        <AnimatePresence mode="wait">
-          <motion.div key={idx}
-            initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.8, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 22 }}
-            style={{
-              ...pxPanel,
-              ...(status === 'right' ? { background: '#DDF6CF', borderColor: '#2F8F3A' } : {}),
-              padding: panelPad, flexShrink: 0,
-              transition: 'background 0.3s',
-            }}
-          >
+        <div style={{ paddingTop: headroom, flexShrink: 0 }}>
+          <CuckooClock size={clockPx} bird={bird} calls={calls} paused={paused}
+            treat={treatOut && t.treat ? t.treat.icon : null} wish={wish}
+            onDoor={mode !== 'set' && !resolved ? peek : null}>
             <ClockFace
               value={mode === 'set' ? hands : fromHM(t.h, t.m)}
               onChange={setHands}
@@ -743,130 +970,95 @@ export default function ClockGame({ level = 1, onComplete }) {
               highlightHands={status === 'hint'}
               size={clockPx}
             />
-          </motion.div>
-        </AnimatePresence>
+          </CuckooClock>
+        </div>
 
-        {/* READ MODE: pick the time */}
+        {/* READ: four animals guess, the child says who is right */}
         {mode === 'read' && (
           <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)',
-            gap: 12, width: wide ? side.w : 'min(100%, 420px)', flexShrink: 0,
+            display: 'grid', gridTemplateColumns: wide ? '1fr' : '1fr 1fr',
+            gap: wide ? 12 : 8, width: wide ? side.w : 'min(100%, 560px)', flexShrink: 0,
           }}>
-            {options.map(opt => {
+            {options.map((opt, i) => {
               const isAnswer = opt === t
-              const isTried  = tried.includes(opt)
-              const st = resolved && isAnswer ? 'right' : isTried && !isAnswer ? 'wrong' : undefined
+              const state = resolved && isAnswer ? 'right' : !tried.includes(i) ? null : picked === i && !resolved ? 'oops' : 'tried'
               return (
-                <motion.button key={`${opt.h}:${opt.m}`}
-                  whileHover={!resolved && !isTried ? { scale: 1.05 } : {}}
-                  whileTap={!resolved && !isTried ? { scale: 0.95 } : {}}
-                  onClick={() => pickDigital(opt)}
-                  {...hearable(say(opt))}
-                  aria-label={say(opt)}
-                  style={{
-                    ...pxCard(st),
-                    minHeight: wide ? 88 : 64, padding: '8px 10px',
-                    fontFamily: 'var(--font-heading)', fontSize: wide ? 26 : 'clamp(18px,3.4vw,24px)',
-                    fontWeight: 700, color: 'var(--text-primary)',
-                    cursor: resolved || isTried ? 'default' : 'pointer',
-                    opacity: isTried && !isAnswer ? 0.5 : 1,
-                    transition: 'background 0.22s, border 0.22s, box-shadow 0.22s, opacity 0.2s',
-                  }}
-                >{label(opt, level)}</motion.button>
+                <Guesser key={`${opt.h}:${opt.m}`} art={GUESSERS[i]} text={label(opt, level)} hear={say(opt)}
+                  speaking={speaking === i} state={state} compact={compact}
+                  onPick={e => pickGuess(opt, i, e)} />
               )
             })}
           </div>
         )}
 
-        {/* DAILY MODE: what happens at this time of day? */}
+        {/* DAILY: give Lumi what happens at this time */}
         {mode === 'daily' && (
           <div style={{
-            display: 'flex', flexDirection: wide ? 'column' : 'row',
-            gap: 12, width: wide ? side.w : 'min(100%, 480px)', flexShrink: 0,
+            display: 'flex', flexDirection: wide ? 'column' : 'row', alignItems: 'center',
+            gap: wide ? 14 : 10, width: wide ? side.w : 'min(100%, 600px)', flexShrink: 0, justifyContent: 'center',
           }}>
-            {dailyOptions.map(act => {
-              const isAnswer = act.id === t.activity.id
-              const isTried  = tried.includes(act.id)
-              const st = resolved && isAnswer ? 'right' : isTried && !isAnswer ? 'wrong' : undefined
-              return (
-                <motion.button key={act.id}
-                  whileHover={!resolved && !isTried ? { scale: 1.05 } : {}}
-                  whileTap={!resolved && !isTried ? { scale: 0.95 } : {}}
-                  onClick={() => pickActivity(act)}
-                  {...hearable(plain(act.label))}
-                  aria-label={plain(act.label)}
-                  style={{
-                    ...pxCard(st),
-                    flex: 1, minWidth: 0, minHeight: wide ? 88 : 96, padding: '8px 10px',
-                    fontFamily: 'var(--font-heading)', fontSize: wide ? 20 : 'clamp(14px,2.8vw,18px)',
-                    fontWeight: 700, color: 'var(--text-primary)',
-                    cursor: resolved || isTried ? 'default' : 'pointer',
-                    opacity: isTried && !isAnswer ? 0.5 : 1,
-                    transition: 'background 0.22s, border 0.22s, box-shadow 0.22s, opacity 0.2s',
-                    display: 'flex', flexDirection: wide ? 'row' : 'column',
-                    alignItems: 'center', justifyContent: 'center', gap: wide ? 12 : 4,
-                  }}
-                >
-                  <span style={{ fontSize: wide ? 48 : 38, lineHeight: 1, flexShrink: 0 }}>{act.icon}</span>
-                  <span style={{ textAlign: 'center', hyphens: 'manual', overflowWrap: 'anywhere' }}>{act.label}</span>
-                </motion.button>
-              )
-            })}
+            <DropZone id="lumi" label="Lumi" onDrop={giveActivity} slop={30}>
+              {hover => (
+                <div style={{ position: 'relative' }}>
+                  <Critter art="lumi" size={compact ? 84 : wide ? 120 : 100} mood={hover ? 'hungry' : lumiMood} talks
+                    wish={lumiDoes ? <Art art={lumiDoes.icon} size={compact ? 34 : 44} /> : <span style={{ fontSize: 28 }}>?</span>}
+                    wishSide={wide ? 'top' : 'right'} label="Lumi" />
+                </div>
+              )}
+            </DropZone>
+            <div style={{ display: 'flex', gap: compact ? 8 : 12, flex: wide ? undefined : 1, justifyContent: 'center' }}>
+              {dailyOptions.map(act => {
+                const gone = lumiDoes?.id === act.id
+                const isTried = tried.includes(act.id) && !gone
+                return (
+                  <Draggable key={act.id} id={act.id} data={act} label={plain(act.label)} disabled={isTried || resolved}
+                    style={{ visibility: gone ? 'hidden' : 'visible', opacity: isTried ? 0.4 : 1 }}>
+                    <div {...hearable(plain(act.label))} style={{
+                      width: compact ? 82 : 92, padding: '8px 4px 6px', boxSizing: 'border-box', borderRadius: 16,
+                      background: '#FFFDF7', border: `3px solid ${INK}`, boxShadow: '0 4px 0 rgba(42,27,61,0.25)',
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                    }}>
+                      <Art art={act.icon} size={compact ? 50 : 58} />
+                      <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 13, color: INK, textAlign: 'center', lineHeight: 1.1, hyphens: 'manual', overflowWrap: 'anywhere' }}>{act.label}</span>
+                    </div>
+                  </Draggable>
+                )
+              })}
+            </div>
           </div>
         )}
 
-        {/* SET MODE: ± for each hand — the non-drag way to set the clock */}
+        {/* SET: ± for each hand — the non-drag way to set the clock — and
+            the button that lets the cuckoo out */}
         {mode === 'set' && (
           <div style={{
-            display: 'flex', flexDirection: wide ? 'column' : 'row',
-            gap: wide ? 20 : 'clamp(14px,5vw,36px)', flexShrink: 0, alignItems: 'center',
+            display: 'flex', flexDirection: wide || compact ? 'column' : 'row', flexWrap: 'wrap',
+            gap: wide ? 18 : 12, flexShrink: 0, alignItems: 'center', justifyContent: 'center',
           }}>
-            {[['hour', 'Stundenzeiger', 60, HOUR_C], ['minute', 'Minutenzeiger', 5, MIN_C]].map(([kind, name, stepBy, color]) => (
-              <div key={kind} {...hearable(kind === 'hour' ? 'Der kurze Zeiger' : 'Der lange Zeiger')}
-                style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <HandIcon kind={kind} />
-                <StepButton label="−" color={color} disabled={resolved}
-                  onPress={() => setHands(v => (v - stepBy + 720) % 720)} ariaLabel={`${name} zurück`} />
-                <StepButton label="+" color={color} disabled={resolved}
-                  onPress={() => setHands(v => (v + stepBy) % 720)} ariaLabel={`${name} vor`} />
-              </div>
-            ))}
+            {compact ? <div style={{ display: 'flex', gap: 14 }}>{steppers}</div> : steppers}
+            {fertig}
           </div>
         )}
       </div>
+      </DragArea>
 
-      {/* Fixed slot for "Fertig" / "Weiter", so nothing jumps */}
-      <div style={{ height: 60, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {resolved ? (
-          <motion.button
-            key="weiter"
-            initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', stiffness: 300, delay: 0.3 }}
-            whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
-            onClick={weiterClick}
+      {/* After a second miss the answer stays up until the child moves on */}
+      <AnimatePresence>
+        {status === 'shown' && (
+          <motion.button key="weiter"
+            initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 300, delay: 1.2 }}
+            whileTap={{ scale: 0.94 }}
+            onClick={nextRound}
             {...hearable('Weiter')}
             style={{
-              ...pxButton('green'),
-              // ink on green: white text reached only 2.2:1
-              color: INK, textShadow: '0 1px 0 rgba(255,255,255,0.35)',
-              padding: '10px 44px', minHeight: 52,
-              fontSize: 'clamp(18px,3.5vw,22px)',
+              ...pxButton('green'), color: INK, textShadow: '0 1px 0 rgba(255,255,255,0.35)',
+              position: 'absolute', right: 'clamp(12px,3vw,32px)', bottom: 'clamp(12px,2vw,24px)', zIndex: 6,
+              padding: '10px 36px', minHeight: 56, fontSize: 'clamp(18px,3.5vw,22px)',
             }}
           >Weiter! ➡️</motion.button>
-        ) : mode === 'set' ? (
-          <motion.button
-            key="fertig"
-            whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
-            onClick={submitAnalog}
-            {...hearable('Fertig')}
-            style={{
-              ...pxButton('green'),
-              color: INK, textShadow: '0 1px 0 rgba(255,255,255,0.35)',
-              padding: '10px 40px', minHeight: 52, fontSize: 20,
-            }}
-          >{'✅ Fertig!'}</motion.button>
-        ) : null}
-      </div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

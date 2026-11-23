@@ -2,14 +2,13 @@ import { useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useApp } from '../AppContext.jsx'
 import { HudBar, PxIcon } from '../components/PixelUI.jsx'
-import { journeyArt } from '../components/JourneyPath.jsx'
+import { journeyArt } from '../lib/assets.js'
 import { STICKER_PAGES, STICKERS } from '../lib/stickers.js'
 import { narrate, stopNarration } from '../narrator.js'
 import { emojiSrc } from '../lib/emojiArt.jsx'
-import { line, LINES } from '../lib/lumiLines.js'
 
 /**
- * The sticker album: every finished journey adds one (lib/stickers.js).
+ * The sticker album: a day with all of Lumi's ideas played adds one (lib/stickers.js).
  * Empty places show the sticker's shadow — a little mystery what will come.
  * Tapping a sticker says what it is, a chance to name things together.
  */
@@ -21,7 +20,9 @@ export default function AlbumScreen() {
 
   useEffect(() => {
     const n = owned.size
-    narrate([line(n ? 'reise/album' : 'reise/album-leer')])
+    narrate([{ text: n
+      ? 'Dein Sticker-Album! Immer wenn du alle Ideen von Lumi gespielt hast, gibt es einen neuen Sticker.'
+      : 'Dein Sticker-Album ist noch leer. Spiel alle Ideen von Lumi, dann gibt es einen Sticker als Überraschung!' }])
     return stopNarration
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -49,7 +50,7 @@ export default function AlbumScreen() {
                   const got = owned.has(emoji)
                   return (
                     <motion.button key={emoji} whileTap={{ scale: 0.9 }}
-                      onClick={() => narrate([{ text: got ? `${name[0].toUpperCase()}${name.slice(1)}!` : LINES['reise/sticker-fehlt'], src: got ? undefined : line('reise/sticker-fehlt').src }])}
+                      onClick={() => narrate([{ text: got ? `${name[0].toUpperCase()}${name.slice(1)}!` : 'Den hast du noch nicht. Vielleicht bekommst du ihn bald!' }])}
                       aria-label={got ? name : 'Noch nicht gefunden'}
                       style={{
                         aspectRatio: '1', borderRadius: 12, cursor: 'pointer', padding: 6,

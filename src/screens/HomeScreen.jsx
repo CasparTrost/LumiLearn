@@ -1,28 +1,26 @@
-﻿import { useState, useEffect, useMemo, Suspense } from 'react'
+import { useState, useEffect, useMemo, Suspense } from 'react'
 import { motion } from 'framer-motion'
-import { useApp, MAX_LEVELS, missionDef, farmPoints, todayMs } from '../AppContext.jsx'
+import { useApp, MAX_LEVELS, todayMs } from '../AppContext.jsx'
 import { useT } from '../i18n.js'
-import { PxStar, PxIcon, HudBar, uiSpr } from '../components/PixelUI.jsx'
+import { PxStar, PxIcon, HudBar } from '../components/PixelUI.jsx'
 import TileArt from '../components/TileArt.jsx'
-import FarmProgress from '../components/FarmProgress.jsx'
 import ProfileSwitcher from '../components/ProfileSwitcher.jsx'
 import LevelPicker, { unlockedUpTo } from '../components/LevelPicker.jsx'
 import MusicButton from '../components/MusicControls.jsx'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import ErrorBoundary from '../components/ErrorBoundary.jsx'
+import { Scene, Critter, Art } from '../components/play/index.js'
 import { useProfile } from '../hooks/useProfile.js'
 import { readStore, writeStore } from '../hooks/safeStorage.js'
 import { useFocusTrap } from '../hooks/useFocusTrap.js'
 import { narrate, stopNarration } from '../narrator.js'
-import { sayNumber } from '../tts.js'
 import { hearable } from '../lib/hearable.js'
 import { lazyWithReload } from '../lib/lazyWithReload.js'
-import { WORLDS, recommend, sortForAge, visibleModules } from '../modules.js'
+import { journeyArt } from '../lib/assets.js'
+import { WORLDS, MODULE_BY_ID, recommend, sortForAge, visibleModules } from '../modules.js'
 import { prefetchGame, isGameLoaded, ensureGame } from './GameScreen.jsx'
-import JourneyPath, { journeySay } from '../components/JourneyPath.jsx'
-import { startStop } from '../lib/journeyNav.js'
-import { line, gameLine, LINES } from '../lib/lumiLines.js'
-import { nextStopIndex } from '../lib/learning.js'
+import { line, gameLine } from '../lib/lumiLines.js'
+import { mastery } from '../lib/learning.js'
 
 // Rarely opened (only via the settings gear) and pulls in its own sizeable
 // UI (PIN gate, stats, error log, profile management) — no reason to ship
@@ -53,169 +51,177 @@ const timeLine = () => {
 }
 
 /**
- * What Lumi says when a child arrives — not the same sentence every time.
- * All in Lumi's recorded voice (lib/lumiLines.js); a recording can't say
- * the child's name, so the greeting doesn't either — a name read by the
- * browser voice in the middle of Lumi's sentence sounded like a second
- * speaker.
+ * What Lumi says when a child arrives — not the same sentence every time —
+ * and then Lumi's idea for the first game. All in Lumi's recorded voice
+ * (lib/lumiLines.js); a recording can't say the child's name, so the
+ * greeting doesn't either — a name read by the browser voice in the
+ * middle of Lumi's sentence sounded like a second speaker.
  */
-function greetingParts({ lastPlayed, openMission, journey }) {
-  // today's journey not started yet: Lumi invites to it
-  const fresh = journey && !(journey.done ?? []).length && nextStopIndex(journey) !== -1
-  if (!lastPlayed) return [line('begruessung/neu'), ...(fresh ? journeySay(journey) : [])]
-  if (fresh) return [timeLine(), ...journeySay(journey)]
+function greetingParts({ lastPlayed, idea }) {
+  const say = idea && gameLine(idea.mod.id)
+  if (!lastPlayed) return [line('begruessung/neu'), ...(say ? [say] : [])]
   const n = parseInt(readStore('lumi_greet_n', '0'), 10) || 0
   writeStore('lumi_greet_n', n + 1)
   const options = [
     // the recording "Hallo du, willkommen zurück zu Lumi! …"
     [{ src: WELCOME_BACK, text: 'Hallo du, willkommen zurück! Mach direkt da weiter, wo wir aufgehört haben, oder versuche etwas Neues.' }],
-    [line('begruessung/wieder-da'), ...journeySay(journey)],
-    openMission && LINES[`tagesaufgaben/aufgabe-${openMission.id}`] && [timeLine(), line(`tagesaufgaben/aufgabe-${openMission.id}`)],
-  ].filter(Boolean)
+    [line('begruessung/wieder-da'), ...(say ? [say] : [])],
+    [timeLine(), ...(say ? [say] : [])],
+  ]
   return options[n % options.length]
 }
 
-// ── A game tile ─────────────────────────────────────────────────────────────
-// The tile starts the game at the current level (the level sheet used to
-// come first, one tap more every time). 🔊 says what the game is — on a
-// tablet there is no pointing at a tile to hear it.
-function GameTile({ mod, p, index, badge, onPlay, onLevels, big = false }) {
-  const maxLvl     = MAX_LEVELS[mod.id] ?? 10
-  const levelStars = p.levelStars ?? {}
-  const isCompleted= p.completed ?? false
-  const curLevel   = p.currentLevel ?? 1
-  const canPick    = unlockedUpTo(p, maxLvl) > 1
-  const bestTotal  = Object.values(levelStars).reduce((a, b) => a + (b ?? 0), 0)
-  const headH = big ? 'clamp(96px,12vw,124px)' : 'clamp(84px,11vw,112px)'
+/** The next game of today's plan (skipping the movement break), or null. */
+export function nextIdea(journey) {
+  const stops = journey?.stops ?? []
+  const done = journey?.done ?? []
+  const idx = stops.findIndex((st, i) => st.moduleId && !done.includes(i))
+  return idx === -1 ? null : { idx, stop: stops[idx], mod: MODULE_BY_ID[stops[idx].moduleId] }
+}
+
+// ── A game on its world's stage ─────────────────────────────────────────────
+// A round, gently bobbing picture instead of a text card: the picture says
+// what the game is (most children here can't read), the little stars how
+// sure the child already is (lib/learning.js mastery). The tile starts the
+// game at the current level; ★ picks another level.
+function GameBubble({ mod, p, index, onPlay, onLevels }) {
+  const maxLvl    = MAX_LEVELS[mod.id] ?? 10
+  const curLevel  = p.currentLevel ?? 1
+  const canPick   = unlockedUpTo(p, maxLvl) > 1
+  const bestTotal = Object.values(p.levelStars ?? {}).reduce((a, b) => a + (b ?? 0), 0)
+  const sure      = mastery(p)
 
   return (
-    <motion.div
-      className="px-panel lumi-card"
-      custom={index}
-      initial="hidden"
-      animate="visible"
-      variants={cardVariants}
-      whileHover={{ y:-6 }}
-      style={{ padding:0, overflow:'hidden', display:'flex', flexDirection:'column', minWidth:0, position:'relative' }}
-    >
-      <button
+    <motion.div custom={index} initial="hidden" animate="visible" variants={cardVariants}
+      style={{ position:'relative', width:'clamp(96px, 12vw, 120px)', display:'flex', flexDirection:'column', alignItems:'center' }}>
+      <motion.button
+        whileHover={{ scale:1.06, y:-4 }} whileTap={{ scale:0.92 }}
         onClick={() => onPlay(mod)}
         onPointerEnter={() => prefetchGame(mod.id)}
         onFocus={() => prefetchGame(mod.id)}
         {...hearable(mod.say, { src: gameLine(mod.id)?.src })}
         aria-label={`${mod.title}, Level ${curLevel} von ${maxLvl}, ${bestTotal} Sterne. Spielen`}
-        style={{ display:'flex', flexDirection:'column', textAlign:'left', flex:1, padding:0, background:'none', border:'none', minHeight:0, cursor:'pointer' }}
-      >
-        {/* Bild */}
-        <div className="card-header-shine" style={{
-          background: mod.color,
-          borderBottom:'3px solid var(--px-ink)',
-          height: headH, width:'100%',
+        style={{ all:'unset', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:6, width:'100%' }}>
+        <div className="emoji-float" style={{
+          '--float-dur': `${2.6 + (index % 4) * 0.5}s`,
+          width:'clamp(80px, 10vw, 100px)', aspectRatio:'1', borderRadius:'50%',
+          background:`radial-gradient(circle at 35% 30%, rgba(255,255,255,0.55), transparent 55%), ${mod.color}`,
+          border:'4px solid var(--px-ink)', boxShadow:'inset 0 -6px 0 rgba(0,0,0,0.18), 0 6px 0 rgba(42,27,61,0.35)',
           display:'flex', alignItems:'center', justifyContent:'center',
-          position:'relative', overflow:'hidden',
         }}>
-          <div aria-hidden="true" style={{
-            position:'absolute', inset:0,
-            background:'repeating-linear-gradient(45deg, rgba(255,255,255,0.10) 0 10px, transparent 10px 20px)',
-          }} />
-          <div className="emoji-float" style={{ '--float-dur': `${2.6 + (index % 4) * 0.55}s`, zIndex:1, marginTop:8 }}>
-            <TileArt mod={mod} size={big ? 84 : 76} bare />
-          </div>
+          <TileArt mod={mod} size={64} bare />
         </div>
+        <span style={{
+          fontFamily:'var(--font-heading)', fontWeight:700, fontSize:'clamp(13px,1.6vw,15px)', lineHeight:1.15,
+          color:'var(--px-ink)', textAlign:'center', background:'rgba(255,253,247,0.92)', borderRadius:10,
+          padding:'3px 8px', border:'2px solid rgba(42,27,61,0.25)',
+        }}>{mod.title}</span>
+        <span aria-hidden="true" style={{ display:'flex', gap:2, minHeight:16 }}>
+          {[1, 2, 3].map(i => <PxStar key={i} size={15} off={i > sure} />)}
+        </span>
+      </motion.button>
 
-        {/* Text + Fortschritt */}
-        <div style={{ padding:'10px 12px 12px', display:'flex', flexDirection:'column', gap:8, flex:1, width:'100%' }}>
-          <div>
-            <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(17px,2.4vw,21px)', color:'var(--px-ink)', fontWeight:700, lineHeight:1.15 }}>
-              {mod.title}
-            </div>
-            <div style={{ fontFamily:'var(--font-body)', fontSize:15, color:'var(--text-secondary)', marginTop:2, fontWeight:700, lineHeight:1.25 }}>
-              {mod.sub}
-            </div>
-          </div>
-
-          {/* one pip per level, all in one row (they broke 9 + 1) */}
-          <div aria-hidden="true" style={{ display:'grid', gridTemplateColumns:`repeat(${maxLvl}, minmax(0, 16px))`, gap:3 }}>
-            {Array.from({ length: maxLvl }).map((_, li) => {
-              const lv = li + 1
-              const s  = levelStars[lv] ?? 0
-              return (
-                <div key={li}
-                  className={`px-pip${s >= 3 ? ' px-pip--gold' : s >= 1 ? ' px-pip--done' : ''}${lv === curLevel && !isCompleted ? ' px-pip--current' : ''}`}
-                  style={{ width:'100%', height:12 }}
-                />
-              )
-            })}
-          </div>
-
-          <span className="px-btn px-btn--green px-btn--sm" style={{ marginTop:'auto', width:'100%' }}>
-            <PxIcon name="play" size={16} /> Spielen
-          </span>
-        </div>
-      </button>
-
-      {/* Hear the game */}
-      <button className="px-btn px-btn--parch" onClick={() => narrate([gameLine(mod.id) ?? { text: mod.say }])}
-        aria-label={`${mod.title} vorlesen`}
-        style={{ position:'absolute', top:6, left:6, width:44, height:44, padding:0, fontSize:20, zIndex:2 }}>
-        🔊
-      </button>
-
-      {/* Another level */}
       {canPick && (
         <button className="px-btn px-btn--parch" onClick={() => onLevels(mod)}
           aria-label={`${mod.title}: Level wählen`}
-          style={{ position:'absolute', top:6, right:6, height:44, minWidth:44, padding:'0 8px', fontSize:15, zIndex:2, gap:3 }}>
-          <PxStar size={16} /> {curLevel}
+          style={{ position:'absolute', top:-6, right:-4, height:44, minWidth:44, padding:'0 6px', fontSize:14, gap:2 }}>
+          <PxStar size={14} /> {curLevel}
         </button>
-      )}
-
-      {(badge || isCompleted) && (
-        <div className="px-chip" style={{
-          position:'absolute', top:`calc(${headH} - 16px)`, right:8, fontSize:14, minHeight:28, padding:'2px 8px', zIndex:2,
-          fontFamily:'var(--font-heading)', pointerEvents:'none',
-          ...(badge === 'continue' || badge === 'new' ? { background:'var(--px-gold)', color:'var(--px-ink)', textShadow:'none' } : null),
-        }}>
-          {isCompleted ? '🏆 Meister' : badge === 'continue' ? 'Weiter' : 'Neu'}
-        </div>
       )}
     </motion.div>
   )
 }
 
-// ── Today's missions ────────────────────────────────────────────────────────
-// Pictures with progress (🎮 ■■□), spoken when tapped — they were text chips
-// a child who can't read could do nothing with.
-function MissionChip({ m, day, t }) {
-  const def = missionDef(m.id)
-  if (!def) return null
-  const have = Math.min(def.goal, def.count(day))
-  const done = (day.completedIds ?? []).includes(m.id) || have >= def.goal
-  const task = LINES[`tagesaufgaben/aufgabe-${m.id}`] ? line(`tagesaufgaben/aufgabe-${m.id}`) : { text: t('mission.say.' + m.id) }
-  const say = () => narrate(done
-    ? [task, line('tagesaufgaben/aufgabe-geschafft')]
-    : [task, ...(def.goal > 1 ? [{ text: `Du hast schon ${sayNumber(have)} von ${sayNumber(def.goal)}.` }] : [])])
+// Each world plays on its own little stage (components/play/Scene.jsx)
+const WORLD_SCENE = { zahlen: 'market', buchstaben: 'forest', denken: 'night', gefuehle: 'meadow', malen: 'room' }
+
+function WorldStage({ world, mods, progress, onPlay, onLevels, offset }) {
   return (
-    <button className="px-panel" onClick={say}
-      aria-label={`${t('mission.' + m.id)}: ${done ? 'geschafft' : `${have} von ${def.goal}`}`}
-      style={{
-        display:'flex', alignItems:'center', gap:8, padding:'6px 12px', minHeight:44, cursor:'pointer',
-        background: done ? '#d9f5c8' : undefined,
-      }}>
-      <span style={{ fontSize:20 }}>{done ? '✅' : m.icon}</span>
-      <span aria-hidden="true" style={{ display:'flex', gap:3 }}>
-        {Array.from({ length: def.goal }).map((_, i) => (
-          <span key={i} className={`px-pip${i < have ? ' px-pip--gold' : ''}`} style={{ width:14, height:14 }} />
+    <section aria-label={world.label} style={{
+      position:'relative', overflow:'hidden', borderRadius:20, border:'4px solid var(--px-ink)',
+      boxShadow:'0 6px 0 rgba(42,27,61,0.35)', minHeight:220, display:'flex', flexDirection:'column',
+    }}>
+      <Scene theme={WORLD_SCENE[world.id] ?? 'meadow'} />
+      <button className="px-ribbon" onClick={() => narrate([line(`menue/welt-${world.id}`)])}
+        aria-label={`${world.label}-Welt vorlesen`}
+        style={{ position:'relative', alignSelf:'flex-start', margin:'12px 0 0 12px', fontSize:18, padding:'4px 16px 6px', cursor:'pointer', border:'none' }}>
+        {world.emoji} {world.label}
+      </button>
+      <div style={{ position:'relative', display:'flex', flexWrap:'wrap', justifyContent:'center', gap:'clamp(10px,2vw,18px)', padding:'16px 12px 18px' }}>
+        {mods.map((mod, i) => (
+          <GameBubble key={mod.id} mod={mod} p={progress[mod.id] ?? {}} index={offset + i} onPlay={onPlay} onLevels={onLevels} />
         ))}
-      </span>
-      {/* on a phone picture and boxes only, in one row; tapping says it */}
-      <span className="hud-hide-sm" style={{
-        fontFamily:'var(--font-heading)', fontWeight:600,
-        color:'var(--px-ink)', fontSize:15, whiteSpace:'nowrap',
-        textDecoration: done ? 'line-through' : 'none',
-      }}>{t('mission.' + m.id)}</span>
-    </button>
+      </div>
+    </section>
   )
+}
+
+// ── Lumi's idea: the next game the learning plan picked ─────────────────────
+// Today's plan (lib/learning.js planJourney): a due review to warm up, the
+// game in progress, something new, another review, and a movement break in
+// the middle. It is no longer a map to walk: Lumi just has the next idea,
+// and after all of them a sticker for the album as a surprise.
+function LumiIdea({ idea, plan, onPlay, onAlbum, stickers, narrow }) {
+  const allDone = !idea
+  return (
+    <div style={{
+      display:'flex', alignItems:'center', justifyContent:'center', flexWrap:'wrap',
+      gap:'clamp(12px,3vw,40px)', padding:'clamp(8px,2vw,20px) 16px 0',
+    }}>
+      <div style={{ paddingTop: narrow ? 70 : 84 }}>
+        <Critter art="lumi" size={narrow ? 120 : 170} mood={allDone ? 'dance' : 'idle'} talks label="Lumi"
+          wish={idea ? <TileArt mod={idea.mod} size={narrow ? 48 : 60} bare /> : <Art art="⭐" size={narrow ? 40 : 52} />}
+          wishSide={narrow ? 'top' : 'right'} />
+      </div>
+      <motion.div initial={{ scale:0.8, opacity:0 }} animate={{ scale:1, opacity:1 }} transition={{ type:'spring', stiffness:260, damping:18, delay:0.2 }}
+        className="px-panel" style={{ padding:'14px 18px', display:'flex', flexDirection:'column', alignItems:'center', gap:10, minWidth:'min(100%, 280px)' }}>
+        {idea ? (<>
+          <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+            <TileArt mod={idea.mod} size={narrow ? 56 : 72} />
+            <div style={{ fontFamily:'var(--font-heading)', fontWeight:700, fontSize:'clamp(20px,3vw,28px)', color:'var(--px-ink)', lineHeight:1.1 }}>
+              {idea.mod.title}
+            </div>
+          </div>
+          <button className="px-btn px-btn--green px-btn--lg" onClick={onPlay}
+            aria-label={`Lumis Idee: ${idea.mod.title} spielen`} style={{ width:'100%' }}>
+            <PxIcon name="play" size={22} /> Spielen!
+          </button>
+        </>) : (<>
+          <div style={{ fontFamily:'var(--font-heading)', fontWeight:700, fontSize:'clamp(20px,3vw,26px)', color:'var(--px-ink)', textAlign:'center' }}>
+            Alle Ideen geschafft!
+          </div>
+          <button className="px-btn px-btn--gold px-btn--md" onClick={onAlbum} style={{ width:'100%' }}>
+            <img src={journeyArt('album.png')} alt="" style={{ width:28, height:28, imageRendering:'pixelated' }} /> Mein Album
+          </button>
+        </>)}
+        {/* how many of today's ideas are played: a sticker waits at the end */}
+        <button onClick={() => narrate([{ text: allDone
+            ? 'Du hast alle Ideen von heute gespielt! Morgen hat Lumi neue.'
+            : 'Das sind Lumis Ideen für heute. Wenn du alle gespielt hast, bekommst du einen Sticker für dein Album!' }])}
+          aria-label={`${plan.done} von ${plan.total} Ideen gespielt, ${stickers} Sticker`}
+          style={{ all:'unset', cursor:'pointer', display:'flex', alignItems:'center', gap:6, minHeight:44 }}>
+          {Array.from({ length: plan.total }, (_, i) => (
+            <span key={i} className={`px-pip${i < plan.done ? ' px-pip--gold' : ''}`} style={{ width:16, height:16 }} />
+          ))}
+          <img src={journeyArt(allDone ? 'chest-open.png' : 'chest.png')} alt="" style={{ width:30, height:30, imageRendering:'pixelated' }} />
+        </button>
+      </motion.div>
+    </div>
+  )
+}
+
+// A phone in portrait: Lumi and the idea stack, a little smaller
+function useNarrow() {
+  const q = '(max-width: 600px)'
+  const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia?.(q).matches)
+  useEffect(() => {
+    const m = window.matchMedia?.(q)
+    if (!m) return
+    const on = () => setNarrow(m.matches)
+    m.addEventListener('change', on)
+    return () => m.removeEventListener('change', on)
+  }, [])
+  return narrow
 }
 
 export default function HomeScreen() {
@@ -226,34 +232,34 @@ export default function HomeScreen() {
   const [showParent, setShowParent] = useState(false)
   const [showSwitcher, setShowSwitcher] = useState(false)
   const [pickerMod, setPickerMod]       = useState(null)
-  const [activeWorld, setActiveWorld]   = useState('all')
   const [offline, setOffline]           = useState(false)
   const offlineRef = useFocusTrap(offline, { onEscape: () => setOffline(false) })
-
-  const points  = farmPoints(activeProfile)
-  const totalStarsCount = Object.values(progress)
-    .reduce((sum, p) => sum + Object.values(p?.levelStars ?? {}).reduce((a, b) => a + (b ?? 0), 0), 0)
+  const narrow = useNarrow()
 
   const day = dailyMission ?? {}
-  const openMission = (day.missions ?? []).find(m => !(day.completedIds ?? []).includes(m.id))
 
   // Games the parents switched off don't show anywhere here
   const hiddenKey = (activeProfile?.hiddenGames ?? []).join()
   const shown = useMemo(() => visibleModules(activeProfile), [hiddenKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Three to six games first, chosen by age and progress, instead of all
-  // 24 at once (the age was asked and never used)
+  // Lumi's idea: the next game of today's plan; with the plan played
+  // through, a game the child would like next (age and progress)
+  const journey = activeProfile?.journey
+  const planned = nextIdea(journey)
   const picks = useMemo(() => recommend({
     progress, profile: activeProfile, lastPlayed,
     playedToday: day.playedIds ?? [],
   }), [activeProfile?.id, hiddenKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  const idea = planned?.mod ? planned : null
+  const gameStops = (journey?.stops ?? []).map((st, i) => [st, i]).filter(([st]) => st.moduleId)
+  const plan = { total: gameStops.length, done: gameStops.filter(([, i]) => (journey?.done ?? []).includes(i)).length }
 
-  // only worlds with a game left in them
-  const worlds = WORLDS.filter(w => shown.some(m => m.world === w.id))
-  const world  = worlds.some(w => w.id === activeWorld) ? activeWorld : 'all'
-  const worldModules = useMemo(() => sortForAge(
-    world === 'all' ? shown : shown.filter(m => m.world === world), activeProfile,
-  ), [world, shown, activeProfile?.age]) // eslint-disable-line react-hooks/exhaustive-deps
+  // every world that has a game left in it, its games in learning order
+  const worlds = WORLDS.map(w => ({ world: w, mods: sortForAge(shown.filter(m => m.world === w.id), activeProfile) }))
+    .filter(w => w.mods.length)
+
+  const totalStarsCount = Object.values(progress)
+    .reduce((sum, p) => sum + Object.values(p?.levelStars ?? {}).reduce((a, b) => a + (b ?? 0), 0), 0)
 
   // Daily time limit (parent area)
   const limitMin = state.settings?.dailyLimitMin ?? 0
@@ -265,7 +271,7 @@ export default function HomeScreen() {
     greeted.add(activeProfile.id)
     const id = setTimeout(() => {
       if (timeUp) return
-      narrate(greetingParts({ lastPlayed, openMission, journey: activeProfile?.journey }))
+      narrate(greetingParts({ lastPlayed, idea }))
     }, 800)
     return () => clearTimeout(id)
   }, [activeProfile?.id]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -277,41 +283,23 @@ export default function HomeScreen() {
     return () => clearTimeout(id)
   }, [timeUp])
 
-  // The games recommended here can be started without waiting, even offline
+  // Lumi's ideas and the recommended games start without waiting, even offline
   useEffect(() => {
     const idle = window.requestIdleCallback ?? (cb => setTimeout(cb, 2500))
     const cancel = window.cancelIdleCallback ?? clearTimeout
-    const id = idle(() => picks.forEach(({ mod }) => prefetchGame(mod.id)))
+    const id = idle(() => {
+      (journey?.stops ?? []).forEach(st => st.moduleId && prefetchGame(st.moduleId))
+      picks.forEach(({ mod }) => prefetchGame(mod.id))
+    })
     return () => cancel(id)
-  }, [picks])
+  }, [journey?.date, picks]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // A stop of today's journey: a game (same offline check as a tile) or the
-  // movement break
-  const journey = activeProfile?.journey
-  const startJourneyStop = idx => {
-    const stop = journey?.stops?.[idx]
-    if (!stop) return
-    if (stop.kind !== 'move' && navigator.onLine === false && !isGameLoaded(stop.moduleId)) {
-      ensureGame(stop.moduleId).then(() => startJourneyStop(idx), () => setOffline(true))
-      return
-    }
-    stopNarration()
-    startStop(dispatch, journey, idx)
-  }
-  // the journey's games load ahead too
-  useEffect(() => {
-    const idle = window.requestIdleCallback ?? (cb => setTimeout(cb, 2500))
-    const cancel = window.cancelIdleCallback ?? clearTimeout
-    const id = idle(() => (journey?.stops ?? []).forEach(st => st.moduleId && prefetchGame(st.moduleId)))
-    return () => cancel(id)
-  }, [journey?.date]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const startModule = (mod, level) => {
+  const startModule = (mod, level, journeyStop) => {
     // Without a connection a game's code may still be saved for offline play
     // (public/sw.js): try it, and only if it isn't there say so — the page
     // used to reload silently and then show "Fehler im Spiel".
     if (navigator.onLine === false && !isGameLoaded(mod.id)) {
-      ensureGame(mod.id).then(() => startModule(mod, level), () => {
+      ensureGame(mod.id).then(() => startModule(mod, level, journeyStop), () => {
         setOffline(true)
         narrate([line('menue/internet-spiel')])
       })
@@ -320,35 +308,21 @@ export default function HomeScreen() {
     // the greeting ran on into the game (it ended after the game was shown)
     stopNarration()
     const p = progress[mod.id] ?? { currentLevel:1 }
-    dispatch({ type:'START_GAME', payload:{ moduleId: mod.id, level: level ?? p.currentLevel ?? 1 } })
+    dispatch({ type:'START_GAME', payload:{ moduleId: mod.id, level: level ?? p.currentLevel ?? 1, journeyStop } })
   }
-
-  const chooseWorld = (id) => {
-    setActiveWorld(id)
-    const w = WORLDS.find(x => x.id === id)
-    narrate([line(w ? `menue/welt-${w.id}` : 'menue/alle-spiele')])
-  }
-
-  const greetingLine = timeGreeting(t)
+  const playIdea = () => idea && startModule(idea.mod, idea.stop.level, idea.idx)
+  const openAlbum = () => { stopNarration(); dispatch({ type:'NAVIGATE', payload:'album' }) }
+  const stickers = (activeProfile?.stickers ?? []).length
 
   return (
-    // isolation: the page gets its own stacking context, so the landscape
-    // layers (negative z-index) sit above its background colour, not below.
     // overflow-x clip, not hidden: hidden made this div a scroll container,
     // and the sticky HUD stuck to it instead of the window — it scrolled away.
     <div className="home-bg" style={{ minHeight:'100dvh', display:'flex', flexDirection:'column', position:'relative', overflowX:'clip', isolation:'isolate' }}>
 
-      {/* ── Pixel landscape behind everything ── */}
-      <div aria-hidden="true" className="px-art" style={{
-        position:'fixed', inset:0, zIndex:-2,
-        backgroundImage:`url(${uiSpr('landscape.png')})`,
-        backgroundSize:'cover', backgroundPosition:'center 70%',
-        imageRendering:'pixelated',
-      }} />
-      <div aria-hidden="true" style={{
-        position:'fixed', inset:0, zIndex:-1, pointerEvents:'none',
-        background:'linear-gradient(180deg, rgba(255,244,218,0) 0%, rgba(255,244,218,0.18) 45%, rgba(255,244,218,0.55) 100%)',
-      }} />
+      {/* ── A living meadow behind everything: the sun and the clouds can be tapped ── */}
+      <div style={{ position:'fixed', inset:0, zIndex:-1 }}>
+        <Scene theme="meadow" interactive />
+      </div>
 
       {/* ── HUD ── */}
       <HudBar style={{ position:'sticky', top:0, zIndex:20 }}>
@@ -361,13 +335,12 @@ export default function HomeScreen() {
         >{profile.avatar}</button>
         <div style={{ minWidth:0, flex:1 }}>
           <div className="px-title hud-hide-sm" style={{ fontSize:'clamp(14px,2.4vw,16px)', lineHeight:1.2, letterSpacing:0, textShadow:'-1px -1px 0 var(--px-ink), 1px -1px 0 var(--px-ink), -1px 1px 0 var(--px-ink), 1px 2px 0 var(--px-ink)' }}>
-            {greetingLine},
+            {timeGreeting(t)},
           </div>
           <div className="px-title" style={{ fontSize:'clamp(18px,3.6vw,26px)', lineHeight:1.1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
             {profile.name}!
           </div>
         </div>
-        {/* on a phone the stars give way: the farm shows what they are for */}
         <div className="px-chip hud-hide-sm" title="Gesammelte Sterne" aria-label={`${totalStarsCount} Sterne`} style={{ flexShrink:0 }}>
           <PxStar size={22} /> {totalStarsCount}
         </div>
@@ -377,6 +350,10 @@ export default function HomeScreen() {
             <span className="px-chip-icon" style={{ fontSize:18, lineHeight:'22px', textAlign:'center' }}>🔥</span> {streak.count}
           </div>
         )}
+        <button className="px-btn px-btn--parch px-btn--icon" onClick={openAlbum}
+          aria-label={`Mein Album, ${stickers} Sticker`} title="Mein Album" style={{ flexShrink:0, width:56, height:56, padding:0 }}>
+          <img src={journeyArt('album.png')} alt="" style={{ width:36, height:36, imageRendering:'pixelated' }} />
+        </button>
         <MusicButton />
         <button
           className="px-btn px-btn--wood px-btn--icon"
@@ -413,74 +390,19 @@ export default function HomeScreen() {
           </div>
         </div>
       ) : (<>
+        <LumiIdea idea={idea} plan={plan} onPlay={playIdea} onAlbum={openAlbum} stickers={stickers} narrow={narrow} />
 
-      {/* ── Title over the sky ── */}
-      <div style={{ textAlign:'center', padding:'clamp(12px,2.4vw,24px) 16px clamp(8px,1.4vw,14px)' }}>
-        <h1 className="px-title" style={{ fontSize:'clamp(24px,4.4vw,38px)', lineHeight:1.15 }}>
-          {journey && nextStopIndex(journey) === -1 ? 'Super, die Reise ist geschafft!' : 'Komm mit auf die Reise!'}
-        </h1>
-      </div>
-
-      {/* ── Today's journey: a few stations, then the treasure ── */}
-      {journey && (
-        <div style={{ padding:'0 clamp(16px,4vw,40px)', marginBottom:14, maxWidth:1240, width:'100%', alignSelf:'center' }}>
-          <JourneyPath journey={journey} profileId={activeProfile?.id} stickers={(activeProfile?.stickers ?? []).length}
-            onStart={startJourneyStop}
-            onChest={() => dispatch({ type:'OPEN_CHEST' })}
-            onAlbum={() => { stopNarration(); dispatch({ type:'NAVIGATE', payload:'album' }) }} />
-        </div>
-      )}
-
-      {/* ── Tagesaufgaben ── */}
-      {(day.missions ?? []).length > 0 && (
+        {/* ── The worlds, each on its own little stage ── */}
         <div style={{
-          display:'flex', gap:8, alignItems:'center', justifyContent:'center', flexWrap:'wrap',
-          padding:'0 16px', marginBottom:14,
+          display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(min(100%, 340px), 1fr))',
+          gap:'clamp(14px,2.4vw,24px)', padding:'clamp(18px,3vw,30px) clamp(12px,4vw,40px) clamp(28px,4vw,44px)', alignItems:'start',
+          maxWidth:1280, width:'100%', alignSelf:'center',
         }}>
-          {(day.missions ?? []).map(m => m && <MissionChip key={m.id} m={m} day={day} t={t} />)}
+          {worlds.map(({ world, mods }, wi) => (
+            <WorldStage key={world.id} world={world} mods={mods} progress={progress}
+              offset={wi * 3} onPlay={m => startModule(m)} onLevels={setPickerMod} />
+          ))}
         </div>
-      )}
-
-      {/* ── Farm Progress ── */}
-      <div style={{ padding:'0 clamp(16px,4vw,40px)', marginBottom:18, maxWidth:1240, width:'100%', alignSelf:'center' }}>
-        <FarmProgress points={points} />
-      </div>
-
-      {/* ── Themenwelten ── */}
-      <section aria-label="Alle Spiele" style={{ padding:'0 clamp(16px,4vw,40px)', maxWidth:1240, width:'100%', alignSelf:'center' }}>
-        <div className="px-ribbon" style={{ fontSize:18, padding:'4px 16px 6px', marginBottom:10 }}>🗺️ Alle Spiele – frei wählen</div>
-        {/* wraps instead of scrolling sideways out of sight */}
-        <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:14 }}>
-          {[{ id:'all', label:'Alle', emoji:'⭐' }, ...worlds].map(w => {
-            const active = world === w.id
-            return (
-              <button
-                key={w.id}
-                className={`px-btn px-btn--sm ${active ? 'px-btn--gold' : 'px-btn--parch'}`}
-                aria-pressed={active}
-                onClick={() => chooseWorld(w.id)}
-                style={{ flex:'1 1 auto', minWidth:96 }}
-              >
-                {w.emoji} {w.label}
-              </button>
-            )
-          })}
-        </div>
-      </section>
-
-      <div className="module-grid" style={{
-        flex:1,
-        display:'grid',
-        gridTemplateColumns:'repeat(auto-fill, minmax(min(100%, 200px), 1fr))',
-        gap:'clamp(12px,2vw,20px)',
-        padding:'0 clamp(16px,4vw,40px) clamp(28px,4vw,44px)',
-        alignContent:'start', maxWidth:1240, width:'100%', alignSelf:'center',
-      }}>
-        {worldModules.map((mod, i) => (
-          <GameTile key={mod.id} mod={mod} p={progress[mod.id] ?? {}} index={i}
-            onPlay={m => startModule(m)} onLevels={setPickerMod} />
-        ))}
-      </div>
       </>)}
 
       {offline && (

@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
+import { motion } from 'framer-motion'
 import { generateQuestions } from './gameEngine.js'
 import { sfx } from '../sfx.js'
 import { sayNumber } from '../tts.js'
@@ -7,141 +7,33 @@ import { narrate, lockPreviews, afterNarration } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { hearable } from '../lib/hearable.js'
 import { result } from '../lib/score.js'
+import { usePaused } from '../lib/pause.js'
 import HearOptions from '../components/HearOptions.jsx'
-import { pxCard, pxPanel, pxButton, pxSegment, INK } from './px.js'
+import { Art, Critter, useMood, DragArea, Draggable, DropZone, RoundTrail, useBursts } from '../components/play/index.js'
+import { INK } from './px.js'
+import './parade/parade.css'
 
-// Fixed star burst positions
-const BURST_STARS = [0,1,2,3,4,5,6,7].map(i => {
-  const angle = (i / 8) * Math.PI * 2
-  const r = 34 + (i % 2) * 18
-  return { dx: Math.cos(angle) * r, dy: Math.sin(angle) * r - 10, e: ['⭐','✨','🌟','💫','⭐','✨','🌟','💥'][i] }
-})
+/**
+ * Musterpark: "Tierparade". Animals and things march in time across the
+ * meadow behind a drumming bear: frog, dog, frog, dog … One place in the
+ * parade is empty. The child drags the right one from the waiting crowd
+ * into the gap (or taps it); then the drum rolls and the parade marches on.
+ * A wrong one makes the whole parade stumble over its own feet, and it is
+ * sent back to wait. Build rounds: the child lays the whole continuation,
+ * place by place.
+ */
 
-// The row flies in symbol by symbol; the question is asked once it is there.
-const FLY_STEP = 0.19
-
-function Cloud({ xStart, top, size, duration }) {
-  return (
-    <motion.div
-      initial={{ x: xStart }}
-      animate={{ x: -200 }}
-      transition={{ duration, repeat: Infinity, ease: 'linear', repeatType: 'loop' }}
-      style={{ position: 'absolute', top, left: 0, fontSize: size, opacity: 0.75, pointerEvents: 'none', userSelect: 'none', lineHeight: 1 }}
-    >{'☁️'}</motion.div>
-  )
-}
-
-function StarBurst({ x, y, onDone }) {
-  return (
-    <>
-      {BURST_STARS.map((s, i) => (
-        <motion.div
-          key={i}
-          initial={{ x: 0, y: 0, scale: 0, opacity: 1 }}
-          animate={{ x: s.dx, y: s.dy, scale: [0, 1.3, 0], opacity: [1, 1, 0] }}
-          transition={{ duration: 0.72, delay: i * 0.03, ease: 'easeOut' }}
-          onAnimationComplete={i === BURST_STARS.length - 1 ? onDone : undefined}
-          style={{ position: 'absolute', left: x, bottom: y, fontSize: 18, lineHeight: 1, pointerEvents: 'none', zIndex: 30 }}
-        >{s.e}</motion.div>
-      ))}
-    </>
-  )
-}
-
-// The dino eats the pattern: a right answer flies into its mouth. It used to
-// be a 210 px arcade of its own — cacti rolling in on mistakes, a strength
-// bar, "Tippe den Dino – er hüpft gern!" — that drew the eye away from the
-// row the child is meant to look at. Now it is a small strip and only
-// reacts to answers.
-function DinoScene({ chomping, shaking, dinoScale, projectiles, puffIds, bursts, onProjDone, onPuffDone, onBurstDone }) {
-  return (
-    <div
-      aria-hidden="true"
-      style={{
-        position: 'relative', width: '100%', maxWidth: 760, height: 104,
-        border: `3px solid ${INK}`, borderRadius: 14, overflow: 'hidden',
-        background: 'linear-gradient(180deg, #3A8BC5 0%, #6AB9E8 62%, #72C945 62%, #4A9A22 100%)',
-        boxShadow: '0 5px 0 rgba(42,27,61,0.35)',
-        flexShrink: 0, pointerEvents: 'none',
-      }}
-    >
-      <Cloud xStart={900}  top={6}  size={22} duration={16} />
-      <Cloud xStart={1300} top={22} size={18} duration={22} />
-
-      {/* Ground */}
-      <div style={{ position: 'absolute', bottom: 0, height: 26, width: '100%', background: '#4A9A22', borderTop: '3px solid #3A8015' }} />
-
-      {/* Dino — wrapped in scaleX(-1) so it faces the incoming food */}
-      <div style={{
-        position: 'absolute', left: '8%', bottom: 22,
-        transform: 'scaleX(-1)', transformOrigin: 'bottom center',
-        zIndex: 10,
-      }}>
-        <motion.div
-          animate={
-            chomping
-              ? { y: [0, -26, -34, -18, 0], scaleX: [1, 0.82, 1.12, 0.92, 1], scaleY: [1, 1.18, 0.84, 1.1, 1] }
-              : shaking
-              ? { x: [0, -8, 8, -5, 5, 0], rotate: [0, -6, 6, -4, 4, 0] }
-              : { y: [0, -4, 0], scaleY: [1, 0.96, 1] }
-          }
-          transition={
-            chomping ? { duration: 0.58, times: [0, 0.22, 0.44, 0.70, 1] }
-            : shaking ? { duration: 0.5 }
-            : { duration: 1.2, repeat: Infinity, ease: 'easeInOut' }
-          }
-          style={{
-            fontSize: `calc(${dinoScale} * 54px)`,
-            lineHeight: 1,
-            filter: 'drop-shadow(0 3px 0 rgba(42,27,61,0.35))',
-            userSelect: 'none', transformOrigin: 'bottom center',
-          }}
-        >{'🦖'}</motion.div>
-      </div>
-
-      {/* The answer flies in from the right into the dino's mouth */}
-      <AnimatePresence>
-        {projectiles.map(p => (
-          <motion.div
-            key={p.id}
-            initial={{ x: 640, y: -16, rotate: 0, scale: 0.8 }}
-            animate={{ x: 10, y: 6, rotate: -360, scale: 1.1 }}
-            exit={{ scale: 0, opacity: 0, transition: { duration: 0.15 } }}
-            transition={{ duration: 0.6, ease: [0.22, 0.68, 0.45, 0.92] }}
-            onAnimationComplete={() => onProjDone(p.id)}
-            style={{ position: 'absolute', left: '8%', bottom: 46, fontSize: 30, lineHeight: 1, pointerEvents: 'none', zIndex: 15 }}
-          >{p.food}</motion.div>
-        ))}
-      </AnimatePresence>
-
-      {/* Puff on a wrong answer */}
-      <AnimatePresence>
-        {puffIds.map(id => (
-          <motion.div
-            key={id}
-            initial={{ x: 20, y: 0, scale: 0, opacity: 0.9 }}
-            animate={{ x: 60, y: -24, scale: 2.2, opacity: 0 }}
-            transition={{ duration: 0.6 }}
-            onAnimationComplete={() => onPuffDone(id)}
-            style={{ position: 'absolute', left: '8%', bottom: 50, fontSize: 20, lineHeight: 1, pointerEvents: 'none', zIndex: 20 }}
-          >{'💨'}</motion.div>
-        ))}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {bursts.map(b => (
-          <StarBurst key={b.id} x="10%" y={52} onDone={() => onBurstDone(b.id)} />
-        ))}
-      </AnimatePresence>
-    </div>
-  )
-}
+const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
 // What the voice says about a question.
 const nameOf = (q, e) => q.names[e] ?? ''
 // pictures in a string, without the emoji variation selector
-const glyphs = s => [...s].filter(ch => ch !== '\uFE0F').length
+const glyphs = s => [...s].filter(ch => ch !== '️').length
 const countOf = (q, opt) => glyphs(opt) / glyphs(q.sym)
+// The pictures one token stands for: a growing row's "🐸🐸🐸" is three frogs
+const picsOf = (q, token) => (q.kind === 'grow' ? Array(countOf(q, token)).fill(q.sym) : [token])
+// How wide a token is, in marchers (a group of three stands close together)
+const widthOf = (q, token) => (q.kind === 'grow' && token !== '❓' ? 0.15 + countOf(q, token) * 0.85 : 1)
 
 function optionName(q, opt) {
   return q.kind === 'grow' ? sayNumber(countOf(q, opt)) : nameOf(q, opt)
@@ -166,325 +58,244 @@ function hintFor(q, placed = []) {
   return `Hör mal! ${q.tokens.slice(0, -1).map(e => nameOf(q, e)).join(', ')}, und dann?`
 }
 
+/** One marcher (or a little group of them), stepping in time. */
+function Marcher({ q, token, size, i, stumble }) {
+  const pics = picsOf(q, token)
+  return (
+    <motion.div
+      animate={stumble && !reduceMotion()
+        ? { rotate: [0, i % 2 ? 25 : -25, i % 2 ? -10 : 10, 0], y: [0, size * 0.15, -size * 0.1, 0] }
+        : { rotate: 0, y: 0 }}
+      transition={{ duration: 0.8, delay: (i % 4) * 0.05 }}
+      style={{ display: 'flex', alignItems: 'flex-end', transformOrigin: '50% 100%' }}>
+      {pics.map((p, k) => (
+        <div key={k} className="pa-step" style={{ animationDelay: `${-((i + k) % 2) * 0.3}s`, marginLeft: k ? -size * 0.15 : 0 }}>
+          <Art art={p} size={size} />
+        </div>
+      ))}
+    </motion.div>
+  )
+}
+
+function useWidth(ref) {
+  const [w, setW] = useState(0)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const measure = () => setW(el.clientWidth)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [ref])
+  return w
+}
+
 export default function ChoiceGame({ moduleId, level, onComplete }) {
   const [questions]   = useState(() => generateQuestions(moduleId, level))
+  const paused        = usePaused()
+  const [bursts, burst] = useBursts()
   const [idx,         setIdx]         = useState(0)
   const [wrong,       setWrong]       = useState([])      // options already tried this round
   const [solved,      setSolved]      = useState(false)
+  const [marching,    setMarching]    = useState(false)   // the parade moves on
+  const [stumble,     setStumble]     = useState(0)       // the parade trips over a wrong one
   const [firstTry,    setFirstTry]    = useState(0)
-  const [missed,      setMissed]      = useState([])      // rounds not solved on the first try
-  const [chomping,    setChomping]    = useState(false)
-  const [shaking,     setShaking]     = useState(false)
-  const [flashType,   setFlashType]   = useState(null)
-  const [flashId,     setFlashId]     = useState(0)
-  const [highlighted, setHighlighted] = useState(null)
-  const [projectiles, setProjectiles] = useState([])
-  const [puffIds,     setPuffIds]     = useState([])
-  const [bursts,      setBursts]      = useState([])
-  // build rounds: the pieces laid so far, the piece bouncing back after a
-  // miss, and the misses on the current place
+  const [ready,       setReady]       = useState(false)   // payoff over: next round
+  // build rounds: the pieces laid so far and the misses on the current place
   const [placed,      setPlaced]      = useState([])
-  const [bounce,      setBounce]      = useState(null)
   const [missesHere,  setMissesHere]  = useState(0)
-  const effectIdRef = useRef(0)
-
-  // dino grows by 3% per answer right on the first try, max 1.3×
-  const dinoScale = Math.min(1 + firstTry * 0.03, 1.3)
+  const [leader, setLeader] = useMood()
+  const stageRef = useRef(null)
+  const gapRef   = useRef(null)
+  const stageW   = useWidth(stageRef)
 
   const q = questions[idx]
+  const build = q?.kind === 'build'
 
-  // A wrong answer no longer ends the question: the card is greyed out, the
-  // row is read out loud, and the child tries again. Stars count the answers
-  // right on the first try.
-  const pick = useCallback((opt) => {
-    if (solved || !q || wrong.includes(opt)) return
-    const ok = opt === q.answer
-    setFlashId(n => n + 1)
-    if (ok) {
-      setSolved(true)
-      if (!wrong.length) setFirstTry(n => n + 1)
-      setChomping(true)
-      setFlashType('ok')
-      const pid = ++effectIdRef.current
-      setProjectiles(prev => [...prev, { id: pid, food: opt }])
-      const bid = ++effectIdRef.current
-      setBursts(prev => [...prev, { id: bid }])
-      sfx.correct()
-      sayRight(praiseFor(q))
-      setTimeout(() => setChomping(false), 820)
-      setTimeout(() => setFlashType(null), 400)
-    } else {
-      setWrong(w => [...w, opt])
-      setMissed(m => (m.includes(idx) ? m : [...m, idx]))
-      setShaking(true)
-      setFlashType('err')
-      sfx.wrong()
-      sayWrong(hintFor(q))
-      const pid = ++effectIdRef.current
-      setPuffIds(prev => [...prev, pid])
-      setTimeout(() => setShaking(false), 700)
-      setTimeout(() => setFlashType(null), 400)
-    }
-  }, [solved, q, wrong, idx])
-
-  // Build rounds: a tapped piece goes to the next empty place. Lumi says the
-  // pieces laid so far; a wrong one bounces back to the tray, and after two
-  // misses on one place the right piece lights up and is named.
-  const place = useCallback((opt) => {
-    if (solved || !q) return
-    const want = q.fill[placed.length]
-    if (opt === want) {
-      const next = [...placed, opt]
-      setPlaced(next)
-      setMissesHere(0)
-      setBounce(null)
-      if (next.length < q.fill.length) {
-        sfx.pop()
-        narrate([{ text: `${next.map(e => nameOf(q, e)).join(', ')}!` }])
-        return
-      }
-      setSolved(true)
-      if (!wrong.length) setFirstTry(n => n + 1)
-      setChomping(true)
-      setFlashId(n => n + 1)
-      setFlashType('ok')
-      setProjectiles(prev => [...prev, { id: ++effectIdRef.current, food: opt }])
-      setBursts(prev => [...prev, { id: ++effectIdRef.current }])
-      sfx.correct()
-      sayRight(praiseFor(q))
-      setTimeout(() => setChomping(false), 820)
-      setTimeout(() => setFlashType(null), 400)
-    } else {
-      const n = missesHere + 1
-      setMissesHere(n)
-      setWrong(w => [...w, opt])
-      setMissed(m => (m.includes(idx) ? m : [...m, idx]))
-      setBounce({ e: opt, id: ++effectIdRef.current })
-      sfx.mismatch()
-      sayWrong(n >= 2 ? `Als Nächstes kommt ${nameOf(q, want)}.` : hintFor(q, placed))
-    }
-  }, [solved, q, placed, wrong, missesHere, idx])
-
-  const weiterClick = useCallback(() => {
-    if (idx + 1 >= questions.length) {
-      sfx.complete()
-      afterNarration(() => onComplete(result(firstTry, questions.length)), { minMs: 300 })
-    } else {
-      setIdx(i => i + 1)
-    }
-  }, [idx, firstTry, questions, onComplete])
-
-  // New round: clear the board, then ask once the row has flown in
+  // New round: clear the board, then ask once the parade has marched in
   useEffect(() => {
-    setHighlighted(null); setWrong([]); setSolved(false)
-    setPlaced([]); setBounce(null); setMissesHere(0)
+    setWrong([]); setSolved(false); setMarching(false)
+    setPlaced([]); setMissesHere(0)
     if (!q) return
     lockPreviews()
-    const id = setTimeout(() => sayTask(q.say ?? q.prompt), (q.tokens.length * FLY_STEP + 0.35) * 1000)
+    const say = q.say ?? q.prompt
+    const id = setTimeout(() => sayTask(idx === 0
+      ? `Die Parade zieht vorbei! Ein Platz ist noch frei. ${say}${build ? '' : ' Zieh das passende Bild in die Lücke.'}`
+      : say), 1100)
     return () => clearTimeout(id)
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Right: the drum rolls and the parade marches on, out of the picture
+  const win = useCallback(() => {
+    setSolved(true)
+    if (!wrong.length) setFirstTry(n => n + 1)
+    setLeader('happy', 1400)
+    sayRight(praiseFor(q))
+    if (gapRef.current) burst(gapRef.current, 'stars')
+    if (!reduceMotion()) setTimeout(() => setMarching(true), 700)
+    ;[0, 1, 2, 3, 4, 5].forEach(i => setTimeout(() => sfx.drum(i % 2 === 1), 700 + i * 260))
+    afterNarration(() => setReady(true), { minMs: 2300 })
+  }, [q, wrong, setLeader, burst])
+
+  // Wrong: everybody stumbles, the piece goes back to wait
+  const trip = useCallback((opt, hint) => {
+    setWrong(w => (w.includes(opt) ? w : [...w, opt]))
+    setStumble(n => n + 1)
+    setLeader('oops', 1100)
+    sfx.slideDown()
+    sayWrong(hint)
+  }, [setLeader])
+
+  // Next round once the parade is gone, never while the help is open
   useEffect(() => {
-    const choose = q?.kind === 'build' ? place : pick
-    const onKey = (e) => {
-      if (solved || !q) return
-      const opts = q.options
-      const num  = parseInt(e.key)
-      if (num >= 1 && num <= opts.length) {
-        choose(opts[num - 1])
-      } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-        e.preventDefault()
-        setHighlighted(h => h === null ? 0 : Math.min(h + 1, opts.length - 1))
-      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-        e.preventDefault()
-        setHighlighted(h => h === null ? opts.length - 1 : Math.max(h - 1, 0))
-      } else if ((e.key === 'Enter' || e.key === ' ') && highlighted !== null) {
-        e.preventDefault()
-        choose(opts[highlighted])
-      }
+    if (!ready || paused) return
+    setReady(false)
+    if (idx + 1 >= questions.length) {
+      sfx.complete()
+      onComplete(result(firstTry, questions.length))
+    } else setIdx(i => i + 1)
+  }, [ready, paused]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A piece dropped into the gap (next / gap / grow rounds)
+  const dropGap = useCallback((opt) => {
+    if (solved) return false
+    if (opt !== q.answer) { trip(opt, hintFor(q)); return false }
+    win()
+    return true
+  }, [solved, q, trip, win])
+
+  // Build rounds: a piece goes to the next empty place. Lumi says the pieces
+  // laid so far; a wrong one goes back, and after two misses on one place
+  // the right piece lights up and is named.
+  const dropSlot = useCallback((opt) => {
+    if (solved) return false
+    const want = q.fill[placed.length]
+    if (opt !== want) {
+      const n = missesHere + 1
+      setMissesHere(n)
+      trip(opt, n >= 2 ? `Als Nächstes kommt ${nameOf(q, want)}.` : hintFor(q, placed))
+      return false
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [q, solved, highlighted, pick, place])
+    const next = [...placed, opt]
+    setPlaced(next)
+    setMissesHere(0)
+    if (next.length < q.fill.length) {
+      sfx.pop()
+      narrate([{ text: `${next.map(e => nameOf(q, e)).join(', ')}!` }])
+      return true
+    }
+    win()
+    return true
+  }, [solved, q, placed, missesHere, trip, win])
 
   if (!q) return null
 
-  // One line for the whole row: the symbols shrink with their number instead
-  // of breaking the pattern over two or three lines on a phone.
-  const rowGlyphs = q.tokens.reduce((n, t) => n + glyphs(t), 0)
-  const build     = q.kind === 'build'
-  // build rounds: room between the empty places, which pulse one at a time
-  const rowGap    = q.kind === 'grow' ? 18 : build ? 12 : 6
-  const symSize   = `min(76px, calc((min(100vw, 720px) - 7vw - ${16 + rowGap * q.tokens.length}px) / ${rowGlyphs}))`
-  const maxOpt    = Math.max(...q.options.map(glyphs))
-  const optSize   = maxOpt > 1 ? `min(44px, calc((min(100vw, 720px) - 120px) / ${maxOpt * 2}))` : 'clamp(48px, 11vw, 72px)'
-  const isLast    = idx + 1 >= questions.length
+  // Marcher size: the whole parade and the bear in front fit one line
+  // (the groups of a growing row stand apart, so each can be counted)
+  const spread = q.kind === 'grow' ? 0.45 : 0.08
+  const bear = stageW > 600 ? 1.5 : 1.1
+  const unitsOf = list => list.reduce((n, i) => n + widthOf(q, q.tokens[i]) + spread, 0)
+  const all = q.tokens.map((_, i) => i)
+  // On a phone a long parade goes round the bend: two lines, read like a
+  // book, instead of pictures too small to tell apart
+  const oneLine = (stageW - 24) / (unitsOf(all) + bear)
+  const half = Math.ceil(all.length / 2)
+  const lines = oneLine < 46 && all.length > 5 ? [all.slice(0, half), all.slice(half)] : [all]
+  const size = Math.min(104, lines.length > 1
+    ? (stageW - 24) / Math.max(unitsOf(lines[0]), unitsOf(lines[1]) + bear)
+    : oneLine)
+  const gap = size * spread
   // the right piece, lit up after two misses on one place
   const showPiece = build && !solved && missesHere >= 2 ? q.fill[placed.length] : null
+  const optW = Math.max(...q.options.map(o => widthOf(q, o)))
+  const optGap = stageW > 600 ? 36 : 12
+  const optSize = Math.min(96, Math.max(44, ((stageW - (q.options.length - 1) * optGap) / q.options.length - 24) / optW))
+
+  // one place in the parade: a marcher, or the gap waiting for one
+  const renderToken = (token, i) => {
+    if (token !== '❓') return <div role="listitem" key={i} style={{ position: 'relative' }}><Marcher q={q} token={token} size={size} i={i} stumble={stumble} /></div>
+    const slot = i - q.gapAt
+    const piece = build ? placed[slot] : solved ? q.answer : null
+    const waiting = !solved && (!build || slot === placed.length)
+    const zone = build ? `slot-${slot}` : 'gap'
+    return (
+      <div role="listitem" key={i} ref={waiting ? gapRef : undefined} style={{ position: 'relative' }}>
+        <DropZone id={zone} onDrop={build ? dropSlot : dropGap} label="Lücke in der Parade" slop={size * 0.4}>
+          {hover => piece != null
+            ? <motion.div initial={{ scale: 0.3, y: -size }} animate={{ scale: 1, y: 0 }} transition={{ type: 'spring', stiffness: 380, damping: 16 }}>
+                <Marcher q={q} token={piece} size={size} i={i} stumble={0} />
+              </motion.div>
+            : <div className={waiting ? 'pa-ring' : undefined} style={{
+                width: size * (q.kind === 'grow' ? 1.6 : 1), height: size, boxSizing: 'border-box', borderRadius: size * 0.3,
+                border: `3px dashed ${hover ? '#ff9a3c' : INK}`, background: hover ? 'rgba(255,201,60,0.55)' : 'rgba(255,253,247,0.75)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: size * 0.5, color: INK, opacity: waiting ? 1 : 0.55,
+              }}>?</div>}
+        </DropZone>
+      </div>
+    )
+  }
 
   return (
-    <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', padding:'clamp(12px,2.2vw,24px) clamp(14px,3.5vw,36px)', gap:'clamp(10px,1.8vw,18px)' }}>
+    <DragArea autoTarget={build ? `slot-${placed.length}` : 'gap'} disabled={solved}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', padding: 'clamp(10px,2vw,22px) clamp(10px,3vw,32px)', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', maxWidth: 900, flexShrink: 0 }}>
+          <RoundTrail total={questions.length} done={idx + (solved ? 1 : 0)} walker="🐘" goal="🎪" style={{ flex: 1 }} />
+          <HearOptions size={52} label="Aufgabe und Antworten vorlesen" items={[q.prompt, ...q.options.map(o => optionName(q, o))]} />
+        </div>
 
-      <AnimatePresence>
-        {flashType && (
-          <motion.div
-            key={flashId}
-            initial={{ opacity: flashType === 'ok' ? 0.30 : 0.2 }}
-            animate={{ opacity: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.4 }}
-            style={{ position:'fixed', inset:0, zIndex:150, pointerEvents:'none',
-                     background: flashType === 'ok' ? '#6BCB77' : '#FF6B6B' }}
-          />
-        )}
-      </AnimatePresence>
-
-      <div style={{ display:'flex', gap:6, width:'100%', maxWidth:760, flexShrink:0 }}>
-        {questions.map((_, i) => (
-          <div key={i} style={{
-            flex:1,
-            ...pxSegment(i < idx || (i === idx && solved) ? 'done' : i === idx ? 'current' : 'todo'),
-            // answered, but not on the first try
-            ...((i < idx || (i === idx && solved)) && missed.includes(i) ? { background: '#F3A091' } : {}),
-            transition:'background 0.3s',
-          }} />
-        ))}
-      </div>
-
-      <DinoScene
-        chomping={chomping} shaking={shaking} dinoScale={dinoScale}
-        projectiles={projectiles} puffIds={puffIds} bursts={bursts}
-        onProjDone={id => setProjectiles(prev => prev.filter(p => p.id !== id))}
-        onPuffDone={id => setPuffIds(prev => prev.filter(x => x !== id))}
-        onBurstDone={id => setBursts(prev => prev.filter(b => b.id !== id))}
-      />
-
-      {/* Question + speaker: reads the task and then every answer */}
-      <div style={{ display:'flex', alignItems:'center', gap:10, width:'100%', maxWidth:760, flexShrink:0 }}>
-        <AnimatePresence mode="wait">
-          <motion.div key={idx}
-            initial={{ opacity:0, y:-6 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }} transition={{ duration:0.22 }}
-            style={{ flex:1, ...pxPanel, padding:'clamp(10px,2vw,16px) clamp(14px,3vw,22px)', fontFamily:'var(--font-heading)', fontSize:'clamp(18px,3.5vw,26px)', color:'var(--text-primary)' }}
-          >{q.prompt}</motion.div>
-        </AnimatePresence>
-        <HearOptions
-          size={52}
-          label="Aufgabe und Antworten vorlesen"
-          items={[q.prompt, ...q.options.map(o => optionName(q, o))]}
-        />
-      </div>
-
-      {/* The row */}
-      <div style={{ flex:1, minHeight:0, width:'100%', maxWidth:760, display:'flex', alignItems:'center', justifyContent:'center' }}>
-        <AnimatePresence mode="wait">
-          <motion.div key={'row-' + idx}
-            initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} transition={{ duration:0.18 }}
-            style={{ display:'flex', alignItems:'center', gap:rowGap, flexWrap:'nowrap', justifyContent:'center', padding:'6px 0' }}
-          >
-            {q.tokens.map((token, i) => {
-              const isQuestion = token === '❓'
-              // build rounds fill their places one by one; the others all at once
-              const slot       = i - q.gapAt
-              const piece      = build ? placed[slot] : solved ? q.answer : null
-              const filled     = isQuestion && piece != null
-              const waiting    = isQuestion && !solved && (!build || slot === placed.length)
-              return (
-                <motion.span
-                  key={i}
-                  initial={{ scale:0, opacity:0, y:16 }}
-                  animate={waiting
-                    ? { scale:[1,1.15,1], opacity:1, y:0 }
-                    : { scale:1, opacity:1, y:0 }}
-                  transition={waiting
-                    ? { scale:{ delay: i * FLY_STEP, duration:1.1, repeat:Infinity, type:'tween' }, opacity:{ delay: i * FLY_STEP, duration:0.22 }, y:{ delay: i * FLY_STEP, type:'spring', stiffness:340, damping:20 } }
-                    : filled ? { type:'spring', stiffness:340, damping:18 }
-                    : { delay: i * FLY_STEP, type:'spring', stiffness:340, damping:20 }}
-                  style={{
-                    fontSize: symSize,
-                    lineHeight: 1.1,
-                    display: 'inline-flex',
-                    whiteSpace: 'nowrap',
-                    position: 'relative',
-                    // the place asked for: a dashed slot, green once filled
-                    ...(isQuestion ? {
-                      outline: `3px dashed ${filled ? '#2F8F3A' : INK}`, outlineOffset: 3, borderRadius: 8,
-                      background: filled ? '#DDF6CF' : 'var(--px-parch-light)',
-                    } : {}),
-                  }}
-                >
-                  {filled ? piece : token}
-                  {/* a wrong piece drops in and bounces back down to the tray */}
-                  {build && bounce && waiting && (
-                    <motion.span key={bounce.id} aria-hidden="true"
-                      initial={{ y:'-60%', opacity:0, scale:0.7 }}
-                      animate={{ y:['-60%','0%','-18%','140%'], opacity:[0,1,1,0], scale:[0.7,1,1,0.8] }}
-                      transition={{ duration:0.9, times:[0,0.3,0.5,1], ease:'easeInOut' }}
-                      onAnimationComplete={() => setBounce(b => (b?.id === bounce.id ? null : b))}
-                      style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'var(--px-parch-light)', borderRadius:8, pointerEvents:'none' }}
-                    >{bounce.e}</motion.span>
-                  )}
-                </motion.span>
-              )
-            })}
+        {/* The parade on its road */}
+        <div ref={stageRef} data-answer={build ? q.fill.join('|') : q.answer} style={{ position: 'relative', width: '100%', maxWidth: 1100, flex: 1, minHeight: size * 1.9 * lines.length, display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
+          <motion.div key={idx} role="list" aria-label="Parade"
+            initial={reduceMotion() ? false : { x: '-110%' }}
+            animate={{ x: marching ? '115%' : 0 }}
+            transition={marching ? { duration: 1.6, ease: 'easeIn' } : { duration: 1, ease: 'easeOut' }}
+            style={{ display: 'flex', flexDirection: 'column', gap: size * 0.45, width: '100%' }}>
+            {lines.map((line, li) => (
+              <div key={li} style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap }}>
+                <div aria-hidden="true" style={{ position: 'absolute', left: 0, right: 0, bottom: -size * 0.14, height: size * 0.4, borderRadius: 99,
+                  background: '#e9c98f', border: `3px solid ${INK}`, boxShadow: 'inset 0 -6px 0 rgba(138,79,34,0.25)' }} />
+                {line.map(i => renderToken(q.tokens[i], i))}
+                {/* the drummer up front */}
+                {li === lines.length - 1 && (
+                  <div style={{ position: 'relative', marginLeft: gap * 2, flexShrink: 0 }}>
+                    <Critter art="🐻" size={size * 1.25} mood={leader} label="Bär mit Trommel" talks
+                      onTap={() => { sfx.drum(true); setLeader('dance', 1200) }} />
+                    <div aria-hidden="true" style={{ position: 'absolute', left: -size * 0.2, bottom: -size * 0.05 }}><Art art="🥁" size={size * 0.6} /></div>
+                  </div>
+                )}
+              </div>
+            ))}
           </motion.div>
-        </AnimatePresence>
-      </div>
+        </div>
 
-      {/* Answers — the pictures as big as in the row (they were 18–26 px).
-          In build rounds this is the tray: one row, every piece can be used
-          again, a wrong one only wiggles. */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(' + (build ? q.options.length : Math.min(q.options.length, 2)) + ',1fr)', gap:'clamp(10px,2vw,16px)', width:'100%', maxWidth:760, flexShrink:0 }}>
-        {q.options.map((opt, oi) => {
-          const isCorrect     = opt === q.answer
-          const isWrong       = !build && wrong.includes(opt)
-          const isHighlighted = !solved && (highlighted === oi || opt === showPiece)
-          const cardState = solved && isCorrect ? 'right' : isWrong ? 'wrong' : isHighlighted ? 'selected' : undefined
-          const active = !solved && !isWrong
-          const bounced = build && bounce?.e === opt
-          return (
-            <motion.button key={idx + '-' + opt}
-              whileHover={active ? { scale:1.04 } : {}}
-              whileTap={active ? { scale:0.95 } : {}}
-              animate={isWrong ? { x:[0,-10,10,-6,6,0] } : bounced ? { x:[0,-5,5,-3,0] } : { x:0 }}
-              transition={{ duration:0.42 }}
-              onClick={() => (build ? place(opt) : pick(opt))}
-              {...hearable(optionName(q, opt))}
-              aria-label={optionName(q, opt)}
-              disabled={isWrong}
-              style={{
-                ...pxCard(cardState),
-                minHeight: 'clamp(76px, 12dvh, 112px)', padding:'8px 10px',
-                fontSize: optSize, lineHeight: 1, color:'var(--text-primary)',
-                cursor: active ? 'pointer' : 'default',
-                opacity: isWrong ? 0.45 : 1,
-                transition:'background 0.22s, border 0.22s, box-shadow 0.18s, opacity 0.2s',
-                display:'flex', alignItems:'center', justifyContent:'center', flexWrap:'nowrap',
-              }}
-            >
-              {opt}
-            </motion.button>
-          )
-        })}
+        {/* Waiting by the road: the pieces to choose from. In build rounds
+            each one can be used again and again. */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'flex-end', gap: optGap, width: '100%', maxWidth: 900, flexShrink: 0, minHeight: optSize + 20 }}>
+          {q.options.map((opt, oi) => {
+            const tried = !build && wrong.includes(opt)
+            const glow = opt === showPiece
+            const gone = !build && solved && opt === q.answer
+            return (
+              <div key={`${idx}-${opt}`} className="pa-wait" style={{ animationDelay: `${-oi * 0.45}s`, visibility: gone ? 'hidden' : 'visible' }}>
+                <Draggable id={`${idx}-${oi}`} data={opt} label={optionName(q, opt)} disabled={tried || solved}
+                  style={{ opacity: tried ? 0.4 : 1, filter: tried ? 'grayscale(0.7)' : undefined }}>
+                  <div data-opt={opt} {...hearable(optionName(q, opt))} style={{
+                    padding: 8, borderRadius: 22, display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+                    minWidth: 64, minHeight: 64,
+                    background: glow ? 'rgba(255,201,60,0.9)' : 'rgba(255,253,247,0.7)', border: `3px solid ${glow ? INK : 'rgba(42,27,61,0.25)'}`,
+                    boxShadow: glow ? '0 0 0 6px rgba(255,201,60,0.5)' : '0 4px 0 rgba(42,27,61,0.2)',
+                  }}>
+                    {picsOf(q, opt).map((p, k) => <div key={k} style={{ marginLeft: k ? -optSize * 0.15 : 0 }}><Art art={p} size={optSize} /></div>)}
+                  </div>
+                </Draggable>
+              </div>
+            )
+          })}
+        </div>
       </div>
-
-      {/* Fixed slot for "Weiter", so nothing jumps when it appears */}
-      <div style={{ height: 62, flexShrink: 0, display:'flex', alignItems:'center', justifyContent:'center' }}>
-        {solved && (
-          <motion.button
-            initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} transition={{ delay: 0.5 }}
-            onClick={weiterClick}
-            {...hearable(isLast ? 'Fertig' : 'Weiter')}
-            style={{
-              ...pxButton('green'),
-              // ink on green: white text reached only 2.2:1
-              color: INK, textShadow: '0 1px 0 rgba(255,255,255,0.35)',
-              padding:'12px 40px', fontSize:20, minHeight: 52,
-            }}
-          >
-            {isLast ? '🏁 Fertig!' : 'Weiter! ➡️'}
-          </motion.button>
-        )}
-      </div>
-    </div>
+      {bursts}
+    </DragArea>
   )
 }

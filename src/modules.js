@@ -6,6 +6,7 @@
 // Every screen now reads them from here.
 //
 //   world   the theme world a game belongs to on the home screen
+//   scene   the moving backdrop behind the game (components/play/Scene.jsx)
 //   minAge  from which age the game is a good first choice; younger
 //           children can still play it, it is only not recommended
 //   say     what Lumi says about the game when a child points at its tile
@@ -20,31 +21,31 @@ export const WORLDS = [
 
 // Flat colours from the pixel palette (styles/pixel.css) for the tile heads.
 export const MODULES = [
-  { id: 'number-intro',  title: 'Zahlen entdecken', sub: 'Zahlen 1 bis 10',        emoji: '🧮', world: 'zahlen',     minAge: 4, color: 'var(--px-gold)',   say: 'Zahlen entdecken. Zähle Dinge und lerne die Zahlen.' },
-  { id: 'letter-intro',  title: 'ABC-Abenteuer',    sub: 'Das Alphabet',           emoji: '🔡', world: 'buchstaben', minAge: 4, color: 'var(--px-sky)',    say: 'ABC-Abenteuer. Lerne die Buchstaben kennen.' },
-  { id: 'emotions',      title: 'Gefühlswelt',      sub: 'Gefühle erkennen',       emoji: '😊', world: 'gefuehle',   minAge: 4, color: 'var(--px-pink)',   say: 'Gefühlswelt. Wie fühlt sich Lumi?' },
-  { id: 'listen',        title: 'Hörabenteuer',     sub: 'Hören und finden',       emoji: '🔊', world: 'buchstaben', minAge: 4, color: 'var(--px-orange)', say: 'Hörabenteuer. Hör genau hin und finde das Bild.' },
-  { id: 'shadows',       title: 'Schattenrätsel',   sub: 'Was ist im Dunkeln?',    emoji: '🌑', world: 'denken',     minAge: 4, color: 'var(--px-night)',  say: 'Schattenrätsel. Was versteckt sich im Dunkeln?' },
-  { id: 'shapes',        title: 'Farbenreich',      sub: 'Bilder anmalen',         emoji: '🎨', world: 'malen',      minAge: 4, color: 'var(--px-blue)',   say: 'Farbenreich. Male Bilder mit den richtigen Farben an.' },
-  { id: 'numbers',       title: 'Zahlenland',       sub: 'Einkaufen und zählen',   emoji: '🔢', world: 'zahlen',     minAge: 5, color: 'var(--px-green)',  say: 'Zahlenland. Kaufe im Laden genau richtig ein.' },
-  { id: 'letters',       title: 'Buchstabenwald',   sub: 'Wörter schreiben',       emoji: '⌨️', world: 'buchstaben', minAge: 6, color: 'var(--px-teal)',   say: 'Buchstabenwald. Schreibe Wörter mit Buchstaben.' },
-  { id: 'words2',        title: 'Silben-Spaß',      sub: 'Wörter aus Silben',      emoji: '🔤', world: 'buchstaben', minAge: 5, color: 'var(--px-green)',  say: 'Silben-Spaß. Baue Wörter aus Silben.' },
-  { id: 'bubbles',       title: 'Blasen-Blitz',     sub: 'Blasen antippen',        emoji: '🫧', world: 'zahlen',     minAge: 5, color: 'var(--px-sky)',    say: 'Blasen-Blitz. Tippe die richtigen Blasen an.' },
-  { id: 'words',         title: 'Memo-Welt',        sub: 'Paare finden',           emoji: '🃏', world: 'denken',     minAge: 4, color: 'var(--px-pink)',   say: 'Memo-Welt. Finde die Paare.' },
-  { id: 'patterns',      title: 'Musterpark',       sub: 'Was kommt als Nächstes?', emoji: '🔮', world: 'denken',    minAge: 4, color: 'var(--px-orange)', say: 'Musterpark. Was kommt als Nächstes?' },
-  { id: 'sort',          title: 'Sortier-Spaß',     sub: 'Alles an seinen Platz',  emoji: '🧺', world: 'denken',     minAge: 4, color: 'var(--px-wood-light)', say: 'Sortier-Spaß. Räume alles an den richtigen Platz.' },
-  { id: 'weight',        title: 'Waage-Welt',       sub: 'Was ist schwerer?',      emoji: '⚖️', world: 'zahlen',     minAge: 5, color: 'var(--px-parch-dark)', say: 'Waage-Welt. Was ist schwerer?' },
-  { id: 'clock',         title: 'Uhren-Uhr',        sub: 'Die Uhr lesen',          emoji: '🕐', world: 'zahlen',     minAge: 6, color: 'var(--px-red)',    say: 'Uhren-Uhr. Lerne die Uhr lesen.' },
-  { id: 'maze',          title: 'Lumi-Labyrinth',   sub: 'Den Weg finden',         emoji: '🌀', world: 'denken',     minAge: 4, color: 'var(--px-purple)', say: 'Lumi-Labyrinth. Hilf Lumi durch das Labyrinth.' },
-  { id: 'stories',       title: 'Lumis Abenteuer',  sub: 'Geschichten mit dir',    emoji: '📖', world: 'gefuehle',   minAge: 5, color: 'var(--px-teal)',   say: 'Lumis Abenteuer. Hör eine Geschichte und entscheide mit.' },
-  { id: 'rocket-math',   title: 'Rechen-Rakete',    sub: 'Plus und minus',         emoji: '🚀', world: 'zahlen',     minAge: 6, color: 'var(--px-blue)',   say: 'Rechen-Rakete. Rechne mit der Rakete auf dem Zahlenstrahl.' },
-  { id: 'shapes-land',   title: 'Formen-Land',      sub: 'Formen finden',          emoji: '🔷', world: 'denken',     minAge: 4, color: 'var(--px-teal)',   say: 'Formen-Land. Finde Kreise, Dreiecke und Quadrate.' },
-  { id: 'rhyme',         title: 'Reim-Rallye',      sub: 'Was reimt sich?',        emoji: '🎵', world: 'buchstaben', minAge: 5, color: 'var(--px-pink)',   say: 'Reim-Rallye. Finde Wörter, die gleich klingen.' },
-  { id: 'initial-sound', title: 'Anlaut-Detektiv',  sub: 'Der erste Laut',         emoji: '🕵️', world: 'buchstaben', minAge: 5, color: 'var(--px-gold)',   say: 'Anlaut-Detektiv. Mit welchem Laut fängt das Wort an?' },
-  { id: 'empathy',       title: 'Gefühlsdetektiv',  sub: 'Anderen helfen',         emoji: '🕵️‍♀️', world: 'gefuehle', minAge: 5, color: 'var(--px-red)',    say: 'Gefühlsdetektiv. Wie geht es dem Kind, und wie kannst du helfen?' },
-  { id: 'shape-build',   title: 'Formen-Werkstatt', sub: 'Aus Formen bauen',       emoji: '🧩', world: 'denken',     minAge: 5, color: 'var(--px-orange)', say: 'Formen-Werkstatt. Baue Bilder aus Formen.' },
-  { id: 'trace',         title: 'Buchstaben-Spuren', sub: 'Mit dem Finger schreiben', emoji: '📝', world: 'buchstaben', minAge: 4, color: 'var(--px-sky)', say: 'Buchstaben-Spuren. Fahre die Buchstaben mit dem Finger nach.' },
-  { id: 'coloring',      title: 'Mal-Atelier',      sub: 'Frei malen',             emoji: '🖍️', world: 'malen',      minAge: 4, color: 'var(--px-purple)', say: 'Mal-Atelier. Male, was du möchtest.' },
+  { id: 'number-intro',  title: 'Zahlen entdecken', sub: 'Zahlen 1 bis 10',        emoji: '🧮', world: 'zahlen', scene: 'meadow',     minAge: 4, color: 'var(--px-gold)',   say: 'Zahlen entdecken. Zähle Dinge und lerne die Zahlen.' },
+  { id: 'letter-intro',  title: 'ABC-Abenteuer',    sub: 'Das Alphabet',           emoji: '🔡', world: 'buchstaben', scene: 'forest', minAge: 4, color: 'var(--px-sky)',    say: 'ABC-Abenteuer. Lerne die Buchstaben kennen.' },
+  { id: 'emotions',      title: 'Gefühlswelt',      sub: 'Gefühle erkennen',       emoji: '😊', world: 'gefuehle', scene: 'meadow',   minAge: 4, color: 'var(--px-pink)',   say: 'Gefühlswelt. Wie fühlt sich Lumi?' },
+  { id: 'listen',        title: 'Hörabenteuer',     sub: 'Hören und finden',       emoji: '🔊', world: 'buchstaben', scene: 'forest', minAge: 4, color: 'var(--px-orange)', say: 'Hörabenteuer. Hör genau hin und finde das Bild.' },
+  { id: 'shadows',       title: 'Schattenrätsel',   sub: 'Was ist im Dunkeln?',    emoji: '🌑', world: 'denken', scene: 'night',     minAge: 4, color: 'var(--px-night)',  say: 'Schattenrätsel. Was versteckt sich im Dunkeln?' },
+  { id: 'shapes',        title: 'Farbenreich',      sub: 'Bilder anmalen',         emoji: '🎨', world: 'malen', scene: 'room',      minAge: 4, color: 'var(--px-blue)',   say: 'Farbenreich. Male Bilder mit den richtigen Farben an.' },
+  { id: 'numbers',       title: 'Zahlenland',       sub: 'Einkaufen und zählen',   emoji: '🔢', world: 'zahlen', scene: 'market',     minAge: 5, color: 'var(--px-green)',  say: 'Zahlenland. Kaufe im Laden genau richtig ein.' },
+  { id: 'letters',       title: 'Buchstabenwald',   sub: 'Wörter schreiben',       emoji: '⌨️', world: 'buchstaben', scene: 'night', minAge: 6, color: 'var(--px-teal)',   say: 'Buchstabenwald. Schreibe Wörter mit Buchstaben.' },
+  { id: 'words2',        title: 'Silben-Spaß',      sub: 'Wörter aus Silben',      emoji: '🔤', world: 'buchstaben', scene: 'meadow', minAge: 5, color: 'var(--px-green)',  say: 'Silben-Spaß. Baue Wörter aus Silben.' },
+  { id: 'bubbles',       title: 'Blasen-Blitz',     sub: 'Blasen antippen',        emoji: '🫧', world: 'zahlen', scene: 'sea',     minAge: 5, color: 'var(--px-sky)',    say: 'Blasen-Blitz. Tippe die richtigen Blasen an.' },
+  { id: 'words',         title: 'Memo-Welt',        sub: 'Paare finden',           emoji: '🃏', world: 'denken', scene: 'forest',     minAge: 4, color: 'var(--px-pink)',   say: 'Memo-Welt. Finde die Paare.' },
+  { id: 'patterns',      title: 'Musterpark',       sub: 'Was kommt als Nächstes?', emoji: '🔮', world: 'denken', scene: 'meadow',    minAge: 4, color: 'var(--px-orange)', say: 'Musterpark. Was kommt als Nächstes?' },
+  { id: 'sort',          title: 'Sortier-Spaß',     sub: 'Alles an seinen Platz',  emoji: '🧺', world: 'denken', scene: 'room',     minAge: 4, color: 'var(--px-wood-light)', say: 'Sortier-Spaß. Räume alles an den richtigen Platz.' },
+  { id: 'weight',        title: 'Waage-Welt',       sub: 'Was ist schwerer?',      emoji: '⚖️', world: 'zahlen', scene: 'meadow',     minAge: 5, color: 'var(--px-parch-dark)', say: 'Waage-Welt. Was ist schwerer?' },
+  { id: 'clock',         title: 'Uhren-Uhr',        sub: 'Die Uhr lesen',          emoji: '🕐', world: 'zahlen', scene: 'room',     minAge: 6, color: 'var(--px-red)',    say: 'Uhren-Uhr. Lerne die Uhr lesen.' },
+  { id: 'maze',          title: 'Lumi-Labyrinth',   sub: 'Den Weg finden',         emoji: '🌀', world: 'denken', scene: 'forest',     minAge: 4, color: 'var(--px-purple)', say: 'Lumi-Labyrinth. Hilf Lumi durch das Labyrinth.' },
+  { id: 'stories',       title: 'Lumis Abenteuer',  sub: 'Geschichten mit dir',    emoji: '📖', world: 'gefuehle', scene: 'meadow',   minAge: 5, color: 'var(--px-teal)',   say: 'Lumis Abenteuer. Hör eine Geschichte und entscheide mit.' },
+  { id: 'rocket-math',   title: 'Rechen-Rakete',    sub: 'Plus und minus',         emoji: '🚀', world: 'zahlen', scene: 'space',     minAge: 6, color: 'var(--px-blue)',   say: 'Rechen-Rakete. Rechne mit der Rakete auf dem Zahlenstrahl.' },
+  { id: 'shapes-land',   title: 'Formen-Land',      sub: 'Formen finden',          emoji: '🔷', world: 'denken', scene: 'meadow',     minAge: 4, color: 'var(--px-teal)',   say: 'Formen-Land. Finde Kreise, Dreiecke und Quadrate.' },
+  { id: 'rhyme',         title: 'Reim-Rallye',      sub: 'Was reimt sich?',        emoji: '🎵', world: 'buchstaben', scene: 'room', minAge: 5, color: 'var(--px-pink)',   say: 'Reim-Rallye. Finde Wörter, die gleich klingen.' },
+  { id: 'initial-sound', title: 'Anlaut-Detektiv',  sub: 'Der erste Laut',         emoji: '🕵️', world: 'buchstaben', scene: 'pond', minAge: 5, color: 'var(--px-gold)',   say: 'Anlaut-Detektiv. Mit welchem Laut fängt das Wort an?' },
+  { id: 'empathy',       title: 'Gefühlsdetektiv',  sub: 'Anderen helfen',         emoji: '🕵️‍♀️', world: 'gefuehle', scene: 'meadow', minAge: 5, color: 'var(--px-red)',    say: 'Gefühlsdetektiv. Wie geht es dem Kind, und wie kannst du helfen?' },
+  { id: 'shape-build',   title: 'Formen-Werkstatt', sub: 'Aus Formen bauen',       emoji: '🧩', world: 'denken', scene: 'room',     minAge: 5, color: 'var(--px-orange)', say: 'Formen-Werkstatt. Baue Bilder aus Formen.' },
+  { id: 'trace',         title: 'Buchstaben-Spuren', sub: 'Mit dem Finger schreiben', emoji: '📝', world: 'buchstaben', scene: 'room', minAge: 4, color: 'var(--px-sky)', say: 'Buchstaben-Spuren. Fahre die Buchstaben mit dem Finger nach.' },
+  { id: 'coloring',      title: 'Mal-Atelier',      sub: 'Frei malen',             emoji: '🖍️', world: 'malen', scene: 'room',      minAge: 4, color: 'var(--px-purple)', say: 'Mal-Atelier. Male, was du möchtest.' },
 ]
 
 export const MODULE_BY_ID = Object.fromEntries(MODULES.map(m => [m.id, m]))

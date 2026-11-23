@@ -1,14 +1,26 @@
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { sfx } from '../sfx.js'
 import { hearable } from '../lib/hearable.js'
 import HearOptions from '../components/HearOptions.jsx'
-import { narrate, lockPreviews, afterNarration, stopNarration } from '../narrator.js'
+import { narrate, afterNarration } from '../narrator.js'
 import { sayRight, sayWrong } from '../lib/feedback.js'
-import { result } from '../lib/score.js'
-import { usePaused } from '../lib/pause.js'
 import { soundOf } from './letterSounds.js'
-import { pxCard, pxButton, INK } from './px.js'
+import { Art, useMood, DragArea, Draggable, DropZone, RoundTrail, useBursts } from '../components/play/index.js'
+import { useRounds, useSpeaking, shuffle, chance, reduceMotion } from './buchstaben/useRounds.js'
+import LetterMonster from './buchstaben/LetterMonster.jsx'
+import { pxButton, INK } from './px.js'
+
+/**
+ * ABC-Abenteuer: das Buchstaben-Monster.
+ *
+ * Jeder Buchstabe ist ein Monster mit Augen und Mund. Es sagt seinen Laut
+ * ("B wie Ball") und hat Hunger, aber nur auf Dinge, die mit seinem Laut
+ * anfangen. Das Kind füttert es: ziehen oder antippen. Ein falsches Ding
+ * spuckt es wieder aus ("Bäh!"), ein richtiges mampft es und freut sich.
+ * Der Buchstabe wird so zur Figur, der man einen Gefallen tut — gelernt
+ * wird dasselbe wie vorher: Buchstabe, Laut und Wörter mit diesem Anlaut.
+ */
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 // Jedes Bild zeigt eindeutig sein Wort, und jedes Wort fängt mit dem Laut
@@ -64,7 +76,7 @@ const SAME_SOUND = {
   F:['V'], V:['F','W'], W:['V'], K:['C','Q'], C:['K','Q','Z'], Q:['K','C'], Z:['C'], J:['Y'], Y:['J'],
 }
 
-// Kräftige Farben, jede mit dunkler Kontur — auf Pergament gut zu sehen.
+// Kräftige Farben, jede mit dunkler Kontur — vor dem Wald gut zu sehen.
 const COLORS = ['#E8483B', '#E07A10', '#2F8F3A', '#2F7FD8', '#8A4FD0', '#D63A7C', '#13968C', '#B8860B']
 const colorOf = l => COLORS[ALL_LETTERS.indexOf(l) % COLORS.length]
 
@@ -79,8 +91,6 @@ const LEVELS = [
   { letters:['X','Y'], review:8,               options:4 },
   { review:10,                                 options:4, lower:true },
 ]
-
-function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5) }
 
 function makeQuestions(level) {
   const cfg = LEVELS[Math.max(0, Math.min(level - 1, LEVELS.length - 1))]
@@ -109,242 +119,177 @@ function infoOf(l) {
 }
 
 const ABC = 'audio/abc-abenteuer/'
-const NEXT_BTN = { ...pxButton('green'), color: INK, textShadow: '0 1px 0 rgba(255,255,255,0.4)' }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function LetterIntroGame({ level = 1, onComplete }) {
   const questions = useMemo(() => makeQuestions(level), [level])
   const lower = !!LEVELS[Math.min(level, LEVELS.length) - 1]?.lower
-  const paused = usePaused()
+  const [mood, setMood] = useMood()
+  const [bursts, burst] = useBursts()
+  const speaking = useSpeaking()
+  const monsterRef = useRef(null)
 
-  const [idx,      setIdx]      = useState(0)
-  const [solved,   setSolved]   = useState(false)
-  const [wrong,    setWrong]    = useState([])     // this round's wrong taps
-  const [shakeOpt, setShakeOpt] = useState(null)
-  const [ready,    setReady]    = useState(false)  // the task has been said
-  const [firstTry, setFirstTry] = useState(0)
-  const [leaving,  setLeaving]  = useState(false)
+  const [readyAt, setReadyAt] = useState(-1)    // the round whose task has been said
+  const [eatenIn, setEaten]   = useState(null)  // { i, opt }: the right thing of round i, eaten
+  const [spit,    setSpit]    = useState(null)  // a wrong thing, flying back out
 
-  const q = questions[idx]
-  const info = q && infoOf(q.letter)
-  const shown = q && (lower ? q.letter.toLowerCase() : q.letter)
-
-  useEffect(() => { lockPreviews(); return () => stopNarration() }, [])
-
-  // Merksatz, dann die Frage, als eine Ansage. Bis sie durch ist, zählen die
-  // Karten noch nicht: wer sofort tippte, brach den Merksatz ab und hörte die
-  // eigentliche Frage nie.
+  // Merksatz, dann die Frage, als eine Ansage. Bis sie durch ist, lässt sich
+  // noch nichts füttern: wer sofort fütterte, brach den Merksatz ab und hörte
+  // die eigentliche Frage nie.
+  const idxRef = useRef(0)
   const sayRound = useCallback(() => {
+    const i = idxRef.current, q = questions[i]
     if (!q) return
+    const info = infoOf(q.letter)
     narrate([
-      { text: info.say },
+      i === 0 && { text: 'Das Buchstaben-Monster hat Hunger! Es frisst nur Sachen, die mit seinem Laut anfangen.' },
+      { text: info.say, gap: i === 0 ? 300 : 0 },
       { src: ABC + `welches-wort-beginnt-mit-${q.letter.toLowerCase()}.mp3`, text: `Welches Wort beginnt mit ${q.letter}?`, gap: 250 },
     ])
-    afterNarration(() => setReady(true), { maxMs: 12000 })
-  }, [q, info])
+    afterNarration(() => setReadyAt(i), { maxMs: 15000 })
+  }, [questions])
 
-  // Auch nach dem Schließen der Hilfe noch einmal, solange die Runde läuft.
-  useEffect(() => {
-    if (paused || solved) return
-    const t = setTimeout(sayRound, 400)
-    return () => clearTimeout(t)
-  }, [idx, paused]) // eslint-disable-line react-hooks/exhaustive-deps
+  const { idx, done, leaving, tried, win, miss, reveal } = useRounds(questions.length, { onComplete, sayTask: sayRound, outroMs: 550 })
+  idxRef.current = idx
+  const q = questions[idx]
+  const ready = readyAt === idx
+  const eaten = eatenIn?.i === idx ? eatenIn.opt : null
 
-  const pick = (opt) => {
-    if (solved || !ready || wrong.includes(opt)) return
-    if (opt === q.correct) {
-      sfx.correct()
-      if (!wrong.length) setFirstTry(n => n + 1)
-      sayRight(`${opt.w} beginnt mit ${q.letter}.`)
-      setSolved(true)
-      return
-    }
-    sfx.wrong()
-    setShakeOpt(opt)
-    setTimeout(() => setShakeOpt(null), 600)
-    const misses = [...wrong, opt]
-    setWrong(misses)
-    if (misses.length >= 2) {
-      // Nach zwei Fehlern zeigt Lumi die Lösung, statt raten zu lassen.
-      narrate([{ text: `Schau mal, ${q.correct.w} beginnt mit ${q.letter}.` }])
-      setSolved(true)
-    } else {
-      sayWrong(`${opt.w} beginnt mit ${opt.w[0].toUpperCase()}. Such ein Wort mit ${q.letter}!`)
-    }
+  const munch = (then) => {
+    setMood('eat', 900)
+    sfx.chomp()
+    setTimeout(then, 850)
   }
 
-  const weiterClick = () => {
-    if (leaving) return
-    if (idx + 1 >= questions.length) {
-      setLeaving(true)
-      sfx.complete()
-      afterNarration(() => onComplete(result(firstTry, questions.length)), { minMs: 300 })
-    } else {
-      lockPreviews()
-      setSolved(false); setWrong([]); setReady(false)
-      setIdx(idx + 1)
+  const feed = (opt) => {
+    if (done || tried.includes(opt)) return false
+    if (opt === q.correct) {
+      setEaten({ i: idx, opt })
+      win()
+      sayRight(`Lecker! ${opt.w} beginnt mit ${q.letter}.`)
+      munch(() => {
+        // now and then a little burp: the classic giggle
+        if (chance(0.3)) { sfx.burp(); setMood('burp', 900) } else setMood('happy', 1400)
+        burst(monsterRef.current, 'hearts')
+      })
+      return true
     }
+    setSpit(opt)
+    munch(() => { setMood('yuck', 1100); sfx.boing() })
+    setTimeout(() => setSpit(null), 1700)
+    const first = opt.w[0].toUpperCase()
+    if (miss(opt) >= 2) {
+      // Nach zwei Fehlern zeigt das Monster die Lösung und frisst sie selbst.
+      sayWrong(`Bäh! Schau mal, ${q.correct.w} beginnt mit ${q.letter}.`)
+      reveal()
+      setTimeout(() => { setEaten({ i: idx, opt: q.correct }); munch(() => setMood('happy', 1200)) }, 2200)
+    } else {
+      sayWrong(`Bäh! ${opt.w} beginnt mit ${first}. Das Monster mag nur Sachen mit ${q.letter}.`)
+    }
+    return true
+  }
+
+  // Tickling the monster: it giggles and says its sound
+  const tickle = () => {
+    if (!ready || done) return
+    sfx.giggle()
+    setMood('happy', 900)
+    const s = soundOf(q.letter)
+    narrate([{ text: `${s}! ${s}!` }])
   }
 
   if (!q) return null
+  const info = infoOf(q.letter)
   const color = colorOf(q.letter)
+  const shown = lower ? q.letter.toLowerCase() : q.letter
+  const live = ready && !done
+  const faceMood = mood === 'idle' && speaking ? 'talk' : mood
 
   return (
     <div style={{
       flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'space-evenly',
-      gap:'clamp(10px,2vh,18px)', padding:'clamp(12px,3vw,24px)', width:'100%', boxSizing:'border-box',
+      gap:'clamp(6px,1.5vh,14px)', padding:'clamp(10px,2vw,20px) clamp(12px,3vw,24px)', width:'100%', boxSizing:'border-box',
     }}>
+      <RoundTrail total={questions.length} done={idx + (done ? 1 : 0)} walker="🐛" goal="🎂" style={{ width:'calc(100% - 80px)', maxWidth:520 }} />
 
-      {/* Progress */}
-      <div style={{ width:'100%', maxWidth:520, height:14, background:'rgba(42,27,61,0.12)', border:`2px solid ${INK}`, borderRadius:4, overflow:'hidden', boxSizing:'border-box' }}>
-        <motion.div
-          animate={{ width:`${((idx + (solved ? 1 : 0)) / questions.length) * 100}%` }}
-          style={{ height:'100%', background:'var(--px-green)', borderRadius:2, boxShadow:'inset 0 -3px 0 rgba(0,0,0,0.18)' }}
-          transition={{ duration:0.4 }}
-        />
-      </div>
-
-      {/* Big letter */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={idx}
-          initial={{ scale:0.4, rotate:-15, opacity:0 }}
-          animate={{ scale:1, rotate:0, opacity:1 }}
-          exit={{ scale:0.4, rotate:15, opacity:0 }}
-          transition={{ type:'spring', stiffness:360, damping:20 }}
-          style={{ textAlign:'center', display:'flex', flexDirection:'row', alignItems:'baseline', justifyContent:'center', gap:'clamp(12px,3vw,28px)' }}
-        >
-          {/* Ab Level 5 ist der kleine Buchstabe der große */}
-          <div style={{
-            fontFamily:'var(--font-heading)',
-            fontSize:'clamp(130px,24vw,210px)',
-            lineHeight:1, userSelect:'none',
-            color,
-            WebkitTextStroke:`5px ${INK}`, paintOrder:'stroke fill',
-            filter:'drop-shadow(0 6px 0 rgba(42,27,61,0.35))',
-          }}>
-            {shown}
-          </div>
-          <div style={{
-            fontFamily:'var(--font-heading)',
-            fontSize:'clamp(80px,15vw,130px)',
-            lineHeight:1, userSelect:'none',
-            color, opacity:0.85,
-            WebkitTextStroke:`3px ${INK}`, paintOrder:'stroke fill',
-          }}>
-            {lower ? q.letter : q.letter.toLowerCase()}
-          </div>
-        </motion.div>
-      </AnimatePresence>
-
-      {/* Merksatz, und die ganze Ansage noch einmal — ein Kind, das sie
-          überhört hat, kam sonst nicht mehr an sie heran. */}
-      <div style={{ display:'flex', alignItems:'center', gap:12, maxWidth:520, width:'100%' }}>
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={'info-' + idx}
-            initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }}
-            transition={{ delay:0.3, duration:0.35 }}
+      <DragArea autoTarget="monster" disabled={!live}>
+        {/* Merksatz — and the whole task once more */}
+        <div style={{ display:'flex', alignItems:'center', gap:10, maxWidth:560 }}>
+          <motion.div key={'info-' + idx} initial={{ scale:0, opacity:0 }} animate={{ scale:1, opacity:1 }}
+            transition={{ delay:0.35, type:'spring', stiffness:380, damping:18 }}
             style={{
-              flex:1,
-              background:`linear-gradient(${color}1f, ${color}1f), var(--px-parch-light)`,
-              border:`3px solid ${INK}`,
-              borderRadius:12,
-              boxShadow:'0 5px 0 rgba(42,27,61,0.35)',
-              padding:'10px 18px',
-              fontFamily:'var(--font-heading)',
-              fontSize:'clamp(16px,3.2vw,21px)',
-              color:INK,
-              textAlign:'center',
-            }}
-          >
+              background:'#fffdf7', border:`3px solid ${INK}`, borderRadius:18, boxShadow:'0 5px 0 rgba(42,27,61,0.3)',
+              padding:'8px 18px', fontFamily:'var(--font-heading)', fontWeight:700, fontSize:'clamp(17px,3.2vw,22px)',
+              color:INK, textAlign:'center',
+            }}>
             {info.show}
           </motion.div>
-        </AnimatePresence>
-        <motion.button
-          whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }}
-          onClick={sayRound}
-          aria-label="Frage noch einmal anhören"
-          style={{ ...pxButton('parch'), width:52, height:52, flexShrink:0, fontSize:24, lineHeight:1, padding:0 }}
-        >🔊</motion.button>
-      </div>
-
-      {/* Question */}
-      <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-        <div style={{ fontFamily:'var(--font-heading)', fontSize:'clamp(17px,3.5vw,23px)', color:INK, textAlign:'center' }}>
-          Welches Wort beginnt mit <strong style={{ borderBottom:`4px solid ${color}` }}>{shown}</strong>?
+          <motion.button whileHover={{ scale:1.08 }} whileTap={{ scale:0.92 }} onClick={sayRound}
+            aria-label="Frage noch einmal anhören"
+            style={{ ...pxButton('parch'), width:52, height:52, flexShrink:0, fontSize:24, lineHeight:1, padding:0 }}>🔊</motion.button>
         </div>
-        <HearOptions items={q.options.map(o => o.w)} label="Alle Wörter vorlesen" size={48} />
-      </div>
 
-      {/* Options */}
-      <div style={{
-        display:'grid', gridTemplateColumns:`repeat(${q.options.length}, minmax(0, 1fr))`,
-        gap:'clamp(10px,2.5vw,20px)', width:'100%', maxWidth: q.options.length * 170,
-        opacity: ready || solved ? 1 : 0.7, transition:'opacity 0.3s',
-      }}>
-        {q.options.map((opt, i) => {
-          const isCorrect = opt === q.correct
-          const isWrong   = wrong.includes(opt)
-          const cardState = solved && isCorrect ? 'right' : isWrong ? 'wrong' : undefined
-          const live      = ready && !solved && !isWrong
+        {/* The monster walks in, eats, and walks off */}
+        <motion.div key={idx} ref={monsterRef}
+          initial={reduceMotion() ? { opacity:0 } : { x:-420, opacity:0 }}
+          animate={leaving ? (reduceMotion() ? { opacity:0 } : { x:460, opacity:0, rotate:8 }) : { x:0, opacity:1, rotate:0 }}
+          transition={leaving ? { duration:0.5, ease:'easeIn' } : { type:'spring', stiffness:140, damping:15 }}
+          style={{ position:'relative' }}>
+          <DropZone id="monster" onDrop={feed} label={`Buchstaben-Monster ${shown}`} slop={40}>
+            {hover => (
+              <div onClick={tickle} style={{ cursor:'pointer' }}>
+                <LetterMonster letter={shown} small={lower ? q.letter : q.letter.toLowerCase()} color={color}
+                  mood={hover ? 'hungry' : faceMood} size={250} />
+              </div>
+            )}
+          </DropZone>
+          <AnimatePresence>
+            {spit && !reduceMotion() && (
+              <motion.div key={spit.w} aria-hidden="true"
+                initial={{ x:0, y:0, scale:0.3, rotate:0, opacity:0 }}
+                animate={{ x:[0, 0, 170], y:[0, 0, -90, 60], scale:[0.3, 0.3, 1, 0.9], rotate:[0, 0, 300, 420], opacity:[0, 1, 1, 0] }}
+                transition={{ duration:1.4, times:[0, 0.35, 0.7, 1] }}
+                style={{ position:'absolute', left:'50%', top:'55%', marginLeft:-45, marginTop:-45, pointerEvents:'none' }}>
+                <Art art={spit.e} size={90} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
 
-          return (
-            <motion.button
-              key={`${idx}-${i}`}
-              animate={opt === shakeOpt
-                ? { x:[0,-10,10,-7,7,-3,3,0] }
-                : { scale: solved && isCorrect ? [1, 1.08, 1] : 1 }}
-              transition={{ duration:0.45 }}
-              whileHover={live ? { scale:1.06, y:-3 } : {}}
-              whileTap={live ? { scale:0.94 } : {}}
-              onClick={() => pick(opt)}
-              {...hearable(opt.w, { enabled: !solved })}
-              style={{
-                ...pxCard(cardState),
-                padding:'clamp(12px,2.6vw,20px) 6px',
-                cursor: live ? 'pointer' : 'default',
-                display:'flex', flexDirection:'column', alignItems:'center', gap:8,
-                position:'relative', minWidth:0,
-                opacity: isWrong && !solved ? 0.6 : 1,
-              }}
-            >
-              <span style={{ fontSize:'clamp(48px,10vw,72px)', lineHeight:1, minHeight:'1em' }}>
-                {opt.e}
-              </span>
-              <span style={{
-                fontFamily:'var(--font-heading)',
-                fontSize:'clamp(14px,2.8vw,19px)',
-                color:INK, fontWeight:700,
-                textAlign:'center', overflowWrap:'anywhere',
-              }}>
-                {opt.w}
-              </span>
-              {solved && isCorrect && (
-                <motion.span
-                  initial={{ scale:0 }} animate={{ scale:1 }}
-                  transition={{ type:'spring', stiffness:500 }}
-                  style={{ fontSize:24, position:'absolute', top:-12, right:-10 }}
-                >✅</motion.span>
-              )}
-            </motion.button>
-          )
-        })}
-      </div>
-
-      {/* Weiter — der Platz ist immer da, damit nichts springt */}
-      <div style={{ minHeight:64, display:'flex', alignItems:'center' }}>
-        {solved && (
-          <motion.button
-            initial={{ scale:0 }} animate={{ scale:1 }}
-            transition={{ type:'spring', stiffness:300, delay:0.2 }}
-            whileHover={{ scale:1.06 }} whileTap={{ scale:0.94 }}
-            onClick={weiterClick}
-            {...hearable('Weiter')}
-            style={{ ...NEXT_BTN, padding:'14px 40px', fontSize:20, minHeight:56 }}
-          >Weiter! →</motion.button>
-        )}
-      </div>
+        {/* Food on the picnic blanket */}
+        <div style={{
+          display:'flex', alignItems:'center', justifyContent:'center', gap:'clamp(8px,2vw,18px)', flexWrap:'wrap',
+          padding:'10px clamp(10px,2.5vw,24px)', borderRadius:26, maxWidth:'100%', boxSizing:'border-box',
+          background:'repeating-conic-gradient(#f3b8b0 0 25%, #fffdf7 0 50%) 0 0 / 36px 36px',
+          border:`3px solid ${INK}`, boxShadow:'0 6px 0 rgba(42,27,61,0.25)',
+        }}>
+          {q.options.map((opt, i) => {
+            const gone = opt === eaten || opt === spit
+            const isTried = tried.includes(opt)
+            return (
+              <motion.div key={`${idx}-${opt.w}`}
+                initial={{ y:-50, scale:0, opacity:0 }}
+                animate={gone ? { scale:0, opacity:0 } : { y:0, scale:1, opacity: isTried ? 0.45 : 1 }}
+                transition={{ delay: gone ? 0 : 0.5 + i * 0.09, type:'spring', stiffness:380, damping:17 }}
+                style={{ width:'clamp(92px,19vw,124px)' }}>
+                <Draggable id={opt.w} data={opt} disabled={isTried || gone} label={opt.w}>
+                  <div {...hearable(opt.w, { enabled: !done })} style={{
+                    display:'flex', flexDirection:'column', alignItems:'center', gap:2, padding:'8px 4px',
+                    background:'#fffdf7', border:`3px solid ${INK}`, borderRadius:'50%/46%',
+                    boxShadow:'0 4px 0 rgba(42,27,61,0.25)', filter: isTried ? 'grayscale(0.8)' : undefined,
+                  }}>
+                    <Art art={opt.e} size={70} />
+                    <span style={{ fontFamily:'var(--font-heading)', fontWeight:700, fontSize:'clamp(13px,2.4vw,16px)', color:INK,
+                      textAlign:'center', overflowWrap:'anywhere', lineHeight:1.1 }}>{opt.w}</span>
+                  </div>
+                </Draggable>
+              </motion.div>
+            )
+          })}
+          <HearOptions items={q.options.map(o => o.w)} label="Alle Wörter vorlesen" size={48} />
+        </div>
+      </DragArea>
+      {bursts}
     </div>
   )
 }

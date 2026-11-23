@@ -1,16 +1,22 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { motion, AnimatePresence, useAnimationFrame, motionValue } from 'framer-motion'
-import LumiCharacter from '../components/LumiCharacter.jsx'
+import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react'
+import { motion, AnimatePresence, useAnimationFrame, motionValue, useReducedMotion } from 'framer-motion'
 import { sfx } from '../sfx.js'
 import { sayNumber } from '../tts.js'
-import { narrate, afterNarration, lockPreviews } from '../narrator.js'
+import { narrate, lockPreviews } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
-import { pxCard, pxBubble, pxButton, INK } from './px.js'
+import { Critter, Art, useMood, RoundTrail, useBursts } from '../components/play/index.js'
+import { useLater, HearButton, Pips } from './zahlen/stage.jsx'
 
 /**
- * Blasen-Blitz — Mengen auf einen Blick erfassen, dann Zahlen schnell finden
+ * Blasen-Blitz — "Kraken-Party": Mengen auf einen Blick erfassen, dann
+ * Zahlen schnell finden
+ *
+ * Under water an octopus wishes for bubbles with exactly one amount. Every
+ * right bubble pops and a star swims to the octopus, who juggles it; a
+ * wrong one turns into a puffer fish that puffs up, offended, and swims
+ * off. Quick pops in a row make the octopus dance.
  *
  *   • Levels 1–4: the bubbles carry dice patterns of one to six dots. Small
  *     quantities in a familiar pattern are seen at once rather than counted
@@ -49,13 +55,12 @@ function spawnRound(target, cfg, W, H) {
       if (near.length && Math.random() < 0.5) value = near[rand(0, near.length - 1)]
       else do { value = rand(1, cfg.maxNum) } while (value === target)
     }
-    // a little smaller in a phone-sized pond, never below a fingertip
-    const size = Math.round(rand(cfg.dots ? 66 : 58, cfg.dots ? 92 : 88) * Math.max(0.8, Math.min(1, W / 520)))
+    // a little smaller in a phone-sized sea, never below a fingertip
+    const size = Math.round(rand(cfg.dots ? 70 : 62, cfg.dots ? 96 : 90) * Math.max(0.8, Math.min(1, W / 520)))
     const r = size / 2 + 4
-    // Inside the water by at least the radius: bubbles at the edge used to
-    // be cut off by up to two thirds.
+    // Inside the water by at least the radius, so no bubble is cut off.
     const left = ((r + Math.random() * Math.max(0, W - 2 * r)) / W) * 100
-    const top  = ((r + Math.random() * Math.max(0, H - 2 * r - 20)) / H) * 100
+    const top  = ((r + Math.random() * Math.max(0, H - 2 * r)) / H) * 100
     return {
       id: `${i}-${Math.random().toString(36).slice(2)}`,
       value, tint: TINTS[rand(0, TINTS.length - 1)],
@@ -65,7 +70,7 @@ function spawnRound(target, cfg, W, H) {
   })
 }
 
-// 10 tiers: number range, bubbles on the board, target bubbles per round.
+// 10 tiers: number range, bubbles in the sea, target bubbles per round.
 // No clock in the first three levels — with a visible countdown a four-year-
 // old feels pressure but learns nothing from it.
 const ROUND_CFG = [
@@ -81,49 +86,34 @@ const ROUND_CFG = [
   { maxNum: 40, count: 15, minT: 3, maxT: 6, timed: true }, // L10
 ].map(c => ({
   ...c,
-  // The budget grows with the board so the pressure per bubble stays
+  // The budget grows with the sea so the pressure per bubble stays
   // roughly constant; difficulty comes from the count and the number range.
   timeS: Math.max(24, Math.round(c.count * 1.5 + 10)),
 }))
 
-const FISH = [
-  { left:'8%',  top:'18%', flip:false, dur:8,  size:28 },
-  { left:'72%', top:'30%', flip:true,  dur:11, size:22 },
-  { left:'40%', top:'60%', flip:false, dur:9,  size:20 },
-  { left:'85%', top:'55%', flip:true,  dur:13, size:26 },
-]
-
-const DICE = [
-  [],
-  [[50,50]],
-  [[28,28],[72,72]],
-  [[26,26],[50,50],[74,74]],
-  [[28,28],[72,28],[28,72],[72,72]],
-  [[26,26],[74,26],[50,50],[26,74],[74,74]],
-  [[28,24],[72,24],[28,50],[72,50],[28,76],[72,76]],
-]
-
-function Dots({ n }) {
-  return (
-    <svg viewBox="0 0 100 100" width="86%" height="86%" style={{ pointerEvents: 'none' }}>
-      {DICE[n].map(([cx, cy], i) => <circle key={i} cx={cx} cy={cy} r={13} fill="#FFFDF7" stroke="#2a1b3d" strokeWidth={4} />)}
-    </svg>
-  )
-}
-
-// What the voice says about a bubble or the target.
+// What the octopus wishes for, and what is said about a wrong bubble.
 const taskText  = (t, dots) => dots
-  ? `Finde alle Blasen mit ${t === 1 ? 'einem Punkt' : `${N(t)} Punkten`}!`
-  : `Finde alle Blasen mit der ${Cap(N(t))}!`
+  ? `Ich wünsche mir alle Blasen mit ${t === 1 ? 'einem Punkt' : `${N(t)} Punkten`}!`
+  : `Ich wünsche mir alle Blasen mit der ${Cap(N(t))}!`
 const wrongText = (v, t, dots) => dots
   ? `${v === 1 ? 'Das ist ein Punkt' : `Das sind ${N(v)} Punkte`}. Wir suchen ${t === 1 ? 'einen Punkt' : `${N(t)} Punkte`}.`
   : `Das ist die ${Cap(N(v))}. Wir suchen die ${Cap(N(t))}.`
+
+// White dots on a bubble, or its numeral
+function Face({ value, dots, size }) {
+  if (dots) return <Pips n={value} size={size * 0.86} color="#fffdf7" face={false} />
+  return value
+}
 
 export default function BubblePopGame({ level = 1, onComplete }) {
   const cfg = ROUND_CFG[Math.min(level - 1, ROUND_CFG.length - 1)]
   const paused = usePaused()
   const pausedRef = useRef(paused)
   pausedRef.current = paused
+  const reduce = useReducedMotion()
+  const { later, afterSpeech } = useLater()
+  const [mood, setMood] = useMood()
+  const [bursts, burst] = useBursts()
 
   const [roundIdx,  setRoundIdx]  = useState(0)
   const [target,    setTarget]    = useState(() => rand(1, cfg.maxNum))
@@ -132,26 +122,34 @@ export default function BubblePopGame({ level = 1, onComplete }) {
   const poppedRef    = useRef(new Set())
   const [lives,     setLives]     = useState(3)      // per round
   const livesRef     = useRef(3)
-  const [rounds,    setRounds]    = useState([])     // per finished round: 'clean' | 'won' | 'lost'
-  const roundsRef    = useRef([])
+  const roundsRef    = useRef([])                    // per finished round: 'clean' | 'won' | 'lost'
   const [timeLeft,  setTimeLeft]  = useState(cfg.timeS)
-  const [mood,      setMood]      = useState('happy')
-  const [wrongMsg,  setWrongMsg]  = useState(null)
   const [hint,      setHint]      = useState(false)  // targets pulse briefly after a wrong pop
   const [showDigit, setShowDigit] = useState(true)
   const [phase,     setPhase]     = useState('playing')
-  const lastTargetPopRef = useRef(0) // timestamp of last correct pop for chain detection
-  const [chainBadge, setChainBadge] = useState(false)
+  const [stars,     setStars]     = useState(0)      // juggled by the octopus this round
+  const [flyers,    setFlyers]    = useState([])     // stars swimming to the octopus
+  const [puffers,   setPuffers]   = useState([])     // wrong bubbles, now offended puffer fish
+  const lastPopRef  = useRef(0)                      // time of the last right pop, for a streak
+  const streakRef   = useRef(0)
   const mistakesRef = useRef(0)
 
+  const rootRef    = useRef(null)
   const arenaRef   = useRef(null)
+  const octoRef    = useRef(null)
   const physicsRef = useRef({}) // { [id]: { px,py, vx,vy, size,left,top, t, floatPeriod } }
   const mvsRef     = useRef({}) // { [id]: { mx: MotionValue, my: MotionValue } }
 
-  // Wait while the help is open, then go on.
-  const whenUnpaused = useCallback(function go(cb) {
-    if (pausedRef.current) setTimeout(() => go(cb), 250)
-    else cb()
+  // The octopus sits beside the sea on a tablet held sideways, below it
+  // when the screen is tall.
+  // (first guessed from the window, so the first bubbles are spread over
+  // the sea as it is really laid out)
+  const [wide, setWide] = useState(() => innerWidth > (innerHeight - 80) * 1.05)
+  useLayoutEffect(() => {
+    const el = rootRef.current
+    const ro = new ResizeObserver(() => setWide(el.clientWidth > el.clientHeight * 1.05))
+    ro.observe(el)
+    return () => ro.disconnect()
   }, [])
 
   useEffect(() => {
@@ -161,6 +159,7 @@ export default function BubblePopGame({ level = 1, onComplete }) {
     setBubbles(spawnRound(t, cfg, rect?.width || 360, rect?.height || 300))
     poppedRef.current = new Set()
     setPoppedIds([])
+    setStars(0)
     livesRef.current = 3
     setLives(3)
     mistakesRef.current = 0
@@ -170,10 +169,9 @@ export default function BubblePopGame({ level = 1, onComplete }) {
     const hearFirst = !cfg.dots && level >= 5
     setShowDigit(!hearFirst)
     lockPreviews()
-    const id = setTimeout(() => sayTask(taskText(t, cfg.dots)), 300)
-    const id2 = hearFirst ? setTimeout(() => setShowDigit(true), 2600) : null
-    return () => { clearTimeout(id); clearTimeout(id2) }
-  }, [roundIdx, cfg, level])
+    later(300, () => sayTask(taskText(t, cfg.dots)))
+    if (hearFirst) later(2600, () => setShowDigit(true))
+  }, [roundIdx, cfg, level, later])
 
   // Init physics state + MotionValues whenever bubbles change
   useEffect(() => {
@@ -199,21 +197,21 @@ export default function BubblePopGame({ level = 1, onComplete }) {
   const endRound = useCallback((how, say) => {
     const list = [...roundsRef.current, how]
     roundsRef.current = list
-    setRounds(list)
     const last = list.length >= ROUNDS
     say(last)
     if (!last) {
-      afterNarration(() => whenUnpaused(() => setRoundIdx(r => r + 1)), { minMs: 1500 })
+      afterSpeech(() => setRoundIdx(r => r + 1), 1500)
       return
     }
     setPhase('done')
     const won   = list.filter(r => r !== 'lost').length
     const clean = list.filter(r => r === 'clean').length
-    afterNarration(() => {
+    afterSpeech(() => {
+      setMood('dance', 3000)
       narrate([{ text: `Du hast ${won === 1 ? 'eine' : N(won)} von fünf Runden geschafft!` }])
-      afterNarration(() => whenUnpaused(() => onComplete(result(clean, ROUNDS))), { minMs: 1200 })
-    }, { minMs: 400 })
-  }, [onComplete, whenUnpaused])
+      afterSpeech(() => onComplete(result(clean, ROUNDS)), 1200)
+    }, 400)
+  }, [onComplete, afterSpeech, setMood])
 
   useEffect(() => {
     if (phase !== 'playing' || !cfg.timed) return
@@ -224,63 +222,66 @@ export default function BubblePopGame({ level = 1, onComplete }) {
     return () => clearInterval(iv)
   }, [phase, cfg.timed])
 
-  // Running out of time costs this round, nothing more.
+  // Running out of time costs this round, nothing more: the octopus nods off.
   useEffect(() => {
     if (phase !== 'playing' || !cfg.timed || timeLeft > 0) return
-    setMood('encouraging')
+    setMood('sleep', 2600)
     setPhase('roundFail')
     endRound('lost', last => narrate([{ text: last ? 'Die Zeit ist um.' : 'Die Zeit ist um. Nächste Runde!' }]))
-  }, [timeLeft, phase, cfg.timed, endRound])
+  }, [timeLeft, phase, cfg.timed, endRound, setMood])
+
+  // Where a bubble is right now, relative to the whole game
+  const bubbleAt = (b) => {
+    const root = rootRef.current.getBoundingClientRect(), a = arenaRef.current.getBoundingClientRect()
+    const p = physicsRef.current[b.id]
+    return { x: a.left - root.left + (a.width * b.left) / 100 + (p?.px ?? 0), y: a.top - root.top + (a.height * b.top) / 100 + (p?.py ?? 0) }
+  }
 
   const popBubble = useCallback((bubble) => {
     if (phase !== 'playing' || pausedRef.current || poppedRef.current.has(bubble.id)) return
+    const at = bubbleAt(bubble)
+    poppedRef.current.add(bubble.id)
+    setPoppedIds(prev => [...prev, bubble.id])
 
     if (bubble.value === target) {
-      poppedRef.current.add(bubble.id)
-      setPoppedIds(prev => [...prev, bubble.id])
       sfx.pop()
+      // A star swims from the bubble to the octopus, who juggles it.
+      const root = rootRef.current.getBoundingClientRect(), o = octoRef.current.getBoundingClientRect()
+      setFlyers(f => [...f, { id: bubble.id, x0: at.x, y0: at.y, x1: o.left - root.left + o.width / 2, y1: o.top - root.top + o.height * 0.15 }])
       const now = Date.now()
-      const isChain = now - lastTargetPopRef.current < 1500
-      lastTargetPopRef.current = now
-      if (isChain) {
-        setChainBadge(true)
-        sfx.combo(2)
-        setTimeout(() => setChainBadge(false), 1200)
-      }
-      setMood('excited')
-      setTimeout(() => setMood('happy'), 600)
+      streakRef.current = now - lastPopRef.current < 1800 ? streakRef.current + 1 : 1
+      lastPopRef.current = now
+      if (streakRef.current >= 2) sfx.combo(streakRef.current)
+      setMood(streakRef.current >= 3 ? 'dance' : 'wow', streakRef.current >= 3 ? 2400 : 700)
       const remaining = bubbles.filter(b => b.value === target && !poppedRef.current.has(b.id)).length
       if (remaining === 0) {
         setPhase('roundWin')
-        setWrongMsg(null)
+        later(500, () => { setMood('dance', 2600); burst(octoRef.current, 'stars', 14) })
         endRound(mistakesRef.current === 0 ? 'clean' : 'won', () => sayRight('Du hast alle gefunden!'))
       }
-    } else {
-      // A wrong bubble stays: it was not the one, and the child should see
-      // which number it really is.
-      sfx.wrong()
-      mistakesRef.current += 1
-      const nl = livesRef.current - 1
-      livesRef.current = nl
-      setLives(nl)
-      setMood('encouraging')
-      setTimeout(() => setMood('happy'), 700)
-      setShowDigit(true)
-      if (nl <= 0) {
-        // Three wrong pops end this round only — they used to end the whole
-        // game, ten seconds in.
-        setPhase('roundFail')
-        setWrongMsg(null)
-        endRound('lost', last => sayWrong(`${wrongText(bubble.value, target, cfg.dots)} Diese Runde ist vorbei.${last ? '' : ' Nächste Runde!'}`))
-        return
-      }
-      setWrongMsg(wrongText(bubble.value, target, cfg.dots))
-      sayWrong(wrongText(bubble.value, target, cfg.dots))
-      setHint(true)
-      setTimeout(() => setHint(false), 1200)
-      setTimeout(() => setWrongMsg(null), 2600)
+      return
     }
-  }, [phase, bubbles, target, cfg.dots, endRound])
+    // A wrong bubble turns into a puffer fish: it puffs up, offended, and
+    // swims away, still showing what it was.
+    sfx.boing()
+    setPuffers(p => [...p, { id: bubble.id, x: at.x, y: at.y, value: bubble.value, dir: at.x < rootRef.current.clientWidth / 2 ? -1 : 1 }])
+    streakRef.current = 0
+    mistakesRef.current += 1
+    const nl = livesRef.current - 1
+    livesRef.current = nl
+    setLives(nl)
+    setMood('oops', 1200)
+    setShowDigit(true)
+    if (nl <= 0) {
+      // Three wrong pops end this round only.
+      setPhase('roundFail')
+      endRound('lost', last => sayWrong(`${wrongText(bubble.value, target, cfg.dots)} Diese Runde ist vorbei.${last ? '' : ' Nächste Runde!'}`))
+      return
+    }
+    sayWrong(wrongText(bubble.value, target, cfg.dots))
+    setHint(true)
+    later(1200, () => setHint(false))
+  }, [phase, bubbles, target, cfg.dots, endRound, later, setMood, burst])
 
   // Physics loop: gentle sinusoidal drift + bubble repulsion, held while paused
   useAnimationFrame((time, delta) => {
@@ -309,7 +310,7 @@ export default function BubblePopGame({ level = 1, onComplete }) {
       const ax = abs[id]
       if (!ax) continue
 
-      // Soft sinusoidal home drift (replaces keyframes)
+      // Soft sinusoidal home drift
       const freq = 0.00025 / (p.floatPeriod / 7)
       const tgtX = Math.sin(time * freq       + p.t) * 30
       const tgtY = Math.cos(time * freq * 0.8 + p.t * 0.9) * 22
@@ -351,7 +352,7 @@ export default function BubblePopGame({ level = 1, onComplete }) {
       const r = p.size / 2 + 2
       const homeX = W * p.left / 100, homeY = H * p.top / 100
       p.px = Math.max(r - homeX, Math.min(W - r - homeX, p.px))
-      p.py = Math.max(r - homeY, Math.min(H - 20 - r - homeY, p.py))
+      p.py = Math.max(r - homeY, Math.min(H - r - homeY, p.py))
 
       if (mvs[id]) {
         mvs[id].mx.set(p.px)
@@ -360,7 +361,6 @@ export default function BubblePopGame({ level = 1, onComplete }) {
     }
   })
 
-  const timeFraction = timeLeft / cfg.timeS
   const repeatTask = () => sayTask(taskText(target, cfg.dots))
 
   // Reading the help cut off the task; once it closes, say the task again.
@@ -370,167 +370,148 @@ export default function BubblePopGame({ level = 1, onComplete }) {
     wasPaused.current = paused
   }, [paused]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const octoSize = wide ? 170 : 150
+  const wish = cfg.dots
+    ? <Pips n={target} size={56} color="#ff6b5b" />
+    : <span style={{ fontSize: 46, lineHeight: 1, minWidth: 50, textAlign: 'center' }}>{showDigit ? target : <Art art="👂" size={46} />}</span>
+
+  const octopus = (
+    <div style={{ position: 'relative', display: 'flex', flexDirection: wide ? 'column' : 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: wide ? 8 : 18, paddingTop: 80 }}>
+      <div ref={octoRef} style={{ position: 'relative' }}>
+        <Critter art="🐙" size={octoSize} mood={mood} label="Krake" talks
+          wish={phase === 'done' ? null : wish} />
+        <Juggle n={stars} size={octoSize} still={reduce || paused} />
+      </div>
+      <HearButton onClick={repeatTask} />
+    </div>
+  )
+
   return (
-    <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column', alignItems:'center', padding:'clamp(8px,1.5vw,16px) clamp(10px,2.5vw,24px)', gap:'clamp(8px,1.2vw,14px)', userSelect:'none' }}>
+    <div ref={rootRef} style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: 'clamp(6px,1.5vw,14px) clamp(8px,2vw,20px)', gap: 8, userSelect: 'none', overflow: 'hidden' }}>
 
-      {/* Status: hearts of this round, the target, rounds, the calm clock */}
-      <div style={{ display:'flex', gap:10, alignItems:'center', width:'100%', maxWidth:750, flexWrap:'wrap', justifyContent:'center', flexShrink:0 }}>
-        <div style={{ display:'flex', gap:4, ...pxCard(), padding:'6px 12px' }} aria-label={`${lives} Herzen`}>
-          {Array.from({length:3}).map((_,i) => (
-            <span key={i} style={{ fontSize:22, filter: i < lives ? 'none' : 'grayscale(1) opacity(0.25)' }}>{'❤️'}</span>
+      {/* Hearts of this round, the rounds, the calm clock */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 2 }} aria-label={`${lives} Herzen`}>
+          {[0, 1, 2].map(i => (
+            <motion.span key={i} animate={{ scale: i < lives ? 1 : 0.7, opacity: i < lives ? 1 : 0.25 }}>
+              <Art art="❤️" size={30} />
+            </motion.span>
           ))}
         </div>
-
-        {/* The target — tap to hear it again */}
-        <motion.button
-          animate={{ scale:[1, 1.06, 1] }}
-          transition={{ duration:1.8, repeat:Infinity }}
-          onClick={repeatTask}
-          aria-label="Aufgabe noch einmal hören"
-          style={{ ...pxButton('gold'), padding:'6px 16px', minHeight:52, fontSize:'clamp(17px,3.5vw,24px)', display:'flex', alignItems:'center', gap:10 }}
-        >
-          <span>🎯</span>
-          <span style={{ background:'#FFFDF7', color:INK, border:`3px solid ${INK}`, textShadow:'none', borderRadius:'50%', width:'1.9em', height:'1.9em', display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:'1.05em', fontWeight:800 }}>
-            {showDigit ? target : '?'}
-          </span>
-          <span>🔊</span>
-        </motion.button>
-
-        <div style={{ display:'flex', gap:3, ...pxCard(), padding:'6px 10px' }} aria-label="Runden">
-          {Array.from({length:ROUNDS}).map((_,i) => (
-            <span key={i} style={{ fontSize:18, filter: rounds[i] === 'clean' ? 'none' : rounds[i] ? 'grayscale(0.6) opacity(0.6)' : 'grayscale(1) opacity(0.25)', outline: i === roundIdx && phase === 'playing' ? `2px solid ${INK}` : 'none', borderRadius:4 }}>⭐</span>
-          ))}
-        </div>
-
-        {/* Chain badge */}
-        <AnimatePresence>
-          {chainBadge && (
-            <motion.div
-              key="chain"
-              initial={{ scale:0, y:-8 }} animate={{ scale:1, y:0 }} exit={{ scale:0, opacity:0 }}
-              transition={{ type:'spring', stiffness:500, damping:18 }}
-              style={{ ...pxButton('gold'), cursor:'default', padding:'6px 16px', fontSize:18, fontWeight:800, whiteSpace:'nowrap' }}
-            >{'⚡ 2x KETTE!'}</motion.div>
-          )}
-        </AnimatePresence>
-
-        {cfg.timed && (
-          <div style={{ flex:1, minWidth:90, display:'flex', alignItems:'center', gap:6 }} aria-hidden="true">
-            <span style={{ fontSize:20 }}>⏳</span>
-            <div style={{ flex:1, height:14, background:'rgba(42,27,61,0.12)', border:`2px solid ${INK}`, borderRadius:4, overflow:'hidden' }}>
-              <motion.div
-                animate={{ width:`${timeFraction*100}%` }}
-                transition={{ duration:0.85 }}
-                style={{ height:'100%', borderRadius:2, background: timeFraction>0.5 ? 'var(--px-green)' : timeFraction>0.25 ? 'var(--px-gold)' : 'var(--px-red)' }}
-              />
-            </div>
-          </div>
-        )}
+        <RoundTrail total={ROUNDS} done={roundsRef.current.length} walker="🐠" goal="🐚" size={32} style={{ flex: 1 }} />
+        {cfg.timed && <Clock fraction={timeLeft / cfg.timeS} />}
       </div>
 
-      {/* Lumi */}
-      <div style={{ display:'flex', alignItems:'flex-end', gap:10, width:'100%', maxWidth:750, flexShrink:0 }}>
-        <LumiCharacter mood={mood} size={56} />
-        <div style={{ flex:1, ...pxBubble, padding:'8px 14px', fontFamily:'var(--font-heading)', fontSize:'clamp(15px,2.5vw,18px)', color:'var(--text-primary)' }}>
-          {phase==='roundWin'  ? '🎉 Du hast alle gefunden!'
-         : phase==='roundFail' ? (cfg.timed && timeLeft === 0 ? '⏳ Die Zeit ist um.' : 'Diese Runde ist vorbei.')
-         : phase==='done'      ? `🏆 ${rounds.filter(r => r !== 'lost').length} von ${ROUNDS} Runden geschafft!`
-         : wrongMsg ? `🔎 ${wrongMsg}`
-         : cfg.dots ? `Finde alle Blasen mit ${target} ${target === 1 ? 'Punkt' : 'Punkten'}!`
-         : showDigit ? `Finde alle Blasen mit der Zahl ${target}!` : 'Hör gut zu! 👂'}
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: wide ? 'row' : 'column-reverse', gap: 8 }}>
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: wide ? 'flex-end' : 'center', justifyContent: 'center', paddingBottom: wide ? 24 : 4, width: wide ? 210 : undefined }}>
+          {octopus}
+        </div>
+
+        {/* The open sea: the bubbles float in the scene behind */}
+        <div ref={arenaRef} style={{ position: 'relative', flex: 1, minHeight: 200 }}>
+          <AnimatePresence>
+            {bubbles.map(bubble => {
+              if (poppedIds.includes(bubble.id)) return null
+              const pulse = hint && bubble.value === target
+              return (
+                <motion.button
+                  key={bubble.id}
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={pulse ? { opacity: 1, scale: [1, 1.18, 1, 1.18, 1] } : { opacity: 1, scale: 1 }}
+                  exit={{ scale: 1.6, opacity: 0, transition: { duration: 0.2 } }}
+                  transition={pulse ? { duration: 1.1 } : { opacity: { duration: 0.3 }, scale: { type: 'spring', stiffness: 300, damping: 18 } }}
+                  whileTap={{ scale: 1.25 }}
+                  onClick={() => popBubble(bubble)}
+                  aria-label={cfg.dots ? `${bubble.value} ${bubble.value === 1 ? 'Punkt' : 'Punkte'}` : `${bubble.value}`}
+                  style={{
+                    x: mvsRef.current[bubble.id]?.mx,
+                    y: mvsRef.current[bubble.id]?.my,
+                    position: 'absolute',
+                    left: `${bubble.left}%`, top: `${bubble.top}%`,
+                    marginLeft: -bubble.size / 2, marginTop: -bubble.size / 2,
+                    width: bubble.size, height: bubble.size, padding: 0,
+                    borderRadius: '50%',
+                    // see-through soap bubbles with a coloured rim and a shine
+                    background: `radial-gradient(circle at 32% 26%, #fff 0 8%, ${bubble.tint}88 10%, ${bubble.tint}dd 62%, ${bubble.tint})`,
+                    border: '3px solid #2a1b3d',
+                    boxShadow: 'inset 0 -6px 0 rgba(0,0,0,0.12), 0 4px 0 rgba(42,27,61,0.35)',
+                    fontFamily: 'var(--font-heading)',
+                    fontSize: bubble.size * 0.44, fontWeight: 800, color: '#fff',
+                    // an ink outline keeps white digits readable on any tint
+                    textShadow: '-2px -2px 0 #2a1b3d, 2px -2px 0 #2a1b3d, -2px 2px 0 #2a1b3d, 2px 2px 0 #2a1b3d, 0 3px 0 #2a1b3d',
+                    cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    zIndex: 5,
+                  }}
+                >
+                  <Face value={bubble.value} dots={cfg.dots} size={bubble.size} />
+                </motion.button>
+              )
+            })}
+          </AnimatePresence>
         </div>
       </div>
 
-      {/* OCEAN ARENA */}
-      <div ref={arenaRef} style={{ position:'relative', overflow:'hidden', width:'100%', maxWidth:750, flex:1, minHeight:220, maxHeight:520, background:'linear-gradient(180deg, #05305e 0%, #0a5294 28%, #1076bb 55%, #23a8d8 78%, #5dd8f0 100%)', border:`3px solid ${INK}`, borderRadius:14, boxShadow:'inset 0 -4px 0 rgba(0,0,0,0.18), 0 5px 0 rgba(42,27,61,0.35)', isolation:'isolate' }}>
+      {/* Stars swimming to the octopus */}
+      {flyers.map(f => (
+        <motion.div key={f.id} aria-hidden="true"
+          initial={{ x: f.x0 - 22, y: f.y0 - 22, scale: 0.4, rotate: 0 }}
+          animate={{ x: [f.x0 - 22, (f.x0 + f.x1) / 2 - 22, f.x1 - 22], y: [f.y0 - 22, Math.min(f.y0, f.y1) - 80, f.y1 - 22], scale: [0.4, 1.3, 0.8], rotate: 360 }}
+          transition={{ duration: reduce ? 0.01 : 0.75, ease: 'easeInOut' }}
+          onAnimationComplete={() => { setFlyers(l => l.filter(x => x.id !== f.id)); setStars(s => s + 1); sfx.coin() }}
+          style={{ position: 'absolute', left: 0, top: 0, zIndex: 20, pointerEvents: 'none' }}>
+          <Art art="⭐" size={44} />
+        </motion.div>
+      ))}
 
-        {/* Light rays */}
-        {[10,26,42,58,74,88].map((l,i) => (
-          <div key={i} style={{ position:'absolute', top:0, left:`${l}%`, width:i%2===0?20:14, height:'75%', background:'linear-gradient(180deg,rgba(255,255,255,0.07),transparent)', transform:'skewX(-6deg)', pointerEvents:'none' }} />
-        ))}
+      {/* Offended puffer fish */}
+      {puffers.map(p => (
+        <motion.div key={p.id} aria-hidden="true"
+          initial={{ x: p.x - 40, y: p.y - 40, scale: 0.5 }}
+          animate={reduce ? { opacity: [1, 1, 0] } : { scale: [0.5, 1.5, 1.35, 1.35], x: [p.x - 40, p.x - 40, p.x - 40, p.x - 40 + p.dir * 900], y: [p.y - 40, p.y - 52, p.y - 40, p.y - 120] }}
+          transition={{ duration: 2.2, times: [0, 0.25, 0.45, 1], ease: 'easeIn' }}
+          onAnimationComplete={() => setPuffers(l => l.filter(x => x.id !== p.id))}
+          style={{ position: 'absolute', left: 0, top: 0, zIndex: 20, pointerEvents: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <div style={{ transform: p.dir > 0 ? 'scaleX(-1)' : undefined }}><Art art="🐡" size={80} /></div>
+          <span style={{
+            marginTop: -6, minWidth: 34, height: 34, padding: '0 4px', borderRadius: 17, background: '#fffdf7', border: '3px solid #2a1b3d',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 20, color: '#2a1b3d',
+          }}>{cfg.dots ? <Pips n={p.value} size={28} color="#2a1b3d" face={false} /> : p.value}</span>
+        </motion.div>
+      ))}
+      {bursts}
+    </div>
+  )
+}
 
-        {/* Fish */}
-        {FISH.map((f,i) => (
-          <motion.div key={i} animate={paused ? {} : { x:[0, f.flip?-28:28, 0] }} transition={{ duration:f.dur, repeat:Infinity, ease:'easeInOut' }}
-            style={{ position:'absolute', left:f.left, top:f.top, fontSize:f.size, lineHeight:1, pointerEvents:'none', opacity:0.45, transform:f.flip?'scaleX(-1)':'none' }}
-          >🐠</motion.div>
-        ))}
+// The stars the octopus juggles, circling over its head
+function Juggle({ n, size, still }) {
+  if (!n) return null
+  return (
+    <motion.div aria-hidden="true" animate={still ? {} : { rotate: 360 }} transition={{ duration: 2.4, repeat: Infinity, ease: 'linear' }}
+      style={{ position: 'absolute', left: '50%', top: size * 0.05, width: size * 0.9, height: size * 0.5, marginLeft: -size * 0.45, pointerEvents: 'none' }}>
+      {Array.from({ length: n }, (_, i) => {
+        const a = (i / n) * Math.PI * 2
+        return (
+          <motion.div key={i} initial={{ scale: 0 }} animate={{ scale: 1, rotate: still ? 0 : -360 }}
+            transition={{ scale: { type: 'spring', stiffness: 400 }, rotate: { duration: 2.4, repeat: Infinity, ease: 'linear' } }}
+            style={{ position: 'absolute', left: `calc(50% + ${Math.cos(a) * size * 0.4}px - 16px)`, top: `calc(50% + ${Math.sin(a) * size * 0.22}px - 16px)` }}>
+            <Art art="⭐" size={32} />
+          </motion.div>
+        )
+      })}
+    </motion.div>
+  )
+}
 
-        {/* Seaweed */}
-        {[6,17,32,50,65,78,92].map((left,i) => (
-          <div key={i}
-            style={{ position:'absolute', bottom:16, left:`${left}%`, width:10+(i%3)*4, height:28+(i%4)*16, background:`linear-gradient(180deg,${i%2===0?'#2ecc71':'#27ae60'},#1b6b35)`, borderRadius:'50% 50% 0 0 / 100% 100% 0 0', pointerEvents:'none' }}
-          />
-        ))}
-
-        {/* Sand */}
-        <div style={{ position:'absolute', bottom:0, left:0, right:0, height:20, background:'linear-gradient(180deg,#c9933c,#9e7229)', pointerEvents:'none' }} />
-
-        {/* BUBBLES — all alike: a ring or glow on the targets gave the answer away */}
-        <AnimatePresence>
-          {bubbles.map(bubble => {
-            if (poppedIds.includes(bubble.id)) return null
-            const pulse = hint && bubble.value === target
-            return (
-              <motion.button
-                key={bubble.id}
-                initial={{ scale:0, opacity:0 }}
-                animate={pulse ? { opacity:1, scale:[1, 1.18, 1, 1.18, 1] } : { opacity:1, scale:1 }}
-                exit={{ scale:1.5, opacity:0, transition:{ duration:0.25 } }}
-                transition={pulse ? { duration:1.1 } : {
-                  opacity:{ duration:0.3 },
-                  scale:  { type:'spring', stiffness:300, damping:18 },
-                }}
-                whileTap={{ scale:1.3 }}
-                onClick={() => popBubble(bubble)}
-                aria-label={cfg.dots ? `${bubble.value} ${bubble.value === 1 ? 'Punkt' : 'Punkte'}` : `${bubble.value}`}
-                style={{
-                  x: mvsRef.current[bubble.id]?.mx,
-                  y: mvsRef.current[bubble.id]?.my,
-                  position:'absolute',
-                  left:`${bubble.left}%`, top:`${bubble.top}%`,
-                  marginLeft: -bubble.size/2, marginTop: -bubble.size/2,
-                  width:bubble.size, height:bubble.size, padding:0,
-                  borderRadius:'50%',
-                  background:`radial-gradient(circle at 33% 26%, rgba(255,255,255,0.75), ${bubble.tint} 55%, ${bubble.tint})`,
-                  border:`3px solid ${INK}`,
-                  boxShadow:'inset 0 -5px 0 rgba(0,0,0,0.15), 0 4px 0 rgba(42,27,61,0.4)',
-                  fontFamily:'var(--font-heading)',
-                  fontSize:bubble.size*0.42, fontWeight:800, color:'#fff',
-                  // an ink outline keeps white digits readable on yellow
-                  textShadow:'-2px -2px 0 #2a1b3d, 2px -2px 0 #2a1b3d, -2px 2px 0 #2a1b3d, 2px 2px 0 #2a1b3d, 0 3px 0 #2a1b3d',
-                  cursor:'pointer',
-                  display:'flex', alignItems:'center', justifyContent:'center',
-                  zIndex:5,
-                }}
-              >
-                {cfg.dots ? <Dots n={bubble.value} /> : bubble.value}
-              </motion.button>
-            )
-          })}
-        </AnimatePresence>
-
-        {/* Overlays */}
-        <AnimatePresence>
-          {phase === 'roundWin' && (
-            <motion.div key="win" initial={{ opacity:0, scale:0.8 }} animate={{ opacity:1, scale:1 }} exit={{ opacity:0 }}
-              style={{ position:'absolute', inset:0, zIndex:10, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(40,140,70,0.45)', borderRadius:11, fontFamily:'var(--font-heading)', fontSize:'clamp(26px,8vw,48px)', color:'white', fontWeight:700, flexDirection:'column', gap:4, textShadow:'0 3px 0 #2a1b3d' }}
-            ><span>🎉</span><span>Runde {roundIdx+1} geschafft!</span></motion.div>
-          )}
-          {phase === 'roundFail' && (
-            <motion.div key="fail" initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
-              style={{ position:'absolute', inset:0, zIndex:10, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(42,27,61,0.45)', borderRadius:11, fontFamily:'var(--font-heading)', fontSize:'clamp(24px,7vw,42px)', color:'white', fontWeight:700, textShadow:'0 3px 0 #2a1b3d' }}
-            >{cfg.timed && timeLeft === 0 ? '⏳' : '🫧'}</motion.div>
-          )}
-          {phase === 'done' && (
-            <motion.div key="done" initial={{ opacity:0, scale:0.8 }} animate={{ opacity:1, scale:1 }} exit={{ opacity:0 }}
-              style={{ position:'absolute', inset:0, zIndex:10, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(42,27,61,0.55)', borderRadius:11, fontFamily:'var(--font-heading)', fontSize:'clamp(24px,7vw,44px)', color:'white', fontWeight:700, flexDirection:'column', gap:6, textShadow:'0 3px 0 #2a1b3d' }}
-            >
-              <span>🏆</span>
-              <span>{rounds.filter(r => r !== 'lost').length} / {ROUNDS}</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
+// A calm clock: a strip of sand that runs out
+function Clock({ fraction }) {
+  return (
+    <div aria-hidden="true" style={{ display: 'flex', alignItems: 'center', gap: 4, width: 'clamp(90px,18vw,170px)' }}>
+      <Art art="⏳" size={30} />
+      <div style={{ flex: 1, height: 16, background: 'rgba(255,253,247,0.6)', border: '3px solid #2a1b3d', borderRadius: 10, overflow: 'hidden' }}>
+        <motion.div animate={{ width: `${fraction * 100}%` }} transition={{ duration: 0.85 }}
+          style={{ height: '100%', background: fraction > 0.5 ? '#5cc45a' : fraction > 0.25 ? '#ffc93c' : '#ff9f43' }} />
       </div>
     </div>
   )

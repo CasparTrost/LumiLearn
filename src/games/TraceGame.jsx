@@ -1,6 +1,5 @@
-import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
 import { hearable } from '../lib/hearable.js'
 import { narrate, lockPreviews, afterNarration, stopNarration } from '../narrator.js'
@@ -8,11 +7,12 @@ import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
 import { emojiSrc, hasEmojiArt } from '../lib/emojiArt.jsx'
+import { Art, Critter, RoundTrail } from '../components/play/index.js'
 import { soundOf } from './letterSounds.js'
 import {
   GLYPHS, isDigit, pathOf, lengths, pointAt, guidanceFor, glyphsForLevel, makeTracer,
 } from './traceStrokes.js'
-import { pxPanel, pxBubble, pxButton, pxSegment, INK } from './px.js'
+import { pxPanel, pxBubble, pxButton, INK } from './px.js'
 
 /**
  * Buchstaben-Spuren — Buchstaben und Ziffern mit dem Finger nachfahren.
@@ -30,6 +30,8 @@ import { pxPanel, pxBubble, pxButton, pxSegment, INK } from './px.js'
  *     paler road, at level 10 only a faint outline and the start dots.
  *   • Once a letter is done, Lumi says its sound with a word and its picture
  *     ("Mmm wie Maus"): the shape, the movement and the sound together.
+ *   • And it is a little celebration: the finger leaves a sparkly trail, the
+ *     finished letter gets eyes and hops, and its picture pops up next to it.
  */
 
 // How the voice says a letter's NAME in the task ("Fahre das Emm nach"). A
@@ -82,7 +84,6 @@ const HINT = {
 const INKS = ['#2F7FD8', '#8A4FD0', '#13968C', '#D63A7C', '#E07A10', '#3B9B3B']
 const VIEW = { x: -12, y: -8, w: 124, h: 156 }      // the stroke box plus room for dots
 const ROAD = 17, INK_W = 11
-const NEXT_BTN = { ...pxButton('green'), color: INK, textShadow: '0 1px 0 rgba(255,255,255,0.4)' }
 const ICON_BTN = { ...pxButton('parch'), width: 52, height: 52, padding: 0, fontSize: 24, lineHeight: 1, flexShrink: 0 }
 const HAND = hasEmojiArt('👆') ? emojiSrc('👆') : null
 
@@ -121,7 +122,10 @@ function useSize(ref) {
   return size
 }
 
-let fadeIds = 0
+let fadeIds = 0, sparkIds = 0
+const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+// a little four-pointed star for the sparkly trail
+const SPARK = 'M0 -5 L1.3 -1.3 L5 0 L1.3 1.3 L0 5 L-1.3 1.3 L-5 0 L-1.3 -1.3 Z'
 
 export default function TraceGame({ level = 1, onComplete }) {
   const glyphs = useState(() => glyphsForLevel(level))[0]
@@ -134,9 +138,11 @@ export default function TraceGame({ level = 1, onComplete }) {
   const [ink,       setInk]       = useState([])     // the finger's line of this attempt
   const [fading,    setFading]    = useState([])     // slipped attempts, fading away
   const [demo,      setDemo]      = useState(null)   // { id, stroke, t } while Lumi shows the way
-  const [mood,      setMood]      = useState('happy')
+  const [mood,      setMood]      = useState('idle')
   const [firstTry,  setFirstTry]  = useState(0)
   const [leaving,   setLeaving]   = useState(false)
+  const [sparks,    setSparks]    = useState([])     // the sparkly trail behind the finger
+  const [advance,   setAdvance]   = useState(false)  // the praise is over: next glyph
 
   const rootRef   = useRef(null)
   const areaRef   = useRef(null)
@@ -158,6 +164,13 @@ export default function TraceGame({ level = 1, onComplete }) {
   const strokes = GLYPHS[g]
   const color = INKS[idx % INKS.length]
   const praise = praiseOf(g)
+  // where the finished glyph gets its eyes: in the middle, near the top
+  const face = useMemo(() => {
+    const pts = GLYPHS[g].flat()
+    const xs = pts.map(p => p.x), ys = pts.map(p => p.y)
+    const top = Math.min(...ys), h = Math.max(...ys) - top
+    return { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: top + Math.min(30, h * 0.24) }
+  }, [g])
   const canTrace = !done && !demo && !paused && !leaving
 
   useEffect(() => { lockPreviews(); return () => stopNarration() }, [])
@@ -229,10 +242,12 @@ export default function TraceGame({ level = 1, onComplete }) {
 
   const finishGlyph = () => {
     setDone(true)
-    setMood('excited')
+    setMood('happy')
     sfx.correct()
+    setTimeout(() => sfx.boing(), 450)
     if (!missedRef.current) setFirstTry(n => n + 1)
     sayRight(praise.say)
+    afterNarration(() => setAdvance(true), { minMs: 2400 })
   }
 
   const acceptStroke = () => {
@@ -242,7 +257,7 @@ export default function TraceGame({ level = 1, onComplete }) {
     setStrokeIdx(next)
     if (next >= strokes.length) { finishGlyph(); return }
     sfx.coin()
-    setMood('happy')
+    setMood('idle')
     if (guide.arrows === 'all') narrate([{ text: `Jetzt Strich ${STROKE_NO[next + 1]}.` }])
   }
 
@@ -252,12 +267,12 @@ export default function TraceGame({ level = 1, onComplete }) {
     if (pts.length > 1) setFading(f => [...f, { id: ++fadeIds, pts }])
     if (!real) { narrate([{ text: HINT.wrongStart }], { skipIfSame: true }); return }
     missedRef.current = true
-    setMood('encouraging')
+    setMood('oops')
     if (++strokeMissRef.current >= 2) {
       // twice on the same stroke: show it again instead of letting it fail on
       strokeMissRef.current = 0
       narrate([{ text: 'Schau, so geht es.' }])
-      startDemo(strokeIdx, () => { setMood('happy'); narrate([{ text: 'Jetzt du! Fang beim grünen Punkt an.' }]) })
+      startDemo(strokeIdx, () => { setMood('idle'); narrate([{ text: 'Jetzt du! Fang beim grünen Punkt an.' }]) })
       return
     }
     sayWrong(kind === 'wrongWay' && guide.arrows === 'none' ? 'Fahre andersherum.' : HINT[kind])
@@ -284,6 +299,10 @@ export default function TraceGame({ level = 1, onComplete }) {
       const p = toBox(ev)
       if (!p) continue
       inkRef.current.push(p)
+      if (inkRef.current.length % 4 === 0 && !reduceMotion()) {
+        const a = Math.random() * Math.PI * 2
+        setSparks(l => [...l.slice(-14), { id: ++sparkIds, x: p.x, y: p.y, dx: Math.cos(a) * 9, dy: Math.sin(a) * 9 }])
+      }
       const r = tracerRef.current.move(p)
       if (r === 'done') { acceptStroke(); return }
       if (r !== 'ok') { slip(r); return }
@@ -304,7 +323,14 @@ export default function TraceGame({ level = 1, onComplete }) {
     } else slip(r)
   }
 
-  const weiter = () => {
+  // On to the next glyph once the praise is over — never while the help is open
+  useEffect(() => {
+    if (!advance || paused) return
+    setAdvance(false)
+    next()
+  }, [advance, paused]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const next = () => {
     if (leaving) return
     if (idx + 1 >= glyphs.length) {
       setLeaving(true)
@@ -319,7 +345,7 @@ export default function TraceGame({ level = 1, onComplete }) {
     setFading([])
     setDone(false)
     setStrokeIdx(0)
-    setMood('happy')
+    setMood('idle')
     setIdx(i => i + 1)
   }
 
@@ -339,29 +365,26 @@ export default function TraceGame({ level = 1, onComplete }) {
   const lumiSize = wide ? 96 : 56
 
   const progress = (
-    <div style={{ display: 'flex', gap: 5, width: '100%', maxWidth: wide ? 'none' : 520, margin: '0 auto', flexShrink: 0 }}>
-      {glyphs.map((_, i) => (
-        <div key={i} style={{ flex: 1, ...pxSegment(i < idx || (i === idx && done) ? 'done' : i === idx ? 'current' : 'todo') }} />
-      ))}
-    </div>
+    <RoundTrail total={glyphs.length} done={idx + (done ? 1 : 0)} walker="✏️" goal="⭐" size={wide ? 36 : 32}
+      style={{ width: wide ? '82%' : 'auto', maxWidth: 520, alignSelf: wide ? 'center' : 'stretch', flexShrink: 0 }} />
   )
 
   const shown = isDigit(g)
     ? <><strong style={{ fontSize: '1.3em' }}>{g}</strong> · {praise.show}</>
     : <><strong style={{ fontSize: '1.3em', color }}>{g}</strong>{praise.show.slice(1)}</>
 
-  const picture = done && (
+  // digits count their stars here; a letter's picture pops up on the board
+  const picture = done && isDigit(g) && (
     <motion.div
       key={'pic-' + idx}
       initial={{ scale: 0, rotate: -20 }} animate={{ scale: 1, rotate: 0 }}
       transition={{ type: 'spring', stiffness: 380, damping: 14, delay: 0.15 }}
       style={{
         display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 2,
-        fontSize: isDigit(g) ? (wide ? 30 : 20) : (wide ? 88 : 46), lineHeight: 1,
-        maxWidth: isDigit(g) ? (wide ? 180 : 110) : 'none', flexShrink: 0,
+        fontSize: wide ? 30 : 20, lineHeight: 1, maxWidth: wide ? 180 : 110, flexShrink: 0,
       }}
     >
-      {isDigit(g) ? '⭐'.repeat(+g) : praise.e}
+      {'⭐'.repeat(+g)}
     </motion.div>
   )
 
@@ -391,17 +414,6 @@ export default function TraceGame({ level = 1, onComplete }) {
           aria-label="Zeig es mir" style={{ ...ICON_BTN, opacity: canTrace ? 1 : 0.5 }}>👆</motion.button>
       )}
     </>
-  )
-
-  const next = done && (
-    <motion.button
-      initial={{ scale: 0 }} animate={{ scale: 1 }}
-      transition={{ type: 'spring', stiffness: 300, delay: 0.4 }}
-      whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
-      onClick={weiter}
-      {...hearable('Weiter')}
-      style={{ ...NEXT_BTN, padding: '10px 36px', minHeight: 56, fontSize: 'clamp(18px,3vw,22px)' }}
-    >Weiter! →</motion.button>
   )
 
   const board = (
@@ -441,12 +453,32 @@ export default function TraceGame({ level = 1, onComplete }) {
               transition={{ duration: 0.7, repeat: Infinity, ease: 'linear' }} />
           )}
 
-          {/* Finished strokes, snapped onto the path */}
-          {strokes.slice(0, strokeIdx).map((s, i) => (
-            <motion.path key={`d${idx}-${i}`} d={pathOf(s)} fill="none" stroke={color}
-              strokeWidth={INK_W} strokeLinecap="round" strokeLinejoin="round"
-              initial={{ opacity: 0.5 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} />
-          ))}
+          {/* Finished strokes, snapped onto the path. The finished glyph
+              comes alive: it gets eyes and a smile and hops. */}
+          <motion.g key={`g${idx}`} animate={done && !reduceMotion() ? { y: [0, -16, 0, -8, 0], scaleY: [1, 1.06, 0.94, 1.02, 1] } : { y: 0 }}
+            transition={{ duration: 1.1, delay: 0.35 }} style={{ transformBox: 'fill-box', transformOrigin: '50% 100%' }}>
+            {strokes.slice(0, strokeIdx).map((s, i) => (
+              <motion.path key={`d${idx}-${i}`} d={pathOf(s)} fill="none" stroke={color}
+                strokeWidth={INK_W} strokeLinecap="round" strokeLinejoin="round"
+                initial={{ opacity: 0.5 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} />
+            ))}
+            {done && (
+              <motion.g initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 420, damping: 12, delay: 0.15 }}
+                style={{ transformBox: 'fill-box', transformOrigin: 'center' }} pointerEvents="none">
+                <g className="pl-blink">
+                  {[-9, 9].map(dx => (
+                    <g key={dx}>
+                      <circle cx={face.x + dx} cy={face.y} r={7.5} fill="#fff" stroke={INK} strokeWidth={2.2} />
+                      <circle cx={face.x + dx + 1.5} cy={face.y + 1} r={3.6} fill={INK} />
+                      <circle cx={face.x + dx + 2.6} cy={face.y - 0.4} r={1.2} fill="#fff" />
+                    </g>
+                  ))}
+                </g>
+                <path d={`M${face.x - 7} ${face.y + 12} Q${face.x} ${face.y + 20} ${face.x + 7} ${face.y + 12}`}
+                  fill="none" stroke={INK} strokeWidth={2.6} strokeLinecap="round" />
+              </motion.g>
+            )}
+          </motion.g>
 
           {/* Direction arrows on the current stroke */}
           {arrows.map((a, i) => (
@@ -464,11 +496,22 @@ export default function TraceGame({ level = 1, onComplete }) {
               onAnimationComplete={() => setFading(list => list.filter(x => x.id !== f.id))} />
           ))}
 
-          {/* The finger's ink */}
+          {/* The finger's ink, with a glow and a trail of sparkles */}
           {ink.length > 1 && (
-            <path d={pathOf(ink)} fill="none" stroke={color} strokeWidth={INK_W}
-              strokeLinecap="round" strokeLinejoin="round" />
+            <>
+              <path d={pathOf(ink)} fill="none" stroke="#ffd34d" strokeOpacity={0.55} strokeWidth={INK_W + 8}
+                strokeLinecap="round" strokeLinejoin="round" />
+              <path d={pathOf(ink)} fill="none" stroke={color} strokeWidth={INK_W}
+                strokeLinecap="round" strokeLinejoin="round" />
+            </>
           )}
+          {sparks.map(sp => (
+            <motion.path key={sp.id} d={SPARK} fill="#ffd34d" stroke={INK} strokeWidth={0.7} pointerEvents="none"
+              initial={{ x: sp.x, y: sp.y, scale: 0.4, opacity: 1, rotate: 0 }}
+              animate={{ x: sp.x + sp.dx, y: sp.y + sp.dy, scale: [0.4, 1.4, 0], opacity: [1, 1, 0], rotate: 120 }}
+              transition={{ duration: 0.7, ease: 'easeOut' }}
+              onAnimationComplete={() => setSparks(l => l.filter(x => x.id !== sp.id))} />
+          ))}
           {ink.length === 1 && <circle cx={ink[0].x} cy={ink[0].y} r={INK_W / 2} fill={color} />}
 
           {/* Start dot of the current stroke, with its number */}
@@ -499,6 +542,17 @@ export default function TraceGame({ level = 1, onComplete }) {
         </svg>
       )}
 
+      {/* The letter's picture pops up beside it: "M wie Maus" */}
+      {done && !isDigit(g) && (
+        <motion.div key={'thing' + idx} aria-hidden="true"
+          initial={{ scale: 0, y: 30, rotate: -20 }}
+          animate={{ scale: 1, y: reduceMotion() ? 0 : [30, -24, 0, -10, 0], rotate: 0 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 12, delay: 0.5, y: { duration: 1, delay: 0.5 } }}
+          style={{ position: 'absolute', right: '2%', bottom: '2%', pointerEvents: 'none', filter: 'drop-shadow(0 6px 0 rgba(42,27,61,0.25))' }}>
+          <Art art={praise.e} size={Math.max(64, Math.min(area.w, area.h) * 0.3)} />
+        </motion.div>
+      )}
+
       {/* Sparkles when the glyph is done */}
       <AnimatePresence>
         {done && (
@@ -522,8 +576,10 @@ export default function TraceGame({ level = 1, onComplete }) {
   )
 
   return (
+    // positioned, so it paints above the scene behind it (GameScreen does not
+    // wrap NO_SCALE games in a positioned box)
     <div ref={rootRef} style={{
-      flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', overflow: 'hidden',
+      position: 'relative', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', overflow: 'hidden',
       display: 'flex', flexDirection: wide ? 'row' : 'column', alignItems: 'stretch', justifyContent: 'center',
       padding: wide ? 'clamp(12px,2vw,24px)' : '10px 12px 12px', gap: wide ? 'clamp(14px,2.5vw,32px)' : 10,
     }}>
@@ -533,16 +589,15 @@ export default function TraceGame({ level = 1, onComplete }) {
           alignItems: 'center', justifyContent: 'center', gap: 16,
         }}>
           {progress}
-          <LumiCharacter mood={mood} size={lumiSize} />
+          <Critter art="lumi" mood={mood} size={lumiSize} talks />
           {bubble}
           <div style={{ display: 'flex', gap: 12 }}>{buttons}</div>
-          <div style={{ minHeight: 64, display: 'flex', alignItems: 'center' }}>{next}</div>
         </div>
       ) : (
         <>
           {progress}
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, width: '100%' }}>
-            <LumiCharacter mood={mood} size={lumiSize} />
+            <Critter art="lumi" mood={mood} size={lumiSize} talks />
             {bubble}
           </div>
         </>
@@ -553,7 +608,6 @@ export default function TraceGame({ level = 1, onComplete }) {
       {!wide && (
         <div style={{ minHeight: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14 }}>
           {buttons}
-          {next}
         </div>
       )}
     </div>

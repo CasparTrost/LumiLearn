@@ -1,0 +1,16 @@
+/* Frosch-Hüpfen (WordBuilderGame): the pond moves by CSS; it rests for
+   prefers-reduced-motion. */
+
+@keyframes fr-bob    { 0%,100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-5px) rotate(2deg); } }
+@keyframes fr-ripple { 0% { transform: scale(.6); opacity: .7; } 100% { transform: scale(1.6); opacity: 0; } }
+@keyframes fr-swim   { from { transform: translateX(-80px); } to { transform: translateX(calc(100cqw + 80px)); } }
+@keyframes fr-wave   { 0%,100% { transform: translateX(0); } 50% { transform: translateX(-24px); } }
+
+.fr-bob    { animation: fr-bob 2.6s ease-in-out infinite; }
+.fr-ripple { animation: fr-ripple 2.8s ease-out infinite; }
+.fr-swim   { animation: fr-swim 9s linear 1 forwards; }
+.fr-wave   { animation: fr-wave 5s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fr-bob, .fr-ripple, .fr-swim, .fr-wave { animation: none !important; }
+}

@@ -1,8 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useApp, MAX_LEVELS, farmPoints, liveStreak, todayStr, saveData } from '../AppContext.jsx'
-import { getFarmLevel, FARM_LEVEL_LABELS } from '../components/FarmProgress.jsx'
+import { useApp, MAX_LEVELS, liveStreak, todayStr, saveData } from '../AppContext.jsx'
 import { PxIcon } from '../components/PixelUI.jsx'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
 import { useMusic } from '../components/MusicControls.jsx'
@@ -263,7 +262,7 @@ export default function ParentScreen({ onClose }) {
 
   const deleteProfile = (p) => setConfirm({
     title: `${p.name} löschen?`,
-    text: `Das Profil und alle Spielstände, Sterne und der Hof von ${p.name} werden gelöscht. Das lässt sich nicht rückgängig machen.`,
+    text: `Das Profil und alle Spielstände, Sterne und Sticker von ${p.name} werden gelöscht. Das lässt sich nicht rückgängig machen.`,
     yesLabel: 'Löschen',
     onYes: () => {
       dispatch({ type: 'DELETE_PROFILE', payload: p.id })
@@ -275,7 +274,7 @@ export default function ParentScreen({ onClose }) {
 
   const resetProfile = () => setConfirm({
     title: `${name} komplett zurücksetzen?`,
-    text: `Alle Spielstände, Sterne, die Serie und der Hof von ${name} werden gelöscht. Andere Kinder sind nicht betroffen.`,
+    text: `Alle Spielstände, Sterne, die Serie und die Sticker von ${name} werden gelöscht. Andere Kinder sind nicht betroffen.`,
     yesLabel: 'Zurücksetzen',
     onYes: () => { dispatch({ type: 'RESET_PROFILE', payload: view.id }); showToast(`${name} zurückgesetzt`) },
   })
@@ -329,7 +328,6 @@ export default function ParentScreen({ onClose }) {
       week: minutes(weekMs(p)),
       last: last ? `${last.toLocaleDateString('de-DE')} · ${moduleTitle(p.lastPlayed.moduleId)}` : 'noch nicht gespielt',
       streak: liveStreak(p.streak),
-      farm: FARM_LEVEL_LABELS[getFarmLevel(farmPoints(p))],
     }
   }), [state.profiles]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -396,7 +394,6 @@ export default function ParentScreen({ onClose }) {
                   <span>⭐ {o.stars} Sterne</span>
                   <span>🏆 {o.mastered} von {MODULES.length} gemeistert</span>
                   <span>🔥 {tage(o.streak)}</span>
-                  <span>🌾 {o.farm}</span>
                   {o.hidden > 0 && <span>🙈 {o.hidden} {o.hidden === 1 ? 'Spiel' : 'Spiele'} ausgeblendet</span>}
                 </div>
                 {o.struggling.length > 0 && (
@@ -603,7 +600,7 @@ export default function ParentScreen({ onClose }) {
           <div className="px-panel" style={{ ...SECTION, background:'#ffe9e4' }}>
             <div style={H2}>{name} zurücksetzen</div>
             <div style={{ ...SMALL, marginBottom:10 }}>
-              Löscht alle Spielstände, Sterne, die Serie und den Hof von {name}. Andere Kinder sind nicht betroffen.
+              Löscht alle Spielstände, Sterne, die Serie und die Sticker von {name}. Andere Kinder sind nicht betroffen.
             </div>
             <button className="px-btn px-btn--red px-btn--md" onClick={resetProfile}>{name} zurücksetzen</button>
           </div>

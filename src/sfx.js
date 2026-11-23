@@ -38,6 +38,52 @@ function tone(freq, type, delay, dur, vol = 0.26) {
   } catch { /* ignore */ }
 }
 
+
+/** A tone that slides from one pitch to another (boing, whoosh, slide) */
+function glide(from, to, type, delay, dur, vol = 0.2) {
+  const ac = getCtx()
+  if (!ac) return
+  try {
+    const osc = ac.createOscillator()
+    const g   = ac.createGain()
+    osc.connect(g)
+    g.connect(ac.destination)
+    osc.type = type
+    const t = ac.currentTime + delay
+    osc.frequency.setValueAtTime(from, t)
+    osc.frequency.exponentialRampToValueAtTime(to, t + dur)
+    g.gain.setValueAtTime(vol, t)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
+    osc.start(t)
+    osc.stop(t + dur + 0.02)
+  } catch { /* ignore */ }
+}
+
+/** A short burst of filtered noise (splash, crunch, whoosh of air) */
+function noise(delay, dur, vol = 0.18, freq = 1200, q = 0.8) {
+  const ac = getCtx()
+  if (!ac) return
+  try {
+    const len = Math.max(1, Math.floor(ac.sampleRate * dur))
+    const buf = ac.createBuffer(1, len, ac.sampleRate)
+    const d = buf.getChannelData(0)
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1
+    const src = ac.createBufferSource()
+    src.buffer = buf
+    const f = ac.createBiquadFilter()
+    f.type = 'bandpass'
+    f.frequency.value = freq
+    f.Q.value = q
+    const g = ac.createGain()
+    const t = ac.currentTime + delay
+    g.gain.setValueAtTime(vol, t)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
+    src.connect(f); f.connect(g); g.connect(ac.destination)
+    src.start(t)
+    src.stop(t + dur + 0.02)
+  } catch { /* ignore */ }
+}
+
 // Games that only play a sound for an answer still let Lumi react
 // (components/LumiBuddy.jsx ignores the second of two signals for one answer)
 const announce = kind => typeof window !== 'undefined' && window.dispatchEvent(new CustomEvent('lumi:feedback', { detail: kind }))
@@ -136,5 +182,73 @@ export const sfx = {
   dragonNear() {
     tone(55, 'sawtooth', 0,    0.35, 0.16)
     tone(58, 'sawtooth', 0.02, 0.35, 0.10)
+  },
+  // ── Toy sounds for the play kit (components/play): things react when
+  // they are tapped, fed, dropped or thrown. None of them means right or
+  // wrong, so none of them makes Lumi react.
+
+  /** Springy boing — something bounces, a character is poked */
+  boing() {
+    glide(180, 520, 'sine', 0, 0.18, 0.2)
+    glide(520, 260, 'sine', 0.16, 0.16, 0.12)
+  },
+
+  /** Munch munch — a character eats what it was given */
+  chomp() {
+    noise(0,    0.06, 0.22, 900, 1.2)
+    noise(0.13, 0.06, 0.2,  700, 1.2)
+    tone(160, 'square', 0,    0.04, 0.06)
+    tone(140, 'square', 0.13, 0.04, 0.05)
+  },
+
+  /** Little giggle — tickle a character */
+  giggle() {
+    ;[0, 0.09, 0.18, 0.27].forEach((d, i) => glide(900 + i * 60, 1300 + i * 80, 'sine', d, 0.07, 0.12))
+  },
+
+  /** Whoosh — something flies across */
+  whoosh() {
+    noise(0, 0.35, 0.16, 600, 0.6)
+    glide(300, 900, 'sine', 0, 0.3, 0.04)
+  },
+
+  /** Splash — into the water */
+  splash() {
+    noise(0, 0.3, 0.24, 1800, 0.5)
+    noise(0.05, 0.25, 0.12, 600, 0.7)
+  },
+
+  /** Slide whistle up — a happy jump */
+  slideUp() {
+    glide(400, 1200, 'sine', 0, 0.28, 0.16)
+  },
+
+  /** Slide whistle down — oops, a funny fall (never for a wrong answer alone) */
+  slideDown() {
+    glide(1000, 300, 'sine', 0, 0.4, 0.14)
+  },
+
+  /** A friendly drum beat (clapping syllables, marching) */
+  drum(high = false) {
+    glide(high ? 220 : 150, high ? 110 : 60, 'sine', 0, 0.16, 0.34)
+    noise(0, 0.05, 0.08, 3000, 0.7)
+  },
+
+  /** A tiny burp — a full tummy, the classic giggle-maker */
+  burp() {
+    glide(140, 90, 'sawtooth', 0, 0.22, 0.09)
+    noise(0, 0.2, 0.06, 300, 1)
+  },
+
+  /** Short "ta-da!" — something got built, a guest is served */
+  tada() {
+    tone(523, 'triangle', 0,    0.1,  0.2)
+    tone(784, 'triangle', 0.1,  0.3,  0.22)
+    tone(1047, 'sine',    0.1,  0.3,  0.08)
+  },
+
+  /** Magic sparkle — something appears */
+  sparkle() {
+    ;[1568, 2093, 1760, 2349, 2637].forEach((f, i) => tone(f, 'sine', i * 0.05, 0.12, 0.08))
   },
 }

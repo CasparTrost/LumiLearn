@@ -14,6 +14,7 @@ import { PauseContext } from '../lib/pause.js'
 import { result } from '../lib/score.js'
 import { MODULE_BY_ID } from '../modules.js'
 import { line } from '../lib/lumiLines.js'
+import Scene from '../components/play/Scene.jsx'
 
 const LOADERS = {
   numbers:         () => import('../games/NumbersGame.jsx'),
@@ -166,7 +167,13 @@ export default function GameScreen() {
         <InfoButton moduleId={moduleId} onOpenChange={setHelpOpen} />
       </HudBar>
 
-      {/* Game */}
+      {/* Game, in front of its world: a meadow, the sea, the night sky …
+          that moves and cheers along (components/play/Scene.jsx) */}
+      <div style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <Scene theme={mod.scene} />
+      {/* positioned, above the scene: games that lay themselves out
+          (NO_SCALE) were painted underneath the absolutely placed scene */}
+      <div style={{ position: 'relative', zIndex: 1, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       <ErrorBoundary key={`${moduleId}-${attempt}`} moduleId={moduleId}
         onRetry={() => setAttempt(a => a + 1)}
         onHome={() => dispatch({ type: 'NAVIGATE', payload: 'home' })}>
@@ -182,6 +189,8 @@ export default function GameScreen() {
         </Suspense>
         </PauseContext.Provider>
       </ErrorBoundary>
+      </div>
+      </div>
 
       {/* The back arrow sits where small hands hold a tablet: it asks first
           instead of ending the round at once */}
