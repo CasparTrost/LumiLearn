@@ -226,6 +226,9 @@ export default function WeightGame({ level = 1, onComplete }) {
     setAnswered(null)
     setBlocks(0)
     setTries(0)
+    // the riders and the bird of the next pair would take a still-set fly
+    // as their cue and jump the moment they appear
+    setFly(0)
     setIdx(idx + 1)
   }
 

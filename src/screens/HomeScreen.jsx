@@ -31,7 +31,6 @@ const cardVariants = {
   visible: (i) => ({ opacity:1, y:0, scale:1, transition:{ delay: i*0.04, type:'spring', stiffness:340, damping:18 } }),
 }
 
-const WELCOME_BACK = 'audio/allgemein/hallo-du-willkommen-zurueck-zu-lumi-mach-direkt-da-weiter-wo-wir-aufge.mp3'
 
 // Module-level (not component state): HomeScreen remounts fresh every time
 // the router switches state.screen back to 'home', so a plain useEffect([])
@@ -62,8 +61,6 @@ function greetingParts({ lastPlayed, idea }) {
   const n = parseInt(readStore('lumi_greet_n', '0'), 10) || 0
   writeStore('lumi_greet_n', n + 1)
   const options = [
-    // the recording "Hallo du, willkommen zurück zu Lumi! …"
-    [{ src: WELCOME_BACK, text: 'Hallo du, willkommen zurück! Mach direkt da weiter, wo wir aufgehört haben, oder versuche etwas Neues.' }],
     [line('begruessung/wieder-da'), ...(say ? [say] : [])],
     [timeLine(), ...(say ? [say] : [])],
   ]
