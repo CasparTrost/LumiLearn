@@ -19,6 +19,9 @@ import { hearable } from '../lib/hearable.js'
 import { lazyWithReload } from '../lib/lazyWithReload.js'
 import { WORLDS, recommend, sortForAge, visibleModules } from '../modules.js'
 import { prefetchGame, isGameLoaded, ensureGame } from './GameScreen.jsx'
+import JourneyPath, { journeySay } from '../components/JourneyPath.jsx'
+import { startStop } from '../lib/journeyNav.js'
+import { nextStopIndex } from '../lib/learning.js'
 
 // Rarely opened (only via the settings gear) and pulls in its own sizeable
 // UI (PIN gate, stats, error log, profile management) — no reason to ship
@@ -44,14 +47,17 @@ function timeGreeting(t) {
 }
 
 /** What Lumi says when a child arrives — not the same sentence every time. */
-function greetingParts({ t, profile, streak, lastPlayed, openMission, animals }) {
+function greetingParts({ t, profile, streak, lastPlayed, openMission, animals, journey }) {
   const name = profile.name
   const hello = `${timeGreeting(t)}, ${name}!`
   const isNew = !lastPlayed
+  // today's journey not started yet: Lumi invites to it
+  const fresh = journey && !(journey.done ?? []).length && nextStopIndex(journey) !== -1
   if (isNew) {
     const farm = animals.length ? ` Auf deinem Hof wohnt schon ${einTier(animals[0])}.` : ''
-    return [{ text: `${hello} Ich bin Lumi. Tippe auf ein Spiel, dann spielen wir zusammen.${farm}` }]
+    return [{ text: `${hello} Ich bin Lumi.${farm} ${fresh ? journeySay(journey) : 'Tippe auf ein Spiel, dann spielen wir zusammen.'}` }]
   }
+  if (fresh) return [{ text: `${hello} Schön, dass du da bist. ${journeySay(journey)}` }]
   const n = parseInt(readStore('lumi_greet_n', '0'), 10) || 0
   writeStore('lumi_greet_n', n + 1)
   // not a game the parents have switched off since
@@ -256,7 +262,7 @@ export default function HomeScreen() {
     greeted.add(activeProfile.id)
     const id = setTimeout(() => {
       if (timeUp) return
-      narrate(greetingParts({ t, profile, streak: streak.count, lastPlayed, openMission, animals }))
+      narrate(greetingParts({ t, profile, streak: streak.count, lastPlayed, openMission, animals, journey: activeProfile?.journey }))
     }, 800)
     return () => clearTimeout(id)
   }, [activeProfile?.id]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -275,6 +281,27 @@ export default function HomeScreen() {
     const id = idle(() => picks.forEach(({ mod }) => prefetchGame(mod.id)))
     return () => cancel(id)
   }, [picks])
+
+  // A stop of today's journey: a game (same offline check as a tile) or the
+  // movement break
+  const journey = activeProfile?.journey
+  const startJourneyStop = idx => {
+    const stop = journey?.stops?.[idx]
+    if (!stop) return
+    if (stop.kind !== 'move' && navigator.onLine === false && !isGameLoaded(stop.moduleId)) {
+      ensureGame(stop.moduleId).then(() => startJourneyStop(idx), () => setOffline(true))
+      return
+    }
+    stopNarration()
+    startStop(dispatch, journey, idx)
+  }
+  // the journey's games load ahead too
+  useEffect(() => {
+    const idle = window.requestIdleCallback ?? (cb => setTimeout(cb, 2500))
+    const cancel = window.cancelIdleCallback ?? clearTimeout
+    const id = idle(() => (journey?.stops ?? []).forEach(st => st.moduleId && prefetchGame(st.moduleId)))
+    return () => cancel(id)
+  }, [journey?.date]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const startModule = (mod, level) => {
     // Without a connection a game's code may still be saved for offline play
@@ -387,9 +414,19 @@ export default function HomeScreen() {
       {/* ── Title over the sky ── */}
       <div style={{ textAlign:'center', padding:'clamp(12px,2.4vw,24px) 16px clamp(8px,1.4vw,14px)' }}>
         <h1 className="px-title" style={{ fontSize:'clamp(24px,4.4vw,38px)', lineHeight:1.15 }}>
-          Was möchtest du heute spielen?
+          {journey && nextStopIndex(journey) === -1 ? 'Super, die Reise ist geschafft!' : 'Komm mit auf die Reise!'}
         </h1>
       </div>
+
+      {/* ── Today's journey: a few stations, then the treasure ── */}
+      {journey && (
+        <div style={{ padding:'0 clamp(16px,4vw,40px)', marginBottom:14, maxWidth:1240, width:'100%', alignSelf:'center' }}>
+          <JourneyPath journey={journey} profileId={activeProfile?.id} stickers={(activeProfile?.stickers ?? []).length}
+            onStart={startJourneyStop}
+            onChest={() => dispatch({ type:'OPEN_CHEST' })}
+            onAlbum={() => { stopNarration(); dispatch({ type:'NAVIGATE', payload:'album' }) }} />
+        </div>
+      )}
 
       {/* ── Tagesaufgaben ── */}
       {(day.missions ?? []).length > 0 && (
@@ -406,26 +443,9 @@ export default function HomeScreen() {
         <FarmProgress points={points} />
       </div>
 
-      {/* ── Für dich ── */}
-      <section aria-label="Für dich" style={{ padding:'0 clamp(16px,4vw,40px)', marginBottom:18, maxWidth:1240, width:'100%', alignSelf:'center' }}>
-        <div className="px-ribbon" style={{ fontSize:18, padding:'4px 16px 6px', marginBottom:10 }}>⭐ Für dich</div>
-        <div className="module-grid" style={{
-          display:'grid',
-          // four in a row from a tablet up (three columns left one alone)
-          gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 168px), 1fr))',
-          gap:'clamp(12px,2vw,20px)',
-        }}>
-          {picks.map(({ mod, why }, i) => (
-            <GameTile key={mod.id} mod={mod} p={progress[mod.id] ?? {}} index={i} big
-              badge={why === 'continue' ? 'continue' : why === 'new' ? 'new' : null}
-              onPlay={m => startModule(m)} onLevels={setPickerMod} />
-          ))}
-        </div>
-      </section>
-
       {/* ── Themenwelten ── */}
       <section aria-label="Alle Spiele" style={{ padding:'0 clamp(16px,4vw,40px)', maxWidth:1240, width:'100%', alignSelf:'center' }}>
-        <div className="px-ribbon" style={{ fontSize:18, padding:'4px 16px 6px', marginBottom:10 }}>🗺️ Alle Spiele</div>
+        <div className="px-ribbon" style={{ fontSize:18, padding:'4px 16px 6px', marginBottom:10 }}>🗺️ Alle Spiele – frei wählen</div>
         {/* wraps instead of scrolling sideways out of sight */}
         <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:14 }}>
           {[{ id:'all', label:'Alle', emoji:'⭐' }, ...worlds].map(w => {

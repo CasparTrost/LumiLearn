@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react'
 import * as narrator from './narrator.js'
-import { MODULES, MODULE_BY_ID, visibleModules } from './modules.js'
+import { MODULES, MODULE_BY_ID, visibleModules, sortForAge } from './modules.js'
 import { ENGLISH_ENABLED } from './i18n.js'
+import { updateSkill, nextLevel, ratioOf, journeyFor, nextStopIndex } from './lib/learning.js'
+import { stickerForDay } from './lib/stickers.js'
 
 export const AppContext = createContext(null)
 
@@ -30,6 +32,7 @@ export const MAX_LEVELS = {
   'initial-sound': 10,
   'empathy': 10,
   'shape-build': 10,
+  trace:         10,
 }
 
 function freshProgress() {
@@ -129,6 +132,24 @@ export function totalStars(progress) {
 }
 export const farmPoints = profile => totalStars(profile?.progress) + (profile?.farmBonus ?? 0)
 
+// ── Reise mit Lumi ───────────────────────────────────────────────────────────
+// Die Tagesreise (lib/learning.js): vier Spiele und eine Bewegungspause,
+// danach eine Schatztruhe mit einem Sticker. Pro Kind und Tag eine.
+export const JOURNEY_BONUS = 3
+export function journeyContext(profile) {
+  return { mods: sortForAge(visibleModules(profile), profile), maxLevels: MAX_LEVELS, today: todayStr() }
+}
+function withJourney(profile) {
+  const j = journeyFor(profile, journeyContext(profile))
+  return j === profile.journey ? profile : { ...profile, journey: j }
+}
+// A stop is done: mark it, and say what comes next
+function markStop(journey, idx) {
+  if (!journey || typeof idx !== 'number' || journey.date !== todayStr() || !journey.stops?.[idx]) return journey
+  const done = Array.from(new Set([...(journey.done ?? []), idx]))
+  return { ...journey, done }
+}
+
 /** Minutes played today. */
 export const todayMs = profile => profile?.playLog?.[todayStr()]?.ms ?? 0
 
@@ -148,6 +169,9 @@ function freshProfile(overrides = {}) {
     lastPlayed: null,
     // games the parents switched off for this child (parent area)
     hiddenGames: [],
+    // today's journey (lib/learning.js) and the stickers from its treasure chests
+    journey: null,
+    stickers: [],
     ...overrides,
   }
 }
@@ -183,6 +207,13 @@ function updateActiveProfile(state, updater, profileId) {
 function pruneLog(log) {
   const keys = Object.keys(log).sort()
   return keys.length <= 35 ? log : Object.fromEntries(keys.slice(-35).map(k => [k, log[k]]))
+}
+
+// The stars a game reported are the ones its first-try answers give (most
+// games) — not a game that rates by something else (Memo by moves).
+const providedStarsMatch = (stars, score, total) => {
+  const share = score / total
+  return (share >= 0.85 ? 3 : share >= 0.6 ? 2 : 1) === stars
 }
 
 export function reducer(state, action) {
@@ -277,6 +308,8 @@ export function reducer(state, action) {
         streak: { count: 0, lastDate: null },
         // the "Weiterspielen" card pointed at a game whose progress is gone
         lastPlayed: null,
+        journey: null,
+        stickers: [],
       }
       reset.dailyMission = freshDay(todayStr(), reset)
       return { ...state, profiles: { ...state.profiles, [id]: reset } }
@@ -292,7 +325,13 @@ export function reducer(state, action) {
         const was = p.hiddenGames ?? []
         const next = hidden ? Array.from(new Set([...was, id])) : was.filter(x => x !== id)
         if (MODULES.every(m => next.includes(m.id))) return p
-        const q = { ...p, hiddenGames: next }
+        let q = { ...p, hiddenGames: next }
+        // today's journey not started yet and one of its games is now off:
+        // plan it again with the games left
+        const j = q.journey
+        if (j?.date === todayStr() && !(j.done ?? []).length && j.stops?.some(st => next.includes(st.moduleId))) {
+          q = withJourney({ ...q, journey: null })
+        }
         const dm = q.dailyMission
         if (dm?.date !== todayStr()) return q
         const missions = dm.missions ?? []
@@ -307,10 +346,38 @@ export function reducer(state, action) {
     case 'START_GAME':
       return { ...state, screen: 'game', currentGame: action.payload }
 
+    // The movement break of today's journey (screens/MoveBreakScreen.jsx)
+    case 'START_MOVE':
+      return { ...state, screen: 'move', moveStop: action.payload }
+
     case 'ENSURE_DAILY_MISSION': {
-      const dm = state.profiles[state.activeProfileId]?.dailyMission
-      if (!state.profiles[state.activeProfileId] || (dm?.date === todayStr() && (dm.missions ?? []).length)) return state
-      return updateActiveProfile(state, p => ({ ...p, dailyMission: ensureDay(dm, p) }))
+      const p0 = state.profiles[state.activeProfileId]
+      if (!p0) return state
+      const dm = p0.dailyMission
+      const missionsOk = dm?.date === todayStr() && (dm.missions ?? []).length
+      const journeyOk = p0.journey?.date === todayStr()
+      if (missionsOk && journeyOk) return state
+      return updateActiveProfile(state, p => withJourney(missionsOk ? p : { ...p, dailyMission: ensureDay(dm, p) }))
+    }
+
+    // The movement break of the journey is done
+    case 'JOURNEY_STOP_DONE':
+      return updateActiveProfile(state, p => ({ ...p, journey: markStop(p.journey, action.payload) }))
+
+    // All stops done: the treasure chest gives today's sticker and a bonus
+    // for the farm. Once a day.
+    case 'OPEN_CHEST': {
+      return updateActiveProfile(state, p => {
+        const j = p.journey
+        if (!j || j.date !== todayStr() || j.chest || nextStopIndex(j) !== -1) return p
+        const sticker = stickerForDay(p.stickers ?? [], j.date + p.id)
+        return {
+          ...p,
+          journey: { ...j, chest: sticker ?? 'none' },
+          stickers: sticker ? [...(p.stickers ?? []), sticker] : (p.stickers ?? []),
+          farmBonus: (p.farmBonus ?? 0) + JOURNEY_BONUS,
+        }
+      })
     }
 
     // Time spent in a game, for the parent area and the daily time limit.
@@ -342,10 +409,15 @@ export function reducer(state, action) {
         ? { ...prevLevelStars, [level]: Math.max(prevBestStars, stars) }
         : prevLevelStars
 
-      let newCurrentLevel = prev.currentLevel ?? 1
-      if (stars >= 1 && level >= newCurrentLevel) {
-        newCurrentLevel = Math.min(level + 1, maxLevel)
-      }
+      // The next suggested level and the review schedule (lib/learning.js):
+      // up after a round with mostly first-try answers, the same level to
+      // practise after a hard one, one down after two very hard ones.
+      // Games that rate themselves (Memo) count by their stars.
+      const ratio = total > 0 && providedStarsMatch(stars, score, total) ? ratioOf(score, total)
+        : stars >= 3 ? 1 : stars === 2 ? 0.7 : 0.45
+      const sameLevelRatios = prev.levelRatios?.[level] ?? []
+      const newCurrentLevel = nextLevel({ level, currentLevel: prev.currentLevel, maxLevel, ratio, sameLevelRatios })
+      const skill = updateSkill(prev.skill, { ratio, today })
 
       const levels = Array.from({ length: maxLevel }, (_, i) => i + 1)
       const completed = levels.every(l => (newLevelStars[l] ?? 0) >= 1)
@@ -383,8 +455,14 @@ export function reducer(state, action) {
       const log = { ...(profile.playLog ?? {}) }
       log[today] = { ms: 0, ...log[today], games: (log[today]?.games ?? 0) + 1 }
 
+      // The journey: this game was one of today's stops
+      const stopIdx = state.currentGame?.journeyStop
+      const journey = markStop(profile.journey, stopIdx)
+      const onJourney = journey !== profile.journey || (typeof stopIdx === 'number' && profile.journey?.date === today)
+
       const updatedProfile = {
         ...profile,
+        journey,
         streak,
         farmBonus: (profile.farmBonus ?? 0) + MISSION_BONUS * newlyCompletedMissionIds.length,
         dailyMission: counted,
@@ -401,6 +479,8 @@ export function reducer(state, action) {
             plays:    (prev.plays ?? 0) + 1,
             lastStars: stars,
             lastTs:   new Date().toISOString(),
+            skill,
+            levelRatios: { ...(prev.levelRatios ?? {}), [level]: [...sameLevelRatios, Math.round(ratio * 100) / 100].slice(-3) },
           },
         },
       }
@@ -418,6 +498,10 @@ export function reducer(state, action) {
           masteredWell,
           nextLevelNum,
           maxLevel,
+          // what Lumi suggests next: higher, the same level to practise, or easier
+          suggestedLevel: newCurrentLevel,
+          ratio,
+          journey: onJourney ? { next: nextStopIndex(journey), total: journey.stops.length } : null,
           newMissionsCompleted: newlyCompletedMissionIds,
           streakCount: streak.count,
           streakGrew: st.lastDate !== today,

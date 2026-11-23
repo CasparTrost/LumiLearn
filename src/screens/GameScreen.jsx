@@ -6,6 +6,7 @@ import ErrorBoundary from '../components/ErrorBoundary.jsx'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
 import MusicButton from '../components/MusicControls.jsx'
 import TileArt from '../components/TileArt.jsx'
+import LumiBuddy from '../components/LumiBuddy.jsx'
 import { stopNarration, lockPreviews } from '../narrator.js'
 import FitBox from '../components/FitBox.jsx'
 import { lazyWithReload } from '../lib/lazyWithReload.js'
@@ -38,6 +39,7 @@ const LOADERS = {
   'rhyme':         () => import('../games/RhymeGame.jsx'),
   'shapes-land':   () => import('../games/ShapeLandGame.jsx'),
   'rocket-math':   () => import('../games/RocketMathGame.jsx'),
+  trace:           () => import('../games/TraceGame.jsx'),
 }
 
 // Games whose code is in the browser already: they start without a
@@ -79,7 +81,7 @@ function GameLoadingFallback() {
 // Diese Spiele rechnen mit echten Zeigerkoordinaten oder zeichnen auf eine
 // Leinwand — ein Maßstab würde dort Treffer verschieben oder Pixel verwaschen.
 // Sie bemessen sich stattdessen selbst an ihrem Container.
-const NO_SCALE = new Set(['bubbles', 'clock', 'coloring', 'numbers', 'shapes', 'shadows', 'maze'])
+const NO_SCALE = new Set(['trace', 'bubbles', 'clock', 'coloring', 'numbers', 'shapes', 'shadows', 'maze'])
 
 const SAY_QUIT = 'Möchtest du wirklich aufhören? Tippe auf den grünen Knopf, dann spielst du weiter.'
 
@@ -154,6 +156,7 @@ export default function GameScreen() {
           {mod.title}
         </span>
         <span className="hud-only-sm" style={{ flex: 1 }} />
+        <LumiBuddy size={44} />
         <span className="px-chip" style={{ fontFamily: 'var(--font-heading)', fontSize: 17, flexShrink: 0 }}
           aria-label={`Level ${level} von ${maxLevel}`}>
           <span className="hud-hide-sm">Level&nbsp;</span>{level}/{maxLevel}

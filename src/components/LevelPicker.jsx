@@ -23,7 +23,9 @@ export function unlockedUpTo(progress, maxLevel) {
   if (progress?.completed) return maxLevel
   const stars = progress?.levelStars ?? {}
   const starred = Object.keys(stars).filter(l => (stars[l] ?? 0) >= 1).map(Number)
-  return Math.min(maxLevel, Math.max(progress?.currentLevel ?? 1, ...starred, 1))
+  // a level with a star opens the next one, also when Lumi suggests
+  // practising the same level once more (lib/learning.js)
+  return Math.min(maxLevel, Math.max(progress?.currentLevel ?? 1, ...starred.map(l => l + 1), 1))
 }
 
 export default function LevelPicker({ mod, title, progress, maxLevel, onPick, onClose }) {

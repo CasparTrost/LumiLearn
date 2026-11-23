@@ -9,13 +9,14 @@ import { afterNarration, narrate, stopNarration } from '../narrator.js'
 import { sayNumber, sayCount } from '../tts.js'
 import { starsFor } from '../lib/score.js'
 import { useT } from '../i18n.js'
+import { startStop } from '../lib/journeyNav.js'
 
 // One star means the level is done and the next one is open — the texts
 // say so ("Üb weiter!" next to an unlocked level was a contradiction).
 const MESSAGES = {
   3: ['Fantastisch!', 'Super gemacht!', 'Perfekt!'],
   2: ['Sehr gut gemacht!', 'Klasse!', 'Toll gemacht!'],
-  1: ['Geschafft!', 'Level geschafft!', 'Gut gemacht!'],
+  1: ['Gut geübt!', 'Geschafft!', 'Weiter so!'],
   0: ['Nicht aufgeben!', 'Du schaffst das!', 'Gleich klappt es!'],
 }
 const PRAISE_CLIP = s => s >= 2 ? 'audio/allgemein/das-hast-du-super-gemacht.mp3'
@@ -42,6 +43,13 @@ export default function ResultsScreen() {
   const streakCount    = gameResult?.streakCount ?? 0
   const farmBefore     = gameResult?.farmBefore ?? 0
   const farmAfter      = gameResult?.farmAfter ?? farmBefore
+  // what Lumi suggests next (lib/learning.js): the next level, the same one
+  // to practise, or the one before
+  const suggested      = gameResult?.suggestedLevel ?? nextLevel ?? level
+  const practise       = suggested === level && (gameResult?.ratio ?? 1) < 0.6
+  const easier         = suggested < level
+  // this game was a stop of today's journey: { next, total }, next -1 = done
+  const journey        = gameResult?.journey ?? null
 
   // What the round meant for the farm
   const newAnimals = animalsFor(farmAfter).slice(animalsFor(farmBefore).length)
@@ -82,6 +90,9 @@ export default function ResultsScreen() {
       if (score > 0) news.push(`Du hattest schon ${sayCount(score, 'Aufgabe', 'f')} richtig.`)
       news.push(level > 1 ? 'Versuch es noch einmal, oder spiel das leichtere Level.' : 'Versuch es noch einmal.')
     }
+    if (easier) news.push(`Probier mal Level ${sayNumber(suggested)}. Das macht dich sicherer, und dann geht es weiter.`)
+    else if (practise && !journey) news.push('Noch einmal üben, dann wirst du richtig sicher.')
+    if (journey) news.push(journey.next === -1 ? 'Das war die letzte Station! Jetzt wartet die Schatztruhe auf dich.' : 'Station geschafft! Weiter geht die Reise.')
     if (newMissionsCompleted.length) news.push(newMissionsCompleted.length === 1 ? 'Du hast eine Tagesaufgabe geschafft!' : 'Du hast Tagesaufgaben geschafft!')
     newAnimals.forEach(a => news.push(`${cap(einTier(a))} zieht auf deinen Hof!`))
     const stop = afterNarration(() => {
@@ -94,6 +105,8 @@ export default function ResultsScreen() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const go = (lv) => dispatch({ type: 'START_GAME', payload: { moduleId, level: lv } })
+  const profileJourney = state.profiles[state.activeProfileId]?.journey
+  const onward = () => { if (!startStop(dispatch, profileJourney, journey.next)) home() }
   const home = () => dispatch({ type: 'NAVIGATE', payload: 'home' })
 
   // With the day's play time used up (parent area) the way leads home,
@@ -102,15 +115,26 @@ export default function ResultsScreen() {
   const timeUp = limitMin > 0 && todayMs(state.profiles[state.activeProfileId]) >= limitMin * 60000
 
   // One clear main button per situation, plus a small way home
+  // On the journey the way leads on to the next stop; otherwise to the level
+  // Lumi suggests (up, practise, or easier), the others as smaller buttons.
   const main = timeUp ? { label: 'Zur Startseite', icon: '🏠', onClick: home }
+    : journey
+      ? journey.next === -1
+        ? { label: 'Zur Schatztruhe!', icon: '🎁', onClick: home }
+        : { label: 'Weiter auf der Reise', play: true, onClick: onward }
     : stars === 0
     ? { label: 'Nochmal', icon: '🔄', onClick: () => go(level) }
+    : easier
+      ? { label: `Leichter: Level ${suggested}`, icon: '🌱', onClick: () => go(suggested) }
+    : practise
+      ? { label: 'Nochmal üben', icon: '💪', onClick: () => go(level) }
     : nextLevel
-      ? { label: `Weiter: Level ${nextLevel}`, play: true, onClick: () => go(nextLevel) }
+      ? { label: `Weiter: Level ${Math.max(suggested, level + 1)}`, play: true, onClick: () => go(Math.max(suggested, level + 1)) }
       : { label: 'Zur Startseite', icon: '🏠', onClick: home }
   const secondary = timeUp ? [] : [
     stars === 0 && level > 1 && { label: `Leichter: Level ${level - 1}`, onClick: () => go(level - 1) },
-    stars >= 1 && { label: 'Nochmal', icon: '🔄', onClick: () => go(level) },
+    stars >= 1 && (journey || !practise) && { label: 'Nochmal', icon: '🔄', onClick: () => go(level) },
+    !journey && (practise || easier) && nextLevel && { label: `Level ${nextLevel}`, onClick: () => go(nextLevel) },
   ].filter(Boolean)
 
   const newsChip = { display:'flex', alignItems:'center', gap:8, padding:'6px 12px', border:'3px solid var(--px-ink)', borderRadius:8,
@@ -213,6 +237,11 @@ export default function ResultsScreen() {
               <span style={{ fontSize:18 }}>✅</span> {t('mission.' + id)}
             </div>
           ))}
+          {journey && (
+            <div style={{ ...newsChip, background:'#d9f5c8' }}>
+              <span style={{ fontSize:18 }}>🗺️</span> {journey.next === -1 ? 'Reise geschafft!' : `Station geschafft!`}
+            </div>
+          )}
           {streakCount >= 2 && (
             <div style={{ ...newsChip, background:'var(--px-parch-light)' }}>
               <span style={{ fontSize:18 }}>🔥</span> {streakCount} Tage in Folge
