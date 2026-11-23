@@ -20,7 +20,6 @@ import { journeyArt } from '../lib/assets.js'
 import { WORLDS, MODULE_BY_ID, recommend, sortForAge, visibleModules } from '../modules.js'
 import { prefetchGame, isGameLoaded, ensureGame } from './GameScreen.jsx'
 import { line, gameLine } from '../lib/lumiLines.js'
-import { mastery } from '../lib/learning.js'
 
 // Rarely opened (only via the settings gear) and pulls in its own sizeable
 // UI (PIN gate, stats, error log, profile management) — no reason to ship
@@ -79,52 +78,50 @@ export function nextIdea(journey) {
   return idx === -1 ? null : { idx, stop: stops[idx], mod: MODULE_BY_ID[stops[idx].moduleId] }
 }
 
-// ── A game on its world's stage ─────────────────────────────────────────────
-// A round, gently bobbing picture instead of a text card: the picture says
-// what the game is (most children here can't read), the little stars how
-// sure the child already is (lib/learning.js mastery). The tile starts the
-// game at the current level; ★ picks another level.
-function GameBubble({ mod, p, index, onPlay, onLevels }) {
+// ── A game tile ─────────────────────────────────────────────────────────────
+// All tiles the same size, in rows: the round picture says what the game is
+// (most children here can't read). The tile starts the game at the current
+// level; the small ★ button under it picks another level.
+function GameTile({ mod, p, index, onPlay, onLevels }) {
   const maxLvl    = MAX_LEVELS[mod.id] ?? 10
   const curLevel  = p.currentLevel ?? 1
   const canPick   = unlockedUpTo(p, maxLvl) > 1
   const bestTotal = Object.values(p.levelStars ?? {}).reduce((a, b) => a + (b ?? 0), 0)
-  const sure      = mastery(p)
 
   return (
     <motion.div custom={index} initial="hidden" animate="visible" variants={cardVariants}
-      style={{ position:'relative', width:'clamp(96px, 12vw, 120px)', display:'flex', flexDirection:'column', alignItems:'center' }}>
+      style={{
+        display:'flex', flexDirection:'column', alignItems:'center', gap:6, padding:'12px 8px 8px',
+        background:'#fffdf7', border:'3px solid var(--px-ink)', borderRadius:16,
+        boxShadow:'0 4px 0 rgba(42,27,61,0.3)', minWidth:0,
+      }}>
       <motion.button
-        whileHover={{ scale:1.06, y:-4 }} whileTap={{ scale:0.92 }}
+        whileHover={{ y:-3 }} whileTap={{ scale:0.94 }}
         onClick={() => onPlay(mod)}
         onPointerEnter={() => prefetchGame(mod.id)}
         onFocus={() => prefetchGame(mod.id)}
         {...hearable(mod.say, { src: gameLine(mod.id)?.src })}
         aria-label={`${mod.title}, Level ${curLevel} von ${maxLvl}, ${bestTotal} Sterne. Spielen`}
-        style={{ all:'unset', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:6, width:'100%' }}>
-        <div className="emoji-float" style={{
-          '--float-dur': `${2.6 + (index % 4) * 0.5}s`,
-          width:'clamp(80px, 10vw, 100px)', aspectRatio:'1', borderRadius:'50%',
+        style={{ all:'unset', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:8, width:'100%' }}>
+        <div style={{
+          width:'min(84px, 100%)', aspectRatio:'1', borderRadius:'50%', flexShrink:0,
           background:`radial-gradient(circle at 35% 30%, rgba(255,255,255,0.55), transparent 55%), ${mod.color}`,
-          border:'4px solid var(--px-ink)', boxShadow:'inset 0 -6px 0 rgba(0,0,0,0.18), 0 6px 0 rgba(42,27,61,0.35)',
+          border:'3px solid var(--px-ink)', boxShadow:'inset 0 -5px 0 rgba(0,0,0,0.16)',
           display:'flex', alignItems:'center', justifyContent:'center',
         }}>
-          <TileArt mod={mod} size={64} bare />
+          <TileArt mod={mod} size={58} bare />
         </div>
+        {/* two lines' room for every title, so the rows line up */}
         <span style={{
-          fontFamily:'var(--font-heading)', fontWeight:700, fontSize:'clamp(13px,1.6vw,15px)', lineHeight:1.15,
-          color:'var(--px-ink)', textAlign:'center', background:'rgba(255,253,247,0.92)', borderRadius:10,
-          padding:'3px 8px', border:'2px solid rgba(42,27,61,0.25)',
+          fontFamily:'var(--font-heading)', fontWeight:700, fontSize:14, lineHeight:1.15, minHeight:'2.3em', hyphens:'auto', overflowWrap:'anywhere',
+          color:'var(--px-ink)', textAlign:'center', display:'flex', alignItems:'center', justifyContent:'center',
         }}>{mod.title}</span>
-        <span aria-hidden="true" style={{ display:'flex', gap:2, minHeight:16 }}>
-          {[1, 2, 3].map(i => <PxStar key={i} size={15} off={i > sure} />)}
-        </span>
       </motion.button>
-
+      {/* another level, once there is more than one to choose from */}
       {canPick && (
         <button className="px-btn px-btn--parch" onClick={() => onLevels(mod)}
           aria-label={`${mod.title}: Level wählen`}
-          style={{ position:'absolute', top:-6, right:-4, height:44, minWidth:44, padding:'0 6px', fontSize:14, gap:2 }}>
+          style={{ height:38, minWidth:56, padding:'0 8px', fontSize:15, gap:3, marginTop:'auto' }}>
           <PxStar size={14} /> {curLevel}
         </button>
       )}
@@ -132,24 +129,24 @@ function GameBubble({ mod, p, index, onPlay, onLevels }) {
   )
 }
 
-// Each world plays on its own little stage (components/play/Scene.jsx)
-const WORLD_SCENE = { zahlen: 'market', buchstaben: 'forest', denken: 'night', gefuehle: 'meadow', malen: 'room' }
+// A soft colour per world, so the rows are easy to tell apart
+const WORLD_TINT = { zahlen: '#fff0c4', buchstaben: '#dcefff', denken: '#ebe3ff', gefuehle: '#ffe1ec', malen: '#e2f5d6' }
 
-function WorldStage({ world, mods, progress, onPlay, onLevels, offset }) {
+// One world: a full-width row, its name to tap (Lumi says it), its games
+function WorldRow({ world, mods, progress, onPlay, onLevels, offset }) {
   return (
     <section aria-label={world.label} style={{
-      position:'relative', overflow:'hidden', borderRadius:20, border:'4px solid var(--px-ink)',
-      boxShadow:'0 6px 0 rgba(42,27,61,0.35)', minHeight:220, display:'flex', flexDirection:'column',
+      background: WORLD_TINT[world.id] ?? '#fffdf7', border:'3px solid var(--px-ink)', borderRadius:20,
+      boxShadow:'0 5px 0 rgba(42,27,61,0.3)', padding:'12px clamp(8px,1.4vw,14px) 14px',
     }}>
-      <Scene theme={WORLD_SCENE[world.id] ?? 'meadow'} />
       <button className="px-ribbon" onClick={() => narrate([line(`menue/welt-${world.id}`)])}
         aria-label={`${world.label}-Welt vorlesen`}
-        style={{ position:'relative', alignSelf:'flex-start', margin:'12px 0 0 12px', fontSize:18, padding:'4px 16px 6px', cursor:'pointer', border:'none' }}>
+        style={{ fontSize:18, padding:'4px 16px 6px', marginBottom:12, cursor:'pointer', border:'none' }}>
         {world.emoji} {world.label}
       </button>
-      <div style={{ position:'relative', display:'flex', flexWrap:'wrap', justifyContent:'center', gap:'clamp(10px,2vw,18px)', padding:'16px 12px 18px' }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(clamp(94px, 26vw, 118px), 1fr))', gap:'clamp(8px,1.2vw,12px)' }}>
         {mods.map((mod, i) => (
-          <GameBubble key={mod.id} mod={mod} p={progress[mod.id] ?? {}} index={offset + i} onPlay={onPlay} onLevels={onLevels} />
+          <GameTile key={mod.id} mod={mod} p={progress[mod.id] ?? {}} index={offset + i} onPlay={onPlay} onLevels={onLevels} />
         ))}
       </div>
     </section>
@@ -165,20 +162,20 @@ function LumiIdea({ idea, plan, onPlay, onAlbum, stickers, narrow }) {
   const allDone = !idea
   return (
     <div style={{
-      display:'flex', alignItems:'center', justifyContent:'center', flexWrap:'wrap',
-      gap:'clamp(12px,3vw,40px)', padding:'clamp(8px,2vw,20px) 16px 0',
+      display:'flex', alignItems:'center', justifyContent:'center', flexWrap: narrow ? 'nowrap' : 'wrap',
+      gap:'clamp(8px,3vw,40px)', padding:'clamp(8px,2vw,20px) clamp(10px,3vw,16px) 0',
     }}>
-      <div style={{ paddingTop: narrow ? 70 : 84 }}>
-        <Critter art="lumi" size={narrow ? 120 : 170} mood={allDone ? 'dance' : 'idle'} talks label="Lumi"
-          wish={idea ? <TileArt mod={idea.mod} size={narrow ? 48 : 60} bare /> : <Art art="⭐" size={narrow ? 40 : 52} />}
-          wishSide={narrow ? 'top' : 'right'} />
+      <div style={{ paddingTop: narrow ? 62 : 90, flexShrink: 0 }}>
+        <Critter art="lumi" size={narrow ? 92 : 170} mood={allDone ? 'dance' : 'idle'} talks label="Lumi"
+          wish={idea ? <TileArt mod={idea.mod} size={narrow ? 40 : 60} bare /> : <Art art="⭐" size={narrow ? 34 : 52} />}
+          wishSide="top" />
       </div>
       <motion.div initial={{ scale:0.8, opacity:0 }} animate={{ scale:1, opacity:1 }} transition={{ type:'spring', stiffness:260, damping:18, delay:0.2 }}
-        className="px-panel" style={{ padding:'14px 18px', display:'flex', flexDirection:'column', alignItems:'center', gap:10, minWidth:'min(100%, 280px)' }}>
+        className="px-panel" style={{ padding: narrow ? '10px 12px' : '14px 18px', display:'flex', flexDirection:'column', alignItems:'center', gap:10, minWidth: narrow ? 0 : 280 }}>
         {idea ? (<>
           <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-            <TileArt mod={idea.mod} size={narrow ? 56 : 72} />
-            <div style={{ fontFamily:'var(--font-heading)', fontWeight:700, fontSize:'clamp(20px,3vw,28px)', color:'var(--px-ink)', lineHeight:1.1 }}>
+            <TileArt mod={idea.mod} size={narrow ? 44 : 72} />
+            <div style={{ fontFamily:'var(--font-heading)', fontWeight:700, fontSize: narrow ? 18 : 'clamp(20px,3vw,28px)', color:'var(--px-ink)', lineHeight:1.1 }}>
               {idea.mod.title}
             </div>
           </div>
@@ -392,14 +389,14 @@ export default function HomeScreen() {
       ) : (<>
         <LumiIdea idea={idea} plan={plan} onPlay={playIdea} onAlbum={openAlbum} stickers={stickers} narrow={narrow} />
 
-        {/* ── The worlds, each on its own little stage ── */}
+        {/* ── The worlds, one row each ── */}
         <div style={{
-          display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(min(100%, 340px), 1fr))',
-          gap:'clamp(14px,2.4vw,24px)', padding:'clamp(18px,3vw,30px) clamp(12px,4vw,40px) clamp(28px,4vw,44px)', alignItems:'start',
-          maxWidth:1280, width:'100%', alignSelf:'center',
+          display:'flex', flexDirection:'column', gap:'clamp(14px,2.4vw,22px)',
+          padding:'clamp(18px,3vw,30px) clamp(10px,2.5vw,28px) clamp(28px,4vw,44px)',
+          maxWidth:1100, width:'100%', alignSelf:'center',
         }}>
           {worlds.map(({ world, mods }, wi) => (
-            <WorldStage key={world.id} world={world} mods={mods} progress={progress}
+            <WorldRow key={world.id} world={world} mods={mods} progress={progress}
               offset={wi * 3} onPlay={m => startModule(m)} onLevels={setPickerMod} />
           ))}
         </div>

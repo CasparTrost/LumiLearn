@@ -176,6 +176,6 @@ Vorbild ist das Gefühl guter Kindersendungen und ihrer Spiele-Apps: Figuren, di
 
 - **Weg:** Hof, Lernweg und Missionen sind entfernt. Die Startseite war zu voll.
 - **Neu:** Eine lebendige Welt mit einem großen „Spielen!“-Knopf. Dahinter steht Lumis Vorschlag, den das Lerngedächtnis aussucht: fällige Wiederholung, das Spiel, in dem das Kind steckt, oder etwas Neues.
-- **Darunter:** Die Welten mit ihren Spielen als hüpfende Bilder. Jede Welt liegt auf ihrer eigenen Bühne.
+- **Darunter:** Die Welten, jede als eigene farbige Zeile mit gleich großen Spielkacheln: ruhig und übersichtlich.
 - **Belohnung:** Sticker gibt es als Überraschung nach geschafften Spielen.
 - **Bewegungspause:** Nach etwa zehn Minuten Spielzeit schlägt Lumi eine Pause vor.
