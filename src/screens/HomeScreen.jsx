@@ -189,16 +189,13 @@ function LumiIdea({ idea, plan, onPlay, onAlbum, stickers, narrow }) {
           </button>
         </>)}
         {/* how many of today's ideas are played: a sticker waits at the end */}
-        <button onClick={() => narrate([{ text: allDone
-            ? 'Du hast alle Ideen von heute gespielt! Morgen hat Lumi neue.'
-            : 'Das sind Lumis Ideen für heute. Wenn du alle gespielt hast, bekommst du einen Sticker für dein Album!' }])}
-          aria-label={`${plan.done} von ${plan.total} Ideen gespielt, ${stickers} Sticker`}
-          style={{ all:'unset', cursor:'pointer', display:'flex', alignItems:'center', gap:6, minHeight:44 }}>
+        <div role="img" aria-label={`${plan.done} von ${plan.total} Ideen gespielt, ${stickers} Sticker`}
+          style={{ display:'flex', alignItems:'center', gap:6, minHeight:44 }}>
           {Array.from({ length: plan.total }, (_, i) => (
             <span key={i} className={`px-pip${i < plan.done ? ' px-pip--gold' : ''}`} style={{ width:16, height:16 }} />
           ))}
           <img src={journeyArt(allDone ? 'chest-open.png' : 'chest.png')} alt="" style={{ width:30, height:30, imageRendering:'pixelated' }} />
-        </button>
+        </div>
       </motion.div>
     </div>
   )
