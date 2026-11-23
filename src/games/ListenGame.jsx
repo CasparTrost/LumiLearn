@@ -1,28 +1,27 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import { motion } from 'framer-motion'
-import LumiCharacter from '../components/LumiCharacter.jsx'
 import { sfx } from '../sfx.js'
-import { hearable } from '../lib/hearable.js'
-import { narrate, lockPreviews, afterNarration, stopNarration } from '../narrator.js'
+import { narrate } from '../narrator.js'
 import { sayRight, sayWrong } from '../lib/feedback.js'
-import { result } from '../lib/score.js'
-import { usePaused } from '../lib/pause.js'
-import { pxCard, pxPanel, pxBubble, pxButton, pxSegment, INK } from './px.js'
+import { Critter, Art, Wish, RoundTrail, useBursts } from '../components/play/index.js'
+import { useRounds, useSpeaking, shuffle, chance, reduceMotion } from './buchstaben/useRounds.js'
+import { pxButton, INK } from './px.js'
 
 /**
- * Hörabenteuer — Phonologisches Bewusstsein
+ * Hörabenteuer: das Versteckspiel — Phonologisches Bewusstsein
+ *
+ * Hinter Büschen gucken Tiere und Dinge hervor. Lumi ruft ein Wort, das Kind
+ * tippt auf den richtigen Busch, und das Gesuchte hüpft lachend heraus. Wer
+ * sich irrt, lockt das Falsche hervor: es zeigt sich und sagt, wer es ist.
+ * In den Lese-Levels stecken die Dinge ganz im Busch; vor jedem steht ein
+ * Schild, und Lumi zeigt das Bild dessen, was gesucht wird.
+ *
  * Scientific basis:
  *   • Phonological Awareness (National Reading Panel, 2000) — connecting spoken words to images
  *     is the single strongest predictor of reading readiness.
  *   • Dual Coding Theory (Paivio, 1990) — audio + visual encoding deepens memory traces.
  *   • Peabody Picture Vocabulary Test methodology — hear a word, find the matching picture.
  */
-
-// The play button pulses until the word was heard: its pixel drop plus a
-// gold ring, instead of the old soft coral glow.
-const PLAY_SHADOW       = pxButton('gold').boxShadow
-const PLAY_SHADOW_PULSE = `${PLAY_SHADOW}, 0 0 0 6px rgba(255,201,60,0.55)`
-const NEXT_BTN          = { ...pxButton('green'), color: INK, textShadow: '0 1px 0 rgba(255,255,255,0.4)' }
 
 // [article, word, picture]. Every picture shows one thing a child names the
 // same way; the wrong answers are other words of this list, so each one has
@@ -102,8 +101,6 @@ const LEVELS = [
 ]
 const ROUNDS = 8
 
-function shuffle(a) { return [...a].sort(() => Math.random() - 0.5) }
-
 function buildRounds(level) {
   const cfg = LEVELS[Math.max(0, Math.min(level - 1, LEVELS.length - 1))]
   // With sound-pair rounds in play, their words stay out of the others, so
@@ -138,234 +135,177 @@ const The = w => the(w)[0].toUpperCase() + the(w).slice(1)
 
 export default function ListenGame({ level = 1, onComplete }) {
   const isReading = !!LEVELS[Math.max(0, Math.min(level - 1, LEVELS.length - 1))].read
-  const paused = usePaused()
-
-  const [rounds]     = useState(() => buildRounds(level))
-  const [idx,        setIdx]        = useState(0)
-  const [solved,     setSolved]     = useState(false)
-  const [wrongPicks, setWrongPicks] = useState([])  // this round's failed taps
-  const [mood,       setMood]       = useState('happy')
-  const [played,     setPlayed]     = useState(false)
-  const [firstTry,   setFirstTry]   = useState(0)
-  const [leaving,    setLeaving]    = useState(false)
-
-  const round   = rounds[idx]
-  const current = round?.target
-
-  const sayWord = useCallback(() => {
-    if (!current) return
-    narrate([{ text: current.word, rate: 0.72, pitch: 1.1 }])
-    setPlayed(true)
-  }, [current])
+  // now and then a bird flies out of the bush, too
+  const rounds = useMemo(() => buildRounds(level).map(r => ({ ...r, bird: chance(0.3) })), [level])
+  const [bursts, burst] = useBursts()
+  const speaking = useSpeaking()
 
   // Reading levels never say the word before it is answered — otherwise
   // they would be one more listening task, not reading.
+  const idxRef = useRef(0)
   const sayTask = useCallback(() => {
-    if (!current) return
+    const i = idxRef.current, target = rounds[i]?.target
+    if (!target) return
     if (isReading) narrate([{ text: 'Welches Wort passt zum Bild? Lies genau.' }])
     else narrate([
-      { text: idx === 0 ? 'Hör gut zu und tippe auf das Bild.' : 'Tippe auf das Bild.' },
-      { text: current.word, rate: 0.72, pitch: 1.1, gap: 200 },
+      { text: i === 0 ? 'Wer hat sich versteckt? Hör gut zu und tippe auf den richtigen Busch.' : 'Such mal!' },
+      { text: target.word, rate: 0.72, pitch: 1.1, gap: 200 },
     ])
-    setPlayed(true)
-  }, [current, idx, isReading])
+  }, [rounds, isReading])
 
-  useEffect(() => { lockPreviews(); return () => stopNarration() }, [])
+  const { idx, done, leaving, tried, win, miss, reveal } = useRounds(rounds.length, { onComplete, sayTask, outroMs: 500 })
+  idxRef.current = idx
+  const round = rounds[idx]
+  const current = round?.target
 
-  // Round start, and again after the help dialog was closed.
-  useEffect(() => {
-    if (paused || solved) return
-    const t = setTimeout(sayTask, 550)
-    return () => clearTimeout(t)
-  }, [idx, paused]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const pick = (opt) => {
-    if (solved || !current || wrongPicks.includes(opt.word)) return
-    if (opt.word === current.word) {
-      if (!wrongPicks.length) setFirstTry(n => n + 1)
-      setSolved(true)
-      setMood('excited')
-      sfx.correct()
-      sayRight(`${The(current)}.`)
-      return
-    }
-    // A wrong tap can be corrected; after the second one Lumi shows the
-    // right picture instead of letting the child guess on.
-    const misses = [...wrongPicks, opt.word]
-    setWrongPicks(misses)
-    setMood('encouraging')
-    sfx.wrong()
-    if (misses.length >= 2) {
-      narrate([{ text: isReading ? `Schau mal, hier steht ${current.word}.` : `Schau mal, das ist ${the(current)}.` }])
-      setSolved(true)
-    } else {
-      sayWrong(isReading ? `Da steht ${opt.word}.` : `Das ist ${the(opt)}. Hör noch mal, ${current.word}.`)
-      setTimeout(() => setMood('happy'), 1100)
-    }
+  // the word alone, for the 🔊 in Lumi's bubble
+  const sayWord = () => {
+    if (isReading) sayTask()
+    else narrate([{ text: current.word, rate: 0.72, pitch: 1.1 }])
   }
 
-  const weiterClick = () => {
-    if (leaving) return
-    if (idx + 1 >= rounds.length) {
-      setLeaving(true)
-      sfx.complete()
-      afterNarration(() => onComplete(result(firstTry, rounds.length)), { minMs: 300 })
+  const pick = (opt, el) => {
+    if (done || tried.includes(opt.word)) return
+    if (opt.word === current.word) {
+      win()
+      sfx.giggle(); sfx.slideUp()
+      burst(el, chance(0.5) ? 'stars' : 'hearts')
+      sayRight(`Gefunden! ${The(current)}.`)
+      return
+    }
+    // A wrong bush can be corrected; after the second one Lumi shows the
+    // right one instead of letting the child guess on.
+    sfx.boing()
+    if (miss(opt.word) >= 2) {
+      sayWrong(isReading ? `Schau mal, hier steht ${current.word}.` : `Schau mal, das ist ${the(current)}.`)
+      reveal()
     } else {
-      lockPreviews()
-      setSolved(false); setWrongPicks([]); setMood('happy'); setPlayed(false)
-      setIdx(i => i + 1)
+      sayWrong(isReading ? `Da steht ${opt.word}.` : `Das ist ${the(opt)}. Hör noch mal, ${current.word}.`)
     }
   }
 
   if (!current) return null
-  const options = round.options
-  const cols = options.length === 4 ? 2 : options.length
+  const lumiMood = done ? (tried.length < 2 ? 'happy' : 'idle') : tried.length ? 'oops' : 'idle'
 
   return (
     <div style={{
       flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-evenly',
-      padding: 'clamp(16px,3vw,32px) clamp(16px,4vw,40px)',
-      gap: 'clamp(12px,2vh,22px)',
+      padding: 'clamp(10px,2vw,24px) clamp(12px,3vw,32px)', gap: 'clamp(8px,1.5vh,16px)',
     }}>
+      <RoundTrail total={rounds.length} done={idx + (done ? 1 : 0)} walker="lumi" goal="🎁" style={{ width: 'calc(100% - 80px)', maxWidth: 560 }} />
 
-      {/* Progress */}
-      <div style={{ display:'flex', gap:6, width:'100%', maxWidth:680 }}>
-        {rounds.map((_, i) => (
-          <div key={i} style={{
-            flex:1, ...pxSegment(i < idx || (i === idx && solved) ? 'done' : i === idx ? 'current' : 'todo'),
-            transition:'background 0.3s',
-          }} />
-        ))}
-      </div>
-
-      {/* Lumi + bubble */}
-      <div style={{ display:'flex', alignItems:'flex-end', gap:14, width:'100%', maxWidth:760 }}>
-        <LumiCharacter mood={mood} size={80} />
-        <div style={{
-          flex:1, ...pxBubble,
-          padding:'14px 22px',
-          fontFamily:'var(--font-heading)',
-          fontSize:'clamp(18px,3.8vw,26px)',
-          color:INK,
-        }}>
-          {isReading ? 'Welches Wort passt zum Bild? 📝' : 'Welches Bild passt zum Wort? 🖼️'}
-        </div>
-      </div>
-
-      {/* Play button: the word (pictures), the task again (reading) */}
-      <motion.button
-        whileHover={{ scale:1.06 }} whileTap={{ scale:0.93 }}
-        onClick={isReading ? sayTask : sayWord}
-        animate={!played
-          ? { scale:[1,1.08,1], boxShadow:[PLAY_SHADOW, PLAY_SHADOW_PULSE, PLAY_SHADOW] }
-          : {}}
-        transition={!played ? { duration:1.4, repeat:Infinity } : {}}
-        aria-label={isReading ? 'Aufgabe noch einmal anhören' : 'Wort anhören'}
-        style={{
-          ...pxButton('gold'),
-          padding:'14px clamp(28px,5vw,56px)', minHeight:60,
-          fontSize:'clamp(20px,4.5vw,30px)',
-          fontWeight:600,
-          display:'flex', alignItems:'center', gap:14,
-        }}
-      >
-        🔊 {isReading ? 'Nochmal' : 'Anhören!'}
-      </motion.button>
-
-      {/* READING: big picture + word buttons */}
-      {isReading && (
-        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:16, width:'100%', maxWidth:560 }}>
-          <motion.div
-            key={idx}
-            initial={{ scale:0.8, opacity:0 }} animate={{ scale:1, opacity:1 }}
-            style={{
-              fontSize:'clamp(90px,18vw,140px)', lineHeight:1, minHeight:'1em',
-              ...pxPanel, padding:'22px 44px',
-            }}
-          >{current.emoji}</motion.div>
-          <div style={{ display:'grid', gridTemplateColumns:`repeat(${cols}, minmax(0, 1fr))`, gap:12, width:'100%' }}>
-            {options.map(opt => {
-              const isAns   = opt.word === current.word
-              const isWrong = wrongPicks.includes(opt.word)
-              const live    = !solved && !isWrong
-              return (
-                <motion.button
-                  key={opt.word}
-                  whileHover={live ? { scale:1.05 } : {}}
-                  whileTap={live ? { scale:0.95 } : {}}
-                  animate={{ opacity: isWrong && !solved ? 0.6 : 1 }}
-                  onClick={() => pick(opt)}
-                  style={{
-                    ...pxCard(solved && isAns ? 'right' : isWrong ? 'wrong' : undefined),
-                    padding:'14px 10px', minHeight:64,
-                    fontFamily:'var(--font-heading)', fontSize:'clamp(18px,3.4vw,24px)',
-                    fontWeight:700, cursor:live ? 'pointer' : 'default', color:INK,
-                    overflowWrap:'anywhere',
-                  }}
-                >{opt.word}{solved && isAns ? ' ✅' : ''}</motion.button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* LISTENING: picture grid — two in a row, three in a row, four as 2×2 */}
-      {!isReading && (
-        <div style={{
-          display:'grid', gridTemplateColumns:`repeat(${cols}, minmax(0, 1fr))`,
-          gap:'clamp(12px,2.5vw,22px)',
-          width:'100%', maxWidth: cols === 3 ? 760 : 600,
-        }}>
-          {options.map((opt, i) => {
-            const isAns   = opt.word === current.word
-            const isWrong = wrongPicks.includes(opt.word)
-            const live    = !solved && !isWrong
-            return (
-              <motion.button key={`${idx}-${opt.word}`}
-                initial={{ opacity:0, y:18 }}
-                animate={{ opacity: isWrong && !solved ? 0.6 : 1, y:0 }}
-                transition={{ delay:i*0.07, type:'spring', stiffness:320 }}
-                whileHover={live ? { scale:1.05 } : {}}
-                whileTap={live ? { scale:0.95 } : {}}
-                onClick={() => pick(opt)}
-                aria-label={`Bild ${i + 1}`}
-                style={{
-                  padding:'clamp(16px,3.5vw,30px) 12px',
-                  ...pxCard(solved && isAns ? 'right' : isWrong ? 'wrong' : undefined),
-                  display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:6,
-                  cursor:live ? 'pointer' : 'default',
-                  lineHeight:1, minWidth:0,
-                }}
-              >
-                <motion.span
-                  animate={solved && isAns ? { scale:[1,1.35,1], rotate:[0,12,-12,0] } : {}}
-                  transition={{ duration:0.55 }}
-                  style={{ fontSize:'clamp(64px,14vw,100px)', minHeight:'1em' }}
-                >
-                  {opt.emoji}
-                </motion.span>
-                <span style={{
-                  fontFamily:'var(--font-heading)', fontSize:'clamp(15px,2.9vw,19px)', fontWeight:700, color:'#256B2E',
-                  visibility: solved && isAns ? 'visible' : 'hidden',
-                }}>{current.word}</span>
-              </motion.button>
-            )
-          })}
-        </div>
-      )}
-
-      <div style={{ minHeight:64, display:'flex', alignItems:'center' }}>
-        {solved && (
+      {/* Lumi is the seeker: calls the word, or shows the picture */}
+      <div style={{ position: 'relative', alignSelf: 'flex-start', marginLeft: 'clamp(8px,8vw,120px)', marginTop: isReading ? 90 : 60 }}>
+        <Critter art="lumi" size={108} talks mood={lumiMood} label="Lumi" />
+        <Wish side="right" size={108}>
+          {isReading && <Art art={current.emoji} size={84} />}
           <motion.button
-            initial={{ scale:0, opacity:0 }} animate={{ scale:1, opacity:1 }}
-            transition={{ type:'spring', stiffness:300, delay:0.4 }}
-            whileHover={{ scale:1.06 }} whileTap={{ scale:0.94 }}
-            onClick={weiterClick}
-            {...hearable('Weiter')}
-            style={{ ...NEXT_BTN, padding:'14px 40px', minHeight:56, fontSize:20 }}
-          >Weiter! →</motion.button>
-        )}
+            whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.92 }}
+            onClick={sayWord}
+            animate={!done && !speaking && !reduceMotion() ? { scale: [1, 1.07, 1] } : { scale: 1 }}
+            transition={{ duration: 1.4, repeat: Infinity }}
+            aria-label={isReading ? 'Aufgabe noch einmal anhören' : 'Wort anhören'}
+            style={{ ...pxButton('gold'), width: 64, height: 64, padding: 0, fontSize: 30, lineHeight: 1 }}
+          >🔊</motion.button>
+        </Wish>
       </div>
+
+      {/* The bushes */}
+      <div style={{
+        display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'flex-end',
+        gap: 16, width: '100%', maxWidth: 760,
+      }}>
+        {round.options.map((opt, i) => {
+          const isAns = opt.word === current.word
+          const state = (done && isAns) ? 'out'
+            : tried.includes(opt.word) ? 'tried'
+            : (done || leaving || isReading) ? 'hide' : 'peek'
+          return (
+            <HideBush key={`${idx}-${opt.word}`} i={i} n={round.options.length} item={opt} state={state} sign={isReading ? opt.word : null}
+              disabled={done || tried.includes(opt.word)} surprise={isAns && round.bird}
+              label={isReading ? opt.word : `Busch ${i + 1}`}
+              onTap={el => pick(opt, el)} />
+          )
+        })}
+      </div>
+      {bursts}
     </div>
+  )
+}
+
+/**
+ * A bush with something hiding behind it. state: peek (the top shows and
+ * bobs), hide (all of it behind the leaves), out (hops out and cheers),
+ * tried (a wrong guess: it shows itself and shrugs).
+ */
+function HideBush({ i, n, item, state, sign, disabled, surprise, label, onTap }) {
+  // on a phone four bushes stand two by two, so none gets too small to hit
+  const narrow = typeof window !== 'undefined' && window.innerWidth < 600
+  const width = narrow && n !== 3 ? 'calc(50% - 8px)' : `calc((100% - ${(n - 1) * 16}px) / ${n})`
+  const still = reduceMotion()
+  // in parts of the thing's own height: how far it is out of the bush
+  const y = { hide: '15%', peek: '-62%', out: '-95%', tried: '-92%' }[state]
+  const thing = still ? { y, opacity: state === 'tried' ? 0.6 : 1 }
+    : state === 'out' ? { y: ['-62%', '-160%', y], rotate: [0, 0, 360], scale: [1, 1.25, 1.12], opacity: 1 }
+    : state === 'tried' ? { y, rotate: [0, -12, 12, -8, 0], scale: 0.92, opacity: 0.6 }
+    : state === 'peek' ? { y: [y, '-70%', y], rotate: 0, scale: 1, opacity: 1 }
+    : { y, rotate: 0, scale: 0.75, opacity: 1 }
+  const tt = state === 'out' ? { duration: 0.9, ease: 'easeOut' }
+    : state === 'peek' ? { duration: 1.8 + (i % 3) * 0.4, repeat: Infinity, delay: 0.3 + i * 0.12 }
+    : { type: 'spring', stiffness: 260, damping: 16 }
+
+  return (
+    <motion.button type="button" aria-label={label} disabled={disabled}
+      onClick={e => { sfx.pop(); onTap(e.currentTarget) }}
+      whileTap={disabled || still ? undefined : { rotate: [0, -4, 4, -2, 0], scale: 0.97 }}
+      style={{
+        all: 'unset', position: 'relative', width, maxWidth: 168, minWidth: 96, aspectRatio: '168 / 230',
+        cursor: disabled ? 'default' : 'pointer', WebkitTapHighlightColor: 'transparent',
+      }}>
+      {/* the thing, behind the leaves */}
+      <motion.div initial={{ y: '15%' }} animate={thing} transition={tt}
+        style={{ position: 'absolute', left: '18%', width: '64%', bottom: '14%', aspectRatio: '1', display: 'flex', justifyContent: 'center' }}>
+        <Art art={item.emoji} size={110} style={{ width: '100%', height: '100%' }} />
+        {state === 'out' && surprise && !still && (
+          <motion.div initial={{ x: 0, y: 30, opacity: 1 }} animate={{ x: 260, y: -260, opacity: [1, 1, 0] }} transition={{ duration: 1.4, delay: 0.3 }}
+            style={{ position: 'absolute', left: '30%', top: '30%' }} onAnimationStart={() => sfx.whoosh()}>
+            <Art art="🐦" size={48} />
+          </motion.div>
+        )}
+      </motion.div>
+      {/* the bush */}
+      <motion.svg viewBox="0 0 168 150" aria-hidden="true"
+        animate={state === 'out' || state === 'tried' ? { rotate: [0, -3, 3, -2, 0], scaleY: [1, 0.94, 1.03, 1] } : {}}
+        transition={{ duration: 0.5 }}
+        style={{ position: 'absolute', left: 0, bottom: 0, width: '100%', height: 'auto', overflow: 'visible', transformOrigin: '50% 100%' }}>
+        <g stroke={INK} strokeWidth="4">
+          <ellipse cx="84" cy="140" rx="78" ry="10" fill="rgba(42,27,61,0.18)" stroke="none" />
+          <circle cx="40" cy="98" r="38" fill="#3f9a4a" />
+          <circle cx="128" cy="98" r="38" fill="#3f9a4a" />
+          <circle cx="84" cy="70" r="46" fill="#4caf55" />
+          <circle cx="58" cy="60" r="30" fill="#4caf55" />
+          <circle cx="112" cy="62" r="30" fill="#4caf55" />
+          <rect x="10" y="100" width="148" height="40" rx="20" fill="#3f9a4a" />
+        </g>
+        {/* inner parts without outline, so the blobs read as one bush */}
+        <circle cx="40" cy="98" r="35" fill="#3f9a4a" />
+        <circle cx="128" cy="98" r="35" fill="#3f9a4a" />
+        <rect x="13" y="103" width="142" height="34" rx="17" fill="#3f9a4a" />
+        <circle cx="84" cy="72" r="43" fill="#4caf55" />
+        <circle cx="58" cy="62" r="27" fill="#4caf55" />
+        <circle cx="112" cy="64" r="27" fill="#4caf55" />
+        <path d="M44 56 q10 -10 22 -4 M98 40 q12 -8 22 2 M30 96 q8 -8 18 -2 M118 98 q8 -8 18 -2" stroke="#7fd07e" strokeWidth="5" fill="none" strokeLinecap="round" />
+        {[[52, 88], [118, 76], [84, 112], [140, 116]].map(([x, yy]) => <circle key={x} cx={x} cy={yy} r="6" fill="#ff6b8a" stroke={INK} strokeWidth="2.5" />)}
+      </motion.svg>
+      {/* reading levels: a sign in front */}
+      {sign && (
+        <div style={{
+          position: 'absolute', left: '50%', bottom: '3%', transform: 'translateX(-50%) rotate(-2deg)', maxWidth: '108%',
+          background: '#e9b872', border: `3px solid ${INK}`, borderRadius: 8, boxShadow: '0 4px 0 rgba(42,27,61,0.3)',
+          padding: '4px 10px', fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 'clamp(15px,2.6vw,22px)', color: INK,
+          whiteSpace: 'nowrap',
+        }}>{sign}</div>
+      )}
+    </motion.button>
   )
 }
