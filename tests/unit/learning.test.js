@@ -190,3 +190,13 @@ describe('journey in the app state', () => {
     expect(s.gameResult.journey).toBeNull()
   })
 })
+
+describe('journey and switched-off games', () => {
+  it('plans an unstarted journey again when one of its games is switched off', () => {
+    const s0 = migrateToV2({ version: 2, activeProfileId: 'p1', settings: {}, profiles: { p1: { id: 'p1', name: 'Mia', age: 5, avatar: '🦄' } } })
+    const s = reducer({ ...initialState, ...s0, screen: 'home' }, { type: 'ENSURE_DAILY_MISSION' })
+    const first = s.profiles.p1.journey.stops.find(st => st.moduleId).moduleId
+    const after = reducer(s, { type: 'SET_GAME_HIDDEN', payload: { id: first, hidden: true, profileId: 'p1' } })
+    expect(after.profiles.p1.journey.stops.some(st => st.moduleId === first)).toBe(false)
+  })
+})

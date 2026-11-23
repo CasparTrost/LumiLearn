@@ -1,6 +1,6 @@
 // Browser smoke test against a production build (npm run build; npx vite preview).
 // Fresh child on a phone through onboarding; every game opened at phone,
-// tablet and desktop size; one game played to the results; the app and
+// tablet and desktop size; one game played to the results; the journey to the treasure chest; the app and
 // unopened games started again without a network. Fails on page
 // errors, pictures that don't load, sideways scrolling and buttons off the
 // screen.
@@ -114,7 +114,34 @@ for (const [size, dim] of Object.entries(SIZES)) {
   await page.context().close()
 }
 
-// 4. Offline: once opened online, the app and games never opened before
+// 4. Today's journey: the movement break, the treasure chest, the album
+{
+  const p2 = n => String(n).padStart(2, '0')
+  const d = new Date(), today = `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`
+  const stops = [{ kind: 'warmup', moduleId: 'number-intro', level: 1 }, { kind: 'new', moduleId: 'letter-intro', level: 1 },
+    { kind: 'move' }, { kind: 'new', moduleId: 'emotions', level: 1 }, { kind: 'new', moduleId: 'trace', level: 1 }]
+  const seeded = structuredClone(save)
+  seeded.profiles.p1.journey = { date: today, stops, done: [0, 1, 3, 4], chest: null }
+  const page = await newPage(SIZES.phone, seeded)
+  try {
+    await page.goto(URL); await page.waitForTimeout(1500)
+    await check(page, 'journey home')
+    await page.click('[data-stop="2"]', { force: true }); await page.waitForTimeout(1200)
+    await check(page, 'movement break')
+    await page.getByRole('button', { name: 'Überspringen' }).click(); await page.waitForTimeout(1000)
+    await page.getByRole('button', { name: /Weiter auf der Reise/ }).click(); await page.waitForTimeout(1500)
+    await page.click('[data-chest]', { force: true }); await page.waitForTimeout(1500)
+    await page.getByRole('button', { name: 'Toll!' }).click(); await page.waitForTimeout(500)
+    await page.click('[data-chest]', { force: true }); await page.waitForTimeout(1200)
+    await check(page, 'album')
+    const got = await page.evaluate(() => JSON.parse(localStorage.getItem('lumilearn_save')).profiles.p1.stickers?.length)
+    if (got !== 1) problems.push(`journey: ${got} stickers after the chest, expected 1`)
+  } catch (e) { problems.push(`journey: ${String(e).split('\n')[0]}`) }
+  problems.push(...page.errors.map(e => `journey: ${e}`))
+  await page.context().close()
+}
+
+// 5. Offline: once opened online, the app and games never opened before
 // still start without a network (public/sw.js)
 {
   const page = await newPage(SIZES.tablet, save)

@@ -325,7 +325,13 @@ export function reducer(state, action) {
         const was = p.hiddenGames ?? []
         const next = hidden ? Array.from(new Set([...was, id])) : was.filter(x => x !== id)
         if (MODULES.every(m => next.includes(m.id))) return p
-        const q = { ...p, hiddenGames: next }
+        let q = { ...p, hiddenGames: next }
+        // today's journey not started yet and one of its games is now off:
+        // plan it again with the games left
+        const j = q.journey
+        if (j?.date === todayStr() && !(j.done ?? []).length && j.stops?.some(st => next.includes(st.moduleId))) {
+          q = withJourney({ ...q, journey: null })
+        }
         const dm = q.dailyMission
         if (dm?.date !== todayStr()) return q
         const missions = dm.missions ?? []

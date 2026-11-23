@@ -49,9 +49,11 @@ export default function LumiBuddy({ size = 48 }) {
         const big = kind === 'persist' || inRow.current % 3 === 0
         setBursts(b => [...b.slice(-2), { id: now, big }])
         if (!reduce) {
+          // the bar is at the very top: small hops, the rest is a squash,
+          // a stretch and a spin, so Lumi never leaves the screen
           controls.start(inRow.current % 3 === 0 && kind !== 'persist'
-            ? { y: [0, -size * 0.6, 0], rotate: [0, 360], transition: { duration: 0.7, ease: 'easeOut' } }
-            : { y: [0, -size * (big ? 0.55 : 0.35), 0], scale: [1, 1.15, 1], rotate: 0, transition: { duration: 0.5, ease: 'easeOut' } })
+            ? { y: [0, -size * 0.18, 0], scale: [1, 1.2, 1], rotate: [0, 360], transition: { duration: 0.7, ease: 'easeOut' } }
+            : { y: [0, -size * 0.15, 0], scaleX: [1, 1.18, 0.92, 1], scaleY: [1, 0.85, 1.15, 1], rotate: 0, transition: { duration: 0.5, ease: 'easeOut' } })
         }
       }
       timer.current = setTimeout(() => setMood('idle'), 1600)
@@ -88,7 +90,8 @@ function Burst({ big, size, onDone }) {
   return (
     <div style={{ position: 'absolute', left: '50%', top: '45%', pointerEvents: 'none', zIndex: 3 }}>
       {Array.from({ length: n }, (_, i) => {
-        const a = (i / n) * Math.PI * 2 - Math.PI / 2
+        // a fan below and beside Lumi: above is the edge of the screen
+        const a = Math.PI * (-0.1 + 1.2 * (i / (n - 1)))
         const r = size * (big ? 1.25 : 0.95)
         return (
           <motion.div key={i}
