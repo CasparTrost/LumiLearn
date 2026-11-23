@@ -20,8 +20,8 @@ export const FEELING_ICON = {
   'Einsam':       '😔',
 }
 
-// The feelings that come out bright; the others are the heavy ones. Lumi's
-// face after an answer follows this.
+// The feelings that come out bright; the others are the heavy ones. After
+// something that helps, a heavy feeling calms down and a bright one stays.
 export const BRIGHT = new Set(['Glücklich', 'Aufgeregt', 'Dankbar', 'Überrascht', 'Stolz', 'Neugierig'])
 
 export function shuffle(a) {
