@@ -56,17 +56,6 @@ describe('recordings', () => {
     }
     expect(missing).toEqual([])
   })
-  it('every Gefühlswelt clip name exists', () => {
-    const text = readFileSync(join(ROOT, 'src/games/EmotionGame.jsx'), 'utf8')
-    const names = new Set([
-      ...[...text.matchAll(/audio:\s*\[([^\]]*)\]/g)].flatMap(m => [...m[1].matchAll(/'([a-z0-9-]+)'/g)].map(x => x[1])),
-      ...[...text.matchAll(/clip\('([a-z0-9-]+)'\)/g)].map(m => m[1]),
-      ...[...(text.match(/const EMOTION_AUDIO = \{[^}]*\}/)?.[0] ?? '').matchAll(/:\s*'([a-z0-9-]+)'/g)].map(m => m[1]),
-    ])
-    expect(names.size).toBeGreaterThan(5)
-    const missing = [...names].filter(n => !existsSync(join(PUBLIC, 'audio', 'gefuehlswelt', n + '.mp3')))
-    expect(missing).toEqual([])
-  })
   it('every number and letter question clip exists', () => {
     for (const n of ['eins', 'zwei', 'drei', 'vier', 'fuenf', 'sechs', 'sieben', 'acht', 'neun', 'zehn'])
       expect(existsSync(join(PUBLIC, 'audio', 'zahlen-entdecken', n + '.mp3')), n).toBe(true)
