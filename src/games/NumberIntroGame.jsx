@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
-import { lockPreviews, stopNarration } from '../narrator.js'
+import { lockPreviews, leaveGame } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
 import { sfx } from '../sfx.js'
@@ -103,7 +103,7 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
   const round = rounds[idx]
   const { n, food: f, eater } = round
 
-  useEffect(() => stopNarration, [])
+  useEffect(() => leaveGame, [])
 
   // A new animal walks in: Lumi's turn to listen, the child's to act.
   useEffect(() => {

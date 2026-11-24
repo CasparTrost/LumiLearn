@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { motion, AnimatePresence, useReducedMotion, useAnimationControls } from 'framer-motion'
-import { lockPreviews, stopNarration } from '../narrator.js'
+import { lockPreviews, leaveGame } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
 import { sfx } from '../sfx.js'
@@ -111,7 +111,7 @@ export default function NumbersGame({ level = 1, onComplete }) {
   // They come in as a help once an order went wrong.
   const help = wrongs >= 1
 
-  useEffect(() => stopNarration, [])
+  useEffect(() => leaveGame, [])
 
   // The next customer steps up.
   useEffect(() => {

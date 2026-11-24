@@ -140,6 +140,27 @@ export function stopNarration() {
 }
 
 /**
+ * Beim Verlassen eines Spiels: Lumis Lob nach der letzten richtigen Antwort
+ * darf zu Ende klingen (die Ergebnisseite wartet darauf), alles andere
+ * verstummt. Der Zurück-Knopf ruft weiter stopNarration() und stoppt sofort.
+ */
+export function leaveGame() {
+  if (running && lastKey && lastKey.includes('audio/lumi/rueckmeldung/')) return
+  stopNarration()
+}
+
+// Lumis kurze Rückmeldungen liegen vorgeladen bereit: eine erst beim Lob
+// geladene Datei verschluckte auf manchen Geräten den ersten Laut ("…uper!")
+const ready = new Map()
+export function preloadVoice(srcs) {
+  if (typeof Audio === 'undefined') return
+  for (const src of srcs) {
+    if (!src || ready.has(src)) continue
+    try { const a = new Audio(resolveAsset(src)); a.preload = 'auto'; ready.set(src, a) } catch { /* ignore */ }
+  }
+}
+
+/**
  * Sagt eine Folge von Abschnitten nacheinander.
  *
  * @param parts  [{ src?, text?, rate?, pitch?, lang?, gap? }]
@@ -223,7 +244,9 @@ export function narrate(parts, { onEnd, skipIfSame = false, priority = 'normal' 
 
   const playClip = (p, done, s) => {
     try {
-      const a = new Audio(resolveAsset(p.src))
+      const pre = ready.get(p.src)
+      const a = pre ?? new Audio(resolveAsset(p.src))
+      if (pre) { try { a.currentTime = 0 } catch { /* ignore */ } }
       a.volume = voiceVolume
       audioEl = a
       let failed = false

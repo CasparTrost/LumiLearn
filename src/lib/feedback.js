@@ -21,7 +21,7 @@
  * Every answer is also announced as a 'lumi:feedback' event, so Lumi in the
  * game's top bar can cheer or think along (components/LumiBuddy.jsx).
  */
-import { narrate } from '../narrator.js'
+import { narrate, preloadVoice } from '../narrator.js'
 import { line } from './lumiLines.js'
 
 // Lumi's recordings (lib/lumiLines.js): rueckmeldung/richtig-1 … -9 and so on
@@ -54,6 +54,7 @@ function bag(list) {
   }
 }
 const nextRight = bag(RIGHT), nextPersist = bag(PERSIST), nextWrong = bag(WRONG)
+preloadVoice([...RIGHT, ...PERSIST, ...WRONG, line('rueckmeldung/fehler-lernen')].map(l => l.src))
 
 /** The task of a round. Interrupts whatever was still being said. */
 export function sayTask(text, opts = {}) {

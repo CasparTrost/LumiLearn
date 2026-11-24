@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { motion, AnimatePresence, animate, useMotionValue, useTransform, useReducedMotion } from 'framer-motion'
 import { sfx } from '../sfx.js'
-import { lockPreviews, stopNarration } from '../narrator.js'
+import { lockPreviews, leaveGame } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
 import { Critter, Art, Wish, useMood, DragArea, Draggable, DropZone, RoundTrail, HintHand, useBursts } from '../components/play/index.js'
@@ -224,7 +224,7 @@ export default function WeightGame({ level = 1, onComplete }) {
     return riders.length ? [...new Set(riders)].slice(0, 6) : ['🐦', '🐻', '🐰', '🐸', '🐷', '🦔']
   })
 
-  useEffect(() => stopNarration, [])
+  useEffect(() => leaveGame, [])
   // where the sun is, again after the screen turns
   useLayoutEffect(() => {
     const measure = () => setSunAt(findSun(boxRef.current, areaRef.current))

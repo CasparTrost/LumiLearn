@@ -72,7 +72,7 @@ export const LINES = {
   'bewegung/atmen': 'Und jetzt ganz ruhig. Atme tief ein … und langsam wieder aus.',
   'bewegung/fertig': 'Super gemacht! Jetzt sind wir wieder fit für die Reise.',
   // rueckmeldung
-  'rueckmeldung/richtig-1': 'Super!',
+  'rueckmeldung/richtig-1': 'Ja, super!',
   'rueckmeldung/richtig-2': 'Richtig!',
   'rueckmeldung/richtig-3': 'Genau!',
   'rueckmeldung/richtig-4': 'Klasse!',

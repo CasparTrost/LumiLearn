@@ -4,6 +4,7 @@ import { emojiSrc, hasEmojiArt, customName, customArtSrc } from '../../lib/emoji
 import { onNarrationChange } from '../../narrator.js'
 import { lumiArt } from '../../lib/assets.js'
 import { sfx } from '../../sfx.js'
+import { playAnimal } from '../../lib/animalSounds.js'
 import './play.css'
 
 const BASE = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '')
@@ -81,9 +82,18 @@ export default function Critter({
     controls.start(A[shown] ?? A.idle)
   }, [shown, size, flip, controls])
 
+  // An animal that becomes happy (a right answer) makes its own
+  // sound; not when it first appears already happy
+  const seen = useRef(mood)
+  useEffect(() => {
+    const was = seen.current
+    seen.current = mood
+    if (was !== mood && (mood === 'happy' || mood === 'dance')) playAnimal(art, { volume: 0.6 })
+  }, [mood, art])
+
   const tap = e => {
-    if (onTap) { onTap(e); return }
-    sfx.giggle()
+    if (onTap) { playAnimal(art, { volume: 0.6 }); onTap(e); return }
+    if (!playAnimal(art)) sfx.giggle()
     setTickle(t => t + 1)
     if (!reduceMotion()) controls.start({ rotate: [0, -10, 10, -6, 6, 0], scale: [1, 1.08, 1], transition: { duration: 0.6 } })
       .then(() => { controls.set({ rotate: 0 }); controls.start({ y: [0, -size * 0.02, 0], transition: { duration: 2.6, repeat: Infinity } }) })

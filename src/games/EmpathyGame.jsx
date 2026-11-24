@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DragArea, Draggable, RoundTrail, Art, HintHand, useBursts } from '../components/play/index.js'
-import { stopNarration } from '../narrator.js'
+import { leaveGame } from '../narrator.js'
 import { sayRight, sayWrong } from '../lib/feedback.js'
 import { sfx } from '../sfx.js'
 import { result } from '../lib/score.js'
@@ -323,7 +323,7 @@ export default function EmpathyGame({ level = 1, onComplete }) {
   const narrow = typeof window !== 'undefined' && window.innerWidth < 600
   const friendAt = () => document.querySelector('[data-friend]') ?? undefined
 
-  useEffect(() => () => stopNarration(), [])
+  useEffect(() => () => leaveGame(), [])
 
   // A new friend: what happened plays (from level 7 only the friend, alone)
   useEffect(() => {
