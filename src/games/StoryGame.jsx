@@ -5,8 +5,8 @@ import { stopNarration } from '../narrator.js'
 import { sayRight, sayWrong } from '../lib/feedback.js'
 import { sfx } from '../sfx.js'
 import { result } from '../lib/score.js'
-import { FEELING_ICON, shuffle } from './feelings.js'
-import { Stage, FeelLumi, FaceChip, AskFace, sceneLength, useAfter } from './feelingStage.jsx'
+import { shuffle } from './feelings.js'
+import { Stage, FeelLumi, FaceChip, FeelingFace, AskFace, sceneLength, useAfter, useTrayStart } from './feelingStage.jsx'
 import { INK, pxButton } from './px.js'
 
 /**
@@ -56,8 +56,8 @@ const STORIES = [
     ],
     choice: {
       options: [
-        { text: '🤝 Lumi hilft dem Igel, den Weg zu finden', value: 'help' },
-        { text: '🏃 Lumi läuft schnell weiter', value: 'run' },
+        { text: '🤝 Lumi hilft dem Igel, den Weg zu finden', value: 'help', pic: ['🤝', '🦔', '🏠'] },
+        { text: '🏃 Lumi läuft schnell weiter', value: 'run', pic: ['🏃', '💨'] },
       ],
     },
     outcomes: {
@@ -94,8 +94,8 @@ const STORIES = [
     ],
     choice: {
       options: [
-        { text: '🍰 Lumi kauft ein Stück Kuchen und teilt es mit der Maus', value: 'share' },
-        { text: '😋 Lumi kauft das Stück Kuchen für sich allein', value: 'keep' },
+        { text: '🍰 Lumi kauft ein Stück Kuchen und teilt es mit der Maus', value: 'share', pic: ['🍰', '➡️', '🐭'] },
+        { text: '😋 Lumi kauft das Stück Kuchen für sich allein', value: 'keep', pic: ['😋', '🍰'] },
       ],
     },
     outcomes: {
@@ -131,8 +131,8 @@ const STORIES = [
     ],
     choice: {
       options: [
-        { text: '⏳ Lumi stellt sich hinten an', value: 'wait' },
-        { text: '🏃 Lumi drängelt sich vor', value: 'skip' },
+        { text: '⏳ Lumi stellt sich hinten an', value: 'wait', pic: ['⏳', '🛝'] },
+        { text: '🏃 Lumi drängelt sich vor', value: 'skip', pic: ['🏃', '💨', '🛝'] },
       ],
     },
     outcomes: {
@@ -170,8 +170,8 @@ const STORIES = [
     choice: {
       options: [
         // Fremde Tiere fasst man nicht an — man holt einen Erwachsenen.
-        { text: '🏠 Lumi holt schnell Mama und zeigt ihr das Kätzchen', value: 'help' },
-        { text: '🚶 Lumi geht weiter. Vielleicht hilft ja jemand anderes.', value: 'leave' },
+        { text: '🏠 Lumi holt schnell Mama und zeigt ihr das Kätzchen', value: 'help', pic: ['🐱', '➡️', '👩'] },
+        { text: '🚶 Lumi geht weiter. Vielleicht hilft ja jemand anderes.', value: 'leave', pic: ['🚶', '💨'] },
       ],
     },
     outcomes: {
@@ -208,8 +208,8 @@ const STORIES = [
     ],
     choice: {
       options: [
-        { text: '🍪 Lumi backt mit Oma Plätzchen', value: 'bake' },
-        { text: '📚 Lumi schaut gemütlich ein Bilderbuch an', value: 'book' },
+        { text: '🍪 Lumi backt mit Oma Plätzchen', value: 'bake', pic: ['🍪', '👵'] },
+        { text: '📚 Lumi schaut gemütlich ein Bilderbuch an', value: 'book', pic: ['📚', '🛋️'] },
       ],
     },
     outcomes: {
@@ -246,8 +246,8 @@ const STORIES = [
     ],
     choice: {
       options: [
-        { text: '🥪 Lumi teilt das Brot mit Jonas', value: 'share' },
-        { text: '😶 Lumi isst allein. Es ist ja Lumis Brot.', value: 'keep' },
+        { text: '🥪 Lumi teilt das Brot mit Jonas', value: 'share', pic: ['🥪', '➡️', '👦'] },
+        { text: '😶 Lumi isst allein. Es ist ja Lumis Brot.', value: 'keep', pic: ['😋', '🥪'] },
       ],
     },
     outcomes: {
@@ -284,8 +284,8 @@ const STORIES = [
     ],
     choice: {
       options: [
-        { text: '🗣️ Lumi erzählt Oma die Wahrheit, sobald sie heimkommt', value: 'truth' },
-        { text: '🙈 Lumi sagt nichts und hofft, dass Oma es nicht merkt', value: 'hide' },
+        { text: '🗣️ Lumi erzählt Oma die Wahrheit, sobald sie heimkommt', value: 'truth', pic: ['🗣️', '👵'] },
+        { text: '🙈 Lumi sagt nichts und hofft, dass Oma es nicht merkt', value: 'hide', pic: ['🙈', '🏺'] },
       ],
     },
     outcomes: {
@@ -322,8 +322,8 @@ const STORIES = [
     ],
     choice: {
       options: [
-        { text: '👋 Lumi geht zu Emma und sagt Hallo', value: 'approach' },
-        { text: '🏃 Lumi rennt zu den anderen Freunden', value: 'ignore' },
+        { text: '👋 Lumi geht zu Emma und sagt Hallo', value: 'approach', pic: ['👋', '👧'] },
+        { text: '🏃 Lumi rennt zu den anderen Freunden', value: 'ignore', pic: ['🏃', '⚽'] },
       ],
     },
     outcomes: {
@@ -359,8 +359,8 @@ const STORIES = [
     ],
     choice: {
       options: [
-        { text: '🔁 Lumi schaukelt noch zehnmal und wechselt dann mit Ida ab', value: 'turns' },
-        { text: '🤝 Lumi lässt Ida gleich schaukeln und schubst sie an', value: 'now' },
+        { text: '🔁 Lumi schaukelt noch zehnmal und wechselt dann mit Ida ab', value: 'turns', pic: ['🔁', ':px-schaukel:'] },
+        { text: '🤝 Lumi lässt Ida gleich schaukeln und schubst sie an', value: 'now', pic: ['🤝', ':px-schaukel:'] },
       ],
     },
     outcomes: {
@@ -396,8 +396,8 @@ const STORIES = [
     ],
     choice: {
       options: [
-        { text: '✅ Lumi macht das Tablet aus', value: 'stop' },
-        { text: '🤫 Lumi spielt heimlich weiter', value: 'sneak' },
+        { text: '✅ Lumi macht das Tablet aus', value: 'stop', pic: ['📱', '💤'] },
+        { text: '🤫 Lumi spielt heimlich weiter', value: 'sneak', pic: ['🤫', '📱'] },
       ],
     },
     outcomes: {
@@ -434,8 +434,8 @@ const STORIES = [
     ],
     choice: {
       options: [
-        { text: '🧗 Lumi versucht es, Schritt für Schritt', value: 'brave' },
-        { text: '🌳 Lumi bleibt lieber unten', value: 'stay' },
+        { text: '🧗 Lumi versucht es, Schritt für Schritt', value: 'brave', pic: ['🧗', '🪜'] },
+        { text: '🌳 Lumi bleibt lieber unten', value: 'stay', pic: ['🌱', '🪜'] },
       ],
     },
     outcomes: {
@@ -471,8 +471,8 @@ const STORIES = [
     ],
     choice: {
       options: [
-        { text: '🏠 Lumi geht pünktlich nach Hause, wie versprochen', value: 'promise' },
-        { text: '🧸 Lumi bleibt noch ein bisschen bei Ben', value: 'stay' },
+        { text: '🏠 Lumi geht pünktlich nach Hause, wie versprochen', value: 'promise', pic: ['🏠', '👵'] },
+        { text: '🧸 Lumi bleibt noch ein bisschen bei Ben', value: 'stay', pic: ['🧸', '👦'] },
       ],
     },
     outcomes: {
@@ -508,8 +508,8 @@ const STORIES = [
     ],
     choice: {
       options: [
-        { text: '👮 Lumi bringt das Portemonnaie mit Mama zur Polizei', value: 'return' },
-        { text: '💰 Lumi steckt das Portemonnaie in die eigene Tasche', value: 'keep' },
+        { text: '👮 Lumi bringt das Portemonnaie mit Mama zur Polizei', value: 'return', pic: ['👮', ':px-portemonnaie:'] },
+        { text: '💰 Lumi steckt das Portemonnaie in die eigene Tasche', value: 'keep', pic: ['💰', '🎒'] },
       ],
     },
     outcomes: {
@@ -546,8 +546,8 @@ const STORIES = [
     ],
     choice: {
       options: [
-        { text: '🗣️ Lumi erzählt Lea, was passiert ist', value: 'tell' },
-        { text: '🙈 Lumi stopft den Pulli ganz hinten in den Schrank', value: 'hide' },
+        { text: '🗣️ Lumi erzählt Lea, was passiert ist', value: 'tell', pic: ['🗣️', '👧'] },
+        { text: '🙈 Lumi stopft den Pulli ganz hinten in den Schrank', value: 'hide', pic: ['🙈', '👕'] },
       ],
     },
     outcomes: {
@@ -597,18 +597,18 @@ function levelSetup(level) {
     ...shuffle(STORIES.filter(s => s.tier === tier)),
     ...shuffle(STORIES.filter(s => s.tier === tier - 1)),
   ]
-  return { stories: pool.slice(0, count), faces: level <= 3 ? 2 : 3, allAsks: level >= 4 }
+  return { stories: pool.slice(0, count), faces: level <= 3 ? 2 : 3 }
 }
 
 const plain = s => s.replace(/\s*\p{Extended_Pictographic}️?/gu, '').trim()
-const iconOf = s => s.match(/^\p{Extended_Pictographic}️?/u)?.[0] ?? '⭐'
 // what is still where it was at the end of a scene (the lesson shows it again)
+const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 const STAYS = new Set(['none', 'pop', 'bob', 'drop', 'shake', 'hop', 'jack', 'bang', undefined])
 const GO = { ...pxButton('green'), color: INK, textShadow: '0 1px 0 rgba(255,255,255,0.45)' }
 
 export default function StoryGame({ level = 1, onComplete }) {
   const [setup]      = useState(() => levelSetup(level))
-  const { stories, faces, allAsks } = setup
+  const { stories, faces } = setup
   const [storyIdx,   setStoryIdx]   = useState(0)
   const [phase,      setPhase]      = useState('intro') // intro | choice | outcome | lesson | alt | end
   const [panelIdx,   setPanelIdx]   = useState(0)
@@ -621,6 +621,7 @@ export default function StoryGame({ level = 1, onComplete }) {
   const [after, cancel] = useAfter()
   const [bursts, burst] = useBursts()
   const trayRef = useRef(null), nextRef = useRef(null)
+  const trayStart = useTrayStart(trayRef)
   const ref = sel => ({ get current() { return document.querySelector(sel) } })
   const [whoRef] = useState(() => ref('[data-story-stage] .pl-drop'))
   const [lumiRef] = useState(() => ref('[data-fork-lumi]'))
@@ -631,10 +632,11 @@ export default function StoryGame({ level = 1, onComplete }) {
   const outcome = chosen ? story.outcomes[chosen] : null
   const altOption = chosen ? story.choice.options.find(o => o.value !== chosen) : null
   const beats = phase === 'intro' ? story.panels : phase === 'outcome' ? outcome.panels : phase === 'alt' ? story.outcomes[altOption.value].panels : null
-  const panel = beats?.[panelIdx] ?? null
-  // Levels 1-3 ask once per story: in the opening if it has a question,
-  // otherwise after the choice. The other path (alt) only shows.
-  const ask = panel?.ask && phase !== 'alt' && (allAsks || phase === 'intro' || !story.panels.some(p => p.ask)) ? panel.ask : null
+  const panel = beats?.[Math.min(panelIdx, beats.length - 1)] ?? null
+  // Every question of the story is asked (at level 1 two stories used to
+  // give only two rated answers, and the stars jumped). The other path
+  // (alt) only shows.
+  const ask = panel?.ask && phase !== 'alt' ? panel.ask : null
   const stepKey = `${storyIdx}-${phase}-${panelIdx}`
   const asking = !!ask && ready
 
@@ -650,7 +652,12 @@ export default function StoryGame({ level = 1, onComplete }) {
     if (panel) after(() => setReady(true), Math.max(1500, sceneLength(panel.cast, panel.lumi)), { quiet: false })
   }, [stepKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // once per page: a second tap on the page-turn button (it stays on screen
+  // while it shrinks away) turned two pages and ran past the last one
+  const turned = useRef(null)
   const advance = () => {
+    if (turned.current === stepKey) return
+    turned.current = stepKey
     sfx.flip()
     if (panelIdx < beats.length - 1) { setPanelIdx(p => p + 1); return }
     setPanelIdx(0)
@@ -680,24 +687,26 @@ export default function StoryGame({ level = 1, onComplete }) {
   }
 
   const nextStory = () => {
+    if (turned.current === `story-${storyIdx}`) return
+    turned.current = `story-${storyIdx}`
     if (storyIdx + 1 >= stories.length) { setPhase('end'); return }
     setStoryIdx(i => i + 1); setPanelIdx(0); setChosen(null); setPhase('intro'); setSawAlt(false)
   }
 
   const openAlt = () => { setSawAlt(true); setPanelIdx(0); setPhase('alt') }
 
-  if (phase === 'end') return <Finale stories={stories} narrow={narrow} onDone={() => onComplete(result(firstTry, asked))} />
+  if (phase === 'end') return <Finale stories={stories} narrow={narrow} onDone={() => { if (turned.current !== 'end') { turned.current = 'end'; onComplete(result(firstTry, asked)) } }} />
 
   const whoIdx = panel?.cast?.findIndex(x => x.who) ?? -1
   const target = ask ? (ask.who === 'Lumi' ? 'lumi' : whoIdx) : null
   const last = outcome?.panels[outcome.panels.length - 1]
-  const caption = panel ? plain(panel.text) : phase === 'lesson' ? outcome.lesson : ''
   const turnPage = panel && ready && !ask
 
   return (
     <DragArea autoTarget={phase === 'choice' ? null : 'who'} disabled={phase !== 'choice' && (!asking || !!answer)}>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px clamp(10px,3vw,28px) 14px', gap: 8, minHeight: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', maxWidth: 820 }}>
+        {/* kept clear of the sun in the backdrop's top right */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', maxWidth: 820, paddingRight: narrow ? 64 : 150, boxSizing: 'border-box' }}>
           <div style={{ flex: 1, minWidth: 0 }}><RoundTrail total={stories.length} done={storyIdx + (phase === 'lesson' ? 1 : 0)} walker="lumi" goal="🏰" size={narrow ? 34 : 42} /></div>
           {/* this story's pages: where we are in it */}
           {beats && <div role="img" aria-label={story.title} style={{ display: 'flex', gap: 5 }}>
@@ -705,20 +714,17 @@ export default function StoryGame({ level = 1, onComplete }) {
           </div>}
         </div>
 
-        <div data-story-stage style={{ flex: 1, width: '100%', maxWidth: 980, display: 'flex', minHeight: 0 }}>
+        <div data-story-stage role="img" aria-label={panel ? plain(panel.text) : phase === 'lesson' ? outcome.lesson : story.title} style={{ flex: 1, width: '100%', maxWidth: 980, display: 'flex', minHeight: 0 }}>
           {phase === 'choice'
             ? <Fork options={story.choice.options} hint={storyIdx % 2} onChoose={choose} narrow={narrow} />
             : panel
               ? <Stage key={stepKey} playKey={stepKey} cast={panel.cast} fx={panel.fx}
-                  lumi={{ x: 170, size: 150, ...panel.lumi }}
+                  lumi={{ x: 170, size: 150, ...panel.lumi, ...(target === 'lumi' && !answer ? { feel: 'neutral', say: undefined } : {}) }}
                   drop={target != null && target !== -1 ? { who: target, id: 'who', onDrop: d => giveFace(d.feeling), label: ask.who } : undefined}
-                  bubbles={asking && target != null ? { [target]: answer ? <Art art={FEELING_ICON[ask.feeling]} size={44} /> : <AskFace /> } : {}} />
+                  bubbles={asking && target != null ? { [target]: answer ? <FeelingFace feeling={ask.feeling} size={44} /> : <AskFace /> } : {}} />
               : <Stage key={stepKey} playKey={stepKey} cast={last.cast.filter(x => x.char || STAYS.has(x.act)).map(x => ({ ...x, act: 'none', say: undefined, d: 0 }))}
                   lumi={{ x: 170, size: 150, feel: 'happy' }} bubbles={{ lumi: <Art art="💡" size={44} /> }} />}
         </div>
-
-        <p style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: narrow ? 13 : 15, color: INK, textAlign: 'center', margin: 0, maxWidth: 680,
-          background: 'rgba(255,253,247,.6)', borderRadius: 14, padding: '3px 12px', minHeight: 22, visibility: caption ? 'visible' : 'hidden' }}>{caption}</p>
 
         {/* clipped: the tray sliding in must not count as content height
             for the FitBox around the game */}
@@ -749,7 +755,7 @@ export default function StoryGame({ level = 1, onComplete }) {
                 {!sawAlt && (
                   <motion.button whileTap={{ scale: 0.95 }} onClick={openAlt} aria-label="Und wenn Lumi anders entschieden hätte?"
                     style={{ ...pxButton('parch'), padding: '10px 18px', minHeight: 64, display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <Art art="🔀" size={36} /><Art art={iconOf(altOption.text)} size={36} />
+                    <Art art="🔀" size={36} /><Art art={altOption.pic[0]} size={36} />
                   </motion.button>
                 )}
                 <motion.button whileTap={{ scale: 0.95 }} onClick={nextStory} aria-label={storyIdx + 1 >= stories.length ? 'Fertig' : 'Nächste Geschichte'}
@@ -762,7 +768,7 @@ export default function StoryGame({ level = 1, onComplete }) {
           </AnimatePresence>
         </div>
       </div>
-      {asking && !answer && <HintHand from={trayRef} to={whoRef} delay={asked === 0 ? 2000 : 6000} />}
+      {asking && !answer && <HintHand from={trayStart} to={whoRef} delay={asked === 0 ? 2000 : 6000} />}
       {turnPage && <HintHand to={nextRef} delay={storyIdx === 0 && phase === 'intro' && panelIdx === 0 ? 2500 : 7000} />}
       {phase === 'choice' && <HintHand from={lumiRef} to={signRef} delay={storyIdx === 0 ? 2500 : 6000} />}
       {bursts}
@@ -800,41 +806,61 @@ function Finale({ stories, narrow, onDone }) {
 }
 
 /**
- * The fork in the path: Lumi stands in the middle, a signpost with a picture
- * on either side. Carry Lumi to one, or tap it.
+ * The fork in the path: Lumi stands in the middle, a signpost with pictures
+ * of each way on either side. Carry Lumi to one, or tap it: the pictures of
+ * that way come flying to Lumi, then the story goes on that way.
  */
 function Fork({ options, hint, onChoose, narrow }) {
+  const [picked, setPicked] = useState(null)
   const size = narrow ? 96 : 150
+  const pick = (value) => {
+    if (picked) return
+    setPicked(value)
+    sfx.whoosh()
+    setTimeout(() => onChoose(value), reduceMotion() ? 200 : 1100)
+  }
+  const flying = options.find(o => o.value === picked)
   return (
-    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: narrow ? 8 : 40 }}>
-      <Sign opt={options[0]} hint={hint === 0} onChoose={onChoose} narrow={narrow} side="left" />
-      <Draggable id="lumi" data={{ lumi: true }} label="Lumi" data-fork-lumi="">
-        <motion.div animate={{ y: [0, -10, 0] }} transition={{ duration: 1.4, repeat: Infinity }}>
-          <FeelLumi feel="curious" size={size} />
+    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: narrow ? 8 : 40, position: 'relative' }}>
+      <Sign opt={options[0]} hint={hint === 0} onPick={pick} picked={picked} narrow={narrow} side="left" />
+      <Draggable id="lumi" data={{ lumi: true }} label="Lumi" data-fork-lumi="" disabled={!!picked}>
+        <motion.div animate={picked ? { y: [0, -40, 0], rotate: [0, 360] } : { y: [0, -10, 0] }}
+          transition={picked ? { duration: 0.8 } : { duration: 1.4, repeat: Infinity }}>
+          <FeelLumi feel={picked ? 'excited' : 'curious'} size={size} />
         </motion.div>
       </Draggable>
-      <Sign opt={options[1]} hint={hint === 1} onChoose={onChoose} narrow={narrow} side="right" />
+      <Sign opt={options[1]} hint={hint === 1} onPick={pick} picked={picked} narrow={narrow} side="right" />
+      {/* the chosen way's pictures fly to Lumi */}
+      {flying && flying.pic.map((a, i) => (
+        <motion.div key={i} aria-hidden="true"
+          initial={{ x: (picked === options[0].value ? -1 : 1) * (narrow ? 120 : 220), y: -20, scale: 1, opacity: 1 }}
+          animate={{ x: 0, y: [-20, -120, -60], scale: [1, 1.4, 0.8], opacity: [1, 1, 0], rotate: 360 }}
+          transition={{ duration: 1, delay: i * 0.12 }}
+          style={{ position: 'absolute', left: '50%', top: '45%', marginLeft: -30, pointerEvents: 'none' }}>
+          <Art art={a} size={60} />
+        </motion.div>
+      ))}
     </div>
   )
 }
 
-function Sign({ opt, hint, onChoose, narrow, side }) {
-  const { picked } = useDragState()
-  const w = narrow ? 112 : 220
+function Sign({ opt, hint, onPick, picked, narrow, side }) {
+  const { picked: carrying } = useDragState()
+  const w = narrow ? 120 : 230
+  const art = narrow ? (opt.pic.length > 2 ? 34 : 46) : (opt.pic.length > 2 ? 62 : 80)
   return (
-    <DropZone id={opt.value} onDrop={() => { onChoose(opt.value); return true }} label={plain(opt.text)} slop={30}>
+    <DropZone id={opt.value} onDrop={() => { onPick(opt.value); return true }} label={plain(opt.text)} slop={30}>
       {hover => (
-        <motion.button onClick={() => { if (!picked) onChoose(opt.value) }} aria-label={plain(opt.text)} data-sign={hint ? 'hint' : undefined}
-          initial={{ scale: 0, rotate: 0 }} animate={{ scale: hover ? 1.08 : 1, rotate: side === 'left' ? -3 : 3 }}
+        <motion.button onClick={() => { if (!carrying) onPick(opt.value) }} aria-label={plain(opt.text)} data-sign={hint ? 'hint' : undefined}
+          initial={{ scale: 0 }} animate={{ scale: picked === opt.value ? 1.12 : hover ? 1.08 : picked ? 0.9 : 1, rotate: side === 'left' ? -3 : 3, opacity: picked && picked !== opt.value ? 0.4 : 1 }}
           transition={{ type: 'spring', stiffness: 260, damping: 14 }}
           style={{ all: 'unset', cursor: 'pointer', width: w, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <div style={{
-            width: '100%', padding: narrow ? '10px 6px' : '14px 12px', borderRadius: 18, background: '#f7d9a3',
-            border: '4px solid #8a4f22', boxShadow: hover ? '0 0 0 5px #ffc93c, 0 6px 0 rgba(42,27,61,.35)' : '0 6px 0 rgba(42,27,61,.35)',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, boxSizing: 'border-box',
+            width: '100%', minHeight: narrow ? 92 : 140, padding: narrow ? '10px 4px' : '16px 10px', borderRadius: 18, background: '#f7d9a3',
+            border: '4px solid #8a4f22', boxShadow: hover || picked === opt.value ? '0 0 0 5px #ffc93c, 0 6px 0 rgba(42,27,61,.35)' : '0 6px 0 rgba(42,27,61,.35)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, boxSizing: 'border-box', flexWrap: 'wrap',
           }}>
-            <Art art={iconOf(opt.text)} size={narrow ? 64 : 100} />
-            <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: narrow ? 12 : 15, lineHeight: 1.15, color: '#2a1b3d', textAlign: 'center' }}>{plain(opt.text)}</span>
+            {opt.pic.map((a, i) => <Art key={i} art={a} size={a === '➡️' || a === '💨' ? art * 0.6 : art} />)}
           </div>
           {/* the post */}
           <div style={{ width: 14, height: narrow ? 34 : 60, background: '#8a4f22', borderRadius: '0 0 4px 4px' }} />

@@ -13,12 +13,16 @@ export const FEELING_ICON = {
   'Verlegen':     '😳',
   'Dankbar':      '🥰',
   'Überrascht':   '😮',
-  'Stolz':        '💪',
+  'Stolz':        '😊',   // with a medal (FEELING_BADGE): 💪 was an arm, not a face
   'Gelangweilt':  '😑',
   'Eifersüchtig': '😒',
   'Neugierig':    '🤔',
   'Einsam':       '😔',
 }
+
+// A little picture on the face where the face alone looks like another
+// feeling: proud is glad *about something you did*.
+export const FEELING_BADGE = { 'Stolz': '🏅' }
 
 // The feelings that come out bright; the others are the heavy ones. After
 // something that helps, a heavy feeling calms down and a bright one stays.

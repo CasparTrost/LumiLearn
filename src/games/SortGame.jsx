@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Art, DragArea, Draggable, DropZone, RoundTrail, HintHand, useBursts, useDragState } from '../components/play/index.js'
+import { Art, Critter, useMood, DragArea, Draggable, DropZone, RoundTrail, HintHand, useBursts, useDragState } from '../components/play/index.js'
+import { useSceneClear } from './sceneSpace.js'
 import Korbmonster from './sort/Korbmonster.jsx'
 import { sfx } from '../sfx.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
@@ -367,46 +368,61 @@ function MonsterZone({ id, width, onDrop, label, monsterRef, mood, ...monster })
 
 // The size of a monster: as large as the space allows, at most 250 wide.
 // Three monsters on a narrow, tall screen (a phone) stand in two rows,
-// two and one, instead of three tiny ones in a row.
+// two and one, instead of three tiny ones in a row. `spare`: the height
+// left free above them (a phone has a lot of it).
 function useMonsterWidth(n) {
   const ref = useRef(null)
-  const [w, setW] = useState(160)
+  const [size, setSize] = useState({ w: 160, spare: 0 })
   useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
     const fit = (perRow, rows) => Math.min(250, (el.clientWidth - 18 * (perRow - 1)) / perRow - 1, (el.clientHeight - 10 * (rows - 1)) / rows / 1.3)
-    const measure = () => setW(Math.floor(Math.max(90, n === 3 ? Math.max(fit(3, 1), fit(2, 2)) : fit(n, 1))))
+    const measure = () => {
+      const rows = n === 3 && fit(2, 2) > fit(3, 1) ? 2 : 1
+      const w = Math.floor(Math.max(90, fit(rows === 2 ? 2 : n, rows)))
+      const spare = Math.floor(el.clientHeight - rows * w * 1.3 - (rows - 1) * 10)
+      setSize(s => (s.w === w && s.spare === spare ? s : { w, spare }))
+    }
     measure()
     const ro = new ResizeObserver(measure)
     ro.observe(el)
     return () => ro.disconnect()
   }, [n])
-  return [ref, w]
+  return [ref, size.w, size.spare]
 }
 
 // The conveyor belt; the stripes move on by one place per `rolls`. Without
-// a `height`, the things on it stand in the flow and set it.
-function Belt({ rolls, height = 'auto', children }) {
+// a `height`, the things on it stand in the flow and set it. `fast` (a run
+// of right answers): it rolls quicker, with speed lines.
+function Belt({ rolls, height = 'auto', fast = false, children }) {
+  const roll = fast ? 0.32 : 0.6
   return (
     <div style={{ position: 'relative', width: '100%', height, flexShrink: 0, overflow: 'hidden' }}>
       {children}
-      <div style={{ position: 'absolute', left: 8, right: 8, bottom: 14, height: 34, background: '#6d6a7c', border: `3px solid ${INK}`, borderRadius: 20, boxShadow: '0 5px 0 rgba(42,27,61,0.35)', overflow: 'hidden' }}>
-        <motion.div initial={false} animate={{ backgroundPositionX: -rolls * GAP }} transition={{ duration: 0.6, ease: 'easeInOut' }}
+      <div style={{ position: 'absolute', left: 8, right: 8, bottom: 14, height: 34, background: fast ? '#7d5a8c' : '#6d6a7c', border: `3px solid ${INK}`, borderRadius: 20, boxShadow: fast ? '0 0 0 4px #ffc93c, 0 5px 0 rgba(42,27,61,0.35)' : '0 5px 0 rgba(42,27,61,0.35)', overflow: 'hidden', transition: 'background .3s, box-shadow .3s' }}>
+        <motion.div initial={false} animate={{ backgroundPositionX: -rolls * GAP }} transition={{ duration: roll, ease: 'easeInOut' }}
           style={{ position: 'absolute', inset: 0, backgroundImage: 'repeating-linear-gradient(90deg, #8d8a9e 0 22px, #5d5a6c 22px 31px)' }} />
       </div>
+      {fast && !reduceMotion() && [0, 1, 2].map(i => (
+        <motion.div key={`${rolls}-${i}`} aria-hidden="true" initial={{ x: 0, opacity: 0 }} animate={{ x: -160, opacity: [0, 0.9, 0] }}
+          transition={{ duration: 0.5, delay: i * 0.08 }}
+          style={{ position: 'absolute', right: `${18 + i * 9}%`, bottom: 62 + i * 22, width: 46, height: 5, borderRadius: 3, background: '#fff' }} />
+      ))}
       {[0.1, 0.3, 0.5, 0.7, 0.9].map(x => (
-        <motion.div key={x} initial={false} animate={{ rotate: rolls * 180 }} transition={{ duration: 0.6 }}
+        <motion.div key={x} initial={false} animate={{ rotate: rolls * 180 }} transition={{ duration: roll }}
           style={{ position: 'absolute', left: `calc(${x * 100}% - 9px)`, bottom: 4, width: 18, height: 18, borderRadius: '50%', background: '#c9c5d6', border: `3px solid ${INK}`, boxSizing: 'border-box', backgroundImage: `linear-gradient(90deg, transparent 6px, ${INK} 6px 9px, transparent 9px)` }} />
       ))}
     </div>
   )
 }
 
-// A big round button with a picture: no words needed
-function PicButton({ art, label, color = 'green', onClick, btnRef, size = 76 }) {
+// A big round button with a picture: no words needed. `bob`: it hops now
+// and then, to say "you can tap me too".
+function PicButton({ art, label, color = 'green', onClick, btnRef, size = 76, bob = false }) {
   return (
-    <motion.button ref={btnRef} initial={{ scale: 0 }} animate={{ scale: 1 }} whileTap={{ scale: 0.9 }}
-      transition={{ type: 'spring', stiffness: 380, damping: 15 }}
+    <motion.button ref={btnRef} initial={{ scale: 0 }} whileTap={{ scale: 0.9 }}
+      animate={bob && !reduceMotion() ? { scale: 1, y: [0, -10, 0, 0] } : { scale: 1 }}
+      transition={bob ? { scale: { type: 'spring', stiffness: 380, damping: 15 }, y: { duration: 1.6, repeat: Infinity, delay: 1 } } : { type: 'spring', stiffness: 380, damping: 15 }}
       onClick={onClick} aria-label={label}
       style={{ ...pxButton(color), width: size, height: size, borderRadius: '50%', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <Art art={art} size={size * 0.58} />
@@ -441,6 +457,8 @@ function FreeSort({ onDone }) {
   const rowRef = useRef(null)
   const firstRef = useRef(null)
   const checkRef = useRef(null)
+  const monsters = useRef([])
+  const left     = useRef(false)                     // ➡️ was tapped (a second tap does nothing)
   const moodT = useRef(null)
   const [bursts, burst] = useBursts()
   const allIn = where.every(w => w !== null)
@@ -476,12 +494,13 @@ function FreeSort({ onDone }) {
     if (g) { sfx.match(); burst(rowRef.current, 'confetti', 16) } else sfx.boing()
   }
 
-  const thing = (t, size, ref) => (
+  const thing = (t, size) => (
     <Draggable id={t.emoji} data={t} label={t.name} disabled={guessed}>
-      <div ref={ref}><Art art={t.emoji} size={size} /></div>
+      <Art art={t.emoji} size={size} />
     </Draggable>
   )
   const firstLeft = things.findIndex((_, i) => where[i] === null)
+  const fewer = where.filter(w => w === 1).length < where.filter(w => w === 0).length ? 1 : 0
 
   return (
     <DragArea disabled={guessed}>
@@ -493,6 +512,7 @@ function FreeSort({ onDone }) {
         <div ref={rowRef} style={{ flex: 1, minHeight: 0, width: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 24 }}>
           {FREE_TINT.map((tint, b) => (
             <MonsterZone key={b} id={`free${b}`} width={mw} onDrop={t => put(b, t)}
+              monsterRef={el => { monsters.current[b] = el }}
               label={b === 0 ? 'Linkes Korbmonster' : 'Rechtes Korbmonster'}
               tint={tint} look={b + 1} mood={moods[b]} sign={signs?.[b]}
               items={things.filter((_, i) => where[i] === b).map(t => ({ id: t.emoji, emoji: t.emoji, t }))}
@@ -503,14 +523,17 @@ function FreeSort({ onDone }) {
         {/* the belt with what is left, then ✅ / ➡️ in its place */}
         <Belt rolls={where.filter(w => w !== null).length}>
           <div style={{ padding: '4px 0 50px', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'flex-end', gap: '4px 10px', minHeight: 80 }}>
-            {things.map((t, i) => where[i] === null && <div key={t.emoji}>{thing(t, 76, i === firstLeft ? firstRef : undefined)}</div>)}
+            {/* the hand's ref sits outside the draggable thing: the kit draws the
+                thing again while it flies, and that copy would take the ref along */}
+            {things.map((t, i) => where[i] === null && <div key={t.emoji} ref={i === firstLeft ? firstRef : undefined}>{thing(t, 76)}</div>)}
             {allIn && !guessed && <PicButton key="check" art="✅" label="Fertig" onClick={check} btnRef={checkRef} />}
-            {guessed && <PicButton key="next" art="➡️" label="Weiter" onClick={onDone} />}
+            {guessed && <PicButton key="next" art="➡️" label="Weiter" btnRef={checkRef} onClick={() => { if (!left.current) { left.current = true; onDone() } }} />}
           </div>
         </Belt>
       </div>
-      {!allIn && <HintHand from={firstRef} to={rowRef} delay={4000} />}
-      {allIn && !guessed && <HintHand to={checkRef} delay={4000} />}
+      {/* the hand: a thing to the monster with fewer (any is fine), then ✅, then ➡️ */}
+      {!allIn && <HintHand from={firstRef} to={monsters.current[fewer]} delay={4000} />}
+      {allIn && <HintHand to={checkRef} delay={4000} />}
       {bursts}
     </DragArea>
   )
@@ -524,17 +547,21 @@ export default function SortGame({ level = 1, onComplete }) {
   const [phase,  setPhase]  = useState('playing')    // playing | done | free
   const [busy,   setBusy]   = useState(false)        // the belt is moving on
   const [acted,  setActed]  = useState(false)        // the child gave something (the hand waits longer then)
+  const [fast,   setFast]   = useState(false)        // a run of right answers: the belt speeds up
+  const [lumi,   setLumi]   = useMood()              // Lumi, the belt boss, where there is room
   const paused   = usePaused()
   const missed   = useRef(new Set())                  // things that needed more than one try
   const final    = useRef(null)                       // the level's result, kept through the bonus round
   const monsters = useRef([])
   const frontRef = useRef(null)                       // the thing at the front of the belt (for the hint)
-  const aimRef   = useRef(null)                       // above the monsters (for the hint)
+  const nextRef  = useRef(null)                       // ➡️ at the end (for the hint)
+  const left     = useRef(false)                      // the level was handed in (a second tap does nothing)
   const streak   = useRef(0)                          // right at the first try in a row
   const timers   = useRef([])
   const moodT    = useRef([])
   const [bursts, burst] = useBursts()
-  const [rowRef, mw] = useMonsterWidth(cats.length)
+  const [rowRef, mw, spare] = useMonsterWidth(cats.length)
+  const [rootRef, clear] = useSceneClear(714, 246)   // the room's window
   const total   = items.length
   const current = items[curIdx] ?? null
 
@@ -562,6 +589,8 @@ export default function SortGame({ level = 1, onComplete }) {
       // right one jumps and its sign lights up.
       missed.current.add(it.id)
       streak.current = 0
+      setFast(false)
+      setLumi('oops', 1200)
       setMood(target, 'bah', 1300)
       later(() => setMood(it.cat, 'point', 1400), 500)
       sayWrong()
@@ -575,8 +604,11 @@ export default function SortGame({ level = 1, onComplete }) {
     setMood(target, 'happy', 900)
     burst(monsters.current[target], 'stars')
     // a run of right answers: the other monsters cheer along, louder and louder
+    setFast(streak.current >= 3)
+    setLumi(streak.current >= 3 ? 'dance' : 'happy', 1200)
     if (streak.current >= 3) {
       sfx.combo(streak.current)
+      later(() => sfx.whoosh(), 150)
       cats.forEach((_, i) => i !== target && later(() => setMood(i, 'happy', 900), 150))
       if (streak.current % 5 === 0) burst(monsters.current[target], 'confetti', 18)
     }
@@ -587,7 +619,7 @@ export default function SortGame({ level = 1, onComplete }) {
       // now and then a full basket burps (a surprise, not a reward)
       if (Math.random() < 0.2) later(() => { sfx.burp(); setMood(target, 'burp', 900) }, 950)
       setBusy(true)
-      later(() => setBusy(false), 700)
+      later(() => setBusy(false), streak.current >= 3 ? 420 : 700)
     } else {
       // the end: everybody dances before the choice what comes next
       final.current = result(total - missed.current.size, total)
@@ -595,26 +627,42 @@ export default function SortGame({ level = 1, onComplete }) {
         setPhase('done')
         sfx.complete()
         cats.forEach((_, i) => setMood(i, 'dance', 3600))
+        setLumi('dance', 3600)
         burst(rowRef.current, 'confetti', 20)
       }, 900)
     }
     return true
   }
 
-  if (phase === 'free') return <FreeSort onDone={() => onComplete(final.current)} />
+  // the level's result, once — a second tap on ➡️ must not hand it in twice
+  const finish = () => {
+    if (left.current) return
+    left.current = true
+    onComplete(final.current)
+  }
+
+  if (phase === 'free') return <FreeSort onDone={finish} />
 
   const queue = items.slice(curIdx, curIdx + 3)
 
   return (
     <DragArea disabled={paused || busy || phase !== 'playing'}>
-      <div style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 16px 0', gap: 6, userSelect: 'none' }}>
-        <div style={{ width: '100%', maxWidth: 760 }}>
+      <div ref={rootRef} style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 16px 0', gap: 6, userSelect: 'none' }}>
+        {/* the trail ends left of the window in the wall */}
+        <div style={clear ? { width: '100%', maxWidth: Math.min(760, clear.x - 40), alignSelf: 'flex-start' } : { width: '100%', maxWidth: 760 }}>
           <RoundTrail total={total} done={curIdx} walker="🐭" goal="🧀" />
         </div>
 
         {/* the monsters, each with the sign of what it collects */}
         <div ref={rowRef} style={{ position: 'relative', flex: 1, minHeight: 0, width: '100%', display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', alignContent: 'flex-end', justifyContent: 'center', gap: '10px 18px' }}>
-          <div ref={aimRef} aria-hidden="true" style={{ position: 'absolute', left: '50%', bottom: '58%', width: 1, height: 1 }} />
+          {/* Lumi watches the belt where there is room (a phone), and cheers */}
+          {spare > 150 && (
+            <div style={{ position: 'absolute', left: 0, right: 0, top: Math.max(0, spare / 2 - Math.min(130, spare * 0.6) / 2 - 10), display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
+              <div style={{ pointerEvents: 'auto' }}>
+                <Critter art="lumi" size={Math.round(Math.min(130, spare * 0.6))} mood={lumi} label="Lumi" />
+              </div>
+            </div>
+          )}
           {cats.map((c, i) => (
             <MonsterZone key={c.label} id={`cat${i}`} width={mw} onDrop={it => give(i, it)}
               monsterRef={el => { monsters.current[i] = el }}
@@ -624,16 +672,16 @@ export default function SortGame({ level = 1, onComplete }) {
         </div>
 
         {/* the belt: the front thing can be picked up, the next ones wait */}
-        <Belt rolls={curIdx} height={BIG + 52}>
+        <Belt rolls={curIdx} height={BIG + 52} fast={fast}>
           <AnimatePresence>
             {phase === 'playing' && queue.map((it, i) => (
-              <motion.div key={it.id} initial={{ x: 640 }} animate={{ x: i * GAP - BIG / 2, scale: i ? 0.72 : 1, opacity: i ? 0.9 : 1 }}
-                exit={{ opacity: 0, transition: { duration: 0.1 } }} transition={{ type: 'spring', stiffness: 170, damping: 22 }}
+              <motion.div key={it.id} ref={i === 0 ? frontRef : undefined} initial={{ x: 640 }} animate={{ x: i * GAP - BIG / 2, scale: i ? 0.72 : 1, opacity: i ? 0.9 : 1 }}
+                exit={{ opacity: 0, transition: { duration: 0.1 } }} transition={{ type: 'spring', stiffness: fast ? 320 : 170, damping: fast ? 26 : 22 }}
                 style={{ position: 'absolute', left: '50%', bottom: 40, width: BIG, height: BIG, transformOrigin: '50% 100%' }}>
                 {i === 0
                   ? <Draggable id={it.id} data={it} label={it.name}>
                       {/* a little hop when it arrives at the front */}
-                      <motion.div ref={frontRef} animate={reduceMotion() ? undefined : { y: [0, -22, 0, -6, 0] }} transition={{ duration: 0.6, delay: 0.35 }}>
+                      <motion.div animate={reduceMotion() ? undefined : { y: [0, -22, 0, -6, 0] }} transition={{ duration: 0.6, delay: 0.35 }}>
                         <Art art={it.emoji} size={BIG} />
                       </motion.div>
                     </Draggable>
@@ -649,14 +697,17 @@ export default function SortGame({ level = 1, onComplete }) {
             <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.4 }}
               style={{ position: 'absolute', left: 0, right: 0, bottom: 22, display: 'flex', justifyContent: 'center', zIndex: 5 }}>
               <div style={{ ...pxPanel, padding: '10px 18px', display: 'flex', gap: 22, alignItems: 'center' }}>
-                <PicButton art="🧺" label="Selbst sortieren" color="gold" onClick={() => setPhase('free')} />
-                <PicButton art="➡️" label="Weiter" onClick={() => onComplete(final.current)} />
+                <PicButton art="🧺" label="Selbst sortieren" color="gold" bob onClick={() => setPhase('free')} />
+                <PicButton art="➡️" label="Weiter" btnRef={nextRef} onClick={finish} />
               </div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
-      <HintHand from={frontRef} to={aimRef} active={phase === 'playing' && !busy} delay={acted ? 6000 : 2000} />
+      {/* the hand shows the move: the thing into the monster that wants it
+          (it only comes when a child waits, so showing the answer helps) */}
+      <HintHand from={frontRef} to={monsters.current[current?.cat]} active={phase === 'playing' && !busy} delay={acted ? 6000 : 2000} />
+      <HintHand to={nextRef} active={phase === 'done'} delay={5000} />
       {bursts}
     </DragArea>
   )

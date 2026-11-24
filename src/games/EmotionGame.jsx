@@ -5,8 +5,8 @@ import { narrate, stopNarration } from '../narrator.js'
 import { sayRight, sayWrong } from '../lib/feedback.js'
 import { sfx } from '../sfx.js'
 import { result } from '../lib/score.js'
-import { FEELING_ICON, BRIGHT, shuffle } from './feelings.js'
-import { Stage, FeelLumi, FaceChip, PicChip, AskFace, AgainButton, FEEL, sceneLength, useAfter, W } from './feelingStage.jsx'
+import { BRIGHT, shuffle } from './feelings.js'
+import { Stage, FeelLumi, FaceChip, FeelingFace, PicChip, AskFace, AgainButton, FEEL, sceneLength, useAfter, useTrayStart, W } from './feelingStage.jsx'
 import { INK, pxButton } from './px.js'
 
 /**
@@ -14,8 +14,9 @@ import { INK, pxButton } from './px.js'
  *
  * The situation happens in front of the child: the balloon flies away, the
  * present drops from the sky, the spider comes down on its thread. The child
- * hands Lumi the face that fits, and Lumi makes it. Then how strong the
- * feeling is, and one thing that helps — each also handed to Lumi.
+ * hands Lumi the face that fits, and Lumi makes it. Every third round Lumi
+ * then does something with the feeling: cuddles the teddy the child hands
+ * over, or breathes in and out with three taps.
  *
  * Scientific basis:
  *   • CASEL Framework (Brackett & Rivers, 2014) — emotional literacy is foundational
@@ -28,45 +29,29 @@ import { INK, pxButton } from './px.js'
  *     optional and never rated.
  */
 
-// The module's own docstring names RULER — Recognizing, Understanding,
-// Labeling, Expressing, Regulating — but only the first three ever happened.
-// Nothing ever asked what to actually do with a feeling. None of these is
-// wrong; the point is having a repertoire, not picking a winner. Each one has
-// to fit every situation of its feeling ("Licht anmachen" did not fit the
-// stage or the dentist).
-const COPING = {
-  'Glücklich':   [{ i:'🗣️', t:'Davon erzählen' },  { i:'🤗', t:'Freude teilen' },      { i:'🎉', t:'Feiern' }],
-  'Traurig':     [{ i:'🤗', t:'Trost holen' },      { i:'🗣️', t:'Darüber reden' },      { i:'🧸', t:'Kuscheln' }],
-  'Wütend':      [{ i:'🌬️', t:'Tief durchatmen' },  { i:'🔢', t:'Bis zehn zählen' },    { i:'🗣️', t:'Sagen, was los ist' }],
-  'Ängstlich':   [{ i:'🤝', t:'Hilfe holen' },      { i:'🌬️', t:'Langsam atmen' },      { i:'🗣️', t:'Sagen, was Angst macht' }],
-  'Aufgeregt':   [{ i:'🌬️', t:'Tief durchatmen' },  { i:'🗣️', t:'Davon erzählen' },     { i:'🤸', t:'Herumhüpfen' }],
-  'Müde':        [{ i:'🛏️', t:'Ausruhen' },         { i:'🌙', t:'Schlafen gehen' },     { i:'🧸', t:'Kuscheln' }],
-  'Verlegen':    [{ i:'🌬️', t:'Tief durchatmen' },  { i:'😄', t:'Darüber lachen' },     { i:'🗣️', t:'Jemandem erzählen' }],
-  'Dankbar':     [{ i:'🗣️', t:'Danke sagen' },      { i:'🤗', t:'Umarmen' },            { i:'🎁', t:'Etwas zurückgeben' }],
-  'Überrascht':  [{ i:'🌬️', t:'Kurz durchatmen' },  { i:'🗣️', t:'Davon erzählen' },     { i:'🔍', t:'Genau hinschauen' }],
-  'Stolz':       [{ i:'🗣️', t:'Davon erzählen' },   { i:'🎉', t:'Sich freuen' },        { i:'👀', t:'Jemandem zeigen' }],
-  'Gelangweilt': [{ i:'🎨', t:'Etwas malen' },      { i:'📖', t:'Bilderbuch anschauen' },{ i:'🤸', t:'Bewegen' }],
-  'Eifersüchtig':[{ i:'🗣️', t:'Darüber reden' },    { i:'🌬️', t:'Tief durchatmen' },    { i:'💛', t:'Sagen, was man sich wünscht' }],
-  'Neugierig':   [{ i:'❓', t:'Nachfragen' },       { i:'🔍', t:'Genau hinschauen' },   { i:'⏳', t:'Abwarten' }],
+// Doing something with a feeling (the R of RULER, Regulating), every third
+// round and never rated: one small thing Lumi does, shown, not said. Either
+// the child hands Lumi something (the teddy to cuddle, the bed …), or taps
+// three times (breathe in and out with Lumi, three bursts of celebration).
+// The old every-round "how strong" and "what helps" lists were words in a
+// row of pictures (🌬️, 🔢, 🗣️) that a child who cannot read could not tell
+// apart, three drags per round.
+const CALM = {
+  'Traurig':      { give: '🧸' },
+  'Müde':         { give: '🛏️' },
+  'Gelangweilt':  { give: '🎨' },
+  'Neugierig':    { give: '🔍' },
+  'Dankbar':      { give: '🎁' },
+  'Glücklich':    { tap: '🎉' },
+  'Stolz':        { tap: '🎉' },
+  'Wütend':       { tap: '🌬️' },
+  'Ängstlich':    { tap: '🌬️' },
+  'Aufgeregt':    { tap: '🌬️' },
+  'Verlegen':     { tap: '🌬️' },
+  'Überrascht':   { tap: '🌬️' },
+  'Eifersüchtig': { tap: '🌬️' },
 }
-
-// How strong — read out as "Lumi ist ein bisschen unsicher." Each step has
-// its own face, so the three can be told apart without reading.
-const INTENSITY = {
-  'Glücklich':   ['ein bisschen glücklich 🙂', 'glücklich 😊', 'sehr glücklich 🤩'],
-  'Traurig':     ['ein bisschen traurig 🙁', 'traurig 😢', 'sehr traurig 😭'],
-  'Wütend':      ['ein bisschen genervt 😒', 'wütend 😡', 'sehr wütend 🤬'],
-  'Ängstlich':   ['ein bisschen unsicher 😬', 'ängstlich 😨', 'sehr ängstlich 😱'],
-  'Aufgeregt':   ['ein bisschen aufgeregt 🙂', 'aufgeregt 🤩', 'sehr aufgeregt 🎉'],
-  'Müde':        ['ein bisschen müde 🥱', 'müde 😴', 'sehr müde 💤'],
-  'Verlegen':    ['ein bisschen verlegen 😳', 'verlegen 🫣', 'sehr verlegen 🙈'],
-  'Dankbar':     ['ein bisschen dankbar 🙂', 'dankbar 🥰', 'sehr dankbar 🫶'],
-  'Überrascht':  ['ein bisschen überrascht 😮', 'überrascht 😲', 'sehr überrascht 🤯'],
-  'Stolz':       ['ein bisschen stolz 🙂', 'stolz 💪', 'sehr stolz 🏆'],
-  'Gelangweilt': ['ein bisschen gelangweilt 😐', 'gelangweilt 😑', 'sehr gelangweilt 😶'],
-  'Eifersüchtig':['ein bisschen eifersüchtig 😒', 'eifersüchtig 😤', 'sehr eifersüchtig 😾'],
-  'Neugierig':   ['ein bisschen neugierig 🤔', 'neugierig 🧐', 'sehr neugierig 🔍'],
-}
+const calmRound = i => i % 3 === 2
 
 // Which feelings may stand next to the right one as the other choices. Many
 // situations allow more than one honest feeling — the dentist can make you
@@ -147,13 +132,13 @@ const SCENARIOS = [
     audio:['jemand-hat-die-zeichnung-von-lumi-zerrissen'],
     cast:[t('🖼️', 360, 'topple', { s: 100, d: 1.4 }), kid('🐒', 470, 'visit', { s: 100, flip: true, d: 0.4 }), t('💥', 360, 'bang', { s: 80, y: 40, d: 1.3, z: 3 })] },
   { situation:'Lumi steht in der Reihe, und jemand drängelt sich vor! 😠', emotion:'Wütend',
-    cast:[t('🍦', 560, 'pop', { s: 60, y: 60 }), kid('🐧', 480, 'none', { s: 80, flip: true }), kid('🐤', 400, 'none', { s: 70, flip: true }), kid('🐷', 300, 'in', { s: 90, flip: true, d: 1 })] },
+    cast:[t('🍦', 560, 'pop', { s: 60, y: 60 }), kid('🐧', 480, 'none', { s: 80, flip: true }), kid('🐤', 400, 'none', { s: 70, flip: true }), kid('🐷', 290, 'jack', { s: 100, flip: true, d: 1.2, z: 3 }), t('💨', 330, 'bang', { s: 70, y: 20, d: 1.3 }), t('💥', 250, 'bang', { s: 50, y: 120, d: 1.5 })] },
   { situation:'Lumi hat lange gemalt, und jemand kritzelt absichtlich darüber! 🎨', emotion:'Wütend',
     cast:[t('🖼️', 380, 'pop', { s: 120 }), t('🖍️', 380, 'scribble', { s: 70, y: 40, d: 0.8, z: 3 }), kid('🐒', 520, 'in', { s: 90, flip: true, d: 0.5 })] },
   { situation:'Lumi wird beim Spielen immer beschummelt! 🎲', emotion:'Wütend',
     cast:[t('🎲', 320, 'shake', { s: 60 }), t('🃏', 400, 'pop', { s: 60, d: 0.5 }), kid('🐒', 500, 'hop', { s: 100, flip: true, d: 1 })] },
   { situation:'Niemand hört Lumi zu, obwohl Lumi etwas Wichtiges sagen will. 🗣️', emotion:'Wütend',
-    lumi:{ say: '…!' }, cast:[kid('🐰', 400, 'none', { s: 90 }), kid('🐻', 500, 'none', { s: 100 }), t('📱', 450, 'pop', { s: 50, y: 70, d: 0.6 })] },
+    lumi:{ say: ['🗣️', '👂'] }, cast:[kid('🐰', 400, 'none', { s: 90, say: ['📱'] }), kid('🐻', 510, 'none', { s: 100 }), t('📱', 450, 'pop', { s: 50, y: 70, d: 0.6 })] },
   // Ängstlich
   { situation:'Lumi hört mitten in der Nacht ein lautes Geräusch!', emotion:'Ängstlich', fx:'night',
     audio:['lumi-hoert-mitten-in-der-nacht-ein-lautes-geraeusch'],
@@ -165,7 +150,7 @@ const SCENARIOS = [
     audio:['lumi-sieht-eine-riesige-spinne-im-zimmer'],
     cast:[t('🕷️', 340, 'down', { s: 110, y: 120, d: 0.6 })] },
   { situation:'Lumi muss morgen zum Zahnarzt. 🦷', emotion:'Ängstlich',
-    cast:[t('📅', 460, 'drop', { s: 80, y: 130 }), t('🦷', 380, 'pop', { s: 110, d: 0.8 }), t('🪥', 480, 'pop', { s: 60, d: 1.2 })] },
+    lumi:{ say: ['🦷', '🪥'] }, cast:[t('📅', 470, 'drop', { s: 80, y: 130 }), kid('👩', 400, 'in', { s: 130, flip: true, d: 0.6 })] },
   { situation:'Das Licht geht aus, und alles ist stockdunkel! 🌑', emotion:'Ängstlich', fx:'dark',
     cast:[t('💡', 330, 'flicker', { s: 70, y: 210 })] },
   { situation:'Lumi hört draußen ein seltsames Kratzen am Fenster. 🪟', emotion:'Ängstlich', fx:'night',
@@ -187,7 +172,7 @@ const SCENARIOS = [
   { situation:'Lumi darf heute Abend mit Freunden zelten! ⛺', emotion:'Aufgeregt',
     cast:[t('⛺', 430, 'pop', { s: 150 }), t('🔦', 300, 'drop', { s: 54, d: 0.8 }), kid('🐻', 540, 'hop', { s: 80, flip: true, d: 1 })] },
   { situation:'Heute kommt Oma zu Besuch! Lumi schaut immer wieder aus dem Fenster. 🪟', emotion:'Aufgeregt',
-    lumi:{ act: 'hop' }, cast:[t('🪟', 380, 'pop', { s: 150, y: 70 }), kid('👵', 380, 'pop', { s: 60, y: 110, d: 1.4, z: 0 })] },
+    lumi:{ act: 'hop', say: ['👵', '🚗'] }, cast:[t('🪟', 400, 'pop', { s: 150, y: 70 }), t('🚗', 400, 'zoom', { s: 50, y: 110, d: 1.6, z: 0 }), t('⏰', 540, 'shake', { s: 60, y: 160, d: 0.6 })] },
   { situation:'Lumi darf beim großen Kindergartenfest Trommel spielen! 🥁', emotion:'Aufgeregt',
     cast:[t('🥁', HAND + 10, 'drop', { s: 80 }), t('🎵', 340, 'bob', { s: 44, y: 150, d: 0.8 }), t('🎵', 420, 'bob', { s: 40, y: 190, d: 1 }), t('🎪', 500, 'pop', { s: 130 })] },
   // Müde
@@ -269,7 +254,7 @@ const SCENARIOS = [
   { situation:'Im Garten liegt ein kleines Kästchen mit einem Schloss. 🔒', emotion:'Neugierig',
     cast:[t('🌷', 480, 'pop', { s: 80 }), t('📦', 360, 'pop', { s: 90, d: 0.6 }), t('🔒', 360, 'drop', { s: 44, y: 30, d: 1.2, z: 3 })] },
   { situation:'Mama und Papa tuscheln. Als Lumi hereinkommt, hören sie schnell auf. 🤫', emotion:'Neugierig',
-    lumi:{ act: 'in', d: 1 }, cast:[kid('👩', 400, 'none', { s: 130 }), kid('👨', 510, 'none', { s: 140, flip: true }), t('🎁', 460, 'pop', { s: 50, y: 150, d: 0.3 })] },
+    lumi:{ act: 'in', d: 1 }, cast:[kid('👩', 400, 'none', { s: 130, say: ['🤫'] }), kid('👨', 510, 'none', { s: 140, flip: true }), t('🎁', 460, 'pop', { s: 50, y: 150, d: 0.3 })] },
 ]
 
 // ─── Voice audio ─────────────────────────────────────────────────────────────
@@ -282,7 +267,7 @@ const clip = name => `${GEF}${name}.mp3`
 // feelings come in at 4 and 7.
 const BASIC = ['Glücklich', 'Traurig', 'Wütend', 'Ängstlich', 'Aufgeregt']
 const MID   = [...BASIC, 'Müde', 'Verlegen', 'Dankbar']
-const ALL   = Object.keys(COPING)
+const ALL   = Object.keys(CALM)
 const LEVELS = [
   { feelings: BASIC, options: 2, rounds: 5 },
   { feelings: BASIC, options: 3, rounds: 5 },
@@ -327,7 +312,6 @@ function choicesFor(s, feelings, count) {
 }
 
 const plain = s => s.replace(/\s*\p{Extended_Pictographic}️?/gu, '').trim()
-const faceOf = s => s.split(' ').pop()
 
 const GO = { ...pxButton('green'), color: INK, textShadow: '0 1px 0 rgba(255,255,255,0.45)' }
 const LUMI_X = 170
@@ -340,23 +324,26 @@ export default function EmotionGame({ level = 1, onComplete }) {
   )
   const [idx,       setIdx]       = useState(0)
   // watch (the scene plays) → pick (hand Lumi a face) → show (Lumi makes
-  // it) → strength → coping → done (next round by itself) → end
+  // it) → [calm (every third round)] → done (next round by itself) → end
   const [phase,     setPhase]     = useState('watch')
   const [worn,      setWorn]      = useState(null)     // the face Lumi wears
   const [firstTry,  setFirstTry]  = useState(0)
   const [streak,    setStreak]    = useState(0)
-  const [intensity, setIntensity] = useState(null)
-  const [coping,    setCoping]    = useState(null)
+  const [taps,      setTaps]      = useState(0)        // calm by tapping: breaths or bursts so far
+  const [calmed,    setCalmed]    = useState(false)
   const [mirror,    setMirror]    = useState(false)
   const [replay,    setReplay]    = useState(0)
-  const [after] = useAfter()
+  const [after, cancel] = useAfter()
   const [bursts, burst] = useBursts()
-  const trayRef = useRef(null)
-  const lumiRef = useRef({ get current() { return document.querySelector('[data-lumi-target] .pl-drop') } }).current
+  const trayRef = useRef(null), tapRef = useRef(null)
+  const trayStart = useTrayStart(trayRef)
+  const [lumiRef] = useState(() => ({ get current() { return document.querySelector('[data-lumi-target] .pl-drop') } }))
+  // one answer per round, even from a second tap before the screen caught up
+  const answeredRef = useRef(-1)
+  const doneRef = useRef(false)
 
   const ch = challenges[idx]
-  const strengths = ch ? INTENSITY[ch.emotion] : []
-  const helps = ch ? COPING[ch.emotion] : []
+  const calm = ch && CALM[ch.emotion]
   const narrow = typeof window !== 'undefined' && window.innerWidth < 600
 
   useEffect(() => () => stopNarration(), [])
@@ -369,13 +356,16 @@ export default function EmotionGame({ level = 1, onComplete }) {
     after(() => setPhase(p => (p === 'watch' ? 'pick' : p)), sceneLength(ch.cast, ch.lumi), { quiet: false })
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const lumiAt = () => document.querySelector('[data-lumi-target] .pl-drop') ?? undefined
+  const lumiAt = () => lumiRef.current ?? undefined
+  const afterFace = () => (calmRound(idx) ? setPhase('calm') : next())
 
   // Only the first answer counts, and there is no second one: Lumi tries the
-  // face that was handed over, and if another one fits better, Lumi shakes
-  // it off and makes that one. The old retry made every question a sure
-  // point on the second go ("13 von 12 richtig") (EMO-01/02).
+  // face that was handed over, and if another one fits better, Lumi wonders,
+  // shakes it off and makes that one. The old retry made every question a
+  // sure point on the second go ("13 von 12 richtig") (EMO-01/02).
   const giveFace = (emotion) => {
+    if (answeredRef.current === idx) return false
+    answeredRef.current = idx
     const ok = emotion === ch.emotion
     setPhase('show')
     setWorn(emotion)
@@ -384,155 +374,139 @@ export default function EmotionGame({ level = 1, onComplete }) {
       setFirstTry(k => k + 1); setStreak(n)
       sayRight()
       burst(lumiAt(), n >= 3 ? 'confetti' : 'stars', n >= 3 ? 16 : 10)
-      after(() => setPhase('strength'), 1800)
+      after(afterFace, 2000, { quiet: false })
     } else {
       setStreak(0)
       sayWrong()
-      // Lumi wears the face a moment, wonders, shakes it off: this one fits
       after(() => {
         setWorn('Neugierig')
         after(() => {
           sfx.boing(); setWorn(ch.emotion)
-          after(() => setPhase('strength'), 1900, { quiet: false })
+          after(afterFace, 2000, { quiet: false })
         }, 700, { quiet: false })
       }, 1100, { quiet: false })
     }
+    return true
   }
 
-  const giveStrength = (i) => {
-    setIntensity(i)
-    sfx.pop()
-    setPhase('strengthShown')
-    after(() => setPhase('coping'), 1300, { quiet: false })
-  }
-
-  const giveCoping = (i) => {
-    setCoping(i)
+  // Calming down: hand Lumi the thing, or three taps
+  const settle = () => {
+    setCalmed(true)
     setPhase('done')
-    setMirror(false)
     sfx.sparkle()
     burst(lumiAt(), 'hearts')
     after(next, 2000, { quiet: false })
   }
+  const tapCalm = () => {
+    if (phase !== 'calm') return
+    const n = taps + 1
+    setTaps(n)
+    if (calm.tap === '🎉') { sfx.pop(); burst(lumiAt(), 'confetti', 12) } else { sfx.whoosh(); burst(lumiAt(), 'stars', 5) }
+    if (n >= 3) settle()
+  }
 
   const next = () => {
     if (idx + 1 >= challenges.length) { setPhase('end'); sfx.tada(); return }
-    setIdx(i => i + 1); setPhase('watch'); setWorn(null); setIntensity(null); setCoping(null); setReplay(0)
+    setIdx(i => i + 1); setPhase('watch'); setWorn(null); setTaps(0); setCalmed(false); setReplay(0)
   }
 
-  // What reaches Lumi: a face, a strength or something that helps
   const onDrop = (d) => {
-    if (d.kind === 'face' && phase === 'pick') giveFace(d.feeling)
-    else if (d.kind === 'strength' && phase === 'strength') giveStrength(d.i)
-    else if (d.kind === 'help' && phase === 'coping') giveCoping(d.i)
-    else return false
-    return true
+    if (d.kind === 'face' && phase === 'pick') return giveFace(d.feeling)
+    if (d.kind === 'calm' && phase === 'calm') { settle(); return true }
+    return false
   }
-
-  // The optional mirror: make the face too. Never rated.
-  const openMirror = () => { setMirror(true); sfx.sparkle() }
 
   // Every feeling of this round, once each, for the end
   const met = useMemo(() => [...new Set(challenges.map(c => c.emotion))], [challenges])
 
   if (!ch) return null
-  if (phase === 'end') return <Parade met={met} narrow={narrow} onDone={() => onComplete(result(firstTry, challenges.length))} />
+  if (phase === 'end') return <Parade met={met} narrow={narrow} onDone={() => { if (!doneRef.current) { doneRef.current = true; onComplete(result(firstTry, challenges.length)) } }} />
 
   const answered = phase !== 'watch' && phase !== 'pick'
-  // after something that helps, a heavy feeling calms down, a bright one stays
-  const lumiFeel = coping != null && !BRIGHT.has(ch.emotion) ? 'calm' : worn ? FEEL[worn] : 'neutral'
-  const trayOn = phase === 'pick' || phase === 'strength' || phase === 'coping'
-  const step = phase === 'watch' || phase === 'pick' || phase === 'show' ? 'face' : phase === 'strength' || phase === 'strengthShown' ? 'strength' : 'help'
-  // the tray at the bottom: faces, then strengths, then what helps
-  const tray = step === 'face'
-    ? ch.options.map(e => ({ id: e, data: { kind: 'face', feeling: e }, label: e,
-        node: <FaceChip feeling={e} size={narrow ? (ch.options.length > 3 ? 48 : 56) : 70} dim={answered && e !== ch.emotion} glow={answered && e === ch.emotion} /> }))
-    : step === 'strength'
-      ? strengths.map((s, i) => ({ id: s, data: { kind: 'strength', i }, label: plain(s),
-          node: <Strength art={faceOf(s)} i={i} narrow={narrow} glow={intensity === i} dim={intensity != null && intensity !== i} /> }))
-      : helps.map((c, i) => ({ id: c.t, data: { kind: 'help', i }, label: c.t,
-          node: <PicChip art={c.i} size={narrow ? 54 : 66} glow={coping === i} dim={coping != null && coping !== i} /> }))
-  // What Lumi's bubble asks: which face? how strong? what helps?
+  const calmStep = phase === 'calm' || (phase === 'done' && calmRound(idx))
+  const trayOn = phase === 'pick' || (phase === 'calm' && calm.give)
+  // after breathing or cuddling Lumi is calm; after celebrating, beaming
+  const lumiFeel = !calmed ? (worn ? FEEL[worn] : 'neutral')
+    : calm.tap === '🎉' ? 'excited' : calm.tap || !BRIGHT.has(ch.emotion) ? 'calm' : 'happy'
   const bubble = phase === 'pick' ? <AskFace />
-    : step === 'face' ? (worn ? <Art art={FEELING_ICON[worn]} size={44} /> : null)
-    : step === 'strength' ? <Meter level={intensity} />
-    : coping == null ? <><Art art="💛" size={34} /><AskFace size={36} /></> : <Art art={helps[coping].i} size={44} />
+    : phase === 'calm' ? <><Art art={calm.give ?? calm.tap} size={36} />{calm.tap && <Dots n={taps} />}</>
+    : worn && !calmed ? <FeelingFace feeling={worn} size={44} /> : null
 
   return (
     <DragArea autoTarget="lumi" disabled={!trayOn}>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px clamp(10px,3vw,28px) 14px', gap: 8, minHeight: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', maxWidth: 820 }}>
+        {/* kept clear of the sun in the backdrop's top right */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', maxWidth: 820, paddingRight: narrow ? 64 : 150, boxSizing: 'border-box' }}>
           <div style={{ flex: 1, minWidth: 0 }}><RoundTrail total={challenges.length} done={idx + (phase === 'done' ? 1 : 0)} walker="lumi" goal="🌈" size={narrow ? 34 : 42} /></div>
           <AgainButton onClick={() => { setReplay(r => r + 1); sfx.whoosh() }} />
         </div>
 
-        <div data-lumi-target style={{ flex: 1, width: '100%', maxWidth: 980, display: 'flex', minHeight: 0, position: 'relative' }}>
+        <div data-lumi-target role="img" aria-label={plain(ch.situation)} style={{ flex: 1, width: '100%', maxWidth: 980, display: 'flex', minHeight: 0, position: 'relative' }}>
           <Stage key={`${idx}-${replay}`} playKey={`${idx}-${replay}`}
-            lumi={{ x: LUMI_X, size: 160, feel: lumiFeel, strength: intensity ?? 1, ...ch.lumi, ...(answered ? { act: undefined, say: undefined } : {}) }}
-            cast={coping != null ? [...(ch.cast ?? []), { a: helps[coping].i, x: LUMI_X + 110, y: 120, s: 60, act: 'bob' }] : ch.cast}
+            lumi={{ x: LUMI_X, size: 160, feel: lumiFeel, strength: 1, pulse: calm?.tap === '🌬️' ? taps : 0, ...ch.lumi, ...(answered ? { act: undefined, say: undefined } : {}) }}
+            cast={calmed && calm.give ? [...(ch.cast ?? []), { a: calm.give, x: LUMI_X + 100, y: 20, s: 70, act: 'drop' }] : ch.cast}
             fx={ch.fx}
             drop={{ who: 'lumi', id: 'lumi', onDrop, label: 'Lumi' }}
             bubbles={bubble ? { lumi: bubble } : {}}>
-            {mirror && <Mirror feel={FEEL[ch.emotion]} onClose={() => setMirror(false)} />}
+            {mirror && <Mirror feel={FEEL[ch.emotion]} onClose={() => { setMirror(false); after(afterFace, 700, { quiet: false }) }} />}
           </Stage>
           {streak >= 2 && <Rainbow n={streak} />}
-          {(phase === 'strength' || phase === 'coping') && !mirror && (
-            <motion.button initial={{ scale: 0 }} animate={{ scale: 1 }} whileTap={{ scale: 0.9 }} onClick={openMirror}
+          {phase === 'show' && worn === ch.emotion && !mirror && (
+            <motion.button initial={{ scale: 0 }} animate={{ scale: 1 }} whileTap={{ scale: 0.9 }} onClick={() => { cancel(); setMirror(true); sfx.sparkle() }}
               aria-label="Spiegel: Mach das Gesicht auch" title="Mach das Gesicht auch!"
-              style={{ position: 'absolute', right: 4, top: 4, width: 64, height: 64, borderRadius: '50%', border: '3px solid #2a1b3d', background: '#e9f6ff', boxShadow: '0 4px 0 rgba(42,27,61,.35)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3 }}>
-              <Art art="🪞" size={42} />
+              style={{ position: 'absolute', left: 4, bottom: 4, width: 60, height: 60, borderRadius: '50%', border: '3px solid #2a1b3d', background: '#e9f6ff', boxShadow: '0 4px 0 rgba(42,27,61,.35)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3 }}>
+              <Art art="🪞" size={40} />
             </motion.button>
           )}
         </div>
-
-        <p style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: narrow ? 13 : 15, color: INK, textAlign: 'center', margin: 0, maxWidth: 620,
-          background: 'rgba(255,253,247,.6)', borderRadius: 14, padding: '3px 12px' }}>{plain(ch.situation)}</p>
 
         {/* clipped: the tray sliding in must not count as content height
             for the FitBox around the game */}
         <div style={{ overflow: 'clip', overflowClipMargin: 12, paddingTop: 10, width: '100%', display: 'flex', justifyContent: 'center', minHeight: narrow ? 118 : 140 }}>
           <AnimatePresence mode="wait">
-            {phase !== 'watch' && (
-              <motion.div key={`${idx}-${step}`} ref={trayRef}
+            {phase !== 'watch' && !calmStep && (
+              <motion.div key={`${idx}-face`} ref={trayRef}
                 initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }} transition={{ type: 'spring', stiffness: 260, damping: 22 }}
-                style={{ display: 'flex', gap: narrow ? 8 : 16, justifyContent: 'center', alignItems: 'flex-end', flexWrap: 'nowrap',
-                  padding: '10px 14px', borderRadius: 28, background: 'rgba(255,253,247,.55)' }}>
-                {tray.map(it => (
-                  <Draggable key={it.id} id={it.id} data={it.data} label={it.label} disabled={!trayOn}>{it.node}</Draggable>
+                style={{ display: 'flex', gap: narrow ? 8 : 16, justifyContent: 'center', alignItems: 'flex-end', padding: '10px 14px', borderRadius: 28, background: 'rgba(255,253,247,.55)' }}>
+                {ch.options.map(e => (
+                  <Draggable key={e} id={e} data={{ kind: 'face', feeling: e }} label={e} disabled={phase !== 'pick'}>
+                    <FaceChip feeling={e} size={narrow ? (ch.options.length > 3 ? 48 : 56) : 70} dim={answered && e !== ch.emotion} glow={answered && e === ch.emotion} />
+                  </Draggable>
                 ))}
               </motion.div>
+            )}
+            {calmStep && calm.give && (
+              <motion.div key={`${idx}-give`} ref={trayRef}
+                initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
+                style={{ display: 'flex', justifyContent: 'center', padding: '10px 14px', borderRadius: 28, background: 'rgba(255,253,247,.55)', visibility: calmed ? 'hidden' : 'visible' }}>
+                <Draggable id="calm" data={{ kind: 'calm' }} label="Lumi geben" disabled={phase !== 'calm'}>
+                  <PicChip art={calm.give} size={narrow ? 64 : 80} />
+                </Draggable>
+              </motion.div>
+            )}
+            {calmStep && calm.tap && (
+              <motion.button key={`${idx}-tap`} ref={tapRef} onClick={tapCalm} aria-label={calm.tap === '🎉' ? 'Feiern' : 'Atmen'}
+                initial={{ scale: 0 }} animate={{ scale: calmed ? 0.8 : 1, opacity: calmed ? 0.4 : 1 }} exit={{ scale: 0 }} whileTap={{ scale: 0.85 }}
+                style={{ width: 104, height: 104, borderRadius: '50%', border: '4px solid #2a1b3d', background: '#e9f6ff', boxShadow: '0 6px 0 rgba(42,27,61,.35)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                <Art art={calm.tap} size={70} />
+              </motion.button>
             )}
           </AnimatePresence>
         </div>
       </div>
-      <HintHand from={trayRef} to={lumiRef} active={trayOn && !mirror} delay={idx === 0 && step === 'face' ? 2000 : 6000} />
+      <HintHand from={trayStart} to={lumiRef} active={trayOn && !mirror} delay={idx === 0 && phase === 'pick' ? 2000 : 6000} />
+      <HintHand to={tapRef} active={phase === 'calm' && !!calm.tap && taps === 0} delay={idx < 3 ? 2000 : 5000} />
       {bursts}
     </DragArea>
   )
 }
 
-// A strength: the face over a bar that grows (a little, middle, very)
-function Strength({ art, i, narrow, glow, dim }) {
-  const h = [14, 30, 48][i]
+// Three dots: how many breaths (or bursts) so far
+function Dots({ n }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, opacity: dim ? 0.35 : 1, transition: 'opacity .3s' }}>
-      <PicChip art={art} size={(narrow ? 36 : 44) + i * 12} glow={glow} />
-      <div style={{ width: narrow ? 46 : 56, height: 48, display: 'flex', alignItems: 'flex-end' }}>
-        <div style={{ width: '100%', height: h, borderRadius: 6, background: ['#ffd96b', '#ffa94d', '#ff6b5b'][i], border: '3px solid #2a1b3d' }} />
-      </div>
-    </div>
-  )
-}
-
-// How strong? Three bars in Lumi's bubble, filled up to the chosen one
-function Meter({ level }) {
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'flex-end', gap: 4, height: 40 }}>
-      {[14, 26, 38].map((h, i) => (
-        <motion.span key={i} animate={{ background: level != null && i <= level ? ['#ffd96b', '#ffa94d', '#ff6b5b'][i] : '#ece6f7' }}
-          style={{ width: 12, height: h, borderRadius: 4, border: '2.5px solid #2a1b3d', display: 'inline-block' }} />
-      ))}
-      {level == null && <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 26, color: '#6b3fd6', marginLeft: 2 }}>?</span>}
+    <span style={{ display: 'inline-flex', gap: 4 }}>
+      {[0, 1, 2].map(i => <motion.span key={i} animate={{ scale: i < n ? 1.2 : 1 }}
+        style={{ width: 12, height: 12, borderRadius: 6, border: '2.5px solid #2a1b3d', background: i < n ? '#ffc93c' : '#fffdf7', display: 'inline-block' }} />)}
     </span>
   )
 }

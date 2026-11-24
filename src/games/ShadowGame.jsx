@@ -4,6 +4,7 @@ import { Art, DragArea, Draggable, DropZone, HintHand, useBursts, useIdle } from
 import { sfx } from '../sfx.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { usePaused } from '../lib/pause.js'
+import { useSceneClear } from './sceneSpace.js'
 import { result } from '../lib/score.js'
 import { pxCard, pxButton, INK } from './px.js'
 
@@ -42,72 +43,73 @@ import { pxCard, pxButton, INK } from './px.js'
 // small plane a plane: a child who read the shadow correctly was told it was
 // wrong. Animals are full-body pictures where possible (a face is a round
 // blob in silhouette). Facts are short, true, and without numbers a child of
-// five cannot picture.
+// five cannot picture; `see` is the fact as a picture, for children who
+// cannot read it (the elephant thinks of a shower, the bee of honey).
 const CHALLENGES = [
   // Tiere
-  { shadow: '🐘', name: 'Elefant',       decoys: ['🐪','🦘','🐢'], fact: 'Mit seinem langen Rüssel kann der Elefant trinken und duschen!' },
-  { shadow: '🐪', name: 'Kamel',         decoys: ['🐘','🐢','🐍'], fact: 'Das Kamel kann viele Tage ohne Wasser auskommen!' },
-  { shadow: '🐎', name: 'Pferd',         decoys: ['🐢','🦘','🐿️'], fact: 'Pferde können sogar im Stehen schlafen!' },
-  { shadow: '🦘', name: 'Känguru',       decoys: ['🐘','🐢','🐊'], fact: 'Das Känguru-Baby wohnt im Beutel seiner Mama!' },
-  { shadow: '🐇', name: 'Hase',          decoys: ['🐢','🦔','🐌'], fact: 'Hasen haben lange Ohren und hören sehr gut!' },
-  { shadow: '🐿️', name: 'Eichhörnchen',  decoys: ['🦔','🐢','🐌'], fact: 'Eichhörnchen verstecken im Herbst Nüsse für den Winter!' },
-  { shadow: '🦔', name: 'Igel',          decoys: ['🐿️','🐇','🐊'], fact: 'Bei Gefahr rollt sich der Igel zu einer stacheligen Kugel zusammen!' },
-  { shadow: '🐢', name: 'Schildkröte',   decoys: ['🐊','🐇','🐍'], fact: 'Die Schildkröte trägt ihren Panzer immer mit sich herum!' },
-  { shadow: '🐊', name: 'Krokodil',      decoys: ['🐢','🐍','🐘'], fact: 'Krokodile gibt es schon seit der Zeit der Dinosaurier!' },
+  { shadow: '🐘', name: 'Elefant',        see: '🚿', decoys: ['🐪','🦘','🐢'], fact: 'Mit seinem langen Rüssel kann der Elefant trinken und duschen!' },
+  { shadow: '🐪', name: 'Kamel',          see: '💧', decoys: ['🐘','🐢','🐍'], fact: 'Das Kamel kann viele Tage ohne Wasser auskommen!' },
+  { shadow: '🐎', name: 'Pferd',          see: '💤', decoys: ['🐢','🦘','🐿️'], fact: 'Pferde können sogar im Stehen schlafen!' },
+  { shadow: '🦘', name: 'Känguru',        see: '🍼', decoys: ['🐘','🐢','🐊'], fact: 'Das Känguru-Baby wohnt im Beutel seiner Mama!' },
+  { shadow: '🐇', name: 'Hase',           see: '🥕', decoys: ['🐢','🦔','🐌'], fact: 'Hasen haben lange Ohren und hören sehr gut!' },
+  { shadow: '🐿️', name: 'Eichhörnchen',   see: '🌰', decoys: ['🦔','🐢','🐌'], fact: 'Eichhörnchen verstecken im Herbst Nüsse für den Winter!' },
+  { shadow: '🦔', name: 'Igel',           see: '🍂', decoys: ['🐿️','🐇','🐊'], fact: 'Bei Gefahr rollt sich der Igel zu einer stacheligen Kugel zusammen!' },
+  { shadow: '🐢', name: 'Schildkröte',    see: '🏠', decoys: ['🐊','🐇','🐍'], fact: 'Die Schildkröte trägt ihren Panzer immer mit sich herum!' },
+  { shadow: '🐊', name: 'Krokodil',       see: '🦕', decoys: ['🐢','🐍','🐘'], fact: 'Krokodile gibt es schon seit der Zeit der Dinosaurier!' },
   { shadow: '🐍', name: 'Schlange',      decoys: ['🐊','🐌','🐢'], fact: 'Schlangen haben keine Beine und schlängeln sich vorwärts!' },
-  { shadow: '🦕', name: 'Dinosaurier',   decoys: ['🐊','🐘','🐢'], fact: 'Dinosaurier lebten vor sehr, sehr langer Zeit!' },
-  { shadow: '🦈', name: 'Hai',           decoys: ['🐙','🦀','🐢'], fact: 'Haie verlieren ständig Zähne, und es wachsen immer neue nach!' },
-  { shadow: '🐬', name: 'Delfin',        decoys: ['🐳','🦀','🐙'], fact: 'Delfine sind sehr klug und schwimmen sehr schnell!' },
-  { shadow: '🐳', name: 'Wal',           decoys: ['🐙','🦀','🐢'], fact: 'Wale sind die größten Tiere der Welt!' },
-  { shadow: '🦀', name: 'Krabbe',        decoys: ['🐙','🐌','🐢'], fact: 'Krabben laufen seitwärts!' },
-  { shadow: '🐙', name: 'Krake',         decoys: ['🦀','🐌','🐢'], fact: 'Eine Krake hat acht Arme!' },
-  { shadow: '🦋', name: 'Schmetterling', decoys: ['🐝','🐌','🐢'], fact: 'Bevor er fliegen kann, ist der Schmetterling eine Raupe!' },
-  { shadow: '🐝', name: 'Biene',         decoys: ['🦋','🐌','🐢'], fact: 'Bienen machen Honig und bestäuben Blumen!' },
-  { shadow: '🐌', name: 'Schnecke',      decoys: ['🦋','🐍','🐇'], fact: 'Schnecken kriechen ganz langsam und tragen ihr Haus auf dem Rücken!' },
-  { shadow: '🐧', name: 'Pinguin',       decoys: ['🦢','🐓','🦜'], fact: 'Pinguine können nicht fliegen, aber super schwimmen!' },
-  { shadow: '🦢', name: 'Schwan',        decoys: ['🐧','🐓','🦜'], fact: 'Schwäne haben einen langen, gebogenen Hals!' },
-  { shadow: '🐓', name: 'Hahn',          decoys: ['🐧','🦢','🐿️'], fact: 'Der Hahn kräht am Morgen: Kikeriki!' },
-  { shadow: '🦜', name: 'Papagei',       decoys: ['🐧','🦢','🦋'], fact: 'Papageien können Wörter nachsprechen!' },
-  { shadow: '🦅', name: 'Adler',         decoys: ['🐧','🦢','🐓'], fact: 'Adler sehen ganz weit, viel weiter als wir!' },
-  { shadow: '🐅', name: 'Tiger',         decoys: ['🐘','🦘','🐢'], fact: 'Tiger sind die größten Katzen der Welt!' },
-  { shadow: '🐒', name: 'Affe',          decoys: ['🐘','🐢','🐊'], fact: 'Affen klettern geschickt von Baum zu Baum!' },
+  { shadow: '🦕', name: 'Dinosaurier',    see: '🥚', decoys: ['🐊','🐘','🐢'], fact: 'Dinosaurier lebten vor sehr, sehr langer Zeit!' },
+  { shadow: '🦈', name: 'Hai',            see: '🦷', decoys: ['🐙','🦀','🐢'], fact: 'Haie verlieren ständig Zähne, und es wachsen immer neue nach!' },
+  { shadow: '🐬', name: 'Delfin',         see: '🌊', decoys: ['🐳','🦀','🐙'], fact: 'Delfine sind sehr klug und schwimmen sehr schnell!' },
+  { shadow: '🐳', name: 'Wal',            see: '💧', decoys: ['🐙','🦀','🐢'], fact: 'Wale sind die größten Tiere der Welt!' },
+  { shadow: '🦀', name: 'Krabbe',         see: '🏖️', decoys: ['🐙','🐌','🐢'], fact: 'Krabben laufen seitwärts!' },
+  { shadow: '🐙', name: 'Krake',          see: '🌊', decoys: ['🦀','🐌','🐢'], fact: 'Eine Krake hat acht Arme!' },
+  { shadow: '🦋', name: 'Schmetterling',  see: '🐛', decoys: ['🐝','🐌','🐢'], fact: 'Bevor er fliegen kann, ist der Schmetterling eine Raupe!' },
+  { shadow: '🐝', name: 'Biene',          see: '🍯', decoys: ['🦋','🐌','🐢'], fact: 'Bienen machen Honig und bestäuben Blumen!' },
+  { shadow: '🐌', name: 'Schnecke',       see: '🏠', decoys: ['🦋','🐍','🐇'], fact: 'Schnecken kriechen ganz langsam und tragen ihr Haus auf dem Rücken!' },
+  { shadow: '🐧', name: 'Pinguin',        see: '🧊', decoys: ['🦢','🐓','🦜'], fact: 'Pinguine können nicht fliegen, aber super schwimmen!' },
+  { shadow: '🦢', name: 'Schwan',         see: '🌊', decoys: ['🐧','🐓','🦜'], fact: 'Schwäne haben einen langen, gebogenen Hals!' },
+  { shadow: '🐓', name: 'Hahn',           see: '☀️', decoys: ['🐧','🦢','🐿️'], fact: 'Der Hahn kräht am Morgen: Kikeriki!' },
+  { shadow: '🦜', name: 'Papagei',        see: '🗣️', decoys: ['🐧','🦢','🦋'], fact: 'Papageien können Wörter nachsprechen!' },
+  { shadow: '🦅', name: 'Adler',          see: '👀', decoys: ['🐧','🦢','🐓'], fact: 'Adler sehen ganz weit, viel weiter als wir!' },
+  { shadow: '🐅', name: 'Tiger',          see: '🐱', decoys: ['🐘','🦘','🐢'], fact: 'Tiger sind die größten Katzen der Welt!' },
+  { shadow: '🐒', name: 'Affe',           see: '🌳', decoys: ['🐘','🐢','🐊'], fact: 'Affen klettern geschickt von Baum zu Baum!' },
   { shadow: '🦏', name: 'Nashorn',       decoys: ['🐇','🐢','🐊'], fact: 'Das Nashorn hat ein Horn auf der Nase!' },
   // Fahrzeuge
-  { shadow: '🚀', name: 'Rakete',        decoys: ['🚁','🚲','⛵'], fact: 'Raketen fliegen bis ins Weltall!' },
-  { shadow: '✈️', name: 'Flugzeug',      decoys: ['🚀','🚁','🚲'], fact: 'Flugzeuge fliegen hoch über den Wolken!' },
-  { shadow: '🚁', name: 'Hubschrauber',  decoys: ['🚀','⛵','🚲'], fact: 'Hubschrauber können auf der Stelle fliegen!' },
-  { shadow: '🚂', name: 'Lokomotive',    decoys: ['🚁','🚲','⛵'], fact: 'Früher fuhren Lokomotiven mit Dampf: tschu-tschu!' },
-  { shadow: '⛵', name: 'Segelboot',     decoys: ['🚂','🚲','🚁'], fact: 'Ein Segelboot fährt mit der Kraft des Windes!' },
-  { shadow: '🚲', name: 'Fahrrad',       decoys: ['🛴','🚁','⛵'], fact: 'Beim Fahrradfahren trittst du in die Pedale!' },
-  { shadow: '🛴', name: 'Roller',        decoys: ['🚲','🚁','⛵'], fact: 'Mit dem Roller stößt du dich mit einem Fuß ab!' },
-  { shadow: '🚜', name: 'Traktor',       decoys: ['🚲','⛵','🚁'], fact: 'Der Traktor zieht schwere Sachen auf dem Bauernhof!' },
+  { shadow: '🚀', name: 'Rakete',         see: '🌙', decoys: ['🚁','🚲','⛵'], fact: 'Raketen fliegen bis ins Weltall!' },
+  { shadow: '✈️', name: 'Flugzeug',       see: '☁️', decoys: ['🚀','🚁','🚲'], fact: 'Flugzeuge fliegen hoch über den Wolken!' },
+  { shadow: '🚁', name: 'Hubschrauber',   see: '🌀', decoys: ['🚀','⛵','🚲'], fact: 'Hubschrauber können auf der Stelle fliegen!' },
+  { shadow: '🚂', name: 'Lokomotive',     see: '💨', decoys: ['🚁','🚲','⛵'], fact: 'Früher fuhren Lokomotiven mit Dampf: tschu-tschu!' },
+  { shadow: '⛵', name: 'Segelboot',      see: '🌬️', decoys: ['🚂','🚲','🚁'], fact: 'Ein Segelboot fährt mit der Kraft des Windes!' },
+  { shadow: '🚲', name: 'Fahrrad',        see: '🦶', decoys: ['🛴','🚁','⛵'], fact: 'Beim Fahrradfahren trittst du in die Pedale!' },
+  { shadow: '🛴', name: 'Roller',         see: '🦶', decoys: ['🚲','🚁','⛵'], fact: 'Mit dem Roller stößt du dich mit einem Fuß ab!' },
+  { shadow: '🚜', name: 'Traktor',        see: '🌾', decoys: ['🚲','⛵','🚁'], fact: 'Der Traktor zieht schwere Sachen auf dem Bauernhof!' },
   // Natur
-  { shadow: '🌵', name: 'Kaktus',        decoys: ['🌴','🍄','🏠'], fact: 'Kakteen speichern Wasser in der Wüste!' },
-  { shadow: '🍄', name: 'Pilz',          decoys: ['🌵','🌴','🌲'], fact: 'Manche Pilze sind giftig, darum nie einfach einen essen!' },
-  { shadow: '🌴', name: 'Palme',         decoys: ['🌲','🌵','🍄'], fact: 'Palmen wachsen in warmen Ländern!' },
-  { shadow: '🌲', name: 'Tanne',         decoys: ['🌴','🍄','🌵'], fact: 'Die Tanne bleibt auch im Winter grün!' },
-  { shadow: '🌋', name: 'Vulkan',        decoys: ['🍄','🏠','🌴'], fact: 'Ein Vulkan kann sehr heiße Lava ausspucken!' },
+  { shadow: '🌵', name: 'Kaktus',         see: '☀️', decoys: ['🌴','🍄','🏠'], fact: 'Kakteen speichern Wasser in der Wüste!' },
+  { shadow: '🍄', name: 'Pilz',           see: '🌳', decoys: ['🌵','🌴','🌲'], fact: 'Manche Pilze sind giftig, darum nie einfach einen essen!' },
+  { shadow: '🌴', name: 'Palme',          see: '🥥', decoys: ['🌲','🌵','🍄'], fact: 'Palmen wachsen in warmen Ländern!' },
+  { shadow: '🌲', name: 'Tanne',          see: '❄️', decoys: ['🌴','🍄','🌵'], fact: 'Die Tanne bleibt auch im Winter grün!' },
+  { shadow: '🌋', name: 'Vulkan',         see: '🔥', decoys: ['🍄','🏠','🌴'], fact: 'Ein Vulkan kann sehr heiße Lava ausspucken!' },
   // Gebäude
-  { shadow: '⛺', name: 'Zelt',          decoys: ['🏰','🗼','🌴'], fact: 'Im Zelt schläft man draußen in der Natur!' },
-  { shadow: '🏰', name: 'Schloss',       decoys: ['🏠','⛺','🗼'], fact: 'In einem Schloss wohnten früher Könige und Königinnen!' },
-  { shadow: '🗼', name: 'Turm',          decoys: ['🏠','🏰','⛺'], fact: 'Von einem hohen Turm kann man ganz weit schauen!' },
+  { shadow: '⛺', name: 'Zelt',           see: '🌙', decoys: ['🏰','🗼','🌴'], fact: 'Im Zelt schläft man draußen in der Natur!' },
+  { shadow: '🏰', name: 'Schloss',        see: '👑', decoys: ['🏠','⛺','🗼'], fact: 'In einem Schloss wohnten früher Könige und Königinnen!' },
+  { shadow: '🗼', name: 'Turm',           see: '👀', decoys: ['🏠','🏰','⛺'], fact: 'Von einem hohen Turm kann man ganz weit schauen!' },
   // Instrumente
-  { shadow: '🎸', name: 'Gitarre',       decoys: ['🎺','🥁','☂️'], fact: 'Eine Gitarre hat Saiten, an denen man zupft!' },
-  { shadow: '🎺', name: 'Trompete',      decoys: ['🎸','🥁','✂️'], fact: 'Die Trompete klingt sehr hell und laut!' },
-  { shadow: '🎻', name: 'Geige',         decoys: ['🎺','🥁','🔑'], fact: 'Die Geige spielt man mit einem Bogen!' },
-  { shadow: '🥁', name: 'Trommel',       decoys: ['🎸','🎺','🎻'], fact: 'Auf einer Trommel kann man laut und leise spielen!' },
+  { shadow: '🎸', name: 'Gitarre',        see: '🎵', decoys: ['🎺','🥁','☂️'], fact: 'Eine Gitarre hat Saiten, an denen man zupft!' },
+  { shadow: '🎺', name: 'Trompete',       see: '🎵', decoys: ['🎸','🥁','✂️'], fact: 'Die Trompete klingt sehr hell und laut!' },
+  { shadow: '🎻', name: 'Geige',          see: '🎵', decoys: ['🎺','🥁','🔑'], fact: 'Die Geige spielt man mit einem Bogen!' },
+  { shadow: '🥁', name: 'Trommel',        see: '🎵', decoys: ['🎸','🎺','🎻'], fact: 'Auf einer Trommel kann man laut und leise spielen!' },
   // Dinge
-  { shadow: '🔭', name: 'Fernrohr',      decoys: ['🔑','✂️','☂️'], fact: 'Mit einem Fernrohr kann man die Sterne sehen!' },
-  { shadow: '☂️', name: 'Regenschirm',   decoys: ['🔑','✂️','🎸'], fact: 'Der Regenschirm hält dich bei Regen trocken!' },
-  { shadow: '🔑', name: 'Schlüssel',     decoys: ['✂️','☂️','🔭'], fact: 'Mit einem Schlüssel schließt man die Tür auf!' },
+  { shadow: '🔭', name: 'Fernrohr',       see: '⭐', decoys: ['🔑','✂️','☂️'], fact: 'Mit einem Fernrohr kann man die Sterne sehen!' },
+  { shadow: '☂️', name: 'Regenschirm',    see: '🌧️', decoys: ['🔑','✂️','🎸'], fact: 'Der Regenschirm hält dich bei Regen trocken!' },
+  { shadow: '🔑', name: 'Schlüssel',      see: '🚪', decoys: ['✂️','☂️','🔭'], fact: 'Mit einem Schlüssel schließt man die Tür auf!' },
   { shadow: '✂️', name: 'Schere',        decoys: ['🔑','☂️','🎺'], fact: 'Mit einer Schere schneidet man Papier!' },
-  { shadow: '⚓', name: 'Anker',         decoys: ['🔑','✂️','☂️'], fact: 'Der Anker hält das Schiff fest!' },
-  { shadow: '🪁', name: 'Drachen',       decoys: ['🎈','☂️','⛵'], fact: 'Im Herbst lässt man Drachen im Wind steigen!' },
+  { shadow: '⚓', name: 'Anker',          see: '🚢', decoys: ['🔑','✂️','☂️'], fact: 'Der Anker hält das Schiff fest!' },
+  { shadow: '🪁', name: 'Drachen',        see: '🌬️', decoys: ['🎈','☂️','⛵'], fact: 'Im Herbst lässt man Drachen im Wind steigen!' },
   { shadow: '🎈', name: 'Luftballon',    decoys: ['🪁','☂️','⚓'], fact: 'Ein Luftballon mit Gas fliegt nach oben!' },
   // Obst und Gemüse
-  { shadow: '🍌', name: 'Banane',        decoys: ['🍎','🍐','🍦'], fact: 'Bananen wachsen in warmen Ländern!' },
-  { shadow: '🍐', name: 'Birne',         decoys: ['🍌','🥕','🍦'], fact: 'Eine Birne ist unten dick und oben schmal!' },
-  { shadow: '🥕', name: 'Möhre',         decoys: ['🍌','🍐','🍎'], fact: 'Möhren wachsen unter der Erde!' },
+  { shadow: '🍌', name: 'Banane',         see: '🐒', decoys: ['🍎','🍐','🍦'], fact: 'Bananen wachsen in warmen Ländern!' },
+  { shadow: '🍐', name: 'Birne',          see: '🌳', decoys: ['🍌','🥕','🍦'], fact: 'Eine Birne ist unten dick und oben schmal!' },
+  { shadow: '🥕', name: 'Möhre',          see: '🐇', decoys: ['🍌','🍐','🍎'], fact: 'Möhren wachsen unter der Erde!' },
 ]
 
 function shuffle(a) { return [...a].sort(() => Math.random() - 0.5) }
@@ -140,13 +142,13 @@ function useWidth() {
 // its bulb and hangs below it and giggles when tapped; on a run of right
 // answers the friends found so far hop one after the other (`wave`: how
 // often, and up to which friend, so a friend hung up later does not hop).
-function Garland({ total, found, party, wave }) {
+function Garland({ total, found, party, wave, maxW }) {
   const [ref, w] = useWidth()
   const pic = Math.max(18, Math.min(44, Math.floor(w / total) - 6))
   return (
     <div ref={ref} role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={found.length}
       aria-label={`${found.length} von ${total} gefunden`}
-      style={{ width: '100%', maxWidth: 820, height: pic + 30, display: 'flex', flexShrink: 0 }}>
+      style={{ width: '100%', maxWidth: maxW, height: pic + 30, display: 'flex', flexShrink: 0 }}>
       {Array.from({ length: total }, (_, i) => {
         const f = found[i]
         const color = BULBS[i % BULBS.length]
@@ -269,7 +271,11 @@ export default function ShadowGame({ level = 1, onComplete }) {
   const streak      = useRef(0)
   const peeked      = useRef(false)                      // the hidden thing giggled this round
   const timers      = useRef([])
+  const handedIn    = useRef(false)
   const [bursts, burst] = useBursts()
+  // on a wide screen the room stays left of the moon
+  const [rootRef, clear] = useSceneClear(770, 215)
+  const maxW = clear ? Math.min(820, clear.x - 48) : 820
 
   const ch      = challenges[idx]
   const last    = idx + 1 >= challenges.length
@@ -401,10 +407,12 @@ export default function ShadowGame({ level = 1, onComplete }) {
   // On to the next round, or the end (the ➡️ button, or by itself once the
   // found thing has waved)
   const goOn = useCallback(() => {
-    if (!solved) return
+    if (!solved || handedIn.current) return
     setShowNext(false)
     if (last) {
-      // Stars from the rounds solved at the first pick (lib/score.js)
+      // Stars from the rounds solved at the first pick (lib/score.js), once:
+      // the timer and a tap on 🏁 must not both hand the level in
+      handedIn.current = true
       onComplete(result(firstTryRef.current, challenges.length))
       return
     }
@@ -475,19 +483,19 @@ export default function ShadowGame({ level = 1, onComplete }) {
 
   return (
     <DragArea autoTarget="room" disabled={solved || paused}>
-      <div style={{
+      <div ref={rootRef} style={{
         flex:1, minHeight:0, width:'100%', boxSizing:'border-box',
-        display:'flex', flexDirection:'column', alignItems:'center',
+        display:'flex', flexDirection:'column', alignItems: clear ? 'flex-start' : 'center',
         padding:'clamp(6px,1.4vw,16px) clamp(12px,3vw,32px) clamp(10px,2vw,20px)',
         gap:'clamp(6px,1.4vh,14px)',
         overflow:'hidden',
       }}>
-        <Garland total={challenges.length} found={found} party={solved && last} wave={wave} />
+        <Garland total={challenges.length} found={found} party={solved && last} wave={wave} maxW={maxW} />
 
         {/* The room: dark, with a torch. It takes the height that is left,
             so the pictures below always fit. */}
         <DropZone id="room" onDrop={pick} label="Zimmer"
-          style={{ flex:'1 1 0', minHeight:150, maxHeight:680, width:'100%', maxWidth:820, display:'flex' }}>
+          style={{ flex:'1 1 0', minHeight:150, maxHeight:680, width:'100%', maxWidth:maxW, display:'flex' }}>
           {hover => (
             <AnimatePresence mode="wait">
               <motion.div key={idx}
@@ -531,6 +539,17 @@ export default function ShadowGame({ level = 1, onComplete }) {
                   >
                     {ch.shadow}
                   </motion.span>
+                  {/* found: it thinks of its fun fact, as a picture */}
+                  {colored && ch.see && (
+                    <motion.div aria-hidden="true" initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 14, delay: 0.5 }}
+                      style={{ position: 'absolute', left: -shadowSize * 0.42, top: -shadowSize * 0.3, transformOrigin: '100% 100%' }}>
+                      <div style={{ background: '#fffdf7', border: `3px solid ${INK}`, borderRadius: '50%', padding: shadowSize * 0.06, boxShadow: '0 4px 0 rgba(42,27,61,0.25)', display: 'flex' }}>
+                        <Art art={ch.see} size={Math.round(shadowSize * 0.34)} />
+                      </div>
+                      <div style={{ position: 'absolute', right: -shadowSize * 0.02, bottom: -shadowSize * 0.08, width: shadowSize * 0.08, height: shadowSize * 0.08, borderRadius: '50%', background: '#fffdf7', border: `2px solid ${INK}` }} />
+                    </motion.div>
+                  )}
                   {/* found: it waves hello */}
                   {colored && (
                     <motion.div aria-hidden="true"
@@ -586,7 +605,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
                   whileTap={hintUsed || solved ? {} : { scale: 0.9 }}
                   aria-label="Licht-Tipp"
                   style={{
-                    ...pxButton('gold'), position:'absolute', top:8, right:8, zIndex:12, width:52, height:52, padding:0, borderRadius:'50%',
+                    ...pxButton('gold'), position:'absolute', top:8, left:8, zIndex:12, width:52, height:52, padding:0, borderRadius:'50%',
                     display:'flex', alignItems:'center', justifyContent:'center',
                     opacity: hintUsed || solved ? 0.4 : 1, cursor: hintUsed || solved ? 'default' : 'pointer',
                   }}
@@ -621,7 +640,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
 
         {/* The pictures: drag the one that fits into the room, or tap it.
             One row of four, so they never drop below the screen. */}
-        <div ref={picsRef} style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'clamp(8px,1.6vw,16px)', width:'100%', maxWidth:820, flexShrink:0 }}>
+        <div ref={picsRef} style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'clamp(8px,1.6vw,16px)', width:'100%', maxWidth:maxW, flexShrink:0 }}>
           {options.map((emoji, i) => {
             const isRight = emoji === ch.shadow
             const isWrong = wrongPicks.includes(emoji)
@@ -632,9 +651,9 @@ export default function ShadowGame({ level = 1, onComplete }) {
                   animate={{ opacity: isWrong || (solved && !isRight) ? 0.45 : 1, y: 0, scale: solved && isRight ? [1, 1.15, 1] : 1, rotate: isWrong ? [0, -8, 8, -4, 0] : 0 }}
                   transition={{ delay: solved || isWrong ? 0 : i * 0.06, type:'spring', stiffness:300, scale: { duration: 0.5 }, rotate: { duration: 0.5 } }}
                   style={{
-                    height:'clamp(64px,14vh,120px)',
+                    height:'clamp(72px,16vh,136px)',
                     ...pxCard(solved && isRight ? 'right' : undefined),
-                    fontSize:'min(8vh, 11vw, 64px)', lineHeight:1,
+                    fontSize:'min(11.5vh, 17vw, 100px)', lineHeight:1,
                     display:'flex', alignItems:'center', justifyContent:'center',
                     filter: isWrong ? 'grayscale(0.7)' : undefined,
                   }}
