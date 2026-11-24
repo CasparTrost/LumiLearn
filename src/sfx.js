@@ -84,6 +84,18 @@ function noise(delay, dur, vol = 0.18, freq = 1200, q = 0.8) {
   } catch { /* ignore */ }
 }
 
+// A major pentatonic scale from C5: any two of its notes sound good one
+// after the other, so a run of quick hits is a little melody.
+const PENTATONIC = [0, 2, 4, 7, 9]
+const PLUCK_BASE  = 523.25
+const PLUCK_TOP   = 10   // C7; above that a pluck turns into a squeak
+
+/** Pitch of `step` on the scale of sfx.pluck (not the C major of sfx.note): 0 = C5, 1 = D5, 2 = E5, 3 = G5, 4 = A5, 5 = C6 … */
+export function pluckFreq(step) {
+  const n = Math.max(0, Math.min(PLUCK_TOP, Math.floor(Number(step) || 0)))
+  return PLUCK_BASE * Math.pow(2, Math.floor(n / PENTATONIC.length) + PENTATONIC[n % PENTATONIC.length] / 12)
+}
+
 // Games that only play a sound for an answer still let Lumi react
 // (components/LumiBuddy.jsx ignores the second of two signals for one answer)
 const announce = kind => typeof window !== 'undefined' && window.dispatchEvent(new CustomEvent('lumi:feedback', { detail: kind }))
@@ -183,6 +195,22 @@ export const sfx = {
     tone(55, 'sawtooth', 0,    0.35, 0.16)
     tone(58, 'sawtooth', 0.02, 0.35, 0.10)
   },
+  // ── Game feel (components/play/Juice.jsx). They come too often to be
+  // "an answer": neither of them makes Lumi react.
+
+  /** A short pluck on a major pentatonic scale — one good action; step 0 upward, each a note higher */
+  pluck(step = 0) {
+    const f = pluckFreq(step)
+    tone(f,     'triangle', 0, 0.2,  0.2)
+    tone(f * 2, 'sine',     0, 0.07, 0.05)
+  },
+
+  /** Soft, low bonk — a miss that is no drama */
+  bonk() {
+    glide(230, 120, 'sine', 0, 0.16, 0.2)
+    tone(90, 'triangle', 0, 0.07, 0.08)
+  },
+
   // ── Toy sounds for the play kit (components/play): things react when
   // they are tapped, fed, dropped or thrown. None of them means right or
   // wrong, so none of them makes Lumi react.

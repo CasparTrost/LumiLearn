@@ -37,6 +37,7 @@ Welche Aufnahmen die Spiele als Nächstes am meisten brauchen, steht in den Beri
 | `DragArea` / `Draggable` / `DropZone` | Ziehen und Ablegen mit dem Finger, als Tippen-dann-Tippen oder mit der Tastatur. Mit `autoTarget` genügt ein Tipp. |
 | `RoundTrail` | Fortschritt als kleiner Weg: Eine Figur hüpft pro Aufgabe einen Stein weiter bis zum Ziel. |
 | `useBursts` | Sterne, Herzen oder Konfetti an der Stelle, wo der Finger war. |
+| `useJuice` | Das gute Gefühl für jede gelungene Aktion, in allen Spielen gleich. `hit(at)`: ein Ton, der mit jeder richtigen Aktion in Folge höher wird (`sfx.pluck`), ein Stern fliegt im Bogen zum Sternenzähler (`hud`), bei 3, 5 und 8 in Folge leuchtet eine Flamme mit der Zahl auf. `miss(at)`: die Serie endet mit einem leisen Bonk (`sfx.bonk`), ohne Strafe. `shake()`: die Bühne ruckelt kurz. Anleitung und Beispiel stehen oben in `Juice.jsx`; eingebaut ist es in Blasen-Blitz. |
 | `sfx` | Neue Spielzeug-Geräusche: boing, chomp, giggle, whoosh, splash, slideUp, slideDown, drum, burp, tada und sparkle. |
 
 ## Die Spiele
@@ -60,7 +61,7 @@ Welche Aufnahmen die Spiele als Nächstes am meisten brauchen, steht in den Beri
 
 **Blasen-Blitz: „Kraken-Party“** (`BubblePopGame`)
 - **Bisher:** Blasen mit Punkten antippen.
-- **Neu:** Unter Wasser wünscht sich ein Krake Blasen mit genau drei Punkten. Jede richtige Blase platzt, und ein Stern schwimmt zum Kraken, der damit jongliert.
+- **Neu:** Unter Wasser wünscht sich ein Krake Blasen mit genau drei Punkten. Jede richtige Blase platzt, und ein Stern fliegt zum Sternenzähler (`useJuice`). Sind alle gefunden, jongliert der Krake mit so vielen Sternen.
   - Eine falsche Blase wird zum Kugelfisch, der sich aufbläst und beleidigt davonschwimmt. Das ist lustig, aber nicht hart. Serien lassen den Kraken tanzen.
 
 **Waage-Welt: „Die Wippe“** (`WeightGame`)
