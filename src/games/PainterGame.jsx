@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Critter, Art, useMood, DragArea, Draggable, DropZone, RoundTrail, HintHand, useBursts, useDragState } from '../components/play/index.js'
 import { sfx } from '../sfx.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
+import { narrate, afterNarration } from '../narrator.js'
+import { colorWord } from '../lib/words.js'
 import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
 import { useSceneClear } from './sceneSpace.js'
@@ -475,7 +477,12 @@ export default function PainterGame({ level = 1, onComplete }) {
   useEffect(() => () => timers.current.forEach(clearTimeout), [])
 
   // A new wish is a new task
-  useEffect(() => { if (part) sayTask() }, [sceneIdx, partIdx]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!part) return
+    sayTask()
+    // after any praise still being spoken, not over it
+    return afterNarration(() => narrate([colorWord(part.target)]))
+  }, [sceneIdx, partIdx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // After the payoff has played: the next wish, the next customer, or the
   // gallery and the results — held while the help is open
@@ -661,7 +668,7 @@ export default function PainterGame({ level = 1, onComplete }) {
             style={{ display: 'flex', flexWrap: 'wrap', gap: '4px clamp(4px,1.2vw,14px)', justifyContent: 'center' }}>
             {palette.map(c => (
               // the ref outside the draggable: the kit's flying copy would take it along
-              <div key={c.name} ref={el => { potEls.current[c.name] = el }}>
+              <div key={c.name} ref={el => { potEls.current[c.name] = el }} onPointerDown={() => narrate([colorWord(c.name)], { skipIfSame: true })}>
                 <Draggable id={c.name} data={c} label={c.name}>
                   <Pot color={c.value} name={c.name} size={potSize} />
                 </Draggable>

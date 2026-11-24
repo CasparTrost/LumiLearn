@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { motion, useAnimationControls } from 'framer-motion'
 import { Critter, Art, Wish, DropZone } from '../components/play/index.js'
-import { afterNarration } from '../narrator.js'
+import { afterNarration, narrate } from '../narrator.js'
+import { feelingWord } from '../lib/words.js'
 import { usePaused } from '../lib/pause.js'
 import { sfx } from '../sfx.js'
 import { FEELING_ICON, FEELING_BADGE } from './feelings.js'
@@ -579,7 +580,8 @@ export function useTrayStart(trayRef) {
 /** A feeling face as a picture with its word: what the child hands over. */
 export function FaceChip({ feeling, size = 76, dim = false, glow = false }) {
   return (
-    <div style={{
+    // touching a face says its word: the label under it is for readers
+    <div onPointerDown={() => narrate([feelingWord(feeling)], { skipIfSame: true })} style={{
       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
       opacity: dim ? 0.35 : 1, filter: dim ? 'grayscale(0.8)' : undefined, transition: 'opacity .3s',
     }}>

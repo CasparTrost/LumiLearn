@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
-import { lockPreviews, leaveGame } from '../narrator.js'
+import { lockPreviews, leaveGame, narrate } from '../narrator.js'
+import { numberWord } from '../lib/words.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
 import { sfx } from '../sfx.js'
@@ -135,6 +136,8 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
     setPlate(p => [...p, id])
     sfx.pop()
     pop(n === 0 ? '?' : k)
+    // Lumi counts along: eins, zwei, drei …
+    if (n !== 0) narrate([numberWord(k)])
     if (n === 0) setMood('oops', 900)
     return true
   }

@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { motion, AnimatePresence, useReducedMotion, useAnimationControls } from 'framer-motion'
-import { lockPreviews, leaveGame } from '../narrator.js'
+import { lockPreviews, leaveGame, narrate } from '../narrator.js'
+import { numberWord } from '../lib/words.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
 import { sfx } from '../sfx.js'
@@ -130,6 +131,8 @@ export default function NumbersGame({ level = 1, onComplete }) {
     setTaken(t => ({ ...t, [pi]: (t[pi] || 0) + 1 }))
     sfx.pop()
     if (help) pop((basket[pi] || 0) + 1 + homeOf(pi))
+    // Lumi counts along; the child still decides when the basket is full
+    narrate([numberWord((basket[pi] || 0) + 1 + homeOf(pi))])
     return true
   }
   // Holding a crate pours (Crate calls this every 350 ms); the latest put
