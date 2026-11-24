@@ -89,6 +89,16 @@ describe('the daily journey', () => {
     expect(games.every(s => byId[s.moduleId].minAge <= 5 && s.moduleId !== 'coloring')).toBe(true)
   })
 
+  it('starts a new child with games made for its age', () => {
+    const byId = Object.fromEntries(MODULES.map(m => [m.id, m]))
+    const first = age => planJourney({ ...ctx, mods: sortForAge(MODULES, { age }), progress: {}, age }).filter(s => s.moduleId)
+    // a four-year-old begins with counting, a seven-year-old does not
+    expect(first(4)[0].moduleId).toBe('number-intro')
+    expect(first(7)[0].moduleId).not.toBe(first(4)[0].moduleId)
+    expect(byId[first(7)[0].moduleId].minAge).toBe(6)
+    expect(first(4).every(s => byId[s.moduleId].minAge <= 4)).toBe(true)
+  })
+
   it('mixes worlds', () => {
     const stops = planJourney({ ...ctx, progress: {}, age: 6 }).filter(s => s.moduleId)
     const byId = Object.fromEntries(MODULES.map(m => [m.id, m]))

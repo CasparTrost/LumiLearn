@@ -44,7 +44,10 @@ export function Art({ art, size = 64, style, alt = '', mood }) {
  *   happy  jumps, spins, hearts float up
  *   dance  a longer party dance
  *   sad    droops, sways; a little rain cloud
- *   oops   a puzzled tilt and a question mark (a miss — never mean)
+ *   oops   a miss, shown once and kindly: the character shakes its head
+ *          a little (Lumi with a thoughtful face). No mark: a "?" over
+ *          the head was a question nobody could answer, and with the one
+ *          drawn into Lumi's old picture there were two
  *   wow    stretches up, an exclamation mark
  *   sleep  slow breathing, Zzz
  *
@@ -139,7 +142,8 @@ function useSpeaking(on) {
   return on && v
 }
 
-// Little marks at the head: hearts, a question mark, Zzz, crumbs, rain.
+// Little marks at the head: hearts, an exclamation mark, Zzz, crumbs, rain.
+// Each says what the character feels; a miss ('oops') has none.
 // They stay inside the character's own box, never above it: a game that
 // clips its stage (Zahlen entdecken) cut off hearts above the head.
 function MoodMark({ mood, size, tickle }) {
@@ -158,9 +162,6 @@ function MoodMark({ mood, size, tickle }) {
             </motion.svg>
           ))}
         </motion.div>
-      ) : mood === 'oops' ? (
-        <motion.div key="q" initial={{ opacity: 0, y: 10, scale: 0.5 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0 }}
-          style={{ position: 'absolute', top: s * 0.01, right: 0, fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: s * 0.3, color: '#6b3fd6', WebkitTextStroke: '2px #2a1b3d', pointerEvents: 'none' }}>?</motion.div>
       ) : mood === 'wow' ? (
         <motion.div key="w" initial={{ opacity: 0, scale: 0.4 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
           style={{ position: 'absolute', top: s * 0.01, right: s * 0.04, fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: s * 0.3, color: '#ffc93c', WebkitTextStroke: '2px #2a1b3d', pointerEvents: 'none' }}>!</motion.div>
