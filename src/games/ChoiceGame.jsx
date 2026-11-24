@@ -6,7 +6,7 @@ import { lockPreviews, afterNarration } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
-import { Art, Critter, useMood, DragArea, Draggable, DropZone, RoundTrail, HintHand, useBursts } from '../components/play/index.js'
+import { Art, Critter, DragArea, Draggable, DropZone, RoundTrail, HintHand, useBursts } from '../components/play/index.js'
 import { voice, KEY } from './woerter/voice.js'
 import Finale from './woerter/Finale.jsx'
 import { INK } from './px.js'
@@ -14,8 +14,7 @@ import './parade/parade.css'
 
 /**
  * Musterpark: "Tierparade". Animals and things march in time across the
- * meadow behind a drumming giraffe: frog, dog, frog, dog … (the giraffe is
- * no animal of the patterns, so it never looks like part of the row). One
+ * meadow: frog, dog, frog, dog … One
  * place in the parade is empty, a pulsing "?". The child drags the right one from the
  * waiting crowd into the gap (or taps it); then the drum rolls and the
  * parade marches on. A wrong one makes the whole parade stumble over its own
@@ -118,7 +117,6 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
   const [streak,   setStreak]   = useState(0)
   const [ready,    setReady]    = useState(false)   // payoff over: next round
   const [finale,   setFinale]   = useState(false)
-  const [leader, setLeader] = useMood()
   const [crowd,  setCrowd]  = useState([])          // who marched into the 🎪 so far
   const timers   = useRef([])
   useEffect(() => () => timers.current.forEach(clearTimeout), [])
@@ -147,7 +145,6 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
     const s = first ? streak + 1 : 0
     setStreak(s)
     upd({ solved: true })
-    setLeader('dance', 600 + q.tokens.length * BEAT_MS + 400)
     sayRight()
     if (gapRef.current) burst(gapRef.current, s >= 3 ? 'confetti' : 'stars', s >= 3 ? 20 : 10)
     // the drum roll: each marcher hops on its beat, its sound by its kind
@@ -165,16 +162,15 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
     at(end + 150, () => { if (!reduceMotion()) upd({ marching: true, hopAt: -1 }) })
     at(end + 900, () => setCrowd(c => [...c, q.sym ?? q.unit[0]]))
     afterNarration(() => at(0, () => setReady(true)), { minMs: end + MARCH_MS })
-  }, [rs.wrong, streak, setLeader, burst, q, build])
+  }, [rs.wrong, streak, burst, q, build])
 
   // Wrong: everybody stumbles, the piece goes back to wait
   const trip = useCallback((opt, extra = {}) => {
     setRs(r => ({ ...r, ...extra, wrong: r.wrong.includes(opt) ? r.wrong : [...r.wrong, opt], stumble: r.stumble + 1 }))
     setStreak(0)
-    setLeader('oops', 1100)
     sfx.slideDown()
     sayWrong()
-  }, [setLeader])
+  }, [])
 
   // Next round once the parade is gone, never while the help is open
   useEffect(() => {
@@ -211,12 +207,11 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
   // (the groups of a growing row stand apart, so each can be counted)
   const spread = q.kind === 'grow' ? 0.45 : 0.08
   // the giraffe (1.25 marchers) and its space in front
-  const leaderW = 1.35 + 2 * spread
   const unitsOf = list => list.reduce((n, i) => n + widthOf(q, q.tokens[i]) + spread, 0)
   const all = q.tokens.map((_, i) => i)
   // On a phone a long parade goes round the bend: two lines, read like a
   // book, instead of pictures too small to tell apart
-  const oneLine = (stageW - 24) / (unitsOf(all) + leaderW)
+  const oneLine = (stageW - 24) / unitsOf(all)
   // … breaking only between two rounds of the pattern (or two groups)
   const unitLen = q.unit?.length ?? 1
   const half = Math.max(unitLen, Math.round(all.length / 2 / unitLen) * unitLen)
@@ -224,7 +219,7 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
   const bend = q.kind === 'grow' ? oneLine < 70 : oneLine < 46 && all.length > 5
   const lines = bend && half < all.length ? [all.slice(0, half), all.slice(half)] : [all]
   const size = Math.min(104, lines.length > 1
-    ? (stageW - 24) / Math.max(unitsOf(lines[0]), unitsOf(lines[1]) + leaderW)
+    ? (stageW - 24) / Math.max(unitsOf(lines[0]), unitsOf(lines[1]))
     : oneLine)
   const gap = size * spread
   // the right piece, lit up after two misses on one place
@@ -296,14 +291,6 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
                 <div aria-hidden="true" style={{ position: 'absolute', left: 0, right: 0, bottom: -size * 0.14, height: size * 0.4, borderRadius: 99,
                   background: '#e9c98f', border: `3px solid ${INK}`, boxShadow: 'inset 0 -6px 0 rgba(138,79,34,0.25)' }} />
                 {line.map(i => renderToken(q.tokens[i], i))}
-                {/* the drummer up front */}
-                {li === lines.length - 1 && (
-                  <div style={{ position: 'relative', marginLeft: gap * 2, flexShrink: 0 }}>
-                    <Critter art="🦒" size={size * 1.25} mood={leader} label="Giraffe mit Trommel"
-                      accessory={<div aria-hidden="true" style={{ position: 'absolute', left: -size * 0.2, bottom: -size * 0.05 }}><Art art="🥁" size={size * 0.6} /></div>}
-                      onTap={() => { sfx.drum(true); setLeader('dance', 1200) }} />
-                  </div>
-                )}
               </div>
             ))}
           </motion.div>
@@ -334,7 +321,7 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
           })}
         </div>
         <HintHand key={`hand-${idx}`} from={hintFrom} to={gapRef} active={!solved && !finale} delay={idx === 0 ? 2000 : showRight ? 1500 : 6000} />
-        {finale && <Finale items={questions.map(x => x.sym ?? x.unit[0])} hero="🦒"
+        {finale && <Finale items={questions.map(x => x.sym ?? x.unit[0])} hero="🎪"
           onDone={() => onComplete(result(firstTry, questions.length))} />}
       </div>
       {bursts}

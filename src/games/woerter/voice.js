@@ -17,6 +17,7 @@ export const KEY = {
   word:     w => `wort/${slug(w)}`,          // "Banane."
   syllable: s => `silbe/${slug(s)}`,         // "Na."
   sound:    c => `laut/${slug(c)}`,          // "Mmm." (the letter's sound)
+  letter:   c => `buchstabe/${slug(c)}`,     // "Be." (the letter's name)
   anlaut:   (c, w) => `laut/${slug(c)}-wie-${slug(w)}`, // "Mmm wie Maus!"
   digit:    n => `ziffer/${n}`,              // "Drei!"
   noise:    w => `geraeusch/${slug(w)}`,     // "Muuh!"

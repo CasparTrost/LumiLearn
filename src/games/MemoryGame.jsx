@@ -11,9 +11,9 @@ import { INK, pxCard } from './px.js'
 
 /**
  * Memo-Welt: "Tierparty". The cards are little presents. Turned over, the
- * one inside jumps up. Two that belong together hug and dance off to the
+ * one inside jumps up. Two the same hug and dance off to the
  * party meadow at the top; the meadow shows from the start what makes a
- * pair (two the same, or the cow and its milk). At the end the whole party
+ * pair (two the same). At the end the whole party
  * comes out and dances.
  * Scientific basis:
  *   • Spacing Effect (Ebbinghaus, 1885) — repeated retrieval over time prevents forgetting.
@@ -49,56 +49,23 @@ const THINGS = [
   ['☂️','Schirm'], ['🔑','Schlüssel'], ['🎸','Gitarre'], ['🥁','Trommel'],
   ['👑','Krone'], ['🏠','Haus'],
 ]
-const PICTURE_POOLS = { 1: ANIMALS, 2: FOOD, 3: THINGS, 4: [...ANIMALS, ...FOOD, ...THINGS] }
-
-// Pairs that belong together without looking alike. From level 5 on these
-// replace the identical pairs, which turns the task from pure visual recall
-// into recall plus "what goes with what" — the same concept forming that
-// Sortier-Spaß trains, but held in memory. `act` is what the two do together
-// at the party (PartyPair): the cow drinks the milk, the bee flies to the
-// honey, the sock slips into the shoe. No card fits a second pair (the sun went with the sunflower
-// as well as with the sunglasses; the candle already showed a flame; the
-// "nerd" face next to the books was a cliché, not a connection).
-const ASSOCIATION_PAIRS = [
-  { a: ['🐄','Kuh'],         b: ['🥛','Milch'], act: 'eat' },
-  { a: ['🐝','Biene'],       b: ['🍯','Honig'], act: 'fly' },
-  { a: ['🌧️','Regen'],       b: ['☂️','Schirm'], act: 'onto' },
-  { a: ['🐔','Huhn'],        b: ['🥚','Ei'], act: 'onto' },
-  { a: ['🐰','Hase'],        b: ['🥕','Möhre'], act: 'eat' },
-  { a: ['🖌️','Pinsel'],      b: ['🎨','Farben'], act: 'scrub' },
-  { a: ['🔑','Schlüssel'],   b: ['🔒','Schloss'], act: 'onto' },
-  { a: ['🧦','Socke'],       b: ['👟','Schuh'], act: 'onto' },
-  { a: ['🐕','Hund'],        b: ['🦴','Knochen'], act: 'eat' },
-  { a: ['🐒','Affe'],        b: ['🍌','Banane'], act: 'eat' },
-  { a: ['🪥','Zahnbürste'],  b: ['🦷','Zahn'], act: 'scrub' },
-  { a: ['🐿️','Eichhörnchen'], b: ['🥜','Nuss'], act: 'eat' },
-  { a: ['🚒','Feuerwehr'],   b: ['🔥','Feuer'], act: 'eat' },
-  { a: ['🎣','Angel'],       b: ['🐟','Fisch'], act: 'float' },
-  { a: ['⚽','Ball'],         b: ['🥅','Tor'], act: 'onto' },
-  { a: ['🎂','Torte'],       b: ['🎁','Geschenk'], act: 'fly' },
-  { a: ['❄️','Schnee'],      b: ['⛄','Schneemann'], act: 'onto' },
-  { a: ['🎻','Geige'],       b: ['🎵','Musik'], act: 'float' },
-  { a: ['☀️','Sonne'],       b: ['🕶️','Sonnenbrille'], act: 'float' },
-]
+// Every level has pairs of two the same: a pair must be seen at a glance.
+// (From level 5 the pairs once were "what goes with what", the cow and the
+// milk. Children and parents alike saw a board with no pairs on it.) The
+// higher levels get harder by more cards, and by one theme per board, whose
+// pictures look more alike than a mixed board's.
+const MIXED = [...ANIMALS, ...FOOD, ...THINGS]
+const PICTURE_POOLS = { 1: ANIMALS, 2: FOOD, 3: THINGS, 4: MIXED, 5: MIXED, 6: ANIMALS, 7: MIXED, 8: THINGS, 9: MIXED, 10: MIXED }
 
 const shuffle = a => [...a].sort(() => Math.random() - 0.5)
 
 // Two of the same at the party: leapfrog, a spin together, a hug
 const SAME_ACTS = ['jump', 'spin', 'hug']
 
-// pairKey instead of comparing the emoji itself, so a pair can be two
-// different pictures that belong together.
 function buildCards(count, pool) {
   const chosen = shuffle(pool).slice(0, count)
   const flat = chosen.flatMap(([emoji, name], i) => [0, 1].map(() =>
     ({ emoji, name, pairKey: `p${i}`, found: [emoji, emoji], act: SAME_ACTS[i % SAME_ACTS.length] })))
-  return shuffle(flat).map((c, id) => ({ id, ...c, flipped: false, matched: false }))
-}
-
-function buildAssociationCards(count) {
-  const chosen = shuffle(ASSOCIATION_PAIRS).slice(0, count)
-  const flat = chosen.flatMap(({ a, b, act }, i) => [a, b].map(([emoji, name]) =>
-    ({ emoji, name, pairKey: `p${i}`, found: [a[0], b[0]], act })))
   return shuffle(flat).map((c, id) => ({ id, ...c, flipped: false, matched: false }))
 }
 
@@ -203,10 +170,9 @@ export default function MemoryGame({ level = 1, onComplete }) {
   // impossible (20 cards: 11 s).
   const previewSecs = Math.round(Math.max(4, 1 + pairCount * 2 * 0.5))
   // Association pairs (cow/milk) instead of identical ones from level 5 on.
-  const useAssociations = level >= 5
 
   const [cards,    setCards]    = useState(() =>
-    useAssociations ? buildAssociationCards(pairCount) : buildCards(pairCount, PICTURE_POOLS[level] ?? PICTURE_POOLS[4]))
+    buildCards(pairCount, PICTURE_POOLS[level] ?? MIXED))
   const [flipped,  setFlipped]  = useState([])
   const [locked,   setLocked]   = useState(false)
   const [moves,    setMoves]    = useState(0)
@@ -239,8 +205,8 @@ export default function MemoryGame({ level = 1, onComplete }) {
   // it; Lumi says it when it is recorded
   useEffect(() => {
     sayTask()
-    voice([KEY.task(useAssociations ? 'tierparty-zusammen' : 'tierparty')])
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    voice([KEY.task('tierparty')])
+  }, [])  
 
   const flip = useCallback((id) => {
     if (locked || phase !== 'playing') return
@@ -369,7 +335,7 @@ export default function MemoryGame({ level = 1, onComplete }) {
   const guestS    = Math.max(24, sizeFor(partyRows))
   const partyH    = 26 + partyRows * (guestS + 8)
   // what makes a pair, shown before any is found
-  const example = useAssociations ? ['🐄', '🥛'] : ['🎈', '🎈']
+  const example = ['🎈', '🎈']
   // The hand taps a card worth turning: the partner of the open card, or a
   // card of a pair the child has already seen both of; otherwise a card not
   // seen yet (never the same one over and over)

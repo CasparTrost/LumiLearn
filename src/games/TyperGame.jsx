@@ -8,6 +8,7 @@ import { usePaused } from '../lib/pause.js'
 import { Art, Wish, RoundTrail, HintHand, useBursts } from '../components/play/index.js'
 import { Cauldron, WitchLumi, Puff, Alive, Firefly, Hill, useFliers } from './kessel/Cauldron.jsx'
 import { voice, KEY } from './woerter/voice.js'
+import { LINES, line } from '../lib/lumiLines.js'
 import Finale from './woerter/Finale.jsx'
 import { INK, pxCard } from './px.js'
 
@@ -397,9 +398,12 @@ function announce(word, first) {
   sayTask()
   voice([first && KEY.task('zauberkessel'), KEY.word(nameOf(word))])
 }
-// A word is done: praise now and then, the word and what it says ("Kuh! Muuh!")
+// A word is done: its last letter is named like every other one, then the
+// whole word, the praise now and then, and what the word says
+// ("Zett. Pilz. Ja, super!" / "Ha. Kuh. Muuh!").
 function conjured(word) {
-  sayRight(null, { onEnd: () => voice([KEY.word(nameOf(word)), KEY.noise(nameOf(word))]) })
+  const lead = [KEY.letter(word[word.length - 1]), KEY.word(nameOf(word))].filter(k => k in LINES).map(line)
+  sayRight(null, { lead, onEnd: () => voice([KEY.noise(nameOf(word))]) })
 }
 
 // The element of an on-screen key, looked up when the hint hand needs it
@@ -543,7 +547,7 @@ function FallingLettersGame({ level, onComplete }) {
     setShowHint(false)
     setLetterY(-10) // drop the next letter from the top
     if (newTyped >= word.length) { finishWord(helpedRef.current); conjured(word) }
-    else voice([KEY.sound(char)])
+    else voice([KEY.letter(char)])
   }, [targetChar, typed, word, misses, finishWord, k])
 
   // Physical keyboard
@@ -659,7 +663,7 @@ function StaticTyperGame({ level, onComplete }) {
     if (key === nextChar) {
       k.letterIn(el, key, el)
       setTyped(t => t + key)
-      if (typed.length + 1 < word.length) voice([KEY.sound(key)])
+      if (typed.length + 1 < word.length) voice([KEY.letter(key)])
     } else {
       k.letterOut(el, key)
       const n = misses + 1
