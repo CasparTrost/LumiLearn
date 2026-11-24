@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence, useAnimationControls } from 'framer-motion'
 import { PxStar } from './PixelUI.jsx'
+import { lumiArt } from '../lib/assets.js'
 
 const BASE = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '')
 
@@ -62,12 +63,12 @@ export default function LumiBuddy({ size = 48 }) {
     return () => { window.removeEventListener('lumi:feedback', onFeedback); clearTimeout(timer.current) }
   }, [controls, size])
 
-  const src = `${BASE}/sprites/maze/${mood === 'happy' ? 'lumi_happy' : 'lumi_idle'}.png`
+  const src = lumiArt(mood)
   return (
     <div aria-hidden="true" data-lumi-buddy={mood} style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
       <motion.img
         src={src} alt="" draggable={false} animate={controls}
-        style={{ width: size, height: size, display: 'block', imageRendering: 'pixelated', filter: 'drop-shadow(0 3px 0 rgba(42,27,61,0.35))' }}
+        style={{ width: size, height: size, display: 'block', objectFit: 'contain', filter: 'drop-shadow(0 3px 0 rgba(42,27,61,0.35))' }}
       />
       <AnimatePresence>
         {mood === 'think' && (

@@ -2,16 +2,16 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence, useAnimationControls } from 'framer-motion'
 import { emojiSrc, hasEmojiArt, customName, customArtSrc } from '../../lib/emojiArt.jsx'
 import { onNarrationChange } from '../../narrator.js'
+import { lumiArt } from '../../lib/assets.js'
 import { sfx } from '../../sfx.js'
 import './play.css'
 
 const BASE = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '')
-const LUMI = { idle: `${BASE}/sprites/maze/lumi_idle.png`, happy: `${BASE}/sprites/maze/lumi_happy.png` }
 const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
 /** The picture for an emoji, a custom-art token (lib/emojiArt.jsx), 'lumi' or a plain URL. */
 export function artSrc(art, mood = 'idle') {
-  if (art === 'lumi') return mood === 'happy' || mood === 'dance' || mood === 'eat' ? LUMI.happy : LUMI.idle
+  if (art === 'lumi') return lumiArt(mood)
   const name = customName(art)
   if (name) return customArtSrc(name)
   if (typeof art === 'string' && (art.startsWith('/') || art.startsWith('http'))) return art
@@ -19,11 +19,11 @@ export function artSrc(art, mood = 'idle') {
 }
 
 /** A picture of a thing: the cartoon art for an emoji, or the emoji itself. */
-export function Art({ art, size = 64, style, alt = '' }) {
-  const src = artSrc(art)
+export function Art({ art, size = 64, style, alt = '', mood }) {
+  const src = artSrc(art, mood)
   if (!src) return <span role={alt ? 'img' : undefined} aria-label={alt || undefined} style={{ fontSize: size * 0.82, lineHeight: 1, ...style }}>{art}</span>
   return <img src={src} alt={alt} draggable={false}
-    style={{ width: size, height: size, maxWidth: 'none', flexShrink: 0, objectFit: 'contain', imageRendering: art === 'lumi' ? 'pixelated' : undefined, ...style }} />
+    style={{ width: size, height: size, maxWidth: 'none', flexShrink: 0, objectFit: 'contain', ...style }} />
 }
 
 /**
@@ -96,7 +96,7 @@ export default function Critter({
         animate={controls}
         style={{ all: 'unset', position: 'relative', cursor: 'pointer', width: '100%', height: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', transformOrigin: '50% 100%' }}>
         <div style={{ width: '100%', height: '100%', transform: flip ? 'scaleX(-1)' : undefined, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-          <Art art={art} size={size} style={{ filter: mood === 'sad' ? 'saturate(0.55)' : undefined, transition: 'filter .4s' }} />
+          <Art art={art} size={size} mood={shown} style={{ filter: mood === 'sad' && art !== 'lumi' ? 'saturate(0.55)' : undefined, transition: 'filter .4s' }} />
         </div>
         {accessory}
       </motion.button>
