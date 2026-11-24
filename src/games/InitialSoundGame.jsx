@@ -122,7 +122,7 @@ export default function InitialSoundGame({ level = 1, onComplete }) {
     if (r) narrate([wordRec(r.word), i === 0 && rec('anlaut/womit')])
   }, [rounds])
 
-  const { idx, done, leaving, finale, tried, streak, win, miss, reveal } =
+  const { idx, done, leaving, finale, tried, streak, win, miss, reveal, isOver, hasTried } =
     useRounds(rounds.length, { onComplete, sayTask, outroMs: 450 })
   idxRef.current = idx
   const r = rounds[idx]
@@ -134,7 +134,7 @@ export default function InitialSoundGame({ level = 1, onComplete }) {
   if (!r) return null
 
   const drop = (L, el) => {
-    if (done || tried.includes(L)) return false
+    if (isOver() || hasTried(L)) return false
     if (L === r.letter) {
       setGot({ i: idx, L })
       const streaky = !tried.length && streak + 1 >= 3
@@ -174,8 +174,7 @@ export default function InitialSoundGame({ level = 1, onComplete }) {
             <circle cx="22%" cy="101" r="7" fill="#555" stroke={INK} strokeWidth="2" />
           </svg>
           <div style={{ position: 'absolute', left: 'max(4px, calc(17% - 70px))', top: 70 }}>
-            {/* key: a fresh Lumi each round — after 'happy' the kit's idle would spin back from 360° forever */}
-            <Critter key={idx} art="lumi" size={92} talks label="Lumi" mood={finale ? 'dance' : done && tried.length < 2 ? 'happy' : 'idle'} />
+            <Critter art="lumi" size={92} talks label="Lumi" mood={finale ? 'dance' : done && tried.length < 2 ? 'happy' : 'idle'} />
           </div>
           {/* where the catch hangs, for the hint hand */}
           <div ref={catchRef} aria-hidden="true" style={{ position: 'absolute', left: '50%', top: HOOK + 50, width: 2, height: 2 }} />

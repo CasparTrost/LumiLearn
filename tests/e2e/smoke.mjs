@@ -35,7 +35,23 @@ async function newPage([w, h], seed) {
 }
 
 async function check(page, where) {
-  const r = await page.evaluate(() => {
+  const r = await measure(page)
+  // something sliding in (a character entering the stage) is off screen for
+  // a moment: only what is still off screen a moment later counts
+  if (r.off.length) {
+    await page.waitForTimeout(1500)
+    const again = await measure(page)
+    r.off = r.off.filter(x => again.off.includes(x))
+  }
+  const crashed = await page.getByText(/gestolpert|Etwas ist schiefgegangen/).count()
+  if (crashed) problems.push(`${where}: error screen`)
+  if (r.sideways) problems.push(`${where}: scrolls sideways`)
+  if (r.off.length) problems.push(`${where}: off screen: ${r.off.join(', ')}`)
+  if (r.broken.length) problems.push(`${where}: pictures not loading: ${r.broken.join(', ')}`)
+}
+
+async function measure(page) {
+  return page.evaluate(() => {
     const W = innerWidth, H = innerHeight
     // a page that scrolls down (the home screen) may have buttons further down
     const scrolls = document.documentElement.scrollHeight > H + 1
@@ -48,11 +64,6 @@ async function check(page, where) {
     const broken = [...document.querySelectorAll('img')].filter(i => i.complete && i.naturalWidth === 0).map(i => i.src.split('/').pop())
     return { sideways: document.documentElement.scrollWidth > W + 1, off, broken }
   })
-  const crashed = await page.getByText(/gestolpert|Etwas ist schiefgegangen/).count()
-  if (crashed) problems.push(`${where}: error screen`)
-  if (r.sideways) problems.push(`${where}: scrolls sideways`)
-  if (r.off.length) problems.push(`${where}: off screen: ${r.off.join(', ')}`)
-  if (r.broken.length) problems.push(`${where}: pictures not loading: ${r.broken.join(', ')}`)
 }
 
 // 1. A new child on a phone

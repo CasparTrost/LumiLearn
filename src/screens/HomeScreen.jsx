@@ -159,16 +159,16 @@ function LumiIdea({ idea, plan, onPlay, onAlbum, stickers, narrow }) {
   const allDone = !idea
   return (
     <div style={{
-      display:'flex', alignItems:'center', justifyContent:'center', flexWrap: narrow ? 'nowrap' : 'wrap',
+      display:'flex', alignItems:'center', justifyContent: narrow ? 'flex-start' : 'center', flexWrap: narrow ? 'nowrap' : 'wrap',
       gap:'clamp(8px,3vw,40px)', padding:'clamp(8px,2vw,20px) clamp(10px,3vw,16px) 0',
     }}>
-      <div style={{ paddingTop: narrow ? 62 : 90, flexShrink: 0 }}>
+      <div style={{ paddingTop: narrow ? 62 : 90, paddingLeft: narrow ? 12 : 0, flexShrink: 0 }}>
         <Critter art="lumi" size={narrow ? 92 : 170} mood={allDone ? 'dance' : 'idle'} talks label="Lumi"
           wish={idea ? <TileArt mod={idea.mod} size={narrow ? 40 : 60} bare /> : <Art art="⭐" size={narrow ? 34 : 52} />}
           wishSide="top" />
       </div>
       <motion.div initial={{ scale:0.8, opacity:0 }} animate={{ scale:1, opacity:1 }} transition={{ type:'spring', stiffness:260, damping:18, delay:0.2 }}
-        className="px-panel" style={{ padding: narrow ? '10px 12px' : '14px 18px', display:'flex', flexDirection:'column', alignItems:'center', gap:10, minWidth: narrow ? 0 : 280 }}>
+        className="px-panel" style={{ padding: narrow ? '10px 12px' : '14px 18px', display:'flex', flexDirection:'column', alignItems:'center', gap:10, minWidth: narrow ? 0 : 280, flex: narrow ? '1 1 0' : undefined }}>
         {idea ? (<>
           <div style={{ display:'flex', alignItems:'center', gap:12 }}>
             <TileArt mod={idea.mod} size={narrow ? 44 : 72} />

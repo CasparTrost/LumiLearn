@@ -152,7 +152,7 @@ export default function ListenGame({ level = 1, onComplete }) {
     else narrate([i === 0 && rec('hoeren/wer'), wordRec(target.word)])
   }, [rounds, isReading])
 
-  const { idx, done, leaving, finale, tried, streak, win, miss, reveal } =
+  const { idx, done, leaving, finale, tried, streak, win, miss, reveal, isOver, hasTried } =
     useRounds(rounds.length, { onComplete, sayTask, outroMs: 500 })
   idxRef.current = idx
   const round = rounds[idx]
@@ -164,7 +164,7 @@ export default function ListenGame({ level = 1, onComplete }) {
   useEffect(() => { if (finale) burst(rowRef.current, 'confetti', 18) }, [finale, burst])
 
   const pick = (opt, el) => {
-    if (done || tried.includes(opt.word)) return
+    if (isOver() || hasTried(opt.word)) return
     if (opt.word === current.word) {
       const streaky = !tried.length && streak + 1 >= 3
       win(streaky ? 2300 : 1900)
@@ -193,12 +193,11 @@ export default function ListenGame({ level = 1, onComplete }) {
 
       {/* Lumi is the seeker: calls the word, or shows what to find */}
       <div style={{ position: 'relative', alignSelf: 'flex-start', marginLeft: 'clamp(8px,8vw,120px)', marginTop: 90 }}>
-        {/* key: a fresh Lumi each round — after 'happy' the kit's idle would spin back from 360° forever */}
-        <Critter key={idx} art="lumi" size={108} talks mood={lumiMood} label="Lumi"
+        <Critter art="lumi" size={108} talks mood={lumiMood} label="Lumi"
           accessory={<Art art="🔍" size={46} style={{ position: 'absolute', right: -14, bottom: 6, transform: 'rotate(-15deg)' }} />} />
         <Wish side="right" size={108}>
           <motion.div key={idx} initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.1, type: 'spring', stiffness: 320, damping: 15 }}
+            transition={{ type: 'spring', stiffness: 320, damping: 15 }}
             style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {!heard && <Art art={current.emoji} size={84} />}
             {!heard && !isReading && <span aria-hidden="true" style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 40, color: '#6b3fd6' }}>?</span>}

@@ -29,6 +29,9 @@ export function useRounds(total, { onComplete, sayTask, outroMs = 450, finaleMs 
   const [tried, setTried] = useState([])       // this round's misses
   const [streak, setStreak] = useState(0)
   const firstTry = useRef(0)
+  // set at once by win/reveal: two quick taps in one frame must not count twice
+  const over = useRef(false)
+  const missed = useRef(new Set())
   const task = useRef(sayTask)
   task.current = sayTask
   const done = hold > 0
@@ -53,6 +56,8 @@ export function useRounds(total, { onComplete, sayTask, outroMs = 450, finaleMs 
     if (!leaving) return
     const t = setTimeout(() => {
       lockPreviews()
+      over.current = false
+      missed.current = new Set()
       setTried([]); setHold(0); setLeaving(false)
       setIdx(i => i + 1)
     }, outroMs)
@@ -68,15 +73,25 @@ export function useRounds(total, { onComplete, sayTask, outroMs = 450, finaleMs 
 
   return {
     idx, done, leaving, finale, tried, paused, streak,
+    /** true from the moment the round is won or shown — use it, not `done`, in tap handlers */
+    isOver: () => over.current,
+    /** whether this was already tried this round (up to date even between renders) */
+    hasTried: key => missed.current.has(key),
     /** a right answer; counts if nothing was missed before */
     win: (holdMs = 1500) => {
-      if (!tried.length) { firstTry.current++; setStreak(s => s + 1) }
+      if (over.current) return
+      over.current = true
+      if (!missed.current.size) { firstTry.current++; setStreak(s => s + 1) }
       setHold(holdMs)
     },
     /** a miss; returns how many this round has had */
-    miss: key => { setStreak(0); setTried(t => [...t, key]); return tried.length + 1 },
+    miss: key => {
+      missed.current.add(key)
+      setStreak(0); setTried([...missed.current])
+      return missed.current.size
+    },
     /** the answer was shown after the misses */
-    reveal: (holdMs = 2500) => setHold(holdMs),
+    reveal: (holdMs = 2500) => { over.current = true; setHold(holdMs) },
   }
 }
 

@@ -17,6 +17,17 @@ Vorbild ist das Gefühl guter Kindersendungen und ihrer Spiele-Apps: Figuren, di
 5. **Gleiches Lernziel, gleiche Levels.** Die Lernlogik, die Inhalte und die Steigerung über die Levels bleiben. Ebenso die Auswertung: erste Antwort richtig, `lib/score.js`, Leitner-Wiederholung.
    - Neu ist, *wie* gespielt wird.
 
+## Ohne Worte verständlich
+
+Gesprochen wird vorerst nur, was mit Lumis geklonter Stimme aufgenommen ist (`src/narrator.js`, `isLumiVoice`). Die Browserstimme und die älteren Aufnahmen sind stumm, weil sie zu lang waren und sich ständig wiederholten. Lob kommt beim ersten und dann bei jedem dritten richtigen Ergebnis, nie zweimal hintereinander dasselbe.
+
+So bleibt jedes Spiel ohne Ansage verständlich:
+- **Aufgabe als Bild:** Die Aufgabe steht als Bild in der Sprechblase der Figur, zum Beispiel drei Erdbeeren, ein Buchstabe mit Beispielbild oder ein Fragezeichen-Platz.
+- **Zeige-Hand:** Wartet ein Kind, zeigt `HintHand` die Bewegung vor.
+- **Volle Belohnung:** Jede Belohnung läuft ganz ab, bevor die nächste Aufgabe kommt.
+
+Welche Aufnahmen die Spiele als Nächstes am meisten brauchen, steht in den Berichten zur Runde 2: Wörter, Laute, Zahlwörter, Farben, Gefühle und Geschichtssätze. Sobald ein Satz in `lib/lumiLines.js` steht und aufgenommen ist, spielen die Spiele ihn ohne Codeänderung.
+
 ## Der Baukasten (`src/components/play/`)
 
 | Teil | Was er tut |

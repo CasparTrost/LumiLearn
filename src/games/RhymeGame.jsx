@@ -209,7 +209,7 @@ export default function RhymeGame({ level = 1, onComplete }) {
     const i = idxRef.current, r = rounds[i]
     if (r) narrate(taskOf(r, i === 0))
   }, [rounds])
-  const { idx, done, leaving, finale, tried, streak, win, miss, reveal } =
+  const { idx, done, leaving, finale, tried, streak, win, miss, reveal, isOver, hasTried } =
     useRounds(rounds.length, { onComplete, sayTask, outroMs: 650, finaleMs: 2200 })
   idxRef.current = idx
   const r = rounds[idx]
@@ -237,7 +237,7 @@ export default function RhymeGame({ level = 1, onComplete }) {
 
   // pick and verse: a balloon was brought onto the stage
   const bring = (opt) => {
-    if (done || tried.includes(opt)) return false
+    if (isOver() || hasTried(opt)) return false
     if (opt === r.correct) {
       win(SCENE_MS)
       perform(r.base, opt, null, streaky())
@@ -256,7 +256,7 @@ export default function RhymeGame({ level = 1, onComplete }) {
 
   // odd one out: tap who has to leave the stage
   const shoo = (opt) => {
-    if (done || tried.includes(opt)) return
+    if (isOver() || hasTried(opt)) return
     const [a, b] = [r.base, r.partner]
     if (opt === r.correct) {
       win(SCENE_MS + 400)
@@ -275,7 +275,7 @@ export default function RhymeGame({ level = 1, onComplete }) {
 
   // Ja / Nein: one chance, then the answer
   const answer = (yes) => {
-    if (done) return
+    if (isOver()) return
     if (yes === r.rhymes) { win(r.rhymes ? SCENE_MS : 1800); sayRight() }
     else { miss(yes); reveal(r.rhymes ? SCENE_MS : 1800); sayWrong() }
     if (r.rhymes) perform(r.base, r.other, null, yes && streaky())
@@ -343,7 +343,8 @@ export default function RhymeGame({ level = 1, onComplete }) {
               <div aria-hidden="true" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 48, background: 'repeating-linear-gradient(90deg, #b9753f 0 46px, #a8652f 46px 50px)', borderTop: `4px solid ${INK}` }} />
 
               {/* the actors, and the empty place the partner is wanted for */}
-              <div style={{ position: 'absolute', left: '14%', right: '14%', bottom: 30, display: 'flex', justifyContent: 'center', alignItems: 'flex-end' }}>
+              {/* key: a new round's cast stands there at once, the old one does not walk off through it */}
+              <div key={idx} style={{ position: 'absolute', left: '14%', right: '14%', bottom: 30, display: 'flex', justifyContent: 'center', alignItems: 'flex-end' }}>
                 <AnimatePresence mode="popLayout">
                   {onStage.map(c => (
                     <Actor key={`${idx}-${c.w}`} item={c} n={Math.max(2, onStage.length)}
@@ -362,7 +363,7 @@ export default function RhymeGame({ level = 1, onComplete }) {
 
               {/* the scene's title */}
               <AnimatePresence>
-                {title && (
+                {title && !leaving && (
                   <motion.div key={'t' + idx} initial={{ y: -60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.15 } }}
                     transition={{ delay: 1.1, type: 'spring', stiffness: 260, damping: 16 }}
                     style={{
@@ -419,7 +420,7 @@ const sceneKey = (r, a, b) => {
 function Wanted() {
   const still = reduceMotion()
   return (
-    <motion.div aria-hidden="true" layout initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }}
+    <motion.div aria-hidden="true" layout initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0, transition: { duration: 0.15 } }}
       transition={{ delay: 0.6, type: 'spring', stiffness: 260, damping: 16 }}
       style={{ width: 'min(170px, 30vw)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <motion.div animate={still ? {} : { scale: [1, 1.08, 1] }} transition={{ duration: 1.4, repeat: Infinity }}
@@ -441,7 +442,7 @@ function Hook({ pull }) {
       initial={{ x: -220 }}
       animate={still ? { x: -90 } : pull ? { x: [-90, 60, -260], transition: { duration: 0.9, times: [0, 0.35, 1] } }
         : { x: [-100, -80, -100], transition: { duration: 1.6, repeat: Infinity, delay: 0.8 } }}
-      style={{ position: 'absolute', left: 0, bottom: 150, zIndex: 4, pointerEvents: 'none' }}>
+      style={{ position: 'absolute', left: 0, bottom: 150, zIndex: 2, pointerEvents: 'none' }}>
       <path d="M0 40 H160 a20 20 0 1 0 -20 -20" stroke={INK} strokeWidth="14" fill="none" strokeLinecap="round" />
       <path d="M0 40 H160 a20 20 0 1 0 -20 -20" stroke="#c98a52" strokeWidth="8" fill="none" strokeLinecap="round" />
     </motion.svg>

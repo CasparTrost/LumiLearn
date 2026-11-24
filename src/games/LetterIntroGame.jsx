@@ -130,7 +130,7 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
     afterNarration(() => setReadyAt(i), { maxMs: 15000 })
   }, [questions])
 
-  const { idx, done, leaving, finale, tried, streak, win, miss, reveal } =
+  const { idx, done, leaving, finale, tried, streak, win, miss, reveal, isOver, hasTried } =
     useRounds(questions.length, { onComplete, sayTask: sayRound, outroMs: 550 })
   idxRef.current = idx
   const q = questions[idx]
@@ -153,7 +153,7 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
   }
 
   const feed = (opt) => {
-    if (done || tried.includes(opt)) return false
+    if (isOver() || hasTried(opt)) return false
     if (opt === q.correct) {
       setEaten({ i: idx, opt })
       const party = !tried.length && streak + 1 >= 3   // three in a row: it dances
@@ -183,7 +183,7 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
   // Tickling the monster: it giggles and shouts its letter (and its sound,
   // once recorded)
   const tickle = () => {
-    if (done) return
+    if (isOver()) return
     sfx.giggle()
     setMood('happy', 900)
     setShout(n => n + 1)

@@ -12,12 +12,12 @@ import { helpLine } from '../lib/lumiLines.js'
 // fresh: rewritten for the rebuilt game (docs/spielideen.md), not recorded yet.
 const INFO = {
   'number-intro':  { emoji: '🔢', title: 'Zahlen entdecken', text: 'Ein Tier hat Hunger und zeigt dir auf einem Schild eine Zahl. Leg genau so viele Sachen auf seinen Teller und tippe dann auf den grünen Haken.', fresh: true },
-  'letter-intro':  { emoji: '🔡', title: 'ABC-Abenteuer', text: 'Das Buchstaben-Monster hat Hunger, aber es frisst nur Sachen, die mit seinem Laut anfangen. Zieh das richtige Bild zum Monster oder tippe es an.', fresh: true },
-  'initial-sound': { emoji: '🕵️', title: 'Anlaut-Detektiv', text: 'Lumi angelt lustige Sachen aus dem Teich. Hör, wie das Wort anfängt, und bring den Fang in den Eimer mit dem richtigen Buchstaben.', fresh: true },
+  'letter-intro':  { emoji: '🔡', title: 'ABC-Abenteuer', text: 'Das Buchstaben-Monster hat Hunger. In seiner Sprechblase siehst du seinen Buchstaben und ein Bild, das genauso anfängt. Füttere es mit Sachen, die auch so anfangen: ziehen oder antippen.', fresh: true },
+  'initial-sound': { emoji: '🕵️', title: 'Anlaut-Detektiv', text: 'Lumi angelt lustige Sachen aus dem Teich. Womit fängt das Wort an? Bring den Fang in den Eimer mit dem richtigen Buchstaben. Tippst du einen Frosch an, quakt er seinen Buchstaben.', fresh: true },
   rhyme:           { emoji: '🎵', title: 'Reim-Rallye', text: 'Im Reim-Theater sucht jede Figur einen Reimpartner. Zieh den passenden Ballon auf die Bühne, dann spielen die beiden eine lustige Szene.', fresh: true },
   numbers:         { emoji: '🛒', title: 'Zahlenland', text: 'Tierkunden kaufen an Lumis Obststand ein. Leg genau so viel Obst in den Korb, wie sich der Kunde wünscht, und tippe dann auf den grünen Haken.', fresh: true },
   letters:         { emoji: '⌨️', title: 'Buchstabenwald', text: 'Lumi will etwas zaubern: Tipp die Buchstaben des Wortes, dann fliegen sie in den Kessel. Ist das Wort fertig, macht es Puff, und das Ding springt heraus.', fresh: true },
-  listen:          { emoji: '👂', title: 'Hörabenteuer', text: 'Hinter den Büschen hat sich etwas versteckt. Hör genau hin, welches Wort Lumi ruft, und tippe auf den richtigen Busch.', fresh: true },
+  listen:          { emoji: '👂', title: 'Hörabenteuer', text: 'Hinter den Büschen hat sich etwas versteckt. Hör genau hin, oder schau in Lumis Sprechblase, und tippe auf den richtigen Busch.', fresh: true },
   words:           { emoji: '🃏', title: 'Memo-Welt', text: 'Merk dir, wo die Bilder liegen, und mach zwei Geschenke auf. Was zusammengehört, umarmt sich und darf zur Party.', fresh: true },
   patterns:        { emoji: '🔮', title: 'Musterpark', text: 'In der Tierparade ist ein Platz frei. Zieh das passende Bild in die Lücke, dann marschiert die Parade weiter.', fresh: true },
   shapes:          { emoji: '🎨', title: 'Farbenreich', text: 'Ein Tier wünscht sich ein Bild in bestimmten Farben. Zieh den Farbtopf mit der Farbe aus der Sprechblase auf das Bild, dann zieht das Tier ein.', fresh: true },
