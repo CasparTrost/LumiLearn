@@ -988,7 +988,7 @@ export default function MazeGame({ level = 1, onComplete }) {
 
   // ── POWERS ────────────────────────────────────────────────────────
   const powerOn = power && st.moves < power.until && !st.dead ? power.type : null
-  const big     = powerOn === 0
+  const big     = st.moves < st.bigUntil && !st.dead
   useEffect(() => {
     if (!power || power.type !== 1 || !st.moves || st.moves > power.until) return
     setPrints(p => (p.some(q => q.k === st.moves) ? p : [...p.slice(-70), { x: st.pos.x, y: st.pos.y, k: st.moves, f: st.facing }]))

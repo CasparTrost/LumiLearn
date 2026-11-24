@@ -513,7 +513,7 @@ export function Stage({ lumi, cast = [], fx, drop, tap, bubbles = {}, looks = {}
             ? <Actor art={c.a} feel={feel} size={s} flip={c.flip} label={c.label} whole={c.whole} />
             : <Thing art={c.a} size={s} flip={c.flip} />)
           return (
-            <div key={i} style={{ position: 'absolute', left: c.x - s / 2, bottom: GROUND + (c.y ?? 0), width: s, height: s, zIndex: c.z ?? 1, transform: c.rot ? `rotate(${c.rot}deg)` : undefined }}>
+            <div key={i} style={{ position: 'absolute', left: c.x - s / 2, bottom: GROUND + (c.y ?? 0), width: s, height: s, zIndex: tap?.who === i ? 4 : c.z ?? 1, transform: c.rot ? `rotate(${c.rot}deg)` : undefined }}>
               <motion.div {...m} style={{ width: s, height: s, position: 'relative' }}>
                 {c.act === 'down' && <div style={{ position: 'absolute', left: '50%', bottom: '80%', width: 2, height: H, background: '#4a3a6b' }} />}
                 <div style={{ filter: tint[i] != null ? `saturate(${tint[i]})` : undefined, transition: 'filter .9s' }}>

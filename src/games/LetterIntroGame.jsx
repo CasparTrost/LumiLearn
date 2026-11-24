@@ -168,7 +168,7 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
       const n = list.length, right = n % 2 === 1, row = Math.floor(n / 2) % 6
       const tx = right ? root.offsetWidth - 58 - (row % 2) * 26 : 10 + (row % 2) * 26
       return [...list, {
-        id: n, e: opt.e, tx, ty: 62 + row * 38, rot: (n * 37 % 50) - 25,
+        id: n, e: opt.e, tx, ty: 92 + row * 38, rot: (n * 37 % 50) - 25,
         sx: (mr.left + mr.width / 2 - rr.left) / k - 24, sy: (mr.top + mr.height * 0.55 - rr.top) / k - 24,
       }]
     })

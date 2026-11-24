@@ -690,8 +690,10 @@ export default function StoryGame({ level = 1, onComplete }) {
     if (phase === 'lesson' && !bag.includes(story.souvenir)) setBag(b => [...b, story.souvenir])
   }, [stepKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const happened = useRef(null)
   const happen = () => {
-    if (touched || !panel) return
+    if (happened.current === stepKey || !panel) return
+    happened.current = stepKey
     setTouched(true)
     sfx.pop()
     const len = sceneLength(panel.cast, panel.lumi)
