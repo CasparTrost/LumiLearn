@@ -639,17 +639,18 @@ export default function ColoringGame({ onComplete }) {
 
       {/* Bild-Auswahl — every sheet is free to pick */}
       <div style={{ display:'flex', gap:6, padding:'6px 8px', overflowX:'auto', flexShrink:0, background:'var(--px-parch)', borderBottom:`3px solid ${INK}` }}>
-        <button onClick={() => setAlbumOpen(true)} style={{ ...actionBtn('gold'), flexShrink:0, minHeight:44, whiteSpace:'nowrap' }}>
-          🖼️ Album{album.length ? ` (${album.length})` : ''}
+        <button onClick={() => setAlbumOpen(true)} aria-label={`Album${album.length ? `, ${album.length} Bilder` : ''}`} style={{ ...actionBtn('gold'), flexShrink:0, minHeight:44, whiteSpace:'nowrap', fontSize:22 }}>
+          🖼️{album.length ? <span style={{ fontSize:14, marginLeft:4 }}>{album.length}</span> : null}
         </button>
         {IMAGES.map((img, i) => (
-          <button key={img.id} onClick={() => goToImage(i)} aria-pressed={i === imgIdx} style={{
+          // pictures, not words: the children choosing them can't read yet
+          <button key={img.id} onClick={() => goToImage(i)} aria-pressed={i === imgIdx} aria-label={img.label} title={img.label} style={{
             ...pxCard(i === imgIdx ? 'selected' : undefined),
-            flexShrink:0, minHeight:44, padding:'4px 12px', borderRadius:10,
+            flexShrink:0, minHeight:44, minWidth:52, padding:'4px 8px', borderRadius:10,
             boxShadow: i === imgIdx ? `0 3px 0 ${INK}` : '0 3px 0 rgba(42,27,61,0.35)',
-            cursor:'pointer', fontFamily:'var(--font-body)', fontSize:14,
-            fontWeight: i === imgIdx ? 800 : 600, color: INK, whiteSpace:'nowrap',
-          }}>{img.emoji} {img.label}</button>
+            cursor:'pointer', fontSize:24, lineHeight:1,
+            transform: i === imgIdx ? 'scale(1.08)' : undefined,
+          }}>{img.emoji}</button>
         ))}
       </div>
 
