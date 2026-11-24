@@ -1,0 +1,51 @@
+/* Monster-Farbdusche: everything that moves by itself is a CSS animation;
+   all of it stops for prefers-reduced-motion. */
+
+@keyframes fd-blink  { 0%, 91%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
+@keyframes fd-bob    { 0%, 100% { transform: translateY(0) scaleY(1); } 50% { transform: translateY(1.5%) scaleY(0.97); } }
+@keyframes fd-waddle { 0%, 100% { transform: rotate(-7deg) translateY(0); } 25% { transform: rotate(0deg) translateY(-5%); } 50% { transform: rotate(7deg) translateY(0); } 75% { transform: rotate(0deg) translateY(-5%); } }
+@keyframes fd-dance  { 0%, 100% { transform: translateY(0) rotate(0deg) scale(1, 1); } 20% { transform: translateY(-16%) rotate(-10deg) scale(0.96, 1.06); } 40% { transform: translateY(0) rotate(0deg) scale(1.08, 0.9); } 60% { transform: translateY(-16%) rotate(10deg) scale(0.96, 1.06); } 80% { transform: translateY(0) rotate(0deg) scale(1.08, 0.9); } }
+@keyframes fd-shake  { 0%, 100% { transform: rotate(0deg); } 15% { transform: rotate(-9deg); } 35% { transform: rotate(9deg); } 55% { transform: rotate(-8deg); } 75% { transform: rotate(7deg); } }
+@keyframes fd-shiver { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-3%); } 75% { transform: translateX(3%); } }
+@keyframes fd-wiggle { 0%, 100% { transform: rotate(0deg) scale(1); } 20% { transform: rotate(-14deg) scale(1.15); } 50% { transform: rotate(12deg) scale(1.1); } 75% { transform: rotate(-6deg) scale(1.04); } }
+@keyframes fd-rain   { from { transform: translateY(0); } to { transform: translateY(172px); } }
+@keyframes fd-splash { 0% { transform: translate(0, 0) scale(0.6); opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) scale(1); opacity: 0; } }
+@keyframes fd-drip   { 0% { transform: translateY(0) scaleY(0.6); opacity: 0; } 15% { opacity: 1; } 100% { transform: translateY(260%) scaleY(1.2); opacity: 0; } }
+@keyframes fd-wave   { from { transform: translateX(0); } to { transform: translateX(-40px); } }
+@keyframes fd-pulse  { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+@keyframes fd-nudge  { 0%, 100% { transform: translateY(0); } 30% { transform: translateY(-9%); } 60% { transform: translateY(0); } }
+@keyframes fd-wobble { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(-3deg); } 75% { transform: rotate(3deg); } }
+@keyframes fd-glow   { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+@keyframes fd-bubble { 0% { transform: translateY(0); opacity: 0; } 20% { opacity: 0.9; } 100% { transform: translateY(-22px); opacity: 0; } }
+
+.fd-blink  { animation: fd-blink 4.2s infinite; transform-box: fill-box; transform-origin: center; }
+.fd-bob    { animation: fd-bob 2.6s ease-in-out infinite; transform-origin: 50% 100%; }
+.fd-waddle { animation: fd-waddle 0.45s linear infinite; transform-origin: 50% 100%; }
+.fd-dance  { animation: fd-dance 0.8s ease-in-out infinite; transform-origin: 50% 100%; }
+.fd-shake  { animation: fd-shake 0.9s ease-in-out 0.5s 1 both; transform-origin: 50% 85%; }
+.fd-shiver { animation: fd-shiver 0.14s linear infinite; }
+.fd-wiggle { animation: fd-wiggle 0.6s ease-out 1; transform-origin: 50% 100%; }
+.fd-rain   { animation: fd-rain 0.42s linear infinite; }
+.fd-splash { animation: fd-splash 0.5s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+.fd-wave   { animation: fd-wave 1.6s linear infinite; }
+.fd-pulse  { animation: fd-pulse 0.9s ease-in-out infinite; transform-origin: 50% 70%; }
+.fd-nudge  { animation: fd-nudge 1s ease-in-out infinite; }
+.fd-wobble { animation: fd-wobble 0.18s linear 3; transform-box: fill-box; transform-origin: 50% 100%; }
+.fd-glow   { animation: fd-glow 1.1s ease-in-out infinite; }
+.fd-fizz   { animation: fd-bubble 1.8s ease-in infinite; }
+
+.fd-drip {
+  position: absolute; border-radius: 50% 50% 50% 50% / 30% 30% 70% 70%;
+  border: 2px solid #2a1b3d; box-sizing: border-box; pointer-events: none;
+  animation: fd-drip 0.9s ease-in 3 both;
+}
+
+.fd-btn {
+  all: unset; box-sizing: border-box; position: absolute; cursor: pointer; display: block;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation; user-select: none; -webkit-user-select: none;
+}
+.fd-btn:focus-visible { outline: 4px solid #4aa3ff; outline-offset: 3px; border-radius: 16px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fd-root *, .fd-root { animation: none !important; }
+}
