@@ -54,51 +54,89 @@ const PICTURE_POOLS = { 1: ANIMALS, 2: FOOD, 3: THINGS, 4: [...ANIMALS, ...FOOD,
 // Pairs that belong together without looking alike. From level 5 on these
 // replace the identical pairs, which turns the task from pure visual recall
 // into recall plus "what goes with what" — the same concept forming that
-// Sortier-Spaß trains, but held in memory. No card fits a second pair (the sun went with the sunflower
+// Sortier-Spaß trains, but held in memory. `act` is what the two do together
+// at the party (PartyPair): the cow drinks the milk, the bee flies to the
+// honey, the sock slips into the shoe. No card fits a second pair (the sun went with the sunflower
 // as well as with the sunglasses; the candle already showed a flame; the
 // "nerd" face next to the books was a cliché, not a connection).
 const ASSOCIATION_PAIRS = [
-  { a: ['🐄','Kuh'],         b: ['🥛','Milch'] },
-  { a: ['🐝','Biene'],       b: ['🍯','Honig'] },
-  { a: ['🌧️','Regen'],       b: ['☂️','Schirm'] },
-  { a: ['🐔','Huhn'],        b: ['🥚','Ei'] },
-  { a: ['🐰','Hase'],        b: ['🥕','Möhre'] },
-  { a: ['🖌️','Pinsel'],      b: ['🎨','Farben'] },
-  { a: ['🔑','Schlüssel'],   b: ['🔒','Schloss'] },
-  { a: ['🧦','Socke'],       b: ['👟','Schuh'] },
-  { a: ['🐕','Hund'],        b: ['🦴','Knochen'] },
-  { a: ['🐒','Affe'],        b: ['🍌','Banane'] },
-  { a: ['🪥','Zahnbürste'],  b: ['🦷','Zahn'] },
-  { a: ['🐿️','Eichhörnchen'], b: ['🥜','Nuss'] },
-  { a: ['🚒','Feuerwehr'],   b: ['🔥','Feuer'] },
-  { a: ['🎣','Angel'],       b: ['🐟','Fisch'] },
-  { a: ['⚽','Ball'],         b: ['🥅','Tor'] },
-  { a: ['🎂','Torte'],       b: ['🎁','Geschenk'] },
-  { a: ['❄️','Schnee'],      b: ['⛄','Schneemann'] },
-  { a: ['🎻','Geige'],       b: ['🎵','Musik'] },
-  { a: ['☀️','Sonne'],       b: ['🕶️','Sonnenbrille'] },
+  { a: ['🐄','Kuh'],         b: ['🥛','Milch'], act: 'eat' },
+  { a: ['🐝','Biene'],       b: ['🍯','Honig'], act: 'fly' },
+  { a: ['🌧️','Regen'],       b: ['☂️','Schirm'], act: 'onto' },
+  { a: ['🐔','Huhn'],        b: ['🥚','Ei'], act: 'onto' },
+  { a: ['🐰','Hase'],        b: ['🥕','Möhre'], act: 'eat' },
+  { a: ['🖌️','Pinsel'],      b: ['🎨','Farben'], act: 'scrub' },
+  { a: ['🔑','Schlüssel'],   b: ['🔒','Schloss'], act: 'onto' },
+  { a: ['🧦','Socke'],       b: ['👟','Schuh'], act: 'onto' },
+  { a: ['🐕','Hund'],        b: ['🦴','Knochen'], act: 'eat' },
+  { a: ['🐒','Affe'],        b: ['🍌','Banane'], act: 'eat' },
+  { a: ['🪥','Zahnbürste'],  b: ['🦷','Zahn'], act: 'scrub' },
+  { a: ['🐿️','Eichhörnchen'], b: ['🥜','Nuss'], act: 'eat' },
+  { a: ['🚒','Feuerwehr'],   b: ['🔥','Feuer'], act: 'eat' },
+  { a: ['🎣','Angel'],       b: ['🐟','Fisch'], act: 'float' },
+  { a: ['⚽','Ball'],         b: ['🥅','Tor'], act: 'onto' },
+  { a: ['🎂','Torte'],       b: ['🎁','Geschenk'], act: 'fly' },
+  { a: ['❄️','Schnee'],      b: ['⛄','Schneemann'], act: 'onto' },
+  { a: ['🎻','Geige'],       b: ['🎵','Musik'], act: 'float' },
+  { a: ['☀️','Sonne'],       b: ['🕶️','Sonnenbrille'], act: 'float' },
 ]
 
 const shuffle = a => [...a].sort(() => Math.random() - 0.5)
+
+// Two of the same at the party: leapfrog, a spin together, a hug
+const SAME_ACTS = ['jump', 'spin', 'hug']
 
 // pairKey instead of comparing the emoji itself, so a pair can be two
 // different pictures that belong together.
 function buildCards(count, pool) {
   const chosen = shuffle(pool).slice(0, count)
   const flat = chosen.flatMap(([emoji, name], i) => [0, 1].map(() =>
-    ({ emoji, name, pairKey: `p${i}`, found: [emoji, emoji] })))
+    ({ emoji, name, pairKey: `p${i}`, found: [emoji, emoji], act: SAME_ACTS[i % SAME_ACTS.length] })))
   return shuffle(flat).map((c, id) => ({ id, ...c, flipped: false, matched: false }))
 }
 
 function buildAssociationCards(count) {
   const chosen = shuffle(ASSOCIATION_PAIRS).slice(0, count)
-  const flat = chosen.flatMap(({ a, b }, i) => [a, b].map(([emoji, name]) =>
-    ({ emoji, name, pairKey: `p${i}`, found: [a[0], b[0]] })))
+  const flat = chosen.flatMap(({ a, b, act }, i) => [a, b].map(([emoji, name]) =>
+    ({ emoji, name, pairKey: `p${i}`, found: [a[0], b[0]], act })))
   return shuffle(flat).map((c, id) => ({ id, ...c, flipped: false, matched: false }))
 }
 
-// Keyboard help only where there is a keyboard
-const FINE_POINTER = typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (pointer: fine)').matches
+/**
+ * A pair at the party, doing its thing again and again: `a` on the left,
+ * `b` on the right, `s` their size.
+ */
+function PartyPair({ pics, act, s, i }) {
+  const d = s * 0.82
+  const still = reduceMotion()
+  const loop = (duration, times) => ({ duration, times, repeat: Infinity, repeatDelay: 1.4, delay: 0.6 + (i % 4) * 0.35 })
+  const moves = {
+    // b goes to a and is gobbled up; a chews
+    eat:   [{ scaleY: [1, 1, 1.18, 0.9, 1] }, { x: [0, -d * 0.7, -d * 0.7, 0, 0], scale: [1, 0.6, 0, 0, 1], opacity: [1, 1, 0, 0, 1] }],
+    // a flies a loop over b and back
+    fly:   [{ x: [0, d * 0.5, d * 1.2, d * 0.5, 0], y: [0, -s * 0.45, -s * 0.1, -s * 0.45, 0] }, {}],
+    // a hops onto (into) b, then back
+    onto:  [{ x: [0, d * 0.5, d, d, 0], y: [0, -s * 0.45, -s * 0.15, -s * 0.15, 0], scale: [1, 1, 0.8, 0.8, 1] }, { scaleY: [1, 1, 0.85, 1, 1] }],
+    // a scrubs back and forth over b
+    scrub: [{ x: [0, d * 0.7, d * 0.95, d * 0.7, d * 0.95, 0], y: [0, -s * 0.3, -s * 0.3, -s * 0.3, -s * 0.3, 0], rotate: [0, -20, 20, -20, 20, 0] }, {}],
+    // b floats up over a, like a note out of the violin
+    float: [{ rotate: [0, -8, 8, 0] }, { x: [0, -d * 0.4, -d * 0.4, 0], y: [0, -s * 0.45, -s * 0.3, 0] }],
+    // leapfrog: a jumps over b, b ducks
+    jump:  [{ x: [0, d * 0.5, d, d * 0.5, 0], y: [0, -s * 0.5, 0, -s * 0.5, 0] }, { scaleY: [1, 0.75, 1, 0.75, 1] }],
+    spin:  [{ rotate: [0, 360], y: [0, -s * 0.2, 0] }, { rotate: [0, -360], y: [0, -s * 0.2, 0] }],
+    hug:   [{ x: [0, d * 0.18, 0], rotate: [0, 12, 0] }, { x: [0, -d * 0.18, 0], rotate: [0, -12, 0] }],
+  }[act] ?? []
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+      {pics.map((p, k) => (
+        <motion.div key={k} animate={still ? {} : moves[k]} transition={loop(1.6)}
+          style={{ marginLeft: k ? -s * 0.18 : 0, transformOrigin: '50% 100%', position: 'relative', zIndex: k ? 1 : 2 }}>
+          <Art art={p} size={s} />
+        </motion.div>
+      ))}
+    </div>
+  )
+}
 
 function useSize(ref) {
   const [size, setSize] = useState({ w: 0, h: 0 })
@@ -160,10 +198,10 @@ export default function MemoryGame({ level = 1, onComplete }) {
     : screen.landscape ? { 4: 4, 6: 6, 8: 4, 10: 5, 12: 6 }[pairCount]
     : pairCount <= 8 ? 4 : pairCount <= 10 ? 5 : 6
   const gridRows    = Math.ceil((pairCount * 2) / gridCols)
-  // The preview scales with the number of cards (a constant glance per
-  // card): higher levels stay harder — there is more to hold — without
-  // being impossible.
-  const previewSecs = Math.round(Math.min(8, Math.max(3, pairCount * 2 * 0.3)))
+  // The preview scales with the number of cards, half a second per card:
+  // higher levels stay harder — there is more to hold — without being
+  // impossible (20 cards: 11 s).
+  const previewSecs = Math.round(Math.max(4, 1 + pairCount * 2 * 0.5))
   // Association pairs (cow/milk) instead of identical ones from level 5 on.
   const useAssociations = level >= 5
 
@@ -187,10 +225,13 @@ export default function MemoryGame({ level = 1, onComplete }) {
   const resultRef = useRef(null)
   // pairs one of whose cards was part of a wrong pair before it was found
   const missedRef = useRef(new Set())
+  // pairs found so far, counted at once (the guests join the party later)
+  const foundRef  = useRef(0)
   const cardRefs  = useRef({})
   const partyRef  = useRef(null)
   const boardRef  = useRef(null)
   const board     = useSize(boardRef)
+  const party     = useSize(partyRef)
 
   // The task: the face-up cards and the example on the party meadow show
   // it; Lumi says it when it is recorded
@@ -237,12 +278,12 @@ export default function MemoryGame({ level = 1, onComplete }) {
         if (ea) burst(ea, 'hearts', s >= 3 ? 14 : 8)
         if (eb) burst(eb, 'hearts', s >= 3 ? 14 : 8)
         const found = next[a].found
-        const last = guests.length + 1 >= pairCount
+        const last = ++foundRef.current >= pairCount
         // … and dance off to the party
         setTimeout(() => {
           setCards(prev => prev.map(c => (c.id === a || c.id === b) ? { ...c, matched: true } : c))
           setHug(null)
-          setGuests(g => [...g, { key: next[a].pairKey, pics: found }])
+          setGuests(g => [...g, { key: next[a].pairKey, pics: found, act: next[a].act }])
           sfx.boing()
           if (partyRef.current) burst(partyRef.current, 'confetti', s >= 3 ? 20 : 12)
         }, reduceMotion() ? 0 : 900)
@@ -270,7 +311,7 @@ export default function MemoryGame({ level = 1, onComplete }) {
       setFlipped([])
       setLocked(false)
     }, match ? 520 : 1000)
-  }, [locked, phase, cards, flipped, guests, moves, streak, mismatchCount, pairCount, burst])
+  }, [locked, phase, cards, flipped, moves, streak, mismatchCount, pairCount, burst])
 
   // Preview countdown (held while the help is open); the cards turn over
   useEffect(() => {
@@ -307,12 +348,13 @@ export default function MemoryGame({ level = 1, onComplete }) {
     (board.w - gap * (gridCols - 1)) / gridCols,
     (board.h - gap * (gridRows - 1)) / gridRows,
     170)))
-  // The party meadow has a fixed height (it must not squeeze the board as it
-  // fills): one row of guests, or two on a phone
-  const partyRows = screen.narrow ? 2 : 1
-  const partyH    = screen.narrow ? 100 : 84
-  const perRow    = Math.ceil(pairCount / partyRows)
-  const guestS    = Math.max(22, Math.min(44, ((board.w || 320) - 100) / perRow / 2.3, (partyH - 26) / partyRows - 4))
+  // The party meadow has a fixed height from the start (it must not squeeze
+  // the board as it fills): as few rows as keep every guest at least 34 px
+  const partyW = party.w || board.w || 320
+  const sizeFor = rows => Math.min(48, (partyW - 16) / Math.ceil(pairCount / rows) / 1.65 - 6)
+  const partyRows = [1, 2, 3].find(r => sizeFor(r) >= 34) ?? 3
+  const guestS    = Math.max(24, sizeFor(partyRows))
+  const partyH    = 26 + partyRows * (guestS + 8)
   // what makes a pair, shown before any is found
   const example = useAssociations ? ['🐄', '🥛'] : ['🎈', '🎈']
   // the hand taps a card that is still face down
@@ -324,13 +366,13 @@ export default function MemoryGame({ level = 1, onComplete }) {
       padding: 'clamp(8px,1.6vw,18px) clamp(10px,3vw,32px)', gap: 'clamp(8px,1.4vw,14px)',
     }}>
       {/* The party meadow: every pair found dances here */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', maxWidth: 1000, flexShrink: 0 }}>
+      <div style={{ position: 'relative', width: '100%', maxWidth: 1000, flexShrink: 0 }}>
         <div ref={partyRef} aria-label={`${guests.length} von ${pairCount} Paaren auf der Party`}
           style={{
-            position: 'relative', flex: 1, height: partyH, borderRadius: 22, border: `3px solid ${INK}`,
+            position: 'relative', height: partyH, borderRadius: 22, border: `3px solid ${INK}`,
             background: 'linear-gradient(180deg, #fffdf7, #a4e278)',
             boxShadow: '0 5px 0 rgba(42,27,61,0.25)', padding: '20px 10px 4px', overflow: 'hidden',
-            display: 'flex', flexWrap: 'wrap', alignContent: 'flex-end', alignItems: 'flex-end', justifyContent: 'center', gap: '0 10px', boxSizing: 'border-box',
+            display: 'flex', flexWrap: 'wrap', alignContent: 'space-evenly', alignItems: 'flex-end', justifyContent: 'center', gap: '0 6px', boxSizing: 'border-box',
           }}>
           <Bunting />
           {guests.length === 0 && (
@@ -346,20 +388,13 @@ export default function MemoryGame({ level = 1, onComplete }) {
               <motion.div key={g.key}
                 initial={{ y: -60, scale: 0.3, opacity: 0 }} animate={{ y: 0, scale: 1, opacity: 1 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 14 }}
-                style={{ display: 'flex', alignItems: 'flex-end' }}>
-                {g.pics.map((p, k) => (
-                  <motion.div key={k}
-                    animate={reduceMotion() ? {} : { rotate: k ? [6, -6] : [-6, 6], y: [0, -5, 0] }}
-                    transition={{ duration: 0.8, repeat: Infinity, repeatType: 'mirror', delay: (i % 3) * 0.13 }}
-                    style={{ marginLeft: k ? -guestS * 0.18 : 0, transformOrigin: '50% 100%' }}>
-                    <Art art={p} size={guestS} />
-                  </motion.div>
-                ))}
+                style={{ width: guestS * 1.65, display: 'flex', justifyContent: 'center' }}>
+                <PartyPair pics={g.pics} act={g.act} s={guestS} i={i} />
               </motion.div>
             ))}
           </AnimatePresence>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, flexShrink: 0, width: 72 }}>
+        <div style={{ position: 'absolute', top: -12, right: 12, zIndex: 2 }}>
           {/* the preview's sand timer, then the tries: Memo's own rating comes from them */}
           {phase === 'preview' ? (
             <motion.div key={countdown} aria-label={`noch ${countdown} Sekunden`}
@@ -432,7 +467,8 @@ export default function MemoryGame({ level = 1, onComplete }) {
         )}
       </div>
 
-      {FINE_POINTER && (
+      {/* only for a child who plays with the keys */}
+      {usingKeys && (
         <p style={{ fontFamily: 'var(--font-heading)', fontSize: 14, color: '#2a1b3d', flexShrink: 0, margin: 0, opacity: 0.75 }}>
           ⌨️ Pfeiltasten: wählen · Enter oder Leertaste: umdrehen
         </p>

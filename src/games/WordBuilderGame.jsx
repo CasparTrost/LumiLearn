@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useLayoutEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Art, Critter, useMood, DragArea, Draggable, DropZone, RoundTrail, HintHand, useBursts } from '../components/play/index.js'
+import { Art, Critter, useMood, DragArea, Draggable, DropZone, RoundTrail, HintHand, useIdle, useBursts } from '../components/play/index.js'
 import { sfx } from '../sfx.js'
 import { afterNarration, lockPreviews } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
@@ -172,10 +172,15 @@ function useWidth(ref) {
 const lazy = find => ({ get current() { return find() } })
 
 const HOP_MS = 720
+// The round trail stops short of the sun in the scene's top right corner
+const SUN_GAP = 'clamp(0px, calc((100vw - 700px) * 0.6), 190px)'
+const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 // After the last clap the frog waits this long, then jumps
 const CLAP_WAIT_MS = 1300
 // What a round starts with
-const FRESH = { placed: [], slotMisses: 0, missed: false, claps: 0, solved: false, sunk: false, splash: null, dunk: false }
+// (`demo`: after a wrong count the frog hops the right number of pads once;
+// `showClaps`: then the hand claps that many times)
+const FRESH = { placed: [], slotMisses: 0, missed: false, claps: 0, solved: false, sunk: false, splash: null, dunk: false, demo: false, showClaps: 0 }
 
 /**
  * The task as a picture card above the pond: the thing, and either a clap
@@ -236,7 +241,8 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
   const firstTryRef = useRef(0)
   const waterRef    = useRef(null)
   const homeRef     = useRef(null)
-  const goalRef     = useRef(null)
+  const goalRef     = useRef(null)   // where the frog lands on the far bank
+  const thingRef    = useRef(null)
   const clapRef     = useRef(null)
   const trayRef     = useRef(null)
   const padRefs     = useRef({})
@@ -246,15 +252,18 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
   const isBuild = round.kind === 'build'
   const usedIds = useMemo(() => new Set(rs.placed.map(t => t.id)), [rs.placed])
   const expected = isBuild ? round.syllables[rs.placed.length] : null
-  const busy = !!hop || rs.solved || finale
+  const busy = !!hop || rs.solved || rs.demo || finale
 
   // Sizes from the width of the pond: a phone gets narrower banks
   const waterW = useWidth(waterRef)
   const wide   = waterW > 600
-  const bankW  = wide ? 130 : 58
-  const frogS  = wide ? 86 : 54
+  const bankW  = wide ? 130 : 48
+  const frogS  = wide ? 84 : 48
+  const thingS = wide ? 84 : 44
   const laneW  = Math.max(120, waterW - bankW * 2)
-  const rowH   = wide ? 82 : 66
+  // a phone has room below: a taller crossing, so the thing stands above
+  // the frog's landing place on the narrow bank
+  const rowH   = wide ? 86 : 92
   const n      = isBuild ? round.syllables.length : rs.claps
   const padW   = isBuild
     ? Math.min(wide ? 118 : 96, laneW / n - 6)
@@ -292,7 +301,7 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
       const step = hop.route[hop.i]
       if (!step) { hopDone(hop.ok); return }
       // on the far bank the frog lands next to the thing, not on it
-      if (step.el) frogAt(step.el, true, step.kind === 'bank' ? -bankW * 0.32 : 0)
+      if (step.el) frogAt(step.el, true)
       else frogTo(step.pt, true)
       if (step.syl) {
         voice([KEY.syllable(step.syl)])
@@ -327,6 +336,12 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
 
   function hopDone(ok) {
     setHop(null)
+    if (ok === 'demo') {
+      // the right number shown: back home, and now the child claps it
+      frogAt(homeRef.current, true)
+      setTimeout(() => { upd({ claps: 0, demo: false, showClaps: round.syllables.length }); setSaid({}) }, 600)
+      return
+    }
     if (ok) {
       upd({ solved: true })
       const firstTry = !rs.missed
@@ -336,15 +351,22 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
       setFrogMood(s >= 3 ? 'dance' : 'wow', 1800)
       setThingMood('dance', 1600)
       sfx.tada()
-      if (goalRef.current) burst(goalRef.current, 'confetti', s >= 3 ? 26 : 14)
+      if (thingRef.current) burst(thingRef.current, 'confetti', s >= 3 ? 26 : 14)
       sayRight(null, { onEnd: () => voice([KEY.word(round.name)]) })
       afterNarration(() => setReady(true), { minMs: 1700 })
       return
     }
-    // back to the start, dripping; the claps are washed away
+    // back to the start, dripping; the claps are washed away …
     frogAt(homeRef.current, true)
-    setTimeout(() => { upd({ dunk: false, sunk: false, claps: 0 }); setSaid({}) }, 450)
     sayWrong()
+    if (isBuild) return
+    // … and the right number of pads appears, and the frog shows the way
+    const s = round.syllables.length
+    setTimeout(() => { upd({ dunk: false, sunk: false, claps: s, demo: true }); setSaid({}) }, 500)
+    setTimeout(() => setHop({ route: [
+      ...round.syllables.map((syl, i) => ({ el: padRefs.current[`c-${i}`], syl, kind: 'pad', key: `c-${i}` })),
+      { el: goalRef.current, kind: 'bank' },
+    ], i: 0, ok: 'demo' }), 1300)
   }
 
   // ── Clapping: every clap drops a lily pad into the pond ──
@@ -405,17 +427,25 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
   const glowTile = isBuild && !rs.solved && rs.slotMisses >= 2
     ? round.tiles.find(t => t.text === expected && !usedIds.has(t.id)) : null
   const firstRound = idx === 0 || (isBuild && rounds.findIndex(r => r.kind === 'build') === idx)
+  // the tile the next place needs, for the hint hand
+  const needed = isBuild && !rs.solved ? round.tiles.find(t => t.text === expected && !usedIds.has(t.id)) : null
+  // Clapping rounds: before a miss the clap button only wiggles when the
+  // child waits (a hand tapping it would suggest a number); after a miss
+  // the hand claps exactly the right number of times
+  const clapIdle = useIdle(firstRound ? 2000 : 6000, !isBuild && !busy && rs.claps === 0 && !rs.showClaps)
 
   return (
     <div style={{
       position: 'relative', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       padding: 'clamp(8px,1.8vw,20px) clamp(10px,3vw,32px)', gap: 'clamp(10px,2vw,18px)', userSelect: 'none',
     }}>
-      <div style={{ width: '100%', maxWidth: 860, flexShrink: 0 }}>
+      <div style={{ width: '100%', maxWidth: 860, flexShrink: 0, paddingRight: SUN_GAP, boxSizing: 'border-box' }}>
         <RoundTrail total={total} done={idx + (rs.solved ? 1 : 0)} walker="🐸" goal="🌸" />
       </div>
 
-      <TaskCard key={idx} round={round} placed={rs.placed.length} glowNext={!!glowTile} wide={wide} />
+      <div style={{ marginBottom: 8 }}>
+        <TaskCard key={idx} round={round} placed={rs.placed.length} glowNext={!!glowTile} wide={wide} />
+      </div>
 
       <DragArea autoTarget={isBuild ? `slot-${rs.placed.length}` : null} disabled={busy}>
         <div ref={waterRef} data-word={round.syllables.join('-')} style={{ position: 'relative', width: '100%', maxWidth: 900, flexShrink: 0 }}>
@@ -424,9 +454,13 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
             <div style={{ position: 'relative', height: rowH + 40, padding: `20px ${bankW}px`, boxSizing: 'border-box' }}>
               <Bank side="left" width={bankW}><div ref={homeRef} style={{ width: 10, height: 10 }} /></Bank>
               <Bank side="right" width={bankW}>
-                <div ref={goalRef} style={{ display: 'flex', marginLeft: bankW * 0.25 }}>
-                  <Critter art={round.emoji} size={wide ? 96 : 50} mood={thingMood} label={round.name}
-                    onTap={() => { setThingMood('wow', 900); voice([KEY.word(round.name)]) }} />
+                {/* the thing, and the place next to (tablet) or below (phone) it where the frog lands */}
+                <div style={{ display: 'flex', flexDirection: wide ? 'row-reverse' : 'column', alignItems: 'center', gap: wide ? 0 : 4 }}>
+                  <div ref={thingRef} style={{ display: 'flex' }}>
+                    <Critter art={round.emoji} size={thingS} mood={thingMood} label={round.name}
+                      onTap={() => { setThingMood('wow', 900); voice([KEY.word(round.name)]) }} />
+                  </div>
+                  <div ref={goalRef} style={{ width: wide ? 40 : 10, height: wide ? 10 : frogS * 0.9 }} />
                 </div>
               </Bank>
 
@@ -437,7 +471,7 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
                       <DropZone id={`slot-${i}`} onDrop={dropTile} label={`Platz ${i + 1}`}>
                         {hover => (
                           <div ref={el => { padRefs.current[`b-${i}`] = el }} style={{ transform: hover ? 'scale(1.1)' : undefined, transition: 'transform .15s' }}>
-                            <Pad w={padW} h={Math.max(52, padW * 0.6)} text={rs.placed[i]?.text} empty={!rs.placed[i]} glow={rs.solved}
+                            <Pad w={padW} h={Math.max(60, padW * 0.6)} text={rs.placed[i]?.text} empty={!rs.placed[i]} glow={rs.solved}
                               flower={i === n - 1 && !!rs.placed[i]} />
                           </div>
                         )}
@@ -459,7 +493,10 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
               <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 22px' }}>
                 <motion.button ref={clapRef} type="button" onClick={clap} aria-label="Klatschen"
                   whileTap={busy ? {} : { scale: 0.8, rotate: -8 }}
-                  animate={{ opacity: busy ? 0.5 : 1 }}
+                  animate={clapIdle && !reduceMotion()
+                    ? { opacity: 1, scale: [1, 1.14, 0.94, 1.08, 1], rotate: [0, -8, 8, -4, 0] }
+                    : { opacity: busy ? 0.5 : 1, scale: 1, rotate: 0 }}
+                  transition={clapIdle ? { duration: 0.9, repeat: Infinity, repeatDelay: 0.8 } : { duration: 0.2 }}
                   style={{
                     all: 'unset', cursor: busy ? 'default' : 'pointer', width: wide ? 112 : 92, height: wide ? 112 : 92, borderRadius: '50%',
                     background: 'radial-gradient(circle at 40% 35%, #fff3b0, #ffc93c 70%)', border: '4px solid #2a1b3d',
@@ -480,7 +517,7 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
                     <div key={`${idx}-${tile.id}`} className="fr-bob" style={{ animationDelay: `${i * -0.4}s`, visibility: used ? 'hidden' : 'visible' }}>
                       <Draggable id={`${idx}-${tile.id}`} data={tile} label={tile.text} disabled={used} data-tile={tile.text}>
                         <motion.div animate={hinted ? { scale: [1, 1.12, 1] } : { scale: 1 }} transition={hinted ? { duration: 1, repeat: Infinity } : {}}>
-                          <Pad w={wide ? 112 : 84} h={wide ? 66 : 56} text={tile.text} glow={hinted} />
+                          <Pad w={wide ? 112 : 92} h={wide ? 66 : 62} text={tile.text} glow={hinted} />
                         </motion.div>
                       </Draggable>
                     </div>
@@ -503,7 +540,8 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
             <motion.div aria-hidden={busy}
               initial={false}
               animate={frog.arc && frog.from
-                ? { x: [frog.from.x, frog.x], y: [frog.from.y, Math.min(frog.from.y, frog.y) - frogS * 0.7, frog.y] }
+                // the hop's peak stays in the pond, clear of the card above
+                ? { x: [frog.from.x, frog.x], y: [frog.from.y, Math.max(Math.min(frog.from.y, frog.y) - frogS * 0.6, -frogS * 0.25), frog.y] }
                 : { x: frog.x, y: frog.y }}
               transition={frog.arc ? { duration: 0.42, ease: 'easeOut', y: { duration: 0.42, times: [0, 0.45, 1] } } : { duration: 0 }}
               style={{ position: 'absolute', left: 0, top: 0, width: frogS, height: frogS, zIndex: 5 }}>
@@ -517,9 +555,12 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
       </DragArea>
 
       {/* The hand: clap (clapping rounds), or lay a pad (building rounds) */}
-      <HintHand key={`hand-${idx}`} from={isBuild ? (glowTile ? lazy(() => trayRef.current?.querySelector(`[data-tile="${glowTile.text}"]`)) : trayRef) : null}
-        to={isBuild ? lazy(() => padRefs.current[`b-${rs.placed.length}`]) : clapRef}
-        active={!busy && (isBuild || rs.claps === 0)} delay={firstRound ? 2000 : 6000} />
+      {isBuild
+        ? <HintHand key={`hand-${idx}`} from={lazy(() => trayRef.current?.querySelector(`[data-tile="${needed?.text}"]`))}
+            to={lazy(() => padRefs.current[`b-${rs.placed.length}`])}
+            active={!busy && !!needed} delay={glowTile ? 800 : firstRound ? 2000 : 6000} />
+        : <HintHand key={`clap-${idx}-${rs.showClaps}`} to={clapRef} repeat={rs.showClaps || 1}
+            active={!busy && rs.claps === 0 && rs.showClaps > 0} delay={1200} />}
       {finale && <Finale items={rounds.map(r => r.emoji)} hero="🐸" onDone={() => onComplete(result(firstTryRef.current, total))} />}
       {bursts}
     </div>
