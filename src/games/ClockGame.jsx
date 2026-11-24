@@ -762,8 +762,9 @@ export default function ClockGame({ level = 1, onComplete }) {
     return shuffle([t.activity, ...others])
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // New round: everything back, hands somewhere clearly wrong
-  useEffect(() => {
+  // New round: everything back, hands somewhere clearly wrong. A layout
+  // effect, so the new round is never painted with the last one's state.
+  useLayoutEffect(() => {
     if (!t) return
     setStatus(null); setTried([]); setCalls(0); setTreat(null); setPicked(null); setLumiDoes(null)
     setPulse(null); setMoved(false)

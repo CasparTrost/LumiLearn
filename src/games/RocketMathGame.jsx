@@ -277,8 +277,10 @@ export default function RocketMathGame({ level = 1, onComplete }) {
     return [start, start + len - 1]
   }, [t, lineW, plan.max])
 
-  // New task: everything back, the taxi whooshes to the starting planet
-  useEffect(() => {
+  // New task: everything back, the taxi whooshes to the starting planet.
+  // A layout effect, so the new task is never painted with the last one's
+  // state (the new alien used to play the last one's boarding).
+  useLayoutEffect(() => {
     if (!t) return
     timers.current.forEach(clearTimeout); timers.current = []
     setPos(t.from)

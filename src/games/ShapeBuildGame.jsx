@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { sfx } from '../sfx.js'
 import { afterNarration, lockPreviews } from '../narrator.js'
@@ -516,7 +516,8 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
     timers.current.push(setTimeout(run, ms))
   }, [])
 
-  useEffect(() => {
+  // A layout effect: the new figure is never painted with the last one's pieces
+  useLayoutEffect(() => {
     if (!fig) return
     timers.current.forEach(clearTimeout); timers.current = []
     setPlaced([]); setTurns({}); setWrongSlot(null); setTurnHint(null)

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react'
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion'
 import { sfx } from '../sfx.js'
 import { lockPreviews, afterNarration } from '../narrator.js'
@@ -401,7 +401,8 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
     timers.current.push(setTimeout(run, ms))
   }, [])
 
-  useEffect(() => {
+  // A layout effect: the new round is never painted with the last one's state
+  useLayoutEffect(() => {
     if (!r) return
     timers.current.forEach(clearTimeout); timers.current = []
     setPicked([]); setWrong([]); setSolved(false); setShake(null); setLook(0)
@@ -414,7 +415,9 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
 
   // The end of the level, here first: the owl dances with its cup
   const next = useCallback(() => {
-    if (idx + 1 < TOTAL) { setIdx(i => i + 1); return }
+    // the new picture mounts as it is (initial={false}): it must never see
+    // the last round's "solved" (it would start flying off) or its finds
+    if (idx + 1 < TOTAL) { setSolved(false); setPicked([]); setWrong([]); setShake(null); setIdx(i => i + 1); return }
     setEnding(true)
     setOwl('dance', 0)
     sfx.tada()
