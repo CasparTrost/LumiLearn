@@ -170,10 +170,9 @@ const TIP = { type: 'spring', stiffness: 70, damping: 7, mass: 1.4 }
 const TREE_SLOTS = [[0.5, 0.16], [0.28, 0.3], [0.72, 0.3], [0.4, 0.48], [0.64, 0.5], [0.2, 0.48]]
 const PERCH = 46                              // a landed thing, drawn this size
 const LIMIT = { tree: TREE_SLOTS.length, head: 3, sun: 3 }
-// Held sideways the tree stands beside the seesaw; upright (a phone) there
-// is no room beside it, and the tree grows on a little grass island in the
-// sky above, out of the riders' way.
-const treeAt = wide => (wide ? { T: 250, left: -100, top: H - 4 - 250 } : { T: 168, left: -14, top: -196, island: true })
+// Held sideways the tree stands beside the seesaw; upright (a phone) it is
+// smaller and stands on the ground behind the seesaw's left end.
+const treeAt = wide => (wide ? { T: 250, left: -100, top: H - 4 - 250 } : { T: 170, left: 2, top: H - 4 - 170 })
 
 function chooseSpot(streak, landed, sunOk) {
   const n = kind => landed.filter(l => l.spot.kind === kind).length
@@ -661,7 +660,7 @@ function Dazed({ on }) {
 // the sun (behind), and the ones still in the air (in front).
 function Yard({ wide, width, landed, sunAt, layer, onLand }) {
   const reduce = useReducedMotion()
-  const { T, left, top, island } = treeAt(wide)
+  const { T, left, top } = treeAt(wide)
   const inTree = landed.filter(l => l.spot.kind === 'tree' && l.done).length
   const spotXY = ({ kind, i }) => {
     if (kind === 'tree') return { x: left + TREE_SLOTS[i][0] * T, y: top + TREE_SLOTS[i][1] * T }
@@ -673,12 +672,6 @@ function Yard({ wide, width, landed, sunAt, layer, onLand }) {
   if (layer === 'back') {
     return (
       <div aria-hidden="true" style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none' }}>
-        {island && (
-          <svg width={T * 0.95} height={T * 0.3} viewBox="0 0 100 32" style={{ position: 'absolute', left: left + T * 0.025, top: top + T * 0.86 }}>
-            <path d="M4 10 Q50 -2 96 10 Q90 22 66 28 Q50 34 34 28 Q10 22 4 10 Z" fill="#a7744a" stroke="#2a1b3d" strokeWidth="2.5" strokeLinejoin="round" />
-            <path d="M4 10 Q50 -2 96 10 Q92 15 50 16 Q8 15 4 10 Z" fill="#7cc95a" stroke="#2a1b3d" strokeWidth="2.5" strokeLinejoin="round" />
-          </svg>
-        )}
         <motion.div key={inTree} initial={false} animate={reduce || !inTree ? {} : { rotate: [0, -2.5, 2, -1, 0] }} transition={{ duration: 0.6 }}
           style={{ position: 'absolute', left, top, width: T, height: T, transformOrigin: '50% 100%' }}>
           <Art art="🌳" size={T} />

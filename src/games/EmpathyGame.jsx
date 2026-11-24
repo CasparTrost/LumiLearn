@@ -221,7 +221,7 @@ const SCENES = [
     ] },
   { feeling: 'Glücklich', name: 'Noah',
     situation: 'Noahs Oma ist zu Besuch gekommen. Noah strahlt.',
-    props: [pal('👵', 440, 'in', { s: 130, flip: true })],
+    props: [pal('👵', 520, 'in', { s: 118, flip: true })],
     best: 'Ich sage: Schön, dass deine Oma da ist!', bi: ['🗣️', '💛'],
     other: [
       { t: 'Ich sage, dass meine Oma netter ist.', i: ['🗣️', '😠'] },
