@@ -18,6 +18,11 @@ import { Stage, useLater, DoneButton, usePops, Finale } from './zahlen/stage.jsx
  * show up, the rows that are off wiggle — and the child fixes them (takes
  * one out, puts more in); nothing that was right is taken away.
  *
+ * Hold a crate and the fruit pours in one by one; a basket filled far past
+ * the order tips over (a miss, like any wrong basket). Once per level a
+ * king comes shopping and pays with one giant coin, and on a streak of
+ * three the customer walks off wearing the basket as a hat.
+ *
  * Rest orders (levels 9–10): what the customer has at home is already in
  * the basket, marked with a little house, and the bubble shows how many it
  * wants in all — the child counts on from there.
@@ -50,6 +55,10 @@ const CUSTOMERS = [
   ['🐼', 'Panda'], ['🦔', 'Igel'], ['🐱', 'Katze'], ['🐶', 'Hund'],
 ]
 
+// How much a kind's row group may hold before the basket tips over: the
+// order plus a few, rounded up to whole rows of five.
+const capOf = (p, home = 0) => Math.ceil((p.n + home + 3) / 5) * 5
+
 function buildQuestions(level, count = level <= 4 ? 8 : level <= 7 ? 10 : 12) {
   // L1-2: 1 item | L3-6: 2 items | L7-10: 3 items
   const numParts = level <= 2 ? 1 : level <= 6 ? 2 : 3
@@ -70,8 +79,12 @@ function buildQuestions(level, count = level <= 4 ? 8 : level <= 7 ? 10 : 12) {
   })
 }
 
+// Once per level a king does the shopping (never the first customer)
+const pickVip = count => rnd(1, count - 2)
+
 export default function NumbersGame({ level = 1, onComplete }) {
   const questions = useMemo(() => buildQuestions(level), [level])
+  const vipAt = useMemo(() => pickVip(questions.length), [questions])
   const reduce = useReducedMotion()
   const { later, afterSpeech, clear } = useLater()
   const [mood, setMood] = useMood()
@@ -80,14 +93,17 @@ export default function NumbersGame({ level = 1, onComplete }) {
 
   const [idx,    setIdx]    = useState(0)
   const [basket, setBasket] = useState({})     // { [partIdx]: count }
-  const [phase,  setPhase]  = useState('shop') // shop | look | pay | finale
+  const [phase,  setPhase]  = useState('shop') // shop | look | tip | pay | finale
   const [wrongs, setWrongs] = useState(0)      // wrong baskets for this customer
   const [served, setServed] = useState(0)      // coins in the money jar
+  const [giant,  setGiant]  = useState(0)      // the king's giant coins
+  const [hat,    setHat]    = useState(null)   // { x, y }: the basket flies onto the customer's head
   const [taken,  setTaken]  = useState({})     // per crate: a new fruit rolls up after each one
   const [queueAt, setQueueAt] = useState(0)    // who stands in line; moves up once the old customer is gone
   const firstTry  = useRef(0)
   const streak    = useRef(0)
   const basketRef = useRef(null), crateRef = useRef(null), doneRef = useRef(null)
+  const custRef = useRef(null), bagRef = useRef(null)
 
   const q = questions[idx]
   const given = Object.values(basket).reduce((a, b) => a + b, 0)
@@ -103,13 +119,38 @@ export default function NumbersGame({ level = 1, onComplete }) {
     sayTask()
   }, [idx])
 
+  const vip = idx === vipAt
+  const homeOf = pi => (q.home && pi === 0 ? q.home : 0)
+
   const put = (pi) => {
     if (phase !== 'shop') return false
+    // far too many: the basket tips over and that kind spills out — a miss
+    if ((basket[pi] || 0) + 1 + homeOf(pi) > capOf(q.parts[pi], homeOf(pi))) { tip(pi); return false }
     setBasket(b => ({ ...b, [pi]: (b[pi] || 0) + 1 }))
     setTaken(t => ({ ...t, [pi]: (t[pi] || 0) + 1 }))
     sfx.pop()
-    if (help) pop((basket[pi] || 0) + 1 + (q.home && pi === 0 ? q.home : 0))
+    if (help) pop((basket[pi] || 0) + 1 + homeOf(pi))
     return true
+  }
+  // Holding a crate pours (Crate calls this every 350 ms); the latest put
+  // is kept in a ref, so each pour sees the basket as it is now.
+  const putRef = useRef(put)
+  putRef.current = put
+  const pour = pi => putRef.current(pi)
+
+  const tip = (pi) => {
+    setPhase('tip')
+    setWrongs(w => w + 1)
+    streak.current = 0
+    setMood('wow', 1600)
+    sfx.boing()
+    later(250, () => sfx.splash())
+    sayWrong()
+    afterSpeech(() => {
+      setBasket(b => ({ ...b, [pi]: 0 }))
+      setMood('oops', 1000)
+      setPhase('shop')
+    }, 2000)
   }
   // A tap on a kind in the basket puts one of exactly that kind back.
   const putBack = (pi) => {
@@ -125,8 +166,22 @@ export default function NumbersGame({ level = 1, onComplete }) {
     setBasket({})
     setTaken({})
     setWrongs(0)
+    setHat(null)
     setMood('idle')
     setPhase('shop')
+  }
+
+  // The basket hops onto the customer's head; measured on screen, moved in
+  // the stage's own (scaled) units.
+  const putOnHead = () => {
+    const bag = bagRef.current, cust = custRef.current
+    if (!bag || !cust || reduce) return
+    const b = bag.getBoundingClientRect(), c = cust.getBoundingClientRect()
+    const scale = b.width / (bag.offsetWidth || b.width)
+    setHat({
+      x: (c.left + c.width / 2 - (b.left + b.width / 2)) / scale,
+      y: (c.top + c.height * 0.2 - b.bottom + b.height * 0.25) / scale,
+    })
   }
 
   const confirm = () => {
@@ -137,12 +192,14 @@ export default function NumbersGame({ level = 1, onComplete }) {
       // The customer cheers — on a streak with a dance and confetti — and
       // now and then can't wait and takes a bite right away.
       const party = streak.current >= 3 && streak.current % 3 === 0
-      if (party) { setMood('dance', 2400); sfx.tada() }
+      if (party) { setMood('dance', 2400); sfx.tada(); later(300, putOnHead) }
       else if (Math.random() < 0.3) { setMood('eat', 800); sfx.chomp(); later(800, () => setMood('happy', 1400)) }
       else setMood(['happy', 'dance', 'wow'][rnd(0, 2)], 1600)
       burst(basketRef.current, party ? 'confetti' : 'stars', party ? 22 : 10)
-      // It pays: coins clink onto the counter one by one.
-      ;[0, 1, 2].forEach(i => later(350 + i * 260, () => { sfx.coin(); setServed(s => s + 1) }))
+      // It pays: coins clink into the jar one by one — the king with one
+      // giant coin that lands with a thunk.
+      if (vip) later(450, () => { sfx.drum(); sfx.coin(); setGiant(g => g + 1) })
+      else [0, 1, 2].forEach(i => later(350 + i * 260, () => { sfx.coin(); setServed(s => s + 1) }))
       sayRight()
       afterSpeech(next, party ? 2600 : 2200)
       return
@@ -175,13 +232,14 @@ export default function NumbersGame({ level = 1, onComplete }) {
           const customer = (
             <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', paddingTop: wide ? 96 : 76 }}>
               <AnimatePresence mode="wait" onExitComplete={() => setQueueAt(idx)}>
-                <motion.div key={idx}
+                <motion.div key={idx} ref={custRef}
                   initial={reduce ? { opacity: 0 } : wide && idx > 0 ? { x: 430, scale: 0.38, opacity: 1 } : { x: 320, opacity: 0 }}
                   animate={{ x: 0, scale: 1, opacity: 1 }}
                   style={{ transformOrigin: '50% 100%' }}
                   exit={reduce ? { opacity: 0 } : { x: -520, opacity: 0, rotate: [0, -6, 6, -6, 0], transition: { duration: 0.7, ease: 'easeIn' } }}
                   transition={{ type: 'spring', stiffness: 140, damping: 17 }}>
-                  <Critter art={q.art} size={size} mood={mood} label={q.label}
+                  <Critter art={q.art} size={size} mood={mood} label={vip ? `${q.label}, König` : q.label}
+                    accessory={vip ? <Crown size={size} /> : null}
                     wish={phase === 'pay' ? null : <Order q={q} />} />
                 </motion.div>
               </AnimatePresence>
@@ -192,11 +250,15 @@ export default function NumbersGame({ level = 1, onComplete }) {
               {(hover, { ready }) => (
                 // the customer takes the full basket along; the next one brings an empty one
                 <AnimatePresence mode="wait" initial={false}>
-                  <motion.div key={idx} initial={reduce ? { opacity: 0 } : { x: 320, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
-                    exit={reduce ? { opacity: 0 } : { x: -520, opacity: 0, transition: { duration: 0.7, ease: 'easeIn' } }}
-                    transition={{ type: 'spring', stiffness: 140, damping: 17 }} style={{ position: 'relative' }}>
+                  <motion.div key={idx} ref={bagRef} initial={reduce ? { opacity: 0 } : { x: 320, opacity: 0 }}
+                    animate={hat ? { x: hat.x, y: hat.y, scale: 0.5, rotate: -10, opacity: 1 }
+                      : phase === 'tip' && !reduce ? { x: 0, y: 0, scale: 1, opacity: 1, rotate: [0, 18, -95, -95, 0] }
+                      : { x: 0, y: 0, scale: 1, rotate: 0, opacity: 1 }}
+                    exit={reduce ? { opacity: 0 } : { x: (hat?.x ?? 0) - 520, opacity: 0, transition: { duration: 0.7, ease: 'easeIn' } }}
+                    transition={hat ? { type: 'spring', stiffness: 170, damping: 14 } : phase === 'tip' ? { duration: 2, times: [0, 0.12, 0.35, 0.8, 1] } : { type: 'spring', stiffness: 140, damping: 17 }}
+                    style={{ position: 'relative', zIndex: hat ? 3 : undefined, transformOrigin: phase === 'tip' ? '15% 100%' : '50% 50%' }}>
                     <Basket q={q} basket={basket} onTake={putBack} glow={hover || ready} innerRef={basketRef}
-                      counts={help || phase === 'look'} wiggle={phase === 'look'} width={wide ? 260 : 220} />
+                      counts={help || phase === 'look'} wiggle={phase === 'look'} width={wide ? 260 : 220} limit={wide ? 230 : 190} />
                     <div style={{ position: 'absolute', left: 0, right: 0, top: '20%' }}>{pops}</div>
                   </motion.div>
                 </AnimatePresence>
@@ -212,7 +274,7 @@ export default function NumbersGame({ level = 1, onComplete }) {
                 transition={{ type: 'spring', stiffness: 220, damping: 20 }}
                 style={{ display: 'flex', gap: wide ? 18 : 10, alignItems: 'flex-end', justifyContent: 'center' }}>
                 {q.parts.map((p, i) => (
-                  <Crate key={i} item={p.item} id={`${idx}-${i}-${taken[i] || 0}`} pi={i} innerRef={i === 0 ? crateRef : undefined}
+                  <Crate key={i} item={p.item} id={`${idx}-${i}-${taken[i] || 0}`} pi={i} innerRef={i === 0 ? crateRef : undefined} onPour={pour}
                     width={q.parts.length === 3 ? 128 : wide ? 150 : 140} />
                 ))}
               </motion.div>
@@ -232,7 +294,7 @@ export default function NumbersGame({ level = 1, onComplete }) {
                   </div>
                   <Counter>
                     {crates}
-                    <Jar n={served} />
+                    <Jar n={served} giant={giant} />
                     {done}
                   </Counter>
                 </>
@@ -242,7 +304,7 @@ export default function NumbersGame({ level = 1, onComplete }) {
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-evenly' }}>
                     {customer}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <Jar n={served} />
+                      <Jar n={served} giant={giant} />
                       {bag}
                       {done}
                     </div>
@@ -291,10 +353,13 @@ const badge = {
 // everything in it lies flat and can be counted. Each group is a button
 // that puts one of that kind back on its crate. Things from home sit first
 // in their group with a little house and stay.
-function Basket({ q, basket, onTake, glow, counts, wiggle, innerRef, width }) {
+function Basket({ q, basket, onTake, glow, counts, wiggle, innerRef, width, limit }) {
   const total = Object.values(basket).reduce((a, b) => a + b, 0)
   const home = i => (q.home && i === 0 ? q.home : 0)
-  const item = width >= 250 ? 30 : 26
+  // Small enough that even a full basket (every kind at its cap) stays
+  // below the awning
+  const rows = q.parts.reduce((a, p, i) => a + capOf(p, home(i)) / 5, 0)
+  const item = Math.min(width >= 250 ? 30 : 26, Math.floor((limit - q.parts.length * 10) / rows))
   // a little squash each time something lands, without re-mounting
   const squash = useAnimationControls()
   const last = useRef(total)
@@ -352,12 +417,36 @@ function Basket({ q, basket, onTake, glow, counts, wiggle, innerRef, width }) {
 
 // A crate full of one kind; the one on top can be dragged (or tapped) into
 // the basket, and another rolls up in its place.
-function Crate({ item, id, pi, width, innerRef }) {
+// Holding it pours: after a short hold one fruit after another goes in,
+// until the finger lets go. A quick tap still puts in one.
+function Crate({ item, id, pi, width, innerRef, onPour }) {
+  const hold = useRef(null)
+  const stop = () => { clearTimeout(hold.current?.t); clearInterval(hold.current?.iv); hold.current = null }
+  useEffect(() => stop, [])
+  const start = e => {
+    stop()
+    const h = { poured: false, x: e.clientX, y: e.clientY }
+    h.t = setTimeout(() => {
+      const go = () => { if (onPour(pi) === false) stop(); else h.poured = true }
+      go()
+      h.iv = setInterval(go, 350)
+    }, 420)
+    hold.current = h
+    window.addEventListener('pointerup', stop, { once: true })
+    window.addEventListener('pointercancel', stop, { once: true })
+  }
   return (
     <div style={{ position: 'relative', width, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <div style={{ display: 'flex', marginBottom: -26, zIndex: 1, alignItems: 'flex-end' }}>
         <Art art={item.emoji} size={width * 0.34} style={{ transform: 'rotate(-14deg)', marginRight: -width * 0.12 }} />
-        <div ref={innerRef} style={{ zIndex: 2 }}>
+        <div ref={innerRef} style={{ zIndex: 2 }} onPointerDownCapture={start}
+          onPointerMoveCapture={e => {
+            const h = hold.current
+            if (h?.poured) e.stopPropagation()
+            // a finger that moves is dragging, not pouring
+            else if (h && Math.hypot(e.clientX - h.x, e.clientY - h.y) > 8) stop()
+          }}
+          onPointerUpCapture={e => { if (hold.current?.poured) e.stopPropagation(); stop() }}>
           <Draggable key={id} id={id} data={{ pi }} label={`${item.name} in den Korb legen`} style={{ borderRadius: '50%' }}>
             <motion.div initial={{ y: -16, scale: 0.6 }} animate={{ y: 0, scale: 1 }} transition={{ type: 'spring', stiffness: 500, damping: 16 }}>
               <Art art={item.emoji} size={width * 0.56} />
@@ -388,25 +477,45 @@ function Counter({ children }) {
 
 // Lumi's money jar: each customer's coins drop in with a clink and pile up
 // inside, so the level's work can be seen filling it.
-function Jar({ n }) {
+function Jar({ n, giant }) {
   const reduce = useReducedMotion()
   const shown = Math.min(n, 24)
+  // a little squash for each coin, without dropping the old ones again
+  const squash = useAnimationControls()
+  useEffect(() => {
+    if ((n || giant) && !reduce) squash.start({ scaleY: [giant ? 0.85 : 0.94, 1], transition: { type: 'spring', stiffness: 500, damping: 12 } })
+  }, [n, giant, reduce, squash])
   return (
     <div aria-hidden="true" style={{ position: 'relative', width: 78, height: 96, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <div style={{ width: 50, height: 12, borderRadius: 4, background: '#e8663a', border: '3px solid #2a1b3d', zIndex: 2 }} />
-      <motion.div key={n} initial={n && !reduce ? { scaleY: 0.94 } : false} animate={{ scaleY: 1 }} transition={{ type: 'spring', stiffness: 500, damping: 12 }}
+      <motion.div animate={squash}
         style={{
           position: 'relative', width: 70, height: 76, marginTop: -3, borderRadius: '14px 14px 20px 20px', border: '3px solid #2a1b3d', overflow: 'hidden',
           background: 'linear-gradient(90deg, rgba(255,255,255,0.75) 0 18%, rgba(220,240,255,0.55) 18%)', transformOrigin: '50% 100%',
         }}>
+        {Array.from({ length: Math.min(giant, 2) }, (_, i) => (
+          <motion.div key={`g${i}`} initial={reduce ? false : { y: -110, rotate: -40 }} animate={{ y: 0, rotate: 0 }} transition={{ type: 'spring', stiffness: 220, damping: 11 }}
+            style={{ position: 'absolute', left: 8 + i * 10, bottom: 2 + i * 6 }}>
+            <Art art="🪙" size={50} />
+          </motion.div>
+        ))}
         {Array.from({ length: shown }, (_, i) => (
           <motion.div key={i} initial={reduce ? false : { y: -80 }} animate={{ y: 0 }} transition={{ type: 'spring', stiffness: 260, damping: 16 }}
-            style={{ position: 'absolute', left: 4 + (i % 3) * 19 + (Math.floor(i / 3) % 2) * 6, bottom: 2 + Math.floor(i / 3) * 8 }}>
+            style={{ position: 'absolute', left: 4 + (i % 3) * 19 + (Math.floor(i / 3) % 2) * 6, bottom: 2 + Math.floor(i / 3) * 8 + (giant ? 22 : 0) }}>
             <Art art="🪙" size={24} />
           </motion.div>
         ))}
       </motion.div>
     </div>
+  )
+}
+
+// The king's crown, worn on the customer and moving with it
+function Crown({ size }) {
+  return (
+    <span aria-hidden="true" style={{ position: 'absolute', top: -size * 0.1, left: '50%', transform: 'translateX(-50%) rotate(-10deg)', pointerEvents: 'none' }}>
+      <Art art="👑" size={size * 0.34} />
+    </span>
   )
 }
 

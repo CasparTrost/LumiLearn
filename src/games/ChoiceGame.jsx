@@ -40,18 +40,22 @@ const widthOf = (q, token) => (q.kind !== 'grow' ? 1 : token === '❓' ? 1.4 : c
 // For screen readers: the name, or how many of them
 const labelOf = (q, opt) => (q.kind === 'grow' ? String(countOf(q, opt)) : q.names[opt] ?? '')
 
-// The payoff (drum roll, the parade marching off) before the next round
-const MARCH_MS = 2100
+// The payoff: everybody hops in turn to the drum, so the pattern can be
+// heard (A high, B low, C a pop), then the parade marches off
+const BEAT_MS  = 240
+const MARCH_MS = 1500
 // The round trail stops short of the sun in the scene's top right corner
 const SUN_GAP = 'clamp(0px, calc((100vw - 700px) * 0.6), 190px)'
 // What a round starts with
-const FRESH = { wrong: [], solved: false, marching: false, stumble: 0, placed: [], missesHere: 0 }
+const FRESH = { wrong: [], solved: false, marching: false, stumble: 0, placed: [], missesHere: 0, hopAt: -1 }
+// The drum for the n-th kind of thing in the row: the pattern becomes a rhythm
+const BEAT = [() => sfx.drum(true), () => sfx.drum(false), () => sfx.pop()]
 
 /**
  * One marcher (or a little group of them), stepping in time. It stumbles
  * each time `stumble` goes up — never when it first appears.
  */
-function Marcher({ q, token, size, i, stumble }) {
+function Marcher({ q, token, size, i, stumble, hop = false }) {
   const controls = useAnimationControls()
   const seen = useRef(stumble)
   useEffect(() => {
@@ -63,6 +67,11 @@ function Marcher({ q, token, size, i, stumble }) {
       transition: { duration: 0.8, delay: (i % 4) * 0.05 },
     })
   }, [stumble, controls, i, size])
+  // its beat in the drum roll after a right answer: a hop
+  useEffect(() => {
+    if (!hop || reduceMotion()) return
+    controls.start({ y: [0, -size * 0.4, 0], scaleY: [1, 1.12, 1], transition: { duration: 0.26 } })
+  }, [hop, controls, size])
   return (
     <motion.div animate={controls} style={{ display: 'flex', alignItems: 'flex-end', transformOrigin: '50% 100%' }}>
       {q.kind === 'grow'
@@ -110,6 +119,9 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
   const [ready,    setReady]    = useState(false)   // payoff over: next round
   const [finale,   setFinale]   = useState(false)
   const [leader, setLeader] = useMood()
+  const [crowd,  setCrowd]  = useState([])          // who marched into the 🎪 so far
+  const timers   = useRef([])
+  useEffect(() => () => timers.current.forEach(clearTimeout), [])
   const stageRef = useRef(null)
   const gapRef   = useRef(null)
   const trayRef  = useRef(null)
@@ -135,15 +147,25 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
     const s = first ? streak + 1 : 0
     setStreak(s)
     upd({ solved: true })
-    setLeader(s >= 3 ? 'dance' : 'wow', 1600)
+    setLeader('dance', 600 + q.tokens.length * BEAT_MS + 400)
     sayRight()
     if (gapRef.current) burst(gapRef.current, s >= 3 ? 'confetti' : 'stars', s >= 3 ? 20 : 10)
-    if (!reduceMotion()) setTimeout(() => upd({ marching: true }), 700)
-    const beats = s >= 3 ? 7 : 5
-    for (let i = 0; i < beats; i++) setTimeout(() => sfx.drum(i % 2 === 1), 700 + i * 220)
-    if (s >= 3) setTimeout(() => sfx.tada(), 700 + beats * 220)
-    afterNarration(() => setReady(true), { minMs: MARCH_MS })
-  }, [rs.wrong, streak, setLeader, burst])
+    // the drum roll: each marcher hops on its beat, its sound by its kind
+    const kinds = []
+    const soundOf = sym => { if (!kinds.includes(sym)) kinds.push(sym); return BEAT[kinds.indexOf(sym) % BEAT.length] }
+    const at = (ms, fn) => timers.current.push(setTimeout(fn, ms))
+    q.tokens.forEach((token, i) => {
+      const sym = token !== '❓' ? token : build ? q.fill[i - q.gapAt] : q.answer
+      const sound = q.kind === 'grow' ? () => sfx.drum(i % 2 === 0) : soundOf(sym)
+      at(500 + i * BEAT_MS, () => { upd({ hopAt: i }); sound() })
+    })
+    const end = 500 + q.tokens.length * BEAT_MS
+    if (s >= 3) at(end, () => sfx.tada())
+    // then the parade marches into the tent, and one of it stays in front
+    at(end + 150, () => { if (!reduceMotion()) upd({ marching: true, hopAt: -1 }) })
+    at(end + 900, () => setCrowd(c => [...c, q.sym ?? q.unit[0]]))
+    afterNarration(() => at(0, () => setReady(true)), { minMs: end + MARCH_MS })
+  }, [rs.wrong, streak, setLeader, burst, q, build])
 
   // Wrong: everybody stumbles, the piece goes back to wait
   const trip = useCallback((opt, extra = {}) => {
@@ -216,7 +238,7 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
 
   // one place in the parade: a marcher, or the gap waiting for one
   const renderToken = (token, i) => {
-    if (token !== '❓') return <div role="listitem" key={i} style={{ position: 'relative' }}><Marcher q={q} token={token} size={size} i={i} stumble={rs.stumble} /></div>
+    if (token !== '❓') return <div role="listitem" key={i} style={{ position: 'relative' }}><Marcher q={q} token={token} size={size} i={i} stumble={rs.stumble} hop={rs.hopAt === i} /></div>
     const slot = i - q.gapAt
     const piece = build ? placed[slot] : solved ? q.answer : null
     const waiting = !solved && (!build || slot === placed.length)
@@ -226,7 +248,7 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
         <DropZone id={zone} onDrop={build ? dropSlot : dropGap} label="Lücke in der Parade" slop={size * 0.4}>
           {hover => piece != null
             ? <motion.div initial={{ scale: 0.3, y: -size }} animate={{ scale: 1, y: 0 }} transition={{ type: 'spring', stiffness: 380, damping: 16 }}>
-                <Marcher q={q} token={piece} size={size} i={i} stumble={rs.stumble} />
+                <Marcher q={q} token={piece} size={size} i={i} stumble={rs.stumble} hop={rs.hopAt === i} />
               </motion.div>
             : <div className={waiting ? 'pa-ring' : undefined} style={{
                 width: size * (q.kind === 'grow' ? 1.4 : 1), height: size, boxSizing: 'border-box', borderRadius: size * 0.3,
@@ -249,8 +271,17 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
   return (
     <DragArea autoTarget={build ? `slot-${placed.length}` : 'gap'} disabled={solved || finale}>
       <div style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', padding: 'clamp(10px,2vw,22px) clamp(10px,3vw,32px)', gap: 12 }}>
-        <div style={{ width: '100%', maxWidth: 900, flexShrink: 0, paddingRight: SUN_GAP, boxSizing: 'border-box' }}>
+        <div style={{ position: 'relative', width: '100%', maxWidth: 900, flexShrink: 0, paddingRight: SUN_GAP, boxSizing: 'border-box' }}>
           <RoundTrail total={questions.length} done={idx + (solved ? 1 : 0)} walker="🐘" goal="🎪" />
+          {/* the crowd in front of the 🎪: one from every parade so far */}
+          <div aria-hidden="true" style={{ position: 'absolute', top: '100%', right: SUN_GAP, display: 'flex', flexDirection: 'row-reverse', paddingRight: 6 }}>
+            {crowd.map((c, k) => (
+              <motion.div key={k} initial={{ x: -60, y: -30, scale: 0, opacity: 0 }} animate={{ x: 0, y: 0, scale: 1, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 260, damping: 14 }} style={{ marginLeft: -6 }}>
+                <div className="pa-wait" style={{ animationDelay: `${-k * 0.3}s` }}><Art art={c} size={30} /></div>
+              </motion.div>
+            ))}
+          </div>
         </div>
 
         {/* The parade on its road */}

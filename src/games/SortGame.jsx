@@ -46,10 +46,19 @@ const TINT = {
   yellow: { bg: '#FFF4C2', ring: '#9A7400' },
 }
 
+// What a monster does with what it gets: food is munched (with crumbs),
+// toys and balls bounce on its head before they drop in, an animal climbs
+// onto the rim and waves.
+const USE = {
+  Essen: 'eat', Obst: 'eat', Gemüse: 'eat', Süß: 'eat', Salzig: 'eat', Süßes: 'eat',
+  Spielzeug: 'bounce', Sport: 'bounce', Rund: 'bounce', Kinderzimmer: 'bounce',
+  Tiere: 'climb', 'Im Wasser': 'climb', 'In der Luft': 'climb', 'An Land': 'climb', Bauernhof: 'climb',
+  'Wilde Tiere': 'climb', 'Frisst Pflanzen': 'climb', 'Frisst Fleisch': 'climb', Groß: 'climb', Klein: 'climb',
+}
 // A monster: the word and picture on its sign, its tint, and what it
 // collects. Items are [emoji, name with its article] (the name labels the
 // thing for screen readers).
-const cat = (label, emoji, tint, items) => ({ label, emoji, ...TINT[tint], items })
+const cat = (label, emoji, tint, items) => ({ label, emoji, ...TINT[tint], items, use: USE[label] })
 
 // Every item belongs to its basket without an "it depends": no tomato as a
 // vegetable, no shark that floats, no glasses that belong to the daytime.
@@ -334,6 +343,11 @@ function buildRound(level) {
 }
 
 
+// Halfway through the level a sock comes down the belt: it belongs to no
+// monster. Both pull a face, and Lumi throws it out of the window. Not a
+// task: it is never scored and cannot be picked up.
+const SOCK = { id: 'sock', emoji: '🧦' }
+
 const FREE_TINT = [TINT.lilac, TINT.brown]
 const BIG = 108   // the thing at the front of the belt
 const GAP = 124   // from one place on the belt to the next
@@ -393,11 +407,12 @@ function useMonsterWidth(n) {
 
 // The conveyor belt; the stripes move on by one place per `rolls`. Without
 // a `height`, the things on it stand in the flow and set it. `fast` (a run
-// of right answers): it rolls quicker, with speed lines.
-function Belt({ rolls, height = 'auto', fast = false, children }) {
+// of right answers): it rolls quicker, with speed lines. `open`: something
+// may fly off it (the sock), so it does not clip.
+function Belt({ rolls, height = 'auto', fast = false, open = false, children }) {
   const roll = fast ? 0.32 : 0.6
   return (
-    <div style={{ position: 'relative', width: '100%', height, flexShrink: 0, overflow: 'hidden' }}>
+    <div style={{ position: 'relative', width: '100%', height, flexShrink: 0, overflow: open ? 'visible' : 'hidden' }}>
       {children}
       <div style={{ position: 'absolute', left: 8, right: 8, bottom: 14, height: 34, background: fast ? '#7d5a8c' : '#6d6a7c', border: `3px solid ${INK}`, borderRadius: 20, boxShadow: fast ? '0 0 0 4px #ffc93c, 0 5px 0 rgba(42,27,61,0.35)' : '0 5px 0 rgba(42,27,61,0.35)', overflow: 'hidden', transition: 'background .3s, box-shadow .3s' }}>
         <motion.div initial={false} animate={{ backgroundPositionX: -rolls * GAP }} transition={{ duration: roll, ease: 'easeInOut' }}
@@ -549,7 +564,10 @@ export default function SortGame({ level = 1, onComplete }) {
   const [acted,  setActed]  = useState(false)        // the child gave something (the hand waits longer then)
   const [fast,   setFast]   = useState(false)        // a run of right answers: the belt speeds up
   const [lumi,   setLumi]   = useMood()              // Lumi, the belt boss, where there is room
+  const [sock,   setSock]   = useState('wait')       // the sock gag: wait | on | fly | gone
   const paused   = usePaused()
+  const pausedRef = useRef(paused)
+  pausedRef.current = paused
   const missed   = useRef(new Set())                  // things that needed more than one try
   const final    = useRef(null)                       // the level's result, kept through the bonus round
   const monsters = useRef([])
@@ -568,6 +586,31 @@ export default function SortGame({ level = 1, onComplete }) {
   const later = (fn, ms) => timers.current.push(setTimeout(fn, ms))
   useEffect(() => () => { timers.current.forEach(clearTimeout); moodT.current.forEach(clearTimeout) }, [])
   useEffect(() => { sayTask() }, [])
+
+  // The sock, once halfway: it rides in, both monsters say "Bäh!", Lumi
+  // throws it out of the window, and the belt rolls on. Held while paused.
+  const sockOn = sock === 'on' || sock === 'fly'
+  useEffect(() => {
+    if (sock !== 'wait' || phase !== 'playing' || curIdx !== Math.floor(total / 2) || busy) return
+    setSock('on')
+    const steps = [
+      [900, () => { sfx.boing(); cats.forEach((_, i) => setMood(i, 'bah', 1300)) }],
+      [2300, () => { setSock('fly'); setLumi('happy', 1200); sfx.whoosh() }],
+      [3300, () => setSock('gone')],
+    ]
+    const ids = []
+    let t0 = 0
+    const run = k => {
+      if (k >= steps.length) return
+      const [at, fn] = steps[k]
+      ids.push(setTimeout(function tick() {
+        if (pausedRef.current) { ids.push(setTimeout(tick, 250)); return }
+        fn(); t0 = at; run(k + 1)
+      }, at - t0))
+    }
+    run(0)
+    return () => ids.forEach(clearTimeout)
+  }, [curIdx, busy]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // A monster's mood, back to idle after `ms`
   const setMood = useCallback((i, m, ms = 1200) => {
@@ -601,7 +644,8 @@ export default function SortGame({ level = 1, onComplete }) {
     streak.current = first ? streak.current + 1 : 0
     sfx.pop()
     setSorted(prev => prev.map((list, i) => (i === target ? [...list, it] : list)))
-    setMood(target, 'happy', 900)
+    if (cats[target].use === 'eat') { setMood(target, 'chomp', 950); later(() => sfx.chomp(), 150) }
+    else setMood(target, 'happy', 900)
     burst(monsters.current[target], 'stars')
     // a run of right answers: the other monsters cheer along, louder and louder
     setFast(streak.current >= 3)
@@ -643,10 +687,10 @@ export default function SortGame({ level = 1, onComplete }) {
 
   if (phase === 'free') return <FreeSort onDone={finish} />
 
-  const queue = items.slice(curIdx, curIdx + 3)
+  const queue = sockOn ? [SOCK, ...items.slice(curIdx, curIdx + 2)] : items.slice(curIdx, curIdx + 3)
 
   return (
-    <DragArea disabled={paused || busy || phase !== 'playing'}>
+    <DragArea disabled={paused || busy || sockOn || phase !== 'playing'}>
       <div ref={rootRef} style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 16px 0', gap: 6, userSelect: 'none' }}>
         {/* the trail ends left of the window in the wall */}
         <div style={clear ? { width: '100%', maxWidth: Math.min(760, clear.x - 40), alignSelf: 'flex-start' } : { width: '100%', maxWidth: 760 }}>
@@ -667,18 +711,34 @@ export default function SortGame({ level = 1, onComplete }) {
             <MonsterZone key={c.label} id={`cat${i}`} width={mw} onDrop={it => give(i, it)}
               monsterRef={el => { monsters.current[i] = el }}
               label={c.label}
-              tint={c} sign={{ emoji: c.emoji, label: c.label }} look={i} mood={moods[i]} items={sorted[i]} />
+              tint={c} sign={{ emoji: c.emoji, label: c.label }} look={i} mood={moods[i]} items={sorted[i]} use={c.use} />
           ))}
         </div>
 
         {/* the belt: the front thing can be picked up, the next ones wait */}
-        <Belt rolls={curIdx} height={BIG + 52} fast={fast}>
+        <Belt rolls={curIdx + (sock === 'gone' ? 1 : 0)} height={BIG + 52} fast={fast} open={sock === 'fly'}>
+          {/* Lumi pops up to throw the sock out of the window */}
+          <AnimatePresence>
+            {sock === 'fly' && (
+              <motion.div key="thrower" aria-hidden="true" initial={{ y: 90 }} animate={{ y: 0 }} exit={{ y: 90 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 16 }}
+                style={{ position: 'absolute', left: `calc(50% - ${BIG * 1.5}px)`, bottom: 30, zIndex: 2 }}>
+                <Art art="lumi" size={BIG * 0.8} />
+              </motion.div>
+            )}
+          </AnimatePresence>
           <AnimatePresence>
             {phase === 'playing' && queue.map((it, i) => (
-              <motion.div key={it.id} ref={i === 0 ? frontRef : undefined} initial={{ x: 640 }} animate={{ x: i * GAP - BIG / 2, scale: i ? 0.72 : 1, opacity: i ? 0.9 : 1 }}
-                exit={{ opacity: 0, transition: { duration: 0.1 } }} transition={{ type: 'spring', stiffness: fast ? 320 : 170, damping: fast ? 26 : 22 }}
-                style={{ position: 'absolute', left: '50%', bottom: 40, width: BIG, height: BIG, transformOrigin: '50% 100%' }}>
-                {i === 0
+              <motion.div key={it.id} ref={i === 0 && it !== SOCK ? frontRef : undefined} initial={{ x: 640 }}
+                animate={it === SOCK && sock === 'fly' && !reduceMotion()
+                  ? { x: [-BIG / 2, -BIG / 2, 420], y: [0, -60, -520], rotate: [0, -20, 720], scale: [1, 1.1, 0.4], opacity: [1, 1, 0] }
+                  : { x: i * GAP - BIG / 2, scale: i ? 0.72 : 1, opacity: it === SOCK && sock === 'fly' ? 0 : i ? 0.9 : 1 }}
+                exit={{ opacity: 0, transition: { duration: 0.1 } }}
+                transition={it === SOCK && sock === 'fly' ? { duration: 0.9, ease: 'easeIn' } : { type: 'spring', stiffness: fast ? 320 : 170, damping: fast ? 26 : 22 }}
+                style={{ position: 'absolute', left: '50%', bottom: 40, width: BIG, height: BIG, transformOrigin: '50% 100%', zIndex: it === SOCK ? 3 : undefined }}>
+                {it === SOCK
+                  ? <Art art={it.emoji} size={BIG} />
+                  : i === 0
                   ? <Draggable id={it.id} data={it} label={it.name}>
                       {/* a little hop when it arrives at the front */}
                       <motion.div animate={reduceMotion() ? undefined : { y: [0, -22, 0, -6, 0] }} transition={{ duration: 0.6, delay: 0.35 }}>
@@ -706,7 +766,7 @@ export default function SortGame({ level = 1, onComplete }) {
       </div>
       {/* the hand shows the move: the thing into the monster that wants it
           (it only comes when a child waits, so showing the answer helps) */}
-      <HintHand from={frontRef} to={monsters.current[current?.cat]} active={phase === 'playing' && !busy} delay={acted ? 6000 : 2000} />
+      <HintHand from={frontRef} to={monsters.current[current?.cat]} active={phase === 'playing' && !busy && !sockOn} delay={acted ? 6000 : 2000} />
       <HintHand to={nextRef} active={phase === 'done'} delay={5000} />
       {bursts}
     </DragArea>

@@ -257,6 +257,96 @@ const SCENARIOS = [
     lumi:{ act: 'in', d: 1 }, cast:[kid('👩', 400, 'none', { s: 130, say: ['🤫'] }), kid('👨', 510, 'none', { s: 140, flip: true }), t('🎁', 460, 'pop', { s: 50, y: 150, d: 0.3 })] },
 ]
 
+// How each situation turns out once the child has named the feeling (in the
+// order of SCENARIOS): the present bursts open, a bird brings the balloon
+// back, the spider waves and climbs away. `feel` is Lumi's face then.
+const THEN = [
+  // Glücklich
+  { feel: 'excited', cast: [t('🎁', 400, 'sink', { s: 140 }), t('🧸', 400, 'jack', { s: 90, d: 0.3 }), t('🎊', 400, 'bang', { s: 110, y: 120, d: 0.2 })] },
+  { feel: 'proud', cast: [t('🏁', 470, 'none', { s: 90 }), t('🏆', 410, 'jack', { s: 70, y: 80 }), kid('🐢', 150, 'hop', { s: 70 }), kid('🐌', 230, 'hop', { s: 60, d: 0.2 })] },
+  { feel: 'happy', cast: [kid('🐻', 270, 'hop', { s: 130, flip: true }), t('❤️', 215, 'bang', { s: 50, y: 180 }), t('❤️', 265, 'bang', { s: 40, y: 210, d: 0.3 })] },
+  { feel: 'excited', fx: 'night', cast: [t('🌙', 480, 'bob', { s: 80, y: 200 }), t('🎲', 330, 'shake', { s: 70 }), t('🧸', 420, 'hop', { s: 80 })] },
+  { feel: 'happy', cast: [t('🌿', 470, 'none', { s: 90 }), t('🪨', HAND, 'jack', { s: 60, y: 70 }), t('✨', HAND, 'bang', { s: 60, y: 120, d: 0.3 })] },
+  { feel: 'excited', fx: 'snow', cast: [t('⛄', 400, 'hop', { s: 130 }), t('❄️', 300, 'bob', { s: 40, y: 180 })] },
+  // Traurig
+  { feel: 'happy', cast: [kid('🐻', 400, 'in', { s: 120, flip: true }), t('🍦', 370, 'give', { s: 60, y: 60, to: HAND, d: 1.1 })] },
+  { feel: 'happy', cast: [t('💌', 380, 'drop', { s: 80 }), t('📱', 470, 'jack', { s: 60, d: 0.6, say: ['🐻', '👋'] })] },
+  { feel: 'excited', cast: [t('🌈', 400, 'grow', { s: 200, y: 110 }), t('☔', HAND, 'pop', { s: 70, y: 60 }), t('⚽', 430, 'hop', { s: 60, d: 0.4 })] },
+  { feel: 'happy', cast: [kid('👨', 470, 'in', { s: 130, flip: true }), t('🔧', 380, 'shake', { s: 50, y: 40, d: 0.8 }), t('🤖', 330, 'jack', { s: 100, d: 1.4 })] },
+  { feel: 'happy', cast: [t('🎈', HAND, 'drop', { s: 80, y: 110, d: 0.3 }), kid('🐦', HAND + 14, 'drop', { s: 50, y: 190, d: 0.2 })] },
+  { feel: 'happy', cast: [kid('🐰', 380, 'in', { s: 90, flip: true }), t('💌', 340, 'give', { s: 50, y: 60, to: HAND, d: 1.2 }), t('🎂', 480, 'pop', { s: 80 }), t('🎈', 540, 'bob', { s: 60, y: 120 })] },
+  { feel: 'happy', cast: [kid('🦀', 470, 'in', { s: 70 }), t('🪣', HAND + 20, 'pop', { s: 60 }), t('🏰', 380, 'grow', { s: 120, d: 0.6 })] },
+  { feel: 'calm', cast: [t('🚗', 440, 'none', { s: 110 }), t('🐚', HAND, 'jack', { s: 60, y: 60 }), t('📷', 340, 'bang', { s: 50, y: 150, d: 0.6 })] },
+  // Wütend
+  { feel: 'happy', cast: [kid('🐒', 370, 'in', { s: 110, flip: true }), t('🚗', 340, 'give', { s: 64, y: 40, to: HAND, d: 1.1 }), t('💛', 300, 'bang', { s: 44, y: 170, d: 1.8 })] },
+  { feel: 'calm', cast: [t('🖼️', 370, 'jack', { s: 100 }), t('✨', 370, 'bang', { s: 60, y: 110, d: 0.4 }), kid('🐒', 490, 'none', { s: 90, flip: true, say: ['💛'] })] },
+  { feel: 'calm', cast: [t('🍦', 560, 'pop', { s: 60, y: 60 }), kid('🐧', 480, 'none', { s: 80, flip: true }), kid('🐤', 400, 'none', { s: 70, flip: true }), kid('🐷', 300, 'in', { s: 90, flip: true, say: ['💛'] })] },
+  { feel: 'happy', cast: [t('🖼️', 380, 'none', { s: 120 }), t('🌈', 380, 'bang', { s: 100, y: 30, d: 0.3, z: 3 }), kid('🐒', 520, 'hop', { s: 90, flip: true })] },
+  { feel: 'calm', cast: [t('🎲', 310, 'shake', { s: 60 }), kid('🐒', 480, 'none', { s: 100, flip: true, say: ['🤝'] }), t('🏆', 390, 'drop', { s: 60, y: 80, d: 0.6 })] },
+  { feel: 'happy', cast: [kid('🐰', 390, 'hop', { s: 90, say: ['👂'] }), kid('🐻', 500, 'hop', { s: 100, d: 0.2 })] },
+  // Ängstlich
+  { feel: 'calm', fx: 'night', cast: [t('🛏️', 320, 'none', { s: 110 }), kid('🐱', 470, 'jack', { s: 80, say: ['💤'] })] },
+  { feel: 'proud', cast: [t('🎤', HAND, 'none', { s: 60, y: 40 }), t('👏', 380, 'hop', { s: 50 }), t('👏', 460, 'hop', { s: 50, d: 0.2 }), t('👏', 540, 'hop', { s: 50, d: 0.4 }), t('🌹', 320, 'drop', { s: 50, d: 0.6 })] },
+  { feel: 'calm', cast: [kid('🕷️', 340, 'up', { s: 110, y: 120, d: 0.6, say: ['👋'] })] },
+  { feel: 'proud', cast: [t('🦷', 390, 'jack', { s: 100 }), t('✨', 390, 'bang', { s: 60, y: 110, d: 0.4 }), t('🌟', HAND, 'drop', { s: 50, y: 70, d: 0.8 })] },
+  { feel: 'calm', cast: [t('🔦', HAND, 'jack', { s: 60, y: 60 }), t('💡', 330, 'bang', { s: 70, y: 210, d: 0.4 })] },
+  { feel: 'happy', fx: 'night', cast: [t('🪟', 420, 'none', { s: 140, y: 70 }), kid('🐿️', 420, 'jack', { s: 60, y: 110, d: 0.4, z: 3 }), t('🌳', 540, 'none', { s: 120 })] },
+  { feel: 'proud', cast: [t('🌊', 400, 'none', { s: 170, y: -40 }), t('🛟', HAND + 30, 'drop', { s: 70, y: 30 }), t('🫧', 420, 'bob', { s: 50, y: 60, d: 0.3 })] },
+  // Aufgeregt
+  { feel: 'excited', cast: [t('🎂', 380, 'pop', { s: 100 }), kid('🐰', 480, 'hop', { s: 80 }), t('🎈', 540, 'bob', { s: 70, y: 40 }), t('🎊', 400, 'bang', { s: 100, y: 150, d: 0.3 })] },
+  { feel: 'happy', cast: [t('🎡', 440, 'none', { s: 200 }), t('🎠', 320, 'hop', { s: 80 }), t('🎈', 540, 'bob', { s: 50, y: 130 })] },
+  { feel: 'excited', cast: [kid('👨', 470, 'none', { s: 130, flip: true }), t('✈️', 330, 'zoom', { s: 80, y: 170, d: 0.3 })] },
+  { feel: 'excited', cast: [t('🏝️', 450, 'pop', { s: 130 }), t('✈️', 400, 'zoom', { s: 90, y: 200 })] },
+  { feel: 'happy', fx: 'night', cast: [t('⛺', 430, 'none', { s: 150 }), t('🔥', 320, 'pop', { s: 60 }), kid('🐻', 540, 'hop', { s: 80, flip: true }), t('🌙', 480, 'bob', { s: 60, y: 210 })] },
+  { feel: 'happy', cast: [kid('👵', 420, 'in', { s: 120, flip: true, say: ['❤️'] }), t('🎁', 340, 'give', { s: 50, y: 40, to: HAND, d: 1.2 })] },
+  { feel: 'proud', cast: [t('🥁', HAND + 10, 'shake', { s: 80 }), t('🎵', 340, 'bob', { s: 44, y: 150 }), t('👏', 440, 'hop', { s: 50 }), t('👏', 520, 'hop', { s: 50, d: 0.2 })] },
+  // Müde
+  { feel: 'calm', fx: 'night', cast: [t('🛏️', 330, 'pop', { s: 120 }), t('🧸', 390, 'drop', { s: 50, y: 40 }), t('🌙', 470, 'bob', { s: 80, y: 200 })] },
+  { feel: 'calm', cast: [kid('👩', 460, 'in', { s: 130, flip: true }), t('🧃', 400, 'give', { s: 50, y: 60, to: HAND, d: 1.1 })] },
+  { feel: 'calm', fx: 'night', cast: [t('🛏️', 330, 'pop', { s: 110 }), kid('🦉', 460, 'none', { s: 90, say: ['💤'] })] },
+  { feel: 'calm', cast: [t('🏅', HAND, 'jack', { s: 60, y: 60 }), t('🧃', 350, 'drop', { s: 50 }), t('🪑', 460, 'pop', { s: 90 })] },
+  { feel: 'happy', cast: [t('🚗', 380, 'none', { s: 140 }), t('🏖️', 520, 'pop', { s: 120, d: 0.3 })] },
+  // Verlegen
+  { feel: 'calm', cast: [t('🥛', HAND + 10, 'none', { s: 60, rot: 100 }), kid('🐻', 430, 'in', { s: 100, flip: true, say: ['💛'] }), t('🧽', 370, 'shake', { s: 50, d: 1 })] },
+  { feel: 'happy', cast: [kid('🐰', 310, 'in', { s: 80, flip: true, say: ['🤝'] }), kid('🐻', 430, 'hop', { s: 90, flip: true }), t('🏀', 510, 'hop', { s: 50 })] },
+  { feel: 'happy', cast: [t('🎤', HAND, 'none', { s: 60, y: 50 }), kid('🐰', 410, 'hop', { s: 80, flip: true, say: ['🎵'] }), kid('🐻', 500, 'hop', { s: 90, flip: true, say: ['🎵'] })] },
+  { feel: 'happy', cast: [kid('👩', 420, 'none', { s: 140, flip: true, say: ['💛'] }), t('❤️', 300, 'bang', { s: 44, y: 180, d: 0.4 })] },
+  { feel: 'happy', cast: [t('🪞', HAND + 20, 'jack', { s: 60, y: 60 }), t('🪥', 380, 'pop', { s: 60 }), t('✨', 300, 'bang', { s: 40, y: 140, d: 0.5 })] },
+  // Dankbar
+  { feel: 'happy', cast: [kid('🐻', 420, 'none', { s: 130, flip: true }), t('🍫', HAND, 'give', { s: 50, y: 60, to: 380 }), t('❤️', 330, 'bang', { s: 44, y: 170, d: 0.8 })] },
+  { feel: 'happy', cast: [kid('👵', 440, 'none', { s: 140, flip: true, say: ['❤️'] }), t('🎂', 330, 'pop', { s: 70 })] },
+  { feel: 'happy', cast: [kid('🐘', 420, 'hop', { s: 140, flip: true }), t('🎒', 410, 'pop', { s: 60, y: 120 }), t('🏫', 550, 'pop', { s: 110 })] },
+  { feel: 'happy', cast: [kid('🐰', 300, 'hop', { s: 110, flip: true }), t('❤️', 250, 'bang', { s: 44, y: 170 })] },
+  { feel: 'calm', cast: [kid('👨', 400, 'none', { s: 140, flip: true }), t('📖', 330, 'pop', { s: 70, y: 50 }), t('🌙', 490, 'bob', { s: 60, y: 220 })] },
+  // Überrascht
+  { feel: 'excited', cast: [t('🎂', 380, 'drop', { s: 90 }), kid('🐰', 460, 'hop', { s: 80, flip: true }), kid('🐻', 540, 'hop', { s: 90, flip: true }), t('🎊', 400, 'bang', { s: 100, y: 160 })] },
+  { feel: 'excited', fx: 'snow', cast: [t('⛄', 420, 'jack', { s: 120 }), t('❄️', 320, 'bob', { s: 40, y: 180 })] },
+  { feel: 'happy', cast: [t('📦', 480, 'none', { s: 90 }), t('🐉', HAND + 40, 'hop', { s: 110 }), t('❤️', 300, 'bang', { s: 44, y: 170, d: 0.4 })] },
+  { feel: 'excited', cast: [kid('🦁', 370, 'hop', { s: 90 }), kid('🦒', 460, 'hop', { s: 120, d: 0.2 }), kid('🐘', 550, 'hop', { s: 110, d: 0.4 })] },
+  { feel: 'happy', cast: [t('🛏️', 430, 'none', { s: 140 }), kid('🧚', 520, 'bob', { s: 70, y: 170 }), t('🪙', HAND, 'drop', { s: 44, y: 60, d: 0.6 })] },
+  // Stolz
+  { feel: 'proud', cast: [t('🚲', 260, 'none', { s: 140 }), t('🏁', 480, 'pop', { s: 80 }), t('✨', 380, 'bob', { s: 50, y: 140 })] },
+  { feel: 'proud', cast: [t('🎤', HAND, 'none', { s: 60, y: 50 }), t('👏', 400, 'hop', { s: 50 }), t('👏', 480, 'hop', { s: 50, d: 0.2 }), t('🌟', 320, 'drop', { s: 50, y: 160 })] },
+  { feel: 'proud', cast: [t('🧩', 395, 'jack', { s: 120 }), t('🌟', 395, 'bang', { s: 60, y: 150, d: 0.4 })] },
+  { feel: 'proud', cast: [kid('👩', 470, 'in', { s: 130, flip: true }), t('🌟', 400, 'give', { s: 50, y: 80, to: HAND, d: 1.1 }), t('🧺', 330, 'none', { s: 90 })] },
+  { feel: 'proud', cast: [t('👟', HAND - 10, 'none', { s: 70 }), t('✨', HAND + 30, 'bang', { s: 60, y: 70 }), t('⚽', 400, 'hop', { s: 60, d: 0.3 })] },
+  // Gelangweilt
+  { feel: 'happy', cast: [t('🪑', 400, 'none', { s: 100 }), t('📖', HAND, 'jack', { s: 60, y: 60 }), t('🪰', 380, 'buzz', { s: 36, y: 180 })] },
+  { feel: 'happy', fx: 'rain', cast: [t('🪟', 440, 'none', { s: 150, y: 70 }), t('🎨', 330, 'jack', { s: 60 }), t('🖼️', 440, 'pop', { s: 60, y: 10, d: 0.6 })] },
+  { feel: 'excited', cast: [t('📺', 430, 'none', { s: 170, y: 60 }), t('🦖', 430, 'jack', { s: 90, y: 100, d: 0.3, z: 3 })] },
+  // Eifersüchtig
+  { feel: 'happy', cast: [kid('🐰', 410, 'hop', { s: 110, flip: true }), t('🎲', 320, 'drop', { s: 60 }), t('📱', 510, 'sink', { s: 54 })] },
+  { feel: 'happy', cast: [kid('👨', 410, 'none', { s: 140, flip: true }), t('🍼', 480, 'none', { s: 50, y: 60 }), t('❤️', 300, 'bang', { s: 44, y: 170, d: 0.3 }), t('❤️', 350, 'bang', { s: 40, y: 200, d: 0.6 })] },
+  { feel: 'happy', cast: [kid('👩', 500, 'none', { s: 140, flip: true }), kid('🐧', 390, 'none', { s: 90 }), t('🌟', HAND, 'drop', { s: 50, y: 80, d: 0.4 })] },
+  { feel: 'happy', cast: [kid('🐰', 450, 'none', { s: 110, flip: true }), t('🍦', 390, 'give', { s: 80, y: 30, to: HAND + 20 }), t('❤️', 330, 'bang', { s: 44, y: 170, d: 0.8 })] },
+  // Neugierig
+  { feel: 'excited', cast: [t('📦', 380, 'none', { s: 120 }), t('🧸', 380, 'jack', { s: 80, y: 70, d: 0.3 }), t('🎊', 380, 'bang', { s: 90, y: 160, d: 0.6 })] },
+  { feel: 'happy', cast: [t('🐚', 340, 'none', { s: 80 }), t('💎', 340, 'jack', { s: 44, y: 60, d: 0.3 }), t('✨', 340, 'bang', { s: 60, y: 90, d: 0.5 })] },
+  { feel: 'happy', cast: [t('📦', 370, 'none', { s: 90 }), t('🔑', HAND, 'drop', { s: 44, y: 70 }), t('🎁', 370, 'jack', { s: 60, y: 60, d: 0.8 })] },
+  { feel: 'excited', cast: [kid('👩', 400, 'none', { s: 130 }), kid('👨', 510, 'none', { s: 140, flip: true }), t('🎁', 360, 'give', { s: 60, y: 60, to: HAND, d: 0.3 })] },
+]
+SCENARIOS.forEach((s, i) => { s.then = THEN[i] })
+
 // ─── Voice audio ─────────────────────────────────────────────────────────────
 const GEF = 'audio/gefuehlswelt/'
 const clip = name => `${GEF}${name}.mp3`
@@ -324,7 +414,8 @@ export default function EmotionGame({ level = 1, onComplete }) {
   )
   const [idx,       setIdx]       = useState(0)
   // watch (the scene plays) → pick (hand Lumi a face) → show (Lumi makes
-  // it) → [calm (every third round)] → done (next round by itself) → end
+  // it) → [calm (every third round)] → done (the situation turns out, then
+  // the next round comes by itself) → end
   const [phase,     setPhase]     = useState('watch')
   const [worn,      setWorn]      = useState(null)     // the face Lumi wears
   const [firstTry,  setFirstTry]  = useState(0)
@@ -357,7 +448,14 @@ export default function EmotionGame({ level = 1, onComplete }) {
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const lumiAt = () => lumiRef.current ?? undefined
-  const afterFace = () => (calmRound(idx) ? setPhase('calm') : next())
+  const afterFace = () => (calmRound(idx) ? setPhase('calm') : resolve())
+
+  // How it turns out: the scene's `then` plays, Lumi's face follows it
+  const resolve = () => {
+    setPhase('done')
+    sfx.sparkle()
+    after(next, Math.max(2400, sceneLength(ch.then.cast) + 1300), { quiet: false })
+  }
 
   // Only the first answer counts, and there is no second one: Lumi tries the
   // face that was handed over, and if another one fits better, Lumi wonders,
@@ -392,16 +490,18 @@ export default function EmotionGame({ level = 1, onComplete }) {
   // Calming down: hand Lumi the thing, or three taps
   const settle = () => {
     setCalmed(true)
-    setPhase('done')
+    setPhase('calmed')
     sfx.sparkle()
     burst(lumiAt(), 'hearts')
-    after(next, 2000, { quiet: false })
+    after(resolve, 1800, { quiet: false })
   }
+  // 🌬️: every breath blows the balloon at Lumi's mouth up a bit more, and
+  // the third carries the steam away; 🎉: every tap fires a confetti cannon
   const tapCalm = () => {
     if (phase !== 'calm') return
     const n = taps + 1
     setTaps(n)
-    if (calm.tap === '🎉') { sfx.pop(); burst(lumiAt(), 'confetti', 12) } else { sfx.whoosh(); burst(lumiAt(), 'stars', 5) }
+    if (calm.tap === '🎉') { sfx.pop(); burst(lumiAt(), 'confetti', 14 + n * 6) } else sfx.whoosh()
     if (n >= 3) settle()
   }
 
@@ -423,14 +523,15 @@ export default function EmotionGame({ level = 1, onComplete }) {
   if (phase === 'end') return <Parade met={met} narrow={narrow} onDone={() => { if (!doneRef.current) { doneRef.current = true; onComplete(result(firstTry, challenges.length)) } }} />
 
   const answered = phase !== 'watch' && phase !== 'pick'
-  const calmStep = phase === 'calm' || (phase === 'done' && calmRound(idx))
+  const resolved = phase === 'done'
+  const calmStep = phase === 'calm' || phase === 'calmed' || (resolved && calmRound(idx))
   const trayOn = phase === 'pick' || (phase === 'calm' && calm.give)
   // after breathing or cuddling Lumi is calm; after celebrating, beaming
-  const lumiFeel = !calmed ? (worn ? FEEL[worn] : 'neutral')
+  const lumiFeel = resolved ? ch.then.feel : !calmed ? (worn ? FEEL[worn] : 'neutral')
     : calm.tap === '🎉' ? 'excited' : calm.tap || !BRIGHT.has(ch.emotion) ? 'calm' : 'happy'
   const bubble = phase === 'pick' ? <AskFace />
     : phase === 'calm' ? <><Art art={calm.give ?? calm.tap} size={36} />{calm.tap && <Dots n={taps} />}</>
-    : worn && !calmed ? <FeelingFace feeling={worn} size={44} /> : null
+    : worn && !calmed && !resolved ? <FeelingFace feeling={worn} size={44} /> : null
 
   return (
     <DragArea autoTarget="lumi" disabled={!trayOn}>
@@ -438,14 +539,16 @@ export default function EmotionGame({ level = 1, onComplete }) {
         {/* kept clear of the sun in the backdrop's top right */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', maxWidth: 820, paddingRight: narrow ? 64 : 150, boxSizing: 'border-box' }}>
           <div style={{ flex: 1, minWidth: 0 }}><RoundTrail total={challenges.length} done={idx + (phase === 'done' ? 1 : 0)} walker="lumi" goal="🌈" size={narrow ? 34 : 42} /></div>
-          <AgainButton onClick={() => { setReplay(r => r + 1); sfx.whoosh() }} />
+          <AgainButton onClick={() => { if (!resolved) { setReplay(r => r + 1); sfx.whoosh() } }} />
         </div>
 
         <div data-lumi-target role="img" aria-label={plain(ch.situation)} style={{ flex: 1, width: '100%', maxWidth: 980, display: 'flex', minHeight: 0, position: 'relative' }}>
-          <Stage key={`${idx}-${replay}`} playKey={`${idx}-${replay}`}
-            lumi={{ x: LUMI_X, size: 160, feel: lumiFeel, strength: 1, pulse: calm?.tap === '🌬️' ? taps : 0, ...ch.lumi, ...(answered ? { act: undefined, say: undefined } : {}) }}
-            cast={calmed && calm.give ? [...(ch.cast ?? []), { a: calm.give, x: LUMI_X + 100, y: 20, s: 70, act: 'drop' }] : ch.cast}
-            fx={ch.fx}
+          <Stage key={`${idx}-${replay}-${resolved}`} playKey={`${idx}-${replay}-${resolved}`}
+            lumi={{ x: LUMI_X, size: 160, feel: lumiFeel, strength: 1, pulse: calm?.tap === '🌬️' ? taps : 0, ...ch.lumi,
+              ...(answered ? { act: undefined, say: undefined } : {}),
+              hold: phase === 'calm' || phase === 'calmed' ? <CalmToy kind={calm.tap} n={taps} /> : null }}
+            cast={resolved ? ch.then.cast : calmed && calm.give ? [...(ch.cast ?? []), { a: calm.give, x: LUMI_X + 100, y: 20, s: 70, act: 'drop' }] : ch.cast}
+            fx={resolved ? ch.then.fx : ch.fx}
             drop={{ who: 'lumi', id: 'lumi', onDrop, label: 'Lumi' }}
             bubbles={bubble ? { lumi: bubble } : {}}>
             {mirror && <Mirror feel={FEEL[ch.emotion]} onClose={() => { setMirror(false); after(afterFace, 700, { quiet: false }) }} />}
@@ -498,6 +601,30 @@ export default function EmotionGame({ level = 1, onComplete }) {
       <HintHand to={tapRef} active={phase === 'calm' && !!calm.tap && taps === 0} delay={idx < 3 ? 2000 : 5000} />
       {bursts}
     </DragArea>
+  )
+}
+
+// In Lumi's hand while calming down: the balloon blown up breath by breath
+// (the third one floats off with the steam), or the confetti popper
+function CalmToy({ kind, n }) {
+  if (kind === '🎉') return (
+    <motion.div key={n} initial={{ rotate: -40 }} animate={{ rotate: [-40, 10, -20] }} transition={{ duration: 0.4 }} style={{ transformOrigin: '20% 80%' }}>
+      <Art art="🎉" size={60} />
+    </motion.div>
+  )
+  if (kind !== '🌬️') return null
+  if (n >= 3) return (
+    <motion.div initial={{ y: 0, x: 0 }} animate={{ y: -320, x: [0, 20, -10, 30] }} transition={{ duration: 2.4, ease: 'easeIn' }}
+      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <Art art="🎈" size={86} />
+      <Art art="💨" size={48} style={{ marginTop: -14 }} />
+    </motion.div>
+  )
+  return (
+    <motion.div animate={{ scale: [0.35, 0.6, 0.85][n] }} transition={{ type: 'spring', stiffness: 200, damping: 10 }}
+      style={{ transformOrigin: '10% 90%' }}>
+      <Art art="🎈" size={86} />
+    </motion.div>
   )
 }
 

@@ -17,6 +17,11 @@ import { Stage, useLater, DoneButton, Pips, usePops, Finale } from './zahlen/sta
  * the rest rolls back. Counting out n of more things and deciding when to
  * stop is the "give me n" task, the measure of cardinality.
  *
+ * Every animal that has eaten sits down on the picnic blanket along the
+ * bottom (tap one: it burps), so by the end of the level the whole party
+ * is there. Burps grow with a streak; at three in a row the burp blows the
+ * sign over.
+ *
  * Nothing here needs words: the sign shows the number (numeral, dots),
  * the bubble shows the food, a hand shows the move when a child waits.
  */
@@ -89,6 +94,9 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
   const [phase,  setPhase]  = useState('play')    // play | eat | stuffed | done | finale
   const [misses, setMisses] = useState(0)         // on this round
   const [puff,   setPuff]   = useState(0)         // a burp cloud
+  const [burpSize, setBurpSize] = useState(1)     // grows with the streak
+  const [blow,   setBlow]   = useState(0)         // a big burp blows the sign over
+  const [guests, setGuests] = useState([])        // animals fed so far, at the picnic
   const firstTry = useRef(0)
   const streak = useRef(0)                        // right on the first try, in a row
 
@@ -104,6 +112,8 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
   }, [idx])
 
   const next = () => {
+    // the animal that just ate sits down at the picnic
+    setGuests(g => [...g, { art: eater.art, label: eater.label, key: idx }])
     if (idx + 1 >= rounds.length) { setPhase('finale'); return }
     clear()
     setIdx(idx + 1)
@@ -195,19 +205,23 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
     if (t === n) {
       setPhase('done')
       if (misses === 0) { firstTry.current++; streak.current++ } else streak.current = 0
-      // A little surprise, so the twentieth meal is still fun: a burp
-      // (with a puff), a dance or a happy spin — and a party on a streak.
-      const treat = streak.current >= 3 && streak.current % 3 === 0 ? 'party' : ['burp', 'burp', 'dance', 'happy'][Math.floor(Math.random() * 4)]
-      if (treat === 'burp') {
-        sfx.burp()
-        setPuff(p => p + 1)
-        setMood('wow', 700)
-        later(700, () => { sfx.giggle(); setMood('happy', 1400) })
-      } else setMood(treat === 'happy' ? 'happy' : 'dance', treat === 'happy' ? 1400 : 2400)
-      burst(critterRef.current, treat === 'party' ? 'confetti' : 'hearts', treat === 'party' ? 22 : 10)
-      if (treat === 'party') sfx.tada()
+      // A burp that grows with the streak: a small puff, a bigger cloud,
+      // and at three in a row a burp that blows the sign over.
+      const s3 = streak.current
+      const big = s3 >= 3
+      sfx.burp()
+      if (s3 >= 2) later(120, () => sfx.burp())
+      setBurpSize(Math.min(s3 || 1, 3))
+      setPuff(p => p + 1)
+      setMood('wow', 700)
+      if (big) {
+        later(250, () => { setBlow(b => b + 1); sfx.whoosh() })
+        later(200, () => burst(critterRef.current, 'confetti', 20))
+      }
+      later(700, () => { sfx.giggle(); setMood(big || Math.random() < 0.3 ? 'dance' : 'happy', big ? 2200 : 1400) })
+      burst(critterRef.current, 'hearts', 10)
       sayRight()
-      afterSpeech(next, treat === 'party' || treat === 'dance' ? 2600 : 2200)
+      afterSpeech(next, big ? 2800 : 2300)
     } else if (t > n) {
       // Stuffed: the belly bulges, the animal wobbles and won't eat the
       // rest — the extra ones stay on the plate, shaking, until the child
@@ -243,9 +257,9 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
 
   return (
     <DragArea autoTarget="plate" disabled={phase !== 'play'}>
-      <Stage wide={[780, 540]} tall={[440, 720]}>
+      <Stage wide={[780, 610]} tall={[440, 790]}>
         {wide => {
-          const sign = <Sign key={`s${idx}`} n={n} color={round.color} fill={helpDots} />
+          const sign = <Sign key={`s${idx}`} n={n} color={round.color} fill={helpDots} blow={blow} />
           const wish = n === 0
             ? <Art art="🍽️" size={40} />
             : <>{eaten > 0 && <span style={{ fontSize: 30 }}>{wantMore}</span>}<Art art={f.emoji} size={40} /></>
@@ -269,7 +283,7 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
                         <Critter art={eater.art} size={wide ? 200 : 170} label={eater.label} flip={wide}
                           mood={phase === 'play' && (hover || ready) && n > 0 ? 'hungry' : phase === 'play' && n === 0 && mood === 'idle' ? 'sleep' : mood}
                           wish={showWish ? wish : null} wishSide={wide ? 'right' : 'top'} />
-                        <Puff key={puff} on={puff > 0} />
+                        <Puff key={puff} on={puff > 0} size={burpSize} />
                         <div style={{ position: 'absolute', left: 0, right: 0, top: '30%' }}>{bitePops}</div>
                       </motion.div>
                     </AnimatePresence>
@@ -321,6 +335,7 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
                       {done}
                     </div>
                   </div>
+                  <Picnic guests={guests} size={58} />
                 </>
               ) : (
                 <>
@@ -332,6 +347,7 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
                       {done}
                     </div>
                   </div>
+                  <Picnic guests={guests} size={48} />
                 </>
               )}
               {phase === 'finale' && (
@@ -350,12 +366,17 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
 
 // The sign the animal holds up: the numeral, its word and its dots.
 // A tap makes it wobble.
-function Sign({ n, color, fill }) {
+// A big burp (`blow` goes up) blows it over, and it springs back.
+function Sign({ n, color, fill, blow }) {
+  const reduce = useReducedMotion()
   const [wob, setWob] = useState(0)
+  const blown = blow > 0 && !reduce
   return (
     <motion.div role="img" aria-label={`${n}`} onClick={() => { setWob(w => w + 1); sfx.boing() }}
-      initial={{ y: -40, rotate: -8, opacity: 0 }} animate={{ y: 0, rotate: wob % 2 ? 3 : -3, opacity: 1 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 9 }}
+      initial={{ y: -40, rotate: -8, opacity: 0 }}
+      animate={blown ? { y: 0, opacity: 1, rotate: [-3, -78, -78, 12, -6, -3] } : { y: 0, rotate: wob % 2 ? 3 : -3, opacity: 1 }}
+      transition={blown ? { duration: 1.6, times: [0, 0.18, 0.5, 0.72, 0.88, 1] } : { type: 'spring', stiffness: 300, damping: 9 }}
+      key={blown ? `b${blow}` : 'sign'}
       style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', transformOrigin: '50% 100%' }}
       data-n={n}>
       <div style={{
@@ -409,12 +430,46 @@ function Plate({ items, food: f, start, onTake, glow, shake, width, item, rows }
 }
 
 // The little cloud a burp blows out
-function Puff({ on }) {
+// The little cloud a burp blows out; `size` 1–3 grows with the streak
+function Puff({ on, size = 1 }) {
   if (!on) return null
+  const px = [0, 48, 84, 130][size]
   return (
-    <motion.div aria-hidden="true" initial={{ opacity: 0, scale: 0.4, x: 0, y: 0 }} animate={{ opacity: [0, 1, 0], scale: [0.4, 1.2, 1.6], x: 40, y: -50 }}
-      transition={{ duration: 1.1 }} style={{ position: 'absolute', left: '55%', top: '15%', pointerEvents: 'none' }}>
-      <Art art="💨" size={56} />
+    <motion.div aria-hidden="true" initial={{ opacity: 0, scale: 0.4, x: 0, y: 0 }} animate={{ opacity: [0, 1, 1, 0], scale: [0.4, 1.2, 1.5, 1.8], x: -30 * size, y: -40 }}
+      transition={{ duration: 0.9 + size * 0.3 }} style={{ position: 'absolute', left: '40%', top: '10%', zIndex: 4, pointerEvents: 'none', transform: 'scaleX(-1)' }}>
+      <Art art="💨" size={px} />
+    </motion.div>
+  )
+}
+
+// The picnic along the bottom: everyone who has eaten sits there, happy
+// and full. A tap on one makes it burp.
+function Picnic({ guests, size }) {
+  return (
+    <div style={{
+      position: 'relative', minHeight: size + 14, margin: '0 10px 6px', padding: '0 8px', borderRadius: 18,
+      display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 2,
+      background: 'repeating-linear-gradient(90deg, rgba(255,138,122,0.55) 0 22px, rgba(255,243,230,0.55) 22px 44px)',
+      borderTop: '3px dashed rgba(42,27,61,0.35)',
+    }}>
+      <AnimatePresence>
+        {guests.map(g => <Guest key={g.key} art={g.art} label={g.label} size={size} />)}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+function Guest({ art, label, size }) {
+  const [mood, setMood] = useMood()
+  const [puff, setPuff] = useState(0)
+  useEffect(() => { setMood('happy', 1400) }, [setMood])
+  const tap = () => { sfx.burp(); setPuff(p => p + 1); setMood('wow', 600) }
+  return (
+    <motion.div initial={{ y: -60, opacity: 0, scale: 1.3 }} animate={{ y: 0, opacity: 1, scale: 1 }}
+      transition={{ type: 'spring', stiffness: 260, damping: 15, delay: 0.25 }}
+      style={{ position: 'relative' }}>
+      <Critter art={art} size={size} mood={mood} label={`${label}, satt`} onTap={tap} shadow={false} />
+      <Puff key={puff} on={puff > 0} size={1} />
     </motion.div>
   )
 }

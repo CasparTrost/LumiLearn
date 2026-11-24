@@ -33,6 +33,11 @@ import { pxPanel, pxBubble, pxButton, INK } from './px.js'
  *     the sound together.
  *   • And it is a little celebration: the finger leaves a sparkly trail, the
  *     finished letter gets eyes and hops, and its picture pops up next to it.
+ *     Then it walks onto the shelf and stays there with its picture for the
+ *     rest of the level; the ones already there wave when the next is done,
+ *     and at the end the whole row parades. A small Lumi rides on the tip
+ *     of the ink while the child draws: puzzled at a slip, a hop at the end
+ *     of every stroke.
  */
 
 const NUMBER = ['Null', 'Eins', 'Zwei', 'Drei', 'Vier', 'Fünf', 'Sechs', 'Sieben', 'Acht', 'Neun']
@@ -125,6 +130,9 @@ export default function TraceGame({ level = 1, onComplete }) {
   const [streak,    setStreak]    = useState(0)      // glyphs in a row without a slip
   const [startHint, setStartHint] = useState(false)  // the finger started away from the dot
   const [walk,      setWalk]      = useState(false)  // the finished glyph walks off
+  const [shelf,     setShelf]     = useState([])     // the glyphs done in this level, on the shelf
+  const [waves,     setWaves]     = useState(0)      // the shelf waves when the next glyph is done
+  const [rider,     setRider]     = useState(null)   // Lumi on the ink tip after a stroke: { x, y, mood, id }
   const [bursts, burst] = useBursts()
 
   const rootRef   = useRef(null)
@@ -226,8 +234,25 @@ export default function TraceGame({ level = 1, onComplete }) {
     return pts
   }
 
+  // the glyph walks onto the shelf (once)
+  const shelve = i => setShelf(l => (l.some(x => x.i === i) ? l : [...l, { i, g: glyphs[i], color: INKS[i % INKS.length] }]))
+  useEffect(() => { if (walk) shelve(idx) }, [walk]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (finale) shelve(idx) }, [finale]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Lumi riding the ink: stays at the stroke's end for a moment
+  const riderTimer = useRef(null)
+  useEffect(() => () => clearTimeout(riderTimer.current), [])
+  const riderAt = (pts, mood) => {
+    const p = pts[pts.length - 1]
+    if (!p) return
+    clearTimeout(riderTimer.current)
+    setRider({ x: p.x, y: p.y, mood, id: Date.now() })
+    riderTimer.current = setTimeout(() => setRider(null), 900)
+  }
+
   const finishGlyph = () => {
     setDone(true)
+    setWaves(w => w + 1)
     sfx.correct()
     setTimeout(() => sfx.boing(), 450)
     const first = !missedRef.current
@@ -244,7 +269,7 @@ export default function TraceGame({ level = 1, onComplete }) {
   }
 
   const acceptStroke = () => {
-    clearInk()
+    riderAt(clearInk(), 'happy')
     strokeMissRef.current = 0
     const next = strokeIdx + 1
     setStrokeIdx(next)
@@ -256,6 +281,7 @@ export default function TraceGame({ level = 1, onComplete }) {
   const slip = kind => {
     const real = tracerRef.current?.real
     const pts = clearInk()
+    if (real) riderAt(pts, 'oops')
     if (pts.length > 1) setFading(f => [...f, { id: ++fadeIds, pts }])
     // started away from the green dot: the hand shows where to start
     if (kind === 'wrongStart') setStartHint(true)
@@ -279,6 +305,8 @@ export default function TraceGame({ level = 1, onComplete }) {
     try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* ignore */ }
     pointerRef.current = e.pointerId
     setStartHint(false)
+    clearTimeout(riderTimer.current)
+    setRider(null)
     const t = makeTracer(strokes[strokeIdx])
     tracerRef.current = t
     t.down(p)
@@ -336,6 +364,7 @@ export default function TraceGame({ level = 1, onComplete }) {
     setStrokeIdx(0)
     setStartHint(false)
     setWalk(false)
+    shelve(idx)
     setMood('idle')
     setIdx(i => i + 1)
   }
@@ -393,6 +422,8 @@ export default function TraceGame({ level = 1, onComplete }) {
           </span>}
     </div>
   )
+
+  const shelfRow = <Shelf items={shelf} waves={waves} party={finale} small={!wide} />
 
   const buttons = (
     <>
@@ -532,6 +563,19 @@ export default function TraceGame({ level = 1, onComplete }) {
         </svg>
       )}
 
+      {/* Lumi rides on the tip of the ink */}
+      {scale > 0 && (ink.length > 0 || rider) && (() => {
+        const p = ink.length ? ink[ink.length - 1] : rider
+        const left = (area.w - VIEW.w * scale) / 2 + (p.x - VIEW.x) * scale
+        const top = (area.h - VIEW.h * scale) / 2 + (p.y - VIEW.y) * scale
+        const s = Math.max(34, Math.min(52, scale * 11))
+        return (
+          <div aria-hidden="true" style={{ position: 'absolute', left: left - s / 2, top: top - s - 6, width: s, height: s, pointerEvents: 'none', zIndex: 3 }}>
+            <Critter key={rider?.id ?? 'ride'} art="lumi" size={s} mood={ink.length ? 'idle' : rider.mood} shadow={false} />
+          </div>
+        )
+      })()}
+
       {/* The letter's picture pops up beside it: "M wie Maus" */}
       {done && !isDigit(g) && (
         <motion.div key={'thing' + idx} aria-hidden="true"
@@ -582,6 +626,7 @@ export default function TraceGame({ level = 1, onComplete }) {
           <Critter art="lumi" mood={mood} size={lumiSize} talks />
           {bubble}
           <div style={{ display: 'flex', gap: 12 }}>{buttons}</div>
+          {shelfRow}
         </div>
       ) : (
         <>
@@ -596,7 +641,8 @@ export default function TraceGame({ level = 1, onComplete }) {
       {board}
 
       {!wide && (
-        <div style={{ minHeight: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14 }}>
+        <div style={{ minHeight: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+          {shelfRow}
           {buttons}
         </div>
       )}
@@ -608,6 +654,38 @@ export default function TraceGame({ level = 1, onComplete }) {
       {finale && <Finale items={glyphs.map(x => (isDigit(x) ? '⭐' : WORD[x][1]))} hero="lumi"
         onDone={() => onComplete(result(firstTry, glyphs.length))} />}
       {bursts}
+    </div>
+  )
+}
+
+/**
+ * The shelf: every glyph done in this level stands on it with its picture.
+ * They wave when the next one is done, and parade at the end of the level.
+ */
+function Shelf({ items, waves, party, small }) {
+  const still = reduceMotion()
+  const w = small ? 32 : 46
+  return (
+    <div aria-label={`${items.length} geschafft`} style={{
+      position: 'relative', flex: small ? 1 : 'none', minWidth: 0, width: small ? 'auto' : '100%', minHeight: small ? 50 : 60,
+      display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'center', gap: 2, paddingBottom: 12,
+    }}>
+      {/* the plank */}
+      <div aria-hidden="true" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 13, borderRadius: 4, background: '#b9753f', border: `2px solid ${INK}`, boxSizing: 'border-box' }} />
+      {items.map((x, k) => (
+        <motion.div key={x.i}
+          initial={still ? false : { y: -40, scale: 0, opacity: 0 }}
+          animate={still ? {} : party ? { y: [0, -18, 0], scale: 1, opacity: 1, rotate: [0, -10, 10, 0] } : { y: 0, scale: 1, opacity: 1 }}
+          transition={party ? { duration: 0.55, repeat: Infinity, delay: k * 0.1 } : { type: 'spring', stiffness: 380, damping: 14 }}
+          style={{ width: w, display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1 }}>
+          {/* a wave each time the next glyph is done */}
+          <motion.div key={waves} animate={still || waves < 2 ? {} : { rotate: [0, -16, 14, -10, 0] }} transition={{ duration: 0.7, delay: k * 0.06 }}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', transformOrigin: '50% 100%' }}>
+            <Art art={isDigit(x.g) ? '⭐' : WORD[x.g][1]} size={small ? 24 : 38} />
+            <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: small ? 22 : 34, color: x.color, WebkitTextStroke: `1.5px ${INK}`, paintOrder: 'stroke fill' }}>{x.g}</span>
+          </motion.div>
+        </motion.div>
+      ))}
     </div>
   )
 }
