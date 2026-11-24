@@ -602,7 +602,7 @@ function CuckooClock({ size, bird, calls, treat, wish, hat, sky, paused, onDoor,
       <AnimatePresence>
         {treat && (
           <motion.div aria-hidden="true" key={treat}
-            initial={{ y: -h * 0.3, opacity: 0, scale: 0.6 }} animate={{ y: 0, opacity: 1, scale: [0.6, 1, 1, 0.7, 0.4] }} exit={{ scale: 0, opacity: 0 }}
+            initial={{ y: -h * 0.3, opacity: 0, scale: 0.6 }} animate={{ y: 0, opacity: 1, scale: [0.6, 1, 1, 0.7, 0.4] }} exit={{ scale: 0, opacity: 0, transition: { duration: 0.2 } }}
             transition={{ duration: 1.6, y: { type: 'spring', stiffness: 380, damping: 14 } }}
             style={{ position: 'absolute', left: w * 0.2, top: h * 0.12, zIndex: 4, pointerEvents: 'none' }}>
             <Art art={treat} size={w * 0.2} />

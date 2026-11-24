@@ -563,7 +563,9 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
       <div style={{ flex: 1, minHeight: 0, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'clamp(12px,3dvh,26px)' }}>
         {r.mode === 'match' && (
           <div ref={hint.to} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-            <Picture r={r} tall={tall} found={picked} shake={shake} solved={solved} onTap={tapPiece} />
+            {/* a fresh picture each round: nothing carries over from the last
+                one, which had just flown and driven away */}
+            <Picture key={idx} r={r} tall={tall} found={picked} shake={shake} solved={solved} onTap={tapPiece} />
           </div>
         )}
 
@@ -721,7 +723,7 @@ function Picture({ r, tall, found, shake, solved, onTap }) {
               : fly ? { y: [0, 12, -H - 80], rotate: [p.rot, p.rot - 10, p.rot + 15], scale: 1 }
               : drive ? { x: [0, -10, W + 60], scale: 1, rotate: spin ? p.rot + 720 : p.rot }
               : isFound ? { rotate: spin ? p.rot + 360 : p.rot, scale: [1, 1.25, 1], y: solved && !reduceMotion() ? [0, -8, 0] : 0 }
-              : { rotate: p.rot, scale: 1 }}
+              : { rotate: p.rot, scale: 1, x: 0, y: 0 }}
             transition={fly ? { duration: 1.8, delay: 0.4 + (p.id % 5) * 0.12, ease: 'easeIn' }
               : drive ? { duration: 1.6, delay: 0.6, ease: 'easeIn' }
               : { duration: isFound && !wobble ? 0.7 : 0.55, y: solved ? { duration: 0.5, repeat: 2, delay: (p.id % 5) * 0.08 } : undefined }}
