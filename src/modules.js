@@ -23,7 +23,7 @@ export const WORLDS = [
 export const MODULES = [
   { id: 'number-intro',  title: 'Zahlen entdecken', sub: 'Zahlen 1 bis 10',        emoji: '🧮', world: 'zahlen', scene: 'meadow',     minAge: 4, color: 'var(--px-gold)',   say: 'Zahlen entdecken. Zähle Dinge und lerne die Zahlen.' },
   { id: 'letter-intro',  title: 'ABC-Abenteuer',    sub: 'Das Alphabet',           emoji: '🔡', world: 'buchstaben', scene: 'forest', minAge: 4, color: 'var(--px-sky)',    say: 'ABC-Abenteuer. Lerne die Buchstaben kennen.' },
-  { id: 'emotions',      title: 'Gefühlswelt',      sub: 'Gefühle erkennen',       emoji: '😊', world: 'gefuehle', scene: 'meadow',   minAge: 4, color: 'var(--px-pink)',   say: 'Gefühlswelt. Wie fühlt sich Lumi?' },
+  { id: 'emotions',      title: 'Gefühlswelt',      sub: 'Gesichter lesen',        emoji: '😊', world: 'gefuehle', scene: 'meadow',   minAge: 4, color: 'var(--px-pink)',   say: 'Gefühlswelt. Wie fühlt sich Lumi?' },
   { id: 'listen',        title: 'Hörabenteuer',     sub: 'Hören und finden',       emoji: '🔊', world: 'buchstaben', scene: 'forest', minAge: 4, color: 'var(--px-orange)', say: 'Hörabenteuer. Hör genau hin und finde das Bild.' },
   { id: 'shadows',       title: 'Schattenrätsel',   sub: 'Was ist im Dunkeln?',    emoji: '🌑', world: 'denken', scene: 'night',     minAge: 4, color: 'var(--px-night)',  say: 'Schattenrätsel. Was versteckt sich im Dunkeln?' },
   { id: 'shapes',        title: 'Farbenreich',      sub: 'Bilder anmalen',         emoji: '🎨', world: 'malen', scene: 'room',      minAge: 4, color: 'var(--px-blue)',   say: 'Farbenreich. Male Bilder mit den richtigen Farben an.' },
