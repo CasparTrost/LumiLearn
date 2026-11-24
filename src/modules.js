@@ -32,7 +32,7 @@ export const MODULES = [
   { id: 'words2',        title: 'Silben-Spaß',      sub: 'Wörter aus Silben',      emoji: '🔤', world: 'buchstaben', scene: 'meadow', minAge: 5, color: 'var(--px-green)',  say: 'Silben-Spaß. Baue Wörter aus Silben.' },
   { id: 'bubbles',       title: 'Blasen-Blitz',     sub: 'Blasen antippen',        emoji: '🫧', world: 'zahlen', scene: 'sea',     minAge: 5, color: 'var(--px-sky)',    say: 'Blasen-Blitz. Tippe die richtigen Blasen an.' },
   { id: 'words',         title: 'Memo-Welt',        sub: 'Paare finden',           emoji: '🃏', world: 'denken', scene: 'forest',     minAge: 4, color: 'var(--px-pink)',   say: 'Memo-Welt. Finde die Paare.' },
-  { id: 'patterns',      title: 'Musterpark',       sub: 'Was kommt als Nächstes?', emoji: '🔮', world: 'denken', scene: 'meadow',    minAge: 4, color: 'var(--px-orange)', say: 'Musterpark. Was kommt als Nächstes?' },
+  { id: 'patterns',      title: 'Musterpark',       sub: 'Wer fehlt in der Band?', emoji: '🔮', world: 'denken', scene: 'night',    minAge: 4, color: 'var(--px-orange)', say: 'Musterpark. Was kommt als Nächstes?' },
   { id: 'sort',          title: 'Sortier-Spaß',     sub: 'Alles an seinen Platz',  emoji: '🧺', world: 'denken', scene: 'room',     minAge: 4, color: 'var(--px-wood-light)', say: 'Sortier-Spaß. Räume alles an den richtigen Platz.' },
   { id: 'weight',        title: 'Waage-Welt',       sub: 'Was ist schwerer?',      emoji: '⚖️', world: 'zahlen', scene: 'meadow',     minAge: 5, color: 'var(--px-parch-dark)', say: 'Waage-Welt. Was ist schwerer?' },
   { id: 'clock',         title: 'Kuckucksuhr',      sub: 'Die Uhr lesen',          emoji: '🕐', world: 'zahlen', scene: 'room',     minAge: 6, color: 'var(--px-red)',    say: 'Kuckucksuhr. Lerne die Uhr lesen.' },

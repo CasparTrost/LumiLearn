@@ -1,4 +1,4 @@
-// gameEngine.js — question generator for ChoiceGame (Musterpark)
+// gameEngine.js — question generator for ChoiceGame (Musterpark, "Tier-Band")
 // Every call uses fresh Math.random() so each game session is unique.
 //
 // A question is { kind, prompt, tokens, gapAt, options, answer, unit, names }:
@@ -7,6 +7,8 @@
 //   names   emoji → spoken name, for every symbol in the row and the options
 // A 'build' question has several empty places: `fill` holds what belongs in
 // them, `options` is the tray the child lays them from, `answer` is null.
+
+import { BAND } from './tierband/band.js'
 
 export function generateQuestions(moduleId, level, count = 10) {
   if (moduleId !== 'patterns') return []
@@ -23,78 +25,11 @@ function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + m
 function shuffle(arr)    { return [...arr].sort(() => Math.random() - 0.5) }
 
 // ─── Patterns ────────────────────────────────────────────────────────────────
-// Every symbol once, each with the word a child would use for it, so the
-// feedback can say the pattern out loud. The pool used to hold duplicates
-// (🐸, 🌸, 🏆 twice: the same picture twice among the answers) and
-// look-alikes (🔷/🔹, ⭐/🌟, 🍁/🍂, 🔵/💙). Symbols that still look alike in
-// the pixel pictures share a family (`fam`); a question takes at most one
-// symbol per family.
-const PATTERN_POOL = [
-  { e: '🔴', n: 'Rot',        fam: 'red' },
-  { e: '🔵', n: 'Blau' },
-  { e: '🟡', n: 'Gelb',       fam: 'yellow' },
-  { e: '🟢', n: 'Grün' },
-  { e: '🟠', n: 'Orange',     fam: 'orange' },
-  { e: '🟣', n: 'Lila',       fam: 'purple' },
-  { e: '⭐', n: 'Stern',      fam: 'yellow' },
-  { e: '🌙', n: 'Mond',       fam: 'yellow' },
-  { e: '☀️', n: 'Sonne',      fam: 'yellow' },
-  { e: '❤️', n: 'Herz',       fam: 'red' },
-  { e: '🐸', n: 'Frosch' },
-  { e: '🐶', n: 'Hund' },
-  { e: '🐱', n: 'Katze' },
-  { e: '🐻', n: 'Bär' },
-  { e: '🐼', n: 'Panda' },
-  { e: '🐰', n: 'Hase' },
-  { e: '🐯', n: 'Tiger' },
-  { e: '🦁', n: 'Löwe' },
-  { e: '🐮', n: 'Kuh' },
-  { e: '🐷', n: 'Schwein' },
-  { e: '🐔', n: 'Huhn' },
-  { e: '🦄', n: 'Einhorn' },
-  { e: '🐙', n: 'Krake' },
-  { e: '🦋', n: 'Schmetterling' },
-  { e: '🐝', n: 'Biene' },
-  { e: '🐢', n: 'Schildkröte' },
-  { e: '🦀', n: 'Krebs',      fam: 'red' },
-  { e: '🐟', n: 'Fisch',      fam: 'sea' },
-  { e: '🐳', n: 'Wal',        fam: 'sea' },
-  { e: '🦆', n: 'Ente' },
-  { e: '🐘', n: 'Elefant' },
-  { e: '🐞', n: 'Marienkäfer', fam: 'red' },
-  { e: '🌸', n: 'Blüte' },
-  { e: '🌻', n: 'Sonnenblume' },
-  { e: '🍀', n: 'Kleeblatt' },
-  { e: '🍁', n: 'Blatt' },
-  { e: '🌵', n: 'Kaktus' },
-  { e: '🍄', n: 'Pilz' },
-  { e: '🌈', n: 'Regenbogen' },
-  { e: '⛄', n: 'Schneemann' },
-  { e: '🍎', n: 'Apfel',      fam: 'red' },
-  { e: '🍊', n: 'Orange',     fam: 'orange' },
-  { e: '🍋', n: 'Zitrone',    fam: 'yellow' },
-  { e: '🍇', n: 'Trauben',    fam: 'purple' },
-  { e: '🍓', n: 'Erdbeere',   fam: 'red' },
-  { e: '🍒', n: 'Kirschen',   fam: 'red' },
-  { e: '🍌', n: 'Banane' },
-  { e: '🥕', n: 'Möhre' },
-  { e: '🌽', n: 'Mais' },
-  { e: '🍕', n: 'Pizza' },
-  { e: '🎂', n: 'Torte' },
-  { e: '🍦', n: 'Eis' },
-  { e: '🍪', n: 'Keks' },
-  { e: '🥨', n: 'Brezel' },
-  { e: '🎈', n: 'Luftballon', fam: 'red' },
-  { e: '🎁', n: 'Geschenk' },
-  { e: '🔑', n: 'Schlüssel' },
-  { e: '🎵', n: 'Note' },
-  { e: '🚀', n: 'Rakete' },
-  { e: '🏠', n: 'Haus' },
-  { e: '⚽', n: 'Ball' },
-  { e: '🎲', n: 'Würfel' },
-  { e: '🧩', n: 'Puzzle' },
-  { e: '🚗', n: 'Auto',       fam: 'red' },
-]
+// The rows are made of the animals of the band (tierband/band.js): each has
+// a name and an instrument. Animals whose instruments sound alike share a
+// family (`fam`); a question takes at most one animal per family, so two
+// places that look different never sound the same.
+const PATTERN_POOL = BAND
 
 // Symbols for one question: all different, never two of one family.
 function pickSymbols(count) {
@@ -256,7 +191,6 @@ function buildQ(level) {
   return {
     kind:    'build',
     prompt:  'Leg die Reihe weiter!',
-    say:     'Leg die Reihe weiter! Zieh die Bilder der Reihe nach in die Parade.',
     tokens:  [...row.slice(0, shown), ...Array(slots).fill('❓')],
     gapAt:   shown,
     fill:    row.slice(shown),

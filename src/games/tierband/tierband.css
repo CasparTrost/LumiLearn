@@ -1,0 +1,56 @@
+/* Tier-Band (Musterpark). Every movement here is switched off by
+   prefers-reduced-motion at the end of the file; the light and the sounds
+   run on (games/tierband/useBand.js). */
+
+/* the stool that waits for somebody */
+.tb-want {
+  animation: tb-want 1.1s ease-in-out infinite;
+}
+@keyframes tb-want {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(255, 211, 77, 0)); }
+  50% { transform: scale(1.07); filter: drop-shadow(0 0 10px rgba(255, 211, 77, 0.95)); }
+}
+/* … and calls louder while an animal is picked up */
+.tb-want--now {
+  animation-duration: 0.55s;
+}
+
+/* everybody dances */
+.tb-sway {
+  animation: tb-sway 0.5s ease-in-out infinite alternate;
+  transform-origin: 50% 100%;
+}
+@keyframes tb-sway {
+  from { transform: rotate(-7deg); }
+  to { transform: rotate(7deg); }
+}
+
+/* waiting below the stage: breathing */
+.tb-wait {
+  animation: tb-wait 2.6s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+@keyframes tb-wait {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(1.04); }
+}
+
+/* the lanterns over the big band */
+.tb-bulb {
+  animation: tb-bulb 1.8s ease-in-out infinite;
+}
+@keyframes tb-bulb {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+/* "switch the sound on": the speaker beckons */
+.tb-sound {
+  animation: tb-want 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tb-want, .tb-want--now, .tb-sway, .tb-wait, .tb-bulb, .tb-sound { animation: none; }
+  /* without the pulse the waiting stool keeps a steady golden glow */
+  .tb-want { filter: drop-shadow(0 0 8px rgba(255, 211, 77, 0.95)); }
+}
