@@ -4,7 +4,7 @@ import { sfx } from '../sfx.js'
 import { lockPreviews, stopNarration } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
-import { Critter, Art, useMood, DragArea, Draggable, DropZone, RoundTrail, HintHand, useBursts } from '../components/play/index.js'
+import { Critter, Art, Wish, useMood, DragArea, Draggable, DropZone, RoundTrail, HintHand, useBursts } from '../components/play/index.js'
 import { Stage, useLater, DoneButton, usePops, Finale } from './zahlen/stage.jsx'
 
 /**
@@ -616,7 +616,7 @@ function Bird({ x, ang, fly, verdict, wobble, ask, hats = [] }) {
   return (
     <motion.div style={{ position: 'absolute', left: x - 30, top: PIVOT - 70, y: hop, x: sway, rotate: ang, zIndex: 2 }}>
       <motion.div style={{ rotate: spin, position: 'relative' }}>
-        <Critter art="🐦" size={60} mood={mood} label="Vogel" shadow={false} wish={ask || null} />
+        <Critter art="🐦" size={60} mood={mood} label="Vogel" shadow={false} />
         {hats.map((e, i) => (
           <motion.div key={i} aria-hidden="true"
             initial={reduce ? false : { scaleY: 0.6, y: -10 }} animate={{ scaleY: 1, y: 0, rotate: fly && !reduce ? [0, (i % 2 ? 9 : -9), 0] : 0 }}
@@ -627,6 +627,12 @@ function Bird({ x, ang, fly, verdict, wobble, ask, hats = [] }) {
         ))}
       </motion.div>
       <Dazed key={dazed} on={dazed > 0} />
+      {/* the question, above whatever is stacked on its head */}
+      {ask && (
+        <div style={{ position: 'absolute', left: 0, top: -(hats.length ? PERCH * 0.2 + hats.length * PERCH * 0.55 : 0), width: 60, height: 60, pointerEvents: 'none' }}>
+          <Wish side="top" size={60}>{ask}</Wish>
+        </div>
+      )}
     </motion.div>
   )
 }
