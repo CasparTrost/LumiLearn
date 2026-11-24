@@ -20,7 +20,6 @@ export const MAX_LEVELS = {
   maze:           10,
   shadows:        10,
   bubbles:        10,
-  stories:        10,
   sort:           10,
   clock:          10,
   words2:         10,
