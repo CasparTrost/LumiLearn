@@ -1,16 +1,29 @@
-/* Frosch-Hüpfen (WordBuilderGame): the pond moves by CSS; it rests for
-   prefers-reduced-motion. */
+/* Frosch-Hüpfer (WordBuilderGame): what moves by itself in and around the
+   pond. It all rests for prefers-reduced-motion. */
 
-@keyframes fr-bob    { 0%,100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-5px) rotate(2deg); } }
-@keyframes fr-ripple { 0% { transform: scale(.6); opacity: .7; } 100% { transform: scale(1.6); opacity: 0; } }
-@keyframes fr-swim   { from { transform: translateX(-80px); } to { transform: translateX(calc(100cqw + 80px)); } }
-@keyframes fr-wave   { 0%,100% { transform: translateX(0); } 50% { transform: translateX(-24px); } }
+@keyframes fr-wave   { 0%,100% { transform: translateX(0); } 50% { transform: translateX(-40px); } }
+@keyframes fr-ripple { 0% { transform: scale(.45); opacity: .85; } 100% { transform: scale(1.15); opacity: 0; } }
+@keyframes fr-bob    { 0%,100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-6px) rotate(2deg); } }
+@keyframes fr-buzz   { 0%,100% { transform: translate(0, 0) rotate(-8deg); } 25% { transform: translate(3px, -3px) rotate(6deg); } 50% { transform: translate(-2px, 2px) rotate(-4deg); } 75% { transform: translate(2px, 3px) rotate(8deg); } }
+@keyframes fr-sway   { 0%,100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+@keyframes fr-leg-a  { 0%,100% { transform: rotate(16deg); } 50% { transform: rotate(-16deg); } }
+@keyframes fr-leg-b  { 0%,100% { transform: rotate(-16deg); } 50% { transform: rotate(16deg); } }
+@keyframes fr-strut  { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+@keyframes fr-glow   { 0%,100% { filter: drop-shadow(0 0 0 rgba(255,201,60,0)); transform: scale(1); } 50% { filter: drop-shadow(0 0 10px rgba(255,201,60,1)); transform: scale(1.08); } }
 
-.fr-bob    { animation: fr-bob 2.6s ease-in-out infinite; }
-.fr-ripple { animation: fr-ripple 2.8s ease-out infinite; }
-.fr-swim   { animation: fr-swim 9s linear 1 forwards; }
-.fr-wave   { animation: fr-wave 5s ease-in-out infinite; }
+.fr-wave   { animation: fr-wave 7s ease-in-out infinite; }
+.fr-ripple { animation: fr-ripple 2.6s ease-out infinite; }
+.fr-bob    { animation: fr-bob 2.8s ease-in-out infinite; }
+.fr-buzz   { animation: fr-buzz .28s linear infinite; }
+.fr-sway   { animation: fr-sway 3.4s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
+.fr-leg-a  { animation: fr-leg-a .56s ease-in-out infinite; }
+.fr-leg-b  { animation: fr-leg-b .56s ease-in-out infinite; }
+.fr-strut  { animation: fr-strut .28s ease-in-out infinite; }
+.fr-glow   { animation: fr-glow 1.1s ease-in-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
-  .fr-bob, .fr-ripple, .fr-swim, .fr-wave { animation: none !important; }
+  .fr-wave, .fr-bob, .fr-buzz, .fr-sway, .fr-leg-a, .fr-leg-b, .fr-strut { animation: none !important; }
+  /* the next spot stays visible as a still ring, the glow as a still halo */
+  .fr-ripple { animation: none !important; transform: scale(.8); opacity: .7; }
+  .fr-glow   { animation: none !important; filter: drop-shadow(0 0 8px rgba(255,201,60,1)); }
 }
