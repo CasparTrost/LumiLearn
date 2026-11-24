@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react'
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion'
 import { sfx } from '../sfx.js'
 import { lockPreviews, afterNarration } from '../narrator.js'
@@ -121,7 +121,7 @@ const SCENES = [
       ['rectangle', 108, 70, 20, 40, '#8A4F22'],               // chimney
       ['triangle',   28, 74, 124, 62, '#E8503F'],              // roof
       ['circle',     76, 96, 28, 28, '#BFE6FF'],               // round window
-      ['square',     40, 136, 100, 94, '#F2B705'],             // wall
+      ['square',     43, 136, 94, 94, '#F2B705'],              // wall
       ['square',     52, 150, 34, 34, '#BFE6FF'],              // window
       ['rectangle',  96, 168, 34, 62, '#8A4F22'],              // door
       ['heart',     100, 180, 26, 24, '#E0509A'],              // heart on the door
@@ -129,7 +129,7 @@ const SCENES = [
       ['star',      172, 90, 38, 38, '#FFC93C', 1],            // star on top
       ['rectangle', 182, 204, 18, 28, '#8A4F22'],              // trunk
       ['oval',      218, 200, 64, 34, '#3FA34D'],              // bush
-      ['square',    322, 146, 44, 40, '#BFE6FF'],              // car cabin
+      ['square',    324, 144, 40, 40, '#BFE6FF'],              // car cabin
       ['rectangle', 290, 180, 116, 38, '#3D8BE0'],             // car
       ['circle',    300, 202, 34, 34, '#2a1b3d'],              // wheel
       ['circle',    364, 202, 34, 34, '#2a1b3d'],              // wheel
@@ -150,8 +150,8 @@ const SCENES = [
     // the same pieces, in the same order, on an upright 300 × 420 board for phones
     tall: {
       boxes: [[226, 8, 60, 60], [12, 14, 46, 46], [70, 40, 46, 42], [124, 20, 40, 54], [176, 84, 48, 66], [240, 96, 40, 54],
-        [100, 150, 22, 40], [14, 160, 136, 66], [66, 182, 30, 30], [26, 226, 112, 104], [40, 244, 40, 40], [88, 268, 38, 62],
-        [93, 282, 28, 26], [178, 176, 76, 104], [199, 150, 36, 36], [208, 280, 18, 50], [150, 300, 64, 34], [192, 318, 46, 38],
+        [98, 148, 26, 42], [14, 160, 136, 66], [64, 180, 34, 34], [30, 226, 104, 104], [42, 242, 40, 40], [90, 268, 38, 62],
+        [92, 280, 32, 30], [178, 176, 76, 104], [198, 148, 38, 38], [206, 280, 22, 50], [150, 300, 64, 34], [196, 316, 40, 40],
         [156, 352, 128, 40], [166, 378, 34, 34], [240, 378, 34, 34], [240, 236, 54, 48], [14, 362, 38, 38], [62, 356, 42, 42], [108, 392, 42, 24]],
       scenery: (
         <>
@@ -164,6 +164,8 @@ const SCENES = [
       bug: [262, 300],
     },
     bug: [446, 212],
+    // when all are found: the balloons and kites fly off, the car drives away
+    go: { fly: [1, 2, 3, 4, 5], drive: [17, 18, 19, 20] },
   },
   {
     sky: '#FFE2C2',
@@ -204,8 +206,8 @@ const SCENES = [
     overlay: <Spokes cx={377} cy={101} />,
     tall: {
       boxes: [[12, 12, 40, 40], [62, 56, 36, 36], [14, 98, 40, 58], [70, 112, 32, 44], [160, 120, 100, 110], [130, 20, 160, 160],
-        [195, 6, 30, 30], [195, 164, 30, 30], [58, 210, 26, 24], [10, 232, 120, 110], [54, 292, 34, 50], [150, 246, 76, 30],
-        [152, 276, 72, 70], [170, 284, 34, 32], [176, 320, 26, 24], [252, 236, 34, 44], [258, 290, 34, 30], [110, 160, 32, 32],
+        [193, 4, 34, 34], [193, 162, 34, 34], [55, 206, 32, 28], [10, 232, 120, 110], [54, 292, 34, 50], [150, 246, 76, 30],
+        [152, 276, 72, 70], [171, 282, 32, 32], [174, 316, 30, 28], [252, 236, 34, 44], [258, 290, 34, 30], [110, 160, 32, 32],
         [240, 356, 32, 32], [14, 384, 84, 20], [110, 370, 40, 40], [176, 382, 56, 30]],
       scenery: (
         <>
@@ -220,6 +222,7 @@ const SCENES = [
       bug: [262, 196],
     },
     bug: [30, 222],
+    go: { fly: [2, 3, 15, 16, 17], drive: [] },
   },
 ]
 
@@ -389,6 +392,7 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
   const missed = useRef(new Set())                   // rounds with a miss
   const timers = useRef([])
   const hint   = { from: useRef(null), to: useRef(null) }
+  const owlRef = useRef(null)
 
   const r = rounds[idx]
 
@@ -397,7 +401,8 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
     timers.current.push(setTimeout(run, ms))
   }, [])
 
-  useEffect(() => {
+  // A layout effect: the new round is never painted with the last one's state
+  useLayoutEffect(() => {
     if (!r) return
     timers.current.forEach(clearTimeout); timers.current = []
     setPicked([]); setWrong([]); setSolved(false); setShake(null); setLook(0)
@@ -410,7 +415,9 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
 
   // The end of the level, here first: the owl dances with its cup
   const next = useCallback(() => {
-    if (idx + 1 < TOTAL) { setIdx(i => i + 1); return }
+    // the new picture mounts as it is (initial={false}): it must never see
+    // the last round's "solved" (it would start flying off) or its finds
+    if (idx + 1 < TOTAL) { setSolved(false); setPicked([]); setWrong([]); setShake(null); setIdx(i => i + 1); return }
     setEnding(true)
     setOwl('dance', 0)
     sfx.tada()
@@ -429,6 +436,7 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
     setStreak(s)
     setOwl('dance', 2400)
     sfx.correct()
+    burst(owlRef.current, 'hearts', 8)
     if (s >= 3) burst({ x: innerWidth / 2, y: innerHeight * 0.35 }, 'confetti', 10 + 2 * s)
     sayRight()
     afterNarration(() => later(next, 0), { minMs })
@@ -445,15 +453,16 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
   }, [idx, setOwl])
 
   // ── the picture: find them all ──
-  const tapPiece = useCallback((p, e) => {
+  // p: the piece the tap resolved to (see Picture), at: where on screen
+  const tapPiece = useCallback((p, at) => {
     if (solved || !r) return
     if (picked.includes(p.id)) { sfx.giggle(); setShake({ key: p.id, n: Date.now() }); return }
     if (p.type === r.answer) {
       const found = [...picked, p.id]
       setPicked(found)
       sfx.sparkle()
-      burst(e.currentTarget, 'stars', 6)
-      if (found.length === r.need) finish(2000)
+      burst(at, 'stars', 6)
+      if (found.length === r.need) finish(2800)
       else setOwl('wow', 700)
       return
     }
@@ -521,9 +530,11 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
 
       {/* The owl detective and what it is looking for */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', maxWidth: 760, minHeight: tall ? 80 : 96 }}>
+        <motion.div ref={owlRef} animate={solved && !reduceMotion() ? { scale: [1, 1.35, 1.1, 1.3, 1], y: [0, -24, 0, -14, 0] } : { scale: 1, y: 0 }} transition={{ duration: 1.2 }}>
         <Critter art="🦉" size={tall ? 74 : 88} mood={owl} label="Eule"
           accessory={<span style={{ position: 'absolute', right: -6, bottom: 2, pointerEvents: 'none' }}><Art art={ending ? '🏆' : '🔍'} size={tall ? 32 : 38} /></span>}
           onTap={() => { sfx.giggle(); setOwl('wow', 700) }} />
+        </motion.div>
         <div aria-label={taskFor(r)} style={{
           position: 'relative', background: '#FFFDF7', border: `3px solid ${INK}`, borderRadius: 18, boxShadow: '0 4px 0 rgba(42,27,61,0.3)',
           padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
@@ -555,7 +566,9 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
       <div style={{ flex: 1, minHeight: 0, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'clamp(12px,3dvh,26px)' }}>
         {r.mode === 'match' && (
           <div ref={hint.to} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-            <Picture r={r} tall={tall} found={picked} shake={shake} solved={solved} onTap={tapPiece} />
+            {/* a fresh picture each round: nothing carries over from the last
+                one, which had just flown and driven away */}
+            <Picture key={idx} r={r} tall={tall} found={picked} shake={shake} solved={solved} onTap={tapPiece} />
           </div>
         )}
 
@@ -636,44 +649,88 @@ function ShakeBox({ on, k, children }) {
   )
 }
 
+// Is the point (px, py) on a piece, `pad` units around its edge included?
+// The piece may hang at a slant (`rot`, about its middle).
+function onPiece({ type, rot }, [x, y, w, h], px, py, pad = 0) {
+  const cx = x + w / 2, cy = y + h / 2
+  const a = -(rot || 0) * Math.PI / 180
+  const dx = (px - cx) * Math.cos(a) - (py - cy) * Math.sin(a)
+  const dy = (px - cx) * Math.sin(a) + (py - cy) * Math.cos(a)
+  const rx = w / 2 + pad, ry = h / 2 + pad
+  switch (type) {
+    case 'circle':
+    case 'oval':     return (dx / rx) ** 2 + (dy / ry) ** 2 <= 1
+    case 'rhombus':  return Math.abs(dx) / rx + Math.abs(dy) / ry <= 1
+    case 'triangle': return Math.abs(dy) <= ry && Math.abs(dx) <= (w / 2) * ((dy + h / 2) / h) + pad * 1.4
+    case 'star':     return Math.hypot(dx / w, dy / h) <= 0.44 + pad / Math.min(w, h)
+    case 'heart':    return (dx / (w * 0.46 + pad)) ** 2 + ((dy + h * 0.04) / (h * 0.44 + pad)) ** 2 <= 1
+    default:         return Math.abs(dx) <= rx && Math.abs(dy) <= ry
+  }
+}
+
 // ── The hidden-shape picture ──
 // Found shapes get a face, glow and dance: circles roll round, the others
-// hop. A wrong one wobbles. Every piece has a generous invisible edge, so a
-// small finger also hits the heart on the door. On an upright phone the
-// pieces stand in the upright layout of the same picture.
+// hop. When all are found the picture takes off: balloons and kites fly
+// away, the car drives off. On an upright phone the pieces stand in the
+// upright layout of the same picture.
+//
+// A tap is resolved here, not by the shape that happens to lie on top:
+// the roof's middle has the round window on it, the wall has the door.
+// If any shape of the kind being sought is under the finger (a little
+// around small ones too), the tap is for it. Only a tap right on a shape
+// of another kind, with none of the sought kind there, is a miss.
 function Picture({ r, tall, found, shake, solved, onTap }) {
   const [bugGone, setBugGone] = useState(false)
   useEffect(() => setBugGone(false), [r])
+  const svgRef = useRef(null)
   const W = tall ? 300 : 480, H = tall ? 420 : 300
   const bug = tall ? r.scene.tall.bug : r.scene.bug
-  const flyAway = () => { if (bugGone) return; sfx.giggle(); sfx.whoosh(); setBugGone(true) }
+  const boxOf = p => (tall ? r.scene.tall.boxes[p.id] : [p.x, p.y, p.w, p.h])
+  const flyAway = e => { e.stopPropagation(); if (bugGone) return; sfx.giggle(); sfx.whoosh(); setBugGone(true) }
+  const tap = e => {
+    const m = svgRef.current?.getScreenCTM()?.inverse()
+    if (!m) return
+    const px = m.a * e.clientX + m.c * e.clientY + m.e, py = m.b * e.clientX + m.d * e.clientY + m.f
+    const at = { x: e.clientX, y: e.clientY }
+    const top = list => list[list.length - 1]
+    // around small pieces the finger may land a little off: up to 20 units
+    const near = p => { const [, , w, h] = boxOf(p); return Math.max(tall ? 8 : 6, (40 - Math.min(w, h)) / 2) }
+    const sought = r.pieces.filter(p => p.type === r.answer && onPiece(p, boxOf(p), px, py, near(p)))
+    const fresh = sought.filter(p => !found.includes(p.id))
+    const hit = fresh.length ? top(fresh) : sought.length ? top(sought) : top(r.pieces.filter(p => onPiece(p, boxOf(p), px, py)))
+    if (hit) onTap(hit, at)
+  }
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} role="group" aria-label="Suchbild"
+    <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} role="group" aria-label="Suchbild" onClick={tap}
       style={{
         width: '100%', maxWidth: tall ? `min(100%, calc((100dvh - 240px) * ${W / H}))` : `min(100%, calc((100dvh - 250px) * ${W / H}), 920px)`,
         height: 'auto', display: 'block', borderRadius: 22, border: `4px solid ${INK}`, boxShadow: '0 6px 0 rgba(42,27,61,0.3)',
-        background: r.scene.sky, touchAction: 'manipulation', overflow: 'hidden',
+        background: r.scene.sky, touchAction: 'manipulation', overflow: 'hidden', cursor: solved ? 'default' : 'pointer',
       }}>
       <g pointerEvents="none">{tall ? r.scene.tall.scenery : r.scene.scenery}</g>
       {r.pieces.map(p => {
-        const [x, y, w, h] = tall ? r.scene.tall.boxes[p.id] : [p.x, p.y, p.w, p.h]
+        const [x, y, w, h] = boxOf(p)
         const isFound = found.includes(p.id)
         const cx = x + w / 2, cy = y + h / 2
         const wobble = shake?.key === p.id
         const spin = isFound && p.type === 'circle' && !reduceMotion()
         const fs = Math.min(w, h) / 100
+        const fly = solved && r.scene.go.fly.includes(p.id) && !reduceMotion()
+        const drive = solved && r.scene.go.drive.includes(p.id) && !reduceMotion()
         return (
           <motion.g key={`${p.id}-${wobble ? shake.n : 0}`}
             role="button" aria-label={SHAPES[p.type].name} tabIndex={0}
-            onClick={e => onTap(p, e)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onTap(p, e) } }}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); const b = e.currentTarget.getBoundingClientRect(); onTap(p, { x: b.left + b.width / 2, y: b.top + b.height / 2 }) } }}
             initial={false}
             animate={wobble && !reduceMotion() ? { rotate: [p.rot, p.rot - 12, p.rot + 10, p.rot - 6, p.rot], scale: [1, 1.12, 1] }
+              : fly ? { y: [0, 12, -H - 80], rotate: [p.rot, p.rot - 10, p.rot + 15], scale: 1 }
+              : drive ? { x: [0, -10, W + 60], scale: 1, rotate: spin ? p.rot + 720 : p.rot }
               : isFound ? { rotate: spin ? p.rot + 360 : p.rot, scale: [1, 1.25, 1], y: solved && !reduceMotion() ? [0, -8, 0] : 0 }
-              : { rotate: p.rot, scale: 1 }}
-            transition={{ duration: isFound && !wobble ? 0.7 : 0.55, y: solved ? { duration: 0.5, repeat: 2, delay: (p.id % 5) * 0.08 } : undefined }}
-            style={{ cursor: solved ? 'default' : 'pointer', outline: 'none' }}>
-            {/* the wide invisible edge that makes small pieces easy to hit */}
-            <g fill="transparent" stroke="transparent" strokeWidth="14" strokeLinejoin="round">{boxShape(p.type, x, y, w, h)}</g>
+              : { rotate: p.rot, scale: 1, x: 0, y: 0 }}
+            transition={fly ? { duration: 1.8, delay: 0.4 + (p.id % 5) * 0.12, ease: 'easeIn' }
+              : drive ? { duration: 1.6, delay: 0.6, ease: 'easeIn' }
+              : { duration: isFound && !wobble ? 0.7 : 0.55, y: solved ? { duration: 0.5, repeat: 2, delay: (p.id % 5) * 0.08 } : undefined }}
+            style={{ outline: 'none' }}>
             <g fill={p.color} stroke={isFound ? '#FFC93C' : INK} strokeWidth={isFound ? 5 : 2.5} strokeLinejoin="round"
               style={{ filter: isFound ? 'drop-shadow(0 0 6px #FFE08A)' : undefined }}>
               {boxShape(p.type, x, y, w, h)}

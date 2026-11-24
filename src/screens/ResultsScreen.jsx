@@ -104,7 +104,7 @@ export default function ResultsScreen() {
 
   const [showButtons, setShowButtons] = useState(false)
   useEffect(() => {
-    const b = setTimeout(() => setShowButtons(true), 1400)
+    const b = setTimeout(() => setShowButtons(true), 1100)
     return () => clearTimeout(b)
   }, [])
 
@@ -199,7 +199,7 @@ export default function ResultsScreen() {
             <motion.div key={idx}
               initial={{ scale: 0, rotate: -30, y: -40 }}
               animate={{ scale: idx < stars ? 1 : 0.7, rotate: 0, y: 0 }}
-              transition={{ delay: 0.5 + idx * 0.2, type: 'spring', stiffness: 400, damping: 12 }}
+              transition={{ delay: 0.25 + idx * 0.18, type: 'spring', stiffness: 400, damping: 12 }}
               onAnimationStart={() => idx < stars && setTimeout(() => sfx.coin(), 500 + idx * 200)}
               style={{ filter: idx < stars ? 'drop-shadow(0 0 10px rgba(255,201,60,0.8))' : 'none' }}>
               <PxStar size="clamp(40px, 7dvh, 60px)" off={idx >= stars} />
@@ -208,7 +208,7 @@ export default function ResultsScreen() {
         </div>
 
         {showFraction && (
-          <div style={{ fontFamily: 'var(--font-heading)', color: 'var(--px-ink)', fontSize: 18, fontWeight: 600, textAlign: 'center' }}>
+          <div style={{ fontFamily: 'var(--font-heading)', color: 'var(--px-ink)', fontSize: 'clamp(18px,2.4vw,24px)', fontWeight: 600, textAlign: 'center' }}>
             {score} von {total} gleich beim ersten Mal richtig
           </div>
         )}
@@ -220,27 +220,26 @@ export default function ResultsScreen() {
           {sticker && <StickerSurprise emoji={sticker} />}
         </AnimatePresence>
 
-        {/* Buttons — appear after short delay */}
-        <div style={{ minHeight: 'clamp(112px, 16dvh, 136px)', width: '100%' }}>
-          {showButtons && (
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 22 }}
-              style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', alignItems: 'center' }}>
-              <button className="px-btn px-btn--green px-btn--lg" onClick={main.onClick} style={{ width: '100%', whiteSpace: 'normal' }}>
-                {main.art ? <TileArt mod={main.art} size={36} bare /> : main.play ? <PxIcon name="play" size={22} /> : main.icon} {main.label}
+        {/* Buttons — there from the start (the card stood empty for two
+            seconds), but only tappable after a moment, so a tap meant for
+            the game's last task doesn't land on one */}
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: showButtons ? 1 : 0.4, y: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 22 }}
+          aria-hidden={!showButtons}
+          style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', alignItems: 'center', pointerEvents: showButtons ? 'auto' : 'none' }}>
+          <button className="px-btn px-btn--green px-btn--lg" onClick={main.onClick} style={{ width: '100%', whiteSpace: 'normal' }}>
+            {main.art ? <TileArt mod={main.art} size={36} bare /> : main.play ? <PxIcon name="play" size={22} /> : main.icon} {main.label}
+          </button>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+            {secondary.map(b => (
+              <button key={b.label} className="px-btn px-btn--gold px-btn--md" onClick={b.onClick}>
+                {b.art ? <TileArt mod={b.art} size={28} bare /> : b.icon} {b.label}
               </button>
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
-                {secondary.map(b => (
-                  <button key={b.label} className="px-btn px-btn--gold px-btn--md" onClick={b.onClick}>
-                    {b.art ? <TileArt mod={b.art} size={28} bare /> : b.icon} {b.label}
-                  </button>
-                ))}
-                {main.onClick !== home && (
-                  <button className="px-btn px-btn--parch px-btn--md" onClick={home} aria-label="Startseite">🏠</button>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </div>
+            ))}
+            {main.onClick !== home && (
+              <button className="px-btn px-btn--parch px-btn--md" onClick={home} aria-label="Startseite">🏠</button>
+            )}
+          </div>
+        </motion.div>
       </motion.div>
     </div>
   )

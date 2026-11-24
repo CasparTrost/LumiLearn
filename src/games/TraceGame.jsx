@@ -124,6 +124,7 @@ export default function TraceGame({ level = 1, onComplete }) {
   const [advance,   setAdvance]   = useState(false)  // the praise is over: next glyph
   const [streak,    setStreak]    = useState(0)      // glyphs in a row without a slip
   const [startHint, setStartHint] = useState(false)  // the finger started away from the dot
+  const [walk,      setWalk]      = useState(false)  // the finished glyph walks off
   const [bursts, burst] = useBursts()
 
   const rootRef   = useRef(null)
@@ -237,7 +238,9 @@ export default function TraceGame({ level = 1, onComplete }) {
     setMood(s >= 3 ? 'dance' : 'wow')
     if (areaRef.current) setTimeout(() => burst(areaRef.current, s >= 3 ? 'confetti' : 'stars', s >= 3 ? 22 : 12), 350)
     sayRight(null, { onEnd: () => voice([praise.voice]) })
-    afterNarration(() => setAdvance(true), { minMs: 2600 })
+    // after its hop the glyph walks off to the right, and the next one comes
+    if (!reduceMotion()) setTimeout(() => setWalk(true), 1700)
+    afterNarration(() => setAdvance(true), { minMs: 2800 })
   }
 
   const acceptStroke = () => {
@@ -332,6 +335,7 @@ export default function TraceGame({ level = 1, onComplete }) {
     setDone(false)
     setStrokeIdx(0)
     setStartHint(false)
+    setWalk(false)
     setMood('idle')
     setIdx(i => i + 1)
   }
@@ -438,8 +442,11 @@ export default function TraceGame({ level = 1, onComplete }) {
 
           {/* Finished strokes, snapped onto the path. The finished glyph
               comes alive: it gets eyes and a smile and hops. */}
-          <motion.g key={`g${idx}`} animate={done && !reduceMotion() ? { y: [0, -16, 0, -8, 0], scaleY: [1, 1.06, 0.94, 1.02, 1] } : { y: 0 }}
-            transition={{ duration: 1.1, delay: 0.35 }} style={{ transformBox: 'fill-box', transformOrigin: '50% 100%' }}>
+          <motion.g key={`g${idx}`}
+            animate={walk ? { x: VIEW.w * 0.9, opacity: [1, 1, 0], y: [0, -8, 0, -8, 0, -8, 0], rotate: [0, -6, 6, -6, 6, 0] }
+              : done && !reduceMotion() ? { y: [0, -16, 0, -8, 0], scaleY: [1, 1.06, 0.94, 1.02, 1] } : { y: 0 }}
+            transition={walk ? { duration: 1, ease: 'easeIn' } : { duration: 1.1, delay: 0.35 }}
+            style={{ transformBox: 'fill-box', transformOrigin: '50% 100%' }}>
             {strokes.slice(0, strokeIdx).map((s, i) => (
               <motion.path key={`d${idx}-${i}`} d={pathOf(s)} fill="none" stroke={color}
                 strokeWidth={INK_W} strokeLinecap="round" strokeLinejoin="round"
@@ -531,8 +538,8 @@ export default function TraceGame({ level = 1, onComplete }) {
           initial={{ scale: 0, y: 30, rotate: -20 }}
           animate={{ scale: 1, y: reduceMotion() ? 0 : [30, -24, 0, -10, 0], rotate: 0 }}
           transition={{ type: 'spring', stiffness: 300, damping: 12, delay: 0.5, y: { duration: 1, delay: 0.5 } }}
-          style={{ position: 'absolute', right: '2%', bottom: '2%', pointerEvents: 'none', filter: 'drop-shadow(0 6px 0 rgba(42,27,61,0.25))' }}>
-          <Art art={praise.e} size={Math.max(64, Math.min(area.w, area.h) * 0.3)} />
+          style={{ position: 'absolute', right: `calc(50% - ${(VIEW.w * scale) / 2}px + 4%)`, bottom: '5%', pointerEvents: 'none', filter: 'drop-shadow(0 6px 0 rgba(42,27,61,0.25))' }}>
+          <Art art={praise.e} size={Math.max(56, Math.min(area.w, area.h) * 0.26)} />
         </motion.div>
       )}
 

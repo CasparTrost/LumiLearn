@@ -31,7 +31,7 @@ export function Pad({ w = 72, h = w * 0.62, text, empty = false, glow = false, s
       {text && (
         <span style={{
           position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: h * 0.08,
-          fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: Math.min(28, h * 0.42, (w * 1.5) / Math.max(2.5, text.length)),
+          fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: Math.min(28, h * 0.42, (w * 1.25) / Math.max(2.5, text.length)),
           color: INK, letterSpacing: 1, textShadow: '0 2px 0 rgba(255,255,255,0.5)', whiteSpace: 'nowrap',
         }}>{text}</span>
       )}

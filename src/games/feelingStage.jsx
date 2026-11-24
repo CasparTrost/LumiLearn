@@ -4,7 +4,7 @@ import { Critter, Art, Wish, DropZone } from '../components/play/index.js'
 import { afterNarration } from '../narrator.js'
 import { usePaused } from '../lib/pause.js'
 import { sfx } from '../sfx.js'
-import { FEELING_ICON } from './feelings.js'
+import { FEELING_ICON, FEELING_BADGE } from './feelings.js'
 
 /**
  * The stage of the feelings world (Gefühlswelt, Freunde trösten, Lumis
@@ -52,7 +52,7 @@ const FACES = {
   shy:       { eyes: 'down',   mouth: 'wobble', arms: 'face', blush: true, brows: 'M39 51 L52 48 M81 51 L68 48' },
   thankful:  { eyes: 'closed', mouth: 'smile',  arms: 'chest', cheeks: true, brows: 'M39 52 Q46 48 52 51 M68 51 Q74 48 81 52' },
   surprised: { eyes: 'wide',   mouth: 'O',      arms: 'up',   brows: 'M38 46 Q45 39 52 45 M68 45 Q75 39 82 46' },
-  proud:     { eyes: 'happy',  mouth: 'smug',   arms: 'hips', cheeks: true, brows: 'M39 50 Q46 46 52 49 M68 49 Q74 46 81 50' },
+  proud:     { eyes: 'closed', mouth: 'smug',   arms: 'hips', cheeks: true, brows: 'M39 50 Q46 46 52 49 M68 49 Q74 46 81 50' },
   bored:     { eyes: 'half',   mouth: 'flat',   arms: 'down', brows: 'M39 55 L52 55 M68 55 L81 55', look: 1 },
   jealous:   { eyes: 'side',   mouth: 'pout',   arms: 'cross', brows: 'M39 52 L52 49 M68 46 L81 50' },
   curious:   { eyes: 'curious', mouth: 'o',     arms: 'chest', brows: 'M39 51 Q46 47 52 50 M67 44 Q74 39 82 45' },
@@ -171,11 +171,20 @@ function Marks({ feel, n }) {
       {feel === 'curious' ? '?' : n >= 2 ? '!!' : '!'}
     </motion.text>
   )
-  if (feel === 'excited' || feel === 'proud' || feel === 'happy') {
-    const spots = feel === 'proud' ? [[100, 24]] : [[12, 30], [104, 26], [96, 4]]
+  if (feel === 'proud') return (
+    <g>
+      <path d="M53 88 L60 100 L67 88" fill="none" stroke="#4a8ee6" strokeWidth="5" />
+      <circle cx="60" cy="104" r="8" fill="#ffc93c" stroke={OUT} strokeWidth="2.2" />
+      <path d="M60 99 l1.6 3.2 3.4 .5 -2.5 2.4 .6 3.4 -3.1 -1.6 -3.1 1.6 .6 -3.4 -2.5 -2.4 3.4 -.5 z" fill="#fff6c8" />
+      <motion.path d="M100 16 l2.5 5.5 5.5 2.5 -5.5 2.5 -2.5 5.5 -2.5 -5.5 -5.5 -2.5 5.5 -2.5 z" fill="#ffc93c" stroke={OUT} strokeWidth="1.4"
+        animate={{ scale: [0.7, 1.2, 0.7] }} transition={{ duration: 1.2, repeat: Infinity }} style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
+    </g>
+  )
+  if (feel === 'excited' || feel === 'happy') {
+    const spots = [[12, 30], [104, 26], [96, 4]]
     return (
       <g fill="#ffc93c" stroke={OUT} strokeWidth="1.4">
-        {spots.slice(0, feel === 'proud' ? 1 : n + 1).map(([x, y], i) => (
+        {spots.slice(0, n + 1).map(([x, y], i) => (
           <motion.path key={i} d={`M${x} ${y - 8} L${x + 2.5} ${y - 2.5} L${x + 8} ${y} L${x + 2.5} ${y + 2.5} L${x} ${y + 8} L${x - 2.5} ${y + 2.5} L${x - 8} ${y} L${x - 2.5} ${y - 2.5} Z`}
             animate={{ scale: [0.7, 1.2, 0.7], rotate: [0, 30, 0] }} transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.3 }}
             style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
@@ -223,7 +232,7 @@ function bodyMotion(feel, k) {
     case 'shy':       return { animate: { rotate: [-6, 6], scale: 0.96, y: 0 }, transition: { rotate: loop(1.4, { repeatType: 'mirror' }) } }
     case 'thankful':  return { animate: { rotate: [-3, 3], y: 0, scale: 1 }, transition: { rotate: loop(1.8, { repeatType: 'mirror' }) } }
     case 'surprised': return { animate: { y: [0, -18 * k, 0], scaleY: [1, 1.1, 1.05], rotate: 0 }, transition: { duration: 0.5 } }
-    case 'proud':     return { animate: { scaleY: 1 + 0.06 * k, rotate: -4, y: -2 }, transition: { type: 'spring', stiffness: 200, damping: 10 } }
+    case 'proud':     return { animate: { scaleY: 1 + 0.08 * k, rotate: -9, y: -4 }, transition: { type: 'spring', stiffness: 200, damping: 10 } }
     case 'bored':     return { animate: { scaleY: [1, 0.95, 1], rotate: 3, y: 2 }, transition: { scaleY: loop(3) } }
     case 'jealous':   return { animate: { rotate: 6, x: 3, scale: 1 }, transition: { duration: 0.5 } }
     case 'curious':   return { animate: { rotate: -10, x: 4, y: -4, scale: 1 }, transition: { type: 'spring', stiffness: 160, damping: 12 } }
@@ -487,7 +496,10 @@ export function Stage({ lumi, cast = [], fx, drop, bubbles = {}, looks = {}, tin
           return (
             <div style={{ position: 'absolute', left: l.x - s / 2, bottom: GROUND - 6 + (l.y ?? 0), width: s, zIndex: 2 }}>
               <motion.div {...m} style={{ position: 'relative', width: s }}>
-                {wrapDrop('lumi', <FeelLumi feel={lumi.feel} strength={lumi.strength} size={s} flip={lumi.flip} />, s)}
+                {/* `pulse`: a new number makes Lumi swell and settle once (a breath, a hug) */}
+                <motion.div key={lumi.pulse ?? 0} animate={lumi.pulse ? { scale: [1, 1.2, 1] } : {}} transition={{ duration: 1, ease: 'easeInOut' }} style={{ transformOrigin: '50% 100%' }}>
+                  {wrapDrop('lumi', <FeelLumi feel={lumi.feel} strength={lumi.strength} size={s} flip={lumi.flip} />, s)}
+                </motion.div>
                 {lumi.say && <Wish size={s * 0.7} side="right" style={{ fontSize: 20 }}><Said say={lumi.say} /></Wish>}
                 {bubble('lumi', s)}
               </motion.div>
@@ -498,6 +510,32 @@ export function Stage({ lumi, cast = [], fx, drop, bubbles = {}, looks = {}, tin
       </div>
     </div>
   )
+}
+
+/** The face of a feeling, with its badge where it has one (Stolz: a medal). */
+export function FeelingFace({ feeling, size = 44 }) {
+  const badge = FEELING_BADGE[feeling]
+  return (
+    <span style={{ position: 'relative', display: 'inline-flex', width: size, height: size, flexShrink: 0 }}>
+      <Art art={FEELING_ICON[feeling]} size={size} />
+      {badge && <Art art={badge} size={size * 0.5} style={{ position: 'absolute', right: -size * 0.12, bottom: -size * 0.1 }} />}
+    </span>
+  )
+}
+
+/**
+ * Where the hint hand picks something up: one of the tray's pieces, a
+ * different one each time it shows the move — never always the right one.
+ */
+export function useTrayStart(trayRef) {
+  const [r] = useState(() => ({
+    get current() {
+      const items = trayRef.current?.querySelectorAll('.pl-drag[tabindex="0"]')
+      if (!items?.length) return trayRef.current
+      return items[Math.floor(Date.now() / 7000) % items.length]
+    },
+  }))
+  return r
 }
 
 /** A feeling face as a picture with its word: what the child hands over. */
@@ -512,7 +550,7 @@ export function FaceChip({ feeling, size = 76, dim = false, glow = false }) {
           width: size + 16, height: size + 16, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
           background: '#fffdf7', border: '3px solid #2a1b3d', boxShadow: glow ? '0 0 0 5px #ffc93c, 0 5px 0 rgba(42,27,61,.3)' : '0 5px 0 rgba(42,27,61,.3)',
         }}>
-        <Art art={FEELING_ICON[feeling]} size={size} />
+        <FeelingFace feeling={feeling} size={size} />
       </motion.div>
       <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 17, color: '#2a1b3d', textShadow: '0 1px 0 #fff, 0 0 6px #fff' }}>{feeling}</span>
     </div>

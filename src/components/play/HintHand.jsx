@@ -16,16 +16,33 @@ import { usePaused } from '../../lib/pause.js'
  *   <HintHand from={apple} to={bear} delay={0} /> // show it right away
  *
  * It appears after `delay` ms of no tapping or dragging anywhere and shows
- * the move a few times; any touch hides it, and after the next quiet spell
- * it comes again. `active`
+ * the move a few times, rests a moment and shows it again, as long as the
+ * child waits; any touch hides it, and after the next quiet spell it comes
+ * again. `active`
  * false (the task is solved, an animation runs) keeps it away. While the
  * game is paused (help open) it stays away too.
  */
+const REST_MS = 4000
+
 export default function HintHand({ from, to, active = true, delay = 5000, repeat = 3 }) {
   const idle = useIdle(delay, active)
   const paused = usePaused()
   const [box, setBox] = useState(null)
-  const show = active && idle && !paused
+  const shown = active && idle && !paused
+  // Shows the move `repeat` times, rests a few seconds, shows it again —
+  // for as long as the child waits (a lost child who just waits needs it most)
+  const [round, setRound] = useState(0)
+  const [resting, setResting] = useState(false)
+  useEffect(() => {
+    if (!shown) { setResting(false); return }
+    const showMs = repeat * (from ? 2500 : 1900)
+    let t = setTimeout(function cycle() {
+      setResting(true)
+      t = setTimeout(() => { setResting(false); setRound(r => r + 1); t = setTimeout(cycle, showMs) }, REST_MS)
+    }, showMs)
+    return () => clearTimeout(t)
+  }, [shown, repeat, from])
+  const show = shown && !resting
 
   useEffect(() => {
     if (!show) { setBox(null); return }
@@ -48,7 +65,7 @@ export default function HintHand({ from, to, active = true, delay = 5000, repeat
   const fx = box.f?.x ?? tx, fy = box.f?.y ?? ty
   const drag = !!box.f
   return createPortal(
-    <motion.div aria-hidden="true" key={`${fx}-${fy}-${tx}-${ty}`}
+    <motion.div aria-hidden="true" key={`${round}-${fx}-${fy}-${tx}-${ty}`}
       initial={{ x: fx, y: fy, opacity: 0, scale: 1 }}
       animate={drag
         ? { x: [fx, fx, tx, tx], y: [fy, fy, ty, ty], opacity: [0, 1, 1, 0], scale: [1, 0.85, 0.85, 1] }

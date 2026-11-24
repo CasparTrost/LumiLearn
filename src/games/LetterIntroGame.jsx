@@ -112,7 +112,7 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
   const [bursts, burst] = useBursts()
   const speaking = useSpeaking()
   const monsterRef = useRef(null)
-  const blanketRef = useRef(null)
+  const gapRef = useRef(null)
 
   const [readyAt, setReadyAt] = useState(-1)    // the round whose task has been said
   const [eatenIn, setEaten]   = useState(null)  // { i, opt }: the right thing of round i, eaten
@@ -174,8 +174,8 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
     sayWrong()
     if (miss(opt) >= 2) {
       // Nach zwei Fehlern zeigt das Monster die Lösung und frisst sie selbst.
-      reveal(4400)
-      setTimeout(() => { setEaten({ i: idx, opt: q.correct }); munch(() => setMood('happy', 1200)) }, 2600)
+      reveal(3200)
+      setTimeout(() => { setEaten({ i: idx, opt: q.correct }); munch(() => setMood('happy', 1200)) }, 1500)
     }
     return true
   }
@@ -277,7 +277,7 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
         </motion.div>
 
         {/* Food on the picnic blanket */}
-        <div ref={blanketRef} style={{
+        <div style={{
           display:'flex', alignItems:'center', justifyContent:'center', gap:'clamp(8px,2vw,18px)', flexWrap:'wrap',
           padding:'10px clamp(10px,2.5vw,24px)', borderRadius:26, maxWidth:'100%', boxSizing:'border-box',
           background:'repeating-conic-gradient(#f3b8b0 0 25%, #fffdf7 0 50%) 0 0 / 36px 36px',
@@ -295,8 +295,10 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
                   : { y:0, scale:1, opacity: isTried ? 0.5 : 1 }}
                 transition={gone || leaving ? { duration:0.2 }
                   : glow ? { duration:0.6, repeat:Infinity }
-                  : { delay: 0.25 + i * 0.07, type:'spring', stiffness:380, damping:17 }}
+                  : { delay: 0.05 + i * 0.05, type:'spring', stiffness:380, damping:17 }}
                 style={{ position:'relative', width:'clamp(96px,19vw,124px)' }}>
+                {/* between the first and the second: the hint hand points here, never at one answer */}
+                {i === 0 && <span ref={gapRef} aria-hidden="true" style={{ position:'absolute', right:-10, top:'50%', width:2, height:2 }} />}
                 <Draggable id={opt.w} data={opt} disabled={isTried || gone} label={opt.w}>
                   <div {...hearWord(opt.w, !done)} style={{
                     display:'flex', flexDirection:'column', alignItems:'center', gap:2, padding:'8px 4px',
@@ -304,8 +306,10 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
                     boxShadow: glow ? '0 0 0 5px #ffc93c' : '0 4px 0 rgba(42,27,61,0.25)', filter: isTried ? 'grayscale(0.8)' : undefined,
                   }}>
                     <Art art={opt.e} size={74} />
+                    {/* the word only after the choice: before, an E would be found by
+                        matching printed first letters instead of thinking of the sound */}
                     <span style={{ fontFamily:'var(--font-heading)', fontWeight:700, fontSize:'clamp(13px,2.4vw,16px)', color:INK,
-                      textAlign:'center', overflowWrap:'anywhere', lineHeight:1.1 }}>{opt.w}</span>
+                      textAlign:'center', overflowWrap:'anywhere', lineHeight:1.1, visibility: isTried || done ? 'visible' : 'hidden' }}>{opt.w}</span>
                   </div>
                 </Draggable>
                 {/* spat out: it shows its own letter, which is not the monster's */}
@@ -320,7 +324,7 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
           })}
           {heard.length > 0 && <HearOptions items={heard} label="Alle Wörter anhören" size={48} />}
         </div>
-        <HintHand from={blanketRef} to={monsterRef} active={live && !leaving && !finale} delay={hintDelay(idx)} />
+        <HintHand from={gapRef} to={monsterRef} active={live && !leaving && !finale} delay={hintDelay(idx)} />
       </DragArea>
       {bursts}
     </div>

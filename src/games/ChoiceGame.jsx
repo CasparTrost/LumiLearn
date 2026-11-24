@@ -31,13 +31,19 @@ const glyphs = s => [...s].filter(ch => ch !== '️').length
 const countOf = (q, opt) => glyphs(opt) / glyphs(q.sym)
 // The pictures one token stands for: a growing row's "🐸🐸🐸" is three frogs
 const picsOf = (q, token) => (q.kind === 'grow' ? Array(countOf(q, token)).fill(q.sym) : [token])
-// How wide a token is, in marchers (a group of three stands close together)
-const widthOf = (q, token) => (q.kind !== 'grow' ? 1 : token === '❓' ? 1.6 : 0.15 + countOf(q, token) * 0.85)
+// A group of a growing row stands in a little wagon, in a grid like the dots
+// of a dice (up to two in a line, then two lines), so it is counted at a glance
+const colsOf = n => (n <= 2 ? n : Math.ceil(n / 2))
+const GROUP_E = 0.6   // a picture in a group, in marchers
+// How wide a token is, in marchers
+const widthOf = (q, token) => (q.kind !== 'grow' ? 1 : token === '❓' ? 1.4 : colsOf(countOf(q, token)) * GROUP_E + 0.25)
 // For screen readers: the name, or how many of them
 const labelOf = (q, opt) => (q.kind === 'grow' ? String(countOf(q, opt)) : q.names[opt] ?? '')
 
 // The payoff (drum roll, the parade marching off) before the next round
-const MARCH_MS = 2700
+const MARCH_MS = 2100
+// The round trail stops short of the sun in the scene's top right corner
+const SUN_GAP = 'clamp(0px, calc((100vw - 700px) * 0.6), 190px)'
 // What a round starts with
 const FRESH = { wrong: [], solved: false, marching: false, stumble: 0, placed: [], missesHere: 0 }
 
@@ -57,15 +63,25 @@ function Marcher({ q, token, size, i, stumble }) {
       transition: { duration: 0.8, delay: (i % 4) * 0.05 },
     })
   }, [stumble, controls, i, size])
-  const pics = picsOf(q, token)
   return (
     <motion.div animate={controls} style={{ display: 'flex', alignItems: 'flex-end', transformOrigin: '50% 100%' }}>
-      {pics.map((p, k) => (
-        <div key={k} className="pa-step" style={{ animationDelay: `${-((i + k) % 2) * 0.3}s`, marginLeft: k ? -size * 0.15 : 0 }}>
-          <Art art={p} size={size} />
-        </div>
-      ))}
+      {q.kind === 'grow'
+        ? <div className="pa-step" style={{ animationDelay: `${-(i % 2) * 0.3}s` }}><Group q={q} token={token} e={size * GROUP_E} /></div>
+        : <div className="pa-step" style={{ animationDelay: `${-(i % 2) * 0.3}s` }}><Art art={token} size={size} /></div>}
     </motion.div>
+  )
+}
+
+/** A group of a growing row: its pictures in a dice grid, in a wagon. */
+function Group({ q, token, e }) {
+  const n = countOf(q, token)
+  return (
+    <div style={{
+      display: 'grid', gridTemplateColumns: `repeat(${colsOf(n)}, ${e}px)`, gap: 2, padding: e * 0.12, borderRadius: e * 0.3,
+      background: 'rgba(255,253,247,0.85)', border: `3px solid ${INK}`, boxShadow: '0 4px 0 rgba(42,27,61,0.25)',
+    }}>
+      {picsOf(q, token).map((p, k) => <Art key={k} art={p} size={e} />)}
+    </div>
   )
 }
 
@@ -122,10 +138,10 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
     setLeader(s >= 3 ? 'dance' : 'wow', 1600)
     sayRight()
     if (gapRef.current) burst(gapRef.current, s >= 3 ? 'confetti' : 'stars', s >= 3 ? 20 : 10)
-    if (!reduceMotion()) setTimeout(() => upd({ marching: true }), 800)
-    const beats = s >= 3 ? 8 : 6
-    for (let i = 0; i < beats; i++) setTimeout(() => sfx.drum(i % 2 === 1), 800 + i * 230)
-    if (s >= 3) setTimeout(() => sfx.tada(), 800 + beats * 230)
+    if (!reduceMotion()) setTimeout(() => upd({ marching: true }), 700)
+    const beats = s >= 3 ? 7 : 5
+    for (let i = 0; i < beats; i++) setTimeout(() => sfx.drum(i % 2 === 1), 700 + i * 220)
+    if (s >= 3) setTimeout(() => sfx.tada(), 700 + beats * 220)
     afterNarration(() => setReady(true), { minMs: MARCH_MS })
   }, [rs.wrong, streak, setLeader, burst])
 
@@ -179,17 +195,24 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
   // On a phone a long parade goes round the bend: two lines, read like a
   // book, instead of pictures too small to tell apart
   const oneLine = (stageW - 24) / (unitsOf(all) + leaderW)
-  const half = Math.ceil(all.length / 2)
-  const lines = oneLine < 46 && all.length > 5 ? [all.slice(0, half), all.slice(half)] : [all]
+  // … breaking only between two rounds of the pattern (or two groups)
+  const unitLen = q.unit?.length ?? 1
+  const half = Math.max(unitLen, Math.round(all.length / 2 / unitLen) * unitLen)
+  // (a growing row's pictures are small in their wagons: it bends sooner)
+  const bend = q.kind === 'grow' ? oneLine < 70 : oneLine < 46 && all.length > 5
+  const lines = bend && half < all.length ? [all.slice(0, half), all.slice(half)] : [all]
   const size = Math.min(104, lines.length > 1
     ? (stageW - 24) / Math.max(unitsOf(lines[0]), unitsOf(lines[1]) + leaderW)
     : oneLine)
   const gap = size * spread
   // the right piece, lit up after two misses on one place
   const showPiece = build && !solved && missesHere >= 2 ? q.fill[placed.length] : null
-  const optW = Math.max(...q.options.map(o => widthOf(q, o)))
   const optGap = stageW > 600 ? 36 : 12
-  const optSize = Math.min(96, Math.max(48, ((stageW - (q.options.length - 1) * optGap) / q.options.length - 24) / optW))
+  // groups get two to a line on a phone, so their pictures stay countable
+  const optPerLine = q.kind === 'grow' && stageW <= 600 ? 2 : q.options.length
+  const optCols = q.kind === 'grow' ? Math.max(...q.options.map(o => colsOf(countOf(q, o)))) : 1
+  const optRoom = (stageW - (optPerLine - 1) * optGap) / optPerLine - 30
+  const optSize = q.kind === 'grow' ? Math.min(46, optRoom / optCols) : Math.min(96, Math.max(48, optRoom))
 
   // one place in the parade: a marcher, or the gap waiting for one
   const renderToken = (token, i) => {
@@ -206,7 +229,7 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
                 <Marcher q={q} token={piece} size={size} i={i} stumble={rs.stumble} />
               </motion.div>
             : <div className={waiting ? 'pa-ring' : undefined} style={{
-                width: size * (q.kind === 'grow' ? 1.6 : 1), height: size, boxSizing: 'border-box', borderRadius: size * 0.3,
+                width: size * (q.kind === 'grow' ? 1.4 : 1), height: size, boxSizing: 'border-box', borderRadius: size * 0.3,
                 border: `3px dashed ${hover ? '#ff9a3c' : INK}`, background: hover ? 'rgba(255,201,60,0.55)' : 'rgba(255,253,247,0.75)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: size * 0.5, color: INK, opacity: waiting ? 1 : 0.55,
@@ -216,14 +239,17 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
     )
   }
 
-  // The hand drags from the crowd to the gap; after two misses on one place
-  // it drags the piece that lights up
-  const hintFrom = showPiece ? { get current() { return trayRef.current?.querySelector(`[data-opt="${showPiece}"]`) } } : trayRef
+  // The hand: on the first task of the level (a worked example) and after a
+  // miss it drags the right piece into the gap; otherwise it only taps the
+  // gap, so it never points at a wrong piece
+  const rightPiece = build ? q.fill[placed.length] : q.answer
+  const showRight = idx === 0 || wrong.length > 0
+  const hintFrom = showRight ? { get current() { return trayRef.current?.querySelector(`[data-opt="${rightPiece}"]`) } } : null
 
   return (
     <DragArea autoTarget={build ? `slot-${placed.length}` : 'gap'} disabled={solved || finale}>
       <div style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', padding: 'clamp(10px,2vw,22px) clamp(10px,3vw,32px)', gap: 12 }}>
-        <div style={{ width: '100%', maxWidth: 900, flexShrink: 0 }}>
+        <div style={{ width: '100%', maxWidth: 900, flexShrink: 0, paddingRight: SUN_GAP, boxSizing: 'border-box' }}>
           <RoundTrail total={questions.length} done={idx + (solved ? 1 : 0)} walker="🐘" goal="🎪" />
         </div>
 
@@ -232,7 +258,7 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
           <motion.div key={idx} role="list" aria-label="Parade"
             initial={reduceMotion() ? false : { x: '-110%' }}
             animate={{ x: rs.marching ? '115%' : 0 }}
-            transition={rs.marching ? { duration: 1.6, ease: 'easeIn' } : { duration: 1, ease: 'easeOut' }}
+            transition={rs.marching ? { duration: 1.3, ease: 'easeIn' } : { duration: 0.8, ease: 'easeOut' }}
             style={{ display: 'flex', flexDirection: 'column', gap: size * 0.45, width: '100%' }}>
             {lines.map((line, li) => (
               <div key={li} style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap }}>
@@ -269,14 +295,14 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
                     background: glow ? 'rgba(255,201,60,0.9)' : 'rgba(255,253,247,0.7)', border: `3px solid ${glow ? INK : 'rgba(42,27,61,0.25)'}`,
                     boxShadow: glow ? '0 0 0 6px rgba(255,201,60,0.5)' : '0 4px 0 rgba(42,27,61,0.2)',
                   }}>
-                    {picsOf(q, opt).map((p, k) => <div key={k} style={{ marginLeft: k ? -optSize * 0.15 : 0 }}><Art art={p} size={optSize} /></div>)}
+                    {q.kind === 'grow' ? <Group q={q} token={opt} e={optSize} /> : <Art art={opt} size={optSize} />}
                   </div>
                 </Draggable>
               </div>
             )
           })}
         </div>
-        <HintHand key={`hand-${idx}`} from={hintFrom} to={gapRef} active={!solved && !finale} delay={idx === 0 ? 2000 : showPiece ? 800 : 6000} />
+        <HintHand key={`hand-${idx}`} from={hintFrom} to={gapRef} active={!solved && !finale} delay={idx === 0 ? 2000 : showRight ? 1500 : 6000} />
         {finale && <Finale items={questions.map(x => x.sym ?? x.unit[0])} hero="🦒"
           onDone={() => onComplete(result(firstTry, questions.length))} />}
       </div>

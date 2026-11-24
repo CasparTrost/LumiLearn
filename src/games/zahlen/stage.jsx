@@ -168,17 +168,20 @@ export function usePops({ color = '#2a1b3d', size = 44 } = {}) {
     setList(l => [...l.slice(-4), { id, n, dx }])
     setTimeout(() => setList(l => l.filter(p => p.id !== id)), 1000)
   }, [])
+  // Each number sits in its own white bubble, so it reads on anything
+  // behind it (an animal's feet, a basket, the sky).
   const node = (
     <AnimatePresence>
       {list.map(p => (
         <motion.span key={p.id} aria-hidden="true"
           initial={{ opacity: 0, scale: 0.3, y: 0, x: p.dx }}
-          animate={reduce ? { opacity: [0, 1, 0] } : { opacity: [0, 1, 1, 0], scale: [0.3, 1.25, 1, 0.9], y: [0, -30, -60, -80], x: p.dx }}
+          animate={reduce ? { opacity: [0, 1, 0] } : { opacity: [0, 1, 1, 0], scale: [0.3, 1.2, 1, 0.9], y: [0, -26, -50, -66], x: p.dx }}
           transition={{ duration: 0.95, times: [0, 0.2, 0.6, 1] }}
           style={{
-            position: 'absolute', left: '50%', top: 0, marginLeft: -size / 2, width: size, zIndex: 6, pointerEvents: 'none',
-            textAlign: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: size, lineHeight: 1, color,
-            WebkitTextStroke: '2px #2a1b3d', textShadow: '0 3px 0 rgba(42,27,61,0.35)',
+            position: 'absolute', left: '50%', top: -size * 0.6, marginLeft: -size * 0.6, width: size * 1.2, height: size * 1.2, zIndex: 20, pointerEvents: 'none',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%',
+            background: '#fffdf7', border: '3px solid #2a1b3d', boxShadow: '0 4px 0 rgba(42,27,61,0.3)', boxSizing: 'border-box',
+            fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: size * 0.8, lineHeight: 1, color,
           }}>{p.n}</motion.span>
       ))}
     </AnimatePresence>

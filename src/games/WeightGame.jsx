@@ -4,7 +4,7 @@ import { sfx } from '../sfx.js'
 import { lockPreviews, stopNarration } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
-import { Critter, Art, useMood, DragArea, Draggable, DropZone, RoundTrail, HintHand } from '../components/play/index.js'
+import { Critter, Art, useMood, DragArea, Draggable, DropZone, RoundTrail, HintHand, useBursts } from '../components/play/index.js'
 import { Stage, useLater, DoneButton, usePops, Finale } from './zahlen/stage.jsx'
 
 /**
@@ -171,6 +171,8 @@ export default function WeightGame({ level = 1, onComplete }) {
   const [blocks,   setBlocks]   = useState(0)      // level 10
   const [tries,    setTries]    = useState(0)      // level 10, wrong ticks on this question
   const [fly,      setFly]      = useState(0)      // bumps when the light one should fly
+  const [verdict,  setVerdict]  = useState(null)   // 'right' | 'wrong', once the plank has spoken
+  const [wobble,   setWobble]   = useState(0)      // level 10: a wrong tick makes the plank shake
   const firstTry = useRef(0)
   const streak = useRef(0)                       // right in a row: the flyer gets wilder
   const [pops, pop] = usePops()
@@ -212,6 +214,7 @@ export default function WeightGame({ level = 1, onComplete }) {
     // the riders and the bird of the next pair would take a still-set fly
     // as their cue and jump the moment they appear
     setFly(0)
+    setVerdict(null)
     setIdx(idx + 1)
   }
 
@@ -223,6 +226,7 @@ export default function WeightGame({ level = 1, onComplete }) {
     sfx.drum()
     later(450, () => {
       setFly(f => f + 1)
+      setVerdict(ok ? 'right' : 'wrong')
       if (ok) { firstTry.current++; streak.current++; sayRight() }
       else { streak.current = 0; sayWrong() }
       // the plank swings, the light one flies and lands: about two seconds
@@ -254,7 +258,11 @@ export default function WeightGame({ level = 1, onComplete }) {
       afterSpeech(next, 2200)
       return
     }
+    // Right away: the plank shakes and settles where the weights put it,
+    // the heavier side glows, the bird shrugs.
     setTries(t => t + 1)
+    setWobble(w => w + 1)
+    sfx.boing()
     sayWrong()
   }
 
@@ -289,11 +297,12 @@ export default function WeightGame({ level = 1, onComplete }) {
         {wide => (
           <>
             <RoundTrail total={questions.length} done={idx + (answered ? 1 : 0)} walker="🐦" goal="🛝" size={wide ? 36 : 32} style={{ margin: '6px 48px 0 24px' }} />
-            <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', position: 'relative' }}>
+            <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: wide ? 'flex-end' : 'center', position: 'relative' }}>
               <AnimatePresence mode="wait">
                 <motion.div key={idx} initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }}>
                   <Seesaw width={wide ? 620 : 360} q={q} tilt={tilt} fly={fly} answered={answered} heavy={heavy} streak={streak.current}
-                    sizes={[size(q.left), size(q.right)].map(s => (wide ? s : s * 0.9))} riderRefs={riderRefs} dropRef={dropRef} pops={pops}
+                    verdict={verdict} wobble={wobble} heavier={q.left.w > q.right.w + (blocks ?? 0) ? 'left' : q.left.w < q.right.w + (blocks ?? 0) ? 'right' : null}
+                    sizes={[size(q.left), size(q.right)].map(s => (wide ? s : Math.min(s, 140)))} riderRefs={riderRefs} dropRef={dropRef} pops={pops}
                     onPick={balance ? null : answer} blocks={balance ? blocks : null} onTakeBlock={takeBlock} onDropBlock={addBlock} />
                 </motion.div>
               </AnimatePresence>
@@ -338,15 +347,40 @@ export default function WeightGame({ level = 1, onComplete }) {
 // ── The seesaw ─────────────────────────────────────────────────────────────
 const H = 330, PIVOT = H - 64
 
-function Seesaw({ width, q, tilt, fly, answered, heavy, streak, sizes, onPick, blocks, onTakeBlock, onDropBlock, riderRefs, dropRef, pops }) {
+function Seesaw({ width, q, tilt, fly, answered, heavy, streak, verdict, wobble, heavier, sizes, onPick, blocks, onTakeBlock, onDropBlock, riderRefs, dropRef, pops }) {
   const reduce = useReducedMotion()
   const L = width * 0.44                 // half the plank
   const ang = useMotionValue(tilt)       // plank angle in degrees, + is right side down
+  const [bursts, burst] = useBursts()
+  const shook = useRef(wobble)
   useEffect(() => {
     if (reduce) { ang.jump(tilt); return }
-    const c = animate(ang, tilt, TIP)
+    // a wrong tick in level 10: a shake first, then it settles
+    const shake = wobble !== shook.current
+    shook.current = wobble
+    const c = shake
+      ? animate(ang, [ang.get(), tilt + 6, tilt - 5, tilt + 3, tilt], { duration: 0.8 })
+      : animate(ang, tilt, TIP)
     return () => c.stop()
-  }, [tilt]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tilt, wobble]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The verdict, without words: stars burst at a right guess (at both on a
+  // right "gleich schwer"); after a wrong one the side that really went
+  // down lights up.
+  useEffect(() => {
+    if (verdict !== 'right') return
+    const els = answered === 'equal' ? [riderRefs.left.current, riderRefs.right.current] : [riderRefs[answered]?.current]
+    const t = setTimeout(() => els.forEach(el => el && burst(el, 'stars', 12)), 500)
+    return () => clearTimeout(t)
+  }, [verdict]) // eslint-disable-line react-hooks/exhaustive-deps
+  // level 10: after a wrong tick the heavier side glows for a moment
+  const [glow, setGlow] = useState(null)
+  useEffect(() => {
+    if (!wobble) return
+    setGlow(heavier)
+    const t = setTimeout(() => setGlow(null), 1800)
+    return () => clearTimeout(t)
+  }, [wobble]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Who flies: the side that went up; on a tie both hop a little.
   const up = !fly ? null : tilt < 0 ? 'right' : tilt > 0 ? 'left' : 'both'
@@ -359,6 +393,8 @@ function Seesaw({ width, q, tilt, fly, answered, heavy, streak, sizes, onPick, b
     <Rider key={side} side={side} item={q[side]} size={sizes[i]} d={L * 0.8} cx={width / 2} ang={ang}
       label={label(side)} fly={up === side || up === 'both' ? fly : 0} small={up === 'both'} wild={streak}
       guessed={answered === side} heavy={!!fly && heavy === side} innerRef={riderRefs[side]}
+      verdict={answered === side || answered === 'equal' ? verdict : null}
+      truth={(verdict === 'wrong' && heavy === side) || glow === side} wobble={wobble} heavier={heavier}
       onTap={onPick && !answered ? () => onPick(side) : null} />
   )
 
@@ -377,7 +413,8 @@ function Seesaw({ width, q, tilt, fly, answered, heavy, streak, sizes, onPick, b
         background: 'repeating-linear-gradient(90deg, #e3a462 0 36px, #c98a52 36px 40px)', boxShadow: '0 5px 0 rgba(42,27,61,0.3)',
       }} />
       {/* The bird asks without words: who goes down? (or, in level 10: make it level) */}
-      <Bird x={width / 2} ang={ang} fly={fly} ask={!answered && (balance(q) ? <Art art="⚖️" size={30} /> : <><Art art="👇" size={30} />?</>)} />
+      <Bird x={width / 2} ang={ang} fly={fly} verdict={verdict} wobble={wobble}
+        ask={!answered && (balance(q) ? <Art art="⚖️" size={30} /> : <><DownArrow />?</>)} />
       {balance(q) && (
         <>
           <DropZone id="right" onDrop={onDropBlock} label="Rechte Seite der Wippe"
@@ -389,14 +426,24 @@ function Seesaw({ width, q, tilt, fly, answered, heavy, streak, sizes, onPick, b
       )}
       {rider('left', 0)}
       {rider('right', 1)}
+      {bursts}
     </div>
+  )
+}
+
+// "Which one goes down?" — an arrow, not a hand (the hand is the hint)
+function DownArrow() {
+  return (
+    <svg viewBox="0 0 24 30" width={22} height={28} aria-hidden="true">
+      <path d="M12 2 V22 M4 15 L12 26 L20 15" fill="none" stroke="#2a1b3d" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   )
 }
 const balance = q => q.kind === 'balance'
 
 // One rider on the plank. It stays upright and follows its end of the plank;
 // the light one is flung up ("Huiii!") and plops back down.
-function Rider({ side, item, size, d, cx, ang, label, fly, small, wild, guessed, heavy, onTap, innerRef }) {
+function Rider({ side, item, size, d, cx, ang, label, fly, small, wild, guessed, heavy, verdict, truth, wobble, heavier, onTap, innerRef }) {
   const reduce = useReducedMotion()
   const s = side === 'left' ? -1 : 1
   const hop = useMotionValue(0)
@@ -404,18 +451,25 @@ function Rider({ side, item, size, d, cx, ang, label, fly, small, wild, guessed,
   const y = useTransform([ang, hop], ([a, h]) => s * d * Math.sin((a * Math.PI) / 180) + h)
   const [mood, setMood] = useMood()
 
+  // How it feels after landing: a right guess cheers, a wrong guess is
+  // puzzled; the one that really went down is surprised.
+  const after = verdict === 'right' ? ['dance', 2200] : verdict === 'wrong' ? ['oops', 2200] : ['happy', 1400]
   useEffect(() => {
     if (!fly) return
-    if (heavy) { setMood('wow', 900); return }
+    if (heavy) { setMood(verdict === 'right' ? 'dance' : 'wow', verdict === 'right' ? 2200 : 1400); return }
     sfx.whoosh()
-    if (reduce) { setMood('happy', 1200); return }
+    if (reduce) { setMood(...after); return }
     // a streak of right guesses flings it higher, with a somersault
     const high = small ? -36 : -110 - Math.min(wild, 3) * 15
     const c = animate(hop, [0, high, 0], { duration: small ? 0.5 : 1.15, times: [0, 0.45, 1], ease: ['easeOut', 'easeIn'] })
     if (!small && (wild >= 2 || Math.random() < 0.4)) animate(spin, [0, wild >= 3 ? 720 : 360], { duration: 1.1 })
-    c.then(() => { sfx.boing(); setMood('happy', 1400) })
+    c.then(() => { sfx.boing(); setMood(...after) })
     return () => c.stop()
   }, [fly]) // eslint-disable-line react-hooks/exhaustive-deps
+  // level 10, a wrong tick: the heavier one says "wow", the other "oops"
+  useEffect(() => {
+    if (wobble) setMood(heavier === side ? 'wow' : 'oops', 1400)
+  }, [wobble]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <motion.div ref={innerRef} style={{ position: 'absolute', left: cx + s * d - size / 2, top: PIVOT - 10 - size, width: size, height: size, y, zIndex: 3 }}>
@@ -425,13 +479,28 @@ function Rider({ side, item, size, d, cx, ang, label, fly, small, wild, guessed,
       </motion.div>
       {/* the weight tag stays upright while its parcel somersaults */}
       {label && <div aria-hidden="true" style={tag}>{label}</div>}
+      {/* the side that really went down shines */}
       <AnimatePresence>
-        {guessed && (
-          <motion.div key="guess" aria-hidden="true" initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: [0, -8, 0] }} exit={{ opacity: 0 }}
-            transition={{ y: { duration: 0.6, repeat: 2 } }}
-            style={{ position: 'absolute', left: size / 2 - 24, top: label ? -104 : -56 }}>
-            <Art art="👇" size={48} />
-          </motion.div>
+        {truth && (
+          <motion.div key="halo" aria-hidden="true" initial={{ opacity: 0, scale: 0.6 }} animate={{ opacity: [0.5, 1, 0.5], scale: [1, 1.1, 1] }} exit={{ opacity: 0 }}
+            transition={{ duration: 1, repeat: Infinity }}
+            style={{ position: 'absolute', inset: '-22%', borderRadius: '50%', zIndex: -2, background: 'radial-gradient(circle, rgba(255,214,90,0.85) 0%, rgba(255,214,90,0.35) 45%, transparent 70%)' }} />
+        )}
+      </AnimatePresence>
+      {/* A ring of light under it: the child's guess (gold), then green
+          for right or grey and wobbling for wrong; the side that really
+          went down glows gold. */}
+      <AnimatePresence>
+        {(guessed || truth) && (
+          <motion.div key="ring" aria-hidden="true" initial={{ opacity: 0, scale: 0.4 }}
+            animate={guessed && verdict === 'wrong' ? { opacity: 0.8, scale: 1, rotate: [0, -8, 8, -5, 0] } : { opacity: 1, scale: [1, 1.12, 1] }}
+            exit={{ opacity: 0 }} transition={{ duration: 0.7, repeat: guessed && !verdict ? Infinity : 0 }}
+            style={{
+              position: 'absolute', left: -size * 0.08, right: -size * 0.08, bottom: -12, height: 26, borderRadius: '50%', zIndex: -1,
+              border: `5px solid ${guessed && verdict === 'right' ? '#5cc45a' : guessed && verdict === 'wrong' ? '#9aa3b5' : '#ffc93c'}`,
+              background: guessed && verdict === 'wrong' ? 'rgba(154,163,181,0.25)' : guessed && verdict === 'right' ? 'rgba(92,196,90,0.35)' : 'rgba(255,201,60,0.4)',
+              boxShadow: truth || (guessed && verdict === 'right') ? '0 0 18px 6px rgba(255,201,60,0.7)' : 'none',
+            }} />
         )}
       </AnimatePresence>
     </motion.div>
@@ -447,7 +516,7 @@ const tag = {
 // A little bird on the middle of the plank. It startles when the plank
 // tips — and now and then the jolt catapults it, head over heels (the
 // running gag).
-function Bird({ x, ang, fly, ask }) {
+function Bird({ x, ang, fly, verdict, wobble, ask }) {
   const reduce = useReducedMotion()
   const hop = useMotionValue(0)
   const spin = useMotionValue(0)
@@ -455,15 +524,17 @@ function Bird({ x, ang, fly, ask }) {
   useEffect(() => {
     if (!fly || reduce) return
     const launch = Math.random() < 0.35
-    setMood(launch ? 'oops' : 'wow', launch ? 1800 : 1100)
+    // it cheers a right guess and shrugs at a wrong one
+    setMood(verdict === 'wrong' ? 'oops' : launch ? 'wow' : 'happy', 1800)
     if (launch) { sfx.whoosh(); animate(spin, [0, 720], { duration: 1.3 }) }
     const c = animate(hop, launch ? [0, -170, -150, 0] : [0, -70, -60, 0], { duration: 1.3, times: [0, 0.35, 0.7, 1] })
     return () => c.stop()
   }, [fly]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (wobble) setMood('oops', 1600) }, [wobble]) // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <motion.div style={{ position: 'absolute', left: x - 24, top: PIVOT - 56, y: hop, rotate: ang, zIndex: 2 }}>
+    <motion.div style={{ position: 'absolute', left: x - 30, top: PIVOT - 70, y: hop, rotate: ang, zIndex: 2 }}>
       <motion.div style={{ rotate: spin }}>
-        <Critter art="🐦" size={48} mood={mood} label="Vogel" shadow={false} wish={ask || null} />
+        <Critter art="🐦" size={60} mood={mood} label="Vogel" shadow={false} wish={ask || null} />
       </motion.div>
     </motion.div>
   )

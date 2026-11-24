@@ -5,6 +5,7 @@ import { sfx } from '../sfx.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
+import { useSceneClear } from './sceneSpace.js'
 import { pxPanel, INK } from './px.js'
 
 /**
@@ -20,7 +21,10 @@ import { pxPanel, INK } from './px.js'
  * wants. When everything is painted, the customer moves in: it hops onto
  * the picture, and off they go. At the end of a level all the customers sit
  * on their pictures in a little gallery. No words needed: a hand shows the
- * move from the pots to the easel when a child waits.
+ * move from the pots to the easel when a child waits (after a miss, from the
+ * pot of the wished colour). Beside the customer stands a mixing bowl: two
+ * pots in, a new colour out (yellow and blue make green), and the mixed
+ * paint can be poured like any pot.
  */
 
 // ─── Colours ──────────────────────────────────────────────────────────────────
@@ -235,6 +239,57 @@ function ShapeEl({ region, ...paint }) {
   }
 }
 
+// ─── Colour mixing ────────────────────────────────────────────────────────────
+// Two pots into the bowl make a new colour: yellow and blue give green. What
+// does not mix into a colour of the palette turns into brown mud. A toy beside
+// the task: the mixed paint can be poured like any pot, and only the wished
+// colour counts.
+const MIX = {
+  'Blau+Gelb': 'Grün', 'Gelb+Rot': 'Orange', 'Blau+Rot': 'Lila', 'Rot+Weiß': 'Pink',
+  'Schwarz+Weiß': 'Grau', 'Blau+Grün': 'Türkis', 'Gelb+Grün': 'Hellgrün', 'Grün+Weiß': 'Hellgrün',
+  'Braun+Weiß': 'Hellbraun', 'Braun+Gelb': 'Hellbraun', 'Blau+Hellgrün': 'Türkis',
+}
+const mix = (a, b) => (a === b ? a : MIX[[a, b].sort().join('+')] ?? 'Braun')
+
+function Bowl({ fill, size }) {
+  return (
+    <svg width={size} height={size * 0.62} viewBox="0 0 60 37" style={{ display: 'block', overflow: 'visible' }} aria-hidden="true">
+      <ellipse cx="30" cy="8" rx="27" ry="7" fill="#fffdf7" stroke={INK} strokeWidth="2.5" />
+      {fill && <ellipse cx="30" cy="9" rx="23" ry="5" fill={fill} />}
+      <path d="M3 8 Q6 34 30 35 Q54 34 57 8 A27 7 0 0 1 3 8 Z" fill="#9fd3ff" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+      <path d="M10 16 Q14 26 24 29" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" opacity="0.6" />
+    </svg>
+  )
+}
+
+// The mixing bowl: drop two pots in, take the new colour out. The dots on
+// top show what went in.
+function MixBowl({ bowl, size, onAdd }) {
+  return (
+    <DropZone id="bowl" onDrop={onAdd} label="Mischschüssel">
+      {hover => (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+          <div aria-hidden="true" style={{ display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: size * 0.2, color: INK }}>
+            {[bowl.a, bowl.b].map((c, i) => (
+              <motion.span key={`${i}-${c?.name}`} initial={{ scale: c ? 0 : 1 }} animate={{ scale: 1 }}
+                style={{ width: Math.max(14, size * 0.2), height: Math.max(14, size * 0.2), borderRadius: '50%', background: c?.value ?? 'transparent', border: `2px ${c ? 'solid' : 'dashed'} ${INK}` }} />
+            )).reduce((acc, el, i) => (i ? [...acc, <span key="plus">+</span>, el] : [el]), [])}
+          </div>
+          <motion.div animate={hover ? { scale: 1.12, rotate: [0, -4, 4, 0] } : { scale: 1, rotate: 0 }}>
+            {bowl.out
+              ? <Draggable id={`mix-${bowl.n}`} data={{ ...bowl.out, mixed: true }} label={bowl.out.name}>
+                  <motion.div key={bowl.n} initial={{ rotate: -200, scale: 0.6 }} animate={{ rotate: 0, scale: 1 }} transition={{ type: 'spring', stiffness: 160, damping: 12 }}>
+                    <Bowl fill={bowl.out.value} size={size} />
+                  </motion.div>
+                </Draggable>
+              : <Bowl fill={bowl.a?.value} size={size} />}
+          </motion.div>
+        </div>
+      )}
+    </DropZone>
+  )
+}
+
 // ─── Paint pot  ───────────────────────────────────────────────────────────────
 function Pot({ color, name, size = 60 }) {
   return (
@@ -378,12 +433,15 @@ export default function PainterGame({ level = 1, onComplete }) {
   const [ended,     setEnded]     = useState(false)  // all pictures done: the gallery
   const [next,      setNext]      = useState(null)   // 'part' | 'scene' | 'end': what comes once the payoff played
   const [acted,     setActed]     = useState(false)  // a pot was poured (the hand waits longer then)
+  const [bowl,      setBowl]      = useState({ n: 0 }) // the mixing bowl: { a, b, out, n }
   const [mood,      setMood]      = useMood()
   const paused = usePaused()
   const [bursts, burst] = useBursts()
   const [boxRef, box] = useBox()
   const easelRef = useRef(null)
   const potsRef  = useRef(null)
+  const potEls   = useRef({})                         // each pot, by colour (the hand after a miss)
+  const [rootRef, clear] = useSceneClear(714, 246)   // the room's window
   const missed   = useRef(new Set())                  // `${scene}/${part}` painted wrong first
   const streak   = useRef(0)                          // parts right at the first try in a row
   const timers   = useRef([])
@@ -418,6 +476,7 @@ export default function PainterGame({ level = 1, onComplete }) {
         setFilled({})
         setMovedIn(false)
         setSplat(null)
+        setBowl(b => ({ n: b.n + 1 }))
         setMood('idle')
       }
     }, { part: 1000, scene: 3200, end: 3000 }[next])
@@ -440,6 +499,7 @@ export default function PainterGame({ level = 1, onComplete }) {
     }
     const first = !missed.current.has(`${scene.id}/${part.name}`)
     streak.current = first ? streak.current + 1 : 0
+    if (color.mixed) setBowl(b => ({ n: b.n + 1 }))
     setFilled(f => ({ ...f, ...Object.fromEntries(part.regions.map(r => [r.id, true])) }))
     burst(easelRef.current, 'stars')
     sayRight()
@@ -459,6 +519,15 @@ export default function PainterGame({ level = 1, onComplete }) {
     return true
   }
 
+  // A pot into the mixing bowl: the first colour waits, the second mixes
+  const addToBowl = (color) => {
+    if (color.mixed) return false
+    if (!bowl.a || bowl.out) { setBowl({ a: color, n: bowl.n + 1 }); sfx.pop(); return true }
+    setBowl({ a: bowl.a, b: color, out: getColor(mix(bowl.a.name, color.name)), n: bowl.n + 1 })
+    sfx.sparkle()
+    return true
+  }
+
   // Customer beside the easel when there is room, above it otherwise
   const wide = box.w > box.h * 1.15
   const critter = Math.round(Math.max(84, Math.min(170, wide ? box.w * 0.2 : box.h * 0.2)))
@@ -467,15 +536,19 @@ export default function PainterGame({ level = 1, onComplete }) {
   const mini = Math.round(Math.max(56, Math.min(96, critter * 0.6)))
   const colour = part && getColor(part.target)
   const potSize = box.w < 420 ? 52 : palette.length <= 6 ? 80 : 64
+  const bowlSize = Math.round(Math.max(60, Math.min(96, critter * 0.62)))
+  // after a miss the hand starts at the pot of the wished colour
+  const missedNow = part && missed.current.has(`${scene.id}/${part.name}`)
 
   return (
     <DragArea disabled={paused || !!next || movedIn}>
-      <div style={{
+      <div ref={rootRef} style={{
         flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center',
         padding: 'clamp(8px,1.5vw,16px) clamp(10px,2.5vw,24px)',
         gap: 'clamp(6px,1.2vh,12px)', userSelect: 'none',
       }}>
-        <div style={{ width: '100%', maxWidth: 760, flexShrink: 0 }}>
+        {/* the trail ends left of the window in the wall */}
+        <div style={clear ? { width: '100%', maxWidth: Math.min(760, clear.x - 48), alignSelf: 'flex-start', flexShrink: 0 } : { width: '100%', maxWidth: 760, flexShrink: 0 }}>
           <RoundTrail total={scenes.length} done={sceneIdx + (movedIn || ended ? 1 : 0)} walker="🖌️" goal="🖼️" />
         </div>
 
@@ -487,7 +560,11 @@ export default function PainterGame({ level = 1, onComplete }) {
           {ended ? (
             <Gallery scenes={scenes} size={Math.floor(Math.min(260, Math.max(90, Math.sqrt(box.w * box.h / scenes.length) * 0.66)))} />
           ) : <>
-            <div style={{ width: wide ? critter * 1.2 : '100%', height: critter * (wide ? 1.9 : 1.25), flexShrink: 0, display: 'flex', alignItems: 'flex-end', justifyContent: wide ? 'center' : 'flex-start', paddingLeft: wide ? 0 : '6%' }}>
+            <div style={{
+              width: wide ? critter * 1.2 : '100%', height: wide ? Math.min(box.h, critter * 1.9 + bowlSize + 30) : critter * 1.25,
+              flexShrink: 0, display: 'flex', flexDirection: wide ? 'column' : 'row', alignItems: wide ? 'center' : 'flex-end',
+              justifyContent: wide ? 'flex-end' : 'space-between', gap: 10, padding: wide ? 0 : '0 4% 0 6%', boxSizing: 'border-box',
+            }}>
               <AnimatePresence mode="wait">
                 {!movedIn && box.w > 0 && (
                   <motion.div key={scene.id}
@@ -509,6 +586,7 @@ export default function PainterGame({ level = 1, onComplete }) {
                   </motion.div>
                 )}
               </AnimatePresence>
+              {!movedIn && box.w > 0 && <MixBowl bowl={bowl} size={bowlSize} onAdd={addToBowl} />}
             </div>
 
             {box.w > 0 && <DropZone id="easel" onDrop={pour} label="Bild" style={{ flexShrink: 0 }}>
@@ -545,14 +623,17 @@ export default function PainterGame({ level = 1, onComplete }) {
           <motion.div key={scene.id} initial={{ y: 16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 22 }}
             style={{ display: 'flex', flexWrap: 'wrap', gap: '4px clamp(4px,1.2vw,14px)', justifyContent: 'center' }}>
             {palette.map(c => (
-              <Draggable key={c.name} id={c.name} data={c} label={c.name}>
-                <Pot color={c.value} name={c.name} size={potSize} />
-              </Draggable>
+              // the ref outside the draggable: the kit's flying copy would take it along
+              <div key={c.name} ref={el => { potEls.current[c.name] = el }}>
+                <Draggable id={c.name} data={c} label={c.name}>
+                  <Pot color={c.value} name={c.name} size={potSize} />
+                </Draggable>
+              </div>
             ))}
           </motion.div>
         </div>
       </div>
-      <HintHand from={potsRef} to={easelRef} active={!!part && !next} delay={acted ? 6000 : 2000} />
+      <HintHand from={missedNow ? potEls.current[part.target] : potsRef} to={easelRef} active={!!part && !next} delay={missedNow ? 3000 : acted ? 6000 : 2000} />
       {bursts}
     </DragArea>
   )

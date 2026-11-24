@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useLayoutEffect, useRef, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useAnimationControls } from 'framer-motion'
 import { sfx } from '../sfx.js'
 import { afterNarration, lockPreviews } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
@@ -66,22 +66,28 @@ function randomTime(tier) {
 }
 
 // Times of day a preschooler recognises, each at its own place on the
-// 12-hour face. The half-hour ones join from level 4. `mood` is what Lumi
-// does once given the picture. Soft hyphens (­) let the long words
-// break on a narrow card.
+// 12-hour face. The half-hour ones join from level 4. A 12-hour face cannot
+// tell 7 in the morning from 7 in the evening, and families eat and sleep
+// at different times: so the clock shows the sun or the moon (`sky`), and
+// `from`–`to` is the span of hours in which the activity makes sense. A
+// picture is only offered next to the answer when the time on the clock is
+// not plausible for it too. `mood` is what Lumi does once given the picture.
 const DAILY_ACTIVITIES = [
-  { id: 'aufstehen',    icon: '⏰',  label: 'Aufstehen',               h: 7,  m: 0,  mood: 'wow' },
-  { id: 'kindergarten', icon: '🏫',  label: 'Kinder­garten',      h: 9,  m: 0,  mood: 'happy' },
-  { id: 'mittagessen',  icon: '🍽️', label: 'Mittag­essen',       h: 12, m: 0,  mood: 'eat' },
-  { id: 'spielplatz',   icon: '🛝',  label: 'Spiel­platz',        h: 3,  m: 0,  mood: 'dance' },
-  { id: 'abendessen',   icon: '🍲',  label: 'Abend­essen',        h: 6,  m: 0,  mood: 'eat' },
-  { id: 'schlafen',     icon: '🛏️', label: 'Schlafen­gehen',     h: 8,  m: 0,  mood: 'sleep' },
-  { id: 'obst',         icon: '🍎',  label: 'Obst essen',              h: 4,  m: 30, mood: 'eat' },
-  { id: 'baden',        icon: '🛁',  label: 'Baden',                   h: 5,  m: 30, mood: 'happy' },
-  { id: 'zaehne',       icon: '🪥',  label: 'Zähne putzen',            h: 7,  m: 30, mood: 'happy' },
+  { id: 'aufstehen',    icon: '⏰',  label: 'Aufstehen',      h: 7,  m: 0,  sky: 'sun',  from: 6,  to: 8,  mood: 'wow' },
+  { id: 'kindergarten', icon: '🏫',  label: 'Kindergarten',   h: 9,  m: 0,  sky: 'sun',  from: 8,  to: 10, mood: 'happy' },
+  { id: 'mittagessen',  icon: '🍽️', label: 'Mittagessen',    h: 12, m: 0,  sky: 'sun',  from: 11, to: 13, mood: 'eat' },
+  { id: 'spielplatz',   icon: '🛝',  label: 'Spielplatz',     h: 3,  m: 0,  sky: 'sun',  from: 14, to: 17, mood: 'dance' },
+  { id: 'obst',         icon: '🍎',  label: 'Obst essen',     h: 4,  m: 30, sky: 'sun',  from: 15, to: 17, mood: 'eat' },
+  { id: 'abendessen',   icon: '🍲',  label: 'Abendessen',     h: 6,  m: 0,  sky: 'moon', from: 17, to: 19, mood: 'eat' },
+  { id: 'baden',        icon: '🛁',  label: 'Baden',          h: 5,  m: 30, sky: 'moon', from: 17, to: 19, mood: 'happy' },
+  { id: 'zaehne',       icon: '🪥',  label: 'Zähne putzen',   h: 7,  m: 30, sky: 'moon', from: 19, to: 20, mood: 'happy' },
+  { id: 'schlafen',     icon: '🛏️', label: 'Schlafengehen',  h: 8,  m: 0,  sky: 'moon', from: 19, to: 21, mood: 'sleep' },
 ]
-const plain = text => text.replace(/­/g, '')
 const activitiesFor = level => DAILY_ACTIVITIES.filter(a => level >= 4 || a.m === 0)
+// The hour of the day an activity's clock time stands for (afternoon and
+// evening ones are past noon), and whether another activity would fit it
+const hourOfDay = a => (a.sky === 'moon' || (a.h < 6 && a.h !== 12) ? a.h % 12 + 12 : a.h) + a.m / 60
+const fitsToo = (other, act) => { const t = hourOfDay(act); return other.from <= t && t <= other.to }
 
 // What the cuckoo is waiting for in a setting round
 const TREATS = ['🍰', '🍦', '🍪', '🍕', '🧁', '🍓', '🍩', '🍎']
@@ -489,8 +495,12 @@ const CLOCK_CSS = `
  * 'eat' out, eating its treat. `hat`: a streak of right answers, the
  * cuckoo dresses up.
  */
-function CuckooClock({ size, bird, calls, treat, wish, hat, paused, onDoor, children }) {
+function CuckooClock({ size, bird, calls, treat, wish, hat, sky, paused, onDoor, children }) {
   const w = size * HOUSE_W, h = size * HOUSE_H
+  const bob = useAnimationControls()
+  useEffect(() => {
+    if (calls && !reduceMotion()) bob.start({ scaleY: [1, 0.8, 1.12, 1], y: [0, 4, -6, 0], transition: { duration: 0.24 } })
+  }, [calls, bob])
   const out = bird === 'out' || bird === 'puzzled' || bird === 'eat'
   const doorOpen = out ? 0.12 : bird === 'peek' ? 0.55 : 1
   const birdPx = w * 0.3
@@ -542,16 +552,20 @@ function CuckooClock({ size, bird, calls, treat, wish, hat, paused, onDoor, chil
         }}
         transition={{ type: 'spring', stiffness: 420, damping: 15 }}
         style={{ position: 'absolute', left: (w - birdPx) / 2, top: h * (62 / 360) - birdPx * 0.62, width: birdPx, height: birdPx, pointerEvents: 'none', zIndex: 2 }}>
-        <motion.div key={calls} initial={{ scaleY: 1 }} animate={calls ? { scaleY: [1, 0.8, 1.12, 1], y: [0, 4, -6, 0] } : {}} transition={{ duration: 0.28 }}>
+        {/* one bob per call; the hat sits on the head and bobs along */}
+        <motion.div animate={bob} style={{ position: 'relative', transformOrigin: '50% 100%' }}>
           <motion.div animate={bird === 'eat' && !reduceMotion() ? { scaleY: [1, 0.85, 1.08, 0.88, 1.04, 1] } : {}} transition={{ duration: 0.9 }}>
             <Art art="🐦" size={birdPx} />
           </motion.div>
-          {hat && out && (
-            <motion.div initial={{ y: -birdPx * 0.6, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 12 }}
-              style={{ position: 'absolute', left: birdPx * 0.18, top: -birdPx * 0.28 }}>
-              <Art art="🎩" size={birdPx * 0.45} />
-            </motion.div>
-          )}
+          <AnimatePresence>
+            {hat && out && (
+              <motion.div key="hat" initial={{ y: -birdPx * 0.5, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 12 }}
+                style={{ position: 'absolute', left: birdPx * 0.17, top: -birdPx * 0.16, rotate: -12 }}>
+                <Art art="🎩" size={birdPx * 0.4} />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
         {bird === 'puzzled' && (
           <span style={{ position: 'absolute', top: -birdPx * 0.25, right: -birdPx * 0.1, fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: birdPx * 0.45, color: '#6b3fd6', WebkitTextStroke: `2px ${INK}` }}>?</span>
@@ -569,14 +583,14 @@ function CuckooClock({ size, bird, calls, treat, wish, hat, paused, onDoor, chil
         <rect x="114" y="34" width="72" height="56" fill="transparent" style={{ pointerEvents: onDoor ? 'auto' : 'none', cursor: 'pointer' }} onClick={onDoor} />
       </svg>
 
-      {/* how many times it has called */}
+      {/* how many times it has called: on the roof, right of the door */}
       <AnimatePresence>
         {calls > 0 && (
           <motion.div key={calls} aria-hidden="true"
             initial={{ scale: 0.3, opacity: 0, y: 10 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 1.4 }}
             transition={{ duration: 0.18 }}
             style={{
-              position: 'absolute', top: h * 0.02, left: w * 0.06, zIndex: 4,
+              position: 'absolute', top: h * 0.07, left: w * 0.66, zIndex: 4,
               width: w * 0.2, height: w * 0.2, borderRadius: '50%', background: '#FFC93C', border: `3px solid ${INK}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: w * 0.11, color: INK,
@@ -588,13 +602,25 @@ function CuckooClock({ size, bird, calls, treat, wish, hat, paused, onDoor, chil
       <AnimatePresence>
         {treat && (
           <motion.div aria-hidden="true" key={treat}
-            initial={{ y: -h * 0.3, opacity: 0, scale: 0.6 }} animate={{ y: 0, opacity: 1, scale: [0.6, 1, 1, 0.7, 0.4] }} exit={{ scale: 0, opacity: 0 }}
+            initial={{ y: -h * 0.3, opacity: 0, scale: 0.6 }} animate={{ y: 0, opacity: 1, scale: [0.6, 1, 1, 0.7, 0.4] }} exit={{ scale: 0, opacity: 0, transition: { duration: 0.2 } }}
             transition={{ duration: 1.6, y: { type: 'spring', stiffness: 380, damping: 14 } }}
             style={{ position: 'absolute', left: w * 0.2, top: h * 0.12, zIndex: 4, pointerEvents: 'none' }}>
             <Art art={treat} size={w * 0.2} />
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* day or night, for the rounds about the time of day */}
+      {sky && (
+        <motion.div aria-label={sky === 'moon' ? 'Abend' : 'Tag'} initial={{ scale: 0 }} animate={{ scale: 1 }}
+          style={{
+            position: 'absolute', left: w * 0.76, top: h * 0.27, width: w * 0.2, height: w * 0.2, zIndex: 4, borderRadius: '50%',
+            background: sky === 'moon' ? 'radial-gradient(circle at 35% 30%, #4B4F9C, #1E2150)' : 'radial-gradient(circle at 35% 30%, #CFEFFF, #6CC0F5)',
+            border: `3px solid ${INK}`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 3px 0 rgba(42,27,61,0.3)',
+          }}>
+          <Art art={sky === 'moon' ? '🌙' : '☀️'} size={w * 0.13} />
+        </motion.div>
+      )}
 
       {/* what the cuckoo is waiting for, beside its door so it never hides it */}
       {wish && (
@@ -732,12 +758,13 @@ export default function ClockGame({ level = 1, onComplete }) {
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
   const dailyOptions = useMemo(() => {
     if (!t?.activity) return []
-    const others = shuffle(activitiesFor(level).filter(a => a.id !== t.activity.id)).slice(0, 2)
+    const others = shuffle(activitiesFor(level).filter(a => a.id !== t.activity.id && !fitsToo(a, t.activity))).slice(0, 2)
     return shuffle([t.activity, ...others])
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // New round: everything back, hands somewhere clearly wrong
-  useEffect(() => {
+  // New round: everything back, hands somewhere clearly wrong. A layout
+  // effect, so the new round is never painted with the last one's state.
+  useLayoutEffect(() => {
     if (!t) return
     setStatus(null); setTried([]); setCalls(0); setTreat(null); setPicked(null); setLumiDoes(null)
     setPulse(null); setMoved(false)
@@ -762,14 +789,19 @@ export default function ClockGame({ level = 1, onComplete }) {
     setPulse(null)
   }, [])
 
-  // The cuckoo pops out and calls: as often as the hour at a full hour
+  // The cuckoo pops out and calls: as often as the hour at a full hour.
+  // Many calls come quicker (twelve take about two seconds, not five), and
+  // a tap on the clock skips to the end.
+  const skipRef = useRef(false)
   const ring = useCallback((n, then) => {
     setBird('out')
     sfx.slideUp()
+    skipRef.current = false
+    const gap = Math.max(170, Math.min(420, 2000 / n))
     const call = k => {
-      if (k > n) { setCalls(0); then?.(); return }
+      if (k > n || skipRef.current) { setCalls(0); then?.(); return }
       setCalls(k); cuckooCall()
-      later(() => call(k + 1), 420)
+      later(() => call(k + 1), gap)
     }
     later(() => call(1), 380)
   }, [later])
@@ -956,8 +988,8 @@ export default function ClockGame({ level = 1, onComplete }) {
         display: 'flex', flexDirection: wide ? 'row' : 'column',
         alignItems: 'center', justifyContent: 'center', gap,
       }}>
-        <div ref={houseRef} style={{ paddingTop: headroom, flexShrink: 0 }}>
-          <CuckooClock size={clockPx} bird={bird} calls={calls} paused={paused} hat={streak >= 3 || ending}
+        <div ref={houseRef} onPointerDown={() => { if (calls) skipRef.current = true }} style={{ paddingTop: headroom, flexShrink: 0 }}>
+          <CuckooClock size={clockPx} bird={bird} calls={calls} paused={paused} hat={streak >= 3 || ending} sky={t.activity?.sky}
             treat={treat} wish={wish}
             onDoor={mode !== 'set' && !resolved ? peek : null}>
             <ClockFace
@@ -1010,15 +1042,14 @@ export default function ClockGame({ level = 1, onComplete }) {
                 const gone = lumiDoes?.id === act.id
                 const isTried = tried.includes(act.id) && !gone
                 return (
-                  <Draggable key={act.id} id={act.id} data={act} label={plain(act.label)} disabled={isTried || resolved}
+                  <Draggable key={act.id} id={act.id} data={act} label={act.label} disabled={isTried || resolved}
                     style={{ visibility: gone ? 'hidden' : 'visible', opacity: isTried ? 0.4 : 1 }}>
                     <div style={{
-                      width: compact ? 84 : 96, padding: '8px 4px 6px', boxSizing: 'border-box', borderRadius: 16,
+                      width: compact ? 84 : 100, height: compact ? 84 : 100, boxSizing: 'border-box', borderRadius: 18,
                       background: '#FFFDF7', border: `3px solid ${INK}`, boxShadow: '0 4px 0 rgba(42,27,61,0.25)',
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
-                      <Art art={act.icon} size={compact ? 54 : 62} />
-                      <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 13, color: INK, textAlign: 'center', lineHeight: 1.1, hyphens: 'manual', overflowWrap: 'anywhere' }}>{act.label}</span>
+                      <Art art={act.icon} size={compact ? 66 : 78} />
                     </div>
                   </Draggable>
                 )

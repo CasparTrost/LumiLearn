@@ -200,6 +200,7 @@ function Planet({ n, size, state }) {
 }
 
 const MIN_CELL = 46, GAP = 2   // smallest field and gap on the number line
+const SIDE = 12                 // room at both ends, so the turned rocket is never cut off
 const HOP_MS = 520              // one hop of the rocket
 
 export default function RocketMathGame({ level = 1, onComplete }) {
@@ -276,8 +277,10 @@ export default function RocketMathGame({ level = 1, onComplete }) {
     return [start, start + len - 1]
   }, [t, lineW, plan.max])
 
-  // New task: everything back, the taxi whooshes to the starting planet
-  useEffect(() => {
+  // New task: everything back, the taxi whooshes to the starting planet.
+  // A layout effect, so the new task is never painted with the last one's
+  // state (the new alien used to play the last one's boarding).
+  useLayoutEffect(() => {
     if (!t) return
     timers.current.forEach(clearTimeout); timers.current = []
     setPos(t.from)
@@ -400,7 +403,7 @@ export default function RocketMathGame({ level = 1, onComplete }) {
   const narrow = lineW > 0 && lineW < 520
   const cellW = lineW ? (lineW - GAP * (line.length - 1)) / line.length : MIN_CELL
   const planetPx = Math.max(MIN_CELL - 2, Math.min(cellW - 2, 80))
-  const rocketPx = Math.max(46, Math.min(cellW * 1.15, 86))
+  const rocketPx = Math.max(44, Math.min(cellW * (narrow ? 1 : 1.15), 86))
   const frac = n => (n - span[0] + 0.5) / line.length
   const at = n => `${frac(n) * 100}%`
   // The rocket points the way it is going, up while it waits (the picture
@@ -429,8 +432,11 @@ export default function RocketMathGame({ level = 1, onComplete }) {
       {/* The alien calls the taxi; its speech bubble holds the sum */}
       <div style={{ flex: 1, display: 'flex', flexDirection: narrow ? 'column' : 'row', alignItems: 'center', justifyContent: 'center', gap: narrow ? 18 : 'clamp(8px,2vw,20px)', width: '100%', maxWidth: 720 }}>
         <AnimatePresence mode="wait">
-          <motion.div key={idx} initial={{ x: -60, opacity: 0, rotate: -20 }} animate={{ x: 0, opacity: aboard ? 0.35 : 1, rotate: 0 }} exit={{ y: -80, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 220, damping: 16 }}>
+          {/* once picked up, the alien jumps out of the call and rides the taxi */}
+          <motion.div key={idx} initial={{ x: -60, opacity: 0, rotate: -20 }}
+            animate={aboard && !reduceMotion() ? { y: [0, -40, 160], scale: [1, 1.1, 0.2], opacity: [1, 1, 0], rotate: 0 } : { x: 0, y: 0, scale: 1, opacity: aboard ? 0 : 1, rotate: 0 }}
+            exit={{ y: -80, opacity: 0 }}
+            transition={aboard ? { duration: 0.7, ease: 'easeIn' } : { type: 'spring', stiffness: 220, damping: 16 }}>
             <Alien size={narrow ? 100 : 130} color={t.color} mood={mood} label="Alien" onTap={() => { sfx.giggle(); setMood('happy'); later(() => setMood('idle'), 1000) }} />
           </motion.div>
         </AnimatePresence>
@@ -457,7 +463,8 @@ export default function RocketMathGame({ level = 1, onComplete }) {
       </div>
 
       {/* The planets: the number line through space */}
-      <div ref={lineRef} style={{ position: 'relative', width: '100%', maxWidth: 1000, paddingTop: top, boxSizing: 'border-box' }}>
+      <div style={{ width: '100%', maxWidth: 1000, padding: `0 ${SIDE}px`, boxSizing: 'border-box' }}>
+      <div ref={lineRef} style={{ position: 'relative', width: '100%', paddingTop: top, boxSizing: 'border-box' }}>
         {/* dotted flight path */}
         <div aria-hidden="true" style={{ position: 'absolute', left: at(span[0]), right: `calc(100% - ${at(span[1])})`, top: top + planetPx / 2, borderTop: '4px dotted rgba(255,255,255,0.45)' }} />
         {/* the hops: gold arcs with their number, or a wrong count dashed */}
@@ -564,11 +571,14 @@ export default function RocketMathGame({ level = 1, onComplete }) {
         </motion.div>
       </div>
 
-      {/* Missing addend: the answer is the number of jumps */}
+      </div>
+
+      {/* Missing addend: the answer is the number of jumps, in one row */}
       <div style={{ minHeight: 80, display: 'flex', alignItems: 'center' }}>
         {missing && !done && (
-          <div style={{ position: 'relative', display: 'flex', gap: narrow ? 8 : 12, flexWrap: 'wrap', justifyContent: 'center' }}>
-            <span ref={jumpsRef} aria-hidden="true" style={{ position: 'absolute', left: plan.maxStep % 2 ? `${50 + 50 / plan.maxStep}%` : '50%', top: '85%', width: 2, height: 2 }} />
+          <div style={{ position: 'relative', display: 'flex', gap: narrow ? 6 : 12, flexWrap: 'nowrap', justifyContent: 'center' }}>
+            {/* the hint hand taps below the row, between two buttons: never on one */}
+            <span ref={jumpsRef} aria-hidden="true" style={{ position: 'absolute', left: plan.maxStep % 2 ? `${50 + 50 / plan.maxStep}%` : '50%', top: '112%', width: 2, height: 2 }} />
             {Array.from({ length: plan.maxStep }, (_, i) => i + 1).map(k => {
               const isWrong = wrong.includes(k)
               return (
@@ -577,7 +587,7 @@ export default function RocketMathGame({ level = 1, onComplete }) {
                   onClick={() => pickJumps(k)}
                   aria-label={`${k} Sprünge`}
                   style={{
-                    width: narrow ? 52 : 66, height: 72, padding: 0, borderRadius: 16, cursor: hopping || isWrong ? 'default' : 'pointer',
+                    width: narrow ? Math.min(52, Math.floor((lineW + 2 * SIDE - 6 * (plan.maxStep - 1)) / plan.maxStep)) : 66, height: 72, padding: 0, borderRadius: 16, cursor: hopping || isWrong ? 'default' : 'pointer',
                     background: isWrong ? '#9A8FB0' : '#FFFDF7', border: `3px solid ${INK}`, boxShadow: '0 4px 0 rgba(0,0,0,0.35)',
                     opacity: isWrong ? 0.55 : 1, color: INK,
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,

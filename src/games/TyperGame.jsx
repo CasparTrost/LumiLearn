@@ -12,17 +12,16 @@ import Finale from './woerter/Finale.jsx'
 import { INK, pxCard } from './px.js'
 
 // Keyboard key in the pixel look: parchment key, gold when it is the hinted
-// letter, red for backspace. The hinted key pulses a gold ring around its
-// pixel drop instead of a soft glow.
+// letter. The hinted key pulses a gold ring around its pixel drop instead of
+// a soft glow. There is no ⌫: a wrong letter never stays in the word.
 const KEY_DROP = 'inset 0 -4px 0 rgba(42,27,61,0.10), 0 4px 0 rgba(42,27,61,0.35)'
 const KEY_RING = [KEY_DROP, `${KEY_DROP}, 0 0 0 4px rgba(255,201,60,0.75)`]
-function keyLook(hinted, isBackspace) {
+function keyLook(hinted) {
   return {
     ...pxCard(hinted ? 'selected' : undefined),
     borderRadius: 10,
     boxShadow: KEY_DROP,
-    ...(hinted      ? { background: 'var(--px-gold)' } : null),
-    ...(isBackspace ? { background: 'var(--px-red)' } : null),
+    ...(hinted ? { background: 'var(--px-gold)' } : null),
   }
 }
 
@@ -110,7 +109,7 @@ const nameOf = w => w[0] + w.slice(1).toLowerCase()
 const ROWS = [
   ['Q','W','E','R','T','Z','U','I','O','P','Ü'],
   ['A','S','D','F','G','H','J','K','L','Ö'],
-  ['Y','X','C','V','B','N','M','Ä','⌫'],
+  ['Y','X','C','V','B','N','M','Ä'],
 ]
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ'.split('')
 
@@ -167,30 +166,28 @@ const MOVE_OF = Object.fromEntries([
 const BREWS = ['#7be36b', '#5fd3c9', '#7aa8ff', '#c08bff', '#ff8fd0', '#ffb347', '#ffe066', '#9be15d']
 
 /**
- * The on-screen keyboard. `hint` is the letter that pulses, `onBack` adds ⌫,
- * `pictures` turns it into the Anlauttabelle: each key with its picture.
+ * The on-screen keyboard. `hint` is the letter that pulses, `pictures` turns
+ * it into the Anlauttabelle: each key with its picture.
  * `onKey(letter, keyElement)`.
  */
-function Keyboard({ word, hint, onKey, onBack, pictures = false }) {
+function Keyboard({ word, hint, onKey, pictures = false }) {
   const narrow = useNarrow()
   const keys = useMemo(() => compactKeys(word), [word])
 
   const key = (k, size) => {
     const hinted = k === hint
-    const back = k === '⌫'
-    const pic = pictures && !back
     const { picSize, ...box } = size
     return (
       <motion.button key={k} data-key={k}
         whileTap={{ scale:0.82, y:5 }}
-        onClick={e => (back ? onBack() : onKey(k, e.currentTarget))}
-        aria-label={back ? 'Löschen' : pic ? `${k} wie ${ANLAUT[k][0]}` : k}
+        onClick={e => onKey(k, e.currentTarget)}
+        aria-label={pictures ? `${k} wie ${ANLAUT[k][0]}` : k}
         animate={hinted ? { scale:[1,1.12,1], boxShadow:[KEY_RING[0],KEY_RING[1],KEY_RING[0]] } : { scale: 1 }}
         transition={hinted ? { duration:1.1, repeat:Infinity } : { duration: 0.2 }}
         style={{
           ...box,
-          ...keyLook(hinted, back),
-          color: hinted ? INK : back ? 'white' : 'var(--text-primary)',
+          ...keyLook(hinted),
+          color: hinted ? INK : 'var(--text-primary)',
           fontFamily:'var(--font-heading)', fontWeight:700,
           cursor:'pointer', display:'flex', flexDirection:'column', gap:2,
           alignItems:'center', justifyContent:'center',
@@ -198,7 +195,7 @@ function Keyboard({ word, hint, onKey, onBack, pictures = false }) {
         }}
       >
         {k}
-        {pic && <Art art={ANLAUT[k][1]} size={picSize} />}
+        {pictures && <Art art={ANLAUT[k][1]} size={picSize} />}
       </motion.button>
     )
   }
@@ -210,7 +207,6 @@ function Keyboard({ word, hint, onKey, onBack, pictures = false }) {
     return (
       <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'center', gap:8, width:'100%', maxWidth:420, flexShrink:0 }}>
         {keys.map(k => key(k, size))}
-        {onBack && key('⌫', size)}
       </div>
     )
   }
@@ -222,7 +218,7 @@ function Keyboard({ word, hint, onKey, onBack, pictures = false }) {
     <div style={{ display:'flex', flexDirection:'column', gap:8, width:'100%', maxWidth:740, flexShrink:0 }}>
       {ROWS.map((row, ri) => (
         <div key={ri} style={{ display:'flex', justifyContent:'center', gap:5, width:'100%' }}>
-          {row.filter(k => k !== '⌫' || onBack).map(k => key(k, size))}
+          {row.map(k => key(k, size))}
         </div>
       ))}
     </div>
@@ -328,7 +324,7 @@ function KesselStage({ word, typed, done, streak, k, lumiSize, potW }) {
   return (
     // the wish over Lumi's hat stands higher than the cauldron: room for it
     <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'center', gap:'clamp(10px,3vw,44px)', flexShrink:0,
-      marginTop: Math.max(0, lumiSize * 2.15 - potW * 0.92) }}>
+      marginTop: Math.max(potW * 0.2, lumiSize * 2.15 - potW * 0.92) }}>
       <WitchLumi size={lumiSize} act={k.lumi.act} beat={k.lumi.beat} onTap={k.tickle}
         wish={!done && (
           <Wish side="top" size={lumiSize}>
@@ -341,7 +337,7 @@ function KesselStage({ word, typed, done, streak, k, lumiSize, potW }) {
         <Cauldron width={potW} brew={BREWS[typed % BREWS.length]}
           cough={k.cough} splash={k.splash} mouthRef={k.mouthRef} onTap={k.stir} />
         {done && <Puff key={'p' + word} size={potW * (1 + Math.min(streak, 4) * 0.1)} />}
-        {done && <Alive key={'a' + word} art={WORDS[word]} size={potW * (0.62 + Math.min(streak, 4) * 0.05)} move={MOVE_OF[word]} />}
+        {done && <Alive key={'a' + word} art={WORDS[word]} size={potW * (0.5 + Math.min(streak, 4) * 0.04)} move={MOVE_OF[word]} />}
       </div>
     </div>
   )
@@ -350,7 +346,9 @@ function KesselStage({ word, typed, done, streak, k, lumiSize, potW }) {
 // The trail along the top (and the hearts, while letters fall)
 function TopRow({ total, done, children }) {
   return (
-    <div style={{ display:'flex', alignItems:'center', gap:12, width:'100%', maxWidth:760, flexShrink:0 }}>
+    // (it stops short of the moon in the scene's top right corner)
+    <div style={{ display:'flex', alignItems:'center', gap:12, width:'100%', maxWidth:760, flexShrink:0,
+      paddingRight:'clamp(0px, calc((100vw - 700px) * 0.6), 190px)', boxSizing:'border-box' }}>
       <div style={{ flex: 1, padding: '2px 6px', borderRadius: 99, background: 'rgba(255,253,247,0.22)' }}>
         <RoundTrail total={total} done={done} walker="🧹" goal="🔮" />
       </div>
@@ -583,7 +581,6 @@ function FallingLettersGame({ level, onComplete }) {
       <Slots word={word} typed={typed} nudge={misses > 0} />
       <KesselStage word={word} typed={typed} done={completing} streak={streak} k={k} lumiSize={90} potW={190} />
 
-      {/* On-screen keyboard (no ⌫: a typed letter is always right) */}
       <Keyboard word={word} hint={showHint && !completing ? targetChar : null} onKey={handleChar} />
       <HintHand from={first ? starRef : null} to={keyRef} active={!completing && !finale && (first || showHint)} delay={first ? 2000 : 300} />
       {finale && <Finale items={words.map(w => WORDS[w])} hero="lumi" onDone={() => onComplete(result(firstTryRef.current, words.length))} />}
@@ -645,18 +642,15 @@ function StaticTyperGame({ level, onComplete }) {
     }
   }, [finished, nextChar, typed, word, misses, k])
 
-  const backspace = useCallback(() => setTyped(t => t.slice(0, -1)), [])
-
   // Physical keyboard support
   useEffect(() => {
     const onKey = (e) => {
       const c = e.key.toUpperCase()
-      if (c === 'BACKSPACE') { backspace(); return }
       if (c.length === 1 && /[A-ZÄÖÜ]/.test(c)) handleKey(c, rootRef.current?.querySelector(`[data-key="${c}"]`))
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [handleKey, backspace])
+  }, [handleKey])
 
   // The task, at the start of every word
   useEffect(() => {
@@ -701,7 +695,7 @@ function StaticTyperGame({ level, onComplete }) {
           lumiSize={narrow ? 86 : 120} potW={narrow ? 196 : 250} />
       </div>
 
-      <Keyboard word={word} hint={hintOn && !finished ? nextChar : null} onKey={handleKey} onBack={backspace} pictures />
+      <Keyboard word={word} hint={hintOn && !finished ? nextChar : null} onKey={handleKey} pictures />
       <HintHand from={first ? slotRef : null} to={keyRef} active={!finished && !finale && (first || hintOn)} delay={first ? 2000 : 400} />
       {finale && <Finale items={words.map(w => WORDS[w])} hero="lumi" onDone={() => onComplete(result(firstTryRef.current, words.length))} />}
       {k.fliers}

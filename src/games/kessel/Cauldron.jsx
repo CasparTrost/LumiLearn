@@ -177,7 +177,7 @@ export function Alive({ art, size = 150, move = 'hop' }) {
       initial={{ scale: 0, y: size * 0.4, opacity: 0 }}
       animate={{ scale: 1, y: 0, opacity: 1 }}
       transition={{ type: 'spring', stiffness: 260, damping: 14 }}
-      style={{ position: 'absolute', left: '50%', bottom: '50%', marginLeft: -size / 2, width: size, height: size, zIndex: 5, pointerEvents: 'none' }}>
+      style={{ position: 'absolute', left: '50%', bottom: '62%', marginLeft: -size / 2, width: size, height: size, zIndex: 5, pointerEvents: 'none' }}>
       <motion.div animate={still ? {} : MOVES[move] ?? MOVES.hop} style={{ width: size, height: size, filter: 'drop-shadow(0 6px 0 rgba(42,27,61,0.25))' }}>
         <Art art={art} size={size} />
       </motion.div>
@@ -213,7 +213,8 @@ export function useFliers() {
 }
 
 function Flier({ char, ok, s, x0, y0, x1, y1 }) {
-  const top = Math.min(y0, y1) - 120
+  // the arc's peak stays below the game's top bar
+  const top = Math.min(y0, y1, Math.max(96, Math.min(y0, y1) - 120))
   // a wrong letter goes in, the cauldron coughs it up, and it tumbles away
   const out = { x: [x0, (x0 + x1) / 2, x1, x1 + 90, x1 + 160], y: [y0, top, y1, y1 - 140, y1 + 220], rotate: [0, 180, 360, 500, 720], scale: [1, 1, 0.6, 1, 0.8], opacity: [1, 1, 1, 1, 0] }
   const inn = { x: [x0, (x0 + x1) / 2, x1], y: [y0, top, y1], rotate: [0, 200, 360], scale: [1, 1.1, 0.3], opacity: [1, 1, 0.4] }

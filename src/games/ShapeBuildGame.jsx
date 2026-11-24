@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { sfx } from '../sfx.js'
 import { afterNarration, lockPreviews } from '../narrator.js'
@@ -72,38 +72,39 @@ function ShapePath({ shape, x, y, w, h, rot = 0, ...paint }) {
 //
 // `icon` ist, was sich der Kunde wünscht, `face`, wo das fertige Ding Augen
 // bekommt ([x, y, Maßstab]), `alive`, wie es sich dann bewegt und wer oder
-// was dazukommt (`extra` bei `at`).
+// was dazukommt (`extra` bei `at`). `use`: wo der Kunde sein Ding benutzt —
+// er steigt ins Boot, leckt am Eis — mit Fußpunkt [x, y] und Stimmung.
 const FIGURES = [
-  { name: 'Haus', icon: '🏠', face: [50, 66, 0.3], alive: { move: 'hop', extra: '🐦', at: [62, 10] }, parts: [
+  { name: 'Haus', icon: '🏠', face: [50, 66, 0.3], alive: { move: 'hop', extra: '🐦', at: [62, 10] }, use: [50, 86, 'happy'], parts: [
     { shape: 'triangle',  x: 22, y: 18, w: 56, h: 28, color: '#FF6B6B' },    // Dach sitzt auf …
     { shape: 'square',    x: 30, y: 46, w: 40, h: 40, color: '#FFD93D' }] }, // … der Wand ab y46
-  { name: 'Baum', icon: '🌳', face: [50, 44, 0.28], alive: { move: 'sway', extra: '🍎', at: [34, 34] }, parts: [
+  { name: 'Baum', icon: '🌳', face: [50, 44, 0.28], alive: { move: 'sway', extra: '🍎', at: [34, 34] }, use: [76, 90, 'happy'], parts: [
     { shape: 'triangle',  x: 20, y: 14, w: 60, h: 48, color: '#6BCB77' },   // Krone endet bei y62
     { shape: 'rectangle', x: 43, y: 62, w: 14, h: 26, color: '#8D6E63' }] },// Stamm beginnt dort
-  { name: 'Boot', icon: '⛵', face: [50, 72, 0.18], alive: { move: 'sail', extra: '🌊', at: [50, 90] }, parts: [
+  { name: 'Boot', icon: '⛵', face: [50, 72, 0.18], alive: { move: 'sail', extra: '🌊', at: [50, 90] }, use: [30, 62, 'happy'], parts: [
     { shape: 'triangle',  x: 42, y: 16, w: 32, h: 46, color: '#FF9F43' },   // Segel steht auf …
     { shape: 'rectangle', x: 16, y: 62, w: 68, h: 20, color: '#74B9FF' }] },// … dem Rumpf
-  { name: 'Kerze', icon: '🕯️', face: [50, 62, 0.14], alive: { move: 'hop', extra: '✨', at: [66, 10] }, parts: [
+  { name: 'Kerze', icon: '🕯️', face: [50, 62, 0.14], alive: { move: 'hop', extra: '✨', at: [66, 10] }, use: [74, 90, 'wow'], parts: [
     { shape: 'triangle',  x: 42, y: 10, w: 16, h: 24, color: '#FF9F43' },  // Flamme genau so …
     { shape: 'rectangle', x: 42, y: 34, w: 16, h: 56, color: '#FFD93D' }] },// … breit wie die Kerze
-  { name: 'Eis', icon: '🍦', face: [50, 36, 0.24], alive: { move: 'hop', extra: '✨', at: [70, 18] }, parts: [
+  { name: 'Eis', icon: '🍦', face: [50, 36, 0.24], alive: { move: 'hop', extra: '✨', at: [70, 18] }, use: [76, 60, 'eat'], parts: [
     { shape: 'circle',    x: 34, y: 20, w: 32, h: 32, color: '#FD79A8' },   // Kugel in der Waffel
     { shape: 'triangle',  x: 38, y: 46, w: 24, h: 40, rot: 180, color: '#D9A066' }] },
-  { name: 'Lolli', icon: '🍭', face: [50, 32, 0.34], alive: { move: 'spin' }, parts: [
+  { name: 'Lolli', icon: '🍭', face: [50, 32, 0.34], alive: { move: 'spin' }, use: [78, 56, 'eat'], parts: [
     { shape: 'circle',    x: 28, y: 10, w: 44, h: 44, color: '#E84393' },  // Bonbon auf …
     { shape: 'rectangle', x: 46, y: 54, w: 8,  h: 36, color: '#D9A066' }] },// … dem Stiel
-  { name: 'Fahne', icon: '🚩', face: [52, 24, 0.18], alive: { move: 'sway', extra: '💨', at: [84, 20] }, parts: [
+  { name: 'Fahne', icon: '🚩', face: [52, 24, 0.18], alive: { move: 'sway', extra: '💨', at: [84, 20] }, use: [62, 92, 'happy'], parts: [
     { shape: 'rectangle', x: 24, y: 10, w: 8,  h: 80, color: '#8D6E63' },  // Stange, an ihr …
     { shape: 'triangle',  x: 40, y: 4,  w: 30, h: 46, rot: 90, color: '#FF6B6B' }] }, // … das Tuch (Spitze nach rechts)
-  { name: 'Schneemann', icon: '⛄', face: [50, 19, 0.17], alive: { move: 'hop', extra: '🎩', at: [50, 2] }, parts: [
+  { name: 'Schneemann', icon: '⛄', face: [50, 19, 0.17], alive: { move: 'hop', extra: '🎩', at: [50, 2] }, use: [80, 96, 'happy'], parts: [
     { shape: 'circle',    x: 39, y: 8,  w: 22, h: 22, color: '#EAF6FF' },          // drei Kugeln, jede
     { shape: 'circle',    x: 34, y: 28, w: 32, h: 32, color: '#CFE7FF' },// auf der nächsten
     { shape: 'circle',    x: 29, y: 54, w: 42, h: 42, color: '#AED4F7' }] },
-  { name: 'Turm', icon: '🗼', face: [50, 76, 0.26], alive: { move: 'hop', extra: '🐦', at: [64, 4] }, parts: [
+  { name: 'Turm', icon: '🗼', face: [50, 76, 0.26], alive: { move: 'hop', extra: '🐦', at: [64, 4] }, use: [78, 94, 'happy'], parts: [
     { shape: 'triangle',  x: 30, y: 6,  w: 40, h: 28, color: '#FF6B6B' },  // Spitze  6–34
     { shape: 'square',    x: 38, y: 34, w: 24, h: 24, color: '#4AA3FF' }, // Mitte  34–58
     { shape: 'square',    x: 32, y: 58, w: 36, h: 36, color: '#B0BEC5' }] },// Sockel 58–94
-  { name: 'Rakete', icon: '🚀', face: [50, 50, 0.16], alive: { move: 'launch', extra: '🔥', at: [50, 84] }, parts: [
+  { name: 'Rakete', icon: '🚀', face: [50, 50, 0.16], alive: { move: 'launch', extra: '🔥', at: [50, 84] }, use: [50, 52, 'happy'], parts: [
     { shape: 'triangle',  x: 36, y: 6,  w: 28, h: 24, color: '#FF6B6B' },  // Spitze auf dem Rumpf
     { shape: 'rectangle', x: 40, y: 30, w: 20, h: 44, color: '#B0BEC5' },
     // Flossen: rechtwinklig, die senkrechte Kante liegt am Rumpf (x 40 / 60),
@@ -111,7 +112,7 @@ const FIGURES = [
     // eine Dreivierteldrehung weiter.
     { shape: 'rtriangle', x: 20, y: 54, w: 20, h: 20, rot: 270, color: '#4AA3FF' },
     { shape: 'rtriangle', x: 60, y: 54, w: 20, h: 20, color: '#4AA3FF' }] },
-  { name: 'Blume', icon: '🌸', face: [50, 36, 0.12], alive: { move: 'sway', extra: '🐝', at: [80, 12] }, parts: [
+  { name: 'Blume', icon: '🌸', face: [50, 36, 0.12], alive: { move: 'sway', extra: '🐝', at: [80, 12] }, use: [76, 94, 'wow'], parts: [
     // vier große Blütenblätter um eine deutlich kleinere Mitte
     { shape: 'circle',    x: 38, y: 5,  w: 24, h: 24, color: '#FD79A8' },
     { shape: 'circle',    x: 19, y: 24, w: 24, h: 24, color: '#FD79A8' },
@@ -119,7 +120,7 @@ const FIGURES = [
     { shape: 'circle',    x: 38, y: 43, w: 24, h: 24, color: '#FD79A8' },
     { shape: 'circle',    x: 43, y: 29, w: 14, h: 14, color: '#FFD93D' },
     { shape: 'rectangle', x: 46, y: 67, w: 8,  h: 27, color: '#6BCB77' }] },// Stiel ab dem unteren Blatt
-  { name: 'Zug', icon: '🚂', face: [70, 60, 0.18], alive: { move: 'drive', extra: '💨', at: [84, 34] }, parts: [
+  { name: 'Zug', icon: '🚂', face: [70, 60, 0.18], alive: { move: 'drive', extra: '💨', at: [84, 34] }, use: [34, 44, 'happy'], parts: [
     { shape: 'rectangle', x: 12, y: 44, w: 46, h: 28, color: '#74B9FF' },   // Wagen 12–58
     { shape: 'square',    x: 58, y: 48, w: 24, h: 24, color: '#FF9F43' },     // Lok schließt bei 58 an
     { shape: 'circle',    x: 18, y: 72, w: 16, h: 16, color: '#444' },        // Räder auf der
@@ -198,11 +199,15 @@ function describeBuild(pieces) {
   return { counts, known }
 }
 
+// Lumi's ideas above the free workbench
+const IDEAS = ['🏠', '⛵', '🚀']
+
 function FreeBuild({ onDone }) {
   const [pieces, setPieces] = useState([])
   const [seen, setSeen]     = useState(null)   // what Lumi sees, once finished
   const svgRef = useRef(null)
   const drag   = useRef(null)    // { id, dx, dy, moved }
+  const firstRef = useRef(null), doneRef = useRef(null)
   const done = !!seen
 
   useEffect(() => { sayTask() }, [])
@@ -256,6 +261,22 @@ function FreeBuild({ onDone }) {
 
   return (
     <>
+      {/* no words: the first shape button is tapped for you, and once
+          something is built, the check button */}
+      <HintHand to={pieces.length ? doneRef : firstRef} delay={pieces.length ? 8000 : 2500} active={!done} />
+      {/* what free building is for: Lumi dreams of things to build */}
+      <div aria-hidden="true" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Art art="lumi" size={54} />
+        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 15 }}
+          style={{ display: 'flex', gap: 4, padding: '6px 12px', background: '#FFFDF7', border: `3px solid ${INK}`, borderRadius: 22, boxShadow: '0 4px 0 rgba(42,27,61,0.3)' }}>
+          {IDEAS.map((icon, i) => (
+            <motion.span key={icon} animate={reduceMotion() ? {} : { y: [0, -6, 0] }} transition={{ duration: 1.4, repeat: Infinity, delay: i * 0.3 }}>
+              <Art art={icon} size={34} />
+            </motion.span>
+          ))}
+          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 26, color: INK, alignSelf: 'center' }}>?</span>
+        </motion.div>
+      </div>
       <div style={{ position: 'relative', ...pxPanel, padding: 'clamp(8px,2vw,16px)', background: '#8A5A33' }}>
         <svg ref={svgRef} viewBox="0 0 100 100" onPointerMove={move} onPointerUp={up} onPointerCancel={up}
           style={{ width: 'clamp(220px,46vw,300px)', height: 'clamp(220px,46vw,300px)', display: 'block', touchAction: 'none', background: '#DCEBFA', borderRadius: 8 }}>
@@ -286,7 +307,7 @@ function FreeBuild({ onDone }) {
       </div>
       <div style={{ display: 'flex', gap: 'clamp(8px,2.5vw,16px)', flexWrap: 'wrap', justifyContent: 'center', marginTop: 18 }}>
         {FREE_SHAPES.map((f, i) => (
-          <motion.button key={f.shape} whileTap={{ scale: 0.9 }} onClick={() => add(f)} disabled={done}
+          <motion.button key={f.shape} ref={i === 0 ? firstRef : undefined} whileTap={{ scale: 0.9 }} onClick={() => add(f)} disabled={done}
             aria-label={`${SHAPE[f.shape].name} dazulegen`}
             style={{ width: 'clamp(66px,13vw,84px)', height: 'clamp(66px,13vw,84px)', ...pxCard(), cursor: 'pointer', padding: 6 }}>
             <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%' }}>
@@ -301,7 +322,7 @@ function FreeBuild({ onDone }) {
           style={{ ...pxButton('parch'), padding: '8px 22px', minHeight: 56, fontSize: 28, opacity: pieces.length && !done ? 1 : 0.5 }}>
           🧽
         </button>
-        <button onClick={finish} disabled={!pieces.length || done} aria-label="Fertig"
+        <button ref={doneRef} onClick={finish} disabled={!pieces.length || done} aria-label="Fertig"
           style={{ ...pxButton('green'), color: INK, textShadow: 'none', padding: '8px 30px', minHeight: 56, fontSize: 28, opacity: pieces.length && !done ? 1 : 0.5 }}>
           <svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6" fill="none" stroke={INK} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </button>
@@ -321,6 +342,16 @@ const ALIVE = {
   sail:   { x: [0, 26, -10, 0], rotate: [0, 5, -5, 3, 0] },
   drive:  { x: [0, 30, 30, 0] },
   launch: { y: [0, 6, -60, -40, 0] },
+}
+
+// The same journey for the customer riding along, in pixels: only the
+// moves that carry it (a boat sails, a rocket lifts off, a train drives)
+const CARRIES = ['sail', 'drive', 'launch']
+const riding = (move, size) => {
+  const m = ALIVE[move]
+  return CARRIES.includes(move)
+    ? { x: (m.x ?? [0]).map(v => v * size / 100), y: (m.y ?? [0]).map(v => v * size / 100) }
+    : {}
 }
 
 // Eyes and a smile for the finished thing, in the figure's 100-unit space
@@ -346,7 +377,7 @@ function slotBox(p) {
 }
 
 // The workbench: the outline to fill, one drop place per part
-function Board({ fig, rules, filled, wrongSlot, complete, onDrop, size }) {
+function Board({ fig, customer, rules, filled, wrongSlot, complete, onDrop, size }) {
   const { hover, picked } = useDragState()
   const zones = fig.parts.map((p, i) => ({ i, box: slotBox(p) }))
     .filter(z => !filled.has(z.i))
@@ -359,7 +390,7 @@ function Board({ fig, rules, filled, wrongSlot, complete, onDrop, size }) {
         {Array.from({ length: 9 }, (_, i) => <path key={i} d={`M${(i + 1) * 10} -4 V104 M-4 ${(i + 1) * 10} H104`} stroke="#B7D2EE" strokeWidth="0.5" />)}
         <motion.g initial={false}
           animate={complete && !reduceMotion() ? ALIVE[fig.alive.move] : { x: 0, y: 0, rotate: 0, scaleY: 1 }}
-          transition={{ duration: fig.alive.move === 'spin' ? 0.9 : 1.2, delay: 0.3 }}
+          transition={{ duration: fig.alive.move === 'spin' ? 0.9 : 1.2, delay: CARRIES.includes(fig.alive.move) ? 1 : 0.3 }}
           style={{ originX: 0.5, originY: 1 }}>
           {/* top levels: only the outline of the whole figure, no lines between the parts */}
           {rules.silhouette && (
@@ -383,6 +414,19 @@ function Board({ fig, rules, filled, wrongSlot, complete, onDrop, size }) {
           {complete && <Face x={fig.face[0]} y={fig.face[1]} s={fig.face[2]} />}
         </motion.g>
       </svg>
+      {/* the customer gets in or tucks in, and moves along with it */}
+      <AnimatePresence>
+        {complete && (
+          <motion.div key="user" aria-hidden="true" initial={{ opacity: 0, scale: 0.3, y: -size * 0.3 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ delay: 0.4, type: 'spring', stiffness: 260, damping: 14 }}
+            style={{ position: 'absolute', left: `${fig.use[0]}%`, top: `${fig.use[1]}%`, width: 0, height: 0, pointerEvents: 'none', zIndex: 2 }}>
+            <motion.div animate={reduceMotion() ? {} : riding(fig.alive.move, size)} transition={{ duration: 1.2, delay: 1 }}
+              style={{ position: 'absolute', left: -size * 0.11, bottom: 0 }}>
+              <Critter art={customer} size={size * (fig.name === 'Rakete' ? 0.16 : 0.22)} mood={fig.use[2]} shadow={false} />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* who or what joins the living thing */}
       <AnimatePresence>
         {complete && fig.alive.extra && (
@@ -453,13 +497,15 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
     }))
     if (rules.distractor) pieces.push(makeDistractor(fig))
     const maxDim = Math.max(...pieces.map(p => Math.max(p.w, p.h)))
-    const k = 84 / maxDim
-    return shuffle(pieces.map(p => ({
-      ...p,
-      // drawn size inside the 100-unit tile, kept proportional to the real
-      // piece; a floor of 12 keeps a thin stem visible without faking its size
-      dw: Math.max(12, p.w * k), dh: Math.max(12, p.h * k),
-    })))
+    // Drawn size inside the 100-unit tile. Small parts used to shrink in
+    // proportion to the largest one — a wheel became a 12-unit dot. The
+    // sizes are compressed now: bigger stays bigger (the snowman's three
+    // circles keep their order), but a small part stays a shape you see.
+    return shuffle(pieces.map(p => {
+      const long = Math.max(p.w, p.h)
+      const k = (84 * (long / maxDim) ** 0.55) / long
+      return { ...p, dw: Math.max(10, p.w * k), dh: Math.max(10, p.h * k) }
+    }))
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const rotOf = i => (tray[i]?.rot ?? 0) + (turns[i] ?? 0)
@@ -470,7 +516,8 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
     timers.current.push(setTimeout(run, ms))
   }, [])
 
-  useEffect(() => {
+  // A layout effect: the new figure is never painted with the last one's pieces
+  useLayoutEffect(() => {
     if (!fig) return
     timers.current.forEach(clearTimeout); timers.current = []
     setPlaced([]); setTurns({}); setWrongSlot(null); setTurnHint(null)
@@ -526,12 +573,11 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
     later(() => {
       sfx.tada()
       if (fig.alive.move === 'launch' || fig.alive.move === 'drive' || fig.alive.move === 'sail') sfx.whoosh()
-      setMood('dance', 2600)
       burst(boardRef.current, 'confetti', s >= 3 ? 30 : 16)
     }, 300)
     sfx.correct()
     sayRight()
-    afterNarration(() => later(() => (last ? setLastDone(true) : setIdx(i => i + 1)), 0), { minMs: 2600 })
+    afterNarration(() => later(() => (last ? setLastDone(true) : setIdx(i => i + 1)), 0), { minMs: 3000 })
     return true
   }, [fig, placed, tray, turns, last, streak, burst, later, setMood]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -564,12 +610,12 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
             <AnimatePresence mode="wait">
               <motion.div key={idx} initial={{ x: -120, opacity: 0 }} animate={{ x: 0, opacity: 1, transition: { type: 'spring', stiffness: 260, damping: 18 } }}
                 exit={{ x: 160, opacity: 0, transition: { duration: 0.25 } }} style={{ paddingTop: 70 }}>
-                <Critter art={fig.customer} size={110} mood={mood} talks label="Kunde"
+                <Critter art={fig.customer} size={110} mood={mood} label="Kunde" style={{ opacity: complete ? 0 : 1, transition: 'opacity .4s .8s' }}
                   wish={<Art art={fig.icon} size={44} />} />
               </motion.div>
             </AnimatePresence>
             <div ref={boardRef} style={{ ...pxPanel, padding: 'clamp(8px,1.6vw,14px)', background: '#8A5A33' }}>
-              <Board fig={fig} rules={rules} filled={filledSlots} wrongSlot={wrongSlot} complete={complete}
+              <Board fig={fig} customer={fig.customer} rules={rules} filled={filledSlots} wrongSlot={wrongSlot} complete={complete}
                 size={boardPx} onDrop={(piece, slot) => dropPiece(piece, slot)} />
             </div>
           </div>
@@ -611,6 +657,7 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
                       </svg>
                     </div>
                   </Draggable>
+                  {rules.turn && (p.shape === 'circle' || p.shape === 'square') && <span aria-hidden="true" style={{ width: 48, height: 48 }} />}
                   {rules.turn && p.shape !== 'circle' && p.shape !== 'square' && (
                     <motion.button key={turnHint?.i === i ? turnHint.n : 'still'} whileTap={{ scale: 0.88, rotate: 90 }} onClick={() => turn(i)} disabled={used || complete}
                       animate={turnHint?.i === i && !reduceMotion() ? { scale: [1, 1.3, 1, 1.3, 1], rotate: [0, 40, 0, 40, 0] } : {}} transition={{ duration: 1.2 }}

@@ -115,6 +115,7 @@ export default function InitialSoundGame({ level = 1, onComplete }) {
   const idxRef = useRef(0)
   const catchRef = useRef(null)
   const pondRef = useRef(null)
+  const gapRef = useRef(null)
 
   // The word, and on the first catch the question — once Lumi has recorded them.
   const sayTask = useCallback(() => {
@@ -167,7 +168,7 @@ export default function InitialSoundGame({ level = 1, onComplete }) {
 
       <DragArea disabled={done}>
         {/* Lumi fishing: the rod, the line, and what hangs on the hook */}
-        <div style={{ position: 'relative', width: '100%', maxWidth: 760, height: HOOK + 190, overflow: 'hidden', flexShrink: 0 }}>
+        <div style={{ position: 'relative', width: '100%', maxWidth: 760, height: HOOK + 225, overflow: 'hidden', flexShrink: 0 }}>
           <svg aria-hidden="true" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
             <line x1="17%" y1="118" x2="50%" y2="6" stroke="#8a5a2b" strokeWidth="7" strokeLinecap="round" />
             <line x1="17%" y1="118" x2="50%" y2="6" stroke="#b88450" strokeWidth="3" strokeLinecap="round" />
@@ -177,18 +178,18 @@ export default function InitialSoundGame({ level = 1, onComplete }) {
             <Critter art="lumi" size={92} talks label="Lumi" mood={finale ? 'dance' : done && tried.length < 2 ? 'happy' : 'idle'} />
           </div>
           {/* where the catch hangs, for the hint hand */}
-          <div ref={catchRef} aria-hidden="true" style={{ position: 'absolute', left: '50%', top: HOOK + 50, width: 2, height: 2 }} />
+          <div ref={catchRef} aria-hidden="true" style={{ position: 'absolute', left: '50%', top: HOOK + 80, width: 2, height: 2 }} />
 
           <AnimatePresence mode="popLayout">
             {!got && !leaving && <Catch key={idx} item={r} />}
           </AnimatePresence>
           {/* solved: the word, written, where the catch was */}
           <AnimatePresence>
-            {got && (
+            {got && !leaving && (
               <motion.div key={'w' + idx} initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.15 } }}
                 transition={{ type: 'spring', stiffness: 360, damping: 16, delay: 0.25 }}
                 style={{
-                  position: 'absolute', left: '50%', top: HOOK - 10, x: '-50%', display: 'flex', alignItems: 'center', gap: 10,
+                  position: 'absolute', left: '50%', top: HOOK - 10, x: '-50%', display: 'flex', alignItems: 'center', gap: 10, pointerEvents: 'none',
                   background: '#fffdf7', border: `3px solid ${INK}`, borderRadius: 18, boxShadow: '0 5px 0 rgba(42,27,61,0.3)',
                   padding: '6px 18px', fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 'clamp(26px,5vw,36px)', color: INK,
                 }}>
@@ -207,7 +208,7 @@ export default function InitialSoundGame({ level = 1, onComplete }) {
         {/* The frogs with their buckets, at the edge of the pond */}
         <div ref={pondRef} style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: 12, width: '100%', maxWidth: 820 }}>
           {r.options.map((L, i) => (
-            <FrogBucket key={`${idx}-${L}`} L={L} i={i} n={r.options.length}
+            <FrogBucket key={`${idx}-${L}`} gapRef={i === 0 ? gapRef : null} L={L} i={i} n={r.options.length}
               color={BUCKET_COLORS[i % BUCKET_COLORS.length]}
               state={got === L ? 'got' : tried.includes(L) ? 'tried' : 'wait'}
               item={got === L ? r.emoji : null}
@@ -228,7 +229,7 @@ export default function InitialSoundGame({ level = 1, onComplete }) {
             </div>
           )}
         </div>
-        <HintHand from={catchRef} to={pondRef} active={!done && !leaving} delay={hintDelay(idx)} />
+        <HintHand from={catchRef} to={gapRef} active={!done && !leaving} delay={hintDelay(idx)} />
       </DragArea>
       {bursts}
     </div>
@@ -244,23 +245,23 @@ function Catch({ item }) {
       initial={still ? { opacity: 0 } : { y: 240, opacity: 0, rotate: 0 }}
       animate={still ? { y: 0, opacity: 1 } : { y: 0, opacity: 1, rotate: [0, -5, 4, -3, 0] }}
       exit={{ scale: 0.4, opacity: 0, y: 60 }}
-      transition={{ y: { type: 'spring', stiffness: 120, damping: 13, delay: 0.15 }, opacity: { duration: 0.2, delay: 0.15 }, rotate: { duration: 3.2, repeat: Infinity, delay: 1 } }}
-      style={{ position: 'absolute', left: '50%', top: HOOK, marginLeft: -75, width: 150, transformOrigin: `50% -${HOOK}px` }}>
+      transition={{ y: { duration: 0.35, ease: [0.2, 1.4, 0.5, 1] }, opacity: { duration: 0.15 }, rotate: { duration: 3.2, repeat: Infinity, delay: 1 } }}
+      style={{ position: 'absolute', left: '50%', top: HOOK, marginLeft: -95, width: 190, transformOrigin: `50% -${HOOK}px` }}>
       {/* the line up to the rod, and the hook */}
-      <div aria-hidden="true" style={{ position: 'absolute', left: 74, bottom: '100%', width: 2, height: HOOK + 260, background: INK }} />
-      <svg aria-hidden="true" width="26" height="30" viewBox="0 0 26 30" style={{ position: 'absolute', left: 62, top: -14 }}>
+      <div aria-hidden="true" style={{ position: 'absolute', left: 94, bottom: '100%', width: 2, height: HOOK + 260, background: INK }} />
+      <svg aria-hidden="true" width="26" height="30" viewBox="0 0 26 30" style={{ position: 'absolute', left: 82, top: -14 }}>
         <path d="M13 0 V18 a7 7 0 0 1 -12 2" stroke="#6b6b7a" strokeWidth="4" fill="none" strokeLinecap="round" />
       </svg>
       <Draggable id="catch" data={item} label={`Der Fang am Haken`}>
         <div style={{ padding: 4 }}>
-          <Art art={item.emoji} size={140} />
+          <Art art={item.emoji} size={180} />
         </div>
       </Draggable>
       {/* drips */}
       {!still && [0, 1, 2].map(k => (
         <motion.div key={k} aria-hidden="true" initial={{ y: 0, opacity: 0 }} animate={{ y: [0, 70], opacity: [0, 1, 0] }}
           transition={{ duration: 1.1, repeat: Infinity, delay: 0.6 + k * 0.45 }}
-          style={{ position: 'absolute', left: 40 + k * 34, top: 120, width: 9, height: 13, borderRadius: '50% 50% 50% 50% / 60% 60% 40% 40%', background: '#4aa3ff', border: `2px solid ${INK}`, pointerEvents: 'none' }} />
+          style={{ position: 'absolute', left: 50 + k * 44, top: 160, width: 9, height: 13, borderRadius: '50% 50% 50% 50% / 60% 60% 40% 40%', background: '#4aa3ff', border: `2px solid ${INK}`, pointerEvents: 'none' }} />
       ))}
     </motion.div>
   )
@@ -271,7 +272,7 @@ function Catch({ item }) {
  * bucket; tapping the frog (with nothing picked up) makes it croak its
  * letter. `hint` is a picture that starts with that letter (after a miss).
  */
-function FrogBucket({ L, i, n, color, state, item, hint, chorus, onDrop }) {
+function FrogBucket({ gapRef, L, i, n, color, state, item, hint, chorus, onDrop }) {
   const { picked } = useDragState()
   const [croak, setCroak] = useState(0)
   const ref = useRef(null)
@@ -284,7 +285,9 @@ function FrogBucket({ L, i, n, color, state, item, hint, chorus, onDrop }) {
   }
   const spring = { type: 'spring', stiffness: 300, damping: 14 }
   return (
-    <div ref={ref} style={{ width: `calc((100% - ${(n - 1) * 12}px) / ${n})`, maxWidth: 150, minWidth: 0 }}>
+    <div ref={ref} style={{ position: 'relative', width: `calc((100% - ${(n - 1) * 12}px) / ${n})`, maxWidth: 190, minWidth: 0 }}>
+      {/* between the first bucket and the next: the hint hand drags here, never into one answer */}
+      {gapRef && <span ref={gapRef} aria-hidden="true" style={{ position: 'absolute', right: -7, top: '45%', width: 2, height: 2 }} />}
       <DropZone id={`eimer-${L}`} label={`Eimer ${L}`} onDrop={() => onDrop(L, ref.current)} slop={16}>
         {hover => (
           <div onClick={sayIt} style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
