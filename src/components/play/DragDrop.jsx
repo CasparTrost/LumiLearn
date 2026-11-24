@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { sfx } from '../../sfx.js'
 import './play.css'
@@ -34,9 +34,9 @@ const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.(
 
 export function DragArea({ children, autoTarget = null, disabled = false }) {
   const zones = useRef(new Map())           // id -> { el, onDrop, accepts }
-  const [picked, setPicked] = useState(null) // { id, data, el, render }
+  const [picked, setPicked] = useState(null) // { id, data, el }
   const [hover, setHover] = useState(null)   // zone id under the dragged thing
-  const [ghost, setGhost] = useState(null)   // { render, w, h, scale, x, y }
+  const [ghost, setGhost] = useState(null)   // { node, w, h, scale, x, y }
   const ghostRef = useRef(null)
 
   const zoneAt = useCallback((x, y) => {
@@ -116,16 +116,29 @@ export function DragArea({ children, autoTarget = null, disabled = false }) {
       {ghost && createPortal(
         <div ref={ghostRef} className="pl-ghost"
           style={{ width: ghost.w, height: ghost.h, transformOrigin: '0 0', transform: `translate(${ghost.x}px, ${ghost.y}px) scale(${ghost.scale})` }}>
-          <div style={{ width: ghost.w, height: ghost.h }}>{ghost.render}</div>
+          <GhostCopy node={ghost.node} w={ghost.w} h={ghost.h} />
         </div>, document.body)}
     </Ctx.Provider>
   )
 }
 
+// The flying thing is a copy of what is on screen, not a second render of
+// the game's children: a second render took over refs inside the thing (a
+// hint hand's start point) and set them to null once it landed.
+function GhostCopy({ node, w, h }) {
+  const box = useRef(null)
+  useLayoutEffect(() => {
+    const b = box.current
+    if (!b || !node) return
+    b.replaceChildren(...[...node.childNodes].map(n => n.cloneNode(true)))
+  }, [node])
+  return <div ref={box} style={{ width: w, height: h }} />
+}
+
 function makeGhost(item, r) {
   const w = item.el.offsetWidth || r.width
   const h = item.el.offsetHeight || r.height
-  return { render: item.render, w, h, scale: r.width / w, x: r.left, y: r.top }
+  return { node: item.el, w, h, scale: r.width / w, x: r.left, y: r.top }
 }
 
 /**
@@ -140,7 +153,7 @@ export function Draggable({ id, data, children, disabled = false, label, style, 
   const [carrying, setCarrying] = useState(false)
   if (!ctx) throw new Error('Draggable needs a DragArea around it')
   const off = disabled || ctx.disabled
-  const item = () => ({ id, data, el: el.current, render: children })
+  const item = () => ({ id, data, el: el.current })
 
   const onPointerDown = e => {
     if (off || e.button > 0) return
