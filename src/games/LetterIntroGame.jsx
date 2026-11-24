@@ -1,25 +1,25 @@
-import { useState, useMemo, useCallback, useRef } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { sfx } from '../sfx.js'
-import { hearable } from '../lib/hearable.js'
 import HearOptions from '../components/HearOptions.jsx'
 import { narrate, afterNarration } from '../narrator.js'
 import { sayRight, sayWrong } from '../lib/feedback.js'
-import { soundOf } from './letterSounds.js'
-import { Art, useMood, DragArea, Draggable, DropZone, RoundTrail, useBursts } from '../components/play/index.js'
-import { useRounds, useSpeaking, shuffle, chance, reduceMotion } from './buchstaben/useRounds.js'
+import { Art, useMood, DragArea, Draggable, DropZone, RoundTrail, HintHand, useBursts } from '../components/play/index.js'
+import { useRounds, useSpeaking, shuffle, chance, reduceMotion, hintDelay } from './buchstaben/useRounds.js'
+import { rec, slug, wordRec, soundRec, hearWord } from './buchstaben/voice.js'
 import LetterMonster from './buchstaben/LetterMonster.jsx'
 import { pxButton, INK } from './px.js'
 
 /**
  * ABC-Abenteuer: das Buchstaben-Monster.
  *
- * Jeder Buchstabe ist ein Monster mit Augen und Mund. Es sagt seinen Laut
- * ("B wie Ball") und hat Hunger, aber nur auf Dinge, die mit seinem Laut
- * anfangen. Das Kind füttert es: ziehen oder antippen. Ein falsches Ding
- * spuckt es wieder aus ("Bäh!"), ein richtiges mampft es und freut sich.
- * Der Buchstabe wird so zur Figur, der man einen Gefallen tut — gelernt
- * wird dasselbe wie vorher: Buchstabe, Laut und Wörter mit diesem Anlaut.
+ * Jeder Buchstabe ist ein Monster mit Augen und Mund. In seiner Sprechblase
+ * zeigt es, wie es klingt: "A" und ein Affe. Es hat Hunger, aber nur auf
+ * Dinge, die so anfangen wie sein Laut. Das Kind füttert es: ziehen oder
+ * antippen. Ein falsches Ding spuckt es wieder aus ("Bäh!") und zeigt
+ * daran dessen Buchstaben; ein richtiges mampft es, und es landet in der
+ * Sprechblase bei den anderen. Gelernt wird dasselbe wie vorher: Buchstabe,
+ * Laut und Wörter mit diesem Anlaut.
  */
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
@@ -28,44 +28,37 @@ import { pxButton, INK } from './px.js'
 // oder "Eule" unter E, keine Glühbirne als "Lampe", kein Igel-Bild für das
 // Eichhörnchen. Kein Bild kommt zweimal vor.
 //
-// `ex` ist das Beispiel im Merksatz ("B wie Ball"). Es steht bewusst nicht
-// unter den Antworten, sonst wäre die Antwort schon vorgesagt.
-// `note` ersetzt den Merksatz bei den Buchstaben, deren Laut nicht ihr
-// eigener ist; `say` ist dann die Fassung für die Stimme.
+// `ex` ist das Beispiel, das das Monster in seiner Sprechblase zeigt ("A wie
+// Affe"): ohne Worte der Schlüssel zum Laut. Es steht bewusst nicht unter
+// den Antworten, sonst wäre die Antwort schon vorgesagt. X und Y haben kein
+// zweites Bild — dort steht nur der Buchstabe.
 const LETTER_DATA = {
-  A: { ex:'Arm',    opts:[{ e:'🍎', w:'Apfel' },   { e:'🐒', w:'Affe' },     { e:'🐜', w:'Ameise' },  { e:'🍍', w:'Ananas' },  { e:'🦅', w:'Adler' }]},
-  B: { ex:'Ball',   opts:[{ e:'🌸', w:'Blume' },   { e:'🐝', w:'Biene' },    { e:'🍌', w:'Banane' },  { e:'🐻', w:'Bär' }]},
-  C: { note:'C klingt meistens wie K – wie in Cowboy.',
-                    opts:[{ e:'🤡', w:'Clown' },   { e:'💻', w:'Computer' }, { e:'🥐', w:'Croissant' }]},
-  D: { ex:'Dach',   opts:[{ e:'🦖', w:'Dino' },    { e:'🐉', w:'Drache' },   { e:'🥫', w:'Dose' }]},
-  E: { ex:'Ecke',   opts:[{ e:'🦆', w:'Ente' },    { e:'🐘', w:'Elefant' },  { e:'🍓', w:'Erdbeere' }, { e:'🫏', w:'Esel' }]},
-  F: { ex:'Fuß',    opts:[{ e:'🐟', w:'Fisch' },   { e:'🐸', w:'Frosch' },   { e:'🦊', w:'Fuchs' },   { e:'🪶', w:'Feder' }]},
-  G: { ex:'Gabel',  opts:[{ e:'🦒', w:'Giraffe' }, { e:'👻', w:'Geist' },    { e:'🎁', w:'Geschenk' }, { e:'🥒', w:'Gurke' }]},
-  H: { ex:'Hut',    opts:[{ e:'🐶', w:'Hund' },    { e:'🐰', w:'Hase' },     { e:'🏠', w:'Haus' },    { e:'🐓', w:'Hahn' }]},
-  I: { ex:'Iglu',   opts:[{ e:'🦔', w:'Igel' },    { e:'🏝️', w:'Insel' }]},
-  J: { ex:'Junge',  opts:[{ e:'🧥', w:'Jacke' },   { e:'🪀', w:'Jo-Jo' }]},
-  K: { ex:'Kuh',    opts:[{ e:'🐱', w:'Katze' },   { e:'👑', w:'König' },    { e:'🐨', w:'Koala' },   { e:'🧀', w:'Käse' }]},
-  L: { ex:'Licht',  opts:[{ e:'🦁', w:'Löwe' },    { e:'🦙', w:'Lama' },     { e:'🪜', w:'Leiter' }]},
-  M: { ex:'Mama',   opts:[{ e:'🐭', w:'Maus' },    { e:'🌙', w:'Mond' },     { e:'🥛', w:'Milch' }]},
-  N: { ex:'Nacht',  opts:[{ e:'👃', w:'Nase' },    { e:'🪺', w:'Nest' },     { e:'🍝', w:'Nudeln' }]},
-  O: { ex:'Ofen',   opts:[{ e:'👂', w:'Ohr' },     { e:'🍊', w:'Orange' },   { e:'👵', w:'Oma' }]},
-  P: { ex:'Papa',   opts:[{ e:'🐧', w:'Pinguin' }, { e:'🍄', w:'Pilz' },     { e:'🐼', w:'Panda' },   { e:'🦜', w:'Papagei' }]},
-  Q: { note:'Q kommt fast immer mit U – Qu wie in Quatsch.',
-       say:'Q kommt fast immer mit U. Zusammen klingen sie wie in Quatsch.',
-                    opts:[{ e:'🪼', w:'Qualle' },  { e:'🟥', w:'Quadrat' }]},
-  R: { ex:'Regen',  opts:[{ e:'🚀', w:'Rakete' },  { e:'🤖', w:'Roboter' },  { e:'🌹', w:'Rose' }]},
-  S: { ex:'Sand',   opts:[{ e:'☀️', w:'Sonne' },   { e:'🛋️', w:'Sofa' },     { e:'🧦', w:'Socke' },   { e:'🥗', w:'Salat' },   { e:'🧼', w:'Seife' }]},
-  T: { ex:'Tor',    opts:[{ e:'🐯', w:'Tiger' },   { e:'🚜', w:'Traktor' },  { e:'🥁', w:'Trommel' }, { e:'🍅', w:'Tomate' }]},
-  U: { ex:'Uhr',    opts:[{ e:'🛸', w:'Ufo' },     { e:'🦉', w:'Uhu' }]},
-  V: { note:'V klingt meistens wie F – wie in Vater. Manchmal wie W – wie in Video.',
-                    opts:[{ e:'🐦', w:'Vogel' },   { e:'🌋', w:'Vulkan' },   { e:'🏺', w:'Vase' }]},
-  W: { ex:'Wasser', opts:[{ e:'🐺', w:'Wolf' },    { e:'☁️', w:'Wolke' },    { e:'🐋', w:'Wal' },     { e:'🪱', w:'Wurm' }]},
-  X: { note:'X klingt wie ks – wie in Hexe und Taxi.',
-       say:'X klingt so wie in Hexe und in Taxi.',
-                    opts:[{ e:':px-xylofon:', w:'Xylofon' }]},
-  Y: { note:'Y klingt oft wie J – wie in Yeti.',
-                    opts:[{ e:'🧘', w:'Yoga' }]},
-  Z: { ex:'Zoo',    opts:[{ e:'🦓', w:'Zebra' },   { e:'🦷', w:'Zahn' },     { e:'🚂', w:'Zug' },     { e:'🍋', w:'Zitrone' }, { e:'⛺', w:'Zelt' }]},
+  A: { ex:{ e:'🐒', w:'Affe' },     opts:[{ e:'🍎', w:'Apfel' },   { e:'🐜', w:'Ameise' },  { e:'🍍', w:'Ananas' },  { e:'🦅', w:'Adler' }]},
+  B: { ex:{ e:'🐻', w:'Bär' },      opts:[{ e:'🌸', w:'Blume' },   { e:'🐝', w:'Biene' },    { e:'🍌', w:'Banane' }]},
+  C: { ex:{ e:'🤡', w:'Clown' },    opts:[{ e:'💻', w:'Computer' }, { e:'🥐', w:'Croissant' }]},
+  D: { ex:{ e:'🦖', w:'Dino' },     opts:[{ e:'🐉', w:'Drache' },   { e:'🥫', w:'Dose' }]},
+  E: { ex:{ e:'🦆', w:'Ente' },     opts:[{ e:'🐘', w:'Elefant' },  { e:'🍓', w:'Erdbeere' }, { e:'🫏', w:'Esel' }]},
+  F: { ex:{ e:'🐟', w:'Fisch' },    opts:[{ e:'🐸', w:'Frosch' },   { e:'🦊', w:'Fuchs' },   { e:'🪶', w:'Feder' }]},
+  G: { ex:{ e:'🦒', w:'Giraffe' },  opts:[{ e:'👻', w:'Geist' },    { e:'🎁', w:'Geschenk' }, { e:'🥒', w:'Gurke' }]},
+  H: { ex:{ e:'🐶', w:'Hund' },     opts:[{ e:'🐰', w:'Hase' },     { e:'🏠', w:'Haus' },    { e:'🐓', w:'Hahn' }]},
+  I: { ex:{ e:'🦔', w:'Igel' },     opts:[{ e:'🏝️', w:'Insel' }]},
+  J: { ex:{ e:'🧥', w:'Jacke' },    opts:[{ e:'🪀', w:'Jo-Jo' }]},
+  K: { ex:{ e:'🐱', w:'Katze' },    opts:[{ e:'👑', w:'König' },    { e:'🐨', w:'Koala' },   { e:'🧀', w:'Käse' }]},
+  L: { ex:{ e:'🦁', w:'Löwe' },     opts:[{ e:'🦙', w:'Lama' },     { e:'🪜', w:'Leiter' }]},
+  M: { ex:{ e:'🐭', w:'Maus' },     opts:[{ e:'🌙', w:'Mond' },     { e:'🥛', w:'Milch' }]},
+  N: { ex:{ e:'👃', w:'Nase' },     opts:[{ e:'🪺', w:'Nest' },     { e:'🍝', w:'Nudeln' }]},
+  O: { ex:{ e:'👵', w:'Oma' },      opts:[{ e:'👂', w:'Ohr' },      { e:'🍊', w:'Orange' }]},
+  P: { ex:{ e:'🐧', w:'Pinguin' },  opts:[{ e:'🍄', w:'Pilz' },     { e:'🐼', w:'Panda' },   { e:'🦜', w:'Papagei' }]},
+  Q: { ex:{ e:'🪼', w:'Qualle' },   opts:[{ e:'🟥', w:'Quadrat' }]},
+  R: { ex:{ e:'🚀', w:'Rakete' },   opts:[{ e:'🤖', w:'Roboter' },  { e:'🌹', w:'Rose' }]},
+  S: { ex:{ e:'☀️', w:'Sonne' },    opts:[{ e:'🛋️', w:'Sofa' },     { e:'🧦', w:'Socke' },   { e:'🥗', w:'Salat' },   { e:'🧼', w:'Seife' }]},
+  T: { ex:{ e:'🐯', w:'Tiger' },    opts:[{ e:'🚜', w:'Traktor' },  { e:'🥁', w:'Trommel' }, { e:'🍅', w:'Tomate' }]},
+  U: { ex:{ e:'🦉', w:'Uhu' },      opts:[{ e:'🛸', w:'Ufo' }]},
+  V: { ex:{ e:'🐦', w:'Vogel' },    opts:[{ e:'🌋', w:'Vulkan' },   { e:'🏺', w:'Vase' }]},
+  W: { ex:{ e:'🐋', w:'Wal' },      opts:[{ e:'🐺', w:'Wolf' },     { e:'☁️', w:'Wolke' },   { e:'🪱', w:'Wurm' }]},
+  X: {                              opts:[{ e:':px-xylofon:', w:'Xylofon' }]},
+  Y: {                              opts:[{ e:'🧘', w:'Yoga' }]},
+  Z: { ex:{ e:'🦓', w:'Zebra' },    opts:[{ e:'🦷', w:'Zahn' },     { e:'🚂', w:'Zug' },     { e:'🍋', w:'Zitrone' }, { e:'⛺', w:'Zelt' }]},
 }
 
 const ALL_LETTERS = Object.keys(LETTER_DATA)
@@ -107,18 +100,9 @@ function makeQuestions(level) {
       .map(k => shuffle(LETTER_DATA[k].opts)[0])
       .filter(o => o.e !== correct.e)
       .slice(0, cfg.options - 1)
-    return { letter: l, correct, options: shuffle([correct, ...distractors]) }
+    return { letter: l, ex: LETTER_DATA[l].ex, correct, options: shuffle([correct, ...distractors]) }
   })
 }
-
-/** What the round says first: "B wie Ball. Hör mal, Bö, Ball." */
-function infoOf(l) {
-  const d = LETTER_DATA[l]
-  if (d.note) return { show: d.note, say: d.say ?? d.note }
-  return { show: `${l} wie ${d.ex}`, say: `${l} wie ${d.ex}. Hör mal, ${soundOf(l)}, ${d.ex}.` }
-}
-
-const ABC = 'audio/abc-abenteuer/'
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function LetterIntroGame({ level = 1, onComplete }) {
@@ -128,32 +112,39 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
   const [bursts, burst] = useBursts()
   const speaking = useSpeaking()
   const monsterRef = useRef(null)
+  const blanketRef = useRef(null)
 
   const [readyAt, setReadyAt] = useState(-1)    // the round whose task has been said
   const [eatenIn, setEaten]   = useState(null)  // { i, opt }: the right thing of round i, eaten
   const [spit,    setSpit]    = useState(null)  // a wrong thing, flying back out
+  const [shout,   setShout]   = useState(0)     // tickled: it shows its letter
 
-  // Merksatz, dann die Frage, als eine Ansage. Bis sie durch ist, lässt sich
-  // noch nichts füttern: wer sofort fütterte, brach den Merksatz ab und hörte
-  // die eigentliche Frage nie.
+  // The example and the sound ("A wie Affe." "Ah"), once Lumi has recorded
+  // them. Until it is said, nothing can be fed: whoever fed at once cut the
+  // sentence off and never heard it.
   const idxRef = useRef(0)
   const sayRound = useCallback(() => {
     const i = idxRef.current, q = questions[i]
     if (!q) return
-    const info = infoOf(q.letter)
-    narrate([
-      i === 0 && { text: 'Das Buchstaben-Monster hat Hunger! Es frisst nur Sachen, die mit seinem Laut anfangen.' },
-      { text: info.say, gap: i === 0 ? 300 : 0 },
-      { src: ABC + `welches-wort-beginnt-mit-${q.letter.toLowerCase()}.mp3`, text: `Welches Wort beginnt mit ${q.letter}?`, gap: 250 },
-    ])
+    narrate([i === 0 && rec('abc/hunger'), rec(`abc/${slug(q.letter)}`), soundRec(q.letter)])
     afterNarration(() => setReadyAt(i), { maxMs: 15000 })
   }, [questions])
 
-  const { idx, done, leaving, tried, win, miss, reveal } = useRounds(questions.length, { onComplete, sayTask: sayRound, outroMs: 550 })
+  const { idx, done, leaving, finale, tried, streak, win, miss, reveal, isOver, hasTried } =
+    useRounds(questions.length, { onComplete, sayTask: sayRound, outroMs: 550 })
   idxRef.current = idx
   const q = questions[idx]
   const ready = readyAt === idx
   const eaten = eatenIn?.i === idx ? eatenIn.opt : null
+
+  // a new monster starts calm, whatever the last one was doing
+  useEffect(() => { setMood('idle'); setSpit(null) }, [idx, setMood])
+  // the end of the level: one more dance and confetti
+  useEffect(() => {
+    if (!finale) return
+    setMood('dance', 1800)
+    burst(monsterRef.current, 'confetti', 18)
+  }, [finale, setMood, burst])
 
   const munch = (then) => {
     setMood('eat', 900)
@@ -162,48 +153,52 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
   }
 
   const feed = (opt) => {
-    if (done || tried.includes(opt)) return false
+    if (isOver() || hasTried(opt)) return false
     if (opt === q.correct) {
       setEaten({ i: idx, opt })
-      win()
-      sayRight(`Lecker! ${opt.w} beginnt mit ${q.letter}.`)
+      const party = !tried.length && streak + 1 >= 3   // three in a row: it dances
+      win(party ? 2800 : 2300)
+      sayRight()
       munch(() => {
-        // now and then a little burp: the classic giggle
-        if (chance(0.3)) { sfx.burp(); setMood('burp', 900) } else setMood('happy', 1400)
-        burst(monsterRef.current, 'hearts')
+        // now and then a little burp: the running gag
+        if (party) { sfx.tada(); setMood('dance', 1600) }
+        else if (chance(0.3)) { sfx.burp(); setMood('burp', 900) }
+        else setMood('happy', 1400)
+        burst(monsterRef.current, party ? 'confetti' : 'hearts', party ? 16 : 10)
       })
       return true
     }
     setSpit(opt)
     munch(() => { setMood('yuck', 1100); sfx.boing() })
-    setTimeout(() => setSpit(null), 1700)
-    const first = opt.w[0].toUpperCase()
+    setTimeout(() => setSpit(s => (s === opt ? null : s)), 1700)
+    sayWrong()
     if (miss(opt) >= 2) {
       // Nach zwei Fehlern zeigt das Monster die Lösung und frisst sie selbst.
-      sayWrong(`Bäh! Schau mal, ${q.correct.w} beginnt mit ${q.letter}.`)
-      reveal()
-      setTimeout(() => { setEaten({ i: idx, opt: q.correct }); munch(() => setMood('happy', 1200)) }, 2200)
-    } else {
-      sayWrong(`Bäh! ${opt.w} beginnt mit ${first}. Das Monster mag nur Sachen mit ${q.letter}.`)
+      reveal(4400)
+      setTimeout(() => { setEaten({ i: idx, opt: q.correct }); munch(() => setMood('happy', 1200)) }, 2600)
     }
     return true
   }
 
-  // Tickling the monster: it giggles and says its sound
+  // Tickling the monster: it giggles and shouts its letter (and its sound,
+  // once recorded)
   const tickle = () => {
-    if (!ready || done) return
+    if (isOver()) return
     sfx.giggle()
     setMood('happy', 900)
-    const s = soundOf(q.letter)
-    narrate([{ text: `${s}! ${s}!` }])
+    setShout(n => n + 1)
+    narrate([soundRec(q.letter)])
   }
 
   if (!q) return null
-  const info = infoOf(q.letter)
   const color = colorOf(q.letter)
   const shown = lower ? q.letter.toLowerCase() : q.letter
+  const caseOf = w => (lower ? w[0].toLowerCase() : w[0].toUpperCase())
   const live = ready && !done
   const faceMood = mood === 'idle' && speaking ? 'talk' : mood
+  const voiced = rec(`abc/${slug(q.letter)}`) || soundRec(q.letter)
+  const showAnswer = done && tried.length >= 2 && !eaten
+  const heard = q.options.map(o => wordRec(o.w)).filter(Boolean)
 
   return (
     <div style={{
@@ -213,21 +208,36 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
       <RoundTrail total={questions.length} done={idx + (done ? 1 : 0)} walker="🐛" goal="🎂" style={{ width:'calc(100% - 80px)', maxWidth:520 }} />
 
       <DragArea autoTarget="monster" disabled={!live}>
-        {/* Merksatz — and the whole task once more */}
-        <div style={{ display:'flex', alignItems:'center', gap:10, maxWidth:560 }}>
-          <motion.div key={'info-' + idx} initial={{ scale:0, opacity:0 }} animate={{ scale:1, opacity:1 }}
-            transition={{ delay:0.35, type:'spring', stiffness:380, damping:18 }}
-            style={{
-              background:'#fffdf7', border:`3px solid ${INK}`, borderRadius:18, boxShadow:'0 5px 0 rgba(42,27,61,0.3)',
-              padding:'8px 18px', fontFamily:'var(--font-heading)', fontWeight:700, fontSize:'clamp(17px,3.2vw,22px)',
-              color:INK, textAlign:'center',
-            }}>
-            {info.show}
-          </motion.div>
-          <motion.button whileHover={{ scale:1.08 }} whileTap={{ scale:0.92 }} onClick={sayRound}
-            aria-label="Frage noch einmal anhören"
-            style={{ ...pxButton('parch'), width:52, height:52, flexShrink:0, fontSize:24, lineHeight:1, padding:0 }}>🔊</motion.button>
-        </div>
+        {/* What the monster wants: its letter, like the example — and what it already ate */}
+        <motion.div key={'want-' + idx} initial={{ scale:0, opacity:0 }} animate={leaving ? { scale:0, opacity:0 } : { scale:1, opacity:1 }}
+          transition={leaving ? { duration:0.25 } : { delay:0.2, type:'spring', stiffness:380, damping:18 }}
+          style={{
+            position:'relative', display:'flex', alignItems:'center', gap:10, minHeight:76,
+            background:'#fffdf7', border:`3px solid ${INK}`, borderRadius:22, boxShadow:'0 5px 0 rgba(42,27,61,0.3)',
+            padding:'6px 16px',
+          }}>
+          <span style={{ fontFamily:'var(--font-heading)', fontWeight:700, fontSize:52, lineHeight:1, color,
+            WebkitTextStroke:`2.5px ${INK}`, paintOrder:'stroke fill' }}>{shown}</span>
+          {q.ex && <>
+            <Example item={q.ex} color={color} />
+          </>}
+          <AnimatePresence>
+            {eaten && (
+              <motion.div key="ate" initial={{ scale:0, width:0 }} animate={{ scale:1, width:'auto' }}
+                transition={{ delay:0.9, type:'spring', stiffness:300, damping:16 }}
+                style={{ display:'flex', alignItems:'center', gap:10 }}>
+                <Example item={eaten} color={color} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+          {voiced && (
+            <motion.button whileHover={{ scale:1.08 }} whileTap={{ scale:0.92 }} onClick={sayRound}
+              aria-label="Noch einmal anhören"
+              style={{ ...pxButton('parch'), width:52, height:52, flexShrink:0, fontSize:24, lineHeight:1, padding:0 }}>🔊</motion.button>
+          )}
+          {/* the tail, pointing down to the monster */}
+          <span aria-hidden="true" style={{ position:'absolute', left:'50%', bottom:-15, marginLeft:-11, borderStyle:'solid', borderWidth:'14px 11px 0 11px', borderColor:`${INK} transparent transparent transparent` }} />
+        </motion.div>
 
         {/* The monster walks in, eats, and walks off */}
         <motion.div key={idx} ref={monsterRef}
@@ -239,10 +249,20 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
             {hover => (
               <div onClick={tickle} style={{ cursor:'pointer' }}>
                 <LetterMonster letter={shown} small={lower ? q.letter : q.letter.toLowerCase()} color={color}
-                  mood={hover ? 'hungry' : faceMood} size={250} />
+                  mood={hover && live ? 'hungry' : faceMood} size={240} />
               </div>
             )}
           </DropZone>
+          {/* tickled: it shouts its letter */}
+          <AnimatePresence>
+            {shout > 0 && (
+              <motion.div key={shout} aria-hidden="true"
+                initial={{ scale:0.3, opacity:0, y:0 }} animate={{ scale:[0.3, 1.2, 1], opacity:[0, 1, 0], y:-50 }}
+                transition={{ duration:0.9 }}
+                style={{ position:'absolute', right:-30, top:10, pointerEvents:'none', fontFamily:'var(--font-heading)', fontWeight:700,
+                  fontSize:56, color, WebkitTextStroke:`2.5px ${INK}`, paintOrder:'stroke fill' }}>{shown}!</motion.div>
+            )}
+          </AnimatePresence>
           <AnimatePresence>
             {spit && !reduceMotion() && (
               <motion.div key={spit.w} aria-hidden="true"
@@ -257,7 +277,7 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
         </motion.div>
 
         {/* Food on the picnic blanket */}
-        <div style={{
+        <div ref={blanketRef} style={{
           display:'flex', alignItems:'center', justifyContent:'center', gap:'clamp(8px,2vw,18px)', flexWrap:'wrap',
           padding:'10px clamp(10px,2.5vw,24px)', borderRadius:26, maxWidth:'100%', boxSizing:'border-box',
           background:'repeating-conic-gradient(#f3b8b0 0 25%, #fffdf7 0 50%) 0 0 / 36px 36px',
@@ -266,30 +286,55 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
           {q.options.map((opt, i) => {
             const gone = opt === eaten || opt === spit
             const isTried = tried.includes(opt)
+            const glow = showAnswer && opt === q.correct
             return (
               <motion.div key={`${idx}-${opt.w}`}
                 initial={{ y:-50, scale:0, opacity:0 }}
-                animate={gone ? { scale:0, opacity:0 } : { y:0, scale:1, opacity: isTried ? 0.45 : 1 }}
-                transition={{ delay: gone ? 0 : 0.5 + i * 0.09, type:'spring', stiffness:380, damping:17 }}
-                style={{ width:'clamp(92px,19vw,124px)' }}>
+                animate={gone || leaving ? { scale:0, opacity:0 }
+                  : glow && !reduceMotion() ? { y:[0, -16, 0], scale:[1, 1.12, 1], opacity:1 }
+                  : { y:0, scale:1, opacity: isTried ? 0.5 : 1 }}
+                transition={gone || leaving ? { duration:0.2 }
+                  : glow ? { duration:0.6, repeat:Infinity }
+                  : { delay: 0.25 + i * 0.07, type:'spring', stiffness:380, damping:17 }}
+                style={{ position:'relative', width:'clamp(96px,19vw,124px)' }}>
                 <Draggable id={opt.w} data={opt} disabled={isTried || gone} label={opt.w}>
-                  <div {...hearable(opt.w, { enabled: !done })} style={{
+                  <div {...hearWord(opt.w, !done)} style={{
                     display:'flex', flexDirection:'column', alignItems:'center', gap:2, padding:'8px 4px',
-                    background:'#fffdf7', border:`3px solid ${INK}`, borderRadius:'50%/46%',
-                    boxShadow:'0 4px 0 rgba(42,27,61,0.25)', filter: isTried ? 'grayscale(0.8)' : undefined,
+                    background:'#fffdf7', border:`3px solid ${glow ? '#ffc93c' : INK}`, borderRadius:'50%/46%',
+                    boxShadow: glow ? '0 0 0 5px #ffc93c' : '0 4px 0 rgba(42,27,61,0.25)', filter: isTried ? 'grayscale(0.8)' : undefined,
                   }}>
-                    <Art art={opt.e} size={70} />
+                    <Art art={opt.e} size={74} />
                     <span style={{ fontFamily:'var(--font-heading)', fontWeight:700, fontSize:'clamp(13px,2.4vw,16px)', color:INK,
                       textAlign:'center', overflowWrap:'anywhere', lineHeight:1.1 }}>{opt.w}</span>
                   </div>
                 </Draggable>
+                {/* spat out: it shows its own letter, which is not the monster's */}
+                {isTried && !gone && (
+                  <motion.span aria-hidden="true" initial={{ scale:0 }} animate={{ scale:1 }} transition={{ type:'spring', stiffness:400 }}
+                    style={{ position:'absolute', top:-6, right:-4, width:38, height:38, borderRadius:'50%', background:'#fffdf7',
+                      border:`3px solid ${INK}`, display:'flex', alignItems:'center', justifyContent:'center',
+                      fontFamily:'var(--font-heading)', fontWeight:700, fontSize:24, color:'#6b6b7a' }}>{caseOf(opt.w)}</motion.span>
+                )}
               </motion.div>
             )
           })}
-          <HearOptions items={q.options.map(o => o.w)} label="Alle Wörter vorlesen" size={48} />
+          {heard.length > 0 && <HearOptions items={heard} label="Alle Wörter anhören" size={48} />}
         </div>
+        <HintHand from={blanketRef} to={monsterRef} active={live && !leaving && !finale} delay={hintDelay(idx)} />
       </DragArea>
       {bursts}
+    </div>
+  )
+}
+
+/** A picture in the monster's bubble, its first letter picked out below. */
+function Example({ item, color }) {
+  return (
+    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', lineHeight:1 }}>
+      <Art art={item.e} size={52} />
+      <span style={{ fontFamily:'var(--font-heading)', fontWeight:700, fontSize:15, color:INK }}>
+        <span style={{ color, WebkitTextStroke:`1px ${INK}`, fontSize:19 }}>{item.w[0]}</span>{item.w.slice(1)}
+      </span>
     </div>
   )
 }

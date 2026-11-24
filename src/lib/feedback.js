@@ -32,19 +32,28 @@ const PERSIST = recorded('drangeblieben', 4)
 // No "try again" here: some games move on to the next task after a miss
 const WRONG = recorded('noch-nicht', 5)
 
-let lastRight = -1, lastWrong = -1, lastPersist = -1
 // misses in a row since the last right answer
 let missed = 0
+// right answers so far: praise is spoken for the first and then every third
+let rights = 0
+const PRAISE_EVERY = 3
 
 /** Lumi in the top bar reacts to this (components/LumiBuddy.jsx). */
 export function announce(kind) {
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('lumi:feedback', { detail: kind }))
 }
-const pick = (list, last) => {
-  let i = Math.floor(Math.random() * list.length)
-  if (i === last) i = (i + 1) % list.length
-  return i
+
+// Each sentence once before any comes again, never the same twice in a row
+function bag(list) {
+  let left = [], last = null
+  return () => {
+    if (!left.length) left = [...list].sort(() => Math.random() - 0.5)
+    if (left[0] === last && left.length > 1) left.push(left.shift())
+    last = left.shift()
+    return last
+  }
 }
+const nextRight = bag(RIGHT), nextPersist = bag(PERSIST), nextWrong = bag(WRONG)
 
 /** The task of a round. Interrupts whatever was still being said. */
 export function sayTask(text, opts = {}) {
@@ -53,22 +62,30 @@ export function sayTask(text, opts = {}) {
   return narrate([{ text }], opts)
 }
 
-/** Praise, optionally followed by what was right ("Kuh und Schuh reimen sich."). */
+/**
+ * Praise, optionally followed by what was right ("Kuh und Schuh reimen sich.").
+ * The same "Super!" after every single answer wore thin fast: the praise is
+ * spoken for the first right answer and then every third one, and always
+ * when the child kept going after a miss. Lumi, the sound and the scene
+ * cheer every time.
+ */
 export function sayRight(extra, opts = {}) {
   const kept = missed > 0
   missed = 0
+  rights++
   announce(kept ? 'persist' : 'right')
-  let head
-  if (kept) { lastPersist = pick(PERSIST, lastPersist); head = PERSIST[lastPersist] }
-  else { lastRight = pick(RIGHT, lastRight); head = RIGHT[lastRight] }
-  return narrate(extra ? [head, { text: extra }] : [head], opts)
+  const head = kept ? nextPersist() : rights % PRAISE_EVERY === 1 ? nextRight() : null
+  return narrate([head, extra && { text: extra }], opts)
 }
 
-/** Gentle correction, optionally with the hint or the right answer. */
+/**
+ * Gentle correction, optionally with the hint or the right answer. Spoken
+ * for the first miss of a task, and the second gets "mistakes are part of
+ * learning"; after that only the hint.
+ */
 export function sayWrong(hint, opts = {}) {
   missed++
   announce('wrong')
-  lastWrong = pick(WRONG, lastWrong)
-  const head = missed === 2 ? line('rueckmeldung/fehler-lernen') : WRONG[lastWrong]
-  return narrate(hint ? [head, { text: hint }] : [head], opts)
+  const head = missed === 1 ? nextWrong() : missed === 2 ? line('rueckmeldung/fehler-lernen') : null
+  return narrate([head, hint && { text: hint }], opts)
 }

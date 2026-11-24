@@ -31,7 +31,6 @@ const cardVariants = {
   visible: (i) => ({ opacity:1, y:0, scale:1, transition:{ delay: i*0.04, type:'spring', stiffness:340, damping:18 } }),
 }
 
-const WELCOME_BACK = 'audio/allgemein/hallo-du-willkommen-zurueck-zu-lumi-mach-direkt-da-weiter-wo-wir-aufge.mp3'
 
 // Module-level (not component state): HomeScreen remounts fresh every time
 // the router switches state.screen back to 'home', so a plain useEffect([])
@@ -62,8 +61,6 @@ function greetingParts({ lastPlayed, idea }) {
   const n = parseInt(readStore('lumi_greet_n', '0'), 10) || 0
   writeStore('lumi_greet_n', n + 1)
   const options = [
-    // the recording "Hallo du, willkommen zurück zu Lumi! …"
-    [{ src: WELCOME_BACK, text: 'Hallo du, willkommen zurück! Mach direkt da weiter, wo wir aufgehört haben, oder versuche etwas Neues.' }],
     [line('begruessung/wieder-da'), ...(say ? [say] : [])],
     [timeLine(), ...(say ? [say] : [])],
   ]
@@ -162,16 +159,16 @@ function LumiIdea({ idea, plan, onPlay, onAlbum, stickers, narrow }) {
   const allDone = !idea
   return (
     <div style={{
-      display:'flex', alignItems:'center', justifyContent:'center', flexWrap: narrow ? 'nowrap' : 'wrap',
+      display:'flex', alignItems:'center', justifyContent: narrow ? 'flex-start' : 'center', flexWrap: narrow ? 'nowrap' : 'wrap',
       gap:'clamp(8px,3vw,40px)', padding:'clamp(8px,2vw,20px) clamp(10px,3vw,16px) 0',
     }}>
-      <div style={{ paddingTop: narrow ? 62 : 90, flexShrink: 0 }}>
+      <div style={{ paddingTop: narrow ? 62 : 90, paddingLeft: narrow ? 12 : 0, flexShrink: 0 }}>
         <Critter art="lumi" size={narrow ? 92 : 170} mood={allDone ? 'dance' : 'idle'} talks label="Lumi"
           wish={idea ? <TileArt mod={idea.mod} size={narrow ? 40 : 60} bare /> : <Art art="⭐" size={narrow ? 34 : 52} />}
           wishSide="top" />
       </div>
       <motion.div initial={{ scale:0.8, opacity:0 }} animate={{ scale:1, opacity:1 }} transition={{ type:'spring', stiffness:260, damping:18, delay:0.2 }}
-        className="px-panel" style={{ padding: narrow ? '10px 12px' : '14px 18px', display:'flex', flexDirection:'column', alignItems:'center', gap:10, minWidth: narrow ? 0 : 280 }}>
+        className="px-panel" style={{ padding: narrow ? '10px 12px' : '14px 18px', display:'flex', flexDirection:'column', alignItems:'center', gap:10, minWidth: narrow ? 0 : 280, flex: narrow ? '1 1 0' : undefined }}>
         {idea ? (<>
           <div style={{ display:'flex', alignItems:'center', gap:12 }}>
             <TileArt mod={idea.mod} size={narrow ? 44 : 72} />
@@ -192,16 +189,13 @@ function LumiIdea({ idea, plan, onPlay, onAlbum, stickers, narrow }) {
           </button>
         </>)}
         {/* how many of today's ideas are played: a sticker waits at the end */}
-        <button onClick={() => narrate([{ text: allDone
-            ? 'Du hast alle Ideen von heute gespielt! Morgen hat Lumi neue.'
-            : 'Das sind Lumis Ideen für heute. Wenn du alle gespielt hast, bekommst du einen Sticker für dein Album!' }])}
-          aria-label={`${plan.done} von ${plan.total} Ideen gespielt, ${stickers} Sticker`}
-          style={{ all:'unset', cursor:'pointer', display:'flex', alignItems:'center', gap:6, minHeight:44 }}>
+        <div role="img" aria-label={`${plan.done} von ${plan.total} Ideen gespielt, ${stickers} Sticker`}
+          style={{ display:'flex', alignItems:'center', gap:6, minHeight:44 }}>
           {Array.from({ length: plan.total }, (_, i) => (
             <span key={i} className={`px-pip${i < plan.done ? ' px-pip--gold' : ''}`} style={{ width:16, height:16 }} />
           ))}
           <img src={journeyArt(allDone ? 'chest-open.png' : 'chest.png')} alt="" style={{ width:30, height:30, imageRendering:'pixelated' }} />
-        </button>
+        </div>
       </motion.div>
     </div>
   )

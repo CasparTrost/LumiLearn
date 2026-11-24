@@ -1,24 +1,27 @@
 import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { sfx } from '../sfx.js'
-import { sayNumber } from '../tts.js'
-import { narrate, afterNarration, lockPreviews } from '../narrator.js'
+import { afterNarration, lockPreviews } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
-import { hearable } from '../lib/hearable.js'
-import { Art, RoundTrail, useBursts } from '../components/play/index.js'
+import { Art, RoundTrail, HintHand, useBursts } from '../components/play/index.js'
 import { INK } from './px.js'
 
 /**
  * Planeten-Taxi — Addieren und Subtrahieren am Zahlenstrahl
  *
- * A little alien calls the space taxi: "Hol mich ab! Ich warte auf
- * Planet vier plus zwei." The planets in a row are the number line. The
- * child taps the planet, the rocket starts and hops planet by planet while
- * the voice counts on, and the alien climbs in and cheers. Minus flies
- * backwards. In the top levels the alien waves from its planet and the
- * child picks how many hops the rocket needs.
+ * A little alien calls the space taxi; its speech bubble holds the sum
+ * ("4 + 2 = ?"). The planets in a row are the number line. The child taps
+ * the planet, the rocket starts and hops planet by planet, each hop drawn
+ * as a gold arc with its number, and the alien climbs in and cheers. Minus
+ * flies backwards. In the top levels the alien waves from its planet and
+ * the child picks how many hops the rocket needs. At the end of the level
+ * the taxi takes all its passengers to the moon.
+ *
+ * Everything is shown, nothing needs listening: a wrong planet has someone
+ * else living on it, the number to count pulses, and an arrow points the
+ * way when the rocket would fly the wrong way.
  *
  * Scientific basis:
  *   • Mental number line (Siegler & Ramani, 2009) — board-game-like movement
@@ -32,7 +35,6 @@ import { INK } from './px.js'
  */
 
 function rand(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a }
-const N = sayNumber
 
 // L1-3  plus, ten frame (steps 2, 3, 5)  L4  plus, no ten frame
 // L5    minus                            L6  plus and minus mixed
@@ -167,14 +169,15 @@ function TenFrame({ filled, added }) {
 }
 
 // One number of the sum, on a block
-function NumBlock({ children, color = '#FFFDF7', small, plain }) {
+function NumBlock({ children, color = '#FFFDF7', small, plain, pulse }) {
   return (
-    <span style={{
+    <motion.span key={pulse || 'still'} animate={pulse && !reduceMotion() ? { scale: [1, 1.3, 1, 1.3, 1] } : {}} transition={{ duration: 1.2 }}
+      style={{
       minWidth: plain ? 0 : small ? 42 : 54, height: small ? 48 : 58, padding: plain ? 0 : '0 6px', boxSizing: 'border-box', borderRadius: 12,
       background: plain ? 'none' : color, border: plain ? 'none' : `3px solid ${INK}`, boxShadow: plain ? 'none' : '0 4px 0 rgba(42,27,61,0.35)',
       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
       fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: small ? 30 : 38, color: INK,
-    }}>{children}</span>
+    }}>{children}</motion.span>
   )
 }
 
@@ -196,7 +199,8 @@ function Planet({ n, size, state }) {
   )
 }
 
-const MIN_CELL = 44, GAP = 2   // smallest field and gap on the number line
+const MIN_CELL = 46, GAP = 2   // smallest field and gap on the number line
+const HOP_MS = 520              // one hop of the rocket
 
 export default function RocketMathGame({ level = 1, onComplete }) {
   const plan  = useMemo(() => levelPlan(level), [level])
@@ -210,23 +214,36 @@ export default function RocketMathGame({ level = 1, onComplete }) {
   const [picked,  setPicked]  = useState(null)
   const [wrong,   setWrong]   = useState([])
   const [misses,  setMisses]  = useState(0)      // on the current task
-  const firstTry = useRef(0)                     // tasks right on the first try
   const [shown,   setShown]   = useState(false)  // the rocket already flew ahead
   const [mood,    setMood]    = useState('idle')
   const [hopping, setHopping] = useState(false)
-  const [hops,    setHops]    = useState(0)      // a new hop, for the jump
   const [launching, setLaunching] = useState(false)
+  const [trail,   setTrail]   = useState([])     // the hops so far: [{ from, to }]
+  const [ghost,   setGhost]   = useState(null)   // a wrong number of hops, shown dashed
   const [aboard,  setAboard]  = useState(false)  // the alien got in
   const [resident, setResident] = useState(null) // { n, art } peeking out of a wrong planet
+  const [arrow,   setArrow]   = useState(null)   // 1 / -1: the way the rocket has to fly
+  const [pulse,   setPulse]   = useState(null)   // the number block to look at again
+  const [streak,  setStreak]  = useState(0)      // right on the first try in a row
+  const [riders,  setRiders]  = useState([])     // the aliens picked up so far
+  const [ending,  setEnding]  = useState(false)
   const [lineW,   setLineW]   = useState(0)
   const [bursts, burst] = useBursts()
-  const hopTimer = useRef(null)
+  const firstTry = useRef(0)                     // tasks right on the first try
+  const timers   = useRef([])
   const lineRef  = useRef(null)
+  const rowRef   = useRef(null)
+  const jumpsRef = useRef(null)
 
   const t = tasks[idx]
   const missing = t?.kind === 'missing'
 
-  useEffect(() => () => clearTimeout(hopTimer.current), [])
+  // Timers of the task: they wait while the help is open and end with it
+  const later = useCallback((fn, ms) => {
+    const run = () => { if (pausedRef.current) timers.current.push(setTimeout(run, 250)); else fn() }
+    timers.current.push(setTimeout(run, ms))
+  }, [])
+  useEffect(() => () => timers.current.forEach(clearTimeout), [])
 
   // The number line fits the width it has. It used to be one scrolling row:
   // on a phone the outer fields were cut off and unreachable, and every field
@@ -241,9 +258,9 @@ export default function RocketMathGame({ level = 1, onComplete }) {
     return () => ro.disconnect()
   }, [])
 
-  // Which fields to show: all of them if they fit at 44 px, otherwise a
-  // stretch that holds the start and the landing field with at least one
-  // field beyond it — the landing field is never simply the last one.
+  // Which fields to show: all of them if they fit, otherwise a stretch that
+  // holds the start and the landing field with at least one field beyond
+  // it — the landing field is never simply the last one.
   const span = useMemo(() => {
     if (!t) return [0, 0]
     const total = plan.max + 1
@@ -259,157 +276,142 @@ export default function RocketMathGame({ level = 1, onComplete }) {
     return [start, start + len - 1]
   }, [t, lineW, plan.max])
 
-  const taskSpeech = useCallback(task => task.kind === 'missing'
-    ? `Ich warte auf Planet ${N(task.target)}! Die Rakete steht auf ${N(task.from)}. ${N(task.from)} plus wie viel ergibt ${N(task.target)}? Wie viele Sprünge braucht die Rakete?`
-    // Numbers are spelled out for the voice: a digit right before a period is
-    // read as an ordinal in German — "4 plus 2." came out as "vier plus zweite".
-    : `Hol mich ab! Ich warte auf Planet ${N(task.from)} ${task.op === '+' ? 'plus' : 'minus'} ${N(task.step)}. Wo landet die Rakete?`, [])
-
-  // New task: the taxi whooshes to the starting planet and the alien calls
+  // New task: everything back, the taxi whooshes to the starting planet
   useEffect(() => {
     if (!t) return
+    timers.current.forEach(clearTimeout); timers.current = []
     setPos(t.from)
-    setPicked(null)
-    setWrong([])
-    setMisses(0)
-    setShown(false)
-    setAboard(false)
-    setResident(null)
+    setPicked(null); setWrong([]); setMisses(0); setShown(false)
+    setAboard(false); setResident(null); setArrow(null); setPulse(null)
+    setTrail([]); setGhost(null); setHopping(false); setLaunching(false)
     setMood('idle')
     if (idx > 0) sfx.whoosh()
     lockPreviews()
-    const id = setTimeout(() => sayTask(taskSpeech(t)), 600)
-    return () => clearTimeout(id)
+    sayTask()
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fly the rocket field by field and count along out loud — the counting on
-  // ("sieben, acht, neun") is what the number line is for. In missing-addend
-  // tasks the jumps are counted ("eins, zwei, drei"), that is the answer.
-  // Each hop waits for its word; the help dialog holds the flight.
-  const hopTo = useCallback((from, to, countJumps, done) => {
+  // Fly the rocket field by field: the engine roars first (a short shake),
+  // then one hop after the other, each drawn as an arc with its number —
+  // counting on is what the number line is for.
+  const hopTo = useCallback((from, to, done) => {
     setHopping(true)
+    setLaunching(true)
+    setTrail([])
+    sfx.whoosh()
     const dir = to > from ? 1 : -1
-    let cur = from, jumps = 0
+    let cur = from
     const stepOnce = () => {
-      if (pausedRef.current) { hopTimer.current = setTimeout(stepOnce, 250); return }
       setLaunching(false)
       if (cur === to) { setHopping(false); done?.(); return }
-      cur += dir; jumps++
+      const prev = cur
+      cur += dir
       setPos(cur)
-      setHops(h => h + 1)
+      setTrail(tr => [...tr, { from: prev, to: cur }])
       sfx.boing()
-      let moved = false
-      // the word can be cut off (help opened, a new task): fly on anyway
-      const safety = setTimeout(() => next(), 1400)
-      const next = () => {
-        if (moved) return
-        moved = true
-        clearTimeout(safety)
-        hopTimer.current = setTimeout(stepOnce, 140)
-      }
-      hopTimer.current = safety
-      narrate([{ text: N(countJumps ? jumps : cur), rate: 1 }], { onEnd: next })
+      later(stepOnce, HOP_MS)
     }
-    // the engine roars first: a short shake with flames, then lift-off
-    sfx.whoosh()
-    setLaunching(true)
-    hopTimer.current = setTimeout(stepOnce, 650)
-  }, [])
-
-  const equation = task => `${N(task.from)} ${task.op === '+' ? 'plus' : 'minus'} ${N(task.step)} ist ${N(task.target)}.`
+    later(stepOnce, 650)
+  }, [later])
 
   const nextTask = useCallback(() => {
-    if (idx + 1 >= tasks.length) {
+    if (idx + 1 < tasks.length) { setIdx(i => i + 1); return }
+    // the end of the level: the taxi takes everybody to the moon
+    setEnding(true)
+    sfx.slideUp()
+    later(() => {
       sfx.complete()
-      afterNarration(() => onComplete(result(firstTry.current, tasks.length)), { minMs: 300 })
-    } else {
-      setIdx(i => i + 1)
-    }
-  }, [idx, tasks.length, onComplete])
+      afterNarration(() => onComplete(result(firstTry.current, tasks.length)), { minMs: 600 })
+    }, 2000)
+  }, [idx, tasks.length, onComplete, later])
 
   // The alien climbs in and cheers, then the next call comes by itself
+  // once the pick-up was seen
   const finishTask = useCallback((alreadyThere) => {
     setPicked(missing ? t.step : t.target)
-    if (misses === 0) firstTry.current++
+    setArrow(null); setPulse(null)
+    const first = misses === 0
+    if (first) firstTry.current++
+    const s = first ? streak + 1 : 0
+    setStreak(s)
     const end = () => {
       setAboard(true)
       setMood('happy')
+      setRiders(r => [...r, t.color])
       sfx.correct()
       sfx.slideUp()
       const r = lineRef.current.getBoundingClientRect()
-      burst({ x: r.left + r.width * (t.target - span[0] + 0.5) / (span[1] - span[0] + 1), y: r.top + r.height * 0.6 }, 'stars')
-      sayRight(equation(t), {
-        onEnd: () => {
-          const go = () => (pausedRef.current ? (hopTimer.current = setTimeout(go, 250)) : nextTask())
-          hopTimer.current = setTimeout(go, 500)
-        },
-      })
+      burst({ x: r.left + r.width * (t.target - span[0] + 0.5) / (span[1] - span[0] + 1), y: r.top + r.height * 0.6 }, s >= 3 ? 'confetti' : 'stars', s >= 3 ? 18 : 10)
+      sayRight()
+      afterNarration(() => later(nextTask, 0), { minMs: s >= 3 ? 2300 : 1900 })
     }
     if (alreadyThere) end()
-    else hopTo(t.from, t.target, missing, end)
-  }, [t, missing, misses, span, hopTo, burst, nextTask])
+    else hopTo(t.from, t.target, end)
+  }, [t, missing, misses, streak, span, hopTo, burst, later, nextTask])
 
-  // After two misses the rocket flies ahead and counts, then the child
-  // answers — tapping every field in turn until one is right taught nothing.
+  // After two misses the rocket flies ahead with its arcs, then waits there
+  // for the child to answer — tapping every field in turn taught nothing.
   const showTheWay = useCallback(() => {
     setShown(true)
-    setHopping(true)
     setPos(t.from)
-    narrate([{ text: 'Schau, ich zähle mit!' }], {
-      onEnd: () => hopTo(t.from, t.target, missing, () => sayTask('Jetzt du!')),
-    })
-  }, [t, missing, hopTo])
+    later(() => hopTo(t.from, t.target), 900)
+  }, [t, hopTo, later])
 
-  const miss = useCallback((n, hint) => {
+  const miss = useCallback((n) => {
     setWrong(w => w.includes(n) ? w : [...w, n])
     const m = misses + 1
     setMisses(m)
+    setStreak(0)
     setMood('oops')
     sfx.boing()
-    if (m >= 2 && !shown) sayWrong(hint, { onEnd: showTheWay })
-    else sayWrong(hint)
-    setTimeout(() => setMood('idle'), 900)
-  }, [misses, shown, showTheWay])
+    sayWrong()
+    later(() => setMood('idle'), 900)
+    if (m >= 2 && !shown) showTheWay()
+  }, [misses, shown, showTheWay, later])
 
   // Tap on a planet: where does the rocket land? Someone else lives on a
-  // wrong one and peeks out, puzzled.
+  // wrong one and peeks out, puzzled; the way to fly or the number to count
+  // is pointed out.
   const pickField = useCallback((n) => {
     if (picked !== null || hopping || !t || missing) return
     if (n === t.target) { finishTask(pos === t.target); return }
     // Which way is "too far" depends on the direction: at minus the rocket
-    // flies left, and a field above the result is not far enough. The hints
-    // used to be swapped there.
+    // flies left, and a field above the result is not far enough.
     const dir = t.op === '+' ? 1 : -1
-    let hint
-    if ((n - t.from) * dir <= 0) hint = t.op === '+' ? 'Bei Plus fliegt die Rakete nach rechts!' : 'Bei Minus fliegt die Rakete nach links!'
-    else hint = (n - t.target) * dir > 0 ? 'Das ist zu weit.' : 'Das ist noch nicht weit genug.'
-    setResident({ n, art: RESIDENTS[n % RESIDENTS.length] })
-    miss(n, hint)
-  }, [picked, hopping, t, missing, pos, finishTask, miss])
+    setResident({ n, art: RESIDENTS[n % RESIDENTS.length], k: Date.now() })
+    later(() => setResident(r => (r?.n === n ? null : r)), 1600)
+    if ((n - t.from) * dir <= 0) { setArrow(dir); later(() => setArrow(null), 2200) }
+    else setPulse(Date.now())
+    miss(n)
+  }, [picked, hopping, t, missing, pos, finishTask, miss, later])
 
-  // Missing addend: how many jumps from the start to the alien? The answer
-  // used to be the flag field itself — the number already written after "=".
+  // Missing addend: how many jumps from the start to the alien? A wrong
+  // number shows its hops dashed, landing short of the alien or past it.
   const pickJumps = useCallback((k) => {
     if (picked !== null || hopping || !t || !missing) return
     if (k === t.step) { finishTask(pos === t.target); return }
-    const reach = t.from + k
-    miss(k, `${N(t.from)} plus ${N(k)} ist ${N(reach)}. Wir brauchen ${N(t.target)}, ${reach > t.target ? 'das ist zu weit' : 'das ist noch nicht weit genug'}.`)
-  }, [picked, hopping, t, missing, pos, finishTask, miss])
+    setGhost({ k, at: Date.now() })
+    later(() => setGhost(g => (g?.k === k ? null : g)), 1800)
+    miss(k)
+  }, [picked, hopping, t, missing, pos, finishTask, miss, later])
 
   if (!t) return null
   const line = Array.from({ length: span[1] - span[0] + 1 }, (_, i) => span[0] + i)
   const done = picked !== null
-  const cellW = lineW ? (lineW - GAP * (line.length - 1)) / line.length : MIN_CELL
-  const planetPx = Math.max(MIN_CELL - 2, Math.min(cellW - 2, 78))
-  const rocketPx = Math.max(44, Math.min(cellW * 1.15, 84))
   const narrow = lineW > 0 && lineW < 520
-  const at = n => `${((n - span[0] + 0.5) / line.length) * 100}%`
+  const cellW = lineW ? (lineW - GAP * (line.length - 1)) / line.length : MIN_CELL
+  const planetPx = Math.max(MIN_CELL - 2, Math.min(cellW - 2, 80))
+  const rocketPx = Math.max(46, Math.min(cellW * 1.15, 86))
+  const frac = n => (n - span[0] + 0.5) / line.length
+  const at = n => `${frac(n) * 100}%`
   // The rocket points the way it is going, up while it waits (the picture
   // points up and to the right; mirrored it flies left)
   const back = (hopping || done) && t.target < t.from
   const heading = !hopping && !done ? -45 : 45
   // waves around the row, so it looks like a path through space
   const lift = n => (n % 2 ? -10 : 8)
+  const top = rocketPx + 30           // where the planets start in the line box
+  // the hops to draw: the flight so far, or a wrong number of hops dashed
+  const ghostHops = ghost ? Array.from({ length: ghost.k }, (_, i) => ({ from: t.from + i, to: t.from + i + 1 })).filter(h => h.to <= span[1]) : []
 
   return (
     <div style={{
@@ -417,23 +419,19 @@ export default function RocketMathGame({ level = 1, onComplete }) {
       padding: 'clamp(10px,2vw,22px) clamp(8px,3vw,28px)', gap: 'clamp(10px,2vw,20px)',
     }}>
       {bursts}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', maxWidth: 720 }}>
+      {!ending && (missing
+        ? <HintHand to={jumpsRef} delay={idx === 0 ? 2000 : 6000} active={!done && !hopping} />
+        : <HintHand to={rowRef} delay={idx === 0 ? 2000 : 6000} active={!done && !hopping} />)}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', maxWidth: 720 }}>
         <RoundTrail total={tasks.length} done={idx + (done ? 1 : 0)} walker="🚀" goal="🌕" style={{ flex: 1 }} />
-        <motion.button whileTap={{ scale: 0.9 }} onClick={() => sayTask(taskSpeech(t))} aria-label="Aufgabe noch einmal hören"
-          style={{
-            width: 52, height: 52, flexShrink: 0, background: 'var(--px-gold)', border: `3px solid ${INK}`, borderRadius: 12,
-            boxShadow: `inset 0 3px 0 rgba(255,255,255,0.45), inset 0 -5px 0 rgba(0,0,0,0.2), 0 4px 0 ${INK}`,
-            cursor: 'pointer', fontSize: 26, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>🔊</motion.button>
       </div>
 
       {/* The alien calls the taxi; its speech bubble holds the sum */}
       <div style={{ flex: 1, display: 'flex', flexDirection: narrow ? 'column' : 'row', alignItems: 'center', justifyContent: 'center', gap: narrow ? 18 : 'clamp(8px,2vw,20px)', width: '100%', maxWidth: 720 }}>
         <AnimatePresence mode="wait">
-          <motion.div key={idx} initial={{ x: -60, opacity: 0, rotate: -20 }} animate={{ x: 0, opacity: 1, rotate: 0 }} exit={{ y: -80, opacity: 0 }}
+          <motion.div key={idx} initial={{ x: -60, opacity: 0, rotate: -20 }} animate={{ x: 0, opacity: aboard ? 0.35 : 1, rotate: 0 }} exit={{ y: -80, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 220, damping: 16 }}>
-            <Alien size={narrow ? 100 : 130} color={t.color} mood={mood}
-              label="Alien" onTap={() => { sfx.giggle(); sayTask(taskSpeech(t)) }} />
+            <Alien size={narrow ? 100 : 130} color={t.color} mood={mood} label="Alien" onTap={() => { sfx.giggle(); setMood('happy'); later(() => setMood('idle'), 1000) }} />
           </motion.div>
         </AnimatePresence>
         <motion.div key={`b${idx}`} initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
@@ -450,34 +448,60 @@ export default function RocketMathGame({ level = 1, onComplete }) {
             aria-label={`${t.from} ${t.op} ${missing ? '?' : t.step} = ${missing ? t.target : '?'}`}>
             <NumBlock small={narrow} color="#D9CCFF">{t.from}</NumBlock>
             <NumBlock small={narrow} plain>{t.op}</NumBlock>
-            <NumBlock small={narrow} color={missing ? (done ? '#FFE08A' : '#FFFDF7') : '#FFE08A'}>{missing && !done ? '?' : t.step}</NumBlock>
+            <NumBlock small={narrow} color={missing ? (aboard ? '#FFE08A' : '#FFFDF7') : '#FFE08A'} pulse={missing ? null : pulse}>{missing && !aboard ? '?' : t.step}</NumBlock>
             <NumBlock small={narrow} plain>=</NumBlock>
-            <NumBlock small={narrow} color={missing || done ? '#C8F0C0' : '#FFFDF7'}>{missing || done ? t.target : '?'}</NumBlock>
+            <NumBlock small={narrow} color={missing || aboard ? '#C8F0C0' : '#FFFDF7'}>{missing || aboard ? t.target : '?'}</NumBlock>
           </div>
-          {plan.frame && <TenFrame filled={t.from} added={done ? t.step : 0} />}
+          {plan.frame && <TenFrame filled={t.from} added={aboard ? t.step : 0} />}
         </motion.div>
       </div>
 
       {/* The planets: the number line through space */}
-      <div ref={lineRef} style={{ position: 'relative', width: '100%', maxWidth: 1000, paddingTop: rocketPx + 18, boxSizing: 'border-box' }}>
+      <div ref={lineRef} style={{ position: 'relative', width: '100%', maxWidth: 1000, paddingTop: top, boxSizing: 'border-box' }}>
         {/* dotted flight path */}
-        <div aria-hidden="true" style={{ position: 'absolute', left: at(span[0]), right: `calc(100% - ${at(span[1])})`, top: rocketPx + 18 + planetPx / 2, borderTop: '4px dotted rgba(255,255,255,0.45)' }} />
+        <div aria-hidden="true" style={{ position: 'absolute', left: at(span[0]), right: `calc(100% - ${at(span[1])})`, top: top + planetPx / 2, borderTop: '4px dotted rgba(255,255,255,0.45)' }} />
+        {/* the hops: gold arcs with their number, or a wrong count dashed */}
+        <svg aria-hidden="true" viewBox="0 0 1000 100" preserveAspectRatio="none"
+          style={{ position: 'absolute', left: 0, top: top - 34, width: '100%', height: 46, overflow: 'visible', pointerEvents: 'none' }}>
+          {[...trail.map(h => ({ ...h, gold: true })), ...ghostHops].map((h, i) => {
+            const x1 = frac(h.from) * 1000, x2 = frac(h.to) * 1000
+            return (
+              <motion.path key={`${h.gold ? 'g' : 'd'}${i}`} d={`M${x1} 96 Q${(x1 + x2) / 2} ${-40} ${x2} 96`} fill="none"
+                stroke={h.gold ? '#FFC93C' : '#D9CCFF'} strokeWidth="4" strokeDasharray={h.gold ? undefined : '6 6'} strokeLinecap="round"
+                vectorEffect="non-scaling-stroke" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: h.gold ? 0.35 : 0.25, delay: h.gold ? 0 : i * 0.15 }} />
+            )
+          })}
+        </svg>
+        {[...trail.map(h => ({ ...h, gold: true })), ...ghostHops].map((h, i) => (
+          <motion.span key={`n${h.gold ? 'g' : 'd'}${i}`} aria-hidden="true" initial={{ scale: 0, y: 6 }} animate={{ scale: 1, y: 0 }}
+            style={{
+              position: 'absolute', left: `${(frac(h.from) + frac(h.to)) * 50}%`, top: top - 58, width: 26, height: 26, marginLeft: -13,
+              borderRadius: '50%', background: h.gold ? '#FFC93C' : '#D9CCFF', border: `2px solid ${INK}`, boxSizing: 'border-box',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: INK, pointerEvents: 'none',
+            }}>{(h.gold ? i : i - trail.length) + 1}</motion.span>
+        ))}
+        {/* where the hint hand taps: the row, between two planets, so it
+            never points at the answer */}
+        <span ref={rowRef} aria-hidden="true" style={{ position: 'absolute', left: `${(frac(span[0]) + frac(span[1])) * 50 + 50 / line.length}%`, top: top + planetPx * 0.75, width: 2, height: 2 }} />
         <div style={{ display: 'flex', gap: GAP }}>
           {line.map(n => {
             const isWrong = !missing && wrong.includes(n)
             const state = done && n === t.target ? 'right' : isWrong ? 'tried' : undefined
             const Cell = missing ? 'div' : motion.button
+            const landed = trail.length && trail[trail.length - 1].to === n
             return (
               <div key={n} style={{ position: 'relative', flex: '1 1 0', minWidth: 0, display: 'flex', justifyContent: 'center', transform: `translateY(${lift(n)}px)` }}>
                 <Cell
                   {...(!missing && {
-                    whileTap: !done && !hopping ? { scale: 0.85 } : {},
+                    whileTap: !done && !hopping ? { scale: 0.8 } : {},
                     onClick: () => pickField(n),
                     'aria-label': `Planet ${n}`,
-                    ...hearable(N(n)),
                   })}
                   style={{ all: 'unset', cursor: missing || done || hopping ? 'default' : 'pointer', width: planetPx, height: planetPx, display: 'block' }}>
-                  <Planet n={n} size={planetPx} state={state} />
+                  <motion.div key={landed ? `l${trail.length}` : 'p'} animate={landed && !reduceMotion() ? { scaleY: [1, 0.8, 1.08, 1], scaleX: [1, 1.15, 0.95, 1] } : {}} transition={{ duration: 0.35 }}>
+                    <Planet n={n} size={planetPx} state={state} />
+                  </motion.div>
                 </Cell>
                 {/* the alien waits on its planet when the planet is known */}
                 {missing && n === t.target && !aboard && (
@@ -488,9 +512,9 @@ export default function RocketMathGame({ level = 1, onComplete }) {
                 {/* someone else lives on a wrong planet */}
                 <AnimatePresence>
                   {resident?.n === n && (
-                    <motion.div key={`r${n}`} aria-hidden="true"
+                    <motion.div key={`r${resident.k}`} aria-hidden="true"
                       initial={{ y: 20, scale: 0, opacity: 0 }} animate={{ y: 0, scale: 1, opacity: 1, rotate: [0, -12, 12, -8, 0] }} exit={{ y: 20, scale: 0, opacity: 0 }}
-                      transition={{ duration: 0.6 }} onAnimationComplete={() => setTimeout(() => setResident(r => (r?.n === n ? null : r)), 900)}
+                      transition={{ duration: 0.6 }}
                       style={{ position: 'absolute', bottom: planetPx * 0.72, left: '50%', marginLeft: -planetPx * 0.55, pointerEvents: 'none' }}>
                       <Art art={resident.art} size={planetPx * 1.1} />
                     </motion.div>
@@ -503,12 +527,15 @@ export default function RocketMathGame({ level = 1, onComplete }) {
 
         {/* the taxi */}
         <motion.div aria-hidden="true" initial={false}
-          animate={{ left: at(pos) }}
-          transition={{ type: 'spring', stiffness: hopping ? 260 : 120, damping: hopping ? 22 : 18 }}
-          style={{ position: 'absolute', top: 6 + lift(pos), width: rocketPx, height: rocketPx, marginLeft: -rocketPx / 2, pointerEvents: 'none' }}>
-          <motion.div key={hops} animate={hops && !reduceMotion() ? { y: [0, -rocketPx * 0.5, 0] } : {}} transition={{ duration: 0.4 }}>
-            <motion.div initial={false} animate={launching && !reduceMotion() ? { x: [0, -4, 4, -4, 4, 0], rotate: heading, scaleX: back ? -1 : 1 } : { x: 0, rotate: heading, scaleX: back ? -1 : 1 }}
-              transition={{ duration: 0.3, repeat: launching ? 1 : 0 }}>
+          animate={ending && !reduceMotion() ? { left: '115%', y: -500, opacity: 0 } : { left: at(pos), y: 0, opacity: 1 }}
+          transition={ending ? { duration: 1.8, ease: 'easeIn' } : { type: 'spring', stiffness: hopping ? 260 : 120, damping: hopping ? 22 : 18 }}
+          style={{ position: 'absolute', top: 6 + lift(pos), width: rocketPx, height: rocketPx, marginLeft: -rocketPx / 2, pointerEvents: 'none', zIndex: 2 }}>
+          <motion.div key={trail.length} animate={trail.length && !reduceMotion() ? { y: [0, -rocketPx * 0.45, 0] } : {}} transition={{ duration: 0.4 }}>
+            <motion.div initial={false}
+              animate={launching && !reduceMotion() ? { x: [0, -4, 4, -4, 4, 0], rotate: heading, scaleX: back ? -1 : 1 }
+                : aboard && streak >= 3 && !reduceMotion() ? { x: 0, rotate: [heading, heading + 360], scaleX: back ? -1 : 1 }
+                : { x: 0, rotate: ending ? 45 : heading, scaleX: back && !ending ? -1 : 1 }}
+              transition={{ duration: aboard && streak >= 3 ? 0.8 : 0.3, repeat: launching ? 1 : 0 }}>
               <Art art="🚀" size={rocketPx} />
             </motion.div>
           </motion.div>
@@ -522,30 +549,42 @@ export default function RocketMathGame({ level = 1, onComplete }) {
               </motion.div>
             )}
           </AnimatePresence>
+          {/* the way to fly, after a planet the wrong way round */}
+          <AnimatePresence>
+            {arrow && (
+              <motion.div key={`a${arrow}`} initial={{ opacity: 0, x: 0 }} animate={{ opacity: 1, x: [0, arrow * 18, 0, arrow * 18, 0] }} exit={{ opacity: 0 }}
+                transition={{ duration: 1.4 }}
+                style={{ position: 'absolute', top: rocketPx * 0.2, [arrow > 0 ? 'left' : 'right']: rocketPx * 1.05 }}>
+                <svg width={rocketPx * 0.75} height={rocketPx * 0.6} viewBox="0 0 40 32" style={{ transform: arrow < 0 ? 'scaleX(-1)' : undefined, display: 'block' }}>
+                  <path d="M3 11 H22 V3 L37 16 L22 29 V21 H3 Z" fill="#FFC93C" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+                </svg>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
       </div>
 
       {/* Missing addend: the answer is the number of jumps */}
-      <div style={{ minHeight: 76, display: 'flex', alignItems: 'center' }}>
+      <div style={{ minHeight: 80, display: 'flex', alignItems: 'center' }}>
         {missing && !done && (
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <div style={{ position: 'relative', display: 'flex', gap: narrow ? 8 : 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+            <span ref={jumpsRef} aria-hidden="true" style={{ position: 'absolute', left: plan.maxStep % 2 ? `${50 + 50 / plan.maxStep}%` : '50%', top: '85%', width: 2, height: 2 }} />
             {Array.from({ length: plan.maxStep }, (_, i) => i + 1).map(k => {
               const isWrong = wrong.includes(k)
               return (
                 <motion.button key={k}
-                  whileTap={!hopping && !isWrong ? { scale: 0.9 } : {}}
+                  whileTap={!hopping && !isWrong ? { scale: 0.88 } : {}}
                   onClick={() => pickJumps(k)}
                   aria-label={`${k} Sprünge`}
-                  {...hearable(N(k))}
                   style={{
-                    width: 64, height: 68, padding: 0, borderRadius: 16, cursor: hopping || isWrong ? 'default' : 'pointer',
+                    width: narrow ? 52 : 66, height: 72, padding: 0, borderRadius: 16, cursor: hopping || isWrong ? 'default' : 'pointer',
                     background: isWrong ? '#9A8FB0' : '#FFFDF7', border: `3px solid ${INK}`, boxShadow: '0 4px 0 rgba(0,0,0,0.35)',
                     opacity: isWrong ? 0.55 : 1, color: INK,
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
                   }}>
                   <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 30, lineHeight: 1 }}>{k}</span>
                   {/* one little hop arc per jump */}
-                  <svg width={Math.min(52, 10 * k)} height="10" viewBox={`0 0 ${10 * k} 10`} aria-hidden="true">
+                  <svg width={Math.min(narrow ? 44 : 56, 10 * k)} height="10" viewBox={`0 0 ${10 * k} 10`} aria-hidden="true">
                     {Array.from({ length: k }, (_, j) => <path key={j} d={`M${j * 10 + 1} 9 Q${j * 10 + 5} 0 ${j * 10 + 9} 9`} fill="none" stroke="#FF8A3D" strokeWidth="2.5" />)}
                   </svg>
                 </motion.button>
@@ -553,6 +592,17 @@ export default function RocketMathGame({ level = 1, onComplete }) {
             })}
           </div>
         )}
+      </div>
+
+      {/* the passengers so far, waving from the taxi rank */}
+      <div aria-hidden="true" style={{ display: 'flex', gap: 2, minHeight: 34, marginTop: -8 }}>
+        {riders.map((c, i) => (
+          <motion.div key={i} initial={{ y: -30, scale: 0 }}
+            animate={ending && !reduceMotion() ? { y: -600, x: 400, scale: 0.6 } : { y: 0, scale: 1 }}
+            transition={ending ? { duration: 1.6, delay: 0.2 + i * 0.06, ease: 'easeIn' } : { type: 'spring', stiffness: 300, damping: 14 }}>
+            <Alien size={40} color={c} mood="idle" />
+          </motion.div>
+        ))}
       </div>
     </div>
   )

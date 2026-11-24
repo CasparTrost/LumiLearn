@@ -1,14 +1,14 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { sfx } from '../sfx.js'
-import { hearable } from '../lib/hearable.js'
-import { narrate, lockPreviews, afterNarration, stopNarration } from '../narrator.js'
+import { lockPreviews, afterNarration, stopNarration } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
 import { emojiSrc, hasEmojiArt } from '../lib/emojiArt.jsx'
-import { Art, Critter, RoundTrail } from '../components/play/index.js'
-import { soundOf } from './letterSounds.js'
+import { Art, Critter, RoundTrail, HintHand, useBursts } from '../components/play/index.js'
+import { voice, KEY } from './woerter/voice.js'
+import Finale from './woerter/Finale.jsx'
 import {
   GLYPHS, isDigit, pathOf, lengths, pointAt, guidanceFor, glyphsForLevel, makeTracer,
 } from './traceStrokes.js'
@@ -28,23 +28,16 @@ import { pxPanel, pxBubble, pxButton, INK } from './px.js'
  *     same stroke it is shown again.
  *   • Fading help: from level 7 only one arrow at the start, from level 9 a
  *     paler road, at level 10 only a faint outline and the start dots.
- *   • Once a letter is done, Lumi says its sound with a word and its picture
- *     ("Mmm wie Maus"): the shape, the movement and the sound together.
+ *   • Once a letter is done, its picture pops up beside it ("M wie Maus",
+ *     and Lumi says it once that is recorded): the shape, the movement and
+ *     the sound together.
  *   • And it is a little celebration: the finger leaves a sparkly trail, the
  *     finished letter gets eyes and hops, and its picture pops up next to it.
  */
 
-// How the voice says a letter's NAME in the task ("Fahre das Emm nach"). A
-// lone "M" is read in very different ways, so it is spelled out.
-const NAME = {
-  A: 'Ah', B: 'Beh', C: 'Zeh', D: 'Deh', E: 'Eh', F: 'Eff', G: 'Geh', H: 'Ha', I: 'Ih', J: 'Jott',
-  K: 'Ka', L: 'Ell', M: 'Emm', N: 'Enn', O: 'Oh', P: 'Peh', Q: 'Kuh', R: 'Err', S: 'Ess', T: 'Teh',
-  U: 'Uh', V: 'Fau', W: 'Weh', X: 'Iks', Y: 'Üpsilon', Z: 'Zett',
-}
 const NUMBER = ['Null', 'Eins', 'Zwei', 'Drei', 'Vier', 'Fünf', 'Sechs', 'Sieben', 'Acht', 'Neun']
-const STROKE_NO = ['', 'eins', 'zwei', 'drei', 'vier']   // "Jetzt Strich zwei."
 
-// One word per letter for "Mmm wie Maus": a word that begins with the
+// One word per letter for "M wie Maus": a word that begins with the
 // letter's own sound and has a picture in the app (the same words as in
 // ABC-Abenteuer and Anlaut-Detektiv). No Giraffe under G (that is "sch").
 // X has no word that starts with its sound; it is heard inside Taxi.
@@ -58,25 +51,11 @@ const WORD = {
   Y: ['Yoga', '🧘'],   Z: ['Zebra', '🦓'],
 }
 
-/** "das Emm" / "die Drei" — for the voice */
-const spokenName = g => (isDigit(g) ? `die ${NUMBER[+g]}` : `das ${NAME[g]}`)
-
-/** What Lumi says and shows when a glyph is done. */
+/** What is shown when a glyph is done, and what Lumi says (when recorded). */
 function praiseOf(g) {
-  if (isDigit(g)) {
-    const n = +g
-    return { say: n ? `Das ist die ${NUMBER[n]}.` : 'Das ist die Null. Null heißt: gar nichts.', show: NUMBER[n] }
-  }
+  if (isDigit(g)) return { voice: KEY.digit(g), show: NUMBER[+g] }
   const [w, e] = WORD[g]
-  if (g === 'X') return { say: `${soundOf(g)}, wie in ${w}!`, show: `${g} wie in ${w}`, e }
-  return { say: `${soundOf(g)} wie ${w}!`, show: `${g} wie ${w}`, e }
-}
-
-const HINT = {
-  wrongStart: 'Fang beim grünen Punkt an.',
-  offPath:    'Bleib auf dem Weg.',
-  wrongWay:   'Folge dem Pfeil.',
-  short:      'Fahre weiter bis zum Ende.',
+  return { voice: KEY.anlaut(g, w), show: `${g} wie${g === 'X' ? ' in' : ''} ${w}`, e }
 }
 
 // Bright inks, one per glyph, each clearly visible on the light road; no
@@ -140,11 +119,15 @@ export default function TraceGame({ level = 1, onComplete }) {
   const [demo,      setDemo]      = useState(null)   // { id, stroke, t } while Lumi shows the way
   const [mood,      setMood]      = useState('idle')
   const [firstTry,  setFirstTry]  = useState(0)
-  const [leaving,   setLeaving]   = useState(false)
+  const [finale,    setFinale]    = useState(false)  // the level is done: the party before the results
   const [sparks,    setSparks]    = useState([])     // the sparkly trail behind the finger
   const [advance,   setAdvance]   = useState(false)  // the praise is over: next glyph
+  const [streak,    setStreak]    = useState(0)      // glyphs in a row without a slip
+  const [startHint, setStartHint] = useState(false)  // the finger started away from the dot
+  const [bursts, burst] = useBursts()
 
   const rootRef   = useRef(null)
+  const dotRef    = useRef(null)    // the green start dot, for the hint hand
   const areaRef   = useRef(null)
   const svgRef    = useRef(null)
   const tracerRef = useRef(null)
@@ -171,13 +154,16 @@ export default function TraceGame({ level = 1, onComplete }) {
     const top = Math.min(...ys), h = Math.max(...ys) - top
     return { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: top + Math.min(30, h * 0.24) }
   }, [g])
-  const canTrace = !done && !demo && !paused && !leaving
+  const canTrace = !done && !demo && !paused && !finale
 
   useEffect(() => { lockPreviews(); return () => stopNarration() }, [])
 
-  const sayRound = useCallback((prefix = '') => {
-    sayTask(`${prefix}Fahre ${spokenName(g)} nach. Fang beim grünen Punkt an.`)
-  }, [g])
+  // The task is the glyph with its green start dot; Lumi says it once per
+  // level, when recorded
+  const sayRound = useCallback(() => {
+    sayTask()
+    if (idx === 0) voice([KEY.task('spuren')])
+  }, [idx])
 
   const startDemo = useCallback((stroke, after) => {
     tracerRef.current = null
@@ -195,8 +181,7 @@ export default function TraceGame({ level = 1, onComplete }) {
     const t = setTimeout(() => {
       if (level === 1 && idx === 0 && !demoShown.current) {
         demoShown.current = true
-        narrate([{ text: `Schau mal, so fährt man ${spokenName(g)} nach.` }])
-        startDemo(0, () => sayRound('Jetzt du! '))
+        startDemo(0, sayRound)
       } else sayRound()
     }, 400)
     return () => clearTimeout(t)
@@ -242,12 +227,17 @@ export default function TraceGame({ level = 1, onComplete }) {
 
   const finishGlyph = () => {
     setDone(true)
-    setMood('happy')
     sfx.correct()
     setTimeout(() => sfx.boing(), 450)
-    if (!missedRef.current) setFirstTry(n => n + 1)
-    sayRight(praise.say)
-    afterNarration(() => setAdvance(true), { minMs: 2400 })
+    const first = !missedRef.current
+    if (first) setFirstTry(n => n + 1)
+    // a run of glyphs right at once: a bigger party
+    const s = first ? streak + 1 : 0
+    setStreak(s)
+    setMood(s >= 3 ? 'dance' : 'wow')
+    if (areaRef.current) setTimeout(() => burst(areaRef.current, s >= 3 ? 'confetti' : 'stars', s >= 3 ? 22 : 12), 350)
+    sayRight(null, { onEnd: () => voice([praise.voice]) })
+    afterNarration(() => setAdvance(true), { minMs: 2600 })
   }
 
   const acceptStroke = () => {
@@ -258,24 +248,24 @@ export default function TraceGame({ level = 1, onComplete }) {
     if (next >= strokes.length) { finishGlyph(); return }
     sfx.coin()
     setMood('idle')
-    if (guide.arrows === 'all') narrate([{ text: `Jetzt Strich ${STROKE_NO[next + 1]}.` }])
   }
 
   const slip = kind => {
     const real = tracerRef.current?.real
     const pts = clearInk()
     if (pts.length > 1) setFading(f => [...f, { id: ++fadeIds, pts }])
-    if (!real) { narrate([{ text: HINT.wrongStart }], { skipIfSame: true }); return }
+    // started away from the green dot: the hand shows where to start
+    if (kind === 'wrongStart') setStartHint(true)
+    if (!real) return
     missedRef.current = true
     setMood('oops')
     if (++strokeMissRef.current >= 2) {
       // twice on the same stroke: show it again instead of letting it fail on
       strokeMissRef.current = 0
-      narrate([{ text: 'Schau, so geht es.' }])
-      startDemo(strokeIdx, () => { setMood('idle'); narrate([{ text: 'Jetzt du! Fang beim grünen Punkt an.' }]) })
+      startDemo(strokeIdx, () => setMood('idle'))
       return
     }
-    sayWrong(kind === 'wrongWay' && guide.arrows === 'none' ? 'Fahre andersherum.' : HINT[kind])
+    sayWrong()
   }
 
   const onPointerDown = e => {
@@ -285,6 +275,7 @@ export default function TraceGame({ level = 1, onComplete }) {
     e.preventDefault()
     try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* ignore */ }
     pointerRef.current = e.pointerId
+    setStartHint(false)
     const t = makeTracer(strokes[strokeIdx])
     tracerRef.current = t
     t.down(p)
@@ -319,7 +310,7 @@ export default function TraceGame({ level = 1, onComplete }) {
     if (r === 'done') acceptStroke()
     else if (r === 'tap') {
       clearInk()
-      if (!t.started && e.type !== 'pointercancel') narrate([{ text: HINT.wrongStart }], { skipIfSame: true })
+      if (!t.started && e.type !== 'pointercancel') setStartHint(true)
     } else slip(r)
   }
 
@@ -331,13 +322,8 @@ export default function TraceGame({ level = 1, onComplete }) {
   }, [advance, paused]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const next = () => {
-    if (leaving) return
-    if (idx + 1 >= glyphs.length) {
-      setLeaving(true)
-      sfx.complete()
-      afterNarration(() => onComplete(result(firstTry, glyphs.length)), { minMs: 300 })
-      return
-    }
+    if (finale) return
+    if (idx + 1 >= glyphs.length) { setFinale(true); return }
     lockPreviews()
     missedRef.current = false
     strokeMissRef.current = 0
@@ -345,14 +331,13 @@ export default function TraceGame({ level = 1, onComplete }) {
     setFading([])
     setDone(false)
     setStrokeIdx(0)
+    setStartHint(false)
     setMood('idle')
     setIdx(i => i + 1)
   }
 
-  const replay = () => (done ? sayRight(praise.say) : sayRound())
   const showMe = () => {
     if (!canTrace) return
-    narrate([{ text: 'Schau, so geht es.' }])
     startDemo(strokeIdx)
   }
 
@@ -399,20 +384,18 @@ export default function TraceGame({ level = 1, onComplete }) {
     }}>
       {done
         ? <>{picture}<span>{shown}</span></>
-        : <span>Fahre {isDigit(g) ? 'die' : 'das'} <strong style={{ color, fontSize: '1.3em' }}>{g}</strong> nach!</span>}
+        : <span aria-label={`${g} nachfahren`} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Art art="👆" size={wide ? 40 : 30} /><strong style={{ color, fontSize: '1.5em', lineHeight: 1 }}>{g}</strong>
+          </span>}
     </div>
   )
 
   const buttons = (
     <>
+      {/* Lumi shows the stroke once more */}
       <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }}
-        onClick={replay} aria-label="Noch einmal anhören" style={ICON_BTN}>🔊</motion.button>
-      {!done && (
-        <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }}
-          onClick={showMe} disabled={!canTrace}
-          {...hearable('Zeig es mir')}
-          aria-label="Zeig es mir" style={{ ...ICON_BTN, opacity: canTrace ? 1 : 0.5 }}>👆</motion.button>
-      )}
+        onClick={showMe} disabled={!canTrace}
+        aria-label="Zeig es mir" style={{ ...ICON_BTN, opacity: canTrace ? 1 : 0.4, visibility: done ? 'hidden' : 'visible' }}>👆</motion.button>
     </>
   )
 
@@ -522,7 +505,7 @@ export default function TraceGame({ level = 1, onComplete }) {
                   initial={{ r: 9, opacity: 0.9 }} animate={{ r: [9, 17], opacity: [0.9, 0] }}
                   transition={{ duration: 1.2, repeat: Infinity, ease: 'easeOut' }} />
               )}
-              <motion.circle cx={cur[0].x} cy={cur[0].y} r={9} fill="var(--px-green)" stroke={INK} strokeWidth={2.2}
+              <motion.circle ref={dotRef} cx={cur[0].x} cy={cur[0].y} r={9} fill="var(--px-green)" stroke={INK} strokeWidth={2.2}
                 initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 400, damping: 15 }}
                 style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
               <text x={cur[0].x} y={cur[0].y + 0.4} textAnchor="middle" dominantBaseline="central"
@@ -610,6 +593,14 @@ export default function TraceGame({ level = 1, onComplete }) {
           {buttons}
         </div>
       )}
+
+      {/* The hand taps the green dot: start here. At once after a start in
+          the wrong place, otherwise when the child waits. */}
+      <HintHand key={`${idx}-${strokeIdx}-${startHint}`} to={dotRef} active={canTrace && ink.length === 0}
+        delay={startHint ? 0 : idx === 0 && strokeIdx === 0 ? 2000 : 6000} />
+      {finale && <Finale items={glyphs.map(x => (isDigit(x) ? '⭐' : WORD[x][1]))} hero="lumi"
+        onDone={() => onComplete(result(firstTry, glyphs.length))} />}
+      {bursts}
     </div>
   )
 }

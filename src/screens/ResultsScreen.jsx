@@ -24,9 +24,9 @@ const MESSAGES = {
   1: ['Gut geübt!', 'Geschafft!', 'Weiter so!'],
   0: ['Nicht aufgeben!', 'Du schaffst das!', 'Gleich klappt es!'],
 }
-const PRAISE_CLIP = s => s >= 2 ? 'audio/allgemein/das-hast-du-super-gemacht.mp3'
-  : s >= 1 ? 'audio/allgemein/ja-super.mp3'
-  : 'audio/allgemein/klasse-versuch-es-direkt-noch-einmal.mp3'
+// Lumi's recorded praise (lib/lumiLines.js); after a round without a star
+// the encouragement below says enough
+const praise = s => (s >= 1 ? line(`rueckmeldung/richtig-${1 + Math.floor(Math.random() * 9)}`) : null)
 
 const NO_FRACTION = new Set(['coloring', 'maze'])
 // Friends who come to the party when it went well
@@ -128,7 +128,7 @@ export default function ResultsScreen() {
     else if (onPlan && nextMod) news.push({ text: 'Lumi hat noch eine Idee!' })
     const stop = afterNarration(() => {
       narrate([
-        { src: PRAISE_CLIP(stars) },
+        praise(stars),
         ...news.map((part, i) => ({ ...part, gap: i === 0 ? 250 : 150 })),
       ])
     }, { minMs: 900 })

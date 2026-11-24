@@ -160,8 +160,20 @@ export function stopNarration() {
  *               dürfen Vorschauen sich ablösen: die Maus wandert weiter, und
  *               das zuletzt berührte Wort gewinnt.
  */
+/**
+ * Nur Lumis aufgenommene Stimme (public/audio/lumi, siehe lib/lumiLines.js).
+ * Die Browserstimme und die älteren Aufnahmen klangen anders, sagten lange
+ * Sätze und wiederholten sich ständig — sie sind vorerst stumm. Ein Abschnitt
+ * ohne passende Aufnahme entfällt einfach; wer auf das Ende wartet (onEnd,
+ * afterNarration), kommt trotzdem sofort weiter.
+ */
+const RECORDED_ONLY = true
+export const isLumiVoice = p => !!p?.src && /(^|\/)audio\/lumi\//.test(p.src)
+
 export function narrate(parts, { onEnd, skipIfSame = false, priority = 'normal' } = {}) {
-  const list = (Array.isArray(parts) ? parts : [parts]).filter(p => p && (p.src || p.text))
+  const list = (Array.isArray(parts) ? parts : [parts])
+    .filter(p => p && (p.src || p.text))
+    .filter(p => !RECORDED_ONLY || isLumiVoice(p))
   if (!list.length) { onEnd?.(); return }
 
   const key = list.map(p => p.src ?? p.text).join('|')
@@ -223,13 +235,13 @@ export function narrate(parts, { onEnd, skipIfSame = false, priority = 'normal' 
         failed = true
         if (s !== seq) return
         // Fehlt die Aufnahme, springt die Sprachsynthese ein — lieber eine
-        // Roboterstimme als Stille.
-        if (p.text) speakPart(p, done, s); else hand()
+        // Roboterstimme als Stille (nicht, solange nur Lumis Stimme spricht).
+        if (p.text && !RECORDED_ONLY) speakPart(p, done, s); else hand()
       }
       a.addEventListener('error', onFail, { once: true })
       a.addEventListener('ended', () => { if (!failed) hand() }, { once: true })
       a.play().catch(onFail)
-    } catch { if (p.text) speakPart(p, done, s); else done() }
+    } catch { if (p.text && !RECORDED_ONLY) speakPart(p, done, s); else done() }
   }
 
   const speakPart = (p, done, s) => {

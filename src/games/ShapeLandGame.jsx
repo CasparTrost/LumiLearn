@@ -1,13 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion'
 import { sfx } from '../sfx.js'
-import { sayNumber } from '../tts.js'
-import { narrate, lockPreviews, afterNarration } from '../narrator.js'
+import { lockPreviews, afterNarration } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
-import { hearable } from '../lib/hearable.js'
-import { Critter, Art, useMood, DragArea, Draggable, DropZone, RoundTrail, useBursts } from '../components/play/index.js'
+import { Critter, Art, artSrc, useMood, DragArea, Draggable, DropZone, RoundTrail, HintHand, useBursts } from '../components/play/index.js'
 import { INK } from './px.js'
 
 /**
@@ -40,34 +38,29 @@ import { INK } from './px.js'
 function rand(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a }
 function shuffle(a) { return [...a].sort(() => Math.random() - 0.5) }
 
-// art: the article after "Finde …" (accusative). Oval and Raute sit next to
-// Kreis and Quadrat on purpose: telling them apart is the real step of
-// naming shapes by their look. `eye` is where a face sits in the shape.
+// Oval and Raute sit next to Kreis and Quadrat on purpose: telling them
+// apart is the real step of naming shapes by their look. The names label
+// the shapes for screen readers; `eye` is where a face sits in the shape.
 const SHAPES = {
-  circle:    { name: 'Kreis',    many: 'Kreise',    art: 'den', eye: 46, draw: (c) => <circle cx="50" cy="50" r="42" fill={c} /> },
-  square:    { name: 'Quadrat',  many: 'Quadrate',  art: 'das', eye: 46, draw: (c) => <rect x="10" y="10" width="80" height="80" rx="6" fill={c} /> },
-  triangle:  { name: 'Dreieck',  many: 'Dreiecke',  art: 'das', eye: 62, draw: (c) => <polygon points="50,8 94,88 6,88" fill={c} /> },
-  rectangle: { name: 'Rechteck', many: 'Rechtecke', art: 'das', eye: 46, draw: (c) => <rect x="6" y="26" width="88" height="48" rx="6" fill={c} /> },
-  oval:      { name: 'Oval',     many: 'Ovale',     art: 'das', eye: 46, draw: (c) => <ellipse cx="50" cy="50" rx="46" ry="30" fill={c} /> },
-  rhombus:   { name: 'Raute',    many: 'Rauten',    art: 'die', eye: 46, draw: (c) => <polygon points="50,4 84,50 50,96 16,50" fill={c} /> },
-  star:      { name: 'Stern',    many: 'Sterne',    art: 'den', eye: 52, draw: (c) => <polygon points="50,5 61,38 96,38 68,59 79,92 50,71 21,92 32,59 4,38 39,38" fill={c} /> },
-  heart:     { name: 'Herz',     many: 'Herzen',    art: 'das', eye: 42, draw: (c) => <path d="M50 88 C10 58 10 22 32 18 C42 16 50 26 50 32 C50 26 58 16 68 18 C90 22 90 58 50 88Z" fill={c} /> },
+  circle:    { name: 'Kreis',    many: 'Kreise',    eye: 46, draw: (c) => <circle cx="50" cy="50" r="42" fill={c} /> },
+  square:    { name: 'Quadrat',  many: 'Quadrate',  eye: 46, draw: (c) => <rect x="10" y="10" width="80" height="80" rx="6" fill={c} /> },
+  triangle:  { name: 'Dreieck',  many: 'Dreiecke',  eye: 62, draw: (c) => <polygon points="50,8 94,88 6,88" fill={c} /> },
+  rectangle: { name: 'Rechteck', many: 'Rechtecke', eye: 46, draw: (c) => <rect x="6" y="26" width="88" height="48" rx="6" fill={c} /> },
+  oval:      { name: 'Oval',     many: 'Ovale',     eye: 46, draw: (c) => <ellipse cx="50" cy="50" rx="46" ry="30" fill={c} /> },
+  rhombus:   { name: 'Raute',    many: 'Rauten',    eye: 46, draw: (c) => <polygon points="50,4 84,50 50,96 16,50" fill={c} /> },
+  star:      { name: 'Stern',    many: 'Sterne',    eye: 52, draw: (c) => <polygon points="50,5 61,38 96,38 68,59 79,92 50,71 21,92 32,59 4,38 39,38" fill={c} /> },
+  heart:     { name: 'Herz',     many: 'Herzen',    eye: 42, draw: (c) => <path d="M50 88 C10 58 10 22 32 18 C42 16 50 26 50 32 C50 26 58 16 68 18 C90 22 90 58 50 88Z" fill={c} /> },
 }
 const SHAPE_IDS = Object.keys(SHAPES)
 // Shape colours, all dark enough to stand out on parchment
 const COLORS = ['#E8503F', '#F2B705', '#3FA34D', '#3D8BE0', '#8E6CF0', '#E0509A']
-
-// "ein Kreis", "eine Raute"
-const indef = (type) => (SHAPES[type].art === 'die' ? 'eine' : 'ein')
-// "von einem Kreis", "von einer Raute"
-const dat   = (type) => (SHAPES[type].art === 'die' ? 'einer' : 'einem')
 
 // Shapes around us: things whose picture shows the shape plainly, checked
 // against the pictures in public/sprites/emoji (outline measured: the
 // window 1:1, the door 2:3) — the open book, the cake slice, the gift, the
 // waffle (drawn round), the framed picture (not square) and the potato
 // (drawn lying at a slant) stay out, their outline is not one shape.
-// Names with their article in the nominative.
+// Names (for screen readers) with their article.
 const OBJECTS = {
   circle:    [['🕐', 'die Uhr'], ['🍪', 'der Keks'], ['🌕', 'der Vollmond'], ['🪙', 'die Münze'], ['🎯', 'die Zielscheibe']],
   square:    [['🪟', 'das Fenster']],
@@ -76,9 +69,6 @@ const OBJECTS = {
   oval:      [['🥚', 'das Ei'], ['🪞', 'der Spiegel']],
   rhombus:   [['🪁', 'der Drachen']],
 }
-// "um den Drachen herum"
-const akk = (name) => name.replace(/^der /, 'den ')
-const cap = (s) => s[0].toUpperCase() + s.slice(1)
 
 const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
@@ -113,8 +103,11 @@ function Shape({ type, color, size = 72, rotate = 0, face = false }) {
 // Each picture is a list of pieces [type, x, y, w, h, colour, tilt?] on a
 // 480 × 300 board, drawn in order (later ones on top), plus some scenery that
 // is not a shape to look for (strings, poles, the ground). Every shape kind
-// appears at least twice; `overlay` is scenery drawn over the pieces. `tilt` marks loose things (a kite, a balloon) that
-// may hang at a slant from level 2.
+// appears at least twice; `overlay` is scenery drawn over the pieces. `tilt`
+// marks loose things (a kite, a balloon) that may hang at a slant from level
+// 2. `tall` lays the same pieces out upright for phones, where the wide
+// picture made them too small to tap. A ladybug (`bug`) hides in each
+// picture: a little surprise for whoever taps it.
 const SCENES = [
   {
     sky: '#BFE6FF',
@@ -153,6 +146,24 @@ const SCENES = [
         <rect x="442" y="170" width="6" height="62" fill="#9A8FB0" stroke={INK} strokeWidth="1.5" />
       </>
     ),
+
+    // the same pieces, in the same order, on an upright 300 × 420 board for phones
+    tall: {
+      boxes: [[226, 8, 60, 60], [12, 14, 46, 46], [70, 40, 46, 42], [124, 20, 40, 54], [176, 84, 48, 66], [240, 96, 40, 54],
+        [100, 150, 22, 40], [14, 160, 136, 66], [66, 182, 30, 30], [26, 226, 112, 104], [40, 244, 40, 40], [88, 268, 38, 62],
+        [93, 282, 28, 26], [178, 176, 76, 104], [199, 150, 36, 36], [208, 280, 18, 50], [150, 300, 64, 34], [192, 318, 46, 38],
+        [156, 352, 128, 40], [166, 378, 34, 34], [240, 378, 34, 34], [240, 236, 54, 48], [14, 362, 38, 38], [62, 356, 42, 42], [108, 392, 42, 24]],
+      scenery: (
+        <>
+          <rect x="0" y="330" width="300" height="90" fill="#7CC86A" />
+          <rect x="0" y="330" width="300" height="8" fill="#5CAE52" />
+          <path d="M35 60 Q28 110 34 160 M93 82 Q100 120 96 160 M144 74 Q140 120 150 170 M200 150 Q190 165 198 178 M260 150 Q252 165 262 178" stroke={INK} strokeWidth="1.5" fill="none" opacity="0.6" />
+          <rect x="264" y="284" width="6" height="48" fill="#9A8FB0" stroke={INK} strokeWidth="1.5" />
+        </>
+      ),
+      bug: [262, 300],
+    },
+    bug: [446, 212],
   },
   {
     sky: '#FFE2C2',
@@ -190,17 +201,39 @@ const SCENES = [
       </>
     ),
     // the wheel's spokes, over the wheel
-    overlay: (
-      <g stroke="#C98A52" strokeWidth="4" strokeLinecap="round">
-        {[0, 45, 90, 135].map(a => {
-          const dx = 60 * Math.cos(a * Math.PI / 180), dy = 60 * Math.sin(a * Math.PI / 180)
-          return <line key={a} x1={377 - dx} y1={101 - dy} x2={377 + dx} y2={101 + dy} />
-        })}
-        <circle cx="377" cy="101" r="9" fill="#8A4F22" stroke={INK} strokeWidth="2.5" />
-      </g>
-    ),
+    overlay: <Spokes cx={377} cy={101} />,
+    tall: {
+      boxes: [[12, 12, 40, 40], [62, 56, 36, 36], [14, 98, 40, 58], [70, 112, 32, 44], [160, 120, 100, 110], [130, 20, 160, 160],
+        [195, 6, 30, 30], [195, 164, 30, 30], [58, 210, 26, 24], [10, 232, 120, 110], [54, 292, 34, 50], [150, 246, 76, 30],
+        [152, 276, 72, 70], [170, 284, 34, 32], [176, 320, 26, 24], [252, 236, 34, 44], [258, 290, 34, 30], [110, 160, 32, 32],
+        [240, 356, 32, 32], [14, 384, 84, 20], [110, 370, 40, 40], [176, 382, 56, 30]],
+      scenery: (
+        <>
+          <rect x="0" y="346" width="300" height="74" fill="#E8C27A" />
+          <rect x="0" y="346" width="300" height="8" fill="#D4A95E" />
+          <path d="M269 280 Q266 320 276 346 M275 320 Q280 334 276 346 M126 192 Q120 214 118 236" stroke={INK} strokeWidth="1.5" fill="none" opacity="0.6" />
+          <rect x="254" y="386" width="5" height="30" fill="#fff" stroke={INK} strokeWidth="1" />
+          <line x1="70" y1="210" x2="70" y2="236" stroke={INK} strokeWidth="2" />
+        </>
+      ),
+      overlay: <Spokes cx={210} cy={100} />,
+      bug: [262, 196],
+    },
+    bug: [30, 222],
   },
 ]
+
+function Spokes({ cx, cy }) {
+  return (
+    <g stroke="#C98A52" strokeWidth="4" strokeLinecap="round">
+      {[0, 45, 90, 135].map(a => {
+        const dx = 60 * Math.cos(a * Math.PI / 180), dy = 60 * Math.sin(a * Math.PI / 180)
+        return <line key={a} x1={cx - dx} y1={cy - dy} x2={cx + dx} y2={cy + dy} />
+      })}
+      <circle cx={cx} cy={cy} r="9" fill="#8A4F22" stroke={INK} strokeWidth="2.5" />
+    </g>
+  )
+}
 
 // One shape of a picture, drawn into its box
 function boxShape(type, x, y, w, h) {
@@ -313,11 +346,24 @@ function buildRound(level, idx, used) {
   }
 }
 
+// The task in words, for screen readers on the owl's bubble
 const taskFor = (r) =>
   r.mode === 'match' ? `Finde alle ${SHAPES[r.answer].many}!`
-  : r.mode === 'object' ? `Welche Form hat ${r.thing.name}? Leg die passende Form darauf!`
-  : r.mode === 'size' ? (r.down ? 'Alle wollen aufs Foto! Tippe die Formen von groß nach klein!' : 'Alle wollen aufs Foto! Tippe die Formen von klein nach groß!')
-  : 'Die Formen machen eine Parade. Wer kommt als Nächstes?'
+  : r.mode === 'object' ? `Welche Form hat ${r.thing.name}?`
+  : r.mode === 'size' ? (r.down ? 'Von groß nach klein!' : 'Von klein nach groß!')
+  : 'Wer kommt als Nächstes?'
+
+// Upright phones get the upright pictures
+function useTall() {
+  const get = () => typeof window !== 'undefined' && window.innerWidth < 560 && window.innerHeight > window.innerWidth
+  const [tall, setTall] = useState(get)
+  useEffect(() => {
+    const on = () => setTall(get())
+    window.addEventListener('resize', on)
+    return () => window.removeEventListener('resize', on)
+  }, [])
+  return tall
+}
 
 export default function ShapeLandGame({ level = 1, onComplete }) {
   const TOTAL = 8
@@ -328,56 +374,74 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
   const paused = usePaused()
   const pausedRef = useRef(paused)
   pausedRef.current = paused
+  const tall = useTall()
 
   const [idx,      setIdx]      = useState(0)
   const [picked,   setPicked]   = useState([])       // size: tap order · match: pieces found
   const [wrong,    setWrong]    = useState([])
   const [shake,    setShake]    = useState(null)     // { key, n } — the piece that wobbles
+  const [look,     setLook]     = useState(0)        // after a miss: look at the task again
   const [solved,   setSolved]   = useState(false)
+  const [streak,   setStreak]   = useState(0)        // rounds right on the first try in a row
+  const [ending,   setEnding]   = useState(false)
   const [owl,      setOwl]      = useMood()
   const [bursts, burst] = useBursts()
   const missed = useRef(new Set())                   // rounds with a miss
-  const timer  = useRef(null)
+  const timers = useRef([])
+  const hint   = { from: useRef(null), to: useRef(null) }
 
   const r = rounds[idx]
 
+  const later = useCallback((fn, ms) => {
+    const run = () => { if (pausedRef.current) timers.current.push(setTimeout(run, 250)); else fn() }
+    timers.current.push(setTimeout(run, ms))
+  }, [])
+
   useEffect(() => {
     if (!r) return
-    setPicked([]); setWrong([]); setSolved(false); setShake(null)
+    timers.current.forEach(clearTimeout); timers.current = []
+    setPicked([]); setWrong([]); setSolved(false); setShake(null); setLook(0)
+    setOwl('idle')
     lockPreviews()
-    const id = setTimeout(() => sayTask(taskFor(r)), 420)
-    return () => clearTimeout(id)
+    sayTask()
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => () => clearTimeout(timer.current), [])
+  useEffect(() => () => timers.current.forEach(clearTimeout), [])
 
+  // The end of the level, here first: the owl dances with its cup
   const next = useCallback(() => {
-    if (idx + 1 >= TOTAL) {
+    if (idx + 1 < TOTAL) { setIdx(i => i + 1); return }
+    setEnding(true)
+    setOwl('dance', 0)
+    sfx.tada()
+    burst({ x: innerWidth / 2, y: innerHeight * 0.4 }, 'confetti', 24)
+    later(() => {
       sfx.complete()
-      afterNarration(() => onComplete(result(TOTAL - missed.current.size, TOTAL)), { minMs: 300 })
-    } else setIdx(i => i + 1)
-  }, [idx, onComplete])
+      afterNarration(() => onComplete(result(TOTAL - missed.current.size, TOTAL)), { minMs: 400 })
+    }, 2200)
+  }, [idx, onComplete, burst, later, setOwl])
 
-  // Praise, a short dance, then the next round comes by itself
-  const finish = useCallback((praise) => {
+  // Praise and a dance; the next round comes once the payoff was seen.
+  // A streak of rounds without a miss gets confetti.
+  const finish = useCallback((minMs = 1800) => {
     setSolved(true)
+    const s = missed.current.has(idx) ? 0 : streak + 1
+    setStreak(s)
     setOwl('dance', 2400)
     sfx.correct()
-    sayRight(praise, {
-      onEnd: () => {
-        const go = () => { timer.current = setTimeout(() => (pausedRef.current ? go() : next()), 600) }
-        go()
-      },
-    })
-  }, [next, setOwl])
+    if (s >= 3) burst({ x: innerWidth / 2, y: innerHeight * 0.35 }, 'confetti', 10 + 2 * s)
+    sayRight()
+    afterNarration(() => later(next, 0), { minMs })
+  }, [idx, streak, next, burst, later, setOwl])
 
-  const miss = useCallback((key, hint) => {
+  const miss = useCallback((key) => {
     setWrong(w => w.includes(key) ? w : [...w, key])
     setShake({ key, n: Date.now() })
+    setLook(Date.now())
     missed.current.add(idx)
     setOwl('oops')
     sfx.boing()
-    sayWrong(hint)
+    sayWrong()
   }, [idx, setOwl])
 
   // ── the picture: find them all ──
@@ -389,25 +453,21 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
       setPicked(found)
       sfx.sparkle()
       burst(e.currentTarget, 'stars', 6)
-      if (found.length === r.need) finish(`Alle ${sayNumber(r.need)} ${SHAPES[r.answer].many} gefunden!`)
-      else { narrate([{ text: sayNumber(found.length), rate: 1 }]); setOwl('wow', 700) }
+      if (found.length === r.need) finish(2000)
+      else setOwl('wow', 700)
       return
     }
     // A shape the level does not teach yet only wobbles
     if (!poolFor(level).includes(p.type)) { sfx.boing(); setShake({ key: p.id, n: Date.now() }); return }
-    miss(p.id, `Das ist ${indef(p.type)} ${SHAPES[p.type].name}. Wir suchen ${SHAPES[r.answer].many}.`)
+    miss(p.id)
   }, [solved, r, picked, level, burst, finish, miss, setOwl])
 
   // ── shapes around us: press the right shape onto the thing ──
   const dropOnThing = useCallback((type) => {
     if (solved || !r) return false
-    const { name } = r.thing
-    if (type !== r.answer) {
-      miss(type, `Das ist ${indef(type)} ${SHAPES[type].name}. Fahr mit dem Finger einmal um ${akk(name)} herum.`)
-      return false
-    }
+    if (type !== r.answer) { miss(type); return false }
     sfx.tada()
-    finish(`${cap(name)} hat die Form von ${dat(type)} ${SHAPES[type].name}.`)
+    finish()
     return true
   }, [solved, r, miss, finish])
 
@@ -415,72 +475,55 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
   const pickSize = useCallback((item) => {
     if (solved || !r || picked.includes(item.id)) return
     const order = [...r.sizes].sort((a, b) => (r.down ? b - a : a - b))
-    const expected = order[picked.length]
-    if (item.size !== expected) {
-      // The hint used to be "Fang mit der kleinsten an!" for every miss,
-      // even when the smallest was already taken and the child was at step 3.
-      const hint = picked.length === 0
-        ? (r.down ? 'Fang mit der größten an!' : 'Fang mit der kleinsten an!')
-        : (r.down ? 'Welche ist die nächstkleinere?' : 'Welche ist die nächstgrößere?')
-      miss(`s${item.id}`, hint)
-      return
-    }
+    if (item.size !== order[picked.length]) { miss(`s${item.id}`); return }
     const nextPicked = [...picked, item.id]
     setPicked(nextPicked)
     sfx.slideUp()
     if (nextPicked.length === r.items.length) {
-      timer.current = setTimeout(() => { sfx.sparkle(); setShake({ key: 'flash', n: Date.now() }) }, 450)
-      finish(r.down ? 'Von groß nach klein. Lächeln, klick!' : 'Von klein nach groß. Lächeln, klick!')
+      later(() => { sfx.sparkle(); setShake({ key: 'flash', n: Date.now() }) }, 500)
+      finish(2200)
     }
-  }, [solved, r, picked, miss, finish])
+  }, [solved, r, picked, miss, finish, later])
 
   // ── the parade: who comes next? ──
   const dropInParade = useCallback((opt) => {
     if (solved || !r) return false
-    if (opt.type !== r.correct.type) {
-      miss(`p${opt.id}`, `Hör mal! ${r.seq.map(s => SHAPES[s.type].name).join(', ')}, und dann?`)
-      return false
-    }
+    if (opt.type !== r.correct.type) { miss(`p${opt.id}`); return false }
     setPicked([opt.id])
-    r.seq.forEach((_, i) => setTimeout(() => sfx.drum(i % 2 === 0), 120 * i))
-    finish('So geht das Muster weiter.')
+    r.seq.forEach((_, i) => later(() => sfx.drum(i % 2 === 0), 120 * i))
+    finish(1200 + 120 * r.seq.length)
     return true
-  }, [solved, r, miss, finish])
+  }, [solved, r, miss, finish, later])
 
   if (!r) return null
 
+  // What the owl holds up: the shape to find, the thing, the camera, the drum
   const owlWish = r.mode === 'match'
-    ? <div style={{ width: 40, height: 40 }}><Shape type={r.answer} color="#FFC93C" size="100%" face /></div>
-    : r.mode === 'object' ? <Art art={r.thing.emoji} size={40} />
-    : r.mode === 'size' ? <Art art="📷" size={40} />
-    : <Art art="🥁" size={40} />
+    ? <motion.div key={look} animate={look ? { scale: [1, 1.35, 1, 1.35, 1] } : {}} transition={{ duration: 1.1 }} style={{ width: 46, height: 46 }}><Shape type={r.answer} color="#FFC93C" size="100%" face /></motion.div>
+    : r.mode === 'object' ? <Art art={r.thing.emoji} size={44} />
+    : r.mode === 'size' ? <Art art="📷" size={44} />
+    : <Art art="🥁" size={44} />
 
-  const hearItems = [taskFor(r), ...(
-    r.mode === 'object' ? r.options.map(t => SHAPES[t].name)
-    : r.mode === 'pattern' ? r.options.map(o => SHAPES[o.type].name)
-    : [])]
+  const active = !solved && !ending
+  const delay = idx === 0 ? 2000 : 6000
+  const hintHand = r.mode === 'object' || r.mode === 'pattern'
+    ? <HintHand from={hint.from} to={hint.to} delay={delay} active={active} />
+    : <HintHand to={hint.to} delay={delay} active={active} />
 
   return (
     <div style={{
       flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-      padding: 'clamp(10px,2vw,22px) clamp(10px,3vw,28px)', gap: 'clamp(8px,1.6vw,16px)',
+      padding: 'clamp(8px,2vw,22px) clamp(8px,3vw,28px)', gap: 'clamp(8px,1.6vw,16px)',
     }}>
       {bursts}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', maxWidth: 760 }}>
-        <RoundTrail total={TOTAL} done={idx + (solved ? 1 : 0)} walker="🦉" goal="🏆" style={{ flex: 1 }} />
-        <motion.button whileTap={{ scale: 0.9 }} onClick={() => narrate(hearItems.map((text, i) => ({ text, gap: i ? 280 : 0 })))}
-          aria-label="Aufgabe noch einmal hören"
-          style={{
-            width: 52, height: 52, flexShrink: 0, background: 'var(--px-gold)', border: `3px solid ${INK}`, borderRadius: 12,
-            boxShadow: `inset 0 3px 0 rgba(255,255,255,0.45), inset 0 -5px 0 rgba(0,0,0,0.2), 0 4px 0 ${INK}`,
-            cursor: 'pointer', fontSize: 26, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>🔊</motion.button>
-      </div>
+      {hintHand}
+      <RoundTrail total={TOTAL} done={idx + (solved ? 1 : 0)} walker="🦉" goal="🏆" style={{ width: 'calc(100% - 60px)', maxWidth: 700 }} />
 
       {/* The owl detective and what it is looking for */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', maxWidth: 760, minHeight: 96 }}>
-        <Critter art="🦉" size={88} mood={owl} talks label="Eule"
-          onTap={() => { sfx.giggle(); setOwl('wow', 700); sayTask(taskFor(r)) }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', maxWidth: 760, minHeight: tall ? 80 : 96 }}>
+        <Critter art="🦉" size={tall ? 74 : 88} mood={owl} label="Eule"
+          accessory={<span style={{ position: 'absolute', right: -6, bottom: 2, pointerEvents: 'none' }}><Art art={ending ? '🏆' : '🔍'} size={tall ? 32 : 38} /></span>}
+          onTap={() => { sfx.giggle(); setOwl('wow', 700) }} />
         <div aria-label={taskFor(r)} style={{
           position: 'relative', background: '#FFFDF7', border: `3px solid ${INK}`, borderRadius: 18, boxShadow: '0 4px 0 rgba(42,27,61,0.3)',
           padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
@@ -498,21 +541,32 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
               ))}
             </div>
           )}
+          {r.mode === 'size' && (
+            // the direction: small to big, or big to small
+            <div aria-hidden="true" style={{ display: 'flex', alignItems: 'flex-end', gap: 3 }}>
+              {(r.down ? [30, 22, 14] : [14, 22, 30]).map((d, i) => (
+                <div key={i} style={{ width: d, height: d }}><Shape type={r.type} color={r.color} size="100%" /></div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
       <div style={{ flex: 1, minHeight: 0, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'clamp(12px,3dvh,26px)' }}>
-        {r.mode === 'match' && <Picture r={r} found={picked} shake={shake} solved={solved} onTap={tapPiece} />}
+        {r.mode === 'match' && (
+          <div ref={hint.to} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+            <Picture r={r} tall={tall} found={picked} shake={shake} solved={solved} onTap={tapPiece} />
+          </div>
+        )}
 
         {r.mode === 'object' && (
           <DragArea autoTarget="thing" disabled={solved}>
             <DropZone id="thing" onDrop={dropOnThing} label={r.thing.name} slop={40}>
               {hover => (
-                <motion.div animate={solved ? { y: [0, -30, 0], rotate: [0, -8, 8, 0] } : { scale: hover ? 1.08 : 1 }}
-                  transition={{ duration: solved ? 0.8 : 0.2 }}
-                  onClick={() => narrate([{ text: `${cap(r.thing.name)}.` }], { skipIfSame: true })}
+                <motion.div ref={hint.to} key={look} animate={solved ? { y: [0, -30, 0], rotate: [0, -8, 8, 0] } : look ? { rotate: [0, -6, 6, -4, 0] } : { scale: hover ? 1.08 : 1 }}
+                  transition={{ duration: solved ? 0.8 : 0.5 }}
                   style={{
-                    position: 'relative', width: 'min(34vw, 230px)', height: 'min(34vw, 230px)', minWidth: 150, minHeight: 150,
+                    position: 'relative', width: 'min(34vw, 230px)', height: 'min(34vw, 230px)', minWidth: 160, minHeight: 160,
                     borderRadius: 28, background: 'rgba(255,253,247,0.85)', border: `4px dashed ${hover ? '#FFC93C' : INK}`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
@@ -526,7 +580,7 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
                 </motion.div>
               )}
             </DropZone>
-            <div style={{ display: 'flex', gap: 'clamp(14px,4vw,32px)', justifyContent: 'center' }}>
+            <div ref={hint.from} style={{ display: 'flex', gap: 'clamp(14px,4vw,32px)', justifyContent: 'center' }}>
               {r.options.map(type => {
                 const isWrong = wrong.includes(type)
                 const gone = solved && type === r.answer
@@ -534,7 +588,7 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
                   <Draggable key={type} id={type} data={type} label={SHAPES[type].name} disabled={isWrong || solved}
                     style={{ visibility: gone ? 'hidden' : 'visible', opacity: isWrong ? 0.4 : 1 }}>
                     <ShakeBox on={shake?.key === type} k={shake?.n}>
-                      <div {...hearable(SHAPES[type].name)} style={{ width: 'min(20vw, 120px)', height: 'min(20vw, 120px)', minWidth: 76, minHeight: 76 }}>
+                      <div style={{ width: 'min(24vw, 120px)', height: 'min(24vw, 120px)', minWidth: 80, minHeight: 80 }}>
                         <Shape type={type} color={r.color} size="100%" face />
                       </div>
                     </ShakeBox>
@@ -545,12 +599,12 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
           </DragArea>
         )}
 
-        {r.mode === 'size' && <Photo r={r} picked={picked} wrong={wrong} shake={shake} solved={solved} onPick={pickSize} />}
+        {r.mode === 'size' && <Photo r={r} picked={picked} shake={shake} solved={solved} look={look} onPick={pickSize} rowRef={hint.to} />}
 
         {r.mode === 'pattern' && (
           <DragArea autoTarget="gap" disabled={solved}>
-            <Parade r={r} solved={solved} onDrop={dropInParade} />
-            <div style={{ display: 'flex', gap: 'clamp(14px,4vw,32px)', justifyContent: 'center' }}>
+            <Parade r={r} solved={solved} look={look} onDrop={dropInParade} gapRef={hint.to} />
+            <div ref={hint.from} style={{ display: 'flex', gap: 'clamp(14px,4vw,32px)', justifyContent: 'center' }}>
               {r.options.map(opt => {
                 const isWrong = wrong.includes(`p${opt.id}`)
                 const gone = picked.includes(opt.id)
@@ -558,7 +612,7 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
                   <Draggable key={opt.id} id={opt.id} data={opt} label={SHAPES[opt.type].name} disabled={isWrong || solved}
                     style={{ visibility: gone ? 'hidden' : 'visible', opacity: isWrong ? 0.4 : 1 }}>
                     <ShakeBox on={shake?.key === `p${opt.id}`} k={shake?.n}>
-                      <div {...hearable(SHAPES[opt.type].name)} style={{ width: 'min(18vw, 104px)', height: 'min(18vw, 104px)', minWidth: 72, minHeight: 72 }}>
+                      <div style={{ width: 'min(22vw, 104px)', height: 'min(22vw, 104px)', minWidth: 76, minHeight: 76 }}>
                         <Shape type={opt.type} color={opt.color} size="100%" face />
                       </div>
                     </ShakeBox>
@@ -585,18 +639,29 @@ function ShakeBox({ on, k, children }) {
 // ── The hidden-shape picture ──
 // Found shapes get a face, glow and dance: circles roll round, the others
 // hop. A wrong one wobbles. Every piece has a generous invisible edge, so a
-// small finger also hits the heart on the door.
-function Picture({ r, found, shake, solved, onTap }) {
+// small finger also hits the heart on the door. On an upright phone the
+// pieces stand in the upright layout of the same picture.
+function Picture({ r, tall, found, shake, solved, onTap }) {
+  const [bugGone, setBugGone] = useState(false)
+  useEffect(() => setBugGone(false), [r])
+  const W = tall ? 300 : 480, H = tall ? 420 : 300
+  const bug = tall ? r.scene.tall.bug : r.scene.bug
+  const flyAway = () => { if (bugGone) return; sfx.giggle(); sfx.whoosh(); setBugGone(true) }
   return (
-    <svg viewBox="0 0 480 300" role="group" aria-label="Suchbild"
-      style={{ width: '100%', maxWidth: 'min(100%, calc((100dvh - 250px) * 1.6), 920px)', height: 'auto', display: 'block', borderRadius: 22, border: `4px solid ${INK}`, boxShadow: '0 6px 0 rgba(42,27,61,0.3)', background: r.scene.sky, touchAction: 'manipulation' }}>
-      <g pointerEvents="none">{r.scene.scenery}</g>
+    <svg viewBox={`0 0 ${W} ${H}`} role="group" aria-label="Suchbild"
+      style={{
+        width: '100%', maxWidth: tall ? `min(100%, calc((100dvh - 240px) * ${W / H}))` : `min(100%, calc((100dvh - 250px) * ${W / H}), 920px)`,
+        height: 'auto', display: 'block', borderRadius: 22, border: `4px solid ${INK}`, boxShadow: '0 6px 0 rgba(42,27,61,0.3)',
+        background: r.scene.sky, touchAction: 'manipulation', overflow: 'hidden',
+      }}>
+      <g pointerEvents="none">{tall ? r.scene.tall.scenery : r.scene.scenery}</g>
       {r.pieces.map(p => {
+        const [x, y, w, h] = tall ? r.scene.tall.boxes[p.id] : [p.x, p.y, p.w, p.h]
         const isFound = found.includes(p.id)
-        const cx = p.x + p.w / 2, cy = p.y + p.h / 2
+        const cx = x + w / 2, cy = y + h / 2
         const wobble = shake?.key === p.id
-        const spin = isFound && (p.type === 'circle') && !reduceMotion()
-        const fs = Math.min(p.w, p.h) / 100
+        const spin = isFound && p.type === 'circle' && !reduceMotion()
+        const fs = Math.min(w, h) / 100
         return (
           <motion.g key={`${p.id}-${wobble ? shake.n : 0}`}
             role="button" aria-label={SHAPES[p.type].name} tabIndex={0}
@@ -608,10 +673,10 @@ function Picture({ r, found, shake, solved, onTap }) {
             transition={{ duration: isFound && !wobble ? 0.7 : 0.55, y: solved ? { duration: 0.5, repeat: 2, delay: (p.id % 5) * 0.08 } : undefined }}
             style={{ cursor: solved ? 'default' : 'pointer', outline: 'none' }}>
             {/* the wide invisible edge that makes small pieces easy to hit */}
-            <g fill="transparent" stroke="transparent" strokeWidth="14" strokeLinejoin="round">{boxShape(p.type, p.x, p.y, p.w, p.h)}</g>
+            <g fill="transparent" stroke="transparent" strokeWidth="14" strokeLinejoin="round">{boxShape(p.type, x, y, w, h)}</g>
             <g fill={p.color} stroke={isFound ? '#FFC93C' : INK} strokeWidth={isFound ? 5 : 2.5} strokeLinejoin="round"
               style={{ filter: isFound ? 'drop-shadow(0 0 6px #FFE08A)' : undefined }}>
-              {boxShape(p.type, p.x, p.y, p.w, p.h)}
+              {boxShape(p.type, x, y, w, h)}
             </g>
             {isFound && (
               <g transform={`translate(${cx - 50 * fs} ${cy - 50 * fs}) scale(${fs})`}>
@@ -621,18 +686,26 @@ function Picture({ r, found, shake, solved, onTap }) {
           </motion.g>
         )
       })}
-      {r.scene.overlay && <g pointerEvents="none">{r.scene.overlay}</g>}
+      {(tall ? r.scene.tall.overlay : r.scene.overlay) && <g pointerEvents="none">{tall ? r.scene.tall.overlay : r.scene.overlay}</g>}
+      {/* the ladybug: tap it and it flies off */}
+      <motion.g initial={false} animate={bugGone ? { x: 160, y: -260, opacity: 0 } : { x: 0, y: 0, opacity: 1 }}
+        transition={{ duration: bugGone ? 1.2 : 0 }} onClick={flyAway} style={{ cursor: 'pointer' }}>
+        <image href={artSrc('🐞')} x={bug[0]} y={bug[1]} width="26" height="26" />
+      </motion.g>
     </svg>
   )
 }
 
 // ── The photo: the family lines up from small to big ──
-// Tapped shapes hop onto the steps in order; the camera flashes at the end.
-function Photo({ r, picked, wrong, shake, solved, onPick }) {
-  const max = 'min(22vw, 120px)'
+// Each step shows a faint outline of the size that belongs there, so the
+// order is clear without words. Tapped shapes hop onto the steps in turn;
+// the camera flashes at the end.
+function Photo({ r, picked, shake, solved, look, onPick, rowRef }) {
+  const max = 'min(26vw, 124px)'
   const waiting = r.items.filter(it => !picked.includes(it.id))
   const order = picked.map(id => r.items.find(it => it.id === id))
-  const unit = it => `calc(${max} * ${it.size.toFixed(3)})`
+  const wanted = [...r.sizes].sort((a, b) => (r.down ? b - a : a - b))
+  const unit = s => `calc(${max} * ${s.toFixed(3)})`
   return (
     <LayoutGroup>
       {/* the steps for the photo */}
@@ -643,20 +716,28 @@ function Photo({ r, picked, wrong, shake, solved, onPick }) {
               style={{ position: 'absolute', inset: -20, background: '#fff', borderRadius: 24, pointerEvents: 'none', zIndex: 2 }} />
           )}
         </AnimatePresence>
-        {r.items.map((_, i) => {
+        {wanted.map((size, i) => {
           const it = order[i]
+          const nextUp = i === order.length
           return (
             <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end' }}>
-              <div style={{ minHeight: 10 }}>
+              <div style={{ position: 'relative', width: unit(size), height: unit(size) }}>
+                {/* where the next one goes: its outline */}
+                {!it && (
+                  <motion.div key={nextUp ? look : 'o'} aria-hidden="true" animate={nextUp && look ? { scale: [1, 1.2, 1, 1.2, 1] } : {}} transition={{ duration: 1 }}
+                    style={{ position: 'absolute', inset: 0, opacity: nextUp ? 0.45 : 0.2 }}>
+                    <Shape type={r.type} color="transparent" size="100%" />
+                  </motion.div>
+                )}
                 {it && (
-                  <motion.div layoutId={`sz${it.id}`} style={{ width: unit(it), height: unit(it) }}
+                  <motion.div layoutId={`sz${it.id}`} style={{ position: 'absolute', inset: 0 }}
                     animate={solved && !reduceMotion() ? { y: [0, -10, 0] } : {}} transition={{ duration: 0.5, repeat: solved ? 2 : 0, delay: i * 0.1 }}>
                     <Shape type={r.type} color={r.color} size="100%" face />
                   </motion.div>
                 )}
               </div>
               <div style={{
-                width: `calc(${max} * 0.9)`, height: 20 + i * 14, background: '#C98A52', border: `3px solid ${INK}`, borderRadius: 6,
+                width: `calc(${max} * 0.9)`, height: 20 + i * 14, marginTop: 4, background: '#C98A52', border: `3px solid ${INK}`, borderRadius: 6,
                 boxSizing: 'border-box', boxShadow: 'inset 0 4px 0 rgba(255,255,255,0.25)',
               }} />
             </div>
@@ -664,7 +745,7 @@ function Photo({ r, picked, wrong, shake, solved, onPick }) {
         })}
       </div>
       {/* those still waiting */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 'clamp(10px,3vw,24px)', minHeight: `calc(${max} + 8px)`, flexWrap: 'wrap', justifyContent: 'center' }}>
+      <div ref={rowRef} style={{ display: 'flex', alignItems: 'flex-end', gap: 'clamp(10px,3vw,24px)', minHeight: `calc(${max} + 8px)`, flexWrap: 'wrap', justifyContent: 'center' }}>
         {waiting.map(it => (
           <motion.button key={it.id} layoutId={`sz${it.id}`}
             onClick={() => onPick(it)}
@@ -672,7 +753,7 @@ function Photo({ r, picked, wrong, shake, solved, onPick }) {
             whileTap={{ scale: 0.92 }}
             style={{ all: 'unset', cursor: 'pointer', minWidth: 56, minHeight: 56, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
             <ShakeBox on={shake?.key === `s${it.id}`} k={shake?.n}>
-              <div style={{ width: unit(it), height: unit(it), opacity: wrong.includes(`s${it.id}`) && shake?.key !== `s${it.id}` ? 0.85 : 1 }}>
+              <div style={{ width: unit(it.size), height: unit(it.size) }}>
                 <Shape type={r.type} color={r.color} size="100%" face />
               </div>
             </ShakeBox>
@@ -684,7 +765,8 @@ function Photo({ r, picked, wrong, shake, solved, onPick }) {
 }
 
 // ── The parade: the shapes march, one place at the end is free ──
-function Parade({ r, solved, onDrop }) {
+// After a miss the parade marches its rhythm once more, shape by shape.
+function Parade({ r, solved, look, onDrop, gapRef }) {
   const size = `min(calc((100vw - 80px) / ${r.seq.length + 1} - 6px), 76px)`
   return (
     <div style={{
@@ -692,15 +774,15 @@ function Parade({ r, solved, onDrop }) {
       background: 'rgba(255,253,247,0.7)', border: `3px solid ${INK}`, boxShadow: '0 4px 0 rgba(42,27,61,0.25)',
     }}>
       {r.seq.map((s, i) => (
-        <motion.div key={i} aria-label={SHAPES[s.type].name} style={{ width: size, height: size }}
-          animate={reduceMotion() ? {} : solved ? { y: [0, -18, 0] } : { y: [0, -5, 0] }}
-          transition={solved ? { duration: 0.35, delay: i * 0.12 } : { duration: 0.8, repeat: Infinity, delay: i * 0.13 }}>
+        <motion.div key={`${i}-${look}`} aria-label={SHAPES[s.type].name} style={{ width: size, height: size }}
+          animate={reduceMotion() ? {} : solved || look ? { y: [0, -18, 0] } : { y: [0, -5, 0] }}
+          transition={solved || look ? { duration: 0.35, delay: i * 0.18 } : { duration: 0.8, repeat: Infinity, delay: i * 0.13 }}>
           <Shape type={s.type} color={s.color} size="100%" face />
         </motion.div>
       ))}
       <DropZone id="gap" label="Lücke in der Parade" onDrop={onDrop}>
         {hover => (
-          <div style={{
+          <div ref={gapRef} style={{
             width: size, height: size, borderRadius: 14, boxSizing: 'border-box', padding: 3,
             border: solved ? 'none' : `3px dashed ${hover ? '#FFC93C' : INK}`, background: hover ? 'rgba(255,201,60,0.3)' : 'transparent',
             display: 'flex', alignItems: 'center', justifyContent: 'center',

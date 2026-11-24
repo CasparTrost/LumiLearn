@@ -1,30 +1,29 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react'
 import { motion, AnimatePresence, useAnimationFrame, motionValue, useReducedMotion } from 'framer-motion'
 import { sfx } from '../sfx.js'
-import { sayNumber } from '../tts.js'
-import { narrate, lockPreviews } from '../narrator.js'
+import { lockPreviews } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
-import { Critter, Art, useMood, RoundTrail, useBursts } from '../components/play/index.js'
-import { useLater, HearButton, Pips } from './zahlen/stage.jsx'
+import { Critter, Art, useMood, RoundTrail, useBursts, HintHand } from '../components/play/index.js'
+import { useLater, Pips, Finale } from './zahlen/stage.jsx'
 
 /**
  * Blasen-Blitz — "Kraken-Party": Mengen auf einen Blick erfassen, dann
  * Zahlen schnell finden
  *
- * Under water an octopus wishes for bubbles with exactly one amount. Every
- * right bubble pops and a star swims to the octopus, who juggles it; a
- * wrong one turns into a puffer fish that puffs up, offended, and swims
- * off. Quick pops in a row make the octopus dance.
+ * Under water an octopus wishes for bubbles with exactly one amount (its
+ * bubble shows it). Every right bubble pops and a star swims to the
+ * octopus, who juggles it; a wrong one turns into a puffer fish that puffs
+ * up, offended, and swims off. Quick pops in a row make the octopus dance.
  *
  *   • Levels 1–4: the bubbles carry dice patterns of one to six dots. Small
  *     quantities in a familiar pattern are seen at once rather than counted
- *     (subitizing); the child hears the number and finds the quantity.
- *   • From level 5: numerals. The target is first only heard, the digit
- *     comes a moment later, and the other bubbles favour numbers that are
- *     easy to mix up (12/21, 6/9, neighbours) — hearing a number word and
- *     finding its numeral, not matching a digit to a digit.
+ *     (subitizing).
+ *   • From level 5: numerals, and the other bubbles favour numbers that are
+ *     easy to mix up (12/21, 6/9, neighbours). The target used to be heard
+ *     first and shown later; only recorded sentences are spoken now, so it
+ *     is shown from the start.
  *
  * Positions are static (CSS left/top %); a small physics loop drifts each
  * bubble around its spot through MotionValues.
@@ -34,8 +33,6 @@ const TINTS = ['#4aa3ff', '#ff6b5b', '#ffc93c', '#5cc45a', '#8e6cf0', '#fd79a8',
 const ROUNDS = 5
 
 function rand(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a }
-const N = sayNumber
-const Cap = s => s[0].toUpperCase() + s.slice(1)
 
 // Numbers easy to take for the target: digits swapped, neighbours, 6 and 9.
 function confusables(v, maxNum) {
@@ -49,6 +46,7 @@ function confusables(v, maxNum) {
 function spawnRound(target, cfg, W, H) {
   const targetCount = rand(cfg.minT, cfg.maxT)
   const near = cfg.dots ? [] : confusables(target, cfg.maxNum)
+  const placed = []
   return Array.from({ length: cfg.count }, (_, i) => {
     let value = target
     if (i >= targetCount) {
@@ -58,13 +56,21 @@ function spawnRound(target, cfg, W, H) {
     // a little smaller in a phone-sized sea, never below a fingertip
     const size = Math.round(rand(cfg.dots ? 70 : 62, cfg.dots ? 96 : 90) * Math.max(0.8, Math.min(1, W / 520)))
     const r = size / 2 + 4
-    // Inside the water by at least the radius, so no bubble is cut off.
-    const left = ((r + Math.random() * Math.max(0, W - 2 * r)) / W) * 100
-    const top  = ((r + Math.random() * Math.max(0, H - 2 * r)) / H) * 100
+    // Inside the water by at least the radius, so no bubble is cut off, and
+    // apart from the others: of a few random spots the one with the most
+    // room is taken, so the bubbles spread over the whole sea instead of
+    // clumping where chance put them.
+    let best = null
+    for (let k = 0; k < 24; k++) {
+      const x = r + Math.random() * Math.max(0, W - 2 * r), y = r + Math.random() * Math.max(0, H - 2 * r)
+      const room = Math.min(Infinity, ...placed.map(p => Math.hypot(p.x - x, p.y - y) - p.r - r))
+      if (!best || room > best.room) best = { x, y, room }
+    }
+    placed.push({ x: best.x, y: best.y, r })
     return {
       id: `${i}-${Math.random().toString(36).slice(2)}`,
       value, tint: TINTS[rand(0, TINTS.length - 1)],
-      left, top, size,
+      left: (best.x / W) * 100, top: (best.y / H) * 100, size,
       floatDur: 5.5 + Math.random() * 5.0,
     }
   })
@@ -90,14 +96,6 @@ const ROUND_CFG = [
   // roughly constant; difficulty comes from the count and the number range.
   timeS: Math.max(24, Math.round(c.count * 1.5 + 10)),
 }))
-
-// What the octopus wishes for, and what is said about a wrong bubble.
-const taskText  = (t, dots) => dots
-  ? `Ich wünsche mir alle Blasen mit ${t === 1 ? 'einem Punkt' : `${N(t)} Punkten`}!`
-  : `Ich wünsche mir alle Blasen mit der ${Cap(N(t))}!`
-const wrongText = (v, t, dots) => dots
-  ? `${v === 1 ? 'Das ist ein Punkt' : `Das sind ${N(v)} Punkte`}. Wir suchen ${t === 1 ? 'einen Punkt' : `${N(t)} Punkte`}.`
-  : `Das ist die ${Cap(N(v))}. Wir suchen die ${Cap(N(t))}.`
 
 // White dots on a bubble, or its numeral
 function Face({ value, dots, size }) {
@@ -125,7 +123,6 @@ export default function BubblePopGame({ level = 1, onComplete }) {
   const roundsRef    = useRef([])                    // per finished round: 'clean' | 'won' | 'lost'
   const [timeLeft,  setTimeLeft]  = useState(cfg.timeS)
   const [hint,      setHint]      = useState(false)  // targets pulse briefly after a wrong pop
-  const [showDigit, setShowDigit] = useState(true)
   const [phase,     setPhase]     = useState('playing')
   const [stars,     setStars]     = useState(0)      // juggled by the octopus this round
   const [flyers,    setFlyers]    = useState([])     // stars swimming to the octopus
@@ -137,6 +134,8 @@ export default function BubblePopGame({ level = 1, onComplete }) {
   const rootRef    = useRef(null)
   const arenaRef   = useRef(null)
   const octoRef    = useRef(null)
+  const wishRef    = useRef(null)
+  const anchorRef  = useRef(null) // where a wished-for bubble lives, for the hand
   const physicsRef = useRef({}) // { [id]: { px,py, vx,vy, size,left,top, t, floatPeriod } }
   const mvsRef     = useRef({}) // { [id]: { mx: MotionValue, my: MotionValue } }
 
@@ -165,13 +164,9 @@ export default function BubblePopGame({ level = 1, onComplete }) {
     mistakesRef.current = 0
     setTimeLeft(cfg.timeS)
     setPhase('playing')
-    // From level 5 the target is heard first; the digit follows.
-    const hearFirst = !cfg.dots && level >= 5
-    setShowDigit(!hearFirst)
     lockPreviews()
-    later(300, () => sayTask(taskText(t, cfg.dots)))
-    if (hearFirst) later(2600, () => setShowDigit(true))
-  }, [roundIdx, cfg, level, later])
+    sayTask()
+  }, [roundIdx, cfg])
 
   // Init physics state + MotionValues whenever bubbles change
   useEffect(() => {
@@ -192,26 +187,14 @@ export default function BubblePopGame({ level = 1, onComplete }) {
     mvsRef.current     = newMvs
   }, [bubbles])
 
-  // A round is over: note how it went, let `say` tell the child (it is told
-  // whether this was the last round), and go on once it is said.
-  const endRound = useCallback((how, say) => {
+  // A round is over: note how it went and go on once the octopus has had
+  // its moment (a dance for a won round); after the last, the party.
+  const endRound = useCallback((how) => {
     const list = [...roundsRef.current, how]
     roundsRef.current = list
     const last = list.length >= ROUNDS
-    say(last)
-    if (!last) {
-      afterSpeech(() => setRoundIdx(r => r + 1), 1500)
-      return
-    }
-    setPhase('done')
-    const won   = list.filter(r => r !== 'lost').length
-    const clean = list.filter(r => r === 'clean').length
-    afterSpeech(() => {
-      setMood('dance', 3000)
-      narrate([{ text: `Du hast ${won === 1 ? 'eine' : N(won)} von fünf Runden geschafft!` }])
-      afterSpeech(() => onComplete(result(clean, ROUNDS)), 1200)
-    }, 400)
-  }, [onComplete, afterSpeech, setMood])
+    afterSpeech(() => (last ? setPhase('finale') : setRoundIdx(r => r + 1)), how === 'lost' ? 2000 : 2600)
+  }, [afterSpeech])
 
   useEffect(() => {
     if (phase !== 'playing' || !cfg.timed) return
@@ -227,7 +210,8 @@ export default function BubblePopGame({ level = 1, onComplete }) {
     if (phase !== 'playing' || !cfg.timed || timeLeft > 0) return
     setMood('sleep', 2600)
     setPhase('roundFail')
-    endRound('lost', last => narrate([{ text: last ? 'Die Zeit ist um.' : 'Die Zeit ist um. Nächste Runde!' }]))
+    sayWrong()
+    endRound('lost')
   }, [timeLeft, phase, cfg.timed, endRound, setMood])
 
   // Where a bubble is right now, relative to the whole game
@@ -257,7 +241,8 @@ export default function BubblePopGame({ level = 1, onComplete }) {
       if (remaining === 0) {
         setPhase('roundWin')
         later(500, () => { setMood('dance', 2600); burst(octoRef.current, 'stars', 14) })
-        endRound(mistakesRef.current === 0 ? 'clean' : 'won', () => sayRight('Du hast alle gefunden!'))
+        sayRight()
+        endRound(mistakesRef.current === 0 ? 'clean' : 'won')
       }
       return
     }
@@ -271,17 +256,16 @@ export default function BubblePopGame({ level = 1, onComplete }) {
     livesRef.current = nl
     setLives(nl)
     setMood('oops', 1200)
-    setShowDigit(true)
+    sayWrong()
     if (nl <= 0) {
       // Three wrong pops end this round only.
       setPhase('roundFail')
-      endRound('lost', last => sayWrong(`${wrongText(bubble.value, target, cfg.dots)} Diese Runde ist vorbei.${last ? '' : ' Nächste Runde!'}`))
+      endRound('lost')
       return
     }
-    sayWrong(wrongText(bubble.value, target, cfg.dots))
     setHint(true)
     later(1200, () => setHint(false))
-  }, [phase, bubbles, target, cfg.dots, endRound, later, setMood, burst])
+  }, [phase, bubbles, target, endRound, later, setMood, burst])
 
   // Physics loop: gentle sinusoidal drift + bubble repulsion, held while paused
   useAnimationFrame((time, delta) => {
@@ -361,28 +345,19 @@ export default function BubblePopGame({ level = 1, onComplete }) {
     }
   })
 
-  const repeatTask = () => sayTask(taskText(target, cfg.dots))
-
-  // Reading the help cut off the task; once it closes, say the task again.
-  const wasPaused = useRef(false)
-  useEffect(() => {
-    if (wasPaused.current && !paused && phase === 'playing') repeatTask()
-    wasPaused.current = paused
-  }, [paused]) // eslint-disable-line react-hooks/exhaustive-deps
-
   const octoSize = wide ? 170 : 150
+  const aim = bubbles.find(b => b.value === target && !poppedIds.includes(b.id))
   const wish = cfg.dots
     ? <Pips n={target} size={56} color="#ff6b5b" />
-    : <span style={{ fontSize: 46, lineHeight: 1, minWidth: 50, textAlign: 'center' }}>{showDigit ? target : <Art art="👂" size={46} />}</span>
+    : <span style={{ fontSize: 46, lineHeight: 1, minWidth: 50, textAlign: 'center' }}>{target}</span>
 
   const octopus = (
     <div style={{ position: 'relative', display: 'flex', flexDirection: wide ? 'column' : 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: wide ? 8 : 18, paddingTop: 80 }}>
       <div ref={octoRef} style={{ position: 'relative' }}>
-        <Critter art="🐙" size={octoSize} mood={mood} label="Krake" talks
-          wish={phase === 'done' ? null : wish} />
+        <Critter art="🐙" size={octoSize} mood={mood} label="Krake"
+          wish={phase === 'finale' ? null : <span ref={wishRef} data-target={target}>{wish}</span>} />
         <Juggle n={stars} size={octoSize} still={reduce || paused} />
       </div>
-      <HearButton onClick={repeatTask} />
     </div>
   )
 
@@ -409,6 +384,7 @@ export default function BubblePopGame({ level = 1, onComplete }) {
 
         {/* The open sea: the bubbles float in the scene behind */}
         <div ref={arenaRef} style={{ position: 'relative', flex: 1, minHeight: 200 }}>
+          {aim && <div ref={anchorRef} aria-hidden="true" style={{ position: 'absolute', left: `${aim.left}%`, top: `${aim.top}%`, width: 2, height: 2 }} />}
           <AnimatePresence>
             {bubbles.map(bubble => {
               if (poppedIds.includes(bubble.id)) return null
@@ -479,6 +455,12 @@ export default function BubblePopGame({ level = 1, onComplete }) {
           }}>{cfg.dots ? <Pips n={p.value} size={28} color="#2a1b3d" face={false} /> : p.value}</span>
         </motion.div>
       ))}
+      {/* The hand shows the move: from the wish to a bubble like it */}
+      <HintHand key={roundIdx} from={wishRef} to={anchorRef} active={phase === 'playing' && !!aim} delay={roundIdx === 0 ? 2000 : 8000} />
+      {phase === 'finale' && (
+        <Finale cast={['🐙', '🐠', '🐡', '🦀', '🐬', '🐳']} size={wide ? 110 : 80}
+          onDone={() => onComplete(result(roundsRef.current.filter(r => r === 'clean').length, ROUNDS))} />
+      )}
       {bursts}
     </div>
   )

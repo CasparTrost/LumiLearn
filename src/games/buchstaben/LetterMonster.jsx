@@ -18,7 +18,7 @@ const THIN = new Set(['I', 'J', 'L', 'T', 'F', 'i', 'j', 'l', 't', 'f', 'r'])
  *
  * Moods: idle · talk (mouth moves) · hungry (mouth wide open, leans in) ·
  * eat (chomp chomp) · yuck (tongue out, shakes its head) · happy (jumps,
- * happy eyes) · burp.
+ * happy eyes) · burp · dance (three in a row, and the end of a level).
  *
  * The stalks meet behind the middle of the letter, so the eyes sit on any
  * letter, a wide M as well as a thin I or a small a.
@@ -38,16 +38,17 @@ export default function LetterMonster({ letter, small, color, mood = 'idle', siz
     hungry: { y: -s * 0.03, scale: 1.08, rotate: 0, transition: { type: 'spring', stiffness: 300, damping: 12 } },
     eat:    { scaleY: [1, 0.86, 1.08, 0.88, 1.04, 1], scaleX: [1, 1.1, 0.95, 1.08, 0.98, 1], y: 0, rotate: 0, transition: { duration: 0.8 } },
     yuck:   { rotate: [0, -9, 9, -7, 7, 0], y: 0, scale: 1, transition: { duration: 0.8 } },
-    happy:  { y: [0, -s * 0.28, 0, -s * 0.08, 0], scaleY: [1, 1.1, 0.9, 1.04, 1], rotate: 0, scale: 1, transition: { duration: 1 } },
+    happy:  { y: [0, -s * 0.2, 0, -s * 0.06, 0], scaleY: [1, 1.1, 0.9, 1.04, 1], rotate: 0, scale: 1, transition: { duration: 1 } },
     burp:   { scale: [1, 1.12, 1], y: 0, rotate: 0, transition: { duration: 0.5 } },
+    dance:  { rotate: [0, -12, 12, -12, 12, 0], y: [0, -s * 0.12, 0, -s * 0.12, 0, 0], scale: 1, transition: { duration: 1.3 } },
   }[mood] ?? {}
 
-  const open = mood === 'hungry' ? 1 : mood === 'eat' ? 0.7 : mood === 'burp' ? 0.8 : mood === 'talk' ? 0.45 : 0
+  const open = mood === 'hungry' || mood === 'dance' ? 1 : mood === 'eat' ? 0.7 : mood === 'burp' ? 0.8 : mood === 'talk' ? 0.45 : 0
   const mouthAnim = still ? { scaleY: open ? 1 : 0.25 }
     : mood === 'eat' ? { scaleY: [1, 0.15, 1, 0.15, 1, 0.25], transition: { duration: 0.8 } }
     : mood === 'talk' ? { scaleY: [0.25, 0.8, 0.3, 0.7, 0.25], transition: { duration: 0.6, repeat: Infinity } }
     : { scaleY: open ? 1 : 0.25, transition: { type: 'spring', stiffness: 400, damping: 15 } }
-  const happyEyes = mood === 'happy' || mood === 'burp'
+  const happyEyes = mood === 'happy' || mood === 'burp' || mood === 'dance'
 
   return (
     <motion.div animate={body} style={{ position: 'relative', width: s, height: s, transformOrigin: '50% 100%' }}>

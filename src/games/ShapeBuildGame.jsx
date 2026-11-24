@@ -1,12 +1,11 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { sfx } from '../sfx.js'
-import { narrate, afterNarration, lockPreviews } from '../narrator.js'
+import { afterNarration, lockPreviews } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
-import { sayNumber } from '../tts.js'
 import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
-import { Critter, Art, useMood, DragArea, Draggable, DropZone, RoundTrail, useBursts, useDragState } from '../components/play/index.js'
+import { Critter, Art, useMood, DragArea, Draggable, DropZone, RoundTrail, HintHand, useBursts, useDragState } from '../components/play/index.js'
 import { pxCard, pxPanel, pxButton, INK } from './px.js'
 
 /**
@@ -37,15 +36,13 @@ import { pxCard, pxPanel, pxButton, INK } from './px.js'
 
 function shuffle(a) { return [...a].sort(() => Math.random() - 0.5) }
 
-// Names carry their article: "Das Kreis passt da nicht" is exactly the kind of
-// sentence a five-year-old should never hear from a learning app. `pro` is
-// the pronoun for "Wohin gehört er/es?".
+// Names of the shapes, for screen readers on the pieces
 const SHAPE = {
-  circle:    { name: 'Kreis',    art: 'Der', pro: 'er' },
-  square:    { name: 'Quadrat',  art: 'Das', pro: 'es' },
-  triangle:  { name: 'Dreieck',  art: 'Das', pro: 'es' },
-  rtriangle: { name: 'Dreieck',  art: 'Das', pro: 'es' },
-  rectangle: { name: 'Rechteck', art: 'Das', pro: 'es' },
+  circle:    { name: 'Kreis' },
+  square:    { name: 'Quadrat' },
+  triangle:  { name: 'Dreieck' },
+  rtriangle: { name: 'Dreieck' },
+  rectangle: { name: 'Rechteck' },
 }
 
 // Turning a circle changes nothing, a square looks the same every quarter
@@ -73,69 +70,61 @@ function ShapePath({ shape, x, y, w, h, rot = 0, ...paint }) {
 // auf der Unterkante des Wagens. Vorher standen die Formen mit Lücken
 // nebeneinander, und das Ergebnis sah nach Formen aus statt nach einem Haus.
 //
-// `g` ist das Geschlecht für den Artikel: "Baue einen Baum", nicht "Baue Baum".
-// `part` sagt, was das Teil im Bild ist: "Das Dreieck ist das Dach!"
-//
-// `icon` is what the customer asks for, `face` where the finished thing gets
-// its eyes ([x, y, scale]), `alive` how it moves then and who or what joins
-// it (`extra` at `at`).
+// `icon` ist, was sich der Kunde wünscht, `face`, wo das fertige Ding Augen
+// bekommt ([x, y, Maßstab]), `alive`, wie es sich dann bewegt und wer oder
+// was dazukommt (`extra` bei `at`).
 const FIGURES = [
-  { name: 'Haus', g: 'n', icon: '🏠', face: [50, 66, 0.3], alive: { move: 'hop', extra: '🐦', at: [62, 10] }, parts: [
-    { shape: 'triangle',  x: 22, y: 18, w: 56, h: 28, color: '#FF6B6B', part: 'das Dach' },    // Dach sitzt auf …
-    { shape: 'square',    x: 30, y: 46, w: 40, h: 40, color: '#FFD93D', part: 'die Wand' }] }, // … der Wand ab y46
-  { name: 'Baum', g: 'm', icon: '🌳', face: [50, 44, 0.28], alive: { move: 'sway', extra: '🍎', at: [34, 34] }, parts: [
-    { shape: 'triangle',  x: 20, y: 14, w: 60, h: 48, color: '#6BCB77', part: 'die Krone' },   // Krone endet bei y62
-    { shape: 'rectangle', x: 43, y: 62, w: 14, h: 26, color: '#8D6E63', part: 'der Stamm' }] },// Stamm beginnt dort
-  { name: 'Boot', g: 'n', icon: '⛵', face: [50, 72, 0.18], alive: { move: 'sail', extra: '🌊', at: [50, 90] }, parts: [
-    { shape: 'triangle',  x: 42, y: 16, w: 32, h: 46, color: '#FF9F43', part: 'das Segel' },   // Segel steht auf …
-    { shape: 'rectangle', x: 16, y: 62, w: 68, h: 20, color: '#74B9FF', part: 'der Rumpf' }] },// … dem Rumpf
-  { name: 'Kerze', g: 'f', icon: '🕯️', face: [50, 62, 0.14], alive: { move: 'hop', extra: '✨', at: [66, 10] }, parts: [
-    { shape: 'triangle',  x: 42, y: 10, w: 16, h: 24, color: '#FF9F43', part: 'die Flamme' },  // Flamme genau so …
-    { shape: 'rectangle', x: 42, y: 34, w: 16, h: 56, color: '#FFD93D', part: 'das Wachs' }] },// … breit wie die Kerze
-  { name: 'Eis', g: 'n', icon: '🍦', face: [50, 36, 0.24], alive: { move: 'hop', extra: '✨', at: [70, 18] }, parts: [
-    { shape: 'circle',    x: 34, y: 20, w: 32, h: 32, color: '#FD79A8', part: 'die Kugel' },   // Kugel in der Waffel
-    { shape: 'triangle',  x: 38, y: 46, w: 24, h: 40, rot: 180, color: '#D9A066', part: 'die Waffel' }] },
-  { name: 'Lolli', g: 'm', icon: '🍭', face: [50, 32, 0.34], alive: { move: 'spin' }, parts: [
-    { shape: 'circle',    x: 28, y: 10, w: 44, h: 44, color: '#E84393', part: 'das Bonbon' },  // Bonbon auf …
-    { shape: 'rectangle', x: 46, y: 54, w: 8,  h: 36, color: '#D9A066', part: 'der Stiel' }] },// … dem Stiel
-  { name: 'Fahne', g: 'f', icon: '🚩', face: [52, 24, 0.18], alive: { move: 'sway', extra: '💨', at: [84, 20] }, parts: [
-    { shape: 'rectangle', x: 24, y: 10, w: 8,  h: 80, color: '#8D6E63', part: 'die Stange' },  // Stange, an ihr …
-    { shape: 'triangle',  x: 40, y: 4,  w: 30, h: 46, rot: 90, color: '#FF6B6B', part: 'die Fahne' }] }, // … das Tuch (Spitze nach rechts)
-  { name: 'Schneemann', g: 'm', icon: '⛄', face: [50, 19, 0.17], alive: { move: 'hop', extra: '🎩', at: [50, 2] }, parts: [
-    { shape: 'circle',    x: 39, y: 8,  w: 22, h: 22, color: '#EAF6FF', part: 'der Kopf' },          // drei Kugeln, jede
-    { shape: 'circle',    x: 34, y: 28, w: 32, h: 32, color: '#CFE7FF', part: 'die mittlere Kugel' },// auf der nächsten
-    { shape: 'circle',    x: 29, y: 54, w: 42, h: 42, color: '#AED4F7', part: 'die untere Kugel' }] },
-  { name: 'Turm', g: 'm', icon: '🗼', face: [50, 76, 0.26], alive: { move: 'hop', extra: '🐦', at: [64, 4] }, parts: [
-    { shape: 'triangle',  x: 30, y: 6,  w: 40, h: 28, color: '#FF6B6B', part: 'die Spitze' },  // Spitze  6–34
-    { shape: 'square',    x: 38, y: 34, w: 24, h: 24, color: '#4AA3FF', part: 'das Fenster' }, // Mitte  34–58
-    { shape: 'square',    x: 32, y: 58, w: 36, h: 36, color: '#B0BEC5', part: 'der Sockel' }] },// Sockel 58–94
-  { name: 'Rakete', g: 'f', icon: '🚀', face: [50, 50, 0.16], alive: { move: 'launch', extra: '🔥', at: [50, 84] }, parts: [
-    { shape: 'triangle',  x: 36, y: 6,  w: 28, h: 24, color: '#FF6B6B', part: 'die Spitze' },  // Spitze auf dem Rumpf
-    { shape: 'rectangle', x: 40, y: 30, w: 20, h: 44, color: '#B0BEC5', part: 'der Rumpf' },
+  { name: 'Haus', icon: '🏠', face: [50, 66, 0.3], alive: { move: 'hop', extra: '🐦', at: [62, 10] }, parts: [
+    { shape: 'triangle',  x: 22, y: 18, w: 56, h: 28, color: '#FF6B6B' },    // Dach sitzt auf …
+    { shape: 'square',    x: 30, y: 46, w: 40, h: 40, color: '#FFD93D' }] }, // … der Wand ab y46
+  { name: 'Baum', icon: '🌳', face: [50, 44, 0.28], alive: { move: 'sway', extra: '🍎', at: [34, 34] }, parts: [
+    { shape: 'triangle',  x: 20, y: 14, w: 60, h: 48, color: '#6BCB77' },   // Krone endet bei y62
+    { shape: 'rectangle', x: 43, y: 62, w: 14, h: 26, color: '#8D6E63' }] },// Stamm beginnt dort
+  { name: 'Boot', icon: '⛵', face: [50, 72, 0.18], alive: { move: 'sail', extra: '🌊', at: [50, 90] }, parts: [
+    { shape: 'triangle',  x: 42, y: 16, w: 32, h: 46, color: '#FF9F43' },   // Segel steht auf …
+    { shape: 'rectangle', x: 16, y: 62, w: 68, h: 20, color: '#74B9FF' }] },// … dem Rumpf
+  { name: 'Kerze', icon: '🕯️', face: [50, 62, 0.14], alive: { move: 'hop', extra: '✨', at: [66, 10] }, parts: [
+    { shape: 'triangle',  x: 42, y: 10, w: 16, h: 24, color: '#FF9F43' },  // Flamme genau so …
+    { shape: 'rectangle', x: 42, y: 34, w: 16, h: 56, color: '#FFD93D' }] },// … breit wie die Kerze
+  { name: 'Eis', icon: '🍦', face: [50, 36, 0.24], alive: { move: 'hop', extra: '✨', at: [70, 18] }, parts: [
+    { shape: 'circle',    x: 34, y: 20, w: 32, h: 32, color: '#FD79A8' },   // Kugel in der Waffel
+    { shape: 'triangle',  x: 38, y: 46, w: 24, h: 40, rot: 180, color: '#D9A066' }] },
+  { name: 'Lolli', icon: '🍭', face: [50, 32, 0.34], alive: { move: 'spin' }, parts: [
+    { shape: 'circle',    x: 28, y: 10, w: 44, h: 44, color: '#E84393' },  // Bonbon auf …
+    { shape: 'rectangle', x: 46, y: 54, w: 8,  h: 36, color: '#D9A066' }] },// … dem Stiel
+  { name: 'Fahne', icon: '🚩', face: [52, 24, 0.18], alive: { move: 'sway', extra: '💨', at: [84, 20] }, parts: [
+    { shape: 'rectangle', x: 24, y: 10, w: 8,  h: 80, color: '#8D6E63' },  // Stange, an ihr …
+    { shape: 'triangle',  x: 40, y: 4,  w: 30, h: 46, rot: 90, color: '#FF6B6B' }] }, // … das Tuch (Spitze nach rechts)
+  { name: 'Schneemann', icon: '⛄', face: [50, 19, 0.17], alive: { move: 'hop', extra: '🎩', at: [50, 2] }, parts: [
+    { shape: 'circle',    x: 39, y: 8,  w: 22, h: 22, color: '#EAF6FF' },          // drei Kugeln, jede
+    { shape: 'circle',    x: 34, y: 28, w: 32, h: 32, color: '#CFE7FF' },// auf der nächsten
+    { shape: 'circle',    x: 29, y: 54, w: 42, h: 42, color: '#AED4F7' }] },
+  { name: 'Turm', icon: '🗼', face: [50, 76, 0.26], alive: { move: 'hop', extra: '🐦', at: [64, 4] }, parts: [
+    { shape: 'triangle',  x: 30, y: 6,  w: 40, h: 28, color: '#FF6B6B' },  // Spitze  6–34
+    { shape: 'square',    x: 38, y: 34, w: 24, h: 24, color: '#4AA3FF' }, // Mitte  34–58
+    { shape: 'square',    x: 32, y: 58, w: 36, h: 36, color: '#B0BEC5' }] },// Sockel 58–94
+  { name: 'Rakete', icon: '🚀', face: [50, 50, 0.16], alive: { move: 'launch', extra: '🔥', at: [50, 84] }, parts: [
+    { shape: 'triangle',  x: 36, y: 6,  w: 28, h: 24, color: '#FF6B6B' },  // Spitze auf dem Rumpf
+    { shape: 'rectangle', x: 40, y: 30, w: 20, h: 44, color: '#B0BEC5' },
     // Flossen: rechtwinklig, die senkrechte Kante liegt am Rumpf (x 40 / 60),
     // die untere schließt mit ihm bei y 74 ab. Die linke ist dieselbe Form,
     // eine Dreivierteldrehung weiter.
-    { shape: 'rtriangle', x: 20, y: 54, w: 20, h: 20, rot: 270, color: '#4AA3FF', part: 'eine Flosse' },
-    { shape: 'rtriangle', x: 60, y: 54, w: 20, h: 20, color: '#4AA3FF', part: 'eine Flosse' }] },
-  { name: 'Blume', g: 'f', icon: '🌸', face: [50, 36, 0.12], alive: { move: 'sway', extra: '🐝', at: [80, 12] }, parts: [
+    { shape: 'rtriangle', x: 20, y: 54, w: 20, h: 20, rot: 270, color: '#4AA3FF' },
+    { shape: 'rtriangle', x: 60, y: 54, w: 20, h: 20, color: '#4AA3FF' }] },
+  { name: 'Blume', icon: '🌸', face: [50, 36, 0.12], alive: { move: 'sway', extra: '🐝', at: [80, 12] }, parts: [
     // vier große Blütenblätter um eine deutlich kleinere Mitte
-    { shape: 'circle',    x: 38, y: 5,  w: 24, h: 24, color: '#FD79A8', part: 'ein Blütenblatt' },
-    { shape: 'circle',    x: 19, y: 24, w: 24, h: 24, color: '#FD79A8', part: 'ein Blütenblatt' },
-    { shape: 'circle',    x: 57, y: 24, w: 24, h: 24, color: '#FD79A8', part: 'ein Blütenblatt' },
-    { shape: 'circle',    x: 38, y: 43, w: 24, h: 24, color: '#FD79A8', part: 'ein Blütenblatt' },
-    { shape: 'circle',    x: 43, y: 29, w: 14, h: 14, color: '#FFD93D', part: 'die Mitte' },
-    { shape: 'rectangle', x: 46, y: 67, w: 8,  h: 27, color: '#6BCB77', part: 'der Stiel' }] },// Stiel ab dem unteren Blatt
-  { name: 'Zug', g: 'm', icon: '🚂', face: [70, 60, 0.18], alive: { move: 'drive', extra: '💨', at: [84, 34] }, parts: [
-    { shape: 'rectangle', x: 12, y: 44, w: 46, h: 28, color: '#74B9FF', part: 'der Wagen' },   // Wagen 12–58
-    { shape: 'square',    x: 58, y: 48, w: 24, h: 24, color: '#FF9F43', part: 'die Lok' },     // Lok schließt bei 58 an
-    { shape: 'circle',    x: 18, y: 72, w: 16, h: 16, color: '#444', part: 'ein Rad' },        // Räder auf der
-    { shape: 'circle',    x: 62, y: 72, w: 16, h: 16, color: '#444', part: 'ein Rad' }] },     // Unterkante y72
+    { shape: 'circle',    x: 38, y: 5,  w: 24, h: 24, color: '#FD79A8' },
+    { shape: 'circle',    x: 19, y: 24, w: 24, h: 24, color: '#FD79A8' },
+    { shape: 'circle',    x: 57, y: 24, w: 24, h: 24, color: '#FD79A8' },
+    { shape: 'circle',    x: 38, y: 43, w: 24, h: 24, color: '#FD79A8' },
+    { shape: 'circle',    x: 43, y: 29, w: 14, h: 14, color: '#FFD93D' },
+    { shape: 'rectangle', x: 46, y: 67, w: 8,  h: 27, color: '#6BCB77' }] },// Stiel ab dem unteren Blatt
+  { name: 'Zug', icon: '🚂', face: [70, 60, 0.18], alive: { move: 'drive', extra: '💨', at: [84, 34] }, parts: [
+    { shape: 'rectangle', x: 12, y: 44, w: 46, h: 28, color: '#74B9FF' },   // Wagen 12–58
+    { shape: 'square',    x: 58, y: 48, w: 24, h: 24, color: '#FF9F43' },     // Lok schließt bei 58 an
+    { shape: 'circle',    x: 18, y: 72, w: 16, h: 16, color: '#444' },        // Räder auf der
+    { shape: 'circle',    x: 62, y: 72, w: 16, h: 16, color: '#444' }] },     // Unterkante y72
 ]
-
-// "Baue einen Baum" / "Das ist ein Baum" — im Deutschen unterscheidet sich der
-// Artikel nach Fall, und maskulin ist der einzige, bei dem das auffällt.
-const ART = { m: { akk: 'einen', nom: 'ein' }, f: { akk: 'eine', nom: 'eine' }, n: { akk: 'ein', nom: 'ein' } }
-const art = (fig, fall) => (ART[fig.g] ?? ART.n)[fall]
 
 // What each level asks for, on top of more parts:
 //   1–3 two-part figures · 4–5 up to three parts and one piece that does not
@@ -199,30 +188,24 @@ const FREE_SHAPES = [
   { shape: 'rectangle', w: 34, h: 14 },
 ]
 const FREE_COLORS = ['#FF6B6B', '#FFD93D', '#6BCB77', '#4AA3FF', '#FF9F43', '#FD79A8']
-const PLURAL = { circle: 'Kreise', square: 'Quadrate', triangle: 'Dreiecke', rectangle: 'Rechtecke' }
-
+// What Lumi sees in a free build: how many of each shape, and the figure it
+// matches if the shapes are those of one ("Ist das ein Haus?")
 function describeBuild(pieces) {
   const kind = p => (p.shape === 'rtriangle' ? 'triangle' : p.shape)
   const key = list => list.map(kind).sort().join()
-  const mine = key(pieces)
-  const known = FIGURES.find(f => key(f.parts) === mine)
+  const known = FIGURES.find(f => key(f.parts) === key(pieces))
   const counts = Object.entries(pieces.reduce((m, p) => ({ ...m, [kind(p)]: (m[kind(p)] ?? 0) + 1 }), {}))
-    .map(([shape, n]) => (n === 1 ? `ein ${SHAPE[shape].name}` : `${sayNumber(n)} ${PLURAL[shape]}`))
-  const list = counts.length < 2 ? counts[0] : `${counts.slice(0, -1).join(', ')} und ${counts[counts.length - 1]}`
-  return known
-    ? `Ich sehe ${list}. Ist das ${art(known, 'nom')} ${known.name}? Toll gebaut!`
-    : `Ich sehe ${list}. Toll gebaut!`
+  return { counts, known }
 }
-
-const FREE_TASK = 'Jetzt darfst du frei bauen! Tippe auf eine Form und schieb sie hin, wo du willst.'
 
 function FreeBuild({ onDone }) {
   const [pieces, setPieces] = useState([])
-  const [done, setDone]     = useState(false)
+  const [seen, setSeen]     = useState(null)   // what Lumi sees, once finished
   const svgRef = useRef(null)
   const drag   = useRef(null)    // { id, dx, dy, moved }
+  const done = !!seen
 
-  useEffect(() => { sayTask(FREE_TASK) }, [])
+  useEffect(() => { sayTask() }, [])
 
   const toSvg = e => {
     const m = svgRef.current?.getScreenCTM()?.inverse()
@@ -233,8 +216,7 @@ function FreeBuild({ onDone }) {
   const add = (f) => {
     if (done) return
     setPieces(list => [...list, { ...f, id: Date.now(), x: 50 - f.w / 2 + (list.length % 4) * 4, y: 40 - f.h / 2 + (list.length % 4) * 4, rot: 0, color: FREE_COLORS[list.length % FREE_COLORS.length] }])
-    sfx.pop?.()
-    narrate([{ text: `${SHAPE[f.shape].art} ${SHAPE[f.shape].name}.` }])
+    sfx.pop()
   }
 
   const down = (e, p) => {
@@ -259,33 +241,54 @@ function FreeBuild({ onDone }) {
     // a tap without moving turns the piece
     if (d && !d.moved) {
       setPieces(list => list.map(p => (p.id === d.id && p.shape !== 'circle' ? { ...p, rot: p.rot + 90 } : p)))
-      sfx.flip?.()
+      sfx.flip()
     }
   }
 
+  // Lumi looks at the build and shows what it sees, then the results
   const finish = () => {
     if (!pieces.length || done) return
-    setDone(true)
-    sfx.correct()
-    narrate([{ text: describeBuild(pieces) }], { onEnd: onDone })
+    setSeen(describeBuild(pieces))
+    sfx.tada()
+    sayRight()
+    afterNarration(onDone, { minMs: 3200 })
   }
 
   return (
     <>
-      <div style={{ ...pxPanel, padding: 'clamp(8px,2vw,16px)' }}>
+      <div style={{ position: 'relative', ...pxPanel, padding: 'clamp(8px,2vw,16px)', background: '#8A5A33' }}>
         <svg ref={svgRef} viewBox="0 0 100 100" onPointerMove={move} onPointerUp={up} onPointerCancel={up}
-          style={{ width: 'clamp(220px,46vw,300px)', height: 'clamp(220px,46vw,300px)', display: 'block', touchAction: 'none' }}>
+          style={{ width: 'clamp(220px,46vw,300px)', height: 'clamp(220px,46vw,300px)', display: 'block', touchAction: 'none', background: '#DCEBFA', borderRadius: 8 }}>
           {pieces.map(p => (
             <ShapePath key={p.id} {...p} fill={p.color} stroke={INK} strokeWidth={1.5} strokeLinejoin="round"
               onPointerDown={e => down(e, p)} style={{ cursor: done ? 'default' : 'grab' }} />
           ))}
         </svg>
+        {/* Lumi says what it sees: each shape with how many, and maybe what it is */}
+        <AnimatePresence>
+          {seen && (
+            <motion.div key="seen" initial={{ scale: 0, y: 20 }} animate={{ scale: 1, y: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 16 }}
+              style={{
+                position: 'absolute', left: '50%', bottom: -30, transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 8,
+                background: '#FFFDF7', border: `3px solid ${INK}`, borderRadius: 18, padding: '6px 12px', boxShadow: '0 4px 0 rgba(42,27,61,0.3)', whiteSpace: 'nowrap',
+              }}>
+              <Art art="lumi" size={40} />
+              {seen.counts.map(([shape, n]) => (
+                <span key={shape} style={{ display: 'flex', alignItems: 'center', gap: 2, fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22, color: INK }}>
+                  {n}
+                  <svg viewBox="0 0 100 100" width="28" height="28"><ShapePath shape={shape} x={10} y={shape === 'rectangle' ? 30 : 10} w={80} h={shape === 'rectangle' ? 40 : 80} fill="#FFC93C" stroke={INK} strokeWidth={6} /></svg>
+                </span>
+              ))}
+              {seen.known && <><span style={{ fontSize: 22 }}>→</span><Art art={seen.known.icon} size={38} /></>}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-      <div style={{ display: 'flex', gap: 'clamp(8px,2.5vw,16px)', flexWrap: 'wrap', justifyContent: 'center' }}>
+      <div style={{ display: 'flex', gap: 'clamp(8px,2.5vw,16px)', flexWrap: 'wrap', justifyContent: 'center', marginTop: 18 }}>
         {FREE_SHAPES.map((f, i) => (
-          <motion.button key={f.shape} whileTap={{ scale: 0.93 }} onClick={() => add(f)} disabled={done}
+          <motion.button key={f.shape} whileTap={{ scale: 0.9 }} onClick={() => add(f)} disabled={done}
             aria-label={`${SHAPE[f.shape].name} dazulegen`}
-            style={{ width: 'clamp(64px,13vw,84px)', height: 'clamp(64px,13vw,84px)', ...pxCard(), cursor: 'pointer', padding: 6 }}>
+            style={{ width: 'clamp(66px,13vw,84px)', height: 'clamp(66px,13vw,84px)', ...pxCard(), cursor: 'pointer', padding: 6 }}>
             <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%' }}>
               <ShapePath shape={f.shape} x={50 - f.w * 1.2} y={50 - f.h * 1.2} w={f.w * 2.4} h={f.h * 2.4}
                 fill={FREE_COLORS[i]} stroke={INK} strokeWidth={2.5} strokeLinejoin="round" />
@@ -293,21 +296,20 @@ function FreeBuild({ onDone }) {
           </motion.button>
         ))}
       </div>
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
-        <button onClick={() => setPieces(list => list.slice(0, -1))} disabled={!pieces.length || done}
-          style={{ ...pxButton('parch'), padding: '10px 20px', fontSize: 17, opacity: pieces.length && !done ? 1 : 0.5 }}>
-          🧽 Weg damit
+      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', justifyContent: 'center' }}>
+        <button onClick={() => { setPieces(list => list.slice(0, -1)); sfx.whoosh() }} disabled={!pieces.length || done} aria-label="Weg damit"
+          style={{ ...pxButton('parch'), padding: '8px 22px', minHeight: 56, fontSize: 28, opacity: pieces.length && !done ? 1 : 0.5 }}>
+          🧽
         </button>
-        <button onClick={finish} disabled={!pieces.length || done}
-          style={{ ...pxButton('green'), color: INK, textShadow: 'none', padding: '10px 28px', fontSize: 17, opacity: pieces.length && !done ? 1 : 0.5 }}>
-          ✅ Fertig
+        <button onClick={finish} disabled={!pieces.length || done} aria-label="Fertig"
+          style={{ ...pxButton('green'), color: INK, textShadow: 'none', padding: '8px 30px', minHeight: 56, fontSize: 28, opacity: pieces.length && !done ? 1 : 0.5 }}>
+          <svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6" fill="none" stroke={INK} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </button>
       </div>
     </>
   )
 }
 
-const sayShape = p => `${SHAPE[p.shape].art} ${SHAPE[p.shape].name}`
 const CUSTOMERS = ['🐰', '🐻', '🐸', '🐱', '🐶', '🐭', '🐷', '🦔']
 const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
@@ -429,10 +431,14 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
   const [mood,     setMood]     = useMood()
   const [lastDone, setLastDone] = useState(false)  // the last figure is finished: build freely?
   const [freeMode, setFreeMode] = useState(false)
+  const [turnHint, setTurnHint] = useState(null)   // { i, n }: this piece only needs turning
+  const [streak,   setStreak]   = useState(0)      // figures built without a miss in a row
   const [bursts, burst] = useBursts()
   const misses = useRef(0)
-  const timer  = useRef(null)
+  const roundMisses = useRef(0)
+  const timers = useRef([])
   const boardRef = useRef(null)
+  const trayRef  = useRef(null)
   const vw = useViewportWidth()
   const totalParts = useMemo(() => rounds.reduce((n, f) => n + f.parts.length, 0), [rounds])
 
@@ -458,23 +464,22 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
 
   const rotOf = i => (tray[i]?.rot ?? 0) + (turns[i] ?? 0)
 
-  const speakTask = useCallback(() => {
-    if (freeMode) { sayTask(FREE_TASK); return }
-    const extra = idx > 0 ? ''
-      : rules.turn ? ' Tippe auf den Pfeil, dann dreht sich ein Teil.'
-      : rules.distractor ? ' Ein Teil gehört nicht dazu.' : ''
-    sayTask(`Baue ${art(fig, 'akk')} ${fig.name}! Zieh die Formen in das Bild.${extra}`)
-  }, [idx, fig, freeMode, rules.turn, rules.distractor])
+  // Timers of the figure: they wait while the help is open
+  const later = useCallback((fn, ms) => {
+    const run = () => { if (pausedRef.current) timers.current.push(setTimeout(run, 250)); else fn() }
+    timers.current.push(setTimeout(run, ms))
+  }, [])
 
   useEffect(() => {
     if (!fig) return
-    setPlaced([]); setTurns({}); setWrongSlot(null)
+    timers.current.forEach(clearTimeout); timers.current = []
+    setPlaced([]); setTurns({}); setWrongSlot(null); setTurnHint(null)
+    roundMisses.current = 0
     lockPreviews()
-    const id = setTimeout(speakTask, 650)
-    return () => clearTimeout(id)
+    sayTask()
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => () => clearTimeout(timer.current), [])
+  useEffect(() => () => timers.current.forEach(clearTimeout), [])
 
   const last = idx + 1 >= rounds.length
   // every piece is one task; a piece that first went to a wrong place does
@@ -484,7 +489,9 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
     afterNarration(() => onComplete(result(totalParts - misses.current, totalParts)), { minMs: 300 })
   }, [onComplete, totalParts])
 
-  // A piece let go over a place: it snaps in, or it is handed back with a word
+  // A piece let go over a place: it snaps in, or it bounces back and the
+  // place flashes; a piece that only lies the wrong way round makes its
+  // turn button wiggle.
   const dropPiece = useCallback((trayIdx, slotIdx) => {
     if (!fig || placed.some(pl => pl.slot === slotIdx)) return false
     const piece = tray[trayIdx]
@@ -495,47 +502,38 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
     const sameShape = piece.shape === slot.shape
     const sameSize  = sameShape && piece.w === slot.w && piece.h === slot.h
     if (!sameSize || !sameTurn(slot.shape, rotOf(trayIdx), slot.rot)) {
-      const s = SHAPE[piece.shape]
-      // Right kind of shape, wrong size (the snowman's three circles) is a
-      // different mistake from the wrong shape entirely — say which one it is,
-      // so the child learns that size is part of "fitting".
-      const msg = sameSize
-        ? 'Die Form passt, aber sie liegt falsch herum. Tippe auf den Pfeil, dann dreht sie sich.'
-        : sameShape
-          ? `${s.art} ${s.name} ist zu ${piece.w * piece.h > slot.w * slot.h ? 'groß' : 'klein'} für diesen Platz.`
-          : `${s.art} ${s.name} passt da nicht.`
       setWrongSlot(slotIdx)
+      if (sameSize) setTurnHint({ i: trayIdx, n: Date.now() })
       misses.current++
+      roundMisses.current++
       setMood('oops')
-      sayWrong(msg)
-      timer.current = setTimeout(() => setWrongSlot(null), 900)
+      sayWrong()
+      later(() => setWrongSlot(null), 900)
       return false
     }
     const next = [...placed, { slot: slotIdx, tray: trayIdx }]
     setPlaced(next)
+    setTurnHint(null)
     sfx.pop()
     if (next.length < fig.parts.length) {
       setMood('wow', 700)
-      narrate([{ text: `${sayShape(piece)} ist ${slot.part}!` }])
       return true
     }
-    // the last piece: the thing comes alive, the customer cheers
-    timer.current = setTimeout(() => {
+    // the last piece: the thing comes alive, the customer cheers; a streak
+    // of figures without a miss gets more confetti
+    const s = roundMisses.current ? 0 : streak + 1
+    setStreak(s)
+    later(() => {
       sfx.tada()
       if (fig.alive.move === 'launch' || fig.alive.move === 'drive' || fig.alive.move === 'sail') sfx.whoosh()
       setMood('dance', 2600)
-      burst(boardRef.current, 'confetti', 16)
+      burst(boardRef.current, 'confetti', s >= 3 ? 30 : 16)
     }, 300)
     sfx.correct()
-    sayRight(`${sayShape(piece)} ist ${slot.part}. Das ist ${art(fig, 'nom')} ${fig.name}.${last ? ' Willst du jetzt noch frei bauen?' : ''}`, {
-      onEnd: () => {
-        if (last) { setLastDone(true); return }
-        const go = () => { timer.current = setTimeout(() => (pausedRef.current ? go() : setIdx(i => i + 1)), 700) }
-        go()
-      },
-    })
+    sayRight()
+    afterNarration(() => later(() => (last ? setLastDone(true) : setIdx(i => i + 1)), 0), { minMs: 2600 })
     return true
-  }, [fig, placed, tray, turns, last, burst, setMood]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fig, placed, tray, turns, last, streak, burst, later, setMood]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const turn = i => {
     setTurns(t => ({ ...t, [i]: (t[i] ?? 0) + 90 }))
@@ -547,7 +545,8 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
   const usedTiles   = new Set(placed.map(pl => pl.tray))
   const complete    = filledSlots.size === fig.parts.length
   const tile = 'clamp(68px,13vw,92px)'
-  const boardPx = Math.round(Math.min(330, Math.max(230, vw * 0.44)))
+  // on a phone the workbench takes the width; elsewhere a share of it
+  const boardPx = Math.round(vw < 560 ? Math.min(320, vw - 76) : Math.min(330, Math.max(230, vw * 0.44)))
 
   return (
     <div style={{
@@ -555,23 +554,16 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
       padding: 'clamp(10px,2vw,22px) clamp(12px,3vw,28px)', gap: 'clamp(10px,2vw,18px)',
     }}>
       {bursts}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', maxWidth: 720 }}>
-        <RoundTrail total={rounds.length} done={idx + (complete ? 1 : 0)} walker="🔨" goal="🏠" style={{ flex: 1 }} />
-        <motion.button whileTap={{ scale: 0.9 }} onClick={speakTask} aria-label="Aufgabe noch einmal hören"
-          style={{
-            width: 52, height: 52, flexShrink: 0, background: 'var(--px-gold)', border: `3px solid ${INK}`, borderRadius: 12,
-            boxShadow: `inset 0 3px 0 rgba(255,255,255,0.45), inset 0 -5px 0 rgba(0,0,0,0.2), 0 4px 0 ${INK}`,
-            cursor: 'pointer', fontSize: 26, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>🔊</motion.button>
-      </div>
+      {!freeMode && <HintHand from={trayRef} to={boardRef} delay={idx === 0 ? 2000 : 6000} active={!complete} />}
+      <RoundTrail total={rounds.length} done={idx + (complete ? 1 : 0)} walker="🔨" goal="🏠" style={{ width: 'calc(100% - 60px)', maxWidth: 700 }} />
 
       {freeMode ? <FreeBuild onDone={finishLevel} /> : (
         <DragArea disabled={complete}>
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 'clamp(8px,3vw,28px)', flexWrap: 'wrap' }}>
             {/* the customer, and what it would like */}
             <AnimatePresence mode="wait">
-              <motion.div key={idx} initial={{ x: -120, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 160, opacity: 0 }}
-                transition={{ type: 'spring', stiffness: 200, damping: 18 }} style={{ paddingTop: 70 }}>
+              <motion.div key={idx} initial={{ x: -120, opacity: 0 }} animate={{ x: 0, opacity: 1, transition: { type: 'spring', stiffness: 260, damping: 18 } }}
+                exit={{ x: 160, opacity: 0, transition: { duration: 0.25 } }} style={{ paddingTop: 70 }}>
                 <Critter art={fig.customer} size={110} mood={mood} talks label="Kunde"
                   wish={<Art art={fig.icon} size={44} />} />
               </motion.div>
@@ -582,9 +574,29 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
             </div>
           </div>
 
-          {/* Piece tray */}
-          <div style={{ display: 'flex', gap: 'clamp(8px,2.5vw,16px)', flexWrap: 'wrap', justifyContent: 'center', maxWidth: 720, minHeight: 100 }}>
-            {tray.map((p, i) => {
+          {/* Piece tray. Its place keeps one height all level long, and
+              after the last figure the workshop shelf shows up in it: a
+              growing page made the scaled game shrink at the very end. */}
+          <div ref={trayRef} style={{ display: 'flex', gap: 'clamp(8px,2.5vw,16px)', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', alignContent: 'center', maxWidth: 720, minHeight: 150 }}>
+            {lastDone ? (
+              <motion.div key="end" initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                {/* everything built today, on the workshop shelf */}
+                <div aria-hidden="true" style={{ display: 'flex', gap: 6, padding: '2px 12px 0', borderBottom: '8px solid #8A5A33', borderRadius: 4 }}>
+                  {rounds.map((f, n) => (
+                    <motion.div key={n} initial={{ y: -40, scale: 0 }} animate={{ y: [0, -10, 0], scale: 1 }} transition={{ delay: 0.15 * n, duration: 0.5 }}>
+                      <Art art={f.icon} size={40} />
+                    </motion.div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 14 }}>
+                  <motion.button whileTap={{ scale: 0.94 }} onClick={() => setFreeMode(true)} aria-label="Frei bauen"
+                    style={{ ...pxButton('gold'), padding: '6px 26px', minHeight: 58, fontSize: 28 }}>🧩</motion.button>
+                  <motion.button whileTap={{ scale: 0.94 }} onClick={finishLevel} aria-label="Weiter"
+                    style={{ ...pxButton('green'), color: INK, textShadow: 'none', padding: '6px 34px', minHeight: 58, fontSize: 28 }}>➡️</motion.button>
+                </div>
+              </motion.div>
+            ) : tray.map((p, i) => {
               const used = usedTiles.has(i)
               return (
                 <div key={`${idx}-${i}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, visibility: used ? 'hidden' : 'visible', opacity: complete ? 0.35 : 1, transition: 'opacity .4s' }}>
@@ -600,7 +612,8 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
                     </div>
                   </Draggable>
                   {rules.turn && p.shape !== 'circle' && p.shape !== 'square' && (
-                    <motion.button whileTap={{ scale: 0.88, rotate: 90 }} onClick={() => turn(i)} disabled={used || complete}
+                    <motion.button key={turnHint?.i === i ? turnHint.n : 'still'} whileTap={{ scale: 0.88, rotate: 90 }} onClick={() => turn(i)} disabled={used || complete}
+                      animate={turnHint?.i === i && !reduceMotion() ? { scale: [1, 1.3, 1, 1.3, 1], rotate: [0, 40, 0, 40, 0] } : {}} transition={{ duration: 1.2 }}
                       aria-label={`${SHAPE[p.shape].name} drehen`}
                       style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--px-gold)', border: `3px solid ${INK}`, boxShadow: `0 3px 0 ${INK}`, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-3-6.2M20 4v5h-5" fill="none" stroke={INK} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -612,19 +625,6 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
           </div>
         </DragArea>
       )}
-
-      {/* After the last figure: build freely, or finish */}
-      <AnimatePresence>
-        {lastDone && !freeMode && (
-          <motion.div key="end" initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ opacity: 0 }}
-            style={{ display: 'flex', gap: 14, flexWrap: 'wrap', justifyContent: 'center' }}>
-            <motion.button whileTap={{ scale: 0.94 }} onClick={() => setFreeMode(true)}
-              style={{ ...pxButton('gold'), padding: '12px 28px', fontSize: 'clamp(16px,3.4vw,21px)' }}>🧩 Frei bauen</motion.button>
-            <motion.button whileTap={{ scale: 0.94 }} onClick={finishLevel} aria-label="Weiter"
-              style={{ ...pxButton('green'), color: INK, textShadow: 'none', padding: '12px 40px', fontSize: 'clamp(16px,3.4vw,21px)' }}>Weiter! →</motion.button>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   )
 }

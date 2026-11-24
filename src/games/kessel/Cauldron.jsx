@@ -92,7 +92,7 @@ function Hat({ size }) {
  *   act: idle · stir (a letter went in) · cough (a wrong one) · cheer · hat (the hat jumps off)
  */
 const ACTS = {
-  idle:  { y: [0, -4, 0], rotate: 0, transition: { duration: 2.4, repeat: Infinity, ease: 'easeInOut' } },
+  idle:  { y: [0, -4, 0], transition: { duration: 2.4, repeat: Infinity, ease: 'easeInOut' } },
   stir:  { rotate: [0, 8, -6, 0], y: 0, transition: { duration: 0.45 } },
   cough: { rotate: [0, -10, 8, -6, 0], x: [0, -6, 4, -3, 0], y: 0, transition: { duration: 0.7 } },
   cheer: { y: [0, -40, 0, -14, 0], rotate: [0, 0, 360, 360, 360], transition: { duration: 1.1, ease: 'easeOut' } },
@@ -105,7 +105,13 @@ export function WitchLumi({ size = 110, act = 'idle', beat = 0, wish, onTap }) {
   // `beat` changes with every new act, so the same act can play twice
   useEffect(() => {
     if (still) return
-    controls.start(ACTS[act] ?? ACTS.idle).then(() => { if (act !== 'idle') controls.start(ACTS.idle) })
+    // back to upright before the endless idle bob: a spin (cheer) ends at
+    // 360°, and an idle that animated the turn would spin forever
+    let live = true
+    const idle = () => { if (!live) return; controls.set({ rotate: 0, x: 0 }); controls.start(ACTS.idle) }
+    if (act === 'idle') idle()
+    else controls.start(ACTS[act]).then(idle)
+    return () => { live = false }
   }, [act, beat, still, controls])
   return (
     <motion.button type="button" onClick={onTap} aria-label="Lumi"
