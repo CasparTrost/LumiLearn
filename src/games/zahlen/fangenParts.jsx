@@ -20,39 +20,50 @@ const PARCH = '#fffdf7'
 export const BASKET_H = 100
 export const BASKET_FLOOR = 66
 
-const GOLD_FILTER = 'sepia(1) saturate(4.5) hue-rotate(-14deg) brightness(1.22) drop-shadow(0 0 5px #ffd84a)'
-
-/** A fruit; a golden one glitters. */
+/**
+ * A fruit. A golden one keeps its own colour (an apple stays an apple) and
+ * shines: a glow behind it, rays that turn, glitter.
+ */
 export function Fruit({ fruit, size, gold = false, style }) {
   const reduce = useReducedMotion()
   return (
     <span style={{ position: 'relative', display: 'inline-flex', width: size, height: size, ...style }}>
-      <Art art={FRUITS[fruit].art} size={size} style={gold ? { filter: GOLD_FILTER } : undefined} />
-      {gold && [[0.08, 0.1, 0], [0.78, 0.02, 0.5], [0.7, 0.72, 0.9]].map(([x, y, d], i) => (
-        <motion.svg key={i} viewBox="0 0 20 20" width={size * 0.3} height={size * 0.3} aria-hidden="true"
+      {gold && (
+        <motion.svg viewBox="-50 -50 100 100" aria-hidden="true" width={size * 1.7} height={size * 1.7}
+          animate={reduce ? {} : { rotate: 360 }} transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
+          style={{ position: 'absolute', left: -size * 0.35, top: -size * 0.35, pointerEvents: 'none' }}>
+          <circle r="34" fill="#ffe680" opacity="0.75" />
+          <circle r="27" fill="#fff3b0" opacity="0.9" />
+          {Array.from({ length: 8 }, (_, i) => <path key={i} d="M-5 -30 L0 -48 L5 -30 Z" fill="#ffd23c" stroke="#e8a61c" strokeWidth="1.5" strokeLinejoin="round" transform={`rotate(${i * 45})`} />)}
+        </motion.svg>
+      )}
+      <Art art={FRUITS[fruit].art} size={size} style={{ position: 'relative' }} />
+      {gold && [[0.02, 0.06, 0], [0.74, 0, 0.5], [0.68, 0.7, 0.9]].map(([x, y, d], i) => (
+        <motion.svg key={i} viewBox="0 0 20 20" width={size * 0.32} height={size * 0.32} aria-hidden="true"
           animate={reduce ? {} : { scale: [0.3, 1, 0.3], rotate: [0, 90, 180] }} transition={{ duration: 1.1, repeat: Infinity, delay: d }}
           style={{ position: 'absolute', left: size * x, top: size * y, pointerEvents: 'none' }}>
-          <path d="M10 0 L12.5 7.5 L20 10 L12.5 12.5 L10 20 L7.5 12.5 L0 10 L7.5 7.5 Z" fill="#fff8c9" stroke={INK} strokeWidth="1.2" strokeLinejoin="round" />
+          <path d="M10 0 L12.5 7.5 L20 10 L12.5 12.5 L10 20 L7.5 12.5 L0 10 L7.5 7.5 Z" fill="#fffbe0" stroke={INK} strokeWidth="1.2" strokeLinejoin="round" />
         </motion.svg>
       ))}
     </span>
   )
 }
 
-/** The old boot: nothing to eat. Flies buzz around it. */
+/** The old boot: nothing to eat, and it smells. */
 export function Boot({ size = 56 }) {
   return (
     <svg viewBox="0 0 64 64" width={size} height={size} aria-hidden="true" style={{ display: 'block', overflow: 'visible' }}>
-      <path d="M20 6 H38 Q41 6 41 10 V30 Q41 34 46 35 L55 38 Q61 40 61 47 V51 H16 V10 Q16 6 20 6 Z" fill="#8b6b4a" stroke={BARK} strokeWidth="3.5" strokeLinejoin="round" />
-      <path d="M14 50 H62 V55 Q62 59 58 59 H18 Q14 59 14 55 Z" fill="#4a3526" stroke={BARK} strokeWidth="3" strokeLinejoin="round" />
-      <path d="M16 12 H41" stroke={BARK} strokeWidth="3" />
-      <rect x="22" y="20" width="11" height="10" rx="2" fill="#c9a36b" stroke={BARK} strokeWidth="2" transform="rotate(-8 27 25)" />
-      <path d="M24 22 l7 5 M31 21 l-7 7" stroke={BARK} strokeWidth="1.4" />
-      <path d="M44 39 l5 -5 M49 41 l5 -4" stroke="#f3e2c0" strokeWidth="2.4" strokeLinecap="round" />
-      <ellipse cx="55" cy="46" rx="4" ry="3" fill="#2a1b3d" />
+      <path d="M19 8 Q28 4 40 8 L41 30 Q42 35 48 36 L56 38 Q62 40 62 47 V52 H15 Z" fill="#a47a52" stroke="#4a2a12" strokeWidth="3.5" strokeLinejoin="round" />
+      <path d="M19 8 Q29 13 40 8" fill="none" stroke="#4a2a12" strokeWidth="3" />
+      <path d="M48 37 Q52 44 62 46" fill="none" stroke="#4a2a12" strokeWidth="2.5" />
+      <path d="M13 51 H63 V56 Q63 60 59 60 H17 Q13 60 13 56 Z" fill="#5b4332" stroke="#4a2a12" strokeWidth="3" strokeLinejoin="round" />
+      <path d="M13 55 H24 V60 H17 Q13 60 13 56 Z" fill="#3b2a1e" />
+      <rect x="21" y="20" width="12" height="11" rx="2" fill="#d8b77e" stroke="#4a2a12" strokeWidth="2" transform="rotate(-8 27 25)" />
+      <path d="M23 22 l8 6 M31 21 l-8 8" stroke="#4a2a12" strokeWidth="1.5" />
+      <path d="M40 16 h-7 M41 23 h-6 M42 30 h-5" stroke="#f3e2c0" strokeWidth="2.6" strokeLinecap="round" />
       {/* the smell */}
-      <path d="M8 30 q-5 -5 0 -10 q5 -5 0 -10" fill="none" stroke="#7fae3a" strokeWidth="3" strokeLinecap="round" />
-      <path d="M50 24 q-4 -4 0 -8 q4 -4 0 -8" fill="none" stroke="#7fae3a" strokeWidth="3" strokeLinecap="round" />
+      <path d="M6 30 q-5 -5 0 -10 q5 -5 0 -10" fill="none" stroke="#6f9a2c" strokeWidth="3" strokeLinecap="round" />
+      <path d="M52 26 q-4 -4 0 -8 q4 -4 0 -8" fill="none" stroke="#6f9a2c" strokeWidth="3" strokeLinecap="round" />
     </svg>
   )
 }
@@ -69,9 +80,11 @@ export function Basket({ width, split = false, children }) {
     <div style={{ position: 'relative', width: W, height: BASKET_H }}>
       <svg viewBox={`0 0 ${W} ${BASKET_H}`} width={W} height={BASKET_H} aria-hidden="true" style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>
         <ellipse cx={W / 2} cy={BASKET_H - 1} rx={W * 0.46} ry={7} fill="rgba(42,27,61,0.2)" />
-        <path d={`M8 24 Q8 6 26 6 H${W - 26} Q${W - 8} 6 ${W - 8} 24 V${BASKET_FLOOR + 10} H8 Z`} fill="#6e4019" stroke={BARK} strokeWidth="4" strokeLinejoin="round" />
-        <path d={`M14 24 Q14 12 26 12 H${W - 26} Q${W - 14} 12 ${W - 14} 24 V30 H14 Z`} fill="rgba(0,0,0,0.2)" />
-        {split && <rect x={W / 2 - 5} y={6} width={10} height={BASKET_FLOOR + 4} fill="#eebf7a" stroke={BARK} strokeWidth="3" />}
+        <path d={`M8 24 Q8 6 26 6 H${W - 26} Q${W - 8} 6 ${W - 8} 24 V${BASKET_FLOOR + 10} H8 Z`} fill="#c98d4b" stroke={BARK} strokeWidth="4" strokeLinejoin="round" />
+        {/* a cloth inside, so fruit of every colour shows */}
+        <path d={`M15 26 Q15 13 27 13 H${W - 27} Q${W - 15} 13 ${W - 15} 26 V${BASKET_FLOOR + 8} H15 Z`} fill="#fff6e0" stroke="#e0c690" strokeWidth="2" />
+        <path d={`M16 26 Q16 14 27 14 H${W - 27} Q${W - 16} 14 ${W - 16} 26 V31 H16 Z`} fill="rgba(138,79,34,0.16)" />
+        {split && <rect x={W / 2 - 5} y={6} width={10} height={BASKET_FLOOR + 4} fill="#c98d4b" stroke={BARK} strokeWidth="3" />}
       </svg>
       <div style={{ position: 'absolute', left: W / 2, top: 0, width: 0, height: 0 }}>{children}</div>
       <svg viewBox={`0 0 ${W} ${BASKET_H}`} width={W} height={BASKET_H} aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'visible' }}>
@@ -91,7 +104,7 @@ export function Basket({ width, split = false, children }) {
 export function Nest({ size }) {
   return (
     <svg viewBox="0 0 40 40" width={size} height={size} aria-hidden="true" style={{ display: 'block' }}>
-      <circle cx="20" cy="20" r="16" fill="rgba(0,0,0,0.28)" stroke="#f6dfb4" strokeWidth="2.6" strokeDasharray="5 4.5" />
+      <circle cx="20" cy="20" r="16" fill="rgba(138,79,34,0.14)" stroke="#a8763a" strokeWidth="2.6" strokeDasharray="5 4.5" />
     </svg>
   )
 }
@@ -158,10 +171,10 @@ const board = {
 /**
  * The sign: how many of what. The numeral, the fruit and the amount as
  * dots (dice up to six, a ten frame from seven). Two amounts stand side by
- * side (`row`) or one above the other. `bump` makes it hop (a new task, or
- * "look here" after a miss).
+ * side (`row`) or one above the other. It hangs on two ropes from above;
+ * `bump` makes it swing (a new task, or "look here" after a miss).
  */
-export function Sign({ wants, row, post = false, bump = 0 }) {
+export function Sign({ wants, row, bump = 0, onTap }) {
   const two = wants.length > 1
   const one = (w, k) => {
     // on a narrow sign the amounts stand apart: numeral and fruit, the dots below
@@ -181,9 +194,13 @@ export function Sign({ wants, row, post = false, bump = 0 }) {
   }
   const label = wants.map(w => `${w.n} ${w.n === 1 ? FRUITS[w.fruit].name : FRUITS[w.fruit].many}`).join(' und ')
   return (
-    <motion.div role="img" aria-label={`Schild: ${label}`} data-need={wants.map(w => w.n).join(',')}
-      key={bump} initial={{ y: -26, rotate: -5 }} animate={{ y: 0, rotate: 0 }} transition={{ type: 'spring', stiffness: 320, damping: 9 }}
-      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, transformOrigin: '50% 100%' }}>
+    <motion.div role="button" tabIndex={0} aria-label={`Schild: ${label}`} data-need={wants.map(w => w.n).join(',')} data-nosteer="1"
+      onClick={onTap} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onTap?.() } }}
+      key={bump} initial={{ rotate: -7 }} animate={{ rotate: 0 }} transition={{ type: 'spring', stiffness: 260, damping: 7 }}
+      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, transformOrigin: '50% 0%', cursor: 'pointer', outlineOffset: 4 }}>
+      <div aria-hidden="true" style={{ display: 'flex', justifyContent: 'space-around', alignSelf: 'stretch', height: row ? 12 : 16, marginBottom: -3 }}>
+        {[0, 1].map(i => <span key={i} style={{ width: 6, background: '#c9a36b', borderLeft: `2px solid ${INK}`, borderRight: `2px solid ${INK}`, boxSizing: 'content-box' }} />)}
+      </div>
       <div style={{
         ...board, display: 'flex', flexDirection: two ? (row ? 'row' : 'column') : 'row', alignItems: 'center', justifyContent: 'center',
         gap: two ? (row ? 14 : 8) : 0, padding: row ? '6px 14px 8px' : '8px 12px 12px', minWidth: row ? 0 : 150,
@@ -192,7 +209,6 @@ export function Sign({ wants, row, post = false, bump = 0 }) {
           <span key={`d${k}`} aria-hidden="true" style={row ? { width: 3, alignSelf: 'stretch', background: 'rgba(138,79,34,0.35)', borderRadius: 2 } : { height: 3, alignSelf: 'stretch', background: 'rgba(138,79,34,0.35)', borderRadius: 2 }} />, el,
         ]))}
       </div>
-      {post && <div aria-hidden="true" style={{ width: 14, height: 30, background: WOOD, border: `3px solid ${INK}`, borderTop: 'none', borderRadius: '0 0 6px 6px' }} />}
     </motion.div>
   )
 }
@@ -207,29 +223,34 @@ export function MampfButton({ size = 110, fruit, disabled, onPress, hint = false
   return (
     <motion.button ref={innerRef} type="button" aria-label="Mampf" aria-disabled={!!disabled} data-nosteer="1"
       onClick={disabled ? undefined : onPress}
-      animate={{ opacity: disabled ? 0.45 : 1, scale: disabled ? 0.9 : hint && !reduce ? [1, 1.1, 1] : 1 }}
-      transition={hint && !disabled ? { scale: { duration: 0.8, repeat: Infinity } } : { duration: 0.2 }}
+      animate={{ scale: disabled ? 0.88 : hint && !reduce ? [1, 1.12, 1] : 1 }}
+      transition={hint && !disabled ? { scale: { duration: 0.8, repeat: Infinity } } : { type: 'spring', stiffness: 400, damping: 14 }}
       whileTap={disabled ? undefined : { scale: 0.86 }}
       style={{
         all: 'unset', boxSizing: 'border-box', width: size, height: size, flexShrink: 0, cursor: disabled ? 'default' : 'pointer', display: 'block',
-        borderRadius: '50%', filter: disabled ? 'saturate(0.5)' : undefined, WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
+        borderRadius: '50%', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
       }}>
       <svg viewBox="0 0 100 100" width={size} height={size} aria-hidden="true" style={{ display: 'block', overflow: 'visible' }}>
         <circle cx="50" cy="55" r="45" fill="rgba(42,27,61,0.35)" />
-        <circle cx="50" cy="50" r="45" fill="#ffcf4a" stroke={INK} strokeWidth="4" />
+        <circle cx="50" cy="50" r="45" fill={disabled ? '#ece3cc' : '#ffcf4a'} stroke={INK} strokeWidth="4" style={{ transition: 'fill .25s' }} />
         <path d="M14 42 A38 38 0 0 1 60 10" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="5" strokeLinecap="round" />
         <circle cx="31" cy="34" r="6" fill={INK} /><circle cx="69" cy="34" r="6" fill={INK} />
         <circle cx="33" cy="32" r="2" fill="#fff" /><circle cx="71" cy="32" r="2" fill="#fff" />
-        <circle cx="20" cy="52" r="6" fill="#ff8fb8" opacity="0.7" /><circle cx="80" cy="52" r="6" fill="#ff8fb8" opacity="0.7" />
-        {/* the mouth opens and shuts while it waits for a press */}
-        <motion.g style={{ transformBox: 'fill-box', transformOrigin: '50% 30%' }}
-          animate={live ? { scaleY: [1, 1, 0.55, 1] } : { scaleY: disabled ? 0.5 : 1 }}
-          transition={live ? { duration: 1.5, times: [0, 0.55, 0.75, 1], repeat: Infinity } : { duration: 0.2 }}>
-          <path d="M22 50 Q50 44 78 50 Q80 86 50 88 Q20 86 22 50 Z" fill="#7a1f2b" stroke={INK} strokeWidth="4" strokeLinejoin="round" />
-          <path d="M34 78 Q50 68 66 78 Q60 87 50 87 Q40 87 34 78 Z" fill="#ff7d8f" />
-          <path d="M33 49 H67 V56 Q67 59 64 59 H36 Q33 59 33 56 Z" fill="#fff" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
-        </motion.g>
-        {fruit && (
+        {!disabled && <><circle cx="19" cy="50" r="6" fill="#ff8fb8" opacity="0.7" /><circle cx="81" cy="50" r="6" fill="#ff8fb8" opacity="0.7" /></>}
+        {disabled
+          // nothing in the basket yet: the mouth is shut
+          ? <path d="M34 64 Q50 74 66 64" fill="none" stroke={INK} strokeWidth="5" strokeLinecap="round" />
+          : (
+            // the mouth opens and shuts while it waits for a press
+            <motion.g style={{ transformBox: 'fill-box', transformOrigin: '50% 30%' }}
+              animate={live ? { scaleY: [1, 1, 0.55, 1] } : { scaleY: 1 }}
+              transition={live ? { duration: 1.5, times: [0, 0.55, 0.75, 1], repeat: Infinity } : { duration: 0.2 }}>
+              <path d="M22 50 Q50 44 78 50 Q80 86 50 88 Q20 86 22 50 Z" fill="#7a1f2b" stroke={INK} strokeWidth="4" strokeLinejoin="round" />
+              <path d="M34 78 Q50 68 66 78 Q60 87 50 87 Q40 87 34 78 Z" fill="#ff7d8f" />
+              <path d="M33 49 H67 V56 Q67 59 64 59 H36 Q33 59 33 56 Z" fill="#fff" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+            </motion.g>
+          )}
+        {fruit && !disabled && (
           <motion.g style={{ transformBox: 'fill-box', transformOrigin: '50% 50%' }}
             animate={live ? { y: [-34, 0, 4, 4], scale: [1, 1, 0.2, 0.2], opacity: [1, 1, 0, 0] } : { y: 0, scale: 1, opacity: 1 }}
             transition={live ? { duration: 1.5, times: [0, 0.5, 0.75, 1], repeat: Infinity } : { duration: 0.2 }}>
@@ -357,19 +378,5 @@ export function CompareBoard({ wants, counts, cell, from, rolled, show }) {
         )
       })}
     </motion.div>
-  )
-}
-
-/** The grass the catcher runs on. */
-export function Grass({ width, height }) {
-  const tufts = useMemo(() => {
-    const rnd = seeded(5), n = Math.max(4, Math.round(width / 90))
-    return Array.from({ length: n }, (_, i) => (width / n) * (i + 0.2 + rnd() * 0.6))
-  }, [width])
-  return (
-    <svg aria-hidden="true" viewBox={`0 0 ${width} ${height}`} width={width} height={height} style={{ position: 'absolute', left: 0, bottom: 0, pointerEvents: 'none', overflow: 'visible' }}>
-      <path d={`M0 ${height} V10 Q${width * 0.25} 0 ${width * 0.5} 8 T${width} 8 V${height} Z`} fill="#7cc96a" stroke="#3f8f3a" strokeWidth="3.5" strokeLinejoin="round" />
-      {tufts.map((x, i) => <path key={i} d={`M${x} ${height * 0.62} l-5 -9 M${x} ${height * 0.62} l1 -11 M${x} ${height * 0.62} l7 -8`} stroke="#3f8f3a" strokeWidth="2.6" strokeLinecap="round" />)}
-    </svg>
   )
 }

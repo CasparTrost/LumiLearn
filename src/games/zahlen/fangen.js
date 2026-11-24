@@ -53,7 +53,8 @@ export function shuffle(list, rnd = Math.random) {
  *   first  the amount of the first task; `rest` follow in a new order
  *   fall   seconds from the leaves to the basket
  *   gap    seconds between two things; null = the next one only comes when
- *          the one before is caught or has landed
+ *          the one before is caught or has landed (in levels 2 and 3 the gap
+ *          is about as long as the fall: mostly one thing in the air)
  *   reach  how far from the catcher things may fall, as a share of the width
  *   safe   chance that a thing avoids the catcher while the basket is right
  *          (so standing still to press "Mampf" is safe in the first of these levels)
@@ -61,16 +62,16 @@ export function shuffle(list, rnd = Math.random) {
  *   boot   share of old boots
  */
 export const LEVELS = [
-  { mode: 'nests', first: 1, rest: [2, 3, 2, 3],          fall: 4.0, gap: null, reach: 0.22, safe: 1,   other: 0,    boot: 0 },
-  { mode: 'nests', first: 2, rest: [1, 3, 4, 4],          fall: 3.7, gap: null, reach: 0.3,  safe: 1,   other: 0,    boot: 0 },
-  { mode: 'nests', first: 3, rest: [1, 2, 4, 5, 5],       fall: 3.4, gap: null, reach: 0.4,  safe: 1,   other: 0,    boot: 0 },
-  { mode: 'free',  first: 2, rest: [3, 4, 5, 6],          fall: 3.4, gap: 2.4,  reach: 0.4,  safe: 1,   other: 0,    boot: 0 },
-  { mode: 'free',  first: 3, rest: [4, 5, 6, 7, 7],       fall: 3.1, gap: 2.0,  reach: 0.5,  safe: 0.6, other: 0,    boot: 0 },
-  { mode: 'free',  first: 5, rest: [6, 7, 8, 9, 10],      fall: 2.9, gap: 1.7,  reach: 0.6,  safe: 0.3, other: 0,    boot: 0 },
-  { mode: 'free',  first: 3, rest: [2, 4, 4, 5, 6],       fall: 3.0, gap: 1.6,  reach: 0.6,  safe: 0.3, other: 0.36, boot: 0.08 },
-  { mode: 'free',  first: 4, rest: [5, 6, 7, 8, 9],       fall: 2.7, gap: 1.4,  reach: 0.7,  safe: 0,   other: 0.4,  boot: 0.12 },
-  { mode: 'pair',  first: [1, 2], rest: [[2, 1], [2, 3], [3, 1], [3, 2]],         fall: 2.7, gap: 1.5, reach: 0.7, safe: 0, other: 0, boot: 0.06 },
-  { mode: 'pair',  first: [2, 3], rest: [[3, 2], [2, 4], [4, 3], [3, 5], [5, 2]], fall: 2.4, gap: 1.3, reach: 0.8, safe: 0, other: 0, boot: 0.1 },
+  { mode: 'nests', first: 1, rest: [2, 3, 2, 3],    fall: 4.0, gap: null, reach: 0.4, safe: 1,   other: 0,    boot: 0 },
+  { mode: 'nests', first: 2, rest: [1, 3, 4, 4],    fall: 3.7, gap: 3.8,  reach: 0.5, safe: 1,   other: 0,    boot: 0 },
+  { mode: 'nests', first: 3, rest: [1, 2, 4, 5, 5], fall: 3.4, gap: 3.0,  reach: 0.6, safe: 1,   other: 0,    boot: 0 },
+  { mode: 'free',  first: 2, rest: [3, 4, 5, 6],    fall: 3.4, gap: 2.4,  reach: 0.6, safe: 1,   other: 0,    boot: 0 },
+  { mode: 'free',  first: 3, rest: [4, 5, 6, 7, 7], fall: 3.1, gap: 1.8,  reach: 0.7, safe: 0.6, other: 0,    boot: 0 },
+  { mode: 'free',  first: 5, rest: [7, 8, 9, 10],   fall: 2.9, gap: 1.6,  reach: 0.8, safe: 0.3, other: 0,    boot: 0 },
+  { mode: 'free',  first: 3, rest: [2, 4, 5, 6],    fall: 3.0, gap: 1.5,  reach: 0.8, safe: 0.3, other: 0.33, boot: 0.08 },
+  { mode: 'free',  first: 4, rest: [3, 5, 6, 8],    fall: 2.7, gap: 1.3,  reach: 0.9, safe: 0,   other: 0.33, boot: 0.12 },
+  { mode: 'pair',  first: [1, 2], rest: [[2, 1], [2, 3], [3, 1], [3, 2]],         fall: 2.7, gap: 1.5, reach: 0.9, safe: 0, other: 0, boot: 0.06 },
+  { mode: 'pair',  first: [2, 3], rest: [[3, 2], [2, 4], [4, 3], [3, 5], [5, 2]], fall: 2.4, gap: 1.3, reach: 1,   safe: 0, other: 0, boot: 0.1 },
 ]
 
 export const levelConfig = level => LEVELS[Math.max(1, Math.min(LEVELS.length, Math.round(level) || 1)) - 1]

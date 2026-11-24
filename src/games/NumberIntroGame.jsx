@@ -8,9 +8,10 @@ import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
 import { sfx } from '../sfx.js'
 import { Critter, useMood, useBursts, useJuice, HintHand } from '../components/play/index.js'
+import { isStreakMilestone } from '../components/play/Juice.jsx'
 import { Stage, useLater, usePops, Finale } from './zahlen/stage.jsx'
 import { levelConfig, tasksFor, capacity, isRight, judge, nextDrop, dropX, paceAfter, slotOf, colsFor } from './zahlen/fangen.js'
-import { Basket, Nest, Fruit, Boot, Crown, Trunk, Grass, Sign, MampfButton, Picnic, CompareBoard, boardLayout, BASKET_H, BASKET_FLOOR } from './zahlen/fangenParts.jsx'
+import { Basket, Nest, Fruit, Boot, Crown, Trunk, Sign, MampfButton, Picnic, CompareBoard, boardLayout, BASKET_H, BASKET_FLOOR } from './zahlen/fangenParts.jsx'
 
 /**
  * Zahlen entdecken — "Bruno fängt": counting out exactly n and stopping;
@@ -75,7 +76,7 @@ const SAY = {
 export default function NumberIntroGame({ level = 1, onComplete }) {
   // wide: sign and "Mampf" left, picnic right · tall: sign above, picnic and "Mampf" below
   return (
-    <Stage wide={[800, 470]} tall={[440, 760]}>
+    <Stage wide={[800, 410]} tall={[440, 760]}>
       {wide => <Play wide={wide} level={level} onComplete={onComplete} />}
     </Stage>
   )
@@ -121,7 +122,7 @@ function Play({ wide, level, onComplete }) {
   const g = useRef({
     t: 0, phase: 'enter', bx: -400, bv: 0, target: 0, locked: false, facing: 1, ready: false,
     items: new Map(), seq: 0, nextSpawn: 0, sinceWanted: 0, goldDone: false, first: true,
-    counts: [0, 0], misses: 0, pace: 1, rightSince: null, lastInput: 0, done: false,
+    counts: [0, 0], misses: 0, pace: 1, rightSince: null, lastInput: 0, done: false, streak: 0,
   }).current
 
   const task = tasks[idx]
@@ -131,8 +132,8 @@ function Play({ wide, level, onComplete }) {
   const BW = pair ? 230 : 190
   const cols = colsFor(task, nests)
   const cell = pair ? 32 : cols <= 4 ? 40 : 34
-  const crownH = wide ? 76 : 84
   const fw = size?.w ?? 0, fh = size?.h ?? 0
+  const crownH = !wide ? 84 : fh < 450 ? 66 : 76
   const groundY = fh - 12
   const halfX = k => (pair ? (k === 0 ? -1 : 1) * (BW / 4 + 1) : 0)
 
@@ -164,6 +165,18 @@ function Play({ wide, level, onComplete }) {
 
   // ── What happens ────────────────────────────────────────────────────────
 
+  // A good catch: the star starts at the basket. When the flame banner is
+  // due (three, five, eight in a row) it would cover the catcher's face and
+  // the count, so that hit is placed above them.
+  const good = opts => {
+    g.streak += 1
+    let at = basketRef.current
+    const a = animalRef.current?.getBoundingClientRect()
+    if (isStreakMilestone(g.streak) && a?.height) at = { x: a.left + a.width / 2, y: a.top - (a.height / ANIMAL) * 109 + 59 }
+    return hit(at, opts)
+  }
+  const bad = at => { g.streak = 0; miss(at) }
+
   const dropItem = id => { g.items.delete(id); setAir(l => l.filter(a => a.id !== id)) }
 
   // Everything still in the air is gone in a puff (the basket is being looked at)
@@ -173,7 +186,7 @@ function Play({ wide, level, onComplete }) {
     go('leave')
     g.locked = true
     g.target = g.fw + 420
-    later(reduce ? 300 : 750, () => {
+    later(reduce ? 300 : 650, () => {
       setGuests(l => [...l, { art: task.eater.art, label: task.eater.label }])
       sfx.pop()
       if (idx + 1 >= tasks.length) { go('finale'); return }
@@ -202,13 +215,13 @@ function Play({ wide, level, onComplete }) {
         firstTry.current += 1
         g.pace = paceAfter(g.pace, 'right')
         // two stars more for the animal fed right on the first try
-        big = hit(basketRef.current, { stars: 2, silent: true }).milestone
+        big = good({ stars: 2, silent: true }).milestone
         sfx.slideUp()
       }
       setMood(big ? 'dance' : 'happy', big ? 2200 : 1300)
       burst(animalRef.current, big ? 'confetti' : 'hearts', big ? 18 : 10)
       sayRight()
-      afterSpeech(leave, big ? 2000 : 1300)
+      afterSpeech(leave, big ? 1900 : 1100)
     })
   }
 
@@ -222,7 +235,7 @@ function Play({ wide, level, onComplete }) {
     g.rightSince = null
     setMisses(g.misses)
     clearAir()
-    miss(mampfRef.current)
+    bad(mampfRef.current)
     sayWrong()
     const said = optional(SAY[verdict === 'few' ? 'few' : 'many'])
     if (said) narrate([said])
@@ -286,7 +299,7 @@ function Play({ wide, level, onComplete }) {
       // an old boot: in, and out again
       dropItem(it.id)
       setBoot({ id: it.id, dir: dx >= 0 ? 1 : -1, x: clamp(dx, -BW / 3, BW / 3) })
-      miss(basketRef.current)
+      bad(basketRef.current)
       shake(0.8)
       sfx.slideDown()
       g.pace = paceAfter(g.pace, 'miss')
@@ -313,7 +326,7 @@ function Play({ wide, level, onComplete }) {
     narrate([numberWord(c)])
     if (c <= want.n) {
       // one that was still wanted: a note, a star
-      hit(basketRef.current, { stars: it.gold ? 3 : 1 })
+      good({ stars: it.gold ? 3 : 1 })
       if (it.gold) { burst(basketRef.current, 'stars', 16); sfx.sparkle() }
     }
     const right = isRight(g.counts, task.wants)
@@ -340,10 +353,10 @@ function Play({ wide, level, onComplete }) {
     const half = L.BW / 2
 
     // The catcher follows the finger with a little lag; the basket leans and trails
-    const lo = half - 6, hi = g.fw - half + 6
+    const lo = half + 4, hi = g.fw - half - 4
     const tx = g.locked ? g.target : clamp(g.target, lo, hi)
     g.bv += (110 * (tx - g.bx) - 21 * g.bv) * dt
-    const vmax = g.phase === 'enter' || g.phase === 'leave' ? 560 : 1500
+    const vmax = g.phase === 'enter' || g.phase === 'leave' ? 680 : 1500
     g.bv = clamp(g.bv, -vmax, vmax)
     g.bx += g.bv * dt
     bx.set(g.bx)
@@ -489,7 +502,9 @@ function Play({ wide, level, onComplete }) {
   const fruits = [...task.wants.map(w => w.fruit), ...(task.other ? [task.other] : [])]
   const board = cmp && boardLayout(task.wants, cmp.counts, wide ? 46 : 44)
 
-  const sign = <Sign wants={task.wants} row={!wide} post={wide} bump={bump} />
+  // a tap on the sign: Lumi says the number again
+  const sayNumber = () => { setBump(b => b + 1); narrate(task.wants.map((w, k) => { const p = numberWord(w.n); return p && k > 0 ? { ...p, gap: 250 } : p })) }
+  const sign = <Sign wants={task.wants} row={!wide} bump={bump} onTap={sayNumber} />
   const button = free && (
     <MampfButton innerRef={mampfRef} size={wide ? 118 : 112} fruit={task.wants[0].fruit} disabled={!canPress}
       hint={aim === 'mampf'} onPress={mampf} />
@@ -503,7 +518,6 @@ function Play({ wide, level, onComplete }) {
       {size && (
         <>
           <Trunk x={fw / 2} top={crownH * 0.6} bottom={groundY - 6} />
-          <Grass width={fw} height={30} />
 
           {/* The catcher: the animal behind, its basket in front */}
           <motion.div style={{ position: 'absolute', left: 0, top: groundY, width: 0, height: 0, x: bx, opacity: fade, zIndex: 3 }}>
@@ -547,14 +561,14 @@ function Play({ wide, level, onComplete }) {
                       animate={reduce ? { opacity: [1, 1, 0] } : { x: [boot.x, boot.x, boot.x + boot.dir * 60, boot.x + boot.dir * 150], y: [-30, 14, -90, 70], rotate: [0, -8, boot.dir * 120, boot.dir * 260], opacity: [1, 1, 1, 0] }}
                       transition={{ duration: 1.05, times: [0, 0.18, 0.6, 1] }}
                       onAnimationComplete={() => setBoot(null)}
-                      style={{ position: 'absolute', left: -28, top: 0, zIndex: 12 }}>
-                      <Boot size={56} />
+                      style={{ position: 'absolute', left: -32, top: 0, zIndex: 12 }}>
+                      <Boot size={64} />
                     </motion.div>
                   )}
                 </Basket>
               </motion.div>
-              {/* the count pops up over the basket */}
-              <div style={{ position: 'absolute', left: BW / 2, top: -20, width: 0, height: 0 }}>{pops}</div>
+              {/* the count pops up over the catcher's head */}
+              <div style={{ position: 'absolute', left: BW / 2, top: BASKET_H - ANIMAL_UP - ANIMAL - 6, width: 0, height: 0 }}>{pops}</div>
             </motion.div>
           </motion.div>
 
@@ -565,7 +579,7 @@ function Play({ wide, level, onComplete }) {
             return (
               <motion.div key={a.id} data-drop={a.kind === 'want' ? `want${a.which}` : a.kind} data-gold={a.gold ? '1' : undefined} aria-hidden="true"
                 style={{ position: 'absolute', left: -FS / 2, top: -FS / 2, width: FS, height: FS, x: it.mx, y: it.my, rotate: it.mr, scale: it.ms, zIndex: 4, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {a.kind === 'boot' ? <Boot size={FS + 4} /> : <Fruit fruit={a.fruit} size={FS} gold={a.gold} />}
+                {a.kind === 'boot' ? <Boot size={FS + 10} /> : <Fruit fruit={a.fruit} size={FS} gold={a.gold} />}
               </motion.div>
             )
           })}
@@ -593,7 +607,7 @@ function Play({ wide, level, onComplete }) {
       style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: wide ? 'row' : 'column', justifyContent: 'center', overflow: 'hidden', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}>
       {wide ? (
         <>
-          <div style={{ width: 204, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: free ? 'space-between' : 'center', padding: '12px 6px 18px', boxSizing: 'border-box', zIndex: 6 }}>
+          <div style={{ width: 204, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', padding: '0 6px 18px', boxSizing: 'border-box', zIndex: 6 }}>
             {sign}
             {button}
           </div>
@@ -605,9 +619,9 @@ function Play({ wide, level, onComplete }) {
         </>
       ) : (
         <>
-          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, padding: '8px 10px 4px', zIndex: 6 }}>
+          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, padding: '0 10px 4px', zIndex: 6 }}>
             {sign}
-            {juice.hud}
+            <div style={{ paddingTop: 8 }}>{juice.hud}</div>
           </div>
           {field}
           <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: free ? 'space-between' : 'center', gap: 10, padding: '6px 12px 10px', zIndex: 6 }}>
