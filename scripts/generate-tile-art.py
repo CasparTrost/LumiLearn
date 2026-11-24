@@ -49,7 +49,6 @@ TILES = {
     'weight':        ("a golden balance scale tipped to one side, a big red apple on the low side and a white feather on the high side", False),
     'clock':         ("a cute round red alarm clock with a smiling face and bells on top", False),
     'maze':          ("a small green hedge maze seen from above with a round yellow chick-like creature at the entrance and a glowing blue portal at the exit", False),
-    'stories':       ("an open storybook with a tiny castle, trees and a rainbow popping out of the pages", False),
     'rocket-math':   ("a cartoon rocket flying over a wooden number line ruler with stars", False),
     'shapes-land':   ("colorful chunky geometric toy shapes: a circle, triangle, square and star piled together", False),
     'rhyme':         ("a happy little bluebird singing with colorful musical notes around it", False),

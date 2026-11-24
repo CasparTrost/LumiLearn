@@ -70,13 +70,15 @@ export function sayTask(text, opts = {}) {
  * when the child kept going after a miss. Lumi, the sound and the scene
  * cheer every time.
  */
-export function sayRight(extra, opts = {}) {
+export function sayRight(extra, { lead = [], ...opts } = {}) {
   const kept = missed > 0
   missed = 0
   rights++
   announce(kept ? 'persist' : 'right')
   const head = kept ? nextPersist() : rights % PRAISE_EVERY === 1 ? nextRight() : null
-  return narrate([head, extra && { text: extra }], opts)
+  // `lead`: what belongs to the answer itself and so comes before the praise
+  // (the last letter and the finished word: "Zett. Pilz. Ja, super!")
+  return narrate([...lead, head, extra && { text: extra }], opts)
 }
 
 /**

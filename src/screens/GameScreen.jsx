@@ -27,7 +27,6 @@ const LOADERS = {
   maze:            () => import('../games/MazeGame.jsx'),
   shadows:         () => import('../games/ShadowGame.jsx'),
   bubbles:         () => import('../games/BubblePopGame.jsx'),
-  stories:         () => import('../games/StoryGame.jsx'),
   sort:            () => import('../games/SortGame.jsx'),
   clock:           () => import('../games/ClockGame.jsx'),
   words2:          () => import('../games/WordBuilderGame.jsx'),

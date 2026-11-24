@@ -35,9 +35,8 @@ export const MODULES = [
   { id: 'patterns',      title: 'Musterpark',       sub: 'Was kommt als Nächstes?', emoji: '🔮', world: 'denken', scene: 'meadow',    minAge: 4, color: 'var(--px-orange)', say: 'Musterpark. Was kommt als Nächstes?' },
   { id: 'sort',          title: 'Sortier-Spaß',     sub: 'Alles an seinen Platz',  emoji: '🧺', world: 'denken', scene: 'room',     minAge: 4, color: 'var(--px-wood-light)', say: 'Sortier-Spaß. Räume alles an den richtigen Platz.' },
   { id: 'weight',        title: 'Waage-Welt',       sub: 'Was ist schwerer?',      emoji: '⚖️', world: 'zahlen', scene: 'meadow',     minAge: 5, color: 'var(--px-parch-dark)', say: 'Waage-Welt. Was ist schwerer?' },
-  { id: 'clock',         title: 'Uhren-Uhr',        sub: 'Die Uhr lesen',          emoji: '🕐', world: 'zahlen', scene: 'room',     minAge: 6, color: 'var(--px-red)',    say: 'Uhren-Uhr. Lerne die Uhr lesen.' },
+  { id: 'clock',         title: 'Kuckucksuhr',      sub: 'Die Uhr lesen',          emoji: '🕐', world: 'zahlen', scene: 'room',     minAge: 6, color: 'var(--px-red)',    say: 'Kuckucksuhr. Lerne die Uhr lesen.' },
   { id: 'maze',          title: 'Lumi-Labyrinth',   sub: 'Den Weg finden',         emoji: '🌀', world: 'denken', scene: 'forest',     minAge: 4, color: 'var(--px-purple)', say: 'Lumi-Labyrinth. Hilf Lumi durch das Labyrinth.' },
-  { id: 'stories',       title: 'Lumis Abenteuer',  sub: 'Geschichten mit dir',    emoji: '📖', world: 'gefuehle', scene: 'meadow',   minAge: 5, color: 'var(--px-teal)',   say: 'Lumis Abenteuer. Hör eine Geschichte und entscheide mit.' },
   { id: 'rocket-math',   title: 'Rechen-Rakete',    sub: 'Plus und minus',         emoji: '🚀', world: 'zahlen', scene: 'space',     minAge: 6, color: 'var(--px-blue)',   say: 'Rechen-Rakete. Rechne mit der Rakete auf dem Zahlenstrahl.' },
   { id: 'shapes-land',   title: 'Formen-Land',      sub: 'Formen finden',          emoji: '🔷', world: 'denken', scene: 'meadow',     minAge: 4, color: 'var(--px-teal)',   say: 'Formen-Land. Finde Kreise, Dreiecke und Quadrate.' },
   { id: 'rhyme',         title: 'Reim-Rallye',      sub: 'Was reimt sich?',        emoji: '🎵', world: 'buchstaben', scene: 'room', minAge: 5, color: 'var(--px-pink)',   say: 'Reim-Rallye. Finde Wörter, die gleich klingen.' },
@@ -67,7 +66,7 @@ export function visibleModules(profile) {
 const PATH = [
   'number-intro', 'letter-intro', 'trace', 'emotions', 'listen', 'shapes', 'shapes-land',
   'words', 'sort', 'patterns', 'shadows', 'maze', 'coloring', 'rhyme', 'initial-sound',
-  'numbers', 'words2', 'bubbles', 'weight', 'empathy', 'stories', 'shape-build',
+  'numbers', 'words2', 'bubbles', 'weight', 'empathy', 'shape-build',
   'letters', 'clock', 'rocket-math',
 ]
 const pathIndex = id => { const i = PATH.indexOf(id); return i < 0 ? PATH.length : i }

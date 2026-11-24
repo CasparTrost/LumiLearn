@@ -84,11 +84,14 @@ export default function Critter({
 
   // An animal that becomes happy (a right answer) makes its own
   // sound; not when it first appears already happy
+  // (a figure that just appeared, like a guest sitting down, stays quiet)
   const seen = useRef(mood)
+  const born = useRef(0)
+  useEffect(() => { born.current = Date.now() }, [])
   useEffect(() => {
     const was = seen.current
     seen.current = mood
-    if (was !== mood && (mood === 'happy' || mood === 'dance')) playAnimal(art, { volume: 0.6 })
+    if (was !== mood && (mood === 'happy' || mood === 'dance') && Date.now() - born.current > 1500) playAnimal(art, { volume: 0.6 })
   }, [mood, art])
 
   const tap = e => {
@@ -137,8 +140,8 @@ function useSpeaking(on) {
 }
 
 // Little marks at the head: hearts, a question mark, Zzz, crumbs, rain.
-// They stay inside the character's own box (or just at its top edge): a
-// game that clips its stage cut off hearts that floated above the head.
+// They stay inside the character's own box, never above it: a game that
+// clips its stage (Zahlen entdecken) cut off hearts above the head.
 function MoodMark({ mood, size, tickle }) {
   const s = size
   return (
@@ -148,7 +151,7 @@ function MoodMark({ mood, size, tickle }) {
           {[-0.3, 0, 0.3].map((dx, i) => (
             <motion.svg key={i} viewBox="0 0 20 18" width={s * 0.18} height={s * 0.16}
               initial={{ x: s * 0.41 + dx * s, y: s * 0.3, opacity: 0, scale: 0.5 }}
-              animate={{ y: s * (0.04 - i * 0.04), opacity: [0, 1, 0], scale: 1 }}
+              animate={{ y: s * (0.1 - i * 0.035), opacity: [0, 1, 0], scale: 1 }}
               transition={{ duration: 1.2, delay: i * 0.12 }}
               style={{ position: 'absolute', left: 0, top: 0 }}>
               <path d="M10 17 C2 11 0 7 0 4.5 A4.5 4.5 0 0 1 10 3 A4.5 4.5 0 0 1 20 4.5 C20 7 18 11 10 17Z" fill="#ff5b8a" stroke="#2a1b3d" strokeWidth="1.5" />
@@ -157,10 +160,10 @@ function MoodMark({ mood, size, tickle }) {
         </motion.div>
       ) : mood === 'oops' ? (
         <motion.div key="q" initial={{ opacity: 0, y: 10, scale: 0.5 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0 }}
-          style={{ position: 'absolute', top: -s * 0.02, right: 0, fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: s * 0.3, color: '#6b3fd6', WebkitTextStroke: '2px #2a1b3d', pointerEvents: 'none' }}>?</motion.div>
+          style={{ position: 'absolute', top: s * 0.01, right: 0, fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: s * 0.3, color: '#6b3fd6', WebkitTextStroke: '2px #2a1b3d', pointerEvents: 'none' }}>?</motion.div>
       ) : mood === 'wow' ? (
         <motion.div key="w" initial={{ opacity: 0, scale: 0.4 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
-          style={{ position: 'absolute', top: -s * 0.02, right: s * 0.04, fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: s * 0.3, color: '#ffc93c', WebkitTextStroke: '2px #2a1b3d', pointerEvents: 'none' }}>!</motion.div>
+          style={{ position: 'absolute', top: s * 0.01, right: s * 0.04, fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: s * 0.3, color: '#ffc93c', WebkitTextStroke: '2px #2a1b3d', pointerEvents: 'none' }}>!</motion.div>
       ) : mood === 'sleep' ? (
         <motion.div key="z" initial={{ opacity: 0 }} animate={{ opacity: [0.3, 1, 0.3], y: [0, -8, 0] }} transition={{ duration: 2.4, repeat: Infinity }} exit={{ opacity: 0 }}
           style={{ position: 'absolute', top: 0, right: 0, fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: s * 0.18, color: '#4aa3ff', pointerEvents: 'none' }}>Zzz</motion.div>

@@ -20,7 +20,7 @@ function reviewText(p, today) {
 
 export const PRINCIPLES = [
   ['Lumis Ideen statt Spiele-Wand',
-    'Statt 25 Spiele gleich laut zu zeigen, hat Lumi jeden Tag ein paar Ideen: vier Spiele aus verschiedenen Bereichen und eine Bewegungspause, immer eine nach der anderen. Zu viel Auswahl überfordert kleine Kinder (Iyengar & Lepper 2000). Gemischte Bereiche festigen das Gelernte besser als lange Blöcke vom selben (Interleaving, Rohrer & Taylor 2007). Alle Spiele bleiben in ihren Welten frei wählbar.'],
+    'Statt 24 Spiele gleich laut zu zeigen, hat Lumi jeden Tag ein paar Ideen: vier Spiele aus verschiedenen Bereichen und eine Bewegungspause, immer eine nach der anderen. Zu viel Auswahl überfordert kleine Kinder (Iyengar & Lepper 2000). Gemischte Bereiche festigen das Gelernte besser als lange Blöcke vom selben (Interleaving, Rohrer & Taylor 2007). Alle Spiele bleiben in ihren Welten frei wählbar.'],
   ['Spielen statt Abfragen',
     'Jedes Spiel ist eine kleine Geschichte mit einer Figur, die etwas will: Das Kind füttert, baut, sortiert und hilft, statt Antwortkarten anzutippen. Lernen, das aktiv, engagiert und bedeutsam ist, wirkt am besten (Hirsh-Pasek et al. 2015).'],
   ['Wiederholen, kurz bevor es vergessen wird',
