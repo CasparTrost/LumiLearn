@@ -10,6 +10,7 @@ import { Art } from '../../components/play/index.js'
  * wrong one.
  *
  *   <Korbmonster width={200} tint={{ bg, ring }} sign={{ emoji, label }}
+ *     (or sign={{ emoji, cross: true }} for "not this", sign={{ colors }})
  *     items={[{ id, emoji }]} mood="idle" look={0} />
  *
  * Without `sign` it collects whatever the child decides.
@@ -45,23 +46,9 @@ export default function Korbmonster({ width = 200, tint, sign, items = [], mood 
   return (
     <motion.div animate={reduceMotion() ? undefined : MOTION[mood] ?? MOTION.idle}
       style={{ position: 'relative', width: W, height: H, transformOrigin: '50% 100%' }}>
-      {/* the sign on its stick: what this monster collects */}
-      {sign && <>
-      <div style={{ position: 'absolute', left: W * 0.5 - 3, top: signH * 0.8, width: 6, height: W * 0.36, background: '#8a4f22', border: `2px solid ${INK}`, borderRadius: 3 }} />
-      <motion.div animate={glow ? { scale: [1, 1.15, 1, 1.15, 1] } : { scale: 1 }} transition={{ duration: 1.1 }}
-        style={{
-          position: 'absolute', left: '50%', top: 0, x: '-50%', height: signH, maxWidth: W * 1.04, boxSizing: 'border-box',
-          display: 'flex', alignItems: 'center', gap: W * 0.03, padding: `0 ${W * 0.05}px`,
-          background: '#fffdf7', border: `3px solid ${INK}`, borderRadius: 14,
-          boxShadow: glow ? `0 0 0 5px ${tint.ring}, 0 4px 0 rgba(42,27,61,0.3)` : '0 4px 0 rgba(42,27,61,0.3)',
-          fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: Math.max(13, W * 0.1), lineHeight: 1.05, color: INK,
-          whiteSpace: 'nowrap', transition: 'box-shadow .2s',
-        }}>
-        <Art art={sign.emoji} size={signH * 0.72} />
-        {sign.label && <span style={{ whiteSpace: 'normal', textAlign: 'center' }}>{sign.label}</span>}
-      </motion.div>
-      </>}
-
+      {/* the sign on its stick: what this monster collects (the board is
+          drawn last, so a full basket never hides it) */}
+      {sign && <div style={{ position: 'absolute', left: W * 0.5 - 3, top: signH * 0.8, width: 6, height: W * 0.36, background: '#8a4f22', border: `2px solid ${INK}`, borderRadius: 3 }} />}
       {/* inside of the basket, behind what it holds */}
       <svg viewBox="0 0 200 196" width={W} height={W * 0.98} style={{ position: 'absolute', left: 0, top: signH, overflow: 'visible' }} aria-hidden="true">
         <ellipse cx="100" cy="70" rx="72" ry="17" fill="#3b2a4f" />
@@ -117,6 +104,23 @@ export default function Korbmonster({ width = 200, tint, sign, items = [], mood 
         )}
       </svg>
 
+      {/* the sign's board */}
+      {sign && (
+        <motion.div initial={{ scale: 0 }} animate={glow ? { scale: [1, 1.15, 1, 1.15, 1] } : { scale: 1 }}
+          transition={glow ? { duration: 1.1 } : { type: 'spring', stiffness: 380, damping: 16 }}
+          style={{
+            position: 'absolute', left: '50%', top: 0, x: '-50%', height: signH, maxWidth: W * 1.04, boxSizing: 'border-box',
+            display: 'flex', alignItems: 'center', gap: W * 0.03, padding: `0 ${W * 0.05}px`,
+            background: '#fffdf7', border: `3px solid ${INK}`, borderRadius: 14,
+            boxShadow: glow ? `0 0 0 5px ${tint.ring}, 0 4px 0 rgba(42,27,61,0.3)` : '0 4px 0 rgba(42,27,61,0.3)',
+            fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: Math.max(13, W * 0.1), lineHeight: 1.05, color: INK,
+            whiteSpace: 'nowrap', transition: 'box-shadow .2s',
+          }}>
+          <SignPicture sign={sign} size={signH * 0.72} />
+          {sign.label && W >= 130 && <span style={{ whiteSpace: 'normal', textAlign: 'center' }}>{sign.label}</span>}
+        </motion.div>
+      )}
+
       {/* "Bäh!" or a burp, from its mouth */}
       <AnimatePresence>
         {(mood === 'bah' || mood === 'burp') && (
@@ -131,6 +135,25 @@ export default function Korbmonster({ width = 200, tint, sign, items = [], mood 
         )}
       </AnimatePresence>
     </motion.div>
+  )
+}
+
+// The picture on a sign: a thing (crossed out for "not this"), or colours
+function SignPicture({ sign, size }) {
+  if (sign.colors) return (
+    <span style={{ display: 'flex', gap: size * 0.08 }}>
+      {sign.colors.map(c => <span key={c} style={{ width: size * 0.62, height: size * 0.62, borderRadius: '50%', background: c, border: `3px solid ${INK}` }} />)}
+    </span>
+  )
+  return (
+    <span style={{ position: 'relative', display: 'flex' }}>
+      <Art art={sign.emoji} size={size} style={sign.cross ? { opacity: 0.55 } : undefined} />
+      {sign.cross && (
+        <svg viewBox="0 0 20 20" width={size} height={size} style={{ position: 'absolute', inset: 0 }} aria-hidden="true">
+          <path d="M3 17 L17 3" stroke={INK} strokeWidth="2.6" strokeLinecap="round" />
+        </svg>
+      )}
+    </span>
   )
 }
 

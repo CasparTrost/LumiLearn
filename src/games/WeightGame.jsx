@@ -1,13 +1,11 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { motion, AnimatePresence, animate, useMotionValue, useTransform, useReducedMotion } from 'framer-motion'
 import { sfx } from '../sfx.js'
-import { sayNumber } from '../tts.js'
-import { narrate, lockPreviews, stopNarration } from '../narrator.js'
+import { lockPreviews, stopNarration } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
-import { hearable } from '../lib/hearable.js'
-import { Critter, Art, useMood, DragArea, Draggable, DropZone, RoundTrail } from '../components/play/index.js'
-import { Stage, useLater, DoneButton, HearButton } from './zahlen/stage.jsx'
+import { Critter, Art, useMood, DragArea, Draggable, DropZone, RoundTrail, HintHand } from '../components/play/index.js'
+import { Stage, useLater, DoneButton, usePops, Finale } from './zahlen/stage.jsx'
 
 /**
  * Waage-Welt — "Die Wippe": Vergleiche, was schwerer ist
@@ -28,10 +26,6 @@ import { Stage, useLater, DoneButton, HearButton } from './zahlen/stage.jsx'
  */
 
 const randomBetween = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a
-const N = sayNumber
-const kilo = n => (n === 1 ? 'ein Kilo' : `${N(n)} Kilo`)
-const cap = s => s[0].toUpperCase() + s.slice(1)
-const ART = { m: 'der', f: 'die', n: 'das', pl: 'die' }
 
 // [emoji, name, weight, gender] — the weights only rank the pair and size
 // the pictures; every pair has one clearly heavier thing.
@@ -160,28 +154,8 @@ function buildQuestions(level) {
   return balanceQuestions(n)
 }
 
-// What a side shows and what is said about it
+// What a parcel's tag shows
 const sideLabel = s => (s.op ? `${s.nums[0]} ${s.op} ${s.nums[1]} kg` : `${s.w} kg`)
-const sideSpeech = s => s.op ? `${kilo(s.nums[0])} ${s.op === '+' ? 'plus' : 'minus'} ${kilo(s.nums[1])}` : kilo(s.w)
-const named = s => `${ART[s.g]} ${s.label}`
-
-function taskSpeech(q, ties) {
-  const orSame = ties ? ' Oder sind beide gleich schwer?' : ''
-  if (q.kind === 'things') return `Wer geht auf der Wippe nach unten: ${named(q.left)} oder ${named(q.right)}?`
-  if (q.kind === 'balance') return `Links liegen ${kilo(q.left.w)}, rechts ${kilo(q.right.w)}. Leg Klötze nach rechts, bis die Wippe gerade ist! Jeder Klotz wiegt ein Kilo.`
-  if (!q.left.op && !q.right.op) return `Welche Seite geht nach unten, ${kilo(q.left.w)} oder ${kilo(q.right.w)}?${orSame}`
-  return `Links sind ${sideSpeech(q.left)}, rechts ${sideSpeech(q.right)}. Welche Seite geht nach unten?${orSame}`
-}
-
-// The answer, explained: what is heavier and, with numbers, by how much.
-function explain(q, heavy) {
-  if (q.kind === 'things') return `${cap(named(q[heavy]))} ${q[heavy].g === 'pl' ? 'sind' : 'ist'} schwerer.`
-  const sum = [q.left, q.right].find(s => s.op)
-  const first = sum ? `${cap(sideSpeech(sum))} ${sum.w === 1 ? 'ist' : 'sind'} ${kilo(sum.w)}. ` : ''
-  if (heavy === 'equal') return `${first}Beide Seiten wiegen ${kilo(q.left.w)}. Die Wippe bleibt gerade.`
-  const h = q[heavy], l = q[heavy === 'left' ? 'right' : 'left']
-  return `${first}${cap(kilo(h.w))} sind ${kilo(h.w - l.w)} mehr als ${kilo(l.w)}.`
-}
 
 const TILT = 13
 const tiltFor = (l, r) => (l > r ? -TILT : r > l ? TILT : 0)
@@ -198,6 +172,15 @@ export default function WeightGame({ level = 1, onComplete }) {
   const [tries,    setTries]    = useState(0)      // level 10, wrong ticks on this question
   const [fly,      setFly]      = useState(0)      // bumps when the light one should fly
   const firstTry = useRef(0)
+  const streak = useRef(0)                       // right in a row: the flyer gets wilder
+  const [pops, pop] = usePops()
+  const riderRefs = { left: useRef(null), right: useRef(null) }
+  const dropRef = useRef(null), brickRef = useRef(null), doneRef = useRef(null)
+  // Everyone who played on the seesaw comes to the party at the end
+  const [cast] = useState(() => {
+    const riders = questions.flatMap(qq => (qq.kind === 'things' ? [qq.left.e, qq.right.e] : []))
+    return riders.length ? [...new Set(riders)].slice(0, 6) : ['🐦', '🐻', '🐰', '🐸', '🐷', '🦔']
+  })
 
   useEffect(() => stopNarration, [])
 
@@ -214,14 +197,14 @@ export default function WeightGame({ level = 1, onComplete }) {
     return Math.round(72 + Math.sqrt(Math.min(s.w, 60) / 60) * 80)
   }
 
-  // Read the task, with the numbers.
+  // A new pair climbs on.
   useEffect(() => {
     lockPreviews()
-    later(500, () => sayTask(taskSpeech(q, ties)))
-  }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
+    sayTask()
+  }, [idx])
 
   const next = () => {
-    if (idx + 1 >= questions.length) { sfx.complete(); onComplete(result(firstTry.current, questions.length)); return }
+    if (idx + 1 >= questions.length) { setAnswered('finale'); return }
     clear()
     setAnswered(null)
     setBlocks(0)
@@ -240,17 +223,19 @@ export default function WeightGame({ level = 1, onComplete }) {
     sfx.drum()
     later(450, () => {
       setFly(f => f + 1)
-      if (ok) { firstTry.current++; sayRight(explain(q, heavy)) }
-      else sayWrong(explain(q, heavy))
-      afterSpeech(next, ok ? 1300 : 1800)
+      if (ok) { firstTry.current++; streak.current++; sayRight() }
+      else { streak.current = 0; sayWrong() }
+      // the plank swings, the light one flies and lands: about two seconds
+      afterSpeech(next, 2400)
     })
-  }, [answered, balance, heavy, q]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [answered, balance, heavy]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Level 10: blocks on and off, then check
   const addBlock = () => {
     if (answered || blocks >= 15) return false
     setBlocks(b => b + 1)
-    narrate([{ text: N(blocks + 1), rate: 1 }])
+    sfx.drum(true)
+    pop(blocks + 1)
     return true
   }
   const takeBlock = () => {
@@ -265,12 +250,12 @@ export default function WeightGame({ level = 1, onComplete }) {
       setAnswered('balanced')
       setFly(f => f + 1)
       if (tries === 0) firstTry.current++
-      sayRight(`${cap(kilo(q.left.w))} sind ${kilo(q.right.w)} plus ${kilo(need)}. Die Wippe ist gerade.`)
-      afterSpeech(next, 1300)
+      sayRight()
+      afterSpeech(next, 2200)
       return
     }
     setTries(t => t + 1)
-    sayWrong(`Rechts sind jetzt ${kilo(q.right.w + blocks)}, links ${kilo(q.left.w)}. ${blocks > need ? 'Das sind zu viele Klötze.' : 'Da fehlen noch Klötze.'}`)
+    sayWrong()
   }
 
   useEffect(() => {
@@ -289,30 +274,36 @@ export default function WeightGame({ level = 1, onComplete }) {
     ? (answered || tries > 0 ? tiltFor(q.left.w, q.right.w + blocks) : -TILT)
     : answered && fly ? tiltFor(q.left.w, q.right.w) : 0
 
-  const repeat = () => sayTask(answered && !balance ? explain(q, heavy) : taskSpeech(q, ties))
+  // The hand: tap one of the two (both hands, so neither is the answer);
+  // in level 10 drag a brick over, then the tick.
+  const asking = !answered
+  const hints = balance
+    ? (blocks
+        ? <HintHand key={`t${idx}`} to={doneRef} active={asking} delay={9000} />
+        : <HintHand key={`b${idx}`} from={brickRef} to={dropRef} active={asking} delay={idx === 0 ? 2000 : 6000} />)
+    : ['left', 'right'].map(side => <HintHand key={`${side}${idx}`} to={riderRefs[side]} active={asking} delay={idx === 0 ? 2000 : 6000} repeat={2} />)
 
   return (
     <DragArea autoTarget="right" disabled={!balance || !!answered}>
-      <Stage wide={[780, 540]} tall={[440, 680]}>
+      <Stage wide={[780, 540]} tall={[400, 660]}>
         {wide => (
           <>
             <RoundTrail total={questions.length} done={idx + (answered ? 1 : 0)} walker="🐦" goal="🛝" size={wide ? 36 : 32} style={{ margin: '6px 48px 0 24px' }} />
-            <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+            <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', position: 'relative' }}>
               <AnimatePresence mode="wait">
                 <motion.div key={idx} initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }}>
-                  <Seesaw width={wide ? 620 : 420} q={q} tilt={tilt} fly={fly} answered={answered} heavy={heavy}
-                    sizes={[size(q.left), size(q.right)].map(s => (wide ? s : s * 0.9))}
+                  <Seesaw width={wide ? 620 : 360} q={q} tilt={tilt} fly={fly} answered={answered} heavy={heavy} streak={streak.current}
+                    sizes={[size(q.left), size(q.right)].map(s => (wide ? s : s * 0.9))} riderRefs={riderRefs} dropRef={dropRef} pops={pops}
                     onPick={balance ? null : answer} blocks={balance ? blocks : null} onTakeBlock={takeBlock} onDropBlock={addBlock} />
                 </motion.div>
               </AnimatePresence>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 22, padding: '4px 12px 14px', minHeight: 92 }}>
-              <HearButton onClick={repeat} />
               {/* "Both the same" needs a control of its own — shown in the
                   levels where ties occur. */}
               {!balance && ties && (
                 <motion.button type="button" onClick={() => answer('equal')} disabled={!!answered}
-                  {...hearable('Gleich schwer')} aria-label="Gleich schwer"
+                  aria-label="Gleich schwer"
                   whileTap={{ scale: 0.9 }} animate={{ opacity: answered ? 0.4 : 1 }}
                   className="px-btn px-btn--parch" style={{ minHeight: 64, padding: '6px 22px', gap: 8, fontSize: 18 }}>
                   <Art art="⚖️" size={44} /> Gleich schwer
@@ -322,18 +313,24 @@ export default function WeightGame({ level = 1, onComplete }) {
                 <>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: 8, borderRadius: 16, background: 'rgba(255,253,247,0.75)', border: '3px dashed #8a4f22' }}>
                     {[0, 1, 2].map(i => (
-                      <Draggable key={`${blocks}-${i}`} id={`b${blocks}-${i}`} data="block" label="Klotz, ein Kilo">
-                        <Art art="🧱" size={58} />
-                      </Draggable>
+                      <div key={i} ref={i === 0 ? brickRef : undefined}>
+                        <Draggable key={`${i}-${i === 0 ? blocks : 0}`} id={`b${i}-${blocks}`} data="block" label="Klotz, ein Kilo">
+                          <Art art="🧱" size={58} />
+                        </Draggable>
+                      </div>
                     ))}
                   </div>
-                  <DoneButton onClick={checkBalance} disabled={!!answered || !blocks} size={78} />
+                  <div ref={doneRef}><DoneButton onClick={checkBalance} disabled={!!answered || !blocks} size={78} /></div>
                 </>
               )}
             </div>
+            {answered === 'finale' && (
+              <Finale cast={cast} size={wide ? 110 : 84} onDone={() => onComplete(result(firstTry.current, questions.length))} />
+            )}
           </>
         )}
       </Stage>
+      {hints}
     </DragArea>
   )
 }
@@ -341,7 +338,7 @@ export default function WeightGame({ level = 1, onComplete }) {
 // ── The seesaw ─────────────────────────────────────────────────────────────
 const H = 330, PIVOT = H - 64
 
-function Seesaw({ width, q, tilt, fly, answered, heavy, sizes, onPick, blocks, onTakeBlock, onDropBlock }) {
+function Seesaw({ width, q, tilt, fly, answered, heavy, streak, sizes, onPick, blocks, onTakeBlock, onDropBlock, riderRefs, dropRef, pops }) {
   const reduce = useReducedMotion()
   const L = width * 0.44                 // half the plank
   const ang = useMotionValue(tilt)       // plank angle in degrees, + is right side down
@@ -360,13 +357,13 @@ function Seesaw({ width, q, tilt, fly, answered, heavy, sizes, onPick, blocks, o
   }
   const rider = (side, i) => (
     <Rider key={side} side={side} item={q[side]} size={sizes[i]} d={L * 0.8} cx={width / 2} ang={ang}
-      label={label(side)} fly={up === side || up === 'both' ? fly : 0} small={up === 'both'}
-      guessed={answered === side} heavy={!!fly && heavy === side}
+      label={label(side)} fly={up === side || up === 'both' ? fly : 0} small={up === 'both'} wild={streak}
+      guessed={answered === side} heavy={!!fly && heavy === side} innerRef={riderRefs[side]}
       onTap={onPick && !answered ? () => onPick(side) : null} />
   )
 
   return (
-    <div style={{ position: 'relative', width, height: H }}>
+    <div data-heavy={heavy} style={{ position: 'relative', width, height: H }}>
       {/* The stand */}
       <svg width={width} height={H} style={{ position: 'absolute', inset: 0, overflow: 'visible' }} aria-hidden="true">
         <ellipse cx={width / 2} cy={H - 10} rx={L * 1.05} ry={12} fill="rgba(42,27,61,0.16)" />
@@ -379,14 +376,15 @@ function Seesaw({ width, q, tilt, fly, answered, heavy, sizes, onPick, blocks, o
         borderRadius: 10, border: '4px solid #2a1b3d', boxSizing: 'border-box',
         background: 'repeating-linear-gradient(90deg, #e3a462 0 36px, #c98a52 36px 40px)', boxShadow: '0 5px 0 rgba(42,27,61,0.3)',
       }} />
-      <Bird x={width / 2} ang={ang} fly={fly} />
+      {/* The bird asks without words: who goes down? (or, in level 10: make it level) */}
+      <Bird x={width / 2} ang={ang} fly={fly} ask={!answered && (balance(q) ? <Art art="⚖️" size={30} /> : <><Art art="👇" size={30} />?</>)} />
       {balance(q) && (
         <>
           <DropZone id="right" onDrop={onDropBlock} label="Rechte Seite der Wippe"
             style={{ position: 'absolute', left: width / 2 + 30, top: PIVOT - 200, width: L, height: 210 }}>
-            {hover => <div style={{ width: '100%', height: '100%', borderRadius: 24, background: hover ? 'rgba(255,201,60,0.25)' : 'transparent' }} />}
+            {hover => <div ref={dropRef} style={{ width: '100%', height: '100%', borderRadius: 24, background: hover ? 'rgba(255,201,60,0.25)' : 'transparent' }} />}
           </DropZone>
-          <Blocks n={blocks} x={width / 2 + L * 0.42} ang={ang} d={L * 0.42} onTake={onTakeBlock} />
+          <Blocks n={blocks} x={width / 2 + L * 0.42} ang={ang} d={L * 0.42} onTake={onTakeBlock}>{pops}</Blocks>
         </>
       )}
       {rider('left', 0)}
@@ -398,7 +396,7 @@ const balance = q => q.kind === 'balance'
 
 // One rider on the plank. It stays upright and follows its end of the plank;
 // the light one is flung up ("Huiii!") and plops back down.
-function Rider({ side, item, size, d, cx, ang, label, fly, small, guessed, heavy, onTap }) {
+function Rider({ side, item, size, d, cx, ang, label, fly, small, wild, guessed, heavy, onTap, innerRef }) {
   const reduce = useReducedMotion()
   const s = side === 'left' ? -1 : 1
   const hop = useMotionValue(0)
@@ -411,25 +409,27 @@ function Rider({ side, item, size, d, cx, ang, label, fly, small, guessed, heavy
     if (heavy) { setMood('wow', 900); return }
     sfx.whoosh()
     if (reduce) { setMood('happy', 1200); return }
-    const high = small ? -36 : -150
+    // a streak of right guesses flings it higher, with a somersault
+    const high = small ? -36 : -110 - Math.min(wild, 3) * 15
     const c = animate(hop, [0, high, 0], { duration: small ? 0.5 : 1.15, times: [0, 0.45, 1], ease: ['easeOut', 'easeIn'] })
-    if (!small && Math.random() < 0.5) animate(spin, [0, 360], { duration: 1.1 })
+    if (!small && (wild >= 2 || Math.random() < 0.4)) animate(spin, [0, wild >= 3 ? 720 : 360], { duration: 1.1 })
     c.then(() => { sfx.boing(); setMood('happy', 1400) })
     return () => c.stop()
   }, [fly]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <motion.div style={{ position: 'absolute', left: cx + s * d - size / 2, top: PIVOT - 10 - size, width: size, height: size, y, zIndex: 3 }}>
+    <motion.div ref={innerRef} style={{ position: 'absolute', left: cx + s * d - size / 2, top: PIVOT - 10 - size, width: size, height: size, y, zIndex: 3 }}>
       <motion.div style={{ rotate: spin, width: size, height: size }}>
         <Critter art={item.e} size={size} label={item.label ?? label} shadow={false}
-          mood={guessed && mood === 'idle' ? 'wow' : mood} onTap={onTap ?? undefined}
-          wish={label ? <span style={{ fontSize: 22 }}>{label}</span> : null} />
+          mood={guessed && mood === 'idle' ? 'wow' : mood} onTap={onTap ?? undefined} />
       </motion.div>
+      {/* the weight tag stays upright while its parcel somersaults */}
+      {label && <div aria-hidden="true" style={tag}>{label}</div>}
       <AnimatePresence>
         {guessed && (
           <motion.div key="guess" aria-hidden="true" initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: [0, -8, 0] }} exit={{ opacity: 0 }}
             transition={{ y: { duration: 0.6, repeat: 2 } }}
-            style={{ position: 'absolute', left: size / 2 - 24, top: label ? -110 : -56 }}>
+            style={{ position: 'absolute', left: size / 2 - 24, top: label ? -104 : -56 }}>
             <Art art="👇" size={48} />
           </motion.div>
         )}
@@ -438,38 +438,52 @@ function Rider({ side, item, size, d, cx, ang, label, fly, small, guessed, heavy
   )
 }
 
-// A little bird on the middle of the plank; it startles when the plank tips.
-function Bird({ x, ang, fly }) {
+const tag = {
+  position: 'absolute', left: '50%', bottom: '100%', transform: 'translateX(-50%)', marginBottom: 8, whiteSpace: 'nowrap',
+  background: '#fffdf7', border: '3px solid #2a1b3d', borderRadius: 14, padding: '3px 10px', boxShadow: '0 4px 0 rgba(42,27,61,0.3)',
+  fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 22, color: '#2a1b3d',
+}
+
+// A little bird on the middle of the plank. It startles when the plank
+// tips — and now and then the jolt catapults it, head over heels (the
+// running gag).
+function Bird({ x, ang, fly, ask }) {
   const reduce = useReducedMotion()
   const hop = useMotionValue(0)
+  const spin = useMotionValue(0)
   const [mood, setMood] = useMood()
   useEffect(() => {
     if (!fly || reduce) return
-    setMood('wow', 1100)
-    const c = animate(hop, [0, -70, -60, 0], { duration: 1.3, times: [0, 0.3, 0.7, 1] })
+    const launch = Math.random() < 0.35
+    setMood(launch ? 'oops' : 'wow', launch ? 1800 : 1100)
+    if (launch) { sfx.whoosh(); animate(spin, [0, 720], { duration: 1.3 }) }
+    const c = animate(hop, launch ? [0, -170, -150, 0] : [0, -70, -60, 0], { duration: 1.3, times: [0, 0.35, 0.7, 1] })
     return () => c.stop()
   }, [fly]) // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <motion.div style={{ position: 'absolute', left: x - 24, top: PIVOT - 56, y: hop, rotate: ang, zIndex: 2 }}>
-      <Critter art="🐦" size={48} mood={mood} label="Vogel" shadow={false} />
+      <motion.div style={{ rotate: spin }}>
+        <Critter art="🐦" size={48} mood={mood} label="Vogel" shadow={false} wish={ask || null} />
+      </motion.div>
     </motion.div>
   )
 }
 
 // The 1-kg blocks laid on the right side (level 10); a tap takes one off.
-function Blocks({ n, x, ang, d, onTake }) {
+function Blocks({ n, x, ang, d, onTake, children }) {
   const y = useTransform(ang, a => d * Math.sin((a * Math.PI) / 180))
   return (
-    <motion.div style={{ position: 'absolute', left: x - 50, bottom: H - PIVOT + 10, y, zIndex: 4, width: 100, display: 'flex', flexWrap: 'wrap-reverse', justifyContent: 'center' }}>
+    <motion.div style={{ position: 'absolute', left: x - 66, bottom: H - PIVOT + 10, y, zIndex: 4, width: 132, display: 'flex', flexWrap: 'wrap-reverse', justifyContent: 'center' }}>
       <AnimatePresence>
         {Array.from({ length: n }, (_, i) => (
           <motion.button key={i} type="button" onClick={onTake} aria-label="Klotz wegnehmen"
             initial={{ y: -60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -40, opacity: 0 }}
-            style={{ all: 'unset', cursor: 'pointer', width: 32, height: 30, display: 'flex', justifyContent: 'center' }}>
-            <Art art="🧱" size={32} />
+            style={{ all: 'unset', cursor: 'pointer', width: 44, height: 38, display: 'flex', justifyContent: 'center' }}>
+            <Art art="🧱" size={44} />
           </motion.button>
         ))}
       </AnimatePresence>
+      <div style={{ position: 'absolute', left: 0, right: 0, top: -20 }}>{children}</div>
     </motion.div>
   )
 }

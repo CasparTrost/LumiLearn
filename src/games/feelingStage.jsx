@@ -470,7 +470,7 @@ export function Stage({ lumi, cast = [], fx, drop, bubbles = {}, looks = {}, tin
                 <div style={{ filter: tint[i] != null ? `saturate(${tint[i]})` : undefined, transition: 'filter .9s' }}>
                   {wrapDrop(i, body, s)}
                 </div>
-                {c.say && <Wish size={s * 0.8} side={c.x > W / 2 ? 'left' : 'right'} style={{ fontSize: 20 }}>{c.say}</Wish>}
+                {c.say && <Wish size={s * 0.8} side={c.x > W / 2 ? 'left' : 'right'} style={{ fontSize: 20 }}><Said say={c.say} /></Wish>}
                 {bubble(i, s)}
               </motion.div>
             </div>
@@ -484,7 +484,7 @@ export function Stage({ lumi, cast = [], fx, drop, bubbles = {}, looks = {}, tin
             <div style={{ position: 'absolute', left: l.x - s / 2, bottom: GROUND - 6 + (l.y ?? 0), width: s, zIndex: 2 }}>
               <motion.div {...m} style={{ position: 'relative', width: s }}>
                 {wrapDrop('lumi', <FeelLumi feel={lumi.feel} strength={lumi.strength} size={s} flip={lumi.flip} />, s)}
-                {lumi.say && <Wish size={s * 0.7} side="right" style={{ fontSize: 20 }}>{lumi.say}</Wish>}
+                {lumi.say && <Wish size={s * 0.7} side="right" style={{ fontSize: 20 }}><Said say={lumi.say} /></Wish>}
                 {bubble('lumi', s)}
               </motion.div>
             </div>
@@ -558,15 +558,42 @@ export function useAfter() {
   return [after, cancel]
 }
 
-/** The round button that says the task again. */
-export function ReplayButton({ onClick, label = 'Nochmal hören' }) {
+/** The round button that plays the scene again. */
+export function AgainButton({ onClick }) {
   return (
-    <motion.button whileTap={{ scale: 0.9 }} onClick={onClick} aria-label={label} title={label}
+    <motion.button whileTap={{ scale: 0.88, rotate: -90 }} onClick={onClick} aria-label="Nochmal anschauen" title="Nochmal anschauen"
       style={{
-        width: 56, height: 56, flexShrink: 0, borderRadius: '50%', cursor: 'pointer',
-        background: 'var(--px-gold)', border: '3px solid var(--px-ink)',
-        boxShadow: 'inset 0 3px 0 rgba(255,255,255,0.45), inset 0 -5px 0 rgba(0,0,0,0.2), 0 4px 0 var(--px-ink)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26,
-      }}>🔊</motion.button>
+        width: 56, height: 56, flexShrink: 0, borderRadius: '50%', cursor: 'pointer', padding: 0,
+        background: '#fffdf7', border: '3px solid var(--px-ink)', boxShadow: '0 4px 0 var(--px-ink)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}><Art art="🔄" size={36} /></motion.button>
   )
+}
+
+/** What a speech bubble holds: pictures (an array) or a short word. */
+function Said({ say }) {
+  return Array.isArray(say) ? say.map((a, i) => <Art key={i} art={a} size={40} />) : say
+}
+
+/** An empty face with a question mark: "how does … feel?" */
+export function AskFace({ size = 44, art }) {
+  return (
+    <motion.span animate={{ rotate: [-6, 6] }} transition={{ duration: 0.8, repeat: Infinity, repeatType: 'mirror' }}
+      style={{ width: size, height: size, borderRadius: '50%', border: '3px dashed #6b3fd6', background: '#f4efff',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 700,
+        fontSize: size * 0.62, color: '#6b3fd6', lineHeight: 1 }}>
+      {art ? <Art art={art} size={size * 0.7} /> : '?'}
+    </motion.span>
+  )
+}
+
+// How long the moves of a scene take, in ms: the child acts once it has played
+const ACT_MS = { drop: 900, in: 1300, inL: 1300, out: 1400, visit: 2600, grab: 2600, give: 900, up: 2200, fall: 800, topple: 1300,
+  bang: 500, down: 2000, grow: 1200, sweep: 2400, zoom: 1800, sink: 1400, jack: 700, scribble: 2700, flicker: 1200 }
+const LUMI_MS = { in: 1400, run: 1100, stumble: 2200, climb: 1800, away: 2000 }
+export function sceneLength(cast = [], lumi) {
+  if (reduceMotion()) return 600
+  const ends = cast.map(c => (c.d ?? 0) * 1000 + (ACT_MS[c.act] ?? 500))
+  if (lumi?.act) ends.push((lumi.d ?? 0) * 1000 + (LUMI_MS[lumi.act] ?? 500))
+  return Math.max(900, ...ends)
 }

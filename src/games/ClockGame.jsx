@@ -1,23 +1,27 @@
 import { useState, useCallback, useEffect, useLayoutEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { sfx } from '../sfx.js'
-import { sayNumber } from '../tts.js'
-import { narrate, afterNarration, lockPreviews } from '../narrator.js'
+import { afterNarration, lockPreviews } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
-import { hearable } from '../lib/hearable.js'
 import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
-import { Critter, Art, Wish, useMood, DragArea, Draggable, DropZone, RoundTrail, useBursts } from '../components/play/index.js'
+import { Critter, Art, Wish, useMood, DragArea, Draggable, DropZone, RoundTrail, HintHand, useBursts } from '../components/play/index.js'
 import { pxButton, INK } from './px.js'
 
 /**
  * Kuckucks-Uhr — Uhrzeit lesen & stellen
  *
- * A cuckoo lives in a wooden clock and wants to come out at a certain time
- * ("Um drei Uhr gibt es Kuchen!"). The child turns the hands with a finger;
- * when the time is right the cuckoo pops out, calls as often as the hour
- * says and gets its treat. In between, four animals guess the time shown and
- * the child says who is right, or Lumi asks what happens at that time.
+ * A cuckoo lives in a wooden clock and wants to come out at a certain time,
+ * for a treat. Its wish bubble shows the treat and the time as a picture:
+ * a blue number for the short hand and a red wedge for how far the long
+ * hand has gone round (from level 7 the digital time). The child turns the
+ * hands with a finger; when the time is right the cuckoo pops out, calls as
+ * often as the hour says and eats its treat. In between, animals hold up
+ * their guess of the time shown and the child taps the one who is right,
+ * or gives Lumi the picture of what happens at that time.
+ *
+ * Nothing needs reading or listening: a miss makes the hand that is off
+ * pulse, and a hand shows what to do when a child waits.
  *
  * Scientific basis:
  *   • Concrete-Pictorial-Abstract (Bruner) — manipulating analog clock hands
@@ -62,32 +66,28 @@ function randomTime(tier) {
 }
 
 // Times of day a preschooler recognises, each at its own place on the
-// 12-hour face. The half-hour ones join from level 4. `does` finishes the
-// sentence "Um sieben Uhr …"; `mood` is what Lumi then does on the stage.
-// Soft hyphens (­) let the long words break on a narrow card; speech
-// drops them.
+// 12-hour face. The half-hour ones join from level 4. `mood` is what Lumi
+// does once given the picture. Soft hyphens (­) let the long words
+// break on a narrow card.
 const DAILY_ACTIVITIES = [
-  { id: 'aufstehen',    icon: '⏰',  label: 'Aufstehen',          does: 'steht Lumi auf',                h: 7,  m: 0,  mood: 'wow' },
-  { id: 'kindergarten', icon: '🏫',  label: 'Kinder­garten',  does: 'geht Lumi in den Kindergarten', h: 9,  m: 0,  mood: 'happy' },
-  { id: 'mittagessen',  icon: '🍽️', label: 'Mittag­essen',   does: 'isst Lumi zu Mittag',           h: 12, m: 0,  mood: 'eat' },
-  { id: 'spielplatz',   icon: '🛝',  label: 'Spiel­platz',    does: 'geht Lumi auf den Spielplatz',  h: 3,  m: 0,  mood: 'dance' },
-  { id: 'abendessen',   icon: '🍲',  label: 'Abend­essen',    does: 'isst Lumi zu Abend',            h: 6,  m: 0,  mood: 'eat' },
-  { id: 'schlafen',     icon: '🛏️', label: 'Schlafen­gehen', does: 'geht Lumi schlafen',            h: 8,  m: 0,  mood: 'sleep' },
-  { id: 'obst',         icon: '🍎',  label: 'Obst essen',         does: 'isst Lumi Obst',                h: 4,  m: 30, mood: 'eat' },
-  { id: 'baden',        icon: '🛁',  label: 'Baden',              does: 'badet Lumi',                    h: 5,  m: 30, mood: 'happy' },
-  { id: 'zaehne',       icon: '🪥',  label: 'Zähne putzen',       does: 'putzt Lumi die Zähne',          h: 7,  m: 30, mood: 'happy' },
+  { id: 'aufstehen',    icon: '⏰',  label: 'Aufstehen',               h: 7,  m: 0,  mood: 'wow' },
+  { id: 'kindergarten', icon: '🏫',  label: 'Kinder­garten',      h: 9,  m: 0,  mood: 'happy' },
+  { id: 'mittagessen',  icon: '🍽️', label: 'Mittag­essen',       h: 12, m: 0,  mood: 'eat' },
+  { id: 'spielplatz',   icon: '🛝',  label: 'Spiel­platz',        h: 3,  m: 0,  mood: 'dance' },
+  { id: 'abendessen',   icon: '🍲',  label: 'Abend­essen',        h: 6,  m: 0,  mood: 'eat' },
+  { id: 'schlafen',     icon: '🛏️', label: 'Schlafen­gehen',     h: 8,  m: 0,  mood: 'sleep' },
+  { id: 'obst',         icon: '🍎',  label: 'Obst essen',              h: 4,  m: 30, mood: 'eat' },
+  { id: 'baden',        icon: '🛁',  label: 'Baden',                   h: 5,  m: 30, mood: 'happy' },
+  { id: 'zaehne',       icon: '🪥',  label: 'Zähne putzen',            h: 7,  m: 30, mood: 'happy' },
 ]
 const plain = text => text.replace(/­/g, '')
 const activitiesFor = level => DAILY_ACTIVITIES.filter(a => level >= 4 || a.m === 0)
 
-// What the cuckoo is waiting for in a setting round: "Um drei Uhr gibt es …"
-const TREATS = [
-  { icon: '🍰', name: 'Kuchen' }, { icon: '🍦', name: 'Eis' }, { icon: '🍪', name: 'Kekse' },
-  { icon: '🍕', name: 'Pizza' }, { icon: '🧁', name: 'Muffins' }, { icon: '🍓', name: 'Erdbeeren' },
-]
+// What the cuckoo is waiting for in a setting round
+const TREATS = ['🍰', '🍦', '🍪', '🍕', '🧁', '🍓', '🍩', '🍎']
 
-// The four animals who guess the time in a reading round
-const GUESSERS = ['🐰', '🐻', '🐸', '🦉']
+// The animals who guess the time in a reading round, four of them each time
+const GUESSERS = ['🐰', '🐻', '🐸', '🦉', '🐱', '🐶', '🐷', '🐭', '🦔', '🐢']
 
 // Every third round asks what happens at a time instead of reading or
 // setting it, so the face connects to the child's own day. The activity is
@@ -115,63 +115,21 @@ function generateRounds(level) {
   return rounds
 }
 
-// Uhrzeit so, wie man sie einem Kind sagt — für eine Zeigeruhr.
-//
-// Im Kindergarten heißt das "halb drei", und genau diese Brücke zwischen
-// Zeigerstellung und Wort soll das Spiel bauen.
-//
-// spoken: Stunden als Wort, für die Sprachausgabe. Volle Stunde 1 heißt
-// "ein Uhr", sonst steht die Eins allein: "halb eins", "fünf nach eins".
+// Uhrzeit so, wie man sie einem Kind sagt — für eine Zeigeruhr. Sie steht
+// nur noch als Name für Bildschirmleser an den Antworten ("halb drei").
 const MIN_WORD = { 5: 'fünf', 10: 'zehn', 20: 'zwanzig' }
-function toGermanTime(h, m, { spoken = false } = {}) {
+function toGermanTime(h, m) {
   const cur = h % 12 === 0 ? 12 : h % 12
   const nxt = cur % 12 + 1
-  const H = (n) => (spoken ? sayNumber(n) : String(n))
-  if (m === 0)  return spoken && cur === 1 ? 'ein Uhr' : `${H(cur)} Uhr`
-  if (m === 15) return `Viertel nach ${H(cur)}`
-  if (m === 30) return `halb ${H(nxt)}`
-  if (m === 45) return `Viertel vor ${H(nxt)}`
-  if (m === 25) return `fünf vor halb ${H(nxt)}`
-  if (m === 35) return `fünf nach halb ${H(nxt)}`
-  if (m < 30 && MIN_WORD[m])      return `${MIN_WORD[m]} nach ${H(cur)}`
-  if (m > 30 && MIN_WORD[60 - m]) return `${MIN_WORD[60 - m]} vor ${H(nxt)}`
-  return spoken ? `${H(cur)} Uhr ${sayNumber(m)}` : `${cur}:${String(m).padStart(2, '0')} Uhr`
-}
-const say = (t) => toGermanTime(t.h, t.m, { spoken: true })
-
-function fmt(h, m) {
-  return `${h}:${String(m).padStart(2, '0')} Uhr`
-}
-
-// What the child sees in a bubble: the spoken form up to level 6, the
-// digital one from level 7.
-const label = (t, level) => (showDigital(level) ? fmt(t.h, t.m) : toGermanTime(t.h, t.m))
-
-// "die Vier", "der Zwölf"
-const numberNoun = n => { const w = sayNumber(n); return w[0].toUpperCase() + w.slice(1) }
-
-// Where the hands are, in words — for the explanation after two misses:
-// "Der kurze Zeiger steht genau zwischen der Vier und der Fünf, der lange
-// Zeiger zeigt auf die Sechs."
-function describeHands(h, m) {
-  const cur = h % 12 === 0 ? 12 : h % 12
-  const nxt = cur % 12 + 1
-  const short = m === 0  ? `der kurze Zeiger zeigt auf die ${numberNoun(cur)}`
-              : m === 30 ? `der kurze Zeiger steht genau zwischen der ${numberNoun(cur)} und der ${numberNoun(nxt)}`
-              : m < 30   ? `der kurze Zeiger steht kurz nach der ${numberNoun(cur)}`
-              :            `der kurze Zeiger steht kurz vor der ${numberNoun(nxt)}`
-  const long  = m === 0 ? 'der lange Zeiger steht oben auf der Zwölf'
-              : `der lange Zeiger zeigt auf die ${numberNoun(m / 5)}`
-  return `${short[0].toUpperCase()}${short.slice(1)}, ${long}.`
-}
-
-// A first hint when reading: how to read the long hand, without the answer.
-function readHint(m) {
-  if (m === 0)  return 'Der lange Zeiger steht oben auf der Zwölf, das ist eine volle Stunde. Wohin zeigt der kurze Zeiger?'
-  if (m === 30) return 'Der lange Zeiger steht unten auf der Sechs, dann ist es halb. Der kurze Zeiger ist schon auf dem Weg zur nächsten Zahl.'
-  if (m === 15) return 'Der lange Zeiger steht auf der Drei, dann ist es Viertel nach.'
-  if (m === 45) return 'Der lange Zeiger steht auf der Neun, dann ist es Viertel vor.'
-  return 'Der lange Zeiger zeigt die Minuten. Zähle in Fünferschritten: fünf, zehn, fünfzehn.'
+  if (m === 0)  return `${cur} Uhr`
+  if (m === 15) return `Viertel nach ${cur}`
+  if (m === 30) return `halb ${nxt}`
+  if (m === 45) return `Viertel vor ${nxt}`
+  if (m === 25) return `fünf vor halb ${nxt}`
+  if (m === 35) return `fünf nach halb ${nxt}`
+  if (m < 30 && MIN_WORD[m])      return `${MIN_WORD[m]} nach ${cur}`
+  if (m > 30 && MIN_WORD[60 - m]) return `${MIN_WORD[60 - m]} vor ${nxt}`
+  return `${cur}:${String(m).padStart(2, '0')} Uhr`
 }
 
 function timeDiffMin(h1, m1, h2, m2) {
@@ -326,7 +284,9 @@ function handEnd(angleDeg, length) {
 // handle: a finger near the middle turns the short hand, further out the
 // long one. The grips used to sit right on the 11/12 and 7/8 and carried
 // the letters "S" and "M".
-function ClockFace({ value, onChange, interactive, level, highlightHands, size }) {
+// `highlight` ('hour' | 'minute' | 'both') makes a hand pulse after a miss:
+// the one that is off, so the child's eye goes where the mistake is.
+function ClockFace({ value, onChange, interactive, level, highlight, size }) {
   const svgRef  = useRef(null)
   const dragRef = useRef(null)          // 'hour' | 'minute' | null
   const [dragging, setDragging] = useState(null)
@@ -388,6 +348,8 @@ function ClockFace({ value, onChange, interactive, level, highlightHands, size }
   const hourEnd     = handEnd(hourAngle, HOUR_LEN)
   const minuteEnd   = handEnd(minuteAngle, MIN_LEN)
   const hourGrip    = handEnd(hourAngle, HOUR_LEN * 0.72)
+  const pulseHour   = highlight === 'hour' || highlight === 'both'
+  const pulseMinute = highlight === 'minute' || highlight === 'both'
 
   return (
     <svg
@@ -429,26 +391,24 @@ function ClockFace({ value, onChange, interactive, level, highlightHands, size }
       })}
 
       {/* Hands under the numbers: the long hand reaches across the number
-          ring, and the digits keep a light outline so they stay readable.
-          The hour hand pulses while a hint is showing, so the child's eye
-          is sent to the thing the hint talks about. */}
+          ring, and the digits keep a light outline so they stay readable. */}
       <motion.line
         x1={CX} y1={CY}
         x2={hourEnd.x} y2={hourEnd.y}
         stroke={HOUR_C}
         strokeLinecap="round"
-        animate={highlightHands ? { strokeWidth: [9, 15, 9] } : { strokeWidth: 9 }}
-        transition={highlightHands ? { duration: 1.1, repeat: Infinity } : { duration: 0.2 }}
+        animate={pulseHour ? { strokeWidth: [9, 16, 9] } : { strokeWidth: 9 }}
+        transition={pulseHour ? { duration: 0.9, repeat: Infinity } : { duration: 0.2 }}
         style={{ pointerEvents: 'none' }}
       />
-      {/* Minute hand — pulses on the offbeat so the two are told apart */}
+      {/* Minute hand — when both pulse, on the offbeat */}
       <motion.line
         x1={CX} y1={CY}
         x2={minuteEnd.x} y2={minuteEnd.y}
         stroke={MIN_C}
         strokeLinecap="round"
-        animate={highlightHands ? { strokeWidth: [5, 10, 5] } : { strokeWidth: 5 }}
-        transition={highlightHands ? { duration: 1.1, repeat: Infinity, delay: 0.55 } : { duration: 0.2 }}
+        animate={pulseMinute ? { strokeWidth: [5, 11, 5] } : { strokeWidth: 5 }}
+        transition={pulseMinute ? { duration: 0.9, repeat: Infinity, delay: highlight === 'both' ? 0.45 : 0 } : { duration: 0.2 }}
         style={{ pointerEvents: 'none' }}
       />
       {/* Hour numbers — always fully visible: they used to fade to 40 % from
@@ -526,9 +486,10 @@ const CLOCK_CSS = `
 /**
  * bird: 'in' behind the closed door · 'peek' looking out, waiting ·
  * 'out' popped out on its perch · 'puzzled' out, but it is not time yet ·
- * 'eat' out, eating its treat
+ * 'eat' out, eating its treat. `hat`: a streak of right answers, the
+ * cuckoo dresses up.
  */
-function CuckooClock({ size, bird, calls, treat, wish, paused, onDoor, children }) {
+function CuckooClock({ size, bird, calls, treat, wish, hat, paused, onDoor, children }) {
   const w = size * HOUSE_W, h = size * HOUSE_H
   const out = bird === 'out' || bird === 'puzzled' || bird === 'eat'
   const doorOpen = out ? 0.12 : bird === 'peek' ? 0.55 : 1
@@ -585,6 +546,12 @@ function CuckooClock({ size, bird, calls, treat, wish, paused, onDoor, children 
           <motion.div animate={bird === 'eat' && !reduceMotion() ? { scaleY: [1, 0.85, 1.08, 0.88, 1.04, 1] } : {}} transition={{ duration: 0.9 }}>
             <Art art="🐦" size={birdPx} />
           </motion.div>
+          {hat && out && (
+            <motion.div initial={{ y: -birdPx * 0.6, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 12 }}
+              style={{ position: 'absolute', left: birdPx * 0.18, top: -birdPx * 0.28 }}>
+              <Art art="🎩" size={birdPx * 0.45} />
+            </motion.div>
+          )}
         </motion.div>
         {bird === 'puzzled' && (
           <span style={{ position: 'absolute', top: -birdPx * 0.25, right: -birdPx * 0.1, fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: birdPx * 0.45, color: '#6b3fd6', WebkitTextStroke: `2px ${INK}` }}>?</span>
@@ -620,7 +587,7 @@ function CuckooClock({ size, bird, calls, treat, wish, paused, onDoor, children 
       {/* the treat lands on the perch */}
       <AnimatePresence>
         {treat && (
-          <motion.div aria-hidden="true" key="treat"
+          <motion.div aria-hidden="true" key={treat}
             initial={{ y: -h * 0.3, opacity: 0, scale: 0.6 }} animate={{ y: 0, opacity: 1, scale: [0.6, 1, 1, 0.7, 0.4] }} exit={{ scale: 0, opacity: 0 }}
             transition={{ duration: 1.6, y: { type: 'spring', stiffness: 380, damping: 14 } }}
             style={{ position: 'absolute', left: w * 0.2, top: h * 0.12, zIndex: 4, pointerEvents: 'none' }}>
@@ -629,9 +596,9 @@ function CuckooClock({ size, bird, calls, treat, wish, paused, onDoor, children 
         )}
       </AnimatePresence>
 
-      {/* what the cuckoo is waiting for */}
+      {/* what the cuckoo is waiting for, beside its door so it never hides it */}
       {wish && (
-        <div style={{ position: 'absolute', left: '50%', top: 0, width: 0, height: 0, zIndex: 5 }}>
+        <div style={{ position: 'absolute', left: '24%', top: 0, width: 0, height: 0, zIndex: 5 }}>
           <Wish side="top" size={110}>{wish}</Wish>
         </div>
       )}
@@ -639,31 +606,56 @@ function CuckooClock({ size, bird, calls, treat, wish, paused, onDoor, children 
   )
 }
 
-// One of the animals guessing the time in a reading round. The whole card
-// is the answer; the time stands in its speech bubble, and the animal bobs
-// while its guess is read out.
-function Guesser({ art, text, speaking, state, onPick, hear, compact }) {
-  const dim = state === 'tried' || state === 'oops'
+// A time as a picture, for children who cannot read "halb fünf": the
+// number of the hour the short hand has passed, in its blue, and a red
+// wedge for how far the long hand has gone round from the top. From
+// level 7 the digital time.
+function TimeToken({ t, level, size = 54 }) {
+  if (showDigital(level)) {
+    return (
+      <span style={{
+        display: 'inline-flex', alignItems: 'center', height: size * 0.8, padding: '0 10px', borderRadius: 10,
+        background: '#2a1b3d', color: '#9CFFB0', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: size * 0.42,
+        letterSpacing: 1, boxShadow: 'inset 0 -3px 0 rgba(0,0,0,0.4)',
+      }}>{t.h}:{String(t.m).padStart(2, '0')}</span>
+    )
+  }
+  const a = t.m * 6 * Math.PI / 180
+  const end = [50 + 42 * Math.sin(a), 50 - 42 * Math.cos(a)]
+  return (
+    <svg viewBox="0 0 100 100" width={size} height={size} aria-hidden="true" style={{ display: 'block', flexShrink: 0 }}>
+      <circle cx="50" cy="50" r="46" fill="#FFFDF7" stroke={INK} strokeWidth="5" />
+      {t.m > 0 && <path d={`M50 50 L50 8 A42 42 0 ${t.m > 30 ? 1 : 0} 1 ${end[0]} ${end[1]} Z`} fill="#F7C1B6" />}
+      <line x1="50" y1="50" x2={end[0]} y2={end[1]} stroke={MIN_C} strokeWidth="6" strokeLinecap="round" />
+      <text x="50" y="66" textAnchor="middle" fontSize="44" fontWeight="800" fill={HOUR_C}
+        stroke="#FFFDF7" strokeWidth="7" paintOrder="stroke" fontFamily="var(--font-heading, system-ui)">{t.h % 12 || 12}</text>
+    </svg>
+  )
+}
+
+// One of the animals guessing the time in a reading round: it holds up
+// its guess, and the whole card is the answer.
+function Guesser({ art, t, level, state, onPick, compact }) {
   return (
     <motion.button
-      onClick={onPick} {...hearable(hear)} aria-label={hear}
-      whileTap={state ? {} : { scale: 0.94 }}
-      animate={state === 'right' ? { y: [0, -26, 0, -10, 0] } : state === 'oops' ? { rotate: [0, -10, 8, -5, 0] } : speaking ? { y: [0, -6, 0] } : { y: 0, rotate: 0 }}
-      transition={speaking ? { duration: 0.5, repeat: Infinity } : { duration: 0.7 }}
+      onClick={onPick} aria-label={toGermanTime(t.h, t.m)}
+      initial={{ scale: 0.4, opacity: 0 }}
+      whileTap={state ? {} : { scale: 0.92 }}
+      animate={state === 'right' ? { scale: 1, opacity: 1, y: [0, -26, 0, -10, 0] }
+        : state === 'oops' ? { scale: 1, opacity: 0.45, rotate: [0, -10, 8, -5, 0] }
+        : { scale: 1, opacity: state === 'tried' ? 0.45 : 1, y: 0, rotate: 0 }}
+      transition={{ duration: 0.7 }}
       style={{
         all: 'unset', boxSizing: 'border-box', cursor: state ? 'default' : 'pointer',
-        display: 'flex', alignItems: 'center', gap: 4, minHeight: 64, minWidth: 0,
-        opacity: dim ? 0.45 : 1, transition: 'opacity .3s',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 72, minWidth: 0,
       }}>
-      <Art art={art} size={compact ? 52 : 64} />
+      <Art art={art} size={compact ? 54 : 70} />
       <span style={{
-        position: 'relative', flex: 1, minWidth: 0, padding: compact ? '8px 8px' : '10px 12px', borderRadius: 16,
-        background: state === 'right' ? '#DDF6CF' : speaking ? '#FFF1BF' : '#FFFDF7',
+        padding: 6, borderRadius: 18,
+        background: state === 'right' ? '#DDF6CF' : '#FFFDF7',
         border: `3px solid ${state === 'right' ? '#2F8F3A' : INK}`,
-        boxShadow: '0 4px 0 rgba(42,27,61,0.25)',
-        fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: compact ? 17 : 21, color: INK, textAlign: 'center',
-        transition: 'background .2s',
-      }}>{text}</span>
+        boxShadow: '0 4px 0 rgba(42,27,61,0.25)', display: 'flex',
+      }}><TimeToken t={t} level={level} size={compact ? 50 : 62} /></span>
     </motion.button>
   )
 }
@@ -686,6 +678,9 @@ function useSize(ref) {
   return size
 }
 
+// Where the hint hand shows turning a hand: two points on the face
+const ANCHOR = deg => ({ left: `${50 + 32 * Math.sin(deg * Math.PI / 180)}%`, top: `${50 - 32 * Math.cos(deg * Math.PI / 180)}%` })
+
 // ── Main Game ─────────────────────────────────────────────────────────────────
 export default function ClockGame({ level = 1, onComplete }) {
   const [times]   = useState(() => generateRounds(level))
@@ -698,11 +693,14 @@ export default function ClockGame({ level = 1, onComplete }) {
   const [status,  setStatus]  = useState(null)
   const [tried,   setTried]   = useState([])       // options already tapped this round
   const [hands,   setHands]   = useState(0)        // the set-mode hands, minutes since 12:00
+  const [moved,   setMoved]   = useState(false)    // the child has turned a hand
+  const [pulse,   setPulse]   = useState(null)     // the hand that is off
   const [bird,    setBird]    = useState('in')
   const [calls,   setCalls]   = useState(0)
-  const [treatOut, setTreatOut] = useState(false)
-  const [speaking, setSpeaking] = useState(null)   // guesser being read out
-  const [picked,  setPicked]  = useState(null)     // guesser / activity just tapped
+  const [treat,   setTreat]   = useState(null)
+  const [picked,  setPicked]  = useState(null)     // guesser just tapped
+  const [streak,  setStreak]  = useState(0)        // right on the first try in a row
+  const [ending,  setEnding]  = useState(false)
   const [lumiMood, setLumiMood] = useMood()
   const [lumiDoes, setLumiDoes] = useState(null)   // activity Lumi is doing
   const [bursts, burst] = useBursts()
@@ -710,10 +708,12 @@ export default function ClockGame({ level = 1, onComplete }) {
   const tweenRef  = useRef(null)
   const timers    = useRef([])
   const areaRef   = useRef(null)
+  const houseRef  = useRef(null)
   const area      = useSize(areaRef)
+  const hint      = { a: useRef(null), b: useRef(null), fertig: useRef(null), cards: useRef(null), lumi: useRef(null), guesses: useRef(null) }
 
   const t = times[idx]
-  // 'read' = who says the right time · 'set' = put the hands there ·
+  // 'read' = who holds up the right time · 'set' = put the hands there ·
   // 'daily' = what happens at this time of day
   const mode = t?.activity ? 'daily' : (idx % 3 === 0 ? 'read' : 'set')
   const resolved = status === 'right' || status === 'shown'
@@ -725,37 +725,23 @@ export default function ClockGame({ level = 1, onComplete }) {
   }, [])
   const clearTimers = () => { timers.current.forEach(clearTimeout); timers.current = [] }
 
-  const task = !t ? ''
-    : mode === 'read'  ? 'Wie spät ist es? Wer hat recht?'
-    : mode === 'daily' ? 'Was macht Lumi, wenn die Uhr so aussieht?'
-    :                    `Um ${say(t)} gibt es ${t.treat.name}! Stell die Uhr auf ${say(t)}.`
-
-  const options      = useMemo(() => (t && mode === 'read' ? readOptions(t, level) : []), [idx]) // eslint-disable-line react-hooks/exhaustive-deps
+  const options = useMemo(() => {
+    if (!t || mode !== 'read') return []
+    const animals = shuffle(GUESSERS)
+    return readOptions(t, level).map((o, i) => ({ ...o, art: animals[i] }))
+  }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
   const dailyOptions = useMemo(() => {
     if (!t?.activity) return []
     const others = shuffle(activitiesFor(level).filter(a => a.id !== t.activity.id)).slice(0, 2)
     return shuffle([t.activity, ...others])
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // The task; in a reading round each animal's guess follows, and the
-  // animal bobs while it is read
-  const readout = useRef(0)       // a tap ends the reading of the guesses
-  const speakTask = useCallback(() => {
-    if (mode !== 'read') { sayTask(task); return }
-    const run = ++readout.current
-    const next = i => {
-      if (run !== readout.current) return
-      if (i >= options.length) { setSpeaking(null); return }
-      setSpeaking(i)
-      narrate([{ text: say(options[i]), gap: 200 }], { onEnd: () => next(i + 1) })
-    }
-    sayTask(task, { onEnd: () => next(0) })
-  }, [mode, task, options])
-
-  // New round: hands somewhere clearly wrong, then the task
+  // New round: everything back, hands somewhere clearly wrong
   useEffect(() => {
     if (!t) return
-    setStatus(null); setTried([]); setCalls(0); setTreatOut(false); setSpeaking(null); setPicked(null); setLumiDoes(null)
+    setStatus(null); setTried([]); setCalls(0); setTreat(null); setPicked(null); setLumiDoes(null)
+    setPulse(null); setMoved(false)
+    setLumiMood('idle')
     setBird(mode === 'set' ? 'peek' : 'in')
     cancelAnimationFrame(tweenRef.current)
     let start
@@ -763,46 +749,111 @@ export default function ClockGame({ level = 1, onComplete }) {
     while (timeDiffMin(toHM(start).h, toHM(start).m, t.h, t.m) <= 60)
     setHands(start)
     lockPreviews()
-    const id = setTimeout(speakTask, 450)
-    return () => { clearTimeout(id); clearTimers() }
+    sayTask()
+    return clearTimers
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => () => { cancelAnimationFrame(tweenRef.current); clearTimers() }, [])
 
+  // The child turns a hand: a soft tick per notch
+  const turnHands = useCallback(v => {
+    setHands(old => { if (old !== v) sfx.step(); return v })
+    setMoved(true)
+    setPulse(null)
+  }, [])
+
   // The cuckoo pops out and calls: as often as the hour at a full hour
-  const ring = useCallback((then) => {
+  const ring = useCallback((n, then) => {
     setBird('out')
     sfx.slideUp()
-    const n = callsFor(t)
     const call = k => {
       if (k > n) { setCalls(0); then?.(); return }
       setCalls(k); cuckooCall()
       later(() => call(k + 1), 420)
     }
     later(() => call(1), 380)
-  }, [t, later])
+  }, [later])
+
+  // The end of the level, in the clock: the cuckoo comes out in its hat
+  // with a cake and calls three times, then the results
+  const finishLevel = useCallback(() => {
+    setEnding(true); setStatus('right'); setPulse(null)
+    setTreat('🎂')
+    sfx.tada()
+    burst(houseRef.current, 'confetti', 18)
+    ring(3, () => {
+      sfx.complete()
+      afterNarration(() => onComplete(result(times.length - missed.current.size, times.length)), { minMs: 1400 })
+    })
+  }, [ring, burst, onComplete, times.length])
 
   const nextRound = useCallback(() => {
-    if (idx + 1 >= times.length) {
-      sfx.complete()
-      afterNarration(() => onComplete(result(times.length - missed.current.size, times.length)), { minMs: 500 })
-    } else {
-      setIdx(i => i + 1)
-    }
-  }, [idx, times.length, onComplete])
+    if (idx + 1 >= times.length) finishLevel()
+    else setIdx(i => i + 1)
+  }, [idx, times.length, finishLevel])
 
-  // After a right answer the next round comes by itself
-  const right = useCallback((praise, at) => {
+  // A right answer: the cuckoo calls, eats its treat (and now and then
+  // burps), and the next round comes by itself once all of it was seen
+  const right = useCallback((at) => {
     setStatus('right')
-    setSpeaking(null)
+    setPulse(null)
     sfx.correct()
     if (at) burst(at, 'stars')
-    ring(() => {
-      // now and then a full cuckoo burps — the classic giggle
-      if (mode === 'set') { setTreatOut(true); setBird('eat'); sfx.chomp(); if (Math.random() < 0.3) later(sfx.burp, 900) }
-      sayRight(praise, { onEnd: () => later(nextRound, 700) })
+    const first = !missed.current.has(idx)
+    const s = first ? streak + 1 : 0
+    setStreak(s)
+    if (s >= 3) burst(houseRef.current, 'confetti', 8 + 2 * s)
+    ring(callsFor(t), () => {
+      sayRight()
+      if (mode === 'set') {
+        setTreat(t.treat); setBird('eat'); sfx.chomp()
+        if (Math.random() < 0.3) later(sfx.burp, 900)
+      }
+      afterNarration(() => later(nextRound, 0), { minMs: mode === 'set' ? 1900 : 1300 })
     })
-  }, [mode, ring, burst, later, nextRound])
+  }, [idx, t, mode, streak, ring, burst, later, nextRound])
+
+  // First miss: the cuckoo looks out puzzled, the hand that is off pulses,
+  // and the child tries again. Second miss: the answer is shown and stays
+  // until the child moves on.
+  const wrong = useCallback((off, reveal) => {
+    missed.current.add(idx)
+    setStreak(0)
+    sfx.boing()
+    setBird('puzzled')
+    sayWrong()
+    if (status === 'hint') {
+      setStatus('shown')
+      setPulse(null)
+      reveal?.()
+    } else {
+      setStatus('hint')
+      setPulse(off)
+      later(() => setBird(b => (b === 'puzzled' ? (mode === 'set' ? 'peek' : 'in') : b)), 1300)
+    }
+  }, [idx, status, mode, later])
+
+  const pickGuess = useCallback((opt, i, e) => {
+    if (resolved || tried.includes(i)) return
+    setTried(tr => [...tr, i])
+    setPicked(i)
+    if (opt.h === t.h && opt.m === t.m) right(e.currentTarget)
+    else wrong('both', () => later(() => ring(callsFor(t)), 900))
+  }, [resolved, tried, t, right, wrong, later, ring])
+
+  // An activity given to Lumi: Lumi does it, or hands it back
+  const giveActivity = useCallback((act) => {
+    if (resolved || tried.includes(act.id)) return false
+    setTried(tr => [...tr, act.id])
+    if (act.id === t.activity.id) {
+      setLumiDoes(act); setLumiMood(act.mood, 0)
+      right()
+      return true
+    }
+    setLumiMood('oops')
+    wrong('both', () => { setLumiDoes(t.activity); setLumiMood(t.activity.mood, 0); later(() => ring(callsFor(t)), 900) })
+    return false
+  }, [resolved, tried, t, right, wrong, later, ring, setLumiMood])
 
   // After a second miss in set mode the hands glide to the right place
   const showOnClock = useCallback((then) => {
@@ -820,70 +871,15 @@ export default function ClockGame({ level = 1, onComplete }) {
     tweenRef.current = requestAnimationFrame(step)
   }, [hands, t])
 
-  // First miss: a hint and another try. Second miss: show and say the answer.
-  // The cuckoo looks out, puzzled — it is not its time yet.
-  const wrong = useCallback((hint, reveal) => {
-    missed.current.add(idx)
-    setSpeaking(null)
-    sfx.boing()
-    setBird('puzzled')
-    if (status === 'hint') {
-      setStatus('shown')
-      sayWrong(reveal)
-      later(() => ring(), 900)
-    } else {
-      setStatus('hint')
-      sayWrong(hint)
-      later(() => setBird(mode === 'set' ? 'peek' : 'in'), 1300)
-    }
-  }, [idx, status, mode, later, ring])
-
-  const pickGuess = useCallback((opt, i, e) => {
-    if (resolved || tried.includes(i)) return
-    readout.current++
-    setTried(tr => [...tr, i])
-    setPicked(i)
-    if (opt === t) right(`Es ist ${say(t)}.`, e.currentTarget)
-    else wrong(readHint(t.m), `Es ist ${say(t)}. ${describeHands(t.h, t.m)}`)
-  }, [resolved, tried, t, right, wrong])
-
-  // An activity given to Lumi: Lumi does it, or hands it back
-  const giveActivity = useCallback((act) => {
-    if (resolved || tried.includes(act.id)) return false
-    setTried(tr => [...tr, act.id])
-    if (act.id === t.activity.id) {
-      setLumiDoes(act); setLumiMood(act.mood, 0)
-      right(`Um ${say(t)} ${act.does}.`)
-      return true
-    }
-    setLumiMood('oops')
-    const last = status === 'hint'
-    wrong(`Es ist ${say(t)}. Was macht Lumi da?`, `Um ${say(t)} ${t.activity.does}.`)
-    if (last) { setLumiDoes(t.activity); setLumiMood(t.activity.mood, 0) }
-    return false
-  }, [resolved, tried, t, status, right, wrong, setLumiMood])
-
   const submitAnalog = useCallback((e) => {
     if (resolved || bird === 'puzzled') return
     const cur = toHM(hands)
-    if (timeDiffMin(cur.h, cur.m, t.h, t.m) <= TOLERANCE[tier]) { right(`Es ist ${say(t)}.`, e.currentTarget); return }
+    if (timeDiffMin(cur.h, cur.m, t.h, t.m) <= TOLERANCE[tier]) { right(e.currentTarget); return }
     // Which hand is off? The minute hand alone decides "halb", "Viertel" …
     const minuteOk = Math.min(Math.abs(cur.m - t.m), 60 - Math.abs(cur.m - t.m)) <= TOLERANCE[tier]
-    const hint = minuteOk
-      ? 'Der lange Zeiger stimmt schon. Schau noch einmal auf den kurzen Zeiger.'
-      : cur.h % 12 === t.h % 12
-        ? 'Der kurze Zeiger stimmt schon. Schau noch einmal auf den langen Zeiger.'
-        : 'Der kurze Zeiger zeigt die Stunde, der lange Zeiger die Minuten. Versuch es noch einmal.'
-    if (status === 'hint') {
-      missed.current.add(idx)
-      setStatus('shown')
-      sfx.boing()
-      sayWrong(`Schau, so sieht ${say(t)} aus. ${describeHands(t.h, t.m)}`)
-      showOnClock(() => ring())
-      return
-    }
-    wrong(hint)
-  }, [resolved, bird, hands, t, tier, status, idx, right, wrong, showOnClock, ring])
+    const off = minuteOk ? 'hour' : cur.h % 12 === t.h % 12 ? 'minute' : 'both'
+    wrong(off, () => showOnClock(() => ring(callsFor(t))))
+  }, [resolved, bird, hands, t, tier, right, wrong, showOnClock, ring])
 
   // A tap on the closed door: the cuckoo peeks out and giggles
   const peek = () => {
@@ -895,11 +891,11 @@ export default function ClockGame({ level = 1, onComplete }) {
   // ── Layout: the clock takes what is left of the height ───────────────────
   const wide    = area.w > area.h * 1.15 && area.w >= 560
   const compact = area.w < 520
-  const side    = mode === 'read'  ? (wide ? { w: 340, h: 0 } : { w: 0, h: compact ? 150 : 160 })
-                : mode === 'daily' ? (wide ? { w: 300, h: 0 } : { w: 0, h: compact ? 140 : 150 })
+  const side    = mode === 'read'  ? (wide ? { w: 250, h: 0 } : { w: 0, h: compact ? 172 : 180 })
+                : mode === 'daily' ? (wide ? { w: 300, h: 0 } : { w: 0, h: compact ? 176 : 196 })
                 :                    (wide ? { w: 230, h: 0 } : { w: 0, h: compact ? 136 : 80 })
   const gap     = 16
-  const headroom = 58     // the cuckoo's wish bubble above the roof
+  const headroom = 78     // the cuckoo's wish bubble above the roof
   const clockPx = Math.max(120, Math.floor(Math.min(
     ((wide ? area.h : area.h - side.h - gap) - headroom) / HOUSE_H,
     (wide ? area.w - side.w - gap : area.w) / HOUSE_W,
@@ -909,31 +905,40 @@ export default function ClockGame({ level = 1, onComplete }) {
   if (!t) return null
 
   const wish = mode === 'set' && !resolved
-    ? <><Art art={t.treat.icon} size={38} /><span>{label(t, level)}</span></>
+    ? <><Art art={t.treat} size={42} /><TimeToken t={t} level={level} size={56} /></>
     : null
 
   const fertig = (
-    <motion.button key="fertig"
-      whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.94 }}
+    <motion.button key="fertig" ref={hint.fertig}
+      whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.92 }}
+      animate={moved && !resolved && !reduceMotion() ? { scale: [1, 1.06, 1] } : { scale: 1 }}
+      transition={moved ? { duration: 1.2, repeat: Infinity } : {}}
       onClick={submitAnalog} disabled={resolved}
-      {...hearable('Fertig')} aria-label="Fertig"
+      aria-label="Fertig"
       style={{
         ...pxButton('green'), color: INK, textShadow: '0 1px 0 rgba(255,255,255,0.35)',
-        padding: '6px 22px 6px 12px', minHeight: 60, fontSize: 22, opacity: resolved ? 0.5 : 1,
+        padding: '6px 22px 6px 12px', minHeight: 64, fontSize: 22, opacity: resolved ? 0.5 : 1,
         display: 'flex', alignItems: 'center', gap: 8,
-      }}><Art art="🐦" size={44} />Fertig!</motion.button>
+      }}><Art art="🐦" size={46} />✔</motion.button>
   )
 
   const steppers = [['hour', 'Stundenzeiger', 60, HOUR_C], ['minute', 'Minutenzeiger', 5, MIN_C]].map(([kind, name, stepBy, color]) => (
-    <div key={kind} {...hearable(kind === 'hour' ? 'Der kurze Zeiger' : 'Der lange Zeiger')}
-      style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+    <div key={kind} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
       <HandIcon kind={kind} />
       <StepButton label="−" color={color} disabled={resolved}
-        onPress={() => setHands(v => (v - stepBy + 720) % 720)} ariaLabel={`${name} zurück`} />
+        onPress={() => turnHands((hands - stepBy + 720) % 720)} ariaLabel={`${name} zurück`} />
       <StepButton label="+" color={color} disabled={resolved}
-        onPress={() => setHands(v => (v + stepBy) % 720)} ariaLabel={`${name} vor`} />
+        onPress={() => turnHands((hands + stepBy) % 720)} ariaLabel={`${name} vor`} />
     </div>
   ))
+
+  // The hand shows turning a hand first, then (once turned) the button
+  const hintHand = mode === 'set'
+    ? (moved ? <HintHand to={hint.fertig} delay={6000} active={!resolved && bird !== 'puzzled'} />
+      : <HintHand from={hint.a} to={hint.b} delay={idx === 0 ? 2000 : 6000} active={!resolved && bird !== 'puzzled'} />)
+    : mode === 'read'
+      ? <HintHand to={hint.guesses} delay={idx === 0 ? 2000 : 6000} active={!resolved && bird !== 'puzzled'} />
+      : <HintHand from={hint.cards} to={hint.lumi} delay={idx === 0 ? 2000 : 6000} active={!resolved && bird !== 'puzzled'} />
 
   return (
     <div style={{
@@ -942,15 +947,8 @@ export default function ClockGame({ level = 1, onComplete }) {
       gap: 'clamp(6px,1.2dvh,12px)', overflow: 'hidden', position: 'relative',
     }}>
       {bursts}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', maxWidth: 760, flexShrink: 0 }}>
-        <RoundTrail total={times.length} done={idx + (resolved ? 1 : 0)} walker="🐦" goal="🎂" style={{ flex: 1 }} />
-        <motion.button whileTap={{ scale: 0.9 }} onClick={speakTask} aria-label="Aufgabe noch einmal hören"
-          style={{
-            width: 52, height: 52, flexShrink: 0, background: 'var(--px-gold)', border: `3px solid ${INK}`, borderRadius: 12,
-            boxShadow: `inset 0 3px 0 rgba(255,255,255,0.45), inset 0 -5px 0 rgba(0,0,0,0.2), 0 4px 0 ${INK}`,
-            cursor: 'pointer', fontSize: 26, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>🔊</motion.button>
-      </div>
+      {!ending && hintHand}
+      <RoundTrail total={times.length} done={idx + (resolved ? 1 : 0)} walker="🐦" goal="🎂" style={{ width: 'calc(100% - 60px)', maxWidth: 700, flexShrink: 0 }} />
 
       <DragArea autoTarget="lumi" disabled={resolved}>
       <div ref={areaRef} style={{
@@ -958,33 +956,34 @@ export default function ClockGame({ level = 1, onComplete }) {
         display: 'flex', flexDirection: wide ? 'row' : 'column',
         alignItems: 'center', justifyContent: 'center', gap,
       }}>
-        <div style={{ paddingTop: headroom, flexShrink: 0 }}>
-          <CuckooClock size={clockPx} bird={bird} calls={calls} paused={paused}
-            treat={treatOut && t.treat ? t.treat.icon : null} wish={wish}
+        <div ref={houseRef} style={{ paddingTop: headroom, flexShrink: 0 }}>
+          <CuckooClock size={clockPx} bird={bird} calls={calls} paused={paused} hat={streak >= 3 || ending}
+            treat={treat} wish={wish}
             onDoor={mode !== 'set' && !resolved ? peek : null}>
             <ClockFace
               value={mode === 'set' ? hands : fromHM(t.h, t.m)}
-              onChange={setHands}
+              onChange={turnHands}
               interactive={mode === 'set' && !resolved}
               level={level}
-              highlightHands={status === 'hint'}
+              highlight={pulse}
               size={clockPx}
             />
+            <span ref={hint.a} style={{ position: 'absolute', width: 2, height: 2, pointerEvents: 'none', ...ANCHOR(50) }} />
+            <span ref={hint.b} style={{ position: 'absolute', width: 2, height: 2, pointerEvents: 'none', ...ANCHOR(150) }} />
           </CuckooClock>
         </div>
 
-        {/* READ: four animals guess, the child says who is right */}
+        {/* READ: four animals hold up a time, the child taps who is right */}
         {mode === 'read' && (
-          <div style={{
+          <div ref={hint.guesses} style={{
             display: 'grid', gridTemplateColumns: wide ? '1fr' : '1fr 1fr',
-            gap: wide ? 12 : 8, width: wide ? side.w : 'min(100%, 560px)', flexShrink: 0,
+            gap: wide ? 12 : 10, width: wide ? side.w : 'min(100%, 460px)', flexShrink: 0,
           }}>
             {options.map((opt, i) => {
-              const isAnswer = opt === t
+              const isAnswer = opt.h === t.h && opt.m === t.m
               const state = resolved && isAnswer ? 'right' : !tried.includes(i) ? null : picked === i && !resolved ? 'oops' : 'tried'
               return (
-                <Guesser key={`${opt.h}:${opt.m}`} art={GUESSERS[i]} text={label(opt, level)} hear={say(opt)}
-                  speaking={speaking === i} state={state} compact={compact}
+                <Guesser key={`${idx}-${i}`} art={opt.art} t={opt} level={level} state={state} compact={compact}
                   onPick={e => pickGuess(opt, i, e)} />
               )
             })}
@@ -999,26 +998,26 @@ export default function ClockGame({ level = 1, onComplete }) {
           }}>
             <DropZone id="lumi" label="Lumi" onDrop={giveActivity} slop={30}>
               {hover => (
-                <div style={{ position: 'relative' }}>
-                  <Critter art="lumi" size={compact ? 84 : wide ? 120 : 100} mood={hover ? 'hungry' : lumiMood} talks
-                    wish={lumiDoes ? <Art art={lumiDoes.icon} size={compact ? 34 : 44} /> : <span style={{ fontSize: 28 }}>?</span>}
-                    wishSide={wide ? 'top' : 'right'} label="Lumi" />
+                <div ref={hint.lumi} style={{ position: 'relative', paddingTop: wide ? 0 : 52 }}>
+                  <Critter art="lumi" size={compact ? 84 : wide ? 120 : 100} mood={hover ? 'hungry' : lumiMood}
+                    wish={lumiDoes ? <Art art={lumiDoes.icon} size={compact ? 34 : 44} /> : <span style={{ fontSize: 30, lineHeight: 1 }}>?</span>}
+                    label="Lumi" />
                 </div>
               )}
             </DropZone>
-            <div style={{ display: 'flex', gap: compact ? 8 : 12, flex: wide ? undefined : 1, justifyContent: 'center' }}>
+            <div ref={hint.cards} style={{ display: 'flex', gap: compact ? 8 : 12, flex: wide ? undefined : 1, justifyContent: 'center' }}>
               {dailyOptions.map(act => {
                 const gone = lumiDoes?.id === act.id
                 const isTried = tried.includes(act.id) && !gone
                 return (
                   <Draggable key={act.id} id={act.id} data={act} label={plain(act.label)} disabled={isTried || resolved}
                     style={{ visibility: gone ? 'hidden' : 'visible', opacity: isTried ? 0.4 : 1 }}>
-                    <div {...hearable(plain(act.label))} style={{
-                      width: compact ? 82 : 92, padding: '8px 4px 6px', boxSizing: 'border-box', borderRadius: 16,
+                    <div style={{
+                      width: compact ? 84 : 96, padding: '8px 4px 6px', boxSizing: 'border-box', borderRadius: 16,
                       background: '#FFFDF7', border: `3px solid ${INK}`, boxShadow: '0 4px 0 rgba(42,27,61,0.25)',
                       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
                     }}>
-                      <Art art={act.icon} size={compact ? 50 : 58} />
+                      <Art art={act.icon} size={compact ? 54 : 62} />
                       <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 13, color: INK, textAlign: 'center', lineHeight: 1.1, hyphens: 'manual', overflowWrap: 'anywhere' }}>{act.label}</span>
                     </div>
                   </Draggable>
@@ -1044,19 +1043,19 @@ export default function ClockGame({ level = 1, onComplete }) {
 
       {/* After a second miss the answer stays up until the child moves on */}
       <AnimatePresence>
-        {status === 'shown' && (
+        {status === 'shown' && !ending && (
           <motion.button key="weiter"
             initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 300, delay: 1.2 }}
+            transition={{ type: 'spring', stiffness: 300, delay: 1.6 }}
             whileTap={{ scale: 0.94 }}
             onClick={nextRound}
-            {...hearable('Weiter')}
+            aria-label="Weiter"
             style={{
               ...pxButton('green'), color: INK, textShadow: '0 1px 0 rgba(255,255,255,0.35)',
               position: 'absolute', right: 'clamp(12px,3vw,32px)', bottom: 'clamp(12px,2vw,24px)', zIndex: 6,
-              padding: '10px 36px', minHeight: 56, fontSize: 'clamp(18px,3.5vw,22px)',
+              padding: '10px 32px', minHeight: 60, fontSize: 30,
             }}
-          >Weiter! ➡️</motion.button>
+          >➡️</motion.button>
         )}
       </AnimatePresence>
     </div>

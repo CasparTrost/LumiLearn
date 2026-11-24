@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { afterNarration } from '../../narrator.js'
 import { usePaused } from '../../lib/pause.js'
-import { hearable } from '../../lib/hearable.js'
-import { Art } from '../../components/play/index.js'
+import { sfx } from '../../sfx.js'
+import { Critter, useBursts } from '../../components/play/index.js'
 
 /**
  * The play stage of the number games (Bruno, Obststand, Kraken-Party,
@@ -97,7 +97,6 @@ const round = (size, bg) => ({
 export function DoneButton({ onClick, disabled, size = 84 }) {
   return (
     <motion.button type="button" onClick={disabled ? undefined : onClick} aria-label="Fertig" aria-disabled={!!disabled}
-      {...hearable('Fertig')}
       animate={{ opacity: disabled ? 0.45 : 1, scale: disabled ? 0.92 : 1 }}
       whileTap={disabled ? undefined : { scale: 0.85 }}
       style={{ ...round(size, '#5cc45a'), cursor: disabled ? 'default' : 'pointer' }}>
@@ -105,16 +104,6 @@ export function DoneButton({ onClick, disabled, size = 84 }) {
         <path d="M8 21 L17 30 L33 11" fill="none" stroke="#2a1b3d" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" />
         <path d="M8 21 L17 30 L33 11" fill="none" stroke="#fff" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
-    </motion.button>
-  )
-}
-
-/** The speaker: hear the task again. */
-export function HearButton({ onClick, size = 56, label = 'Aufgabe noch einmal hören', style }) {
-  return (
-    <motion.button type="button" onClick={onClick} aria-label={label} whileTap={{ scale: 0.88 }}
-      style={{ ...round(size, '#ffc93c'), ...style }}>
-      <Art art="🔊" size={size * 0.6} />
     </motion.button>
   )
 }
@@ -159,5 +148,69 @@ export function Pips({ n, size = 80, color = '#ff6b5b', fill = n, face = true })
         <circle key={i} cx={cx} cy={cy} r={11} fill={i < fill ? color : 'rgba(42,27,61,0.12)'} stroke="#2a1b3d" strokeWidth={3} />
       ))}
     </svg>
+  )
+}
+
+/**
+ * Counting you can see: a number that pops up where a thing was laid down
+ * and floats away ("1", "2", "3" …). The voice used to count along; only
+ * recorded sentences are spoken now, so the count is shown instead.
+ *
+ *   const [pops, pop] = usePops()
+ *   pop(3)              // somewhere in an event
+ *   <div style={{ position: 'relative' }}>{pops}</div>
+ */
+export function usePops({ color = '#2a1b3d', size = 44 } = {}) {
+  const [list, setList] = useState([])
+  const reduce = useReducedMotion()
+  const pop = useCallback((n, dx = 0) => {
+    const id = Math.random()
+    setList(l => [...l.slice(-4), { id, n, dx }])
+    setTimeout(() => setList(l => l.filter(p => p.id !== id)), 1000)
+  }, [])
+  const node = (
+    <AnimatePresence>
+      {list.map(p => (
+        <motion.span key={p.id} aria-hidden="true"
+          initial={{ opacity: 0, scale: 0.3, y: 0, x: p.dx }}
+          animate={reduce ? { opacity: [0, 1, 0] } : { opacity: [0, 1, 1, 0], scale: [0.3, 1.25, 1, 0.9], y: [0, -30, -60, -80], x: p.dx }}
+          transition={{ duration: 0.95, times: [0, 0.2, 0.6, 1] }}
+          style={{
+            position: 'absolute', left: '50%', top: 0, marginLeft: -size / 2, width: size, zIndex: 6, pointerEvents: 'none',
+            textAlign: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: size, lineHeight: 1, color,
+            WebkitTextStroke: '2px #2a1b3d', textShadow: '0 3px 0 rgba(42,27,61,0.35)',
+          }}>{p.n}</motion.span>
+      ))}
+    </AnimatePresence>
+  )
+  return [node, pop]
+}
+
+/**
+ * The end of a level, in the game itself: everyone of the level comes out
+ * and dances, confetti flies, and only then the results screen opens.
+ */
+export function Finale({ cast, onDone, ms = 2800, size = 110 }) {
+  const { later } = useLater()
+  const [bursts, burst] = useBursts()
+  const ref = useRef(null)
+  useEffect(() => {
+    sfx.tada()
+    later(150, () => burst(ref.current, 'confetti', 24))
+    later(900, () => burst(ref.current, 'stars', 14))
+    later(ms, onDone)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+      style={{ position: 'absolute', inset: 0, zIndex: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(circle at 50% 55%, rgba(255,253,247,0.92), rgba(255,253,247,0.7) 70%)' }}>
+      <div ref={ref} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'center', gap: 8, maxWidth: '92%' }}>
+        {cast.map((art, i) => (
+          <motion.div key={i} initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: i * 0.08, type: 'spring', stiffness: 260, damping: 16 }}>
+            <Critter art={art} size={size} mood={i % 2 ? 'happy' : 'dance'} />
+          </motion.div>
+        ))}
+      </div>
+      {bursts}
+    </motion.div>
   )
 }

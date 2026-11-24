@@ -88,6 +88,9 @@ export default function FitBox({ children }) {
         position: 'absolute', top: '50%', left: '50%',
         width: box?.w ?? '100%', height: box?.h ?? MIN_H,
         transform: `translate(-50%, -50%) scale(${box?.scale ?? 1})`,
+        // until the first measurement the game would show one frame at the
+        // wrong size and then jump
+        visibility: box ? 'visible' : 'hidden',
         display: 'flex', flexDirection: 'column',
       }}>
         {children}

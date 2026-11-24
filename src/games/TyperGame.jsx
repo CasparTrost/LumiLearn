@@ -1,15 +1,14 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { sfx } from '../sfx.js'
-import { narrate, afterNarration } from '../narrator.js'
+import { afterNarration } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
-import { hearable } from '../lib/hearable.js'
-import { Art, Wish, RoundTrail } from '../components/play/index.js'
-import HearOptions from '../components/HearOptions.jsx'
+import { Art, Wish, RoundTrail, HintHand, useBursts } from '../components/play/index.js'
 import { Cauldron, WitchLumi, Puff, Alive, useFliers } from './kessel/Cauldron.jsx'
-import { soundOf } from './letterSounds.js'
+import { voice, KEY } from './woerter/voice.js'
+import Finale from './woerter/Finale.jsx'
 import { INK, pxCard } from './px.js'
 
 // Keyboard key in the pixel look: parchment key, gold when it is the hinted
@@ -116,11 +115,10 @@ const ROWS = [
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ'.split('')
 
 // Anlauttabelle for the typing levels: every key shows a word that starts
-// with its sound, and says it — "Mmm wie Maus". A child who cannot read yet
-// hears the first sound of "Haus" and looks for the key with the dog. One
-// clear picture per letter, all different; C, Q, V, X and Y take the sound
-// they most often start a word with (letterSounds.js), the umlauts the few
-// words a child knows that start with them.
+// with its sound — the key with the dog is the H of "Hund". One clear
+// picture per letter, all different; C, Q, V, X and Y take the sound they
+// most often start a word with, the umlauts the few words a child knows
+// that start with them.
 const ANLAUT = {
   A:['Apfel','🍎'],   B:['Banane','🍌'],  C:['Clown','🤡'],  D:['Dino','🦖'],     E:['Ente','🦆'],
   F:['Fisch','🐟'],   G:['Giraffe','🦒'], H:['Hund','🐕'],   I:['Igel','🦔'],     J:['Jacke','🧥'],
@@ -130,8 +128,6 @@ const ANLAUT = {
   Y:['Yoga','🧘'],    Z:['Zebra','🦓'],   Ä:['Ähre','🌾'],   Ö:['Ölkanne',':px-oelkanne:'],
   Ü:['überrascht','😮'],
 }
-// "Mmm wie Maus"
-const anlaut = c => `${soundOf(c)} wie ${ANLAUT[c][0]}`
 
 function shuffle(a) { return [...a].sort(() => Math.random() - 0.5) }
 
@@ -159,17 +155,6 @@ function compactKeys(word) {
 }
 
 
-// What the conjured thing says once it is out of the cauldron ("Kuh! Muuh!").
-const SOUND = {
-  KUH: 'Muuh!', HUND: 'Wau, wau!', KATZE: 'Miau!', SCHAF: 'Mäh!', ZIEGE: 'Mäh!', ENTE: 'Quak, quak!',
-  FROSCH: 'Quak!', HAHN: 'Kikeriki!', ESEL: 'I-aah!', SCHWEIN: 'Grunz, grunz!', LÖWE: 'Roaar!', TIGER: 'Roaar!',
-  EULE: 'Schuhu!', BIENE: 'Summ, summ!', MAUS: 'Piep, piep!', KÜKEN: 'Piep, piep!', VOGEL: 'Tschilp!',
-  WOLF: 'Auuuh!', GANS: 'Schnatter, schnatter!', ELEFANT: 'Törööö!', AFFE: 'Uh, uh, ah, ah!', SCHLANGE: 'Sssss!',
-  KROKODIL: 'Schnapp!', DRACHE: 'Fauch!', ZUG: 'Tschu, tschu!', BUS: 'Tüt, tüt!', AUTO: 'Brumm, brumm!',
-  TAXI: 'Tüt, tüt!', TRAKTOR: 'Brumm, brumm!', UHR: 'Tick, tack!', TROMMEL: 'Bumm, bumm!', TROMPETE: 'Törööö!',
-  RAKETE: 'Drei, zwei, eins, los!', FLUGZEUG: 'Wuuusch!', FEUER: 'Knister, knister!', HASE: 'Hopp, hopp!',
-  KÄNGURU: 'Hopp, hopp!', GESCHENK: 'Überraschung!', ROBOTER: 'Piep, piep, bup!',
-}
 // …and how it moves. Everything else hops.
 const MOVE_OF = Object.fromEntries([
   ['drive', 'ZUG BUS AUTO TAXI TRAKTOR FAHRRAD ROLLER'],
@@ -183,8 +168,8 @@ const BREWS = ['#7be36b', '#5fd3c9', '#7aa8ff', '#c08bff', '#ff8fd0', '#ffb347',
 
 /**
  * The on-screen keyboard. `hint` is the letter that pulses, `onBack` adds ⌫,
- * `pictures` turns it into the Anlauttabelle: each key with its picture,
- * saying its sound on hover and keyboard focus. `onKey(letter, keyElement)`.
+ * `pictures` turns it into the Anlauttabelle: each key with its picture.
+ * `onKey(letter, keyElement)`.
  */
 function Keyboard({ word, hint, onKey, onBack, pictures = false }) {
   const narrow = useNarrow()
@@ -197,12 +182,11 @@ function Keyboard({ word, hint, onKey, onBack, pictures = false }) {
     const { picSize, ...box } = size
     return (
       <motion.button key={k} data-key={k}
-        whileTap={{ scale:0.85, y:4 }}
+        whileTap={{ scale:0.82, y:5 }}
         onClick={e => (back ? onBack() : onKey(k, e.currentTarget))}
-        {...(pic ? hearable(anlaut(k)) : null)}
-        aria-label={back ? 'Löschen' : pic ? `${k}, ${anlaut(k)}` : k}
-        animate={hinted ? { scale:[1,1.1,1], boxShadow:[KEY_RING[0],KEY_RING[1],KEY_RING[0]] } : {}}
-        transition={hinted ? { duration:1.3, repeat:Infinity } : {}}
+        aria-label={back ? 'Löschen' : pic ? `${k} wie ${ANLAUT[k][0]}` : k}
+        animate={hinted ? { scale:[1,1.12,1], boxShadow:[KEY_RING[0],KEY_RING[1],KEY_RING[0]] } : { scale: 1 }}
+        transition={hinted ? { duration:1.1, repeat:Infinity } : { duration: 0.2 }}
         style={{
           ...box,
           ...keyLook(hinted, back),
@@ -221,8 +205,8 @@ function Keyboard({ word, hint, onKey, onBack, pictures = false }) {
 
   if (narrow) {
     // with pictures the keys grow a little, so letter and picture both stay
-    // readable: five 58 px keys fit a 360 px phone
-    const size = pictures ? { width:58, height:74, fontSize:22, picSize:30 } : { width:52, height:52, fontSize:24 }
+    // clear: five 58 px keys fit a 360 px phone
+    const size = pictures ? { width:58, height:74, fontSize:22, picSize:30 } : { width:58, height:58, fontSize:26 }
     return (
       <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'center', gap:8, width:'100%', maxWidth:420, flexShrink:0 }}>
         {keys.map(k => key(k, size))}
@@ -245,20 +229,6 @@ function Keyboard({ word, hint, onKey, onBack, pictures = false }) {
   )
 }
 
-// What to say when the child is looking for a letter: the first letter also
-// gets its word ("Z wie Zug"), the rest just the letter name. The typing
-// levels say the key's sound and picture instead (anlaut).
-function lookFor(char, word, pos) {
-  return pos === 0 ? `das ${char}, ${char} wie ${nameOf(word)}` : `das ${char}`
-}
-
-const firstTask = (word, falling) => (falling
-  ? `Wir zaubern das Wort ${nameOf(word)}! Die Buchstaben fallen vom Himmel. Tipp sie auf der Tastatur, bevor sie unten sind.`
-  : `Wir zaubern das Wort ${nameOf(word)}! Tipp die Buchstaben auf der Tastatur, dann fliegen sie in den Kessel.`)
-const nextTask = word => `Jetzt zaubern wir das Wort ${nameOf(word)}.`
-// "Kuh! Muuh!"
-const conjured = word => `${nameOf(word)}! ${SOUND[word] ?? ''}`.trim()
-
 // Lumi's act (WitchLumi) for a moment, then back to idle
 function useAct() {
   const [state, set] = useState({ act: 'idle', beat: 0 })
@@ -275,21 +245,24 @@ function useAct() {
 /**
  * Everything the cauldron does, shared by both ways of playing: letters fly
  * in (a splash, the potion changes colour), wrong ones are coughed back out,
- * and the finished word comes alive. The surprise now and then: Lumi's hat
- * jumps off, or the cauldron burps.
+ * and the finished word comes alive. The running gag: now and then Lumi's
+ * hat jumps off, or the cauldron burps; a run of words conjured at once
+ * makes the payoff bigger.
  */
 function useKessel() {
   const [lumi, act] = useAct()
   const [cough, setCough] = useState(false)
   const [splash, setSplash] = useState(0)
   const [fliers, fly] = useFliers()
+  const [bursts, burst] = useBursts()
   const mouthRef = useRef(null)
   const timers = useRef([])
   useEffect(() => () => timers.current.forEach(clearTimeout), [])
   const later = (fn, ms) => { timers.current.push(setTimeout(fn, ms)) }
 
-  const letterIn = (fromEl, char) => {
+  const letterIn = (fromEl, char, keyEl) => {
     fly(fromEl, mouthRef.current, char, true)
+    if (keyEl) burst(keyEl, 'stars', 5)
     act('stir', 500)
     later(() => { setSplash(n => n + 1); sfx.pop() }, 480)
   }
@@ -298,8 +271,10 @@ function useKessel() {
     later(() => { sfx.burp(); setCough(true); act('cough', 800) }, 480)
     later(() => setCough(false), 1300)
   }
-  const wordDone = () => {
+  const wordDone = (streak) => {
     sfx.tada()
+    later(() => sfx.sparkle(), 400)
+    if (streak >= 3) later(() => { if (mouthRef.current) burst(mouthRef.current, 'confetti', 18) }, 350)
     if (Math.random() < 0.35) {
       act(Math.random() < 0.5 ? 'hat' : 'cheer', 1300)
       later(() => { sfx.burp(); setSplash(n => n + 1) }, 1300)
@@ -308,11 +283,15 @@ function useKessel() {
   }
   const tickle = () => { sfx.giggle(); act('stir', 500) }
   const stir = () => { sfx.pop(); setSplash(n => n + 1) }
-  return { lumi, cough, splash, fliers, mouthRef, letterIn, letterOut, wordDone, tickle, stir }
+  return { lumi, cough, splash, fliers, bursts, mouthRef, letterIn, letterOut, wordDone, tickle, stir }
 }
 
-/** The word in the steam: one bubble per letter, the next one waiting. */
-function Slots({ word, typed, nudge }) {
+/**
+ * The word in the steam: one bubble per letter. The next one waits with
+ * its letter in it, the ones after it are faint: the child copies the word
+ * letter by letter, no reading needed.
+ */
+function Slots({ word, typed, nudge, currentRef }) {
   const n = word.length
   return (
     <div role="img" aria-label={nameOf(word)} data-word={word}
@@ -320,22 +299,23 @@ function Slots({ word, typed, nudge }) {
       {word.split('').map((ch, i) => {
         const isTyped = i < typed, isCurrent = i === typed
         return (
-          <motion.div key={`${i}-${isTyped}`}
+          <motion.div key={`${word}-${i}-${isTyped}`} ref={isCurrent ? currentRef : undefined}
             initial={isTyped ? { scale: 0.4, y: 30 } : false}
             animate={isTyped ? { scale: 1, y: 0 }
-              : isCurrent && nudge ? { x: [0, -6, 6, -4, 0], scale: 1 }
-              : isCurrent ? { scale: [1, 1.1, 1] } : { scale: 1 }}
+              : isCurrent && nudge ? { x: [0, -6, 6, -4, 0], scale: 1.08 }
+              : isCurrent ? { scale: [1, 1.12, 1] } : { scale: 1 }}
             transition={isTyped ? { delay: 0.45, type: 'spring', stiffness: 400, damping: 14 }
               : isCurrent && !nudge ? { duration: 1, repeat: Infinity } : { duration: 0.35 }}
             style={{
               width: `min(58px, calc((100% - ${(n - 1) * 6}px) / ${n}))`, aspectRatio: '1', borderRadius: '50%',
               display:'flex', alignItems:'center', justifyContent:'center', boxSizing:'border-box',
-              fontFamily:'var(--font-heading)', fontWeight:800, fontSize:'clamp(18px,4.4vw,30px)', color: INK,
-              background: isTyped ? '#ffd34d' : isCurrent ? 'rgba(255,253,247,0.95)' : 'rgba(255,253,247,0.35)',
-              border: isTyped ? `3px solid ${INK}` : isCurrent ? '3px dashed #ffb020' : '3px solid rgba(255,253,247,0.6)',
-              boxShadow: isTyped ? '0 0 14px rgba(255,211,77,0.8), inset 0 -4px 0 rgba(0,0,0,0.12)' : 'none',
+              fontFamily:'var(--font-heading)', fontWeight:800, fontSize:'clamp(18px,4.4vw,30px)',
+              color: isTyped || isCurrent ? INK : 'rgba(255,253,247,0.75)',
+              background: isTyped ? '#ffd34d' : isCurrent ? 'rgba(255,253,247,0.95)' : 'rgba(255,253,247,0.18)',
+              border: isTyped ? `3px solid ${INK}` : isCurrent ? '3px dashed #ffb020' : '3px solid rgba(255,253,247,0.45)',
+              boxShadow: isTyped ? '0 0 14px rgba(255,211,77,0.8), inset 0 -4px 0 rgba(0,0,0,0.12)' : isCurrent ? '0 0 0 5px rgba(255,201,60,0.35)' : 'none',
             }}>
-            {i <= typed ? ch : ''}
+            {ch}
           </motion.div>
         )
       })}
@@ -344,7 +324,7 @@ function Slots({ word, typed, nudge }) {
 }
 
 /** Lumi, the wish and the cauldron, side by side. */
-function KesselStage({ word, typed, done, k, lumiSize, potW }) {
+function KesselStage({ word, typed, done, streak, k, lumiSize, potW }) {
   return (
     // the wish over Lumi's hat stands higher than the cauldron: room for it
     <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'center', gap:'clamp(10px,3vw,44px)', flexShrink:0,
@@ -360,27 +340,27 @@ function KesselStage({ word, typed, done, k, lumiSize, potW }) {
       <div style={{ position:'relative' }}>
         <Cauldron width={potW} brew={BREWS[typed % BREWS.length]}
           cough={k.cough} splash={k.splash} mouthRef={k.mouthRef} onTap={k.stir} />
-        {done && <Puff key={'p' + word} size={potW} />}
-        {done && <Alive key={'a' + word} art={WORDS[word]} size={potW * 0.62} move={MOVE_OF[word]} />}
+        {done && <Puff key={'p' + word} size={potW * (1 + Math.min(streak, 4) * 0.1)} />}
+        {done && <Alive key={'a' + word} art={WORDS[word]} size={potW * (0.62 + Math.min(streak, 4) * 0.05)} move={MOVE_OF[word]} />}
       </div>
     </div>
   )
 }
 
-// The trail along the top, and the 🔊 to hear the task again
-function TopRow({ total, done, onHear, children }) {
+// The trail along the top (and the hearts, while letters fall)
+function TopRow({ total, done, children }) {
   return (
     <div style={{ display:'flex', alignItems:'center', gap:12, width:'100%', maxWidth:760, flexShrink:0 }}>
       <div style={{ flex: 1, padding: '2px 6px', borderRadius: 99, background: 'rgba(255,253,247,0.22)' }}>
         <RoundTrail total={total} done={done} walker="🧹" goal="🔮" />
       </div>
       {children}
-      <HearOptions items={[onHear()]} label="Aufgabe noch einmal hören" size={52} />
     </div>
   )
 }
 
-// Move on once the payoff is over, but never while the help is open
+// Move on once the payoff has been seen, but never while the help is open
+const PAYOFF_MS = 2400
 function useAdvance(go, paused) {
   const [ready, setReady] = useState(false)
   useEffect(() => {
@@ -388,8 +368,21 @@ function useAdvance(go, paused) {
     setReady(false)
     go()
   }, [ready, paused, go])
-  return useCallback(() => afterNarration(() => setReady(true), { minMs: 1700 }), [])
+  return useCallback(() => afterNarration(() => setReady(true), { minMs: PAYOFF_MS }), [])
 }
+
+// A word starts: the task once per level, then the word (when recorded)
+function announce(word, first) {
+  sayTask()
+  voice([first && KEY.task('zauberkessel'), KEY.word(nameOf(word))])
+}
+// A word is done: praise now and then, the word and what it says ("Kuh! Muuh!")
+function conjured(word) {
+  sayRight(null, { onEnd: () => voice([KEY.word(nameOf(word)), KEY.noise(nameOf(word))]) })
+}
+
+// The element of an on-screen key, looked up when the hint hand needs it
+const keyOf = (root, char) => ({ get current() { return root.current?.querySelector(`[data-key="${char}"]`) } })
 
 // ─── Falling letters (level >= 4) ───────────────────────────────────────────
 // One letter falls from the night sky at a time (always the NEXT letter of
@@ -407,11 +400,14 @@ function FallingLettersGame({ level, onComplete }) {
   const [showHint,     setShowHint]   = useState(false)
   const [lives,        setLives]      = useState(3)
   const [letterY,      setLetterY]    = useState(-10)
-  const [ready,        setReady]      = useState(false) // the letter waits until the task is said
+  const [ready,        setReady]      = useState(false) // the letter waits a moment at each new word
   const [completing,   setCompleting] = useState(false)
   const [fizzle,       setFizzle]     = useState(null)  // where the last letter went out
+  const [streak,       setStreak]     = useState(0)
+  const [finale,       setFinale]     = useState(false)
   const tickRef       = useRef(null)
   const starRef       = useRef(null)
+  const rootRef       = useRef(null)
   const livesRef      = useRef(3)
   const completingRef = useRef(false)
   // Words typed right at once (no wrong key, no hint, no lost heart): the score
@@ -423,29 +419,29 @@ function FallingLettersGame({ level, onComplete }) {
   const word       = words[wIdx] ?? ''
   const targetChar = word[typed] ?? ''
   const letterX    = xSeeds.current[(wIdx * 20 + typed) % 200]
+  const keyRef     = useMemo(() => keyOf(rootRef, targetChar), [targetChar])
 
   // Keep refs in sync — used inside the interval callback to avoid stale closures
   livesRef.current      = lives
   completingRef.current = completing
 
-  // The task, at the start of every word
+  // A new word: Lumi wishes for it, and the first letter comes after a moment
   useEffect(() => {
     if (!word) return
     setReady(false)
-    sayTask(wIdx === 0 ? firstTask(word, true) : nextTask(word))
-    return afterNarration(() => setReady(true), { minMs: 300, maxMs: 9000 })
+    announce(word, wIdx === 0)
+    const t = setTimeout(() => setReady(true), 900)
+    return () => clearTimeout(t)
   }, [wIdx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const nextWord = useCallback(() => {
     const nextIdx = wIdx + 1
-    if (nextIdx >= words.length) {
-      onComplete(result(firstTryRef.current, words.length))
-      return
-    }
+    if (nextIdx >= words.length) { setFinale(true); return }
     setWIdx(nextIdx)
     setTyped(0)
     setMisses(0)
     setShowHint(false)
+    setFizzle(null)
     helpedRef.current = false
     // Hearts belong to one word: a tough word costs that word, not the run.
     setLives(3)
@@ -453,21 +449,22 @@ function FallingLettersGame({ level, onComplete }) {
     setLetterY(-10)
     setCompleting(false)
     completingRef.current = false
-  }, [wIdx, words.length, onComplete])
+  }, [wIdx, words.length])
   const advance = useAdvance(nextWord, paused)
 
-  const finishWord = useCallback((helped, say) => {
+  const finishWord = useCallback((helped) => {
     setCompleting(true)
     completingRef.current = true
     if (!helped) firstTryRef.current += 1
-    k.wordDone()
-    say()
+    const s = helped ? 0 : streak + 1
+    setStreak(s)
+    k.wordDone(s)
     advance()
-  }, [k, advance])
+  }, [k, advance, streak])
 
   // A letter reached the ground: it fizzles out, one heart goes, and from now
-  // on the key is shown. With all three hearts gone the word is said and
-  // conjured anyway, and the next one comes.
+  // on the key is shown. With all three hearts gone the word is conjured
+  // anyway, and the next one comes.
   const letterLanded = useCallback(() => {
     const newLives = livesRef.current - 1
     livesRef.current = newLives
@@ -475,14 +472,15 @@ function FallingLettersGame({ level, onComplete }) {
     helpedRef.current = true
     setFizzle({ x: letterX, id: Date.now() })
     sfx.slideDown()
+    sayWrong()
     if (newLives <= 0) {
       setTyped(word.length)
-      finishWord(true, () => narrate([{ text: `Das war knifflig! Das Wort heißt ${nameOf(word)}.` }]))
+      finishWord(true)
+      voice([KEY.word(nameOf(word))])
       return
     }
     setShowHint(true)
-    narrate([{ text: `Oh, unten! Such ${lookFor(targetChar, word, typed)}.` }])
-  }, [word, targetChar, typed, letterX, finishWord])
+  }, [word, letterX, finishWord])
 
   // Fall loop
   useEffect(() => {
@@ -511,22 +509,21 @@ function FallingLettersGame({ level, onComplete }) {
       setMisses(n)
       helpedRef.current = true
       if (n >= 2) setShowHint(true)
-      sayWrong(`Das ist das ${char}. Wir suchen ${lookFor(targetChar, word, typed)}.`)
+      sayWrong()
       return
     }
     // the falling star itself is caught by the cauldron
-    k.letterIn(starRef.current ?? el, char)
+    k.letterIn(starRef.current ?? el, char, el)
     const newTyped = typed + 1
     setTyped(newTyped)
     setMisses(0)
     setShowHint(false)
     setLetterY(-10) // drop the next letter from the top
-    if (newTyped >= word.length) finishWord(helpedRef.current, () => sayRight(conjured(word)))
-    else narrate([{ text: char, rate: 0.9 }])
+    if (newTyped >= word.length) { finishWord(helpedRef.current); conjured(word) }
+    else voice([KEY.sound(char)])
   }, [targetChar, typed, word, misses, finishWord, k])
 
   // Physical keyboard
-  const rootRef = useRef(null)
   useEffect(() => {
     const onKey = (e) => {
       const c = e.key.toUpperCase()
@@ -536,9 +533,13 @@ function FallingLettersGame({ level, onComplete }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [handleChar])
 
+  // The hand: on the very first letter it shows the star going to its key;
+  // later it taps the key once the key is shown anyway (after a miss)
+  const first = wIdx === 0 && typed === 0 && misses === 0 && lives === 3
+
   return (
-    <div ref={rootRef} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', padding:'clamp(8px,1.6vw,18px) clamp(12px,3vw,32px)', gap:'clamp(6px,1.2vw,12px)' }}>
-      <TopRow total={words.length} done={wIdx + (completing ? 1 : 0)} onHear={() => nextTask(word)}>
+    <div ref={rootRef} style={{ position:'relative', flex:1, display:'flex', flexDirection:'column', alignItems:'center', padding:'clamp(8px,1.6vw,18px) clamp(12px,3vw,32px)', gap:'clamp(6px,1.2vw,12px)' }}>
+      <TopRow total={words.length} done={wIdx + (completing ? 1 : 0)}>
         <div style={{ display:'flex', gap:2 }} aria-label={`${lives} Herzen`}>
           {Array.from({ length: 3 }, (_, i) => (
             <motion.div key={i} animate={{ scale: i < lives ? 1 : 0.7, opacity: i < lives ? 1 : 0.25 }}>
@@ -555,7 +556,7 @@ function FallingLettersGame({ level, onComplete }) {
           <motion.div ref={starRef}
             key={`${wIdx}-${typed}`}
             style={{
-              position:'absolute', left: letterX + '%', top: `calc(${Math.max(0, letterY)}% - ${letterY / 100 * 64}px)`,
+              position:'absolute', left: letterX + '%', top: `calc(${Math.max(0, letterY)}% - ${Math.max(0, letterY) / 100 * 64}px)`,
               width:64, height:64, marginLeft:-32, borderRadius:'50%',
               background:'radial-gradient(circle at 40% 35%, #fff6c2, #ffd34d 60%, #ffb020)',
               border:`3px solid ${INK}`, boxShadow:'0 0 24px 8px rgba(255,211,77,0.6)',
@@ -580,11 +581,14 @@ function FallingLettersGame({ level, onComplete }) {
       </div>
 
       <Slots word={word} typed={typed} nudge={misses > 0} />
-      <KesselStage word={word} typed={typed} done={completing} k={k} lumiSize={90} potW={190} />
+      <KesselStage word={word} typed={typed} done={completing} streak={streak} k={k} lumiSize={90} potW={190} />
 
       {/* On-screen keyboard (no ⌫: a typed letter is always right) */}
       <Keyboard word={word} hint={showHint && !completing ? targetChar : null} onKey={handleChar} />
+      <HintHand from={first ? starRef : null} to={keyRef} active={!completing && !finale && (first || showHint)} delay={first ? 2000 : 300} />
+      {finale && <Finale items={words.map(w => WORDS[w])} hero="lumi" onDone={() => onComplete(result(firstTryRef.current, words.length))} />}
       {k.fliers}
+      {k.bursts}
     </div>
   )
 }
@@ -599,14 +603,18 @@ function StaticTyperGame({ level, onComplete }) {
   const [typed,  setTyped]  = useState('')
   const [misses, setMisses] = useState(0)
   const [hintOn, setHintOn] = useState(false)
+  const [streak, setStreak] = useState(0)
+  const [finale, setFinale] = useState(false)
   // Words typed right at once (no wrong key, no spotlight): the score
   const firstTryRef = useRef(0)
   const helpedRef   = useRef(false)
   const rootRef     = useRef(null)
+  const slotRef     = useRef(null)
 
   const word      = words[wIdx] ?? ''
   const nextChar  = word[typed.length]
   const finished  = typed.length === word.length
+  const keyRef    = useMemo(() => keyOf(rootRef, nextChar), [nextChar])
 
   // The hint is per letter: every letter starts unaided, so the child has to
   // find it on the keyboard themselves at least once.
@@ -617,26 +625,23 @@ function StaticTyperGame({ level, onComplete }) {
   // so the spotlight also comes on by itself after a while.
   useEffect(() => {
     if (finished || hintOn || paused) return
-    const id = setTimeout(() => {
-      setHintOn(true)
-      narrate([{ text: `Such ${anlaut(nextChar)}!` }])
-    }, 10000)
+    const id = setTimeout(() => setHintOn(true), 10000)
     return () => clearTimeout(id)
-  }, [typed.length, wIdx, finished, hintOn, paused]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [typed.length, wIdx, finished, hintOn, paused])
 
   const handleKey = useCallback((key, el) => {
     if (finished) return
     if (key === nextChar) {
-      k.letterIn(el, key)
+      k.letterIn(el, key, el)
       setTyped(t => t + key)
-      if (typed.length + 1 < word.length) narrate([{ text: anlaut(key), rate: 0.9 }])
+      if (typed.length + 1 < word.length) voice([KEY.sound(key)])
     } else {
       k.letterOut(el, key)
       const n = misses + 1
       setMisses(n)
       helpedRef.current = true
       if (n >= 2) setHintOn(true)
-      sayWrong(`Das ist ${anlaut(key)}. Wir suchen ${anlaut(nextChar)}.`)
+      sayWrong()
     }
   }, [finished, nextChar, typed, word, misses, k])
 
@@ -657,43 +662,50 @@ function StaticTyperGame({ level, onComplete }) {
   useEffect(() => {
     if (!word) return
     helpedRef.current = false
-    sayTask(wIdx === 0 ? firstTask(word, false) : nextTask(word))
+    announce(word, wIdx === 0)
   }, [wIdx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const nextWord = useCallback(() => {
-    if (wIdx + 1 >= words.length) {
-      onComplete(result(firstTryRef.current, words.length))
-    } else {
-      setWIdx(i => i + 1)
-      setTyped('')
-    }
-  }, [wIdx, words.length, onComplete])
+    if (wIdx + 1 >= words.length) { setFinale(true); return }
+    setWIdx(i => i + 1)
+    setTyped('')
+  }, [wIdx, words.length])
   const advance = useAdvance(nextWord, paused)
 
-  // Word complete: puff, the thing comes alive, and the next word once it
-  // has been said
+  // Word complete: puff, the thing comes alive, and the next word once the
+  // payoff has been seen
   useEffect(() => {
     if (!finished) return
     if (!helpedRef.current) firstTryRef.current += 1
-    k.wordDone()
-    sayRight(conjured(word))
+    const s = helpedRef.current ? 0 : streak + 1
+    setStreak(s)
+    k.wordDone(s)
+    conjured(word)
     return advance()
   }, [finished]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // The hand: on the very first letter it shows the letter going to its
+  // key; later it taps the key once the spotlight shows it anyway
+  const first = wIdx === 0 && typed.length === 0 && misses === 0
+
   return (
     <div ref={rootRef} style={{
-      flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'space-between',
+      position:'relative', flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'space-between',
       padding:'clamp(8px,1.6vw,18px) clamp(12px,3vw,32px)', gap:'clamp(8px,1.4vw,14px)',
     }}>
-      <TopRow total={words.length} done={wIdx + (finished ? 1 : 0)} onHear={() => nextTask(word)} />
+      <TopRow total={words.length} done={wIdx + (finished ? 1 : 0)} />
 
       <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-end', gap:8, width:'100%' }}>
-        <Slots word={word} typed={typed.length} nudge={misses > 0} />
-        <KesselStage word={word} typed={typed.length} done={finished} k={k} lumiSize={narrow ? 86 : 120} potW={narrow ? 196 : 250} />
+        <Slots word={word} typed={typed.length} nudge={misses > 0} currentRef={slotRef} />
+        <KesselStage word={word} typed={typed.length} done={finished} streak={streak} k={k}
+          lumiSize={narrow ? 86 : 120} potW={narrow ? 196 : 250} />
       </div>
 
       <Keyboard word={word} hint={hintOn && !finished ? nextChar : null} onKey={handleKey} onBack={backspace} pictures />
+      <HintHand from={first ? slotRef : null} to={keyRef} active={!finished && !finale && (first || hintOn)} delay={first ? 2000 : 400} />
+      {finale && <Finale items={words.map(w => WORDS[w])} hero="lumi" onDone={() => onComplete(result(firstTryRef.current, words.length))} />}
       {k.fliers}
+      {k.bursts}
     </div>
   )
 }

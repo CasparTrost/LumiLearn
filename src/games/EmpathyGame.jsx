@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { DragArea, Draggable, RoundTrail, Art, useBursts } from '../components/play/index.js'
-import { narrate, lockPreviews, stopNarration } from '../narrator.js'
+import { DragArea, Draggable, RoundTrail, Art, HintHand, useBursts } from '../components/play/index.js'
+import { stopNarration } from '../narrator.js'
 import { sayRight, sayWrong } from '../lib/feedback.js'
 import { sfx } from '../sfx.js'
 import { result } from '../lib/score.js'
 import { FEELING_ICON, shuffle } from './feelings.js'
-import { Stage, FeelLumi, FaceChip, PicChip, FEEL, useAfter, ReplayButton } from './feelingStage.jsx'
-import { INK } from './px.js'
+import { Stage, FeelLumi, FaceChip, PicChip, AskFace, FEEL, sceneLength, useAfter } from './feelingStage.jsx'
+import { INK, pxButton } from './px.js'
 
 /**
  * Gefühlsdetektiv — „Freunde trösten“
@@ -64,23 +64,10 @@ const NEAR = {
   'Müde':      ['Traurig', 'Einsam'],
 }
 
-// What to look at, said after a wrong guess
-const CUE = {
-  'Glücklich': () => 'Die Arme sind hoch, und der Mund lacht.',
-  'Traurig':   () => 'Da sind Tränen, und die Arme hängen herunter.',
-  'Wütend':    () => 'Die Hände sind zu Fäusten geballt, und es dampft.',
-  'Ängstlich': () => 'Die Augen sind ganz groß, und die Arme halten sich fest.',
-  'Einsam':    n => `${n} sitzt ganz allein und schaut nach unten.`,
-  'Stolz':     n => `Die Hände sind in den Hüften, und ${n} steht ganz gerade.`,
-  'Müde':      n => `Die Augen fallen zu, und ${n} gähnt.`,
-}
-
 // Each scene: who, what the posture shows, what happened, and three ways to
-// respond. `best` fits this feeling best; `why` says why, so the choice does
-// not look arbitrary. The others carry their own answer: `kind` ones are
-// friendly but not what is needed most (gentle, no buzz, no point lost); the
-// unkind ones are named as such — "Das ist nett." after "Ich spiele einfach
-// weiter." praised ignoring someone. `i` is the picture the child drags,
+// respond. `best` fits this feeling best; `kind` ones are friendly but not
+// what is needed most (taken gladly, no point lost); the unkind ones fly
+// back. The sentences are labels; `i` is the picture the child drags,
 // `props` what happened (feelingStage.jsx; the friend stands at x 300),
 // `then` how it looks once helped (the teddy is back, the light is on).
 const t = (a, x, act, o) => ({ a, x, act, ...o })
@@ -90,183 +77,163 @@ const SCENES = [
     situation: 'Mias Bild ist zerrissen. Mia weint.',
     props: [t('🖼️', 430, 'topple', { s: 90, d: 0.4 })],
     best: 'Ich setze mich zu Mia und tröste sie.', bi: '🤗',
-    why: 'Wer traurig ist, braucht zuerst Trost.',
     other: [
-      { t: 'Ich hole schnell einen Ball zum Spielen.', i: '⚽', kind: true, fb: 'Das ist lieb gemeint. Aber Mia ist gerade traurig. Was tröstet sie?' },
-      { t: 'Ich sage ihr, sie soll nicht traurig sein.', i: '🗣️', fb: 'Traurig sein ist okay. Was tröstet Mia wirklich?' },
+      { t: 'Ich hole schnell einen Ball zum Spielen.', i: '⚽', kind: true },
+      { t: 'Ich sage ihr, sie soll nicht traurig sein.', i: '🗣️' },
     ] },
   { feeling: 'Einsam', name: 'Ben',
     situation: 'Ben sitzt allein am Rand und schaut den anderen beim Spielen zu.',
     props: [pal('🐰', 470, 'hop', { flip: true }), pal('🐻', 550, 'hop', { d: 0.3, flip: true }), t('⚽', 510, 'bob', { s: 50, y: 90 })],
     best: 'Ich frage Ben, ob er mitspielen will.', bi: '🤝',
-    why: 'Wer allein ist, freut sich, wenn jemand fragt: Spielst du mit?',
     other: [
-      { t: 'Ich spiele einfach weiter.', i: '🏃', fb: 'Dann bleibt Ben allein. Was würde ihn freuen?' },
-      { t: 'Ich winke Ben kurz zu.', i: '👋', kind: true, fb: 'Winken ist nett. Aber Ben sitzt dann immer noch allein. Was würde ihn freuen?' },
+      { t: 'Ich spiele einfach weiter.', i: '🏃' },
+      { t: 'Ich winke Ben kurz zu.', i: '👋', kind: true },
     ] },
   { feeling: 'Wütend', name: 'Leo',
     situation: 'Jemand hat Leos Turm umgeworfen. Leo ballt die Fäuste.',
     props: [t('🧱', 420, 'drop', { s: 50 }), t('🧱', 470, 'drop', { s: 50, d: 0.2 }), t('🧱', 520, 'drop', { s: 50, d: 0.4 })],
     best: 'Ich warte kurz und frage dann, was passiert ist.', bi: '👂',
-    why: 'Wer wütend ist, braucht kurz Zeit, und dann jemanden, der zuhört. Danach könnt ihr den Turm zusammen neu bauen!',
     other: [
-      { t: 'Ich baue den Turm schnell neu.', i: '🧱', kind: true, fb: 'Das ist hilfsbereit! Aber Leo ist gerade noch wütend. Was hilft zuerst?' },
-      { t: 'Ich sage ihm, er soll sich nicht so anstellen.', i: '🗣️', fb: 'Wütend sein ist okay. Was hilft Leo, damit es ihm besser geht?' },
+      { t: 'Ich baue den Turm schnell neu.', i: '🧱', kind: true },
+      { t: 'Ich sage ihm, er soll sich nicht so anstellen.', i: '🗣️' },
     ] },
   { feeling: 'Ängstlich', name: 'Nele',
     situation: 'Es donnert laut, und Nele macht sich ganz klein.',
     props: [t('🌧️', 440, 'bob', { s: 110, y: 170 }), t('⚡', 470, 'bang', { s: 70, y: 100, d: 0.6 })],
     best: 'Ich bleibe bei Nele und sage, dass ich da bin.', bi: '🤗',
-    why: 'Wer Angst hat, fühlt sich sicherer, wenn jemand da ist.',
     other: [
-      { t: 'Ich mache das Fenster zu.', i: '🪟', kind: true, fb: 'Das ist eine gute Idee! Aber Nele hat immer noch Angst. Was hilft ihr am meisten?' },
-      { t: 'Ich lache, weil Gewitter doch nicht schlimm ist.', i: '🤡', fb: 'Auslachen tut weh. Was hilft Nele, wenn sie Angst hat?' },
+      { t: 'Ich mache das Fenster zu.', i: '🪟', kind: true },
+      { t: 'Ich lache, weil Gewitter doch nicht schlimm ist.', i: '🤡' },
     ] },
   { feeling: 'Glücklich', name: 'Tim',
     situation: 'Tim bekommt einen großen Luftballon geschenkt und hüpft vor Freude.',
     props: [t('🎈', 370, 'bob', { s: 80, y: 150 })],
     best: 'Ich freue mich mit Tim.', bi: '🎉',
-    why: 'Freude wird noch größer, wenn man sie teilt!',
     other: [
-      { t: 'Ich will den Luftballon auch haben.', i: '✋', fb: 'Dann ist Tims Freude schnell vorbei. Was macht Tim noch froher?' },
-      { t: 'Ich schaue kurz hin und spiele weiter.', i: '👀', kind: true, fb: 'Das ist okay. Aber Tim möchte seine Freude teilen. Was kannst du tun?' },
+      { t: 'Ich will den Luftballon auch haben.', i: '✋' },
+      { t: 'Ich schaue kurz hin und spiele weiter.', i: '👀', kind: true },
     ] },
   { feeling: 'Stolz', name: 'Ida',
     situation: 'Ida zeigt ihr fertiges Bild und stellt sich ganz gerade hin.',
     props: [t('🖼️', 410, 'pop', { s: 90, y: 40 })],
     best: 'Ich schaue mir das Bild an und sage, was mir gefällt.', bi: '👀',
-    why: 'Wer stolz ist, freut sich, wenn andere genau hinschauen.',
     other: [
-      { t: 'Ich male auch schnell ein Bild.', i: '🖍️', kind: true, fb: 'Malen ist toll! Aber Ida möchte jetzt ihr Bild zeigen. Was freut sie?' },
-      { t: 'Ich sage, dass meins schöner ist.', i: '🗣️', fb: 'Das macht Ida traurig. Was freut sie?' },
+      { t: 'Ich male auch schnell ein Bild.', i: '🖍️', kind: true },
+      { t: 'Ich sage, dass meins schöner ist.', i: '🗣️' },
     ] },
   { feeling: 'Traurig', name: 'Jonas',
     situation: 'Jonas hat sein Kuscheltier verloren. Jonas weint.',
     props: [t('🌳', 500, 'pop', { s: 150 }), t('🧸', 470, 'pop', { s: 40, y: 20, d: 1, z: 0 })],
     then: [t('🌳', 500, 'pop', { s: 150 }), t('🧸', 470, 'give', { s: 60, to: 380, d: 0.3 })],
     best: 'Ich helfe Jonas beim Suchen.', bi: '🔍',
-    why: 'Zusammen suchen tröstet. Dann ist Jonas nicht allein mit seinem Kummer.',
     other: [
-      { t: 'Ich leihe ihm mein Kuscheltier.', i: '🧸', kind: true, fb: 'Das ist sehr lieb! Aber Jonas vermisst sein eigenes Kuscheltier. Was hilft ihm noch mehr?' },
-      { t: 'Ich sage, dass Kuscheltiere nur für Babys sind.', i: '🍼', fb: 'Das tut Jonas weh. Was hilft ihm, wenn er traurig ist?' },
+      { t: 'Ich leihe ihm mein Kuscheltier.', i: '🧸', kind: true },
+      { t: 'Ich sage, dass Kuscheltiere nur für Babys sind.', i: '🍼' },
     ] },
   { feeling: 'Einsam', name: 'Anna',
     situation: 'Anna ist neu im Kindergarten und kennt noch niemanden. Anna sitzt ganz allein.',
     props: [t('🏫', 480, 'pop', { s: 150 })],
     best: 'Ich sage Hallo und zeige Anna alles.', bi: '👋',
-    why: 'Wer neu ist, freut sich über jemanden, der Hallo sagt.',
     other: [
-      { t: 'Ich winke ihr von Weitem zu.', i: '✋', kind: true, fb: 'Winken ist nett. Aber Anna kennt noch niemanden. Was hilft ihr mehr?' },
-      { t: 'Ich warte, bis sie zu mir kommt.', i: '⏳', kind: true, fb: 'Vielleicht traut sich Anna nicht. Was kannst du tun?' },
+      { t: 'Ich winke ihr von Weitem zu.', i: '✋', kind: true },
+      { t: 'Ich warte, bis sie zu mir kommt.', i: '⏳', kind: true },
     ] },
   { feeling: 'Wütend', name: 'Paul',
     situation: 'Ein Kind hat Paul das Spielauto weggenommen. Paul stampft mit dem Fuß.',
     props: [t('🚗', 400, 'grab', { s: 56, to: 420, d: 0.3 }), pal('🐒', 450, 'visit', { flip: true, d: 0.3 })],
     best: 'Ich frage Paul, was los ist, und höre zu.', bi: '👂',
-    why: 'Wer wütend ist, fühlt sich besser, wenn jemand zuhört.',
     other: [
-      { t: 'Ich lache über Paul.', i: '🤡', fb: 'Auslachen macht Paul noch wütender. Was hilft ihm?' },
-      { t: 'Ich gebe Paul mein Auto.', i: '🚗', kind: true, fb: 'Das ist lieb! Aber Paul ist noch wütend. Was hilft ihm zuerst?' },
+      { t: 'Ich lache über Paul.', i: '🤡' },
+      { t: 'Ich gebe Paul mein Auto.', i: '🚗', kind: true },
     ] },
   { feeling: 'Ängstlich', name: 'Emil',
     situation: 'Ein großer Hund bellt laut. Emil hält sich ganz fest.',
     props: [pal('🐕', 470, 'shake', { s: 130, flip: true })],
     best: 'Ich nehme Emils Hand, und wir holen einen Erwachsenen.', bi: '🤝',
-    why: 'Wer Angst hat, braucht jemanden an seiner Seite. Und bei fremden Hunden holen wir einen Erwachsenen.',
     other: [
-      { t: 'Ich laufe schnell weg.', i: '🏃', fb: 'Dann ist Emil allein mit seiner Angst. Was hilft ihm?' },
-      { t: 'Ich sage, dass er keine Angst haben muss.', i: '🗣️', kind: true, fb: 'Das ist lieb gemeint. Aber Emil hat trotzdem Angst. Was hilft ihm wirklich?' },
+      { t: 'Ich laufe schnell weg.', i: '🏃' },
+      { t: 'Ich sage, dass er keine Angst haben muss.', i: '🗣️', kind: true },
     ] },
   { feeling: 'Glücklich', name: 'Lea',
     situation: 'Heute hat Lea Geburtstag! Lea lacht und tanzt.',
     props: [t('🎂', 430, 'pop', { s: 90 }), t('🎈', 500, 'bob', { s: 70, y: 120 })],
     best: 'Ich gratuliere Lea und freue mich mit ihr.', bi: '🎁',
-    why: 'Wer sich freut, freut sich noch mehr, wenn andere mitfeiern.',
     other: [
-      { t: 'Ich frage, ob ich auch ein Geschenk bekomme.', i: '✋', fb: 'Heute ist Leas Tag. Was macht Lea froh?' },
-      { t: 'Ich sage einfach Hallo.', i: '👋', kind: true, fb: 'Hallo ist nett. Aber heute ist Leas Geburtstag! Was kannst du noch sagen?' },
+      { t: 'Ich frage, ob ich auch ein Geschenk bekomme.', i: '✋' },
+      { t: 'Ich sage einfach Hallo.', i: '👋', kind: true },
     ] },
   { feeling: 'Stolz', name: 'Max',
     situation: 'Max hat zum ersten Mal die Schuhe allein zugebunden.',
     props: [t('👟', 390, 'pop', { s: 60 }), t('✨', 410, 'bob', { s: 44, y: 60, d: 0.5 })],
     best: 'Ich sage: Toll, das hast du allein geschafft!', bi: '👏',
-    why: 'Wer stolz ist, freut sich, wenn jemand sieht, was er geschafft hat.',
     other: [
-      { t: 'Ich binde meine Schuhe auch zu.', i: '👟', kind: true, fb: 'Gute Idee! Aber Max möchte zeigen, was er kann. Was freut ihn?' },
-      { t: 'Ich sage, das ist doch ganz leicht.', i: '🗣️', fb: 'Für Max war es schwer. Das macht ihn traurig. Was freut ihn?' },
+      { t: 'Ich binde meine Schuhe auch zu.', i: '👟', kind: true },
+      { t: 'Ich sage, das ist doch ganz leicht.', i: '🗣️' },
     ] },
   { feeling: 'Müde', name: 'Ella',
     situation: 'Nach dem langen Ausflug gähnt Ella. Ihre Augen fallen zu.',
     props: [t('🎒', 400, 'drop', { s: 70 }), t('🌙', 470, 'bob', { s: 70, y: 190 })],
     best: 'Ich frage Ella, ob sie sich ausruhen möchte.', bi: '🛏️',
-    why: 'Wer müde ist, braucht Ruhe.',
     other: [
-      { t: 'Ich will mit Ella Fangen spielen.', i: '🏃', kind: true, fb: 'Spielen ist toll. Aber Ella ist müde. Was braucht sie jetzt?' },
-      { t: 'Ich rufe ganz laut ihren Namen.', i: '🔊', fb: 'Das ist zu laut für Ella. Was braucht sie, wenn sie müde ist?' },
+      { t: 'Ich will mit Ella Fangen spielen.', i: '🏃', kind: true },
+      { t: 'Ich rufe ganz laut ihren Namen.', i: '🔊' },
     ] },
   { feeling: 'Müde', name: 'Finn',
     situation: 'Finn hat heute ganz viel getobt. Jetzt gähnt Finn.',
     props: [t('⚽', 410, 'pop', { s: 60 }), t('🛝', 500, 'pop', { s: 130 })],
     best: 'Ich bringe Finn eine Decke und bin leise.', bi: '🛏️',
-    why: 'Wer müde ist, freut sich, wenn es ruhig ist.',
     other: [
-      { t: 'Ich mache laute Musik an.', i: '🎸', fb: 'Laute Musik stört Finn. Was hilft ihm, wenn er müde ist?' },
-      { t: 'Ich erzähle Finn eine lange Geschichte.', i: '📖', kind: true, fb: 'Das ist lieb. Aber Finn ist sehr müde. Was hilft ihm am meisten?' },
+      { t: 'Ich mache laute Musik an.', i: '🎸' },
+      { t: 'Ich erzähle Finn eine lange Geschichte.', i: '📖', kind: true },
     ] },
   { feeling: 'Traurig', name: 'Lina',
     situation: 'Linas Eis ist auf den Boden gefallen. Lina weint.',
     props: [t('🍦', 370, 'fall', { s: 60, y: 70, d: 0.6 })],
     best: 'Ich tröste Lina.', bi: '🤗',
-    why: 'Wer traurig ist, braucht Trost. Vielleicht könnt ihr danach dein Eis teilen.',
     other: [
-      { t: 'Ich esse schnell mein Eis auf.', i: '🍦', fb: 'Dann ist Lina noch trauriger. Was tröstet sie?' },
-      { t: 'Ich sage: Das ist doch nur ein Eis.', i: '🗣️', fb: 'Für Lina ist das schlimm. Was tröstet sie?' },
+      { t: 'Ich esse schnell mein Eis auf.', i: '🍦' },
+      { t: 'Ich sage: Das ist doch nur ein Eis.', i: '🗣️' },
     ] },
   { feeling: 'Einsam', name: 'Mo',
     situation: 'Alle Kinder spielen Fangen. Mo sitzt allein auf der Treppe.',
     props: [pal('🐰', 450, 'hop', { flip: true }), pal('🐒', 540, 'hop', { d: 0.25, flip: true })],
     best: 'Ich frage Mo, ob er mit mir spielt.', bi: '🤝',
-    why: 'Wer allein ist, freut sich, wenn jemand ihn zum Spielen holt.',
     other: [
-      { t: 'Ich schaue weg.', i: '🙈', fb: 'Dann bleibt Mo allein. Was würde ihn freuen?' },
-      { t: 'Ich bringe Mo ein Bilderbuch.', i: '📖', kind: true, fb: 'Das ist nett! Aber Mo möchte gern mitspielen. Was kannst du tun?' },
+      { t: 'Ich schaue weg.', i: '🙈' },
+      { t: 'Ich bringe Mo ein Bilderbuch.', i: '📖', kind: true },
     ] },
   { feeling: 'Ängstlich', name: 'Clara',
     situation: 'Im Zimmer ist es plötzlich dunkel. Clara hält sich ganz fest.', fx: 'night',
     props: [t('💡', 420, 'flicker', { s: 60, y: 200 })],
     then: [t('💡', 420, 'bang', { s: 70, y: 200 })],
     best: 'Ich mache das Licht an und bleibe bei Clara.', bi: '💡',
-    why: 'Wer Angst hat, fühlt sich mit Licht und jemandem in der Nähe sicherer.',
     other: [
-      { t: 'Ich erschrecke Clara zum Spaß.', i: '👻', fb: 'Das macht Clara noch mehr Angst. Was hilft ihr?' },
-      { t: 'Ich sage „Gute Nacht“ und gehe.', i: '🌙', kind: true, fb: 'Das ist freundlich. Aber Clara hat Angst. Was hilft ihr?' },
+      { t: 'Ich erschrecke Clara zum Spaß.', i: '👻' },
+      { t: 'Ich sage „Gute Nacht“ und gehe.', i: '🌙', kind: true },
     ] },
   { feeling: 'Wütend', name: 'Sara',
     situation: 'Sara hat beim Spiel verloren. Sara stampft auf.',
     props: [t('🎲', 410, 'shake', { s: 60 }), pal('🐻', 500, 'hop', { s: 100, flip: true }), t('🏆', 500, 'pop', { s: 50, y: 110 })],
     best: 'Ich sage: Das ärgert dich. Wollen wir nochmal spielen?', bi: '🔁',
-    why: 'Wer wütend ist, fühlt sich verstanden, wenn jemand sagt, was los ist.',
     other: [
-      { t: 'Ich jubele laut, weil ich gewonnen habe.', i: '🏆', fb: 'Das macht Sara noch wütender. Was hilft ihr?' },
-      { t: 'Ich räume das Spiel schnell weg.', i: '🧺', kind: true, fb: 'Aufräumen ist nett. Aber Sara ist noch wütend. Was hilft ihr?' },
+      { t: 'Ich jubele laut, weil ich gewonnen habe.', i: '🏆' },
+      { t: 'Ich räume das Spiel schnell weg.', i: '🧺', kind: true },
     ] },
   { feeling: 'Glücklich', name: 'Noah',
     situation: 'Noahs Oma ist zu Besuch gekommen. Noah strahlt.',
     props: [pal('👵', 440, 'in', { s: 130, flip: true })],
     best: 'Ich sage: Schön, dass deine Oma da ist!', bi: '💛',
-    why: 'Wer sich freut, freut sich noch mehr, wenn andere sich mitfreuen.',
     other: [
-      { t: 'Ich sage, dass meine Oma netter ist.', i: '🗣️', fb: 'Das macht Noahs Freude kaputt. Was freut ihn?' },
-      { t: 'Ich spiele allein weiter.', i: '🧸', kind: true, fb: 'Das ist okay. Aber Noah möchte seine Freude teilen. Was kannst du sagen?' },
+      { t: 'Ich sage, dass meine Oma netter ist.', i: '🗣️' },
+      { t: 'Ich spiele allein weiter.', i: '🧸', kind: true },
     ] },
   { feeling: 'Stolz', name: 'Emma',
     situation: 'Emma hat einen hohen Turm gebaut und zeigt ihn allen.',
     props: [t('🧱', 420, 'drop', { s: 54 }), t('🧱', 420, 'drop', { s: 54, y: 44, d: 0.3 }), t('🧱', 420, 'drop', { s: 54, y: 88, d: 0.6 }), t('🧱', 420, 'drop', { s: 54, y: 132, d: 0.9 })],
     best: 'Ich sage: Wow, dein Turm ist so hoch!', bi: '👏',
-    why: 'Wer stolz ist, freut sich über ein Lob.',
     other: [
-      { t: 'Ich puste den Turm um.', i: '💨', fb: 'Dann ist Emmas Turm kaputt. Was freut sie?' },
-      { t: 'Ich baue gleich daneben.', i: '🧱', kind: true, fb: 'Gute Idee! Aber zuerst möchte Emma ihren Turm zeigen. Was freut sie?' },
+      { t: 'Ich puste den Turm um.', i: '💨' },
+      { t: 'Ich baue gleich daneben.', i: '🧱', kind: true },
     ] },
 ]
 
@@ -292,10 +259,11 @@ function pickScenes(rounds) {
   return s
 }
 
-const word = f => f.toLowerCase()
 // The heavy feelings start pale; help brings the colour back
 const GREY = new Set(['Traurig', 'Einsam', 'Wütend', 'Ängstlich', 'Müde'])
 const FRIEND_X = 300
+// once helped, the friend is visibly glad; glad friends get gladder
+const GLAD = { 'Stolz': 'proud', 'Müde': 'calm', 'Glücklich': 'excited' }
 
 export default function EmpathyGame({ level = 1, onComplete }) {
   const cfg = LEVELS[Math.min(Math.max(level, 1), LEVELS.length) - 1]
@@ -308,61 +276,51 @@ export default function EmpathyGame({ level = 1, onComplete }) {
   })))
 
   const [idx,      setIdx]      = useState(0)
-  const [phase,    setPhase]    = useState('feeling')  // feeling → help → done
+  // watch (what happened plays) → feeling → named (the face sits) → help → done → end
+  const [phase,    setPhase]    = useState('watch')
   const [tried,    setTried]    = useState([])         // faces or helps that did not fit
   const [given,    setGiven]    = useState([])         // kind helps the friend got
   const [missed,   setMissed]   = useState(false)      // this scene no longer counts as first try
+  const [react,    setReact]    = useState(null)       // a short reaction: 'more' (the feeling, stronger), 'smile', 'away'
   // a ref: the round ends from a callback scheduled before the last point is counted
   const firstTry = useRef(0)
-  const [reading,  setReading]  = useState(null)       // the help being read out
-  const [shake,    setShake]    = useState(0)          // the friend turns away from an unkind "help"
   const [after] = useAfter()
+  const [later] = useAfter()
   const [bursts, burst] = useBursts()
+  const trayRef = useRef(null)
+  const friendRef = useRef({ get current() { return document.querySelector('[data-empathy-stage] .pl-drop') } }).current
 
   const sc = scenes[idx]
   const narrow = typeof window !== 'undefined' && window.innerWidth < 600
+  const friendAt = () => document.querySelector('[data-friend]') ?? undefined
 
   useEffect(() => () => stopNarration(), [])
 
-  const ask = () => narrate([{ text: cfg.postureOnly
-    ? `Schau dir ${sc.name} genau an. Wie fühlt sich ${sc.name}?`
-    : `${sc.situation} Wie fühlt sich ${sc.name}?` }])
-
+  // A new friend: what happened plays (from level 7 only the friend, alone)
   useEffect(() => {
     if (!sc) return
-    setPhase('feeling'); setTried([]); setGiven([]); setMissed(false); setReading(null)
-    lockPreviews()
-    ask()
+    setPhase('watch'); setTried([]); setGiven([]); setMissed(false); setReact(null)
+    after(() => setPhase('feeling'), cfg.postureOnly ? 900 : sceneLength(sc.props), { quiet: false })
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // The three ways to help are read out one by one, each lit while it is
-  // read — they are whole sentences, and a child who cannot read needs them.
-  const readHelps = (say) => {
-    let i = -1
-    const step = () => {
-      i++
-      if (i >= sc.helps.length) { setReading(null); return }
-      setReading(i)
-      narrate([{ text: sc.helps[i].t, gap: 300 }], { onEnd: step })
-    }
-    lockPreviews()
-    say(step)
-  }
-  const again = () => (phase === 'feeling' ? ask() : phase === 'help' ? readHelps(go => narrate([{ text: 'Was kannst du tun?' }], { onEnd: go })) : null)
+  const flash = (r, ms) => { setReact(r); later(() => setReact(null), ms, { quiet: false }) }
 
-  // A face guessed wrong flies back with a boing, and Lumi says what to look at.
+  // A face that does not fit flies back, and the friend shows the feeling
+  // even more clearly: the tears, the fists, the yawn.
   const giveFace = (f) => {
     if (f !== sc.feeling) {
       setTried(t => [...t, f])
       setMissed(true)
-      setShake(n => n + 1)
-      sayWrong(CUE[sc.feeling](sc.name))
+      sayWrong()
+      flash('more', 1800)
       return false
     }
     setTried([])
-    setPhase('help')
-    burst(document.querySelector('[data-friend]') ?? undefined, 'stars')
-    readHelps(go => sayRight(`${sc.name} ist ${word(sc.feeling)}.${cfg.postureOnly ? ` ${sc.situation}` : ''} Was kannst du tun?`, { onEnd: go }))
+    setPhase('named')
+    sayRight()
+    burst(friendAt(), 'stars')
+    // from level 7 the friend stood alone: now what happened plays
+    after(() => setPhase('help'), cfg.postureOnly ? Math.max(1500, sceneLength(sc.props)) : 1500, { quiet: false })
     return true
   }
 
@@ -370,31 +328,30 @@ export default function EmpathyGame({ level = 1, onComplete }) {
   // gladly and costs nothing. Only an unkind one flies back and costs the
   // scene its first-try point.
   const giveHelp = (h) => {
-    setReading(null)
     if (h.best) {
       setPhase('done')
       if (!missed) firstTry.current++
       sfx.tada()
-      burst(document.querySelector('[data-friend]') ?? undefined, 'hearts')
-      sayRight(`Das hilft ${sc.name} wirklich! ${sc.why}`)
-      after(next, 900)
+      sayRight()
+      burst(friendAt(), 'hearts', 14)
+      after(next, 2600, { quiet: false })
       return true
     }
     setTried(t => [...t, h.t])
     if (h.kind) {
       setGiven(g => [...g, h])
       sfx.sparkle()
-      narrate([{ text: h.fb }])
+      flash('smile', 1300)
       return true
     }
     setMissed(true)
-    setShake(n => n + 1)
-    sayWrong(h.fb)
+    sayWrong()
+    flash('away', 1500)
     return false
   }
 
   const next = () => {
-    if (idx + 1 >= scenes.length) onComplete(result(firstTry.current, scenes.length))
+    if (idx + 1 >= scenes.length) setPhase('end')
     else setIdx(i => i + 1)
   }
 
@@ -405,70 +362,97 @@ export default function EmpathyGame({ level = 1, onComplete }) {
   }
 
   if (!sc) return null
+  if (phase === 'end') return <Thanks scenes={scenes} narrow={narrow} onDone={() => onComplete(result(firstTry.current, scenes.length))} />
 
   const helped = phase === 'done'
-  // once helped, the friend is visibly glad; glad friends get gladder
-  const feel = !helped ? FEEL[sc.feeling]
-    : sc.feeling === 'Stolz' ? 'proud' : sc.feeling === 'Müde' ? 'calm' : sc.feeling === 'Glücklich' ? 'excited' : 'happy'
-  const sat = !GREY.has(sc.feeling) || helped ? 1 : 0.3 + given.length * 0.25
-  const showProps = !cfg.postureOnly || phase !== 'feeling'
+  const feel = helped ? GLAD[sc.feeling] ?? 'happy' : react === 'smile' ? 'calm' : FEEL[sc.feeling]
+  const sat = !GREY.has(sc.feeling) || helped ? 1 : Math.min(1, 0.3 + given.length * 0.25 + (react === 'smile' ? 0.15 : 0))
+  const showProps = !cfg.postureOnly || (phase !== 'watch' && phase !== 'feeling')
   const friend = {
     x: FRIEND_X, s: 150, act: 'none', z: 2,
     node: (
-      <motion.div key={shake} data-friend animate={shake ? { rotate: [0, -10, 10, -6, 0] } : {}} transition={{ duration: 0.6 }}
+      <motion.div data-friend animate={react === 'away' ? { rotate: [0, -12, 12, -8, 0], x: [0, 10, -10, 0] } : react === 'smile' ? { y: [0, -18, 0] } : { rotate: 0, x: 0, y: 0 }}
+        transition={{ duration: 0.7 }}
         style={{ width: 150, height: 150, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', transformOrigin: '50% 100%' }}>
-        <FeelLumi feel={feel} look={sc.look} size={140} strength={helped ? 2 : 1} />
+        <FeelLumi feel={feel} look={sc.look} size={140} strength={helped || react === 'more' || react === 'away' ? 2 : 1} />
       </motion.div>
     ),
-    say: helped ? 'Danke!' : undefined,
+    say: helped ? ['💛'] : undefined,
   }
   const gifts = [...given, ...(helped ? [sc.helps.find(h => h.best)] : [])]
     .map((h, n) => t(h.i, FRIEND_X - 120 - n * 60, 'pop', { s: 56 }))
   const props = helped && sc.then ? sc.then : showProps ? sc.props : []
   const cast = [friend, ...props, ...gifts]
 
-  const tray = phase === 'feeling'
+  const step = phase === 'help' || phase === 'done' ? 'help' : 'feeling'
+  const trayOn = phase === 'feeling' || phase === 'help'
+  const tray = step === 'feeling'
     ? sc.feelings.map(f => ({ id: f, label: f, data: { kind: 'face', feeling: f }, off: tried.includes(f),
-        node: <FaceChip feeling={f} size={narrow ? (sc.feelings.length > 3 ? 48 : 56) : 70} dim={tried.includes(f)} /> }))
-    : sc.helps.map((h, i) => ({ id: h.t, label: h.t, data: { kind: 'help', help: h }, off: tried.includes(h.t) || helped,
-        node: <PicChip art={h.i} size={narrow ? 54 : 68} dim={(tried.includes(h.t) && !h.kind) || (helped && !h.best)} glow={reading === i || (helped && h.best)} /> }))
-  const caption = phase === 'help' && reading != null ? sc.helps[reading].t
-    : phase === 'feeling' && cfg.postureOnly ? `Wie fühlt sich ${sc.name}?` : sc.situation
+        node: <FaceChip feeling={f} size={narrow ? (sc.feelings.length > 3 ? 48 : 56) : 70} dim={tried.includes(f)} glow={phase === 'named' && f === sc.feeling} /> }))
+    : sc.helps.filter(h => !given.includes(h)).map(h => ({ id: h.t, label: h.t, data: { kind: 'help', help: h }, off: tried.includes(h.t) || helped,
+        node: <PicChip art={h.i} size={narrow ? 56 : 70} dim={(tried.includes(h.t) && !h.kind) || (helped && !h.best)} glow={helped && h.best} /> }))
+  // over the friend: which face? then the face, and "what helps?"
+  const bubble = phase === 'feeling' ? <AskFace />
+    : phase === 'watch' || helped ? null
+    : <><Art art={FEELING_ICON[sc.feeling]} size={44} />{phase === 'help' && <AskFace size={38} art="💛" />}</>
 
   return (
-    <DragArea autoTarget="friend" disabled={helped}>
+    <DragArea autoTarget="friend" disabled={!trayOn}>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px clamp(10px,3vw,28px) 14px', gap: 8, minHeight: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', maxWidth: 820 }}>
           <div style={{ flex: 1, minWidth: 0 }}><RoundTrail total={scenes.length} done={idx + (helped ? 1 : 0)} walker="lumi" goal="💛" size={narrow ? 34 : 42} /></div>
-          <ReplayButton onClick={again} />
         </div>
 
-        <div style={{ flex: 1, width: '100%', maxWidth: 980, display: 'flex', minHeight: 0 }}>
+        <div data-empathy-stage style={{ flex: 1, width: '100%', maxWidth: 980, display: 'flex', minHeight: 0 }}>
           <Stage key={idx} playKey={idx} cast={cast} fx={showProps && !(helped && sc.then) ? sc.fx : undefined}
             drop={{ who: 0, id: 'friend', onDrop, label: sc.name }}
             tint={{ 0: sat }}
-            bubbles={phase !== 'feeling' ? { 0: <Art art={FEELING_ICON[sc.feeling]} size={44} /> } : {}} />
+            bubbles={bubble ? { 0: bubble } : {}} />
         </div>
 
-        <p style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: narrow ? 14 : 16, color: INK, textAlign: 'center', margin: 0, maxWidth: 620,
-          background: 'rgba(255,253,247,.7)', borderRadius: 14, padding: '4px 12px', minHeight: 24 }}>{caption}</p>
+        <p style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: narrow ? 13 : 15, color: INK, textAlign: 'center', margin: 0, maxWidth: 620,
+          background: 'rgba(255,253,247,.6)', borderRadius: 14, padding: '3px 12px', visibility: showProps ? 'visible' : 'hidden' }}>{sc.situation}</p>
 
         {/* clipped: the tray sliding in must not count as content height
             for the FitBox around the game */}
-        <div style={{ overflow: 'clip', overflowClipMargin: 12, paddingTop: 10, width: '100%', display: 'flex', justifyContent: 'center' }}>
+        <div style={{ overflow: 'clip', overflowClipMargin: 12, paddingTop: 10, width: '100%', display: 'flex', justifyContent: 'center', minHeight: narrow ? 112 : 136 }}>
           <AnimatePresence mode="wait">
-            <motion.div key={`${idx}-${phase === 'done' ? 'help' : phase}`}
-              initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }} transition={{ type: 'spring', stiffness: 260, damping: 22 }}
-              style={{ display: 'flex', gap: narrow ? 8 : 18, justifyContent: 'center', alignItems: 'flex-end',
-                padding: '10px 14px', borderRadius: 28, background: 'rgba(255,253,247,.55)', minHeight: narrow ? 100 : 120 }}>
-              {tray.map(it => (
-                <Draggable key={it.id} id={it.id} data={it.data} label={it.label} disabled={it.off}>{it.node}</Draggable>
-              ))}
-            </motion.div>
+            {phase !== 'watch' && (
+              <motion.div key={`${idx}-${step}`} ref={trayRef}
+                initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }} transition={{ type: 'spring', stiffness: 260, damping: 22 }}
+                style={{ display: 'flex', gap: narrow ? 8 : 18, justifyContent: 'center', alignItems: 'flex-end',
+                  padding: '10px 14px', borderRadius: 28, background: 'rgba(255,253,247,.55)' }}>
+                {tray.map(it => (
+                  <Draggable key={it.id} id={it.id} data={it.data} label={it.label} disabled={it.off || !trayOn}>{it.node}</Draggable>
+                ))}
+              </motion.div>
+            )}
           </AnimatePresence>
         </div>
       </div>
+      <HintHand from={trayRef} to={friendRef} active={trayOn && !react} delay={idx === 0 && step === 'feeling' ? 2000 : 6000} />
       {bursts}
     </DragArea>
+  )
+}
+
+// The end of the level: every friend of the round, glad again, dancing
+function Thanks({ scenes, narrow, onDone }) {
+  useEffect(() => { sfx.tada() }, [])
+  const size = narrow ? 64 : 92
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20, padding: 16 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: narrow ? 4 : 10, justifyContent: 'center', alignItems: 'flex-end', maxWidth: 760 }}>
+        {scenes.map((sc, i) => (
+          <motion.div key={i} initial={{ y: -260, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 200, damping: 13, delay: 0.15 * i }}>
+            <FeelLumi feel={GLAD[sc.feeling] ?? 'happy'} look={sc.look} size={size} strength={2} />
+          </motion.div>
+        ))}
+      </div>
+      <motion.button whileTap={{ scale: 0.94 }} onClick={onDone} aria-label="Fertig"
+        initial={{ scale: 0 }} animate={{ scale: [1, 1.07, 1] }} transition={{ scale: { duration: 1.2, repeat: Infinity, delay: 0.15 * scenes.length + 0.6 } }}
+        style={{ ...pxButton('green'), color: INK, padding: '14px 48px', fontSize: 22, minHeight: 64 }}>Fertig! 💛</motion.button>
+    </div>
   )
 }
