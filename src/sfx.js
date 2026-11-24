@@ -247,6 +247,19 @@ export const sfx = {
     tone(1047, 'sine',    0.1,  0.3,  0.08)
   },
 
+  /**
+   * One note of a scale: step 0 is middle C, every step one note of C major
+   * up (negative steps go down). Rising steps in a row make a little melody
+   * (stars connected one after another, things counted).
+   */
+  note(step = 0, vol = 0.2) {
+    const SCALE = [0, 2, 4, 5, 7, 9, 11]
+    const s = Math.round(step)
+    const f = 261.63 * Math.pow(2, Math.floor(s / 7) + SCALE[((s % 7) + 7) % 7] / 12)
+    tone(f,     'sine',     0, 0.34, vol)
+    tone(f * 2, 'triangle', 0, 0.16, vol * 0.3)
+  },
+
   /** Magic sparkle — something appears */
   sparkle() {
     ;[1568, 2093, 1760, 2349, 2637].forEach((f, i) => tone(f, 'sine', i * 0.05, 0.12, 0.08))
