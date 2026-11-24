@@ -6,7 +6,7 @@ import { numberWord } from '../lib/words.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
-import { Critter, Art, useMood, RoundTrail, useBursts, HintHand, useIdle } from '../components/play/index.js'
+import { Critter, Art, useMood, RoundTrail, useBursts, useJuice, HintHand, useIdle } from '../components/play/index.js'
 import { useLater, Pips, Finale } from './zahlen/stage.jsx'
 
 /**
@@ -14,9 +14,12 @@ import { useLater, Pips, Finale } from './zahlen/stage.jsx'
  * Zahlen schnell finden
  *
  * Under water an octopus wishes for bubbles with exactly one amount (its
- * bubble shows it). Every right bubble pops and a star swims to the
- * octopus, who juggles it; a wrong one turns into a puffer fish that puffs
- * up, offended, and swims off. Quick pops in a row make the octopus dance.
+ * bubble shows it). Every right bubble pops and a star flies to the star
+ * counter (components/play/Juice.jsx: a note that climbs with every right
+ * pop in a row, a flame for three, five and eight); a wrong one turns into
+ * a puffer fish that puffs up, offended, and swims off. From three in a row
+ * the octopus dances; when all the wished-for bubbles of a round are found,
+ * it juggles a star for each of them.
  *
  *   • Levels 1–4: the bubbles carry dice patterns of one to six dots. Small
  *     quantities in a familiar pattern are seen at once rather than counted
@@ -31,10 +34,11 @@ import { useLater, Pips, Finale } from './zahlen/stage.jsx'
  * ones are never lost. A small physics loop moves them through
  * MotionValues; with reduced motion they hold still.
  *
- * The stars the octopus juggles stay from round to round; on a quick
- * streak it drops them on its own head, where they pile up as a crown.
+ * The stars are counted over the whole level and are a reward only: the
+ * result is the number of rounds without a wrong pop, as before.
  * After the last round comes a short party (not scored): every bubble is
- * a wished-for one, and each pop rings higher.
+ * a wished-for one, every pop is one more star, and the octopus juggles
+ * all the way through.
  */
 
 const TINTS = ['#4aa3ff', '#ff6b5b', '#ffc93c', '#5cc45a', '#8e6cf0', '#fd79a8', '#2fb8a6', '#ff9f43']
@@ -135,6 +139,8 @@ export default function BubblePopGame({ level = 1, onComplete }) {
   const { later, afterSpeech } = useLater()
   const [mood, setMood] = useMood()
   const [bursts, burst] = useBursts()
+  const juice = useJuice()
+  const { hit, miss, shake } = juice   // these three never change
 
   const [roundIdx,  setRoundIdx]  = useState(0)
   const [target,    setTarget]    = useState(() => rand(1, cfg.maxNum))
@@ -147,15 +153,8 @@ export default function BubblePopGame({ level = 1, onComplete }) {
   const [timeLeft,  setTimeLeft]  = useState(cfg.timeS)
   const [hint,      setHint]      = useState(false)  // targets pulse briefly after a wrong pop
   const [phase,     setPhase]     = useState('playing')
-  const [stars,     setStars]     = useState(0)      // juggled by the octopus, kept from round to round
-  const starsRef     = useRef(0)
-  const [crown,     setCrown]     = useState(0)      // stars dropped on its head, for good
-  const droppedRef   = useRef(false)                 // one drop per round
-  const partyRef     = useRef(0)                     // pops at the party, for the rising sound
-  const [flyers,    setFlyers]    = useState([])     // stars swimming to the octopus
+  const partyRef     = useRef(0)                     // pops at the party: now stars, now confetti
   const [puffers,   setPuffers]   = useState([])     // wrong bubbles, now offended puffer fish
-  const lastPopRef  = useRef(0)                      // time of the last right pop, for a streak
-  const streakRef   = useRef(0)
   const mistakesRef = useRef(0)
 
   const rootRef    = useRef(null)
@@ -171,12 +170,19 @@ export default function BubblePopGame({ level = 1, onComplete }) {
   // (first guessed from the window, so the first bubbles are spread over
   // the sea as it is really laid out)
   const [wide, setWide] = useState(() => innerWidth > (innerHeight - 80) * 1.05)
+  // The top row has room for the star counter beside the hearts, the trail
+  // and the clock — on a phone held upright it has not.
+  const [roomy, setRoomy] = useState(() => innerWidth >= 560)
   useLayoutEffect(() => {
     const el = rootRef.current
-    const ro = new ResizeObserver(() => setWide(el.clientWidth > el.clientHeight * 1.05))
+    const ro = new ResizeObserver(() => {
+      setWide(el.clientWidth > el.clientHeight * 1.05)
+      setRoomy(el.clientWidth >= 560)
+    })
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
+  const hudOnTop = wide || roomy
 
   // New bubbles: their place and motion are set up before they are drawn,
   // so none flashes at the corner for a frame.
@@ -201,7 +207,6 @@ export default function BubblePopGame({ level = 1, onComplete }) {
     const rect = arenaRef.current?.getBoundingClientRect()
     setTarget(t)
     launch(spawnRound(t, cfg, rect?.width || 360, rect?.height || 300))
-    droppedRef.current = false
     livesRef.current = 3
     setLives(3)
     mistakesRef.current = 0
@@ -260,37 +265,19 @@ export default function BubblePopGame({ level = 1, onComplete }) {
     return { x: a.left - root.left + (p?.x ?? 0), y: a.top - root.top + (p?.y ?? 0) }
   }
 
-  // A star swims from the bubble to the octopus, who juggles it.
-  const sendStar = (id, at) => {
-    const root = rootRef.current.getBoundingClientRect(), o = octoRef.current.getBoundingClientRect()
-    setFlyers(f => [...f, { id, x0: at.x, y0: at.y, x1: o.left - root.left + o.width / 2, y1: o.top - root.top + o.height * 0.15 }])
-  }
-
-  // Oops: the juggled stars land on its head, and stay there as a crown.
-  const dropStars = useCallback(() => {
-    const n = starsRef.current
-    if (!n) return
-    starsRef.current = 0
-    setStars(0)
-    setCrown(c => c + n)
-    sfx.slideDown()
-    setMood('oops', 900)
-    later(900, () => { sfx.giggle(); setMood('happy', 1200) })
-  }, [later, setMood])
-
-  const popBubble = useCallback((bubble) => {
+  // `el` is the bubble's button: where the star starts from
+  const popBubble = useCallback((bubble, el) => {
     if ((phase !== 'playing' && phase !== 'party') || pausedRef.current || poppedRef.current.has(bubble.id)) return
     const at = bubbleAt(bubble)
     poppedRef.current.add(bubble.id)
     setPoppedIds(prev => [...prev, bubble.id])
 
     if (phase === 'party') {
-      // every pop rings a little higher; nothing is counted
+      // every pop is one more star and rings a little higher; the result
+      // of the level is not touched
       partyRef.current += 1
-      sfx.combo(Math.min(6, 1 + Math.floor(partyRef.current / 2)))
-      sendStar(bubble.id, at)
-      const r0 = rootRef.current.getBoundingClientRect()
-      burst({ x: r0.left + at.x, y: r0.top + at.y }, partyRef.current % 3 ? 'stars' : 'confetti', 8)
+      hit(el)
+      burst(el, partyRef.current % 3 ? 'stars' : 'confetti', 8)
       // a popped party bubble comes up again from the sand, so the party goes on
       later(900, () => {
         poppedRef.current.delete(bubble.id)
@@ -302,19 +289,14 @@ export default function BubblePopGame({ level = 1, onComplete }) {
 
     if (bubble.value === target) {
       sfx.pop()
-      sendStar(bubble.id, at)
-      const now = Date.now()
-      streakRef.current = now - lastPopRef.current < 1800 ? streakRef.current + 1 : 1
-      lastPopRef.current = now
-      if (streakRef.current >= 2) sfx.combo(streakRef.current)
-      // a little sparkle where it popped; a quick streak sparkles more
-      const r0 = rootRef.current.getBoundingClientRect()
-      burst({ x: r0.left + at.x, y: r0.top + at.y }, 'stars', streakRef.current >= 2 ? 10 : 5)
-      setMood(streakRef.current >= 3 ? 'dance' : 'wow', streakRef.current >= 3 ? 2400 : 700)
-      // on a quick streak it gets carried away and drops its stars (once a round)
-      if (streakRef.current >= 3 && !droppedRef.current) { droppedRef.current = true; later(900, dropStars) }
+      // the star, the climbing note, the flame for a streak
+      const { streak, milestone } = hit(el)
+      // a little sparkle where it popped; more when the flame shows
+      burst(el, 'stars', milestone ? 10 : 5)
+      setMood(streak >= 3 ? 'dance' : 'wow', streak >= 3 ? 2400 : 700)
       const remaining = bubbles.filter(b => b.value === target && !poppedRef.current.has(b.id)).length
       if (remaining === 0) {
+        shake(0.7)   // the last one of the round lands a little harder
         setPhase('roundWin')
         later(500, () => { setMood('dance', 2600); burst(octoRef.current, 'stars', 14) })
         sayRight()
@@ -324,9 +306,8 @@ export default function BubblePopGame({ level = 1, onComplete }) {
     }
     // A wrong bubble turns into a puffer fish: it puffs up, offended, and
     // swims away, still showing what it was.
-    sfx.boing()
+    miss(el)
     setPuffers(p => [...p, { id: bubble.id, x: at.x, y: at.y, value: bubble.value, dir: at.x < rootRef.current.clientWidth / 2 ? -1 : 1 }])
-    streakRef.current = 0
     mistakesRef.current += 1
     const nl = livesRef.current - 1
     livesRef.current = nl
@@ -341,7 +322,7 @@ export default function BubblePopGame({ level = 1, onComplete }) {
     }
     setHint(true)
     later(1200, () => setHint(false))
-  }, [phase, bubbles, target, endRound, later, setMood, burst, dropStars])
+  }, [phase, bubbles, target, endRound, later, setMood, burst, hit, miss, shake])
 
   // Back to the sand: a bubble that left at the top comes up again from
   // below, where there is room.
@@ -448,12 +429,17 @@ export default function BubblePopGame({ level = 1, onComplete }) {
     : <span style={{ fontSize: 46, lineHeight: 1, minWidth: 50, textAlign: 'center' }}>{target}</span>
 
   const octopus = (
-    <div style={{ position: 'relative', display: 'flex', flexDirection: wide ? 'column' : 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: wide ? 8 : 18, paddingTop: 80 }}>
+    <div style={{
+      position: 'relative', display: 'flex', flexDirection: wide ? 'column' : 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: wide ? 8 : 18, paddingTop: 80,
+      // on a phone held upright the star counter stands to its right: a step aside for it
+      paddingRight: hudOnTop ? 0 : 'clamp(0px, calc(480px - 100vw), 70px)',
+    }}>
       <div ref={octoRef} style={{ position: 'relative' }}>
         <Critter art="🐙" size={octoSize} mood={mood} label="Krake"
           wish={phase === 'finale' ? null : phase === 'party' ? <Art art="🎉" size={46} /> : <span ref={wishRef} data-target={target}>{wish}</span>} />
-        <Juggle n={stars} size={octoSize} still={reduce || paused} />
-        <StarCrown n={crown} size={octoSize} />
+        {/* Its turn when the round is won: one star per bubble found.
+            (The star of each single pop flies to the counter instead.) */}
+        <Juggle n={phase === 'party' ? 8 : phase === 'roundWin' ? bubbles.filter(b => b.value === target).length : 0} size={octoSize} still={reduce || paused} />
       </div>
     </div>
   )
@@ -473,11 +459,16 @@ export default function BubblePopGame({ level = 1, onComplete }) {
         </div>
         <RoundTrail total={ROUNDS} done={roundsRef.current.length} walker="🐠" goal="🐚" size={32} style={{ flex: 1 }} />
         {cfg.timed && <Clock fraction={timeLeft / cfg.timeS} />}
+        {/* The star counter (Juice): top right where there is room beside the trail … */}
+        {hudOnTop && juice.hud}
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: wide ? 'row' : 'column-reverse', gap: 8 }}>
-        <div style={{ flexShrink: 0, display: 'flex', alignItems: wide ? 'flex-end' : 'center', justifyContent: 'center', paddingBottom: wide ? 24 : 4, width: wide ? 210 : undefined }}>
+      <div ref={juice.stage} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: wide ? 'row' : 'column-reverse', gap: 8 }}>
+        <div style={{ position: 'relative', flexShrink: 0, display: 'flex', alignItems: wide ? 'flex-end' : 'center', justifyContent: 'center', paddingBottom: wide ? 24 : 4, width: wide ? 210 : undefined }}>
           {octopus}
+          {/* … and beside the octopus where the top row is full: below the
+              sea, where no bubble comes */}
+          {!hudOnTop && <div style={{ position: 'absolute', right: 0, top: '50%' }}>{juice.hud}</div>}
         </div>
 
         {/* The open sea: the bubbles float in the scene behind */}
@@ -500,7 +491,7 @@ export default function BubblePopGame({ level = 1, onComplete }) {
                   exit={{ scale: 1.6, opacity: 0, transition: { duration: 0.2 } }}
                   transition={pulse ? { duration: 1.1, repeat: reveal ? 1 : 0 } : { opacity: { duration: 0.3 }, scale: { type: 'spring', stiffness: 300, damping: 18 } }}
                   whileTap={{ scale: 1.25 }}
-                  onClick={() => popBubble(bubble)}
+                  onClick={e => popBubble(bubble, e.currentTarget)}
                   aria-label={bubble.value === 0 ? 'Party-Blase' : cfg.dots ? `${bubble.value} ${bubble.value === 1 ? 'Punkt' : 'Punkte'}` : `${bubble.value}`}
                   style={{
                     x: mvsRef.current[bubble.id]?.mx,
@@ -536,18 +527,6 @@ export default function BubblePopGame({ level = 1, onComplete }) {
         </div>
       </div>
 
-      {/* Stars swimming to the octopus */}
-      {flyers.map(f => (
-        <motion.div key={f.id} aria-hidden="true"
-          initial={{ x: f.x0 - 22, y: f.y0 - 22, scale: 0.4, rotate: 0 }}
-          animate={{ x: [f.x0 - 22, (f.x0 + f.x1) / 2 - 22, f.x1 - 22], y: [f.y0 - 22, Math.min(f.y0, f.y1) - 80, f.y1 - 22], scale: [0.4, 1.3, 0.8], rotate: 360 }}
-          transition={{ duration: reduce ? 0.01 : 0.75, ease: 'easeInOut' }}
-          onAnimationComplete={() => { setFlyers(l => l.filter(x => x.id !== f.id)); starsRef.current += 1; setStars(starsRef.current); sfx.coin() }}
-          style={{ position: 'absolute', left: 0, top: 0, zIndex: 20, pointerEvents: 'none' }}>
-          <Art art="⭐" size={44} />
-        </motion.div>
-      ))}
-
       {/* Offended puffer fish */}
       {puffers.map(p => (
         <motion.div key={p.id} aria-hidden="true"
@@ -570,6 +549,7 @@ export default function BubblePopGame({ level = 1, onComplete }) {
           onDone={() => onComplete(result(roundsRef.current.filter(r => r === 'clean').length, ROUNDS))} />
       )}
       {bursts}
+      {juice.layer}
     </div>
   )
 }
@@ -593,27 +573,6 @@ function Visitor({ art, paused }) {
         <Art art={art} size={70} />
       </motion.button>
     </motion.div>
-  )
-}
-
-// The stars it dropped on its own head, piled up as a wobbly crown
-function StarCrown({ n, size }) {
-  if (!n) return null
-  const rows = [], shown = Math.min(n, 15)
-  for (let left = shown, w = 5; left > 0; w--) { const k = Math.min(w, left); rows.push(k); left -= k }
-  return (
-    <div aria-hidden="true" style={{ position: 'absolute', left: '50%', bottom: size * 0.82, transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column-reverse', alignItems: 'center', pointerEvents: 'none' }}>
-      {rows.map((k, r) => (
-        <div key={r} style={{ display: 'flex', marginBottom: -8 }}>
-          {Array.from({ length: k }, (_, i) => (
-            <motion.span key={i} initial={{ y: -60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 12, delay: i * 0.05 }}
-              style={{ display: 'inline-flex', margin: '0 -3px', transform: `rotate(${((r * 5 + i) * 37) % 30 - 15}deg)` }}>
-              <Art art="⭐" size={22} />
-            </motion.span>
-          ))}
-        </div>
-      ))}
-    </div>
   )
 }
 
