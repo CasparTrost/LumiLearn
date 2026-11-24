@@ -89,6 +89,21 @@ const activitiesFor = level => DAILY_ACTIVITIES.filter(a => level >= 4 || a.m ==
 const hourOfDay = a => (a.sky === 'moon' || (a.h < 6 && a.h !== 12) ? a.h % 12 + 12 : a.h) + a.m / 60
 const fitsToo = (other, act) => { const t = hourOfDay(act); return other.from <= t && t <= other.to }
 
+// The room follows the clock: after a solved time the window shows that
+// part of the day. Eleven to one is lunchtime and two to five afternoon;
+// a clock face doesn't say whether seven is morning or evening, so in the
+// first half of a level it is morning and in the second the day gets late.
+function dayPart(t, idx, n) {
+  if (t.activity) {
+    const hr = hourOfDay(t.activity)
+    return hr < 10.5 ? 'morning' : hr < 13.5 ? 'noon' : hr < 17 ? 'day' : 'evening'
+  }
+  const h = t.h % 12 || 12
+  if (h >= 11 || h === 1) return 'noon'
+  if (h <= 5) return 'day'
+  return idx < n / 2 ? 'morning' : 'evening'
+}
+
 // What the cuckoo is waiting for in a setting round
 const TREATS = ['🍰', '🍦', '🍪', '🍕', '🧁', '🍓', '🍩', '🍎']
 
@@ -110,7 +125,7 @@ function generateRounds(level) {
     if (i % 3 === 2 && acts.length) {
       const act = acts.pop()
       seen.add(`${act.h}:${act.m}`)
-      rounds.push({ h: act.h, m: act.m, activity: act })
+      rounds.push({ h: act.h, m: act.m, activity: act, treat: treats[i % treats.length] })
       continue
     }
     let t, tries = 0
@@ -495,9 +510,16 @@ const CLOCK_CSS = `
  * 'eat' out, eating its treat. `hat`: a streak of right answers, the
  * cuckoo dresses up.
  */
-function CuckooClock({ size, bird, calls, treat, wish, hat, sky, paused, onDoor, children }) {
+function CuckooClock({ size, bird, calls, treat, wish, hat, sky, day, dayBeat, fat = 0, teeter = 0, paused, onDoor, children }) {
   const w = size * HOUSE_W, h = size * HOUSE_H
   const bob = useAnimationControls()
+  // the level-end cake: so full it nearly topples off its perch
+  const tip = useAnimationControls()
+  useEffect(() => {
+    if (!teeter || reduceMotion()) return
+    tip.start({ rotate: [0, 26, -14, 34, -20, 8, 0], x: [0, w * 0.03, -w * 0.02, w * 0.05, -w * 0.02, 0, 0], transition: { duration: 1.5, ease: 'easeInOut' } })
+  }, [teeter, tip, w])
+  const round = Math.min(fat, 10)
   useEffect(() => {
     if (calls && !reduceMotion()) bob.start({ scaleY: [1, 0.8, 1.12, 1], y: [0, 4, -6, 0], transition: { duration: 0.24 } })
   }, [calls, bob])
@@ -553,12 +575,24 @@ function CuckooClock({ size, bird, calls, treat, wish, hat, sky, paused, onDoor,
         transition={{ type: 'spring', stiffness: 420, damping: 15 }}
         style={{ position: 'absolute', left: (w - birdPx) / 2, top: h * (62 / 360) - birdPx * 0.62, width: birdPx, height: birdPx, pointerEvents: 'none', zIndex: 2 }}>
         {/* one bob per call; the hat sits on the head and bobs along */}
+        <motion.div animate={tip} style={{ transformOrigin: '50% 100%' }}>
         <motion.div animate={bob} style={{ position: 'relative', transformOrigin: '50% 100%' }}>
-          <motion.div animate={bird === 'eat' && !reduceMotion() ? { scaleY: [1, 0.85, 1.08, 0.88, 1.04, 1] } : {}} transition={{ duration: 0.9 }}>
-            <Art art="🐦" size={birdPx} />
+          {/* every treat makes it a little rounder */}
+          <motion.div initial={false} animate={{ scaleX: 1 + round * 0.06, scaleY: 1 + round * 0.015 }} transition={{ type: 'spring', stiffness: 200, damping: 9 }}
+            style={{ transformOrigin: '50% 100%' }}>
+            <motion.div animate={bird === 'eat' && !reduceMotion() ? { scaleY: [1, 0.85, 1.08, 0.88, 1.04, 1] } : {}} transition={{ duration: 0.9 }}>
+              <Art art="🐦" size={birdPx} />
+            </motion.div>
           </motion.div>
           <AnimatePresence>
-            {hat && out && (
+            {day === 'evening' && out && (
+              <motion.div key="cap" initial={{ y: -birdPx * 0.5, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 12 }}
+                style={{ position: 'absolute', left: birdPx * 0.12, top: -birdPx * 0.3, rotate: -10 }}>
+                <NightCap size={birdPx * 0.62} />
+              </motion.div>
+            )}
+            {hat && out && day !== 'evening' && (
               <motion.div key="hat" initial={{ y: -birdPx * 0.5, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ opacity: 0 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 12 }}
                 style={{ position: 'absolute', left: birdPx * 0.17, top: -birdPx * 0.16, rotate: -12 }}>
@@ -566,6 +600,7 @@ function CuckooClock({ size, bird, calls, treat, wish, hat, sky, paused, onDoor,
               </motion.div>
             )}
           </AnimatePresence>
+        </motion.div>
         </motion.div>
         {bird === 'puzzled' && (
           <span style={{ position: 'absolute', top: -birdPx * 0.25, right: -birdPx * 0.1, fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: birdPx * 0.45, color: '#6b3fd6', WebkitTextStroke: `2px ${INK}` }}>?</span>
@@ -590,7 +625,7 @@ function CuckooClock({ size, bird, calls, treat, wish, hat, sky, paused, onDoor,
             initial={{ scale: 0.3, opacity: 0, y: 10 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 1.4 }}
             transition={{ duration: 0.18 }}
             style={{
-              position: 'absolute', top: h * 0.07, left: w * 0.66, zIndex: 4,
+              position: 'absolute', top: h * 0.1, left: w * 0.02, zIndex: 4,
               width: w * 0.2, height: w * 0.2, borderRadius: '50%', background: '#FFC93C', border: `3px solid ${INK}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: w * 0.11, color: INK,
@@ -605,7 +640,7 @@ function CuckooClock({ size, bird, calls, treat, wish, hat, sky, paused, onDoor,
             initial={{ y: -h * 0.3, opacity: 0, scale: 0.6 }} animate={{ y: 0, opacity: 1, scale: [0.6, 1, 1, 0.7, 0.4] }} exit={{ scale: 0, opacity: 0, transition: { duration: 0.2 } }}
             transition={{ duration: 1.6, y: { type: 'spring', stiffness: 380, damping: 14 } }}
             style={{ position: 'absolute', left: w * 0.2, top: h * 0.12, zIndex: 4, pointerEvents: 'none' }}>
-            <Art art={treat} size={w * 0.2} />
+            <Art art={treat} size={treat === '🎂' ? w * 0.3 : w * 0.2} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -622,12 +657,96 @@ function CuckooClock({ size, bird, calls, treat, wish, hat, sky, paused, onDoor,
         </motion.div>
       )}
 
+      {/* the window on the wall beside the clock */}
+      <RoomWindow day={day} beat={dayBeat} w={w * 0.25} style={{ position: 'absolute', left: w * 0.73, top: -70, zIndex: 1 }} />
+
       {/* what the cuckoo is waiting for, beside its door so it never hides it */}
       {wish && (
         <div style={{ position: 'absolute', left: '24%', top: 0, width: 0, height: 0, zIndex: 5 }}>
           <Wish side="top" size={110}>{wish}</Wish>
         </div>
       )}
+    </div>
+  )
+}
+
+// A blue nightcap with a white bobble, for the evening
+function NightCap({ size }) {
+  return (
+    <svg viewBox="0 0 60 50" width={size} height={size * 50 / 60} aria-hidden="true" style={{ overflow: 'visible' }}>
+      <path d="M6 44 Q10 14 34 8 Q50 4 56 22 Q46 16 40 24 Q36 34 40 44 Z" fill="#4AA3FF" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+      <path d="M14 22 l4 3 M26 14 l3 4 M30 30 l4 2" stroke="#fff" strokeWidth="3" strokeLinecap="round" opacity="0.8" />
+      <rect x="2" y="40" width="42" height="9" rx="4.5" fill="#fff" stroke={INK} strokeWidth="3" />
+      <circle cx="56" cy="24" r="6" fill="#fff" stroke={INK} strokeWidth="3" />
+    </svg>
+  )
+}
+
+// The window on the wall: it shows the part of the day of the last solved
+// time. In the morning the sun rises, at lunchtime a plate of food stands on
+// the sill, in the afternoon the sun is high, in the evening it is dark
+// with the moon and stars.
+const WINDOW_SKY = {
+  morning: ['#FFD3A8', '#BDE6FF'], noon: ['#7CCBFF', '#C9EEFF'], day: ['#8FD3FF', '#E4F6FF'],
+  evening: ['#1E2150', '#4B4F9C'], start: ['#A9DDFF', '#E4F6FF'],
+}
+function RoomWindow({ day, beat, w, style }) {
+  const reduce = reduceMotion()
+  const [top, bot] = WINDOW_SKY[day ?? 'start']
+  const sunY = day === 'morning' ? 64 : day === 'noon' ? 26 : day === 'day' ? 38 : 130
+  const H = w * 1.2
+  return (
+    <div aria-label={day === 'evening' ? 'Abend' : day === 'morning' ? 'Morgen' : day === 'noon' ? 'Mittag' : undefined}
+      role={day ? 'img' : undefined} style={{ ...style, width: w, height: H + w * 0.1, pointerEvents: 'none' }}>
+      <svg viewBox="0 0 100 120" width={w} height={H} style={{ display: 'block', overflow: 'hidden', borderRadius: `${w * 0.5}px ${w * 0.5}px 6px 6px` }} aria-hidden="true">
+        <defs>
+          <linearGradient id="cu-sky" x1="0" y1="1" x2="0" y2="0">
+            <motion.stop offset="0" initial={false} animate={{ stopColor: bot }} transition={{ duration: 0.8 }} />
+            <motion.stop offset="1" initial={false} animate={{ stopColor: top }} transition={{ duration: 0.8 }} />
+          </linearGradient>
+        </defs>
+        <rect width="100" height="120" fill="url(#cu-sky)" />
+        {/* the sun rises from behind the sill (each morning anew), or stands high */}
+        <motion.g key={day === 'morning' ? `m${beat}` : 'sun'} initial={day === 'morning' && !reduce ? { y: 130 } : false}
+          animate={{ y: sunY, x: day === 'day' ? 14 : 0 }}
+          transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 40, damping: 12 }}>
+          <circle cx="50" cy="0" r="17" fill="#FFD84A" stroke="#F2B632" strokeWidth="4" />
+          <circle cx="44" cy="-3" r="2.4" fill={INK} /><circle cx="56" cy="-3" r="2.4" fill={INK} />
+          <path d="M44 5 Q50 10 56 5" stroke={INK} strokeWidth="2.4" fill="none" strokeLinecap="round" />
+        </motion.g>
+        {day === 'morning' && <rect x="0" y="96" width="100" height="24" fill="#7CC95A" />}
+        {/* evening: the moon and a few stars */}
+        <AnimatePresence>
+          {day === 'evening' && (
+            <motion.g key="night" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.8 }}>
+              <path d="M66 22 A16 16 0 1 0 80 48 A13 13 0 1 1 66 22 Z" fill="#FFF3B0" stroke="#E8D27A" strokeWidth="2.5" />
+              {[[22, 24], [36, 52], [16, 78], [74, 82], [52, 16]].map(([x, y], i) => (
+                <motion.circle key={i} cx={x} cy={y} r="2.6" fill="#fff"
+                  animate={reduce ? {} : { opacity: [1, 0.3, 1] }} transition={{ duration: 1.6, repeat: Infinity, delay: i * 0.3 }} />
+              ))}
+            </motion.g>
+          )}
+        </AnimatePresence>
+        {/* the frame's cross */}
+        <path d="M50 0 V120 M0 66 H100" stroke={WOOD} strokeWidth="6" />
+      </svg>
+      {/* frame and sill */}
+      <div style={{ position: 'absolute', left: 0, top: 0, width: w, height: H, boxSizing: 'border-box', border: `${Math.max(4, w * 0.06)}px solid ${WOOD}`, outline: `3px solid ${INK}`, outlineOffset: -1, borderRadius: `${w * 0.5}px ${w * 0.5}px 6px 6px` }} />
+      <div style={{ position: 'absolute', left: -w * 0.08, top: H - 2, width: w * 1.16, height: w * 0.1, background: WOOD_LIGHT, border: `3px solid ${INK}`, borderRadius: 4, boxSizing: 'border-box' }} />
+      {/* lunchtime: a plate of food on the sill */}
+      <AnimatePresence>
+        {day === 'noon' && (
+          <motion.div key={`plate${beat}`} initial={reduce ? false : { x: -w * 0.6, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 160, damping: 14 }}
+            style={{ position: 'absolute', left: w * 0.22, top: H - w * 0.46, width: w * 0.56 }}>
+            <Art art="🍝" size={w * 0.56} />
+            {!reduce && [0, 1].map(i => (
+              <motion.span key={i} aria-hidden="true" animate={{ y: [0, -w * 0.22], opacity: [0, 0.8, 0] }} transition={{ duration: 1.4, repeat: Infinity, delay: i * 0.7 }}
+                style={{ position: 'absolute', left: w * (0.2 + i * 0.16), top: 0, width: w * 0.05, height: w * 0.14, borderRadius: 9, background: '#fff' }} />
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
@@ -727,6 +846,10 @@ export default function ClockGame({ level = 1, onComplete }) {
   const [picked,  setPicked]  = useState(null)     // guesser just tapped
   const [streak,  setStreak]  = useState(0)        // right on the first try in a row
   const [ending,  setEnding]  = useState(false)
+  const [day,     setDay]     = useState(null)     // the window: the part of the day of the last solved time
+  const [dayBeat, setDayBeat] = useState(0)
+  const [fat,     setFat]     = useState(0)        // treats eaten: the cuckoo gets rounder
+  const [teeter,  setTeeter]  = useState(0)        // the level-end cake nearly knocks it off its perch
   const [lumiMood, setLumiMood] = useMood()
   const [lumiDoes, setLumiDoes] = useState(null)   // activity Lumi is doing
   const [bursts, burst] = useBursts()
@@ -775,6 +898,9 @@ export default function ClockGame({ level = 1, onComplete }) {
     do { start = fromHM(rand(1, 12), rand(0, 11) * 5) }
     while (timeDiffMin(toHM(start).h, toHM(start).m, t.h, t.m) <= 60)
     setHands(start)
+    // a round about the time of day shows its sky in the window from the
+    // start (the plate of lunch would give the answer away: that waits)
+    if (t.activity) { const p = dayPart(t, idx, times.length); setDay(p === 'noon' ? 'day' : p) }
     lockPreviews()
     sayTask()
     return clearTimers
@@ -810,14 +936,19 @@ export default function ClockGame({ level = 1, onComplete }) {
   // with a cake and calls three times, then the results
   const finishLevel = useCallback(() => {
     setEnding(true); setStatus('right'); setPulse(null)
-    setTreat('🎂')
+    setTreat('🎂'); setBird('eat')
     sfx.tada()
     burst(houseRef.current, 'confetti', 18)
-    ring(3, () => {
+    // the whole cake: it gets so round it nearly topples off its perch,
+    // catches itself, and calls three times
+    later(() => { sfx.chomp(); setFat(f => f + 3) }, 700)
+    later(() => { sfx.whoosh(); setTeeter(n => n + 1) }, 1300)
+    later(() => sfx.boing(), 2600)
+    later(() => ring(3, () => {
       sfx.complete()
       afterNarration(() => onComplete(result(times.length - missed.current.size, times.length)), { minMs: 1400 })
-    })
-  }, [ring, burst, onComplete, times.length])
+    }), 3000)
+  }, [ring, burst, later, onComplete, times.length])
 
   const nextRound = useCallback(() => {
     if (idx + 1 >= times.length) finishLevel()
@@ -835,15 +966,16 @@ export default function ClockGame({ level = 1, onComplete }) {
     const s = first ? streak + 1 : 0
     setStreak(s)
     if (s >= 3) burst(houseRef.current, 'confetti', 8 + 2 * s)
+    // the window follows the clock while the cuckoo calls
+    later(() => { setDay(dayPart(t, idx, times.length)); setDayBeat(b => b + 1) }, 300)
     ring(callsFor(t), () => {
       sayRight()
-      if (mode === 'set') {
-        setTreat(t.treat); setBird('eat'); sfx.chomp()
-        if (Math.random() < 0.3) later(sfx.burp, 900)
-      }
-      afterNarration(() => later(nextRound, 0), { minMs: mode === 'set' ? 1900 : 1300 })
+      // a treat every time: the cuckoo gets rounder over the level
+      setTreat(t.treat ?? '🍪'); setBird('eat'); sfx.chomp(); setFat(f => f + 1)
+      if (Math.random() < 0.3) later(sfx.burp, 900)
+      afterNarration(() => later(nextRound, 0), { minMs: 1900 })
     })
-  }, [idx, t, mode, streak, ring, burst, later, nextRound])
+  }, [idx, t, streak, ring, burst, later, nextRound, times.length])
 
   // First miss: the cuckoo looks out puzzled, the hand that is off pulses,
   // and the child tries again. Second miss: the answer is shown and stays
@@ -990,6 +1122,7 @@ export default function ClockGame({ level = 1, onComplete }) {
       }}>
         <div ref={houseRef} onPointerDown={() => { if (calls) skipRef.current = true }} style={{ paddingTop: headroom, flexShrink: 0 }}>
           <CuckooClock size={clockPx} bird={bird} calls={calls} paused={paused} hat={streak >= 3 || ending} sky={t.activity?.sky}
+            day={day} dayBeat={dayBeat} fat={fat} teeter={teeter}
             treat={treat} wish={wish}
             onDoor={mode !== 'set' && !resolved ? peek : null}>
             <ClockFace

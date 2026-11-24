@@ -475,14 +475,14 @@ function MiniFigure({ fig, size }) {
 // flies up from the workbench, shrinking), so the workshop fills up
 function Shelf({ figs, total }) {
   return (
-    <div aria-hidden="true" style={{ position: 'relative', width: 'min(100%, 560px)', height: 58, flexShrink: 0, display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: 6 }}>
+    <div aria-hidden="true" style={{ position: 'relative', width: 'min(100%, 560px)', height: 62, flexShrink: 0, display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: 4 }}>
       <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 9, borderRadius: 4, background: '#8A5A33', border: `2px solid ${INK}`, boxShadow: '0 4px 0 rgba(42,27,61,0.25)' }} />
       {Array.from({ length: total }, (_, n) => (
-        <div key={n} style={{ width: 48, height: 48, marginBottom: 9, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+        <div key={n} style={{ width: 54, height: 52, marginBottom: 9, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
           {figs[n] && (
             <motion.div initial={reduceMotion() ? false : { y: 240, scale: 3.2, opacity: 0.4 }} animate={{ y: 0, scale: 1, opacity: 1 }}
               transition={{ type: 'spring', stiffness: 120, damping: 15 }}>
-              <MiniFigure fig={figs[n]} size={46} />
+              <MiniFigure fig={figs[n]} size={52} />
             </motion.div>
           )}
         </div>
@@ -598,7 +598,8 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
       if (stuck) return false
       misses.current++
       roundMisses.current++
-      setStuck({ shape: piece.shape, x: slot.x, y: slot.y, w: slot.w, h: slot.h, rot: rotOf(trayIdx) + 20, color: piece.color, tray: trayIdx, n: Date.now() })
+      // the piece's own size, sitting crooked on the place: too big, too small, wrong
+      setStuck({ shape: piece.shape, x: slot.x + slot.w / 2 - piece.w / 2, y: slot.y + slot.h / 2 - piece.h / 2, w: piece.w, h: piece.h, rot: rotOf(trayIdx) + 20, color: piece.color, tray: trayIdx, n: Date.now() })
       setMood('oops', 700)
       sfx.boing()
       sayWrong()

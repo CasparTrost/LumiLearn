@@ -420,7 +420,7 @@ export default function EmpathyGame({ level = 1, onComplete }) {
   const doing = actOf(best.i)
   const helper = helped ? { x: FRIEND_X - doing.dx, size: 120, act: 'in', feel: 'happy', say: best.i } : undefined
   // friends helped earlier wave from the back of the meadow
-  const back = cheering.map((look, n) => ({ x: BACK_X[n], y: 120, s: 60, act: 'none', z: 0,
+  const back = cheering.map((look, n) => ({ x: BACK_X[n], y: 70, s: 60, act: 'none', z: 0,
     node: <motion.div animate={{ y: [0, -10, 0], rotate: [0, -6, 6, 0] }} transition={{ duration: 1.2, repeat: Infinity, delay: n * 0.2 }}><FeelLumi feel="happy" look={look} size={58} /></motion.div> }))
   const cast = [friend, ...props, ...(helped ? doing.items(FRIEND_X - doing.dx) : []), ...back]
 

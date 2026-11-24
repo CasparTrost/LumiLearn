@@ -40,6 +40,7 @@ export function initState(maze, hasDragon = true) {
     won:        false,
     dead:       false,
     invUntil:   0,            // invincibility timestamp (ms)
+    bigUntil:   0,            // the pink potion: Lumi is big until this many moves, the dragon gets out of the way
     bumpKey:    0,            // increments on wall bump — drives shake animation
     dangerLevel: 0,           // 0 = safe, 0.5 = near, 1 = very near
     event:      null,         // { type, ...data } — consumed by side-effect hook
@@ -71,6 +72,8 @@ function checkCollision(s, now) {
   if (!s.dragon) return s
   if (s.dragon.x !== s.pos.x || s.dragon.y !== s.pos.y) return s
   if (now < s.invUntil) return s              // invincible — ignore
+  // Big Lumi (the pink potion): the dragon jumps out of the way
+  if (s.moves < s.bigUntil) return s.event ? s : { ...s, event: { type: 'scare' } }
   const lives = s.lives - 1
   const back  = knockBackPos(s)
   return {
@@ -152,6 +155,10 @@ export function mazeReducer(s, a) {
       if (s.won || s.dead) return s
       return { ...s, dragon: a.pos, dangerLevel: computeDanger(s.maze.g, s.pos, a.pos) }
     }
+
+    // A pink potion: big for the next `steps` moves
+    case 'BIG':
+      return { ...s, bigUntil: s.moves + a.steps }
 
     case 'SET_MOVING':
       return { ...s, moving: a.value }

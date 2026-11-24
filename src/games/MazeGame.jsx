@@ -10,7 +10,7 @@ import { afterNarration } from '../narrator.js'
 import { sayRight } from '../lib/feedback.js'
 import { usePaused } from '../lib/pause.js'
 import { PxIcon } from '../components/PixelUI.jsx'
-import { Art, HintHand } from '../components/play/index.js'
+import { Art, HintHand, useBursts } from '../components/play/index.js'
 
 // ──────────────────────────────────────────────────────────────────
 // ASSET HELPER
@@ -458,7 +458,7 @@ const LIGHT_LOOK = {
 }
 const SEEN_FOG = '#8a8a8a'   // mask grey: explored cells keep ~55 % fog
 
-function Lighting({ maze, cellSize, pos, seen, lights, coll, radius, fogColor }) {
+function Lighting({ maze, cellSize, pos, seen, lights, coll, radius, fogColor, extra = [] }) {
   const id = useId().replace(/:/g, '')
   const { cols, rows, exit, potions } = maze
   const W = cols * cellSize
@@ -469,6 +469,7 @@ function Lighting({ maze, cellSize, pos, seen, lights, coll, radius, fogColor })
     ...lights.map(l => ({ key: `l-${l.x},${l.y}`, x: c(l.x), y: c(l.y) + cellSize * 0.45, r: LIGHT_LOOK[l.kind].r })),
     { x: c(exit.x), y: c(exit.y), r: 1.5, key: 'exit' },
     ...potions.filter(p => !coll.includes(p.id)).map(p => ({ x: c(p.x), y: c(p.y), r: 1.0, key: 'p' + p.id })),
+    ...extra.map(e => ({ x: c(e.x), y: c(e.y), r: 0.9, key: 'x' + e.x + ',' + e.y })),
   ]
 
   return (
@@ -500,7 +501,7 @@ function Lighting({ maze, cellSize, pos, seen, lights, coll, radius, fogColor })
               cy={0}
               r={radius * cellSize}
               fill={`url(#${id}-hole)`}
-              style={{ transform: `translate(${c(pos.x)}px, ${c(pos.y)}px)`, transition: 'transform 0.22s ease-out' }}
+              style={{ r: radius * cellSize, transform: `translate(${c(pos.x)}px, ${c(pos.y)}px)`, transition: 'transform 0.22s ease-out, r 0.6s ease-out' }}
             />
           </mask>
         </defs>
@@ -669,6 +670,73 @@ function firstStep(g, from, targets) {
   return null
 }
 
+// ── Potions with powers ─────────────────────────────────────────────
+// Each potion does something for the next eight steps, by its colour:
+// pink makes Lumi big and the dragon gets out of the way, turquoise leaves
+// sparkly footprints (they stay, a trail through the fog), gold widens
+// Lumi's light. Nothing to read: the potion floats over Lumi with a pip
+// per step left.
+const POWER_STEPS = 8
+const POWER_GLOW  = ['rgba(255,120,200,0.55)', 'rgba(80,240,230,0.55)', 'rgba(255,210,60,0.6)']
+
+// ── The treasure chest ──────────────────────────────────────────────
+// In the dead end farthest off the way to the potions and the gate: worth
+// the long way round, and found only by wandering. Opened, it pops
+// confetti and gives Lumi a sticker, shown again at the win.
+const LOOT = ['💎', '👑', '🦄', '🌈', '🔮', '⭐']
+function treasureSpot({ g, start, exit, potions, mainPath }, avoid) {
+  const key = p => `${p.x},${p.y}`
+  const dist = new Map((mainPath ?? []).map(p => [key(p), 0]))
+  const queue = [...(mainPath ?? [])]
+  while (queue.length) {
+    const c = queue.shift(), d = dist.get(key(c))
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const n = { x: c.x + dx, y: c.y + dy }
+      if (g[n.y]?.[n.x] !== 0 || dist.has(key(n))) continue
+      dist.set(key(n), d + 1)
+      queue.push(n)
+    }
+  }
+  const taken = new Set([start, exit, ...potions, ...avoid].map(key))
+  let best = null
+  for (let y = 1; y < g.length - 1; y++) for (let x = 1; x < g[0].length - 1; x++) {
+    if (g[y][x] !== 0 || taken.has(`${x},${y}`)) continue
+    const ways = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) => g[y + dy]?.[x + dx] === 0).length
+    if (ways !== 1) continue
+    const off = dist.get(`${x},${y}`) ?? 0
+    const far = Math.abs(x - start.x) + Math.abs(y - start.y)
+    if (!best || off > best.off || (off === best.off && far > best.far)) best = { x, y, off, far }
+  }
+  return best
+}
+
+// A wooden chest drawn here (there is none in the emoji set): the lid
+// flips open
+function Chest({ size, open }) {
+  return (
+    <svg viewBox="0 0 40 36" width={size} height={size * 0.9} aria-hidden="true" style={{ overflow: 'visible', display: 'block' }}>
+      <rect x="4" y="16" width="32" height="18" rx="3" fill="#A0622D" stroke="#2a1b3d" strokeWidth="2.5" />
+      <rect x="4" y="22" width="32" height="4" fill="#FFC93C" stroke="#2a1b3d" strokeWidth="1.5" />
+      <rect x="17" y="20" width="6" height="8" rx="1.5" fill="#FFE08A" stroke="#2a1b3d" strokeWidth="1.5" />
+      {open && <ellipse cx="20" cy="16" rx="13" ry="3.5" fill="#FFE27A" />}
+      <motion.g initial={false} animate={{ rotate: open ? -70 : 0 }} transition={{ type: 'spring', stiffness: 260, damping: 12 }}
+        style={{ originX: 0, originY: 1 }}>
+        <path d="M4 16 Q4 5 20 5 Q36 5 36 16 Z" fill="#B5733A" stroke="#2a1b3d" strokeWidth="2.5" strokeLinejoin="round" />
+        <path d="M18 5 V16 M22 5 V16" stroke="#FFC93C" strokeWidth="2" />
+      </motion.g>
+    </svg>
+  )
+}
+
+// A sticker: the picture with a thick white edge
+function Sticker({ art, size }) {
+  return (
+    <span style={{ display: 'inline-flex', padding: size * 0.1, borderRadius: '30%', background: '#fff', boxShadow: '0 0 0 2px #2a1b3d, 0 3px 0 2px rgba(0,0,0,0.3)' }}>
+      <Art art={art} size={size * 0.8} />
+    </span>
+  )
+}
+
 // ──────────────────────────────────────────────────────────────────
 // MAIN COMPONENT
 // ──────────────────────────────────────────────────────────────────
@@ -711,6 +779,14 @@ export default function MazeGame({ level = 1, onComplete }) {
   const [gateNag, setGateNag]       = useState(0)  // bumped into the closed gate (time)
   const [hitFx, setHitFx]           = useState(0)  // the dragon caught Lumi (time)
   const [showOverlay, setShowOverlay] = useState(null) // 'won' | 'dead'
+  const [power, setPower]           = useState(null) // { type, until } — the last potion's power, until that many moves
+  const [prints, setPrints]         = useState([])   // turquoise footprints: [{ x, y, k }]
+  const [scare, setScare]           = useState(0)    // big Lumi walked into the dragon (time)
+  const [dragonTap, setDragonTap]   = useState(null) // { k, kind: 'giggle' | 'blush' }
+  const [chestOpen, setChestOpen]   = useState(0)    // time it was opened
+  const [loot]                      = useState(() => LOOT[Math.floor(Math.random() * LOOT.length)])
+  const [bursts, burst]             = useBursts()
+  const chestRef = useRef(null)
   // The fewest steps for this maze, and the bonus earned at the win:
   // null, 'short' (crown) or 'perfect' (short way and the dragon never hit)
   const shortest = useMemo(() => shortestTour(mazeRef.current), [])
@@ -813,11 +889,20 @@ export default function MazeGame({ level = 1, onComplete }) {
 
       case 'potion': {
         try { sfx.potion() } catch { /* ignore */ }
+        const type = mazeRef.current.potions.find(p => p.id === ev.id)?.type ?? 0
+        setPower({ type, until: stRef.current.moves + POWER_STEPS })
+        if (type === 0) dispatch({ type: 'BIG', steps: POWER_STEPS })
         const sid = Date.now()
         setSparkles(prev => [...prev, { id: sid, x: ev.x, y: ev.y }])
         setTimeout(() => setSparkles(prev => prev.filter(s => s.id !== sid)), 700)
         break
       }
+
+      // Big Lumi walked into the dragon: it jumps aside, startled
+      case 'scare':
+        try { sfx.boing() } catch { /* ignore */ }
+        setScare(Date.now())
+        break
 
       case 'needPotions':
         try { sfx.boing() } catch { /* ignore */ }
@@ -839,6 +924,7 @@ export default function MazeGame({ level = 1, onComplete }) {
         setHitFx(Date.now())
         navigator.vibrate?.([80, 40, 80, 40, 80])
         setShowOverlay('dead')
+        setPower(null)
         clearTimeout(restartRef.current)
         restartRef.current = setTimeout(() => {
           dragonStepRef.current = 0
@@ -896,6 +982,33 @@ export default function MazeGame({ level = 1, onComplete }) {
     const f = friends.find(c => Math.abs(c.x - st.pos.x) + Math.abs(c.y - st.pos.y) <= 1)
     if (f && !met.includes(f.art)) { setMet(m => [...m, f.art]); try { sfx.giggle() } catch { /* ignore */ } }
   }, [st.pos, friends, met])
+
+  // ── POWERS ────────────────────────────────────────────────────────
+  const powerOn = power && st.moves < power.until && !st.dead ? power.type : null
+  const big     = powerOn === 0
+  useEffect(() => {
+    if (!power || power.type !== 1 || !st.moves || st.moves > power.until) return
+    setPrints(p => (p.some(q => q.k === st.moves) ? p : [...p.slice(-70), { x: st.pos.x, y: st.pos.y, k: st.moves, f: st.facing }]))
+  }, [st.moves]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── THE CHEST ─────────────────────────────────────────────────────
+  const chest = useMemo(() => treasureSpot(mazeRef.current, friends), [friends])
+  useEffect(() => {
+    if (!chest || chestOpen || st.pos.x !== chest.x || st.pos.y !== chest.y) return
+    setChestOpen(Date.now())
+    try { sfx.tada() } catch { /* ignore */ }
+    burst(chestRef.current, 'confetti', 26)
+    setTimeout(() => burst(chestRef.current, 'stars', 10), 250)
+  }, [st.pos]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── THE DRAGON, TAPPED ─────────────────────────────────────────────
+  // It giggles, or blushes — a friend, after all
+  const tapDragon = e => {
+    e.stopPropagation()
+    const kind = dragonTap?.kind === 'giggle' ? 'blush' : 'giggle'
+    try { if (kind === 'giggle') sfx.giggle(); else sfx.sparkle() } catch { /* ignore */ }
+    setDragonTap({ k: Date.now(), kind })
+  }
 
   // ── CLEANUP ───────────────────────────────────────────────────────
   useEffect(() => () => {
@@ -984,6 +1097,7 @@ export default function MazeGame({ level = 1, onComplete }) {
       boxSizing:       'border-box',
     }}>
 
+      {bursts}
       {/* ── HUD ─────────────────────────────────────────────────────
           The hearts, and the goal as a picture: each potion still to find
           as a grey shape, found ones in colour, then the gate — locked
@@ -1009,6 +1123,15 @@ export default function MazeGame({ level = 1, onComplete }) {
               <Art art={i < st.lives ? '❤️' : '💔'} size={30} />
             </motion.span>
           ))}
+          {/* the chest's sticker, once found */}
+          <AnimatePresence>
+            {chestOpen > 0 && (
+              <motion.span key="sticker" initial={{ scale: 0, rotate: -40 }} animate={{ scale: 1, rotate: -8 }} transition={{ delay: 1.2, type: 'spring', stiffness: 300, damping: 12 }}
+                style={{ marginLeft: 4 }}>
+                <Sticker art={loot} size={30} />
+              </motion.span>
+            )}
+          </AnimatePresence>
         </div>
 
         <div aria-label={`${st.coll.length} von ${mazeRef.current.potions.length} Tränken`} style={{
@@ -1071,7 +1194,7 @@ export default function MazeGame({ level = 1, onComplete }) {
               </div>
             </motion.div>
           )}
-          {!preview && st.dangerLevel > 0 && !st.won && !st.dead && (
+          {!preview && st.dangerLevel > 0 && !big && !st.won && !st.dead && (
             <motion.div key="danger" aria-label="Der Drache ist nah!"
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0, scale: st.dangerLevel >= 1 ? [1, 1.12, 1] : 1 }}
@@ -1149,8 +1272,9 @@ export default function MazeGame({ level = 1, onComplete }) {
                 seen={st.seen}
                 lights={lights}
                 coll={st.coll}
-                radius={fogRadius}
+                radius={powerOn === 2 ? fogRadius * 1.8 : fogRadius}
                 fogColor={FOG_COLOR[theme]}
+                extra={chest && !chestOpen ? [chest] : []}
               />
             )}
 
@@ -1158,6 +1282,40 @@ export default function MazeGame({ level = 1, onComplete }) {
             {sparkles.map(s => (
               <Sparkles key={s.id} x={s.x} y={s.y} cellSize={cellSize} />
             ))}
+
+            {/* Sparkly footprints (the turquoise potion), above the fog */}
+            {prints.map((p, i) => (
+              <motion.div key={p.k} aria-hidden="true" initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.3 }}
+                className="mz-shimmer"
+                style={{ position: 'absolute', left: (p.x + (i % 2 ? 0.52 : 0.28)) * cellSize, top: (p.y + (i % 2 ? 0.5 : 0.3)) * cellSize,
+                  width: cellSize * 0.2, height: cellSize * 0.26, borderRadius: '50%', zIndex: 15, pointerEvents: 'none',
+                  background: 'radial-gradient(circle, #ffffff 0%, #7ff6ea 45%, rgba(40,220,210,0.25) 100%)',
+                  boxShadow: '0 0 8px 2px rgba(80,240,230,0.75)', animationDelay: `${-(i % 5) * 0.5}s` }} />
+            ))}
+
+            {/* The treasure chest in a far dead end */}
+            {chest && (
+              <div ref={chestRef} aria-label={chestOpen ? undefined : 'Schatztruhe'} role={chestOpen ? undefined : 'img'}
+                style={{ position: 'absolute', left: chest.x * cellSize, top: chest.y * cellSize, width: cellSize, height: cellSize, zIndex: 18,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+                <motion.div animate={chestOpen ? { y: 0 } : { y: [0, -2, 0], rotate: [0, -3, 3, 0] }} transition={chestOpen ? {} : { duration: 1.8, repeat: Infinity }}
+                  style={{ filter: chestOpen ? undefined : 'drop-shadow(0 0 6px rgba(255,215,80,0.9))' }}>
+                  <Chest size={cellSize * 0.86} open={!!chestOpen} />
+                </motion.div>
+                {/* the sticker inside jumps out */}
+                <AnimatePresence>
+                  {chestOpen > 0 && Date.now() - chestOpen < 2600 && (
+                    <motion.div key="loot" initial={{ y: 0, scale: 0.2, opacity: 0 }}
+                      animate={{ y: -cellSize * 1.3, scale: 1, opacity: 1, rotate: [0, -10, 10, -6, 0] }} exit={{ opacity: 0, scale: 0.4, y: -cellSize * 2 }}
+                      transition={{ type: 'spring', stiffness: 220, damping: 12 }}
+                      onAnimationComplete={() => setTimeout(() => setChestOpen(t => t + 0.001), 2000)}
+                      style={{ position: 'absolute', zIndex: 30 }}>
+                      <Sticker art={loot} size={Math.max(44, cellSize * 1.2)} />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
 
             {/* Friends in the dead ends: they hop and send hearts when Lumi comes by */}
             {friends.map(f => {
@@ -1222,6 +1380,24 @@ export default function MazeGame({ level = 1, onComplete }) {
                 }} />
               )}
 
+              {/* the potion's power: a glow, and the potion with a pip per step left */}
+              {powerOn !== null && (
+                <div className="mz-shimmer" aria-hidden="true" style={{ position: 'absolute', inset: big ? '-110%' : '-70%', borderRadius: '50%',
+                  background: `radial-gradient(circle, ${POWER_GLOW[powerOn]} 0%, transparent 62%)`, transition: 'inset .35s' }} />
+              )}
+              <AnimatePresence>
+                {powerOn !== null && (
+                  <motion.div key={`pw${power.until}`} aria-hidden="true" initial={{ scale: 0, y: 10 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0, opacity: 0 }}
+                    style={{ position: 'absolute', left: '50%', top: big ? -cellSize * 1.25 : -cellSize * 0.72, transform: 'translateX(-50%)', zIndex: 2,
+                      display: 'flex', alignItems: 'center', gap: 1, padding: '1px 4px', borderRadius: 10, background: 'rgba(42,27,61,0.78)', transition: 'top .35s' }}>
+                    <img src={spr('potion.png')} alt="" style={{ width: Math.max(14, cellSize * 0.38), height: Math.max(14, cellSize * 0.38), imageRendering: 'pixelated', filter: potionFilter(powerOn) || undefined }} />
+                    {Array.from({ length: Math.max(0, power.until - st.moves) }, (_, i) => (
+                      <span key={i} style={{ width: Math.max(3, cellSize * 0.09), height: Math.max(3, cellSize * 0.09), borderRadius: '50%', background: '#FFE08A' }} />
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               {/* Drop shadow */}
               <div style={{
                 position:     'absolute',
@@ -1240,6 +1416,8 @@ export default function MazeGame({ level = 1, onComplete }) {
                   framer-motion — motion.* components always recompute
                   `transform` from their own x/y/scale/rotate values, which
                   silently discards any hand-written transform string. */}
+              {/* the pink potion: Lumi grows big */}
+              <div style={{ position: 'absolute', inset: 0, transform: big ? 'scale(1.6)' : 'none', transformOrigin: '50% 95%', transition: 'transform .35s cubic-bezier(.3,1.7,.5,1)' }}>
               <motion.div
                 key={`${st.bumpKey}-${hitFx}`}
                 animate={hitFx && Date.now() - hitFx < 600 ? { rotate: [0, -30, 360], scale: [1, 0.7, 1] } : st.bumpKey > 0 ? { x: [0, -5, 5, -3, 0] } : { x: 0 }}
@@ -1275,6 +1453,7 @@ export default function MazeGame({ level = 1, onComplete }) {
                   )}
                 </div>
               </motion.div>
+              </div>
             </motion.div>
 
             {/* ── DRAGON ───────────────────────────────────────── */}
@@ -1290,23 +1469,61 @@ export default function MazeGame({ level = 1, onComplete }) {
                   pointerEvents: 'none',
                 }}
               >
+                {/* a tap: it giggles or blushes. Big Lumi: it cowers away,
+                    small, sweating — and hops aside if Lumi walks into it */}
+                <motion.div
+                  key={`${scare}-${dragonTap?.k ?? 0}`}
+                  role="button" aria-label="Drache" tabIndex={-1}
+                  onPointerDown={tapDragon}
+                  animate={scare && Date.now() - scare < 800 ? { y: [0, -cellSize * 0.8, 0], x: [0, cellSize * 0.3, 0], rotate: [0, 20, 0] }
+                    : dragonTap?.kind === 'giggle' && Date.now() - dragonTap.k < 900 ? { rotate: [0, -14, 14, -10, 10, 0], y: [0, -6, 0, -4, 0] }
+                    : dragonTap?.kind === 'blush' && Date.now() - dragonTap.k < 900 ? { scale: [1, 0.9, 1.05, 1] } : {}}
+                  transition={{ duration: 0.7 }}
+                  style={{ position: 'absolute', inset: -cellSize * 0.15, pointerEvents: 'auto', cursor: 'pointer' }}>
+                <div style={{ position: 'absolute', inset: 0, transition: 'transform .3s',
+                  transform: big ? `translateX(${Math.sign(st.dragon.x - st.pos.x || 1) * cellSize * 0.18}px) scale(0.72)` : 'none' }}>
                 <div
                   className="mz-dragon"
                   style={{
                     position:       'absolute',
-                    inset:          0,
+                    inset:          cellSize * 0.15,
                     display:        'flex',
                     alignItems:     'center',
                     justifyContent: 'center',
-                    '--dragon-dir': dragonDir,
-                    filter:         st.dangerLevel >= 1
+                    '--dragon-dir': big ? Math.sign(st.dragon.x - st.pos.x || 1) : dragonDir,
+                    filter:         big ? 'drop-shadow(0 0 5px rgba(140,200,255,0.9))' : st.dangerLevel >= 1
                       ? 'drop-shadow(0 0 8px rgba(255,100,0,0.95)) drop-shadow(0 0 3px #fff)'
                       : 'drop-shadow(0 0 5px rgba(255,170,60,0.85))',
                   }}
                 >
                   <SpriteStrip sprite={DRAGON_WALK} size={Math.round(cellSize * 1.1)} />
                 </div>
-                {st.dangerLevel >= 1 && (
+                </div>
+                {/* blushing cheeks and a heart, or giggle notes */}
+                {dragonTap && Date.now() - dragonTap.k < 1400 && (
+                  <motion.div aria-hidden="true" initial={{ opacity: 0 }} animate={{ opacity: [0, 1, 1, 0] }} transition={{ duration: 1.4 }}
+                    style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+                    {dragonTap.kind === 'blush' ? (
+                      <>
+                        <span style={{ position: 'absolute', left: '34%', top: '52%', width: '22%', height: '12%', borderRadius: '50%', background: 'rgba(255,110,160,0.85)' }} />
+                        <span style={{ position: 'absolute', left: '64%', top: '50%', width: '20%', height: '12%', borderRadius: '50%', background: 'rgba(255,110,160,0.85)' }} />
+                        <motion.span initial={{ y: 0 }} animate={{ y: -cellSize * 0.9 }} transition={{ duration: 1.4 }}
+                          style={{ position: 'absolute', left: '38%', top: '-10%' }}><Art art="❤️" size={cellSize * 0.45} /></motion.span>
+                      </>
+                    ) : (
+                      [0, 1].map(i => (
+                        <motion.span key={i} initial={{ y: 0, x: 0 }} animate={{ y: -cellSize * 0.9, x: (i ? 1 : -1) * cellSize * 0.4 }} transition={{ duration: 1.3, delay: i * 0.15 }}
+                          style={{ position: 'absolute', left: '40%', top: '0%' }}><Art art="🎵" size={cellSize * 0.4} /></motion.span>
+                      ))
+                    )}
+                  </motion.div>
+                )}
+                {big && (
+                  <motion.span aria-hidden="true" animate={{ y: [0, 4, 0], opacity: [1, 0.5, 1] }} transition={{ duration: 0.8, repeat: Infinity }}
+                    style={{ position: 'absolute', top: '8%', left: '70%', pointerEvents: 'none' }}><Art art="💧" size={cellSize * 0.32} /></motion.span>
+                )}
+                </motion.div>
+                {st.dangerLevel >= 1 && !big && (
                   <motion.span aria-hidden="true" animate={{ scale: [1, 1.3, 1] }} transition={{ duration: 0.6, repeat: Infinity }}
                     style={{ position: 'absolute', top: -cellSize * 0.55, left: '50%', marginLeft: -cellSize * 0.22, fontFamily: 'var(--font-heading)', fontWeight: 900,
                       fontSize: cellSize * 0.6, lineHeight: 1, color: '#FFC93C', WebkitTextStroke: '2px #2a1b3d' }}>!</motion.span>
@@ -1349,7 +1566,7 @@ export default function MazeGame({ level = 1, onComplete }) {
             </AnimatePresence>
 
             {/* Danger vignette */}
-            {st.dangerLevel > 0 && (
+            {st.dangerLevel > 0 && !big && (
               <div style={{
                 position:      'absolute',
                 inset:         0,
@@ -1425,6 +1642,21 @@ export default function MazeGame({ level = 1, onComplete }) {
                     </div>
                   ) : (
                     <Art art="💔" size={72} />
+                  )}
+                  {/* the chest's sticker, and the dragon waving goodbye */}
+                  {showOverlay === 'won' && chestOpen > 0 && (
+                    <motion.div initial={{ scale: 0, rotate: -30 }} animate={{ scale: 1, rotate: -8 }} transition={{ delay: 0.7, type: 'spring', stiffness: 260, damping: 12 }}
+                      style={{ position: 'absolute', left: '8%', top: '10%' }}>
+                      <Sticker art={loot} size={64} />
+                    </motion.div>
+                  )}
+                  {showOverlay === 'won' && hasDragon && (
+                    <motion.div aria-label="Der Drache winkt" role="img" initial={{ x: 80, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.4 }}
+                      style={{ position: 'absolute', right: '6%', bottom: '6%', display: 'flex', alignItems: 'flex-end' }}>
+                      <SpriteStrip sprite={DRAGON_WALK} size={64} style={{ transform: 'scaleX(-1)' }} />
+                      <motion.span animate={{ rotate: [0, 24, -10, 24, 0] }} transition={{ duration: 1, repeat: Infinity }}
+                        style={{ display: 'inline-block', transformOrigin: '70% 90%', marginLeft: -10, marginBottom: 30 }}><Art art="👋" size={34} /></motion.span>
+                    </motion.div>
                   )}
                   <div style={{
                     fontFamily: 'Fredoka, var(--font-heading), sans-serif',

@@ -224,6 +224,59 @@ const SCENES = [
     bug: [30, 222],
     go: { fly: [2, 3, 15, 16, 17], drive: [] },
   },
+  {
+    sky: '#BFE6FF',
+    pieces: [
+      ['circle',    404, 14, 56, 56, '#FFC93C'],               // the sun
+      ['oval',       24, 22, 72, 30, '#FFFFFF'],               // cloud
+      ['oval',      300, 44, 60, 24, '#FFFFFF'],               // cloud
+      ['rectangle', 226, 36, 12, 140, '#8A4F22'],              // mast
+      ['rhombus',   238, 12, 24, 32, '#E0509A', 1],            // pennant
+      ['triangle',  124, 52, 98, 118, '#E8503F'],              // big sail
+      ['triangle',  242, 72, 72, 98, '#F2B705'],               // small sail
+      ['star',      157, 112, 32, 32, '#FFC93C'],              // star on the sail
+      ['square',    322, 140, 30, 30, '#8E6CF0'],              // crate on deck
+      ['rectangle',  96, 170, 270, 44, '#8A4F22'],             // hull
+      ['circle',    120, 180, 24, 24, '#BFE6FF'],              // porthole
+      ['circle',    170, 180, 24, 24, '#BFE6FF'],              // porthole
+      ['circle',    220, 180, 24, 24, '#BFE6FF'],              // porthole
+      ['heart',     300, 180, 28, 26, '#E0509A'],              // heart on the hull
+      ['rectangle', 424, 118, 12, 90, '#8A4F22'],              // palm trunk
+      ['oval',      396, 100, 70, 28, '#3FA34D'],              // palm leaves
+      ['oval',      380, 196, 96, 36, '#E8C27A'],              // island
+      ['rhombus',    40, 180, 30, 44, '#E8503F', 1],           // buoy
+      ['oval',       36, 246, 48, 24, '#F2B705'],              // fish
+      ['triangle',  262, 232, 36, 30, '#9A8FB0'],              // a fin
+      ['star',      190, 250, 36, 36, '#E0509A'],              // starfish
+      ['heart',     120, 262, 28, 26, '#F2B705'],              // shell
+      ['oval',      330, 258, 44, 22, '#8E6CF0'],              // fish
+      ['square',    420, 250, 32, 32, '#3FA34D', 1],           // floating crate
+    ],
+    scenery: (
+      <>
+        <rect x="0" y="200" width="480" height="100" fill="#5BB4E8" />
+        <path d="M0 204 Q20 196 40 204 T80 204 T120 204 T160 204 T200 204 T240 204 T280 204 T320 204 T360 204 T400 204 T440 204 T480 204" stroke="#fff" strokeWidth="3" fill="none" opacity="0.7" />
+        <path d="M30 236 q10 -6 20 0 M150 232 q10 -6 20 0 M380 240 q10 -6 20 0 M260 280 q10 -6 20 0 M80 290 q10 -6 20 0" stroke="#fff" strokeWidth="2" fill="none" opacity="0.7" />
+      </>
+    ),
+    tall: {
+      boxes: [[236, 8, 54, 54], [14, 20, 70, 28], [150, 40, 56, 22], [108, 70, 12, 166], [120, 44, 24, 32], [20, 90, 86, 140],
+        [124, 110, 62, 120], [47, 170, 32, 32], [188, 206, 26, 30], [14, 236, 200, 50], [30, 248, 26, 26], [80, 248, 26, 26],
+        [130, 248, 26, 26], [176, 248, 28, 26], [254, 190, 12, 110], [226, 172, 68, 28], [210, 290, 88, 36], [16, 300, 28, 42],
+        [60, 340, 48, 24], [150, 306, 36, 30], [120, 370, 38, 38], [200, 378, 30, 28], [240, 344, 44, 22], [250, 386, 30, 30]],
+      scenery: (
+        <>
+          <rect x="0" y="270" width="300" height="150" fill="#5BB4E8" />
+          <path d="M0 274 Q20 266 40 274 T80 274 T120 274 T160 274 T200 274 T240 274 T280 274 T320 274" stroke="#fff" strokeWidth="3" fill="none" opacity="0.7" />
+          <path d="M60 316 q10 -6 20 0 M200 338 q10 -6 20 0 M30 400 q10 -6 20 0 M170 410 q10 -6 20 0" stroke="#fff" strokeWidth="2" fill="none" opacity="0.7" />
+        </>
+      ),
+      bug: [272, 292],
+    },
+    bug: [446, 198],
+    // when all are found: the ship sails off
+    go: { fly: [], drive: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13] },
+  },
 ]
 
 // The same picture never twice in a level: each of the pictures also comes
@@ -413,7 +466,7 @@ function useTall() {
 export default function ShapeLandGame({ level = 1, onComplete }) {
   const TOTAL = 8
   const rounds = useState(() => {
-    const used = { object: new Set(), match: new Set(), scene: rand(0, 1) }
+    const used = { object: new Set(), match: new Set(), scene: rand(0, SCENES.length - 1) }
     return Array.from({ length: TOTAL }, (_, i) => buildRound(level, i, used))
   })[0]
   const paused = usePaused()
@@ -497,21 +550,29 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
   // ── the picture: find them all ──
   // p: the piece the tap resolved to (see Picture), at: where on screen
   const tapPiece = useCallback((p, at) => {
-    if (solved || !r) return
+    if (!r) return
+    // solved: for a moment the picture is a toy. Tapped shapes hop, found
+    // ones laugh and circles roll. Nothing here counts.
+    if (solved) {
+      if (ending || r.scene.go.fly.includes(p.id) || r.scene.go.drive.includes(p.id)) return
+      setShake({ key: p.id, n: Date.now(), play: true })
+      if (picked.includes(p.id)) { sfx.giggle(); burst(at, 'stars', 4) } else sfx.pop()
+      return
+    }
     if (picked.includes(p.id)) { sfx.giggle(); setShake({ key: p.id, n: Date.now() }); return }
     if (p.type === r.answer) {
       const found = [...picked, p.id]
       setPicked(found)
       sfx.sparkle()
       burst(at, 'stars', 6)
-      if (found.length === r.need) finish(2800)
+      if (found.length === r.need) finish(3800)
       else setOwl('wow', 700)
       return
     }
     // A shape the level does not teach yet only wobbles
     if (!poolFor(level).includes(p.type)) { sfx.boing(); setShake({ key: p.id, n: Date.now() }); return }
     miss(p.id)
-  }, [solved, r, picked, level, burst, finish, miss, setOwl])
+  }, [solved, ending, r, picked, level, burst, finish, miss, setOwl])
 
   // ── shapes around us: press the right shape onto the thing ──
   const dropOnThing = useCallback((type) => {
@@ -759,12 +820,14 @@ function Picture({ r, tall, found, shake, solved, onTap }) {
         const fs = Math.min(w, h) / 100
         const fly = solved && r.scene.go.fly.includes(p.id) && !reduceMotion()
         const drive = solved && r.scene.go.drive.includes(p.id) && !reduceMotion()
+        const play = wobble && shake.play && !fly && !drive && !reduceMotion()
         return (
           <motion.g key={`${p.id}-${wobble ? shake.n : 0}`}
             role="button" aria-label={SHAPES[p.type].name} tabIndex={0}
             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); const b = e.currentTarget.getBoundingClientRect(); onTap(p, { x: b.left + b.width / 2, y: b.top + b.height / 2 }) } }}
             initial={false}
-            animate={wobble && !reduceMotion() ? { rotate: [p.rot, p.rot - 12, p.rot + 10, p.rot - 6, p.rot], scale: [1, 1.12, 1] }
+            animate={play ? (p.type === 'circle' ? { rotate: [p.rot, p.rot + 360], scale: [1, 1.2, 1], y: [0, -12, 0] } : { y: [0, -20, 0], scale: [1, 1.15, 1], rotate: [p.rot, p.rot - 10, p.rot + 10, p.rot] })
+              : wobble && !reduceMotion() ? { rotate: [p.rot, p.rot - 12, p.rot + 10, p.rot - 6, p.rot], scale: [1, 1.12, 1] }
               : fly ? { y: [0, 12, -H - 80], rotate: [p.rot, p.rot - 10, p.rot + 15], scale: 1 }
               : drive ? { x: [0, -10, W + 60], scale: 1, rotate: spin ? p.rot + 720 : p.rot }
               : isFound ? { rotate: spin ? p.rot + 360 : p.rot, scale: [1, 1.25, 1], y: solved && !reduceMotion() ? [0, -8, 0] : 0 }

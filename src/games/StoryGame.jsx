@@ -838,7 +838,7 @@ function Finale({ stories, bag, narrow, onDone }) {
       <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 180, damping: 12 }}>
         <Art art="🏰" size={narrow ? 130 : 200} />
       </motion.div>
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: narrow ? 6 : 16 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', flexWrap: 'wrap', gap: narrow ? 6 : 16, maxWidth: '100%' }}>
         <div style={{ position: 'relative' }}>
           <FeelLumi feel="excited" size={size * 1.3} />
           {/* the backpack, and everything from the stories bouncing out of it */}
