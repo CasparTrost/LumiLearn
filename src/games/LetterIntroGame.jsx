@@ -129,7 +129,7 @@ function MonsterMampf({ level = 1, onComplete }) {
         const room = Math.min(L.w, ...g.things.filter(t => t.lane === i && !t.away).map(t => Math.abs(t.x - gate)))
         return { lane: i, gate, room, score: room + Math.random() * 30 }
       }).sort((a, b) => b.score - a.score)
-      if (gates[0].room < L.fw * 1.7) return
+      if (gates[0].room < L.fw * 2.3) return
       lane = gates[0].lane
       x = gates[0].gate
     }
@@ -154,8 +154,7 @@ function MonsterMampf({ level = 1, onComplete }) {
     const order = Array.from({ length: n }, (_, k) => k).sort((a, b) => (a % 2) - (b % 2) || a - b)
     for (let k = 0; k < n; k++) {
       const lane = k % L.lanes.length
-      const slot = L.dir(lane) > 0 ? order[k] : n - 1 - order[k]
-      addThing({ lane, x: clamp((L.w * (slot + 0.5)) / n, L.fw / 2 + 4, L.w - L.fw / 2 - 4), first: k === 0 })
+      addThing({ lane, x: clamp((L.w * (order[k] + 0.5)) / n, L.fw / 2 + 4, L.w - L.fw / 2 - 4), first: k === 0 })
     }
     bump()
   }
@@ -174,7 +173,8 @@ function MonsterMampf({ level = 1, onComplete }) {
     const dt = Math.min(delta / 1000, 0.05)
     g.pace += (g.paceTo - g.pace) * Math.min(1, dt * 1.2)
     const v = L.speed(cfg.cross) * g.pace
-    const drift = !reduce && g.phase === 'play'
+    // while a thing is picked up (two monsters) the sky waits for the child
+    const drift = !reduce && g.phase === 'play' && g.picked == null
     let changed = false
     for (const t of [...g.things]) {
       t.t += dt
@@ -184,10 +184,10 @@ function MonsterMampf({ level = 1, onComplete }) {
         if (t.y < -L.fh) { g.things = g.things.filter(x => x !== t); changed = true; continue }
       } else if (!t.held) {
         const dir = L.dir(t.lane)
-        if (drift && g.picked !== t.id) {
+        if (drift) {
           // it comes in quickly and slows down to a float once it is in
-          const inside = (dir > 0 ? t.x : L.w - t.x) / L.fw
-          t.x += dir * v * (inside < 1 ? 1 + 6 * (1 - Math.max(-0.6, inside)) : 1) * dt
+          const inside = (dir > 0 ? t.x : L.w - t.x) / (L.fw * 0.6)
+          t.x += dir * v * (inside < 1 ? 1 + 7 * (1 - Math.max(-1, inside)) : 1) * dt
         }
         t.oy *= Math.exp(-4 * dt)
         t.y = L.lanes[Math.min(t.lane, L.lanes.length - 1)] + t.oy + (reduce ? 0 : Math.sin(t.t * t.freq + t.ph) * L.bob)
@@ -569,7 +569,7 @@ function MonsterMampf({ level = 1, onComplete }) {
           {g.things.map(t => {
             const m = g.help && !t.away ? g.mons.find(x => x.state === 'hungry' && x.letter === t.letter) : null
             return (
-              <Thing key={t.id} t={t} lay={lay} reduce={reduce} picked={g.picked === t.id}
+              <Thing key={t.id} t={t} lay={lay} reduce={reduce} paused={paused} picked={g.picked === t.id}
                 glow={m ? (g.mons.length > 1 ? m.color : GOLD) : null}
                 onDown={onDown} onMove={onMove} onUp={onUp} onKey={onKey} />
             )
@@ -627,7 +627,7 @@ function Plate({ art, size, pic, ring = INK, className, style }) {
 
 // A thing on its balloon. The whole of it takes the finger; the loop moves
 // it through its two motion values.
-function Thing({ t, lay, reduce, picked, glow, onDown, onMove, onUp, onKey }) {
+function Thing({ t, lay, reduce, paused, picked, glow, onDown, onMove, onUp, onKey }) {
   return (
     <motion.div ref={el => { t.el = el }} className="mm-thing" role="button" tabIndex={0} aria-label={t.word} aria-pressed={picked || undefined}
       data-thing={t.letter}
@@ -636,7 +636,7 @@ function Thing({ t, lay, reduce, picked, glow, onDown, onMove, onUp, onKey }) {
       onPointerDown={e => onDown(t, e)} onPointerMove={e => onMove(t, e)} onPointerUp={e => onUp(t, e)} onPointerCancel={e => onUp(t, e)}
       onKeyDown={e => onKey(t, e)}
       style={{ position: 'absolute', left: -lay.fw / 2, top: -lay.fh / 2, width: lay.fw, height: lay.fh, x: t.mx, y: t.my, zIndex: picked ? 6 : 5 }}>
-      <div className={picked ? undefined : 'mm-sway'} style={{ animationDelay: `${-t.sway}s`, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <div className={picked ? undefined : 'mm-sway'} style={{ animationDelay: `${-t.sway}s`, animationPlayState: paused ? 'paused' : undefined, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <Balloon w={lay.bw} h={lay.bh} str={lay.str} tint={t.tint} />
         <Plate art={t.emoji} size={lay.disc} pic={lay.pic} ring={picked ? GOLD : INK}
           className={`mm-plate${glow ? ' mm-glow' : ''}`}
@@ -690,13 +690,14 @@ function Spat({ s, reduce, lower }) {
 
 // The little party before the results: every full monster of the level dances
 function Party({ row, lay, reduce }) {
-  const n = Math.max(1, row.length)
-  const width = Math.round(clamp((lay.w - 32) / n - 8, 56, lay.h * 0.34))
+  // side by side, in two rows where the screen is narrow
+  const n = Math.max(1, lay.wide ? row.length : Math.ceil(row.length / 2))
+  const width = Math.round(clamp((lay.w - 32) / n - 8, 56, lay.h * (lay.wide ? 0.34 : 0.24)))
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
       style={{ position: 'absolute', inset: 0, zIndex: 20, display: 'flex', alignItems: 'center', justifyContent: 'center',
         background: 'radial-gradient(circle at 50% 55%, rgba(255,253,247,0.92), rgba(255,253,247,0.7) 70%)' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 8 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'center', gap: 8, maxWidth: n * (width + 8) + 8 }}>
         {row.map((r, i) => (
           <motion.div key={r.slot} initial={reduce ? { opacity: 0 } : { y: 90, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
             transition={{ delay: i * 0.09, type: 'spring', stiffness: 260, damping: 16 }}>

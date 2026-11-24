@@ -224,12 +224,16 @@ export const scaleAt = (bites, need) => START_SCALE + (1 - START_SCALE) * Math.m
 export function layoutFor(w, h, { duo = false, slots = 5 } = {}) {
   const wide = w > h * 1.15
   const m = Math.min(w, h)
-  const disc = clamp(Math.round(m * 0.15), 72, 108)
-  const pic = Math.round(disc * 0.8)
+  // as big as the screen allows: the picture has to be told at a glance
+  const disc = clamp(Math.round(Math.min(w * 0.23, h * 0.155)), 72, 108)
+  const pic = Math.round(disc * 0.82)
   const bw = Math.round(disc * 0.6), bh = Math.round(disc * 0.7), str = Math.round(disc * 0.13)
   const fw = disc + 8, fh = bh + str + disc
   const mini = clamp(Math.round(m * 0.115), 44, 64)
-  const ground = wide ? 8 : 12
+  // Two monsters on an upright phone fill the ground from edge to edge:
+  // they stand a little higher, and what they spit out lands in front of them
+  const front = !wide && duo && w < 560 ? Math.round(disc * 0.66) : 0
+  const ground = (wide ? 8 : 12) + front
   const top = wide ? 0 : mini + 20
   const hud = clamp(Math.round(m * 0.085), 30, 42)
   const hudW = hud * 2.7
@@ -240,7 +244,9 @@ export function layoutFor(w, h, { duo = false, slots = 5 } = {}) {
   const band = wide ? [8 + rowW + 12, w - hudW - 20] : [0, w]
   const bandW = band[1] - band[0]
 
-  let mh = wide ? clamp(h * 0.47, 140, 380) : clamp(h * 0.36, 150, 320)
+  // On a phone held sideways the monster takes more of the height, or its
+  // letter would be too small; the things then pass right before its eyes.
+  let mh = wide ? Math.min(clamp(h * 0.47, 190, 380), h * 0.66) : clamp(h * 0.36, 150, 320)
   mh = Math.min(mh, (bandW * (duo ? 0.46 : 0.62)) * MONSTER_RATIO)
   mh = Math.round(mh)
   const mw = Math.round(mh / MONSTER_RATIO)
@@ -263,7 +269,7 @@ export function layoutFor(w, h, { duo = false, slots = 5 } = {}) {
   })
 
   return {
-    w, h, wide, disc, pic, bw, bh, str, fw, fh, mini, ground, top, hud, mw, mh, monX, lanes, slotAt, band,
+    w, h, wide, disc, pic, bw, bh, str, fw, fh, mini, ground, front, top, hud, mw, mh, monX, lanes, slotAt, band,
     bob: clamp(Math.round(disc * 0.08), 5, 9),
     /** pixels per second for a level whose things cross in `cross` seconds */
     speed: cross => clamp(w / cross, 30, 130),
@@ -279,8 +285,13 @@ export function layoutFor(w, h, { duo = false, slots = 5 } = {}) {
  * `n` how many it has spat so far.
  */
 export function spitSpot(lay, cx, i, n) {
-  const size = Math.round(lay.disc * 0.72)
   const side = cx.length > 1 ? (i === 0 ? -1 : 1) : (n % 2 === 0 ? 1 : -1)
+  if (lay.front) {
+    // no room beside it: on the grass in front of its feet
+    const size = lay.front - 4
+    return { x: clamp(cx[i] + side * lay.mw * 0.24, size / 2 + 4, lay.w - size * 0.8), y: lay.h - 6 - size / 2, size, side }
+  }
+  const size = Math.round(lay.disc * 0.72)
   const edge = cx[i] + side * (lay.mw / 2 + size / 2 + 2)
   const lo = lay.band[0] + size / 2, hi = lay.band[1] - size / 2
   // beside the monster where there is room, otherwise at its feet, at the edge
