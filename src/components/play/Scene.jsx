@@ -17,9 +17,13 @@ import './play.css'
  *     …the game…
  *   </div>
  *
- * Themes: meadow · sea · night · space · room · forest · market · pond
+ * Themes: meadow · sea · night · space · room · forest · market · pond,
+ * and two quiet ones for games whose own picture must not be mixed up with
+ * the backdrop: 'meadow-calm' (the sun has no face, nothing flies across:
+ * for a game about reading faces) and 'night-sky' (no moon: for a game whose
+ * numbered stars fill the whole sky).
  */
-export const SCENE_THEMES = ['meadow', 'sea', 'night', 'space', 'room', 'forest', 'market', 'pond']
+export const SCENE_THEMES = ['meadow', 'sea', 'night', 'space', 'room', 'forest', 'market', 'pond', 'meadow-calm', 'night-sky']
 
 export default function Scene({ theme = 'meadow', interactive = false, style }) {
   const [cheer, setCheer] = useState(0)
@@ -87,7 +91,7 @@ function Face({ cx, cy, r, ink = '#2a1b3d' }) {
   )
 }
 
-function Sun({ x = 860, y = 110, r = 58, tap }) {
+function Sun({ x = 860, y = 110, r = 58, tap, face = true }) {
   return (
     <g transform={`translate(${x} ${y})`}>
       <g className="pl-spin">
@@ -97,7 +101,7 @@ function Sun({ x = 860, y = 110, r = 58, tap }) {
       </g>
       <g className="pl-cheerable" {...tapProps(tap, 'giggle')}>
         <circle r={r} fill="#ffd84a" stroke="#f2b632" strokeWidth="6" />
-        <Face cx={0} cy={0} r={r} />
+        {face && <Face cx={0} cy={0} r={r} />}
       </g>
     </g>
   )
@@ -190,7 +194,8 @@ function Hills({ back = '#a8e07a', front = '#7cc95a', ground = '#6dbb4c' }) {
 
 // ── Themes ────────────────────────────────────────────────────────────────
 
-function Meadow({ tap }) {
+// `calm`: a sun without a face and no bird or butterflies crossing
+function Meadow({ tap, calm = false }) {
   return (
     <g>
       <defs>
@@ -199,14 +204,14 @@ function Meadow({ tap }) {
         </linearGradient>
       </defs>
       <rect width="1000" height="600" fill="url(#pl-sky)" />
-      <Sun tap={tap} />
+      <Sun tap={tap} face={!calm} />
       <Cloud y={60}  dur={70} delay={10} tap={tap} />
       <Cloud y={150} dur={95} delay={60} scale={0.7} tap={tap} />
       <Cloud y={30}  dur={120} delay={95} scale={0.55} tap={tap} />
-      <Bird y={170} dur={26} delay={8} />
+      {!calm && <Bird y={170} dur={26} delay={8} />}
       <Hills />
-      <Butterfly y={380} dur={20} delay={4} />
-      <Butterfly y={330} dur={27} delay={16} color="#ffd34d" />
+      {!calm && <Butterfly y={380} dur={20} delay={4} />}
+      {!calm && <Butterfly y={330} dur={27} delay={16} color="#ffd34d" />}
       {[60, 180, 330, 470, 610, 760, 900].map((x, i) => <Tuft key={x} x={x} y={560 + (i % 2) * 18} />)}
       <Flower x={110} y={590} color="#ff6b5b" />
       <Flower x={260} y={575} color="#ffffff" s={0.8} />
@@ -272,7 +277,7 @@ function Sea({ tap }) {
   )
 }
 
-function Night({ tap }) {
+function Night({ tap, moon = true }) {
   return (
     <g>
       <defs>
@@ -282,7 +287,7 @@ function Night({ tap }) {
       </defs>
       <rect width="1000" height="600" fill="url(#pl-night)" />
       <Stars n={50} />
-      <Moon tap={tap} />
+      {moon && <Moon tap={tap} />}
       <Hills back="#2e2a63" front="#25224f" ground="#1f1c45" />
       {Array.from({ length: 8 }, (_, i) => (
         <circle key={i} cx={80 + i * 120} cy={470 + (i % 3) * 25} r="4" fill="#fff59a" className="pl-twinkle" style={{ animationDelay: `-${i * 0.6}s` }} />
@@ -396,4 +401,10 @@ function Market({ tap }) {
   )
 }
 
-const THEMES = { meadow: Meadow, sea: Sea, night: Night, space: Space, room: Room, forest: Forest, market: Market, pond: Pond }
+const MeadowCalm = props => <Meadow {...props} calm />
+const NightSky = props => <Night {...props} moon={false} />
+
+const THEMES = {
+  meadow: Meadow, sea: Sea, night: Night, space: Space, room: Room, forest: Forest, market: Market, pond: Pond,
+  'meadow-calm': MeadowCalm, 'night-sky': NightSky,
+}

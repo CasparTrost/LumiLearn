@@ -7,7 +7,7 @@ import { LINES, line } from '../lib/lumiLines.js'
 import { sayRight, sayWrong, announce } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
-import { Critter, Art, useMood, RoundTrail, useBursts, HintHand } from '../components/play/index.js'
+import { Critter, Art, useMood, RoundTrail, useBursts, HintHand, useIdle } from '../components/play/index.js'
 import { INK } from './px.js'
 import { Friend, SignFace, CAST, FRIEND_RATIO, slug } from './gefuehle/faces.jsx'
 import { levelConfig, pickRounds, step, allDown, shuffle, GRIDS } from './gefuehle/rounds.js'
@@ -25,15 +25,19 @@ import { useLater, useSize, pointIn } from './gefuehle/hooks.js'
  *   • A right tap: the animal cheers, leaps out of its window to the sign
  *     and turns into a star on the meter under it. A full meter (four to
  *     six stars) ends the round.
- *   • A wrong tap: the animal shakes its head and says its own feeling
- *     ("Wütend."), then Lumi says the one on the sign again. It stays at
- *     its window; the round just no longer counts as "first try".
+ *   • A wrong tap: the animal shakes its head, Lumi says "Hm, noch nicht."
+ *     and then, while the sign nods, the feeling on the sign once more. Only
+ *     that one feeling is named: two bare words in a row ("Wütend."
+ *     "Traurig.") left a child guessing which was meant. The animal stays
+ *     at its window; the round just no longer counts as "first try".
  *   • The animals stay a while, duck down, and others come up (about five
  *     seconds at level 1, two at level 10). A right face is always on
  *     screen (gefuehle/rounds.js), so a child never waits.
  *   • After two misses in a round the right ones bounce.
- *   • Three right taps in a row light the house up; at the end of a level
- *     everyone leans out and waves.
+ *   • The third right tap in a row within a round lights the house up and
+ *     the cat on the roof dances (without a sound: it used to meow at every
+ *     tap of a faultless level); at the end of a level everyone leans out
+ *     and waves.
  *
  * It is about reading an expression, not about finding the same picture
  * twice: the sign shows a plain round face, the windows show ten different
@@ -113,7 +117,7 @@ export default function EmotionGame({ level = 1, onComplete }) {
   const { later, afterSpeech } = useLater()
   const [bursts, burst] = useBursts()
   const [lumi, setLumi] = useMood()
-  const [cat, setCat] = useMood()
+  const [catDance, setCatDance] = useState({ n: 0, long: false }) // the roof cat's dance: silent, see House
 
   const [roundIdx, setRoundIdx] = useState(0)
   const [phase, setPhase] = useState('ready')     // ready | play | won | finale
@@ -135,6 +139,7 @@ export default function EmotionGame({ level = 1, onComplete }) {
   const signRef = useRef(null)
   const meterRef = useRef([])
   const hintRef = useRef(null)
+  const hintId = useRef(null)
   const size = useSize(rootRef)
 
   useEffect(() => leaveGame, [])
@@ -145,6 +150,8 @@ export default function EmotionGame({ level = 1, onComplete }) {
   // A new round: the sign turns to the next face, Lumi says the word, and
   // the first animal to pop up is one that feels like it.
   useEffect(() => {
+    g.round = roundIdx
+    g.streak = 0
     g.caught = 0
     g.misses = 0
     g.mem = {}
@@ -181,9 +188,17 @@ export default function EmotionGame({ level = 1, onComplete }) {
     return () => clearInterval(iv)
   }, [phase, target, cfg]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // The hand points at someone who feels like the sign
+  // The hand points at one animal that feels like the sign, and only as
+  // long as that animal is at its window: it keeps to the one it chose, and
+  // when that one ducks or is caught the hand is gone in the same moment and
+  // a new one comes at the next right animal (the one that stays longest).
+  // The hand never slides across the house and never rests on a window
+  // whose animal has changed.
+  const rightUp = phase === 'play' ? slots.filter(c => c?.state === 'up' && c.feeling === target) : []
+  const hinted = rightUp.find(c => c.id === hintId.current) ?? rightUp.reduce((a, c) => (!a || c.until > a.until ? c : a), null)
   useLayoutEffect(() => {
-    hintRef.current = rootRef.current?.querySelector('[data-right="1"]') ?? null
+    hintId.current = hinted?.id ?? null
+    hintRef.current = hinted ? rootRef.current?.querySelector('[data-hint="1"]') ?? null : null
   })
 
   const lightUp = ms => { setLit(n => n + 1); later(ms, () => setLit(n => Math.max(0, n - 1))) }
@@ -193,12 +208,13 @@ export default function EmotionGame({ level = 1, onComplete }) {
     setPhase('finale')
     setFaceUp(true)
     show(Array.from({ length: cfg.windows }, (_, i) => ({
-      id: `party-${i}`, animal: animals[i % animals.length], feeling: i % 3 === 1 ? 'Aufgeregt' : 'Glücklich', variant: i % 2, state: 'up', wave: true,
+      // the sign shows "Glücklich" now, so that is what every face shows
+      id: `party-${i}`, animal: animals[i % animals.length], feeling: 'Glücklich', variant: i % 2, state: 'up', wave: true,
     })))
     lightUp(4200)
     sfx.tada()
     setLumi('dance', 3800)
-    setCat('dance', 3800)
+    setCatDance(d => ({ n: d.n + 1, long: true }))
     later(250, () => burst(houseRef.current, 'confetti', 26))
     later(1200, () => { sfx.sparkle(); burst(houseRef.current, 'stars', 14) })
     later(2200, () => burst(signRef.current, 'confetti', 20))
@@ -241,11 +257,14 @@ export default function EmotionGame({ level = 1, onComplete }) {
       // it leaps out of the window to the meter, where it becomes a star
       const from = pointIn(rootRef.current, el), to = pointIn(rootRef.current, meterRef.current[n - 1] ?? signRef.current)
       setFlyers(f => [...f, { id: c.id, animal: c.animal, from, to, n }])
-      if (g.streak >= 3) {
-        // three in a row: the lights go on, the cat dances
+      if (g.streak === 3) {
+        // three in a row in this round: the lights go on, the cat dances.
+        // Once, when the third is reached, and counted anew in every round:
+        // counted on and on, the house never went dark again in a faultless
+        // level and the cat meowed at every tap.
         sfx.combo(g.streak)
         lightUp(1800)
-        setCat('dance', 1600)
+        setCatDance(d => ({ n: d.n + 1, long: false }))
         burst(el, 'confetti', 14)
       }
       if (n >= cfg.need) win()
@@ -253,18 +272,21 @@ export default function EmotionGame({ level = 1, onComplete }) {
       return
     }
 
-    // Not this one: it shakes its head and says how it feels itself, then
-    // Lumi says again whom we are looking for.
+    // Not this one: it shakes its head, Lumi says "noch nicht" (once it is
+    // through, never cut off), and then the sign nods and Lumi says again
+    // whom we are looking for.
     g.misses += 1
     g.streak = 0
     setMisses(g.misses)
     show(g.slots.map((x, k) => (k === i ? { ...c, until: Math.max(c.until, g.now + 1800), shake: (c.shake ?? 0) + 1 } : x)))
     sfx.boing()
     setLumi('oops', 900)
-    sayWrong()
-    const own = feelingWord(c.feeling)
-    if (own) narrate([own], { onEnd: () => later(350, () => { if (g.caught < cfg.need) { setPulse(p => p + 1); narrate([feelingWord(target)]) } }) })
-    else setPulse(p => p + 1)
+    const round = roundIdx
+    sayWrong(null, { onEnd: () => later(250, () => {
+      if (g.round !== round || g.caught >= cfg.need) return
+      setPulse(p => p + 1)
+      narrate([feelingWord(target)])
+    }) })
     // the word alone was not enough: the face comes back and stays
     if (cfg.hideFace && g.misses >= 2) { g.faceUp = true; setFaceUp(true) }
   }
@@ -284,8 +306,11 @@ export default function EmotionGame({ level = 1, onComplete }) {
 
   const L = size && layout(size.w, size.h, cfg.windows)
   const helping = misses >= 2 && phase === 'play'
-  // the very first round shows the move soon; later the hand waits longer
+  // the very first round shows the move soon; later the hand waits longer.
+  // The game counts the quiet time itself, because the hand below is a new
+  // one for every animal it points at.
   const hintDelay = roundIdx === 0 && level <= 2 ? 2600 : 7000
+  const waiting = useIdle(hintDelay, phase === 'play')
 
   return (
     <div ref={rootRef} className="gf-root" data-phase={phase} data-target={target} data-round={roundIdx}
@@ -298,7 +323,7 @@ export default function EmotionGame({ level = 1, onComplete }) {
           <Host box={L.host} wide={L.wide} cfg={cfg} target={target} faceUp={faceUp} pulse={pulse} roundIdx={roundIdx}
             stars={phase === 'finale' ? cfg.need : stars} lumi={lumi} signRef={signRef} meterRef={meterRef} onSign={tapSign} reduce={reduce} />
           <House box={L.house} fit={L.fit} cfg={cfg} slots={slots} target={target} phase={phase} lit={lit > 0} helping={helping}
-            cat={cat} houseRef={houseRef} onTap={tapWindow} reduce={reduce} />
+            hinted={hinted?.id} catDance={catDance} houseRef={houseRef} onTap={tapWindow} reduce={reduce} />
 
           {flyers.map(f => {
             const w = Math.min(120, f.from.w * 0.8), h = w * FRIEND_RATIO
@@ -316,7 +341,7 @@ export default function EmotionGame({ level = 1, onComplete }) {
           })}
         </>
       )}
-      <HintHand key={roundIdx} to={hintRef} active={phase === 'play'} delay={hintDelay} />
+      <HintHand key={`${roundIdx}-${hinted?.id ?? 'none'}`} to={hintRef} active={phase === 'play' && waiting && !!hinted} delay={0} />
       {bursts}
     </div>
   )
@@ -417,7 +442,7 @@ function Host({ box, wide, cfg, target, faceUp, pulse, roundIdx, stars, lumi, si
 
 // ── The house ─────────────────────────────────────────────────────────────
 
-function House({ box, fit: f, cfg, slots, target, phase, lit, helping, cat, houseRef, onTap, reduce }) {
+function House({ box, fit: f, cfg, slots, target, phase, lit, helping, hinted, catDance, houseRef, onTap, reduce }) {
   const n = cfg.windows
   const roofW = f.roofW
   // a house with ten places and nine windows has a door in the middle downstairs
@@ -433,9 +458,14 @@ function House({ box, fit: f, cfg, slots, target, phase, lit, helping, cat, hous
     <div style={{ position: 'absolute', ...box, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end' }}>
       <div ref={houseRef} className={lit ? 'gf-lit' : undefined} data-lit={lit ? 1 : 0} style={{ position: 'relative', width: roofW, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         {/* the cat on the roof */}
-        <div style={{ position: 'absolute', left: rl + ridge * 0.5 - f.cat * (f.c <= 3 ? 0.5 : 1.6), top: -f.catUp, zIndex: 3 }}>
-          <Critter art="🐱" size={f.cat} mood={cat} label="Katze auf dem Dach" shadow={false} />
-        </div>
+        {/* It dances here, by itself, and not through a happy mood: a happy
+            Critter makes its animal sound, and a meow on top of Lumi's words
+            is one voice too many. (A child who taps the cat still hears it.) */}
+        <motion.div key={catDance.n} style={{ position: 'absolute', left: rl + ridge * 0.5 - f.cat * (f.c <= 3 ? 0.5 : 1.6), top: -f.catUp, zIndex: 3, transformOrigin: '50% 100%' }}
+          animate={catDance.n && !reduce ? { rotate: [0, -12, 12, -12, 12, 0], y: [0, -f.cat * 0.14, 0, -f.cat * 0.14, 0, 0] } : {}}
+          transition={{ duration: 0.8, repeat: catDance.long ? 3 : 1 }}>
+          <Critter art="🐱" size={f.cat} label="Katze auf dem Dach" shadow={false} />
+        </motion.div>
         <svg width={roofW} height={f.roofH} viewBox={`0 0 ${roofW} ${f.roofH}`} aria-hidden="true" style={{ display: 'block', overflow: 'visible', position: 'relative', zIndex: 2, marginBottom: -4 }}>
           <defs>
             <pattern id="gf-tiles" width="26" height="16" patternUnits="userSpaceOnUse">
@@ -463,6 +493,7 @@ function House({ box, fit: f, cfg, slots, target, phase, lit, helping, cat, hous
           {cells.map((i, p) => (i < 0
             ? <Door key="door" w={f.cw} h={f.ch} />
             : <Window key={i} i={i} c={slots[i]} w={f.cw} h={f.ch} target={target} phase={phase} lit={lit} helping={helping} onTap={onTap} reduce={reduce}
+                hint={slots[i] != null && slots[i].id === hinted}
                 party={phase === 'finale'} delay={phase === 'finale' ? p * 0.07 : 0} z={places - p} />
           ))}
         </div>
@@ -486,7 +517,7 @@ function Door({ w, h }) {
 }
 
 /** One window: curtains that open when someone pops up, and the someone. */
-function Window({ i, c, w, h, target, phase, lit, helping, onTap, reduce, party, delay, z }) {
+function Window({ i, c, w, h, target, phase, lit, helping, hint, onTap, reduce, party, delay, z }) {
   const ref = useRef(null)
   const up = c?.state === 'up'
   const open = !!c && c.state !== 'down'
@@ -506,7 +537,7 @@ function Window({ i, c, w, h, target, phase, lit, helping, onTap, reduce, party,
       <motion.button type="button" ref={ref} whileTap={up ? { scale: 0.93 } : undefined}
         onClick={() => onTap(i, ref.current)} disabled={!live} tabIndex={up ? 0 : -1}
         aria-label={up ? `${CAST[c.animal].name}, ${c.feeling}` : 'Leeres Fenster'}
-        data-window={i} data-feel={up ? slug(c.feeling) : undefined} data-right={right ? 1 : undefined}
+        data-window={i} data-feel={up ? slug(c.feeling) : undefined} data-right={right ? 1 : undefined} data-hint={right && hint ? 1 : undefined}
         style={{ all: 'unset', boxSizing: 'border-box', display: 'block', position: 'relative', width: '100%', height: '100%', cursor: up ? 'pointer' : 'default',
           padding: 3, background: '#fffdf7', border: `3px solid ${INK}`, borderRadius: 13,
           // without motion the help after two misses is a golden frame instead of a bounce
