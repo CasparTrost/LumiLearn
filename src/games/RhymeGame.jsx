@@ -37,20 +37,34 @@ import { pxButton, INK } from './px.js'
 
 // Words inside a group rhyme with each other (matching from the stressed
 // vowel onward, not merely a shared last letter). Every picture shows its
-// word and appears once. `v` is the rhyming vowel: groups with the same one
-// sound alike (Banane – Kanne differ only in vowel length) and are kept
-// apart until the last levels.
+// word and appears once, and only pictures a child names one way: no paw
+// (Tatze or Pfote?), no bang (Knall or Bumm?), no beans (Bohne or Bohnen?).
+// `v` is the rhyming vowel: groups with the same one sound alike (Banane –
+// Kanne differ only in vowel length) and are kept apart until the last
+// levels. `rime` is the part that rhymes, coloured in the name label so a
+// grown-up playing along sees it (Ma-us, H-aus).
+// The rhyming end of a word: what all words of its group end with, reaching
+// back over the vowel (and a silent h) — Boot/Brot → "oot"/"ot", Fahne → "ahne".
+function rimeOf(w, group) {
+  const low = group.map(x => x.toLowerCase())
+  let n = 0
+  while (low.every(x => x.length > n && x[x.length - 1 - n] === low[0][low[0].length - 1 - n])) n++
+  const vowel = c => 'aeiouäöüy'.includes(c)
+  let i = w.length - n
+  const lw = w.toLowerCase()
+  while (i > 0 && (vowel(lw[i - 1]) || (lw[i - 1] === 'h' && i > 1 && vowel(lw[i - 2])))) i--
+  return w.slice(i)
+}
+
 const RHYME_GROUPS = [
   { v:'au', words:[['Maus','🐭'], ['Haus','🏠']] },
   { v:'o',  words:[['Hose','👖'], ['Rose','🌹'], ['Dose','🥫']] },
-  { v:'a',  words:[['Katze','🐱'], ['Tatze',':px-tatze:']] },
   { v:'u',  words:[['Hund','🐕'], ['Mund','👄']] },
   { v:'i',  words:[['Fisch','🐟'], ['Tisch',':px-tisch:']] },
-  { v:'a',  words:[['Ball','⚽'], ['Knall','💥']] },
   { v:'a',  words:[['Nase','👃'], ['Hase','🐰'], ['Vase','🏺']] },
   { v:'u',  words:[['Kuh','🐄'], ['Schuh','👟']] },
   { v:'i',  words:[['Igel','🦔'], ['Spiegel','🪞']] },
-  { v:'o',  words:[['Krone','👑'], ['Bohne','🫘'], ['Zitrone','🍋']] },
+  { v:'o',  words:[['Krone','👑'], ['Zitrone','🍋']] },
   { v:'a',  words:[['Kanne','🫖'], ['Tanne','🌲'], ['Pfanne','🍳']] },
   { v:'i',  words:[['Ziege','🐐'], ['Fliege','🪰']] },
   { v:'e',  words:[['Rakete','🚀'], ['Trompete','🎺']] },
@@ -62,7 +76,7 @@ const RHYME_GROUPS = [
   { v:'a',  words:[['Hand','✋'], ['Strand','🏖️']] },
   { v:'u',  words:[['Wurm','🪱'], ['Turm','🗼']] },
   { v:'a',  words:[['Wal','🐋'], ['Schal','🧣']] },
-].map(g => ({ ...g, words: g.words.map(([w, e]) => ({ w, e })) }))
+].map(g => ({ ...g, words: g.words.map(([w, e]) => ({ w, e, rime: rimeOf(w, g.words.map(x => x[0])) })) }))
 
 // The little scene a rhyming pair plays on the stage once it has found
 // itself: nonsense, because that is what children love about rhymes. The
@@ -73,18 +87,15 @@ const SCENES = Object.fromEntries([
   ['Die Rose in der Hose!', 'Rose', 'Hose'],
   ['Die Hose in der Dose!', 'Hose', 'Dose'],
   ['Die Rose in der Dose!', 'Rose', 'Dose'],
-  ['Die Katze mit der Tatze!', 'Katze', 'Tatze'],
   ['Der Hund mit dem großen Mund!', 'Hund', 'Mund'],
   ['Der Fisch auf dem Tisch!', 'Fisch', 'Tisch'],
-  ['Der Ball macht Knall!', 'Ball', 'Knall'],
   ['Der Hase mit der langen Nase!', 'Hase', 'Nase'],
   ['Der Hase in der Vase!', 'Hase', 'Vase'],
   ['Die Vase auf der Nase!', 'Vase', 'Nase'],
   ['Die Kuh im Schuh!', 'Kuh', 'Schuh'],
   ['Der Igel vor dem Spiegel!', 'Igel', 'Spiegel'],
-  ['Die Bohne mit der Krone!', 'Bohne', 'Krone'],
   ['Die Zitrone mit der Krone!', 'Zitrone', 'Krone'],
-  ['Die Bohne auf der Zitrone!', 'Bohne', 'Zitrone'],
+  ['Die Krone auf der Zitrone!', 'Krone', 'Zitrone'],
   ['Die Kanne auf der Tanne!', 'Kanne', 'Tanne'],
   ['Die Kanne in der Pfanne!', 'Kanne', 'Pfanne'],
   ['Die Pfanne auf der Tanne!', 'Pfanne', 'Tanne'],
@@ -121,7 +132,6 @@ const VERSES = [
   { line:'Die Krone ist so gelb wie eine …',   base:'Krone',   answer:'Zitrone' },
   { line:'Der Wal trägt einen …',              base:'Wal',     answer:'Schal' },
   { line:'Der Wurm klettert auf den …',        base:'Wurm',    answer:'Turm' },
-  { line:'Die Katze leckt sich die …',         base:'Katze',   answer:'Tatze' },
   { line:'Die Rose wächst in einer …',         base:'Rose',    answer:'Dose' },
 ]
 
@@ -199,7 +209,7 @@ export default function RhymeGame({ level = 1, onComplete }) {
   const rounds = useMemo(() => buildRounds(level), [level])
   const [bursts, burst] = useBursts()
   const stageRef = useRef(null)
-  const balloonsRef = useRef(null)
+  const gapRef = useRef(null)
   const answersRef = useRef(null)
   const idxRef = useRef(0)
   const [visitor, setVisitor] = useState(null)   // a wrong one, looking round on the stage
@@ -209,13 +219,24 @@ export default function RhymeGame({ level = 1, onComplete }) {
     const i = idxRef.current, r = rounds[i]
     if (r) narrate(taskOf(r, i === 0))
   }, [rounds])
-  const { idx, done, leaving, finale, tried, streak, win, miss, reveal, isOver, hasTried } =
+  const { idx, done, leaving, finale, tried, streak, paused, win, miss, reveal, isOver, hasTried } =
     useRounds(rounds.length, { onComplete, sayTask, outroMs: 650, finaleMs: 2200 })
   idxRef.current = idx
   const r = rounds[idx]
   const scene = play?.i === idx ? play : null
 
   useEffect(() => { setVisitor(null) }, [idx])
+
+  // The first odd-one-out round starts with a demo: a cardboard figure
+  // stands on the stage, and the hook yanks it off — that is what happens
+  // to the one that does not rhyme.
+  const [demoStep, setDemoStep] = useState(0)   // 0 stands, 1 yanked, 2 over
+  const demo = rounds[0]?.mode === 'odd' && idx === 0 && demoStep < 2
+  useEffect(() => {
+    if (!demo || paused) return
+    const t = setTimeout(() => { if (demoStep === 0) sfx.whoosh(); setDemoStep(d => d + 1) }, demoStep === 0 ? 1300 : 900)
+    return () => clearTimeout(t)
+  }, [demo, demoStep, paused])
   useEffect(() => { if (finale) { sfx.giggle(); burst(stageRef.current, 'confetti', 20) } }, [finale, burst])
 
   // Curtain up for the pair: the one named first climbs onto the other,
@@ -286,9 +307,9 @@ export default function RhymeGame({ level = 1, onComplete }) {
   const cast = r.mode === 'odd' ? r.options
     : r.mode === 'yesno' ? [r.base, r.other]
     : scene?.pair ? scene.pair : [r.base, ...(visitor ? [visitor] : [])]
-  const onStage = cast.filter(c => c !== scene?.gone)
+  const onStage = demo ? [] : cast.filter(c => c !== scene?.gone)
   const rider = scene?.pair && (r.mode === 'verse' ? r.base : sceneOf(...scene.pair)?.rider === scene.pair[1].w ? scene.pair[1] : scene.pair[0])
-  const title = scene?.pair && (r.mode === 'verse' ? `${r.verse.line.replace(' …', '')} ${r.correct.w}!` : sceneOf(...scene.pair)?.line)
+  const title = scene?.pair && r.mode !== 'verse' && sceneOf(...scene.pair)?.line
   const balloons = (r.mode === 'pick' || r.mode === 'verse') ? r.options.filter(o => !tried.includes(o) && o !== scene?.pair?.[1]) : []
   const asking = (r.mode === 'pick' || r.mode === 'verse') && !scene && !visitor
   const voiced = taskOf(r, idx === 0).some(Boolean)
@@ -312,7 +333,7 @@ export default function RhymeGame({ level = 1, onComplete }) {
       <DragArea autoTarget="stage" disabled={done}>
         {/* the candidates, floating in on balloons */}
         {(r.mode === 'pick' || r.mode === 'verse') && (
-          <div ref={balloonsRef} style={{ display: 'flex', justifyContent: 'center', gap: 12, width: '100%', maxWidth: 640, minHeight: 168 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 12, width: '100%', maxWidth: 640, minHeight: 168 }}>
             <AnimatePresence initial={false}>
               {balloons.map((opt, i) => (
                 <motion.div key={`${idx}-${opt.w}`}
@@ -320,7 +341,9 @@ export default function RhymeGame({ level = 1, onComplete }) {
                   animate={leaving ? { y: -200, opacity: 0, transition: { duration: 0.6, ease: 'easeIn' } } : { y: 0, opacity: 1 }}
                   exit={{ opacity: 0, transition: { duration: 0 } }}
                   transition={{ type: 'spring', stiffness: 90, damping: 12, delay: 0.3 + i * 0.15 }}
-                  style={{ width: `calc((100% - ${(r.options.length - 1) * 12}px) / ${r.options.length})`, maxWidth: 130 }}>
+                  style={{ position: 'relative', width: `calc((100% - ${(r.options.length - 1) * 12}px) / ${r.options.length})`, maxWidth: 130 }}>
+                  {/* between the first and the second: the hint hand points here, never at one answer */}
+                  {i === 0 && <span ref={gapRef} aria-hidden="true" style={{ position:'absolute', right: -8, top: '60%', width: 2, height: 2 }} />}
                   <Draggable id={opt.w} data={opt} label={opt.w}>
                     <Balloon item={opt} color={BALLOONS[r.options.indexOf(opt) % BALLOONS.length]} i={i} />
                   </Draggable>
@@ -349,17 +372,22 @@ export default function RhymeGame({ level = 1, onComplete }) {
                   {onStage.map(c => (
                     <Actor key={`${idx}-${c.w}`} item={c} n={Math.max(2, onStage.length)}
                       tappable={r.mode === 'odd' && !done && !tried.includes(c)}
+                      rime={((r.mode === 'pick' || r.mode === 'verse') && c === r.base) || (done && !!scene?.pair?.includes(c))}
                       shy={tried.includes(c) || (scene && !scene.pair)}
                       visiting={c === visitor}
                       ride={c === rider ? (onStage.indexOf(c) === 0 ? 1 : -1) : 0}
                       onTap={() => shoo(c)} />
                   ))}
                   {asking && <Wanted key={`want-${idx}`} />}
+                  {demo && demoStep === 0 && <Decoy key="decoy" />}
                 </AnimatePresence>
               </div>
 
               {/* odd one out: the hook that pulls someone off the stage */}
-              {r.mode === 'odd' && <Hook key={`hook-${idx}`} pull={!!scene?.gone} />}
+              {r.mode === 'odd' && <Hook key={`hook-${idx}-${!!scene?.gone || demoStep === 1}`} pull={!!scene?.gone || demoStep === 1} />}
+
+              {/* verse levels: the verse as a card, its gap filled by the answer */}
+              {r.mode === 'verse' && <VerseCard verse={r.verse} base={r.base} answer={scene?.pair ? r.correct : null} />}
 
               {/* the scene's title */}
               <AnimatePresence>
@@ -383,8 +411,8 @@ export default function RhymeGame({ level = 1, onComplete }) {
             </div>
           )}
         </DropZone>
-        <HintHand from={r.mode === 'pick' || r.mode === 'verse' ? balloonsRef : null}
-          to={r.mode === 'yesno' ? answersRef : stageRef} active={!done && !leaving} delay={hintDelay(idx)} />
+        <HintHand from={r.mode === 'pick' || r.mode === 'verse' ? gapRef : null}
+          to={r.mode === 'yesno' ? answersRef : stageRef} active={!done && !leaving && !demo} delay={hintDelay(idx)} />
       </DragArea>
 
       {/* Ja / Nein — or the audience */}
@@ -438,14 +466,61 @@ function Wanted() {
 function Hook({ pull }) {
   const still = reduceMotion()
   return (
-    <motion.svg aria-hidden="true" viewBox="0 0 200 60" width="220" height="66"
-      initial={{ x: -220 }}
-      animate={still ? { x: -90 } : pull ? { x: [-90, 60, -260], transition: { duration: 0.9, times: [0, 0.35, 1] } }
-        : { x: [-100, -80, -100], transition: { duration: 1.6, repeat: Infinity, delay: 0.8 } }}
-      style={{ position: 'absolute', left: 0, bottom: 150, zIndex: 2, pointerEvents: 'none' }}>
-      <path d="M0 40 H160 a20 20 0 1 0 -20 -20" stroke={INK} strokeWidth="14" fill="none" strokeLinecap="round" />
-      <path d="M0 40 H160 a20 20 0 1 0 -20 -20" stroke="#c98a52" strokeWidth="8" fill="none" strokeLinecap="round" />
+    <motion.svg aria-hidden="true" viewBox="0 0 260 90" width="220" height="76"
+      initial={{ x: pull ? -90 : -230 }}
+      animate={still ? { x: -90 } : pull ? { x: [-90, 70, -260], transition: { duration: 1, times: [0, 0.35, 1] } }
+        : { x: [-105, -75, -105], transition: { duration: 1.4, repeat: Infinity, delay: 0.7 } }}
+      style={{ position: 'absolute', left: 0, bottom: 192, zIndex: 2, pointerEvents: 'none' }}>
+      <path d="M0 64 H196 a32 32 0 1 0 -32 -32" stroke={INK} strokeWidth="22" fill="none" strokeLinecap="round" />
+      <path d="M0 64 H196 a32 32 0 1 0 -32 -32" stroke="#c98a52" strokeWidth="13" fill="none" strokeLinecap="round" />
+      <path d="M10 60 H190" stroke="#e0a970" strokeWidth="4" strokeLinecap="round" />
     </motion.svg>
+  )
+}
+
+/** The cardboard figure of the demo: it stands, wobbles, and is yanked off. */
+function Decoy() {
+  return (
+    <motion.div aria-hidden="true" initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1, rotate: [0, -4, 4, 0] }}
+      exit={{ x: -700, rotate: -40, transition: { duration: 0.6, ease: 'easeIn', delay: 0.25 } }}
+      transition={{ type: 'spring', stiffness: 200, damping: 16, rotate: { duration: 1, repeat: Infinity } }}
+      style={{ width: 'min(150px, 26vw)', display: 'flex', justifyContent: 'center', filter: 'sepia(1) saturate(0.6)' }}>
+      <Art art="🧸" size={120} style={{ width: '80%', height: 'auto' }} />
+    </motion.div>
+  )
+}
+
+/** A verse level's card: the base, the verse, and the gap the answer fills. */
+function VerseCard({ verse, base, answer }) {
+  return (
+    <div style={{
+      position: 'absolute', left: '50%', top: 40, transform: 'translateX(-50%)', zIndex: 2, pointerEvents: 'none',
+      display: 'flex', alignItems: 'center', gap: 8, maxWidth: '74%', width: 'max-content',
+      background: '#fffdf7', border: `3px solid ${INK}`, borderRadius: 14, padding: '4px 10px', boxShadow: '0 4px 0 rgba(42,27,61,0.3)',
+    }}>
+      <Art art={base.e} size={36} />
+      <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 'clamp(14px,2.4vw,18px)', color: INK, lineHeight: 1.15 }}>
+        {verse.line.replace(' …', '')}
+      </span>
+      <motion.span key={answer ? 'a' : 'q'} initial={{ scale: 0.4 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 400, damping: 14, delay: answer ? 1 : 0 }}
+        style={{ flexShrink: 0, width: 44, height: 44, borderRadius: 10, border: answer ? `3px solid ${INK}` : '3px dashed #d6336c',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', background: answer ? '#ffe28a' : 'transparent',
+          fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 28, color: '#d6336c' }}>
+        {answer ? <Art art={answer.e} size={36} /> : '?'}
+      </motion.span>
+    </div>
+  )
+}
+
+/** A name label; `rime` colours the part that rhymes (Ma-us). */
+function Name({ item, rime, hidden }) {
+  const cut = rime && item.rime ? item.w.length - item.rime.length : item.w.length
+  return (
+    <span style={{
+      marginTop: 2, padding: '1px 10px', borderRadius: 10, background: 'rgba(255,253,247,0.95)', border: `2px solid ${INK}`,
+      fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 'clamp(16px,2.8vw,21px)', color: INK, whiteSpace: 'nowrap',
+      visibility: hidden ? 'hidden' : 'visible',
+    }}>{item.w.slice(0, cut)}{cut < item.w.length && <span style={{ color: '#d6336c' }}>{item.w.slice(cut)}</span>}</span>
   )
 }
 
@@ -467,7 +542,7 @@ function Balloon({ item, color, i }) {
         background: '#fffdf7', border: `3px solid ${INK}`, borderRadius: 14, boxShadow: '0 4px 0 rgba(42,27,61,0.25)', boxSizing: 'border-box',
       }}>
         <Art art={item.e} size={62} />
-        <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 'clamp(13px,2.4vw,16px)', color: INK }}>{item.w}</span>
+        <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 'clamp(16px,2.8vw,20px)', color: INK }}>{item.w}</span>
       </div>
     </motion.div>
   )
@@ -479,7 +554,7 @@ function Balloon({ item, color, i }) {
  * floats off. `tappable`: odd-one-out rounds; the odd one is yanked off by
  * a hook when it leaves.
  */
-function Actor({ item, n, ride, visiting, shy, tappable, onTap }) {
+function Actor({ item, n, ride, visiting, shy, tappable, rime, onTap }) {
   const still = reduceMotion()
   const anim = still ? {}
     : ride ? { x: ['0%', `${ride * 50}%`, `${ride * 88}%`], y: ['0%', '-62%', '-44%'], rotate: [0, ride * 20, 0, -6, 6, 0], transition: { duration: 1.4, ease: 'easeOut' } }
@@ -504,11 +579,7 @@ function Actor({ item, n, ride, visiting, shy, tappable, onTap }) {
           </svg>
         )}
         <Art art={item.e} size={140} style={{ width: '82%', height: 'auto', opacity: shy ? 0.75 : 1 }} />
-        <span style={{
-          marginTop: 2, padding: '1px 10px', borderRadius: 10, background: 'rgba(255,253,247,0.92)', border: `2px solid ${INK}`,
-          fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 'clamp(14px,2.6vw,18px)', color: INK,
-          visibility: ride ? 'hidden' : 'visible',
-        }}>{item.w}</span>
+        <Name item={item} rime={rime} hidden={!!ride} />
       </motion.div>
     </motion.button>
   )
@@ -530,16 +601,23 @@ function Curtains({ closed, k }) {
   ))
 }
 
-/** The audience: dark heads in a row; they laugh when the scene is played. */
+/** The audience: dark heads in a row; when the scene plays the house
+ * lights come up on them, and they laugh. */
 function Audience({ laughing, cheer }) {
   const still = reduceMotion()
   return (
     <div aria-hidden="true" style={{ display: 'flex', justifyContent: 'center', gap: 'clamp(4px,2vw,18px)', marginTop: -6, height: 70 }}>
       {['🐻', '🐰', '🐱', '🐸', '🦊', '🐶'].map((a, i) => (
-        <motion.div key={a} animate={laughing && !still ? { y: cheer ? [0, -30, 0, -24, 0] : [0, -16, 0, -10, 0], rotate: [0, -6, 6, 0] } : { y: 0 }}
-          transition={{ duration: 0.9, delay: 0.9 + i * 0.07, repeat: laughing ? (cheer ? 2 : 1) : 0 }}
-          style={{ position: 'relative', filter: 'brightness(0.18) saturate(0)' }}>
+        <motion.div key={a + laughing} animate={laughing && !still ? { y: cheer ? [0, -30, 0, -24, 0] : [0, -18, 0, -12, 0], rotate: [0, -8, 8, 0] } : { y: 0 }}
+          transition={{ duration: 0.8, delay: 0.6 + i * 0.07, repeat: laughing ? (cheer ? 2 : 1) : 0 }}
+          style={{ position: 'relative', filter: laughing ? 'none' : 'brightness(0.18) saturate(0)', transition: 'filter .5s' }}>
           <Art art={a} size={58} style={{ width: 'min(58px, 12vw)', height: 'auto' }} />
+          {laughing && i % 2 === 0 && (
+            <motion.span initial={{ opacity: 0, y: 0, scale: 0.5 }} animate={{ opacity: [0, 1, 1, 0], y: -34, scale: 1 }}
+              transition={{ duration: 1.4, delay: 0.7 + i * 0.1 }}
+              style={{ position: 'absolute', left: '50%', top: -6, transform: 'translateX(-50%)', fontFamily: 'var(--font-heading)', fontWeight: 700,
+                fontSize: 18, color: '#d6336c', WebkitTextStroke: `1px ${INK}`, whiteSpace: 'nowrap' }}>ha ha!</motion.span>
+          )}
         </motion.div>
       ))}
     </div>

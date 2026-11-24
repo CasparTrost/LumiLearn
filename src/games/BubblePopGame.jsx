@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react'
-import { motion, AnimatePresence, useAnimationFrame, motionValue, useReducedMotion } from 'framer-motion'
+import { motion, AnimatePresence, useAnimationFrame, useAnimationControls, motionValue, useReducedMotion } from 'framer-motion'
 import { sfx } from '../sfx.js'
 import { lockPreviews } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
@@ -97,9 +97,19 @@ const ROUND_CFG = [
   timeS: Math.max(24, Math.round(c.count * 1.5 + 10)),
 }))
 
+// The bubble's shine: a crescent hugging the upper left rim, away from
+// where any pip sits
+function Shine() {
+  return (
+    <svg viewBox="0 0 100 100" aria-hidden="true" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
+      <path d="M10 56 A42 42 0 0 1 46 8.5" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="5" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 // White dots on a bubble, or its numeral
 function Face({ value, dots, size }) {
-  if (dots) return <Pips n={value} size={size * 0.86} color="#fffdf7" face={false} />
+  if (dots) return <Pips n={value} size={size * 0.74} color="#fffdf7" face={false} />
   return value
 }
 
@@ -193,7 +203,7 @@ export default function BubblePopGame({ level = 1, onComplete }) {
     const list = [...roundsRef.current, how]
     roundsRef.current = list
     const last = list.length >= ROUNDS
-    afterSpeech(() => (last ? setPhase('finale') : setRoundIdx(r => r + 1)), how === 'lost' ? 2000 : 2600)
+    afterSpeech(() => (last ? setPhase('finale') : setRoundIdx(r => r + 1)), how === 'lost' ? 2800 : 2600)
   }, [afterSpeech])
 
   useEffect(() => {
@@ -236,6 +246,9 @@ export default function BubblePopGame({ level = 1, onComplete }) {
       streakRef.current = now - lastPopRef.current < 1800 ? streakRef.current + 1 : 1
       lastPopRef.current = now
       if (streakRef.current >= 2) sfx.combo(streakRef.current)
+      // a little sparkle where it popped; a quick streak sparkles more
+      const r0 = rootRef.current.getBoundingClientRect()
+      burst({ x: r0.left + at.x, y: r0.top + at.y }, 'stars', streakRef.current >= 2 ? 10 : 5)
       setMood(streakRef.current >= 3 ? 'dance' : 'wow', streakRef.current >= 3 ? 2400 : 700)
       const remaining = bubbles.filter(b => b.value === target && !poppedRef.current.has(b.id)).length
       if (remaining === 0) {
@@ -366,10 +379,11 @@ export default function BubblePopGame({ level = 1, onComplete }) {
 
       {/* Hearts of this round, the rounds, the calm clock */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-        <div style={{ display: 'flex', gap: 2 }} aria-label={`${lives} Herzen`}>
+        <div style={{ display: 'flex', gap: 4, padding: '4px 10px', borderRadius: 999, background: 'rgba(255,253,247,0.85)', border: '3px solid #2a1b3d', boxShadow: '0 3px 0 rgba(42,27,61,0.3)' }} aria-label={`${lives} Herzen`}>
           {[0, 1, 2].map(i => (
-            <motion.span key={i} animate={{ scale: i < lives ? 1 : 0.7, opacity: i < lives ? 1 : 0.25 }}>
-              <Art art="❤️" size={30} />
+            <motion.span key={i} animate={i < lives ? { scale: 1, opacity: 1, rotate: 0 } : { scale: [1, 1.4, 0.75], opacity: 0.3, rotate: [0, -20, 0] }}
+              transition={{ duration: 0.5 }} style={{ display: 'inline-flex', filter: i < lives ? undefined : 'grayscale(1)' }}>
+              <Art art="❤️" size={40} />
             </motion.span>
           ))}
         </div>
@@ -384,18 +398,23 @@ export default function BubblePopGame({ level = 1, onComplete }) {
 
         {/* The open sea: the bubbles float in the scene behind */}
         <div ref={arenaRef} style={{ position: 'relative', flex: 1, minHeight: 200 }}>
+          {/* now and then a visitor swims through: a fish in one round, a dolphin in another */}
+          {!reduce && phase === 'playing' && roundIdx % 2 === 1 && <Visitor key={roundIdx} art={roundIdx === 1 ? '🐠' : '🐬'} paused={paused} />}
           {aim && <div ref={anchorRef} aria-hidden="true" style={{ position: 'absolute', left: `${aim.left}%`, top: `${aim.top}%`, width: 2, height: 2 }} />}
           <AnimatePresence>
             {bubbles.map(bubble => {
               if (poppedIds.includes(bubble.id)) return null
-              const pulse = hint && bubble.value === target
+              // after a miss the wished-for ones pulse once; when a round is
+              // lost, they light up gold before the next round comes
+              const reveal = phase === 'roundFail' && bubble.value === target
+              const pulse = (hint || reveal) && bubble.value === target
               return (
                 <motion.button
                   key={bubble.id}
                   initial={{ scale: 0, opacity: 0 }}
                   animate={pulse ? { opacity: 1, scale: [1, 1.18, 1, 1.18, 1] } : { opacity: 1, scale: 1 }}
                   exit={{ scale: 1.6, opacity: 0, transition: { duration: 0.2 } }}
-                  transition={pulse ? { duration: 1.1 } : { opacity: { duration: 0.3 }, scale: { type: 'spring', stiffness: 300, damping: 18 } }}
+                  transition={pulse ? { duration: 1.1, repeat: reveal ? 1 : 0 } : { opacity: { duration: 0.3 }, scale: { type: 'spring', stiffness: 300, damping: 18 } }}
                   whileTap={{ scale: 1.25 }}
                   onClick={() => popBubble(bubble)}
                   aria-label={cfg.dots ? `${bubble.value} ${bubble.value === 1 ? 'Punkt' : 'Punkte'}` : `${bubble.value}`}
@@ -407,10 +426,14 @@ export default function BubblePopGame({ level = 1, onComplete }) {
                     marginLeft: -bubble.size / 2, marginTop: -bubble.size / 2,
                     width: bubble.size, height: bubble.size, padding: 0,
                     borderRadius: '50%',
-                    // see-through soap bubbles with a coloured rim and a shine
-                    background: `radial-gradient(circle at 32% 26%, #fff 0 8%, ${bubble.tint}88 10%, ${bubble.tint}dd 62%, ${bubble.tint})`,
+                    // see-through soap bubbles with a coloured rim; the shine is a
+                    // thin crescent along the rim (Shine), never a dot that
+                    // could be counted as one more pip
+                    background: `radial-gradient(circle at 40% 35%, ${bubble.tint}77 0%, ${bubble.tint}cc 60%, ${bubble.tint})`,
                     border: '3px solid #2a1b3d',
-                    boxShadow: 'inset 0 -6px 0 rgba(0,0,0,0.12), 0 4px 0 rgba(42,27,61,0.35)',
+                    boxShadow: reveal
+                      ? '0 0 0 6px #ffc93c, 0 0 18px 8px rgba(255,201,60,0.8)'
+                      : 'inset 0 -6px 0 rgba(0,0,0,0.12), 0 4px 0 rgba(42,27,61,0.35)',
                     fontFamily: 'var(--font-heading)',
                     fontSize: bubble.size * 0.44, fontWeight: 800, color: '#fff',
                     // an ink outline keeps white digits readable on any tint
@@ -420,6 +443,7 @@ export default function BubblePopGame({ level = 1, onComplete }) {
                     zIndex: 5,
                   }}
                 >
+                  <Shine />
                   <Face value={bubble.value} dots={cfg.dots} size={bubble.size} />
                 </motion.button>
               )
@@ -463,6 +487,28 @@ export default function BubblePopGame({ level = 1, onComplete }) {
       )}
       {bursts}
     </div>
+  )
+}
+
+// A visitor crossing the sea once, behind the bubbles; a tap makes it
+// giggle and spin
+function Visitor({ art, paused }) {
+  const [spin, setSpin] = useState(0)
+  const swim = useAnimationControls()
+  // it holds still while the help is open and swims on afterwards
+  useEffect(() => {
+    if (paused) swim.stop()
+    else swim.start({ left: '110%', transition: { duration: 9, ease: 'linear', delay: 1.5 } })
+  }, [paused, swim])
+  return (
+    <motion.div initial={{ left: '-15%' }} animate={swim}
+      style={{ position: 'absolute', top: '42%', zIndex: 2 }}>
+      <motion.button type="button" aria-label="Besuch" onClick={() => { sfx.giggle(); setSpin(x => x + 1) }}
+        animate={{ rotate: spin * 360, y: [0, -10, 0] }} transition={{ rotate: { duration: 0.6 }, y: { duration: 1.6, repeat: Infinity } }}
+        style={{ all: 'unset', cursor: 'pointer', display: 'flex', transform: 'scaleX(-1)' }}>
+        <Art art={art} size={70} />
+      </motion.button>
+    </motion.div>
   )
 }
 

@@ -86,7 +86,7 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
   const [pile,   setPile]   = useState(() => [...Array(rounds[0].total).keys()])
   const [plate,  setPlate]  = useState([])        // ids, in the order they were laid down
   const [eaten,  setEaten]  = useState(0)
-  const [phase,  setPhase]  = useState('play')    // play | eat | done | finale
+  const [phase,  setPhase]  = useState('play')    // play | eat | stuffed | done | finale
   const [misses, setMisses] = useState(0)         // on this round
   const [puff,   setPuff]   = useState(0)         // a burp cloud
   const firstTry = useRef(0)
@@ -128,12 +128,24 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
     if (n === 0) setMood('oops', 900)
     return true
   }
-  // A tap on the plate takes that thing back, so a slip is easy to fix.
+  // A tap on the plate takes that thing back, so a slip is easy to fix —
+  // and a stuffed animal is helped by taking the extra ones away.
   const takeBack = id => {
-    if (phase !== 'play') return
-    setPlate(p => p.filter(x => x !== id))
+    if (phase !== 'play' && phase !== 'stuffed') return
+    const rest = plate.filter(x => x !== id)
+    setPlate(rest)
     setPile(p => [...p, id].sort((a, b) => a - b))
     sfx.slideUp()
+    if (phase === 'stuffed' && rest.length === 0) {
+      // Everything extra is off the plate: relief, a giggle, done.
+      // It still was a miss, so this round is not right on the first try.
+      setPhase('done')
+      setMood('happy', 1600)
+      sfx.giggle()
+      burst(critterRef.current, 'hearts', 8)
+      sayRight()
+      afterSpeech(next, 2200)
+    }
   }
 
   const miss = () => { setMisses(m => m + 1); streak.current = 0 }
@@ -197,15 +209,14 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
       sayRight()
       afterSpeech(next, treat === 'party' || treat === 'dance' ? 2600 : 2200)
     } else if (t > n) {
-      // Stuffed: the rest rolls back off the plate.
+      // Stuffed: the belly bulges, the animal wobbles and won't eat the
+      // rest — the extra ones stay on the plate, shaking, until the child
+      // takes them off.
       miss()
-      setMood('oops', 2200)
+      setMood('oops', 0)
       sfx.boing()
-      setPile(p => [...p, ...plate.slice(n - eaten)].sort((a, b) => a - b))
-      setPlate([])
-      setPhase('done')
+      setPhase('stuffed')
       sayWrong()
-      afterSpeech(next, 2400)
     } else {
       // Still hungry: what was eaten stays eaten, the bubble shows how many
       // more, and the child gives the rest.
@@ -220,11 +231,13 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
   // After two misses the sign's dots fill with what was given — shown from
   // the start, it would give the end away: fill until every dot is full.
   const helpDots = misses >= 2 && n > 0 ? Math.min(n, eaten + plate.length) : null
-  const belly = 1 + Math.min(eaten, 10) * 0.035
+  const belly = 1 + Math.min(eaten, 10) * 0.04 + (phase === 'stuffed' ? 0.18 : 0)
   const wantMore = n - eaten
   // The hand: drag food onto the plate; once something is on it, tap the
   // tick (and in the zero round, the tick straight away).
-  const hint = n === 0 || plate.length > 0
+  const hint = phase === 'stuffed'
+    ? <HintHand to={plateRef} delay={1800} key={`s${idx}`} />
+    : n === 0 || plate.length > 0
     ? <HintHand to={doneRef} active={phase === 'play'} delay={n === 0 ? 6000 : 9000} key={`t${idx}`} />
     : <HintHand from={pileRef} to={plateRef} active={phase === 'play'} delay={idx === 0 && eaten === 0 ? 2000 : 6000} key={`d${idx}`} />
 
@@ -236,6 +249,7 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
           const wish = n === 0
             ? <Art art="🍽️" size={40} />
             : <>{eaten > 0 && <span style={{ fontSize: 30 }}>{wantMore}</span>}<Art art={f.emoji} size={40} /></>
+          const showWish = phase === 'play' || phase === 'stuffed'
           const animal = (
             <DropZone id="plate" onDrop={lay} label={`Teller von ${eater.label}`}
               style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -246,44 +260,50 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
                     <AnimatePresence mode="wait">
                       <motion.div key={idx} ref={critterRef}
                         initial={reduce ? { opacity: 0 } : { x: 260, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1, scaleX: belly, scaleY: 1 + (belly - 1) * 0.3 }}
+                        animate={phase === 'stuffed' && !reduce
+                          ? { x: 0, opacity: 1, scaleX: belly, scaleY: 1 + (belly - 1) * 0.3, rotate: [0, -7, 6, -4, 0] }
+                          : { x: 0, opacity: 1, scaleX: belly, scaleY: 1 + (belly - 1) * 0.3, rotate: 0 }}
                         exit={reduce ? { opacity: 0 } : { x: -260, opacity: 0, transition: { duration: 0.35 } }}
-                        transition={{ type: 'spring', stiffness: 160, damping: 18 }}
+                        transition={phase === 'stuffed' ? { rotate: { duration: 1.2, repeat: Infinity, repeatDelay: 0.6 }, default: { type: 'spring', stiffness: 160, damping: 18 } } : { type: 'spring', stiffness: 160, damping: 18 }}
                         style={{ position: 'relative', transformOrigin: '50% 100%' }}>
                         <Critter art={eater.art} size={wide ? 200 : 170} label={eater.label} flip={wide}
                           mood={phase === 'play' && (hover || ready) && n > 0 ? 'hungry' : phase === 'play' && n === 0 && mood === 'idle' ? 'sleep' : mood}
-                          wish={phase === 'play' ? wish : null} wishSide={wide ? 'right' : 'top'} />
+                          wish={showWish ? wish : null} wishSide={wide ? 'right' : 'top'} />
                         <Puff key={puff} on={puff > 0} />
                         <div style={{ position: 'absolute', left: 0, right: 0, top: '30%' }}>{bitePops}</div>
                       </motion.div>
                     </AnimatePresence>
                   </div>
                   <div ref={plateRef} style={{ position: 'relative' }}>
-                    <Plate items={plate} food={f} start={eaten} onTake={takeBack} glow={hover} width={wide ? 280 : 380} item={wide ? 50 : 58} />
+                    <Plate items={plate} food={f} start={eaten} onTake={takeBack} glow={hover} shake={phase === 'stuffed'} width={wide ? 280 : 380} item={wide ? 50 : 58}
+                      rows={Math.ceil(Math.min(round.total, n + 1) / (wide ? 4 : 5))} />
                     {pops}
                   </div>
                 </>
               )}
             </DropZone>
           )
-          // Every thing keeps its own spot on the blanket: taking one leaves
-          // a gap instead of shuffling the rest (and the blanket) around.
+          // The blanket closes up as things are taken, rows fold away
+          // smoothly; the box around it keeps its size, so nothing else on
+          // the stage moves.
+          const cols = Math.min(round.total, wide ? 3 : 4)
           const heap = (
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(round.total, wide ? 3 : 4)}, 60px)`, gap: 4, justifyContent: 'center' }}>
-              {Array.from({ length: round.total }, (_, id) => (
-                <div key={`${idx}-${id}`} ref={id === pile[0] ? pileRef : undefined} style={{ width: 60, height: 60 }}>
-                  <AnimatePresence>
-                    {pile.includes(id) && (
-                      <motion.div initial={{ scale: 0, rotate: -30 }} animate={{ scale: 1, rotate: ((id * 37) % 21) - 10 }} exit={{ scale: 0, transition: { duration: 0.1 } }}
-                        transition={{ type: 'spring', stiffness: 380, damping: 18 }}>
+            <div style={{ width: cols * 64 + 32, height: Math.ceil(round.total / cols) * 64 + 32, display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
+              <Blanket>
+                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.max(1, Math.min(pile.length, cols))}, 60px)`, gap: 4, justifyContent: 'center' }}>
+                  <AnimatePresence initial={false}>
+                    {pile.map((id, i) => (
+                      <motion.div key={`${idx}-${id}`} ref={i === 0 ? pileRef : undefined} layout={reduce ? false : 'position'}
+                        initial={{ scale: 0, rotate: -30 }} animate={{ scale: 1, rotate: ((id * 37) % 21) - 10 }} exit={{ scale: 0, transition: { duration: 0.12 } }}
+                        transition={{ type: 'spring', stiffness: 380, damping: 24 }} style={{ width: 60, height: 60 }}>
                         <Draggable id={`${idx}-${id}`} data={id} label={f.name} style={{ padding: 3, borderRadius: 14 }}>
                           <Art art={f.emoji} size={54} />
                         </Draggable>
                       </motion.div>
-                    )}
+                    ))}
                   </AnimatePresence>
                 </div>
-              ))}
+              </Blanket>
             </div>
           )
           const trail = <RoundTrail total={rounds.length} done={idx + (phase === 'done' || phase === 'finale' ? 1 : 0)} walker="🐻" goal="🍯" size={wide ? 38 : 34} style={{ margin: '6px 48px 0 24px' }} />
@@ -297,7 +317,7 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
                     {sign}
                     {animal}
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18 }}>
-                      <Blanket>{heap}</Blanket>
+                      {heap}
                       {done}
                     </div>
                   </div>
@@ -308,7 +328,7 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-evenly', padding: '0 10px 12px' }}>
                     {animal}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <Blanket>{heap}</Blanket>
+                      {heap}
                       {done}
                     </div>
                   </div>
@@ -357,10 +377,12 @@ function Sign({ n, color, fill }) {
 
 // The plate in front of the animal; everything on it is numbered on, from
 // what was eaten already.
-function Plate({ items, food: f, start, onTake, glow, width, item }) {
+// Its height is set for the round (room for one more than wanted), so
+// the animal above does not jump as things are laid down.
+function Plate({ items, food: f, start, onTake, glow, shake, width, item, rows }) {
   return (
     <div style={{
-      marginTop: -8, width, minHeight: 96, padding: '14px 22px', boxSizing: 'border-box',
+      marginTop: -8, width, minHeight: Math.max(96, rows * (item + 4) + 28), padding: '14px 22px', boxSizing: 'border-box',
       display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignContent: 'center', gap: 4,
       background: 'radial-gradient(ellipse at 50% 40%, #ffffff 55%, #e4f1ff 100%)', borderRadius: 999,
       border: '4px solid #2a1b3d', boxShadow: `inset 0 0 0 7px ${glow ? '#ffc93c' : '#bcdcff'}, 0 6px 0 rgba(42,27,61,0.3)`,
@@ -370,13 +392,14 @@ function Plate({ items, food: f, start, onTake, glow, width, item }) {
         {items.map((id, i) => (
           <motion.button key={id} type="button" onClick={e => { e.stopPropagation(); onTake(id) }}
             aria-label={`${f.name} ${start + i + 1}, zurücklegen`}
-            initial={{ scale: 0, y: -30 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0, y: -40, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 500, damping: 20 }}
+            initial={{ scale: 0, y: -30 }} animate={shake ? { scale: 1, y: 0, rotate: [0, -12, 12, -8, 0], x: [0, 4, -4, 2, 0] } : { scale: 1, y: 0, rotate: 0, x: 0 }}
+            exit={{ scale: 0, y: -40, opacity: 0 }}
+            transition={shake ? { rotate: { duration: 0.7, repeat: Infinity, repeatDelay: 0.5 }, x: { duration: 0.7, repeat: Infinity, repeatDelay: 0.5 } } : { type: 'spring', stiffness: 500, damping: 20 }}
             style={{ all: 'unset', cursor: 'pointer', position: 'relative', width: item, height: item, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Art art={f.emoji} size={item - 6} />
             <span style={{
-              position: 'absolute', top: -6, right: -6, minWidth: 22, height: 22, borderRadius: 11, padding: '0 3px', boxSizing: 'border-box',
-              background: '#fffdf7', border: '2px solid #2a1b3d', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, lineHeight: '18px', textAlign: 'center', color: '#2a1b3d',
+              position: 'absolute', top: -10, right: -10, minWidth: 30, height: 30, borderRadius: 15, padding: '0 4px', boxSizing: 'border-box',
+              background: '#fffdf7', border: '3px solid #2a1b3d', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18, lineHeight: '24px', textAlign: 'center', color: '#2a1b3d',
             }}>{start + i + 1}</span>
           </motion.button>
         ))}
@@ -398,14 +421,15 @@ function Puff({ on }) {
 
 // The picnic blanket the food lies on
 function Blanket({ children }) {
+  const reduce = useReducedMotion()
   return (
-    <div style={{
+    <motion.div layout={!reduce} transition={{ type: 'spring', stiffness: 380, damping: 30 }} style={{
       padding: 12, borderRadius: 22, border: '4px solid #2a1b3d', minHeight: 90, minWidth: 150,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: 'repeating-conic-gradient(#ff8a7a 0 25%, #fff3e6 0 50%) 0 0 / 44px 44px',
       boxShadow: '0 6px 0 rgba(42,27,61,0.3)',
     }}>
       {children}
-    </div>
+    </motion.div>
   )
 }

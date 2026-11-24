@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
+import { motion, AnimatePresence, useReducedMotion, useAnimationControls } from 'framer-motion'
 import { lockPreviews, stopNarration } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
@@ -13,9 +13,14 @@ import { Stage, useLater, DoneButton, usePops, Finale } from './zahlen/stage.jsx
  * Animal customers queue at the market stand. Each one shows what it wants
  * in its bubble, as a number and a picture; the child puts the fruit from
  * the crates into the customer's basket and taps the tick. Right: the
- * customer pays with clinking coins and walks off happily with its basket.
- * Wrong: it looks into the basket, the counts show up, and only the wrong
- * kinds go back to the crates.
+ * customer pays, the coins go into Lumi's money jar, and it walks off
+ * happily with its basket. Wrong: it looks into the basket, the counts
+ * show up, the rows that are off wiggle — and the child fixes them (takes
+ * one out, puts more in); nothing that was right is taken away.
+ *
+ * Rest orders (levels 9–10): what the customer has at home is already in
+ * the basket, marked with a little house, and the bubble shows how many it
+ * wants in all — the child counts on from there.
  */
 
 function rnd(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min }
@@ -77,16 +82,17 @@ export default function NumbersGame({ level = 1, onComplete }) {
   const [basket, setBasket] = useState({})     // { [partIdx]: count }
   const [phase,  setPhase]  = useState('shop') // shop | look | pay | finale
   const [wrongs, setWrongs] = useState(0)      // wrong baskets for this customer
-  const [served, setServed] = useState(0)      // coins on the counter
+  const [served, setServed] = useState(0)      // coins in the money jar
   const [taken,  setTaken]  = useState({})     // per crate: a new fruit rolls up after each one
+  const [queueAt, setQueueAt] = useState(0)    // who stands in line; moves up once the old customer is gone
   const firstTry  = useRef(0)
   const streak    = useRef(0)
   const basketRef = useRef(null), crateRef = useRef(null), doneRef = useRef(null)
 
   const q = questions[idx]
   const given = Object.values(basket).reduce((a, b) => a + b, 0)
-  // The numbers on the crates would do the counting for the child. They
-  // come in as a help once an order went wrong.
+  // The counts on the basket rows would do the counting for the child.
+  // They come in as a help once an order went wrong.
   const help = wrongs >= 1
 
   useEffect(() => stopNarration, [])
@@ -102,7 +108,7 @@ export default function NumbersGame({ level = 1, onComplete }) {
     setBasket(b => ({ ...b, [pi]: (b[pi] || 0) + 1 }))
     setTaken(t => ({ ...t, [pi]: (t[pi] || 0) + 1 }))
     sfx.pop()
-    if (help) pop((basket[pi] || 0) + 1)
+    if (help) pop((basket[pi] || 0) + 1 + (q.home && pi === 0 ? q.home : 0))
     return true
   }
   // A tap on a kind in the basket puts one of exactly that kind back.
@@ -145,38 +151,34 @@ export default function NumbersGame({ level = 1, onComplete }) {
     setWrongs(w => w + 1)
     streak.current = 0
     setMood('oops', 2000)
+    sfx.boing()
     sayWrong()
-    // It looks into the basket and the counts come up; then only the wrong
-    // kinds go back to the crates — what was counted right stays.
-    afterSpeech(() => {
-      sfx.boing()
-      setBasket(b => {
-        const keep = {}
-        q.parts.forEach((p, i) => { if ((b[i] || 0) === p.n) keep[i] = b[i] })
-        return keep
-      })
-      setPhase('shop')
-    }, 2000)
+    // It looks into the basket: the counts come up and the rows that are
+    // off wiggle. Everything stays in the basket; the child fixes it.
+    afterSpeech(() => setPhase('shop'), 1800)
   }
 
-  const waiting = questions.slice(idx + 1, idx + 3).map((c, i) => ({ ...c, key: idx + 1 + i }))
+  const waiting = questions.slice(queueAt + 1, queueAt + 3).map((c, i) => ({ ...c, key: queueAt + 1 + i }))
   // The hand: a fruit from the first crate into the basket; once something
   // is in it, the tick.
   const hint = given > 0
-    ? <HintHand key={`t${idx}`} to={doneRef} active={phase === 'shop'} delay={9000} />
+    ? <HintHand key={`t${idx}-${wrongs}`} to={wrongs ? basketRef : doneRef} active={phase === 'shop'} delay={wrongs ? 5000 : 9000} />
     : <HintHand key={`d${idx}`} from={crateRef} to={basketRef} active={phase === 'shop'} delay={idx === 0 ? 2000 : 6000} />
 
   return (
     <DragArea autoTarget="basket" disabled={phase !== 'shop'}>
-      <Stage wide={[800, 560]} tall={[440, 740]}>
+      <Stage wide={[800, 560]} tall={[440, 780]}>
         {wide => {
-          const size = wide ? 200 : 180
+          const size = wide ? 200 : 175
+          // The next in line walks up from its place in the queue (on a
+          // phone, where there is no queue, from the side).
           const customer = (
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', paddingTop: wide ? 96 : 84 }}>
-              <AnimatePresence mode="wait">
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', paddingTop: wide ? 96 : 76 }}>
+              <AnimatePresence mode="wait" onExitComplete={() => setQueueAt(idx)}>
                 <motion.div key={idx}
-                  initial={reduce ? { opacity: 0 } : { x: 320, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
+                  initial={reduce ? { opacity: 0 } : wide && idx > 0 ? { x: 430, scale: 0.38, opacity: 1 } : { x: 320, opacity: 0 }}
+                  animate={{ x: 0, scale: 1, opacity: 1 }}
+                  style={{ transformOrigin: '50% 100%' }}
                   exit={reduce ? { opacity: 0 } : { x: -520, opacity: 0, rotate: [0, -6, 6, -6, 0], transition: { duration: 0.7, ease: 'easeIn' } }}
                   transition={{ type: 'spring', stiffness: 140, damping: 17 }}>
                   <Critter art={q.art} size={size} mood={mood} label={q.label}
@@ -194,7 +196,7 @@ export default function NumbersGame({ level = 1, onComplete }) {
                     exit={reduce ? { opacity: 0 } : { x: -520, opacity: 0, transition: { duration: 0.7, ease: 'easeIn' } }}
                     transition={{ type: 'spring', stiffness: 140, damping: 17 }} style={{ position: 'relative' }}>
                     <Basket q={q} basket={basket} onTake={putBack} glow={hover || ready} innerRef={basketRef}
-                      counts={phase === 'look'} size={wide ? 190 : 180} />
+                      counts={help || phase === 'look'} wiggle={phase === 'look'} width={wide ? 260 : 220} />
                     <div style={{ position: 'absolute', left: 0, right: 0, top: '20%' }}>{pops}</div>
                   </motion.div>
                 </AnimatePresence>
@@ -211,7 +213,7 @@ export default function NumbersGame({ level = 1, onComplete }) {
                 style={{ display: 'flex', gap: wide ? 18 : 10, alignItems: 'flex-end', justifyContent: 'center' }}>
                 {q.parts.map((p, i) => (
                   <Crate key={i} item={p.item} id={`${idx}-${i}-${taken[i] || 0}`} pi={i} innerRef={i === 0 ? crateRef : undefined}
-                    count={help ? basket[i] || 0 : null} width={q.parts.length === 3 ? 128 : wide ? 150 : 140} />
+                    width={q.parts.length === 3 ? 128 : wide ? 150 : 140} />
                 ))}
               </motion.div>
             </AnimatePresence>
@@ -230,7 +232,7 @@ export default function NumbersGame({ level = 1, onComplete }) {
                   </div>
                   <Counter>
                     {crates}
-                    <Coins n={served} />
+                    <Jar n={served} />
                     {done}
                   </Counter>
                 </>
@@ -238,12 +240,10 @@ export default function NumbersGame({ level = 1, onComplete }) {
                 <>
                   {trail}
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-evenly' }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
-                      {customer}
+                    {customer}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <Jar n={served} />
                       {bag}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
-                      <Coins n={served} />
                       {done}
                     </div>
                   </div>
@@ -264,24 +264,16 @@ export default function NumbersGame({ level = 1, onComplete }) {
   )
 }
 
-// What the customer wants, as pictures: "4 🍋", or for the rest orders
-// "🏠 2 🍎 → 5 🍎".
+// What the customer wants, as pictures: "4 🍋 2 🍓". For a rest order the
+// bubble shows how many it wants in all; the ones from home are already in
+// the basket.
 function Order({ q }) {
   const num = n => <span style={{ fontSize: 30, lineHeight: 1 }}>{n}</span>
-  if (q.home) {
-    const { item, n } = q.parts[0]
-    return (
-      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }} aria-label={`${q.home} ${item.name} zu Hause, ${q.home + n} gewünscht`}>
-        <Art art="🏠" size={34} />{num(q.home)}<Art art={item.emoji} size={34} />
-        <span style={{ fontSize: 26, margin: '0 4px' }}>→</span>
-        {num(q.home + n)}<Art art={item.emoji} size={34} />
-      </span>
-    )
-  }
   return (
-    <span style={{ display: 'flex', alignItems: 'center', gap: 10 }} aria-label={q.parts.map(p => `${p.n} ${p.item.name}`).join(', ')}>
+    <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}
+      aria-label={q.home ? `${q.home} ${q.parts[0].item.name} zu Hause, ${q.home + q.parts[0].n} gewünscht` : q.parts.map(p => `${p.n} ${p.item.name}`).join(', ')}>
       {q.parts.map((p, i) => (
-        <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>{num(p.n)}<Art art={p.item.emoji} size={38} /></span>
+        <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>{num(p.n + (q.home && i === 0 ? q.home : 0))}<Art art={p.item.emoji} size={38} /></span>
       ))}
     </span>
   )
@@ -294,35 +286,65 @@ const badge = {
   fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 19, color: '#2a1b3d',
 }
 
-// The customer's basket: one row per kind, each row a button that puts one
-// of that kind back on its crate. While the customer looks into it, each
-// row shows its count, and the rows that are off wiggle.
-function Basket({ q, basket, onTake, glow, counts, innerRef, size }) {
+// The customer's basket: a wide wicker basket with one group per kind,
+// laid out in rows of five (five and some more is seen at a glance), so
+// everything in it lies flat and can be counted. Each group is a button
+// that puts one of that kind back on its crate. Things from home sit first
+// in their group with a little house and stay.
+function Basket({ q, basket, onTake, glow, counts, wiggle, innerRef, width }) {
   const total = Object.values(basket).reduce((a, b) => a + b, 0)
+  const home = i => (q.home && i === 0 ? q.home : 0)
+  const item = width >= 250 ? 30 : 26
+  // a little squash each time something lands, without re-mounting
+  const squash = useAnimationControls()
+  const last = useRef(total)
+  useEffect(() => {
+    if (total > last.current) squash.start({ scaleY: [0.92, 1], scaleX: [1.04, 1], transition: { type: 'spring', stiffness: 600, damping: 14 } })
+    last.current = total
+  }, [total, squash])
   return (
-    <div ref={innerRef} style={{ position: 'relative', width: size, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      <div style={{ display: 'flex', flexDirection: 'column-reverse', alignItems: 'center', gap: 2, marginBottom: -size * 0.52, zIndex: 1, minHeight: 40 }}>
-        {q.parts.map((p, i) => basket[i] > 0 && (
-          <motion.button key={i} type="button" onClick={e => { e.stopPropagation(); onTake(i) }} aria-label={`${p.item.name} zurücklegen`}
-            animate={counts && basket[i] !== p.n ? { rotate: [0, -4, 4, -4, 4, 0] } : { rotate: 0 }} transition={{ duration: 0.6, repeat: counts ? 2 : 0 }}
-            style={{ all: 'unset', cursor: 'pointer', position: 'relative', display: 'flex', flexWrap: 'wrap-reverse', justifyContent: 'center', maxWidth: size * 0.9, minHeight: 52, alignItems: 'center' }}>
-            <AnimatePresence>
-              {Array.from({ length: basket[i] }, (_, j) => (
-                <motion.span key={j} initial={{ y: -50, scale: 0.4 }} animate={{ y: 0, scale: 1 }} exit={{ y: -40, opacity: 0 }}
-                  transition={{ type: 'spring', stiffness: 520, damping: 20 }} style={{ margin: -2 }}>
-                  <Art art={p.item.emoji} size={38} />
-                </motion.span>
+    <div ref={innerRef} style={{ position: 'relative', width, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <svg width={width * 0.62} height={46} viewBox="0 0 100 46" preserveAspectRatio="none" aria-hidden="true" style={{ marginBottom: -12, display: 'block' }}>
+        <path d="M6 46 Q50 -16 94 46" fill="none" stroke="#2a1b3d" strokeWidth="11" />
+        <path d="M6 46 Q50 -16 94 46" fill="none" stroke="#c98a52" strokeWidth="6" />
+      </svg>
+      <motion.div animate={squash}
+        style={{
+          width, boxSizing: 'border-box', padding: '8px 12px 20px', display: 'flex', flexDirection: 'column', gap: 4,
+          borderRadius: '18px 18px 90px 90px / 18px 18px 56px 56px', border: '4px solid #2a1b3d', borderTop: '10px solid #8a4f22', transformOrigin: '50% 100%',
+          background: 'repeating-linear-gradient(0deg, transparent 0 13px, rgba(90,50,20,0.35) 13px 15px), repeating-linear-gradient(90deg, #d99a5b 0 14px, #c27a3a 14px 28px)',
+          boxShadow: `inset 0 6px 0 rgba(255,255,255,0.25), 0 6px 0 rgba(42,27,61,0.3)${glow ? ', 0 0 0 6px #ffc93c' : ''}`,
+        }}>
+        {q.parts.map((p, i) => {
+          const have = basket[i] || 0, off = have !== p.n
+          return (
+            <motion.button key={i} type="button" onClick={e => { e.stopPropagation(); onTake(i) }} aria-label={`${p.item.name} zurücklegen`}
+              animate={wiggle && off ? { x: [0, -5, 5, -5, 5, 0] } : { x: 0 }} transition={{ duration: 0.6, repeat: wiggle ? 2 : 0 }}
+              style={{
+                all: 'unset', cursor: 'pointer', position: 'relative', minHeight: 44, padding: '3px 44px 3px 6px', borderRadius: 12,
+                display: 'grid', gridTemplateColumns: `repeat(5, ${item}px)`, gridAutoRows: item, alignContent: 'center', justifyContent: 'center',
+                background: 'rgba(255,253,247,0.4)',
+              }}>
+              {Array.from({ length: home(i) }, (_, j) => (
+                <span key={`h${j}`} style={{ position: 'relative', display: 'inline-flex', opacity: 0.9 }}>
+                  <Art art={p.item.emoji} size={item} />
+                  <span style={{ position: 'absolute', left: -4, top: -6 }}><Art art="🏠" size={16} /></span>
+                </span>
               ))}
-            </AnimatePresence>
-            {counts && (
-              <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} style={{ ...badge, background: basket[i] === p.n ? '#c9f0c2' : '#ffe08a' }}>{basket[i]}</motion.span>
-            )}
-          </motion.button>
-        ))}
-      </div>
-      <motion.div key={total} initial={total ? { scaleY: 0.88, scaleX: 1.08 } : false} animate={{ scaleY: 1, scaleX: 1 }}
-        transition={{ type: 'spring', stiffness: 600, damping: 12 }} style={{ transformOrigin: '50% 100%', filter: glow ? 'drop-shadow(0 0 10px #ffc93c)' : undefined }}>
-        <Art art="🧺" size={size} />
+              <AnimatePresence>
+                {Array.from({ length: have }, (_, j) => (
+                  <motion.span key={j} initial={{ y: -40, scale: 0.4 }} animate={{ y: 0, scale: 1 }} exit={{ y: -30, opacity: 0 }}
+                    transition={{ type: 'spring', stiffness: 520, damping: 20 }} style={{ display: 'inline-flex' }}>
+                    <Art art={p.item.emoji} size={item} />
+                  </motion.span>
+                ))}
+              </AnimatePresence>
+              {counts && (
+                <motion.span key={have} initial={{ scale: 0.5 }} animate={{ scale: 1 }} style={{ ...badge, right: 2 }}>{have + home(i)}</motion.span>
+              )}
+            </motion.button>
+          )
+        })}
       </motion.div>
     </div>
   )
@@ -330,7 +352,7 @@ function Basket({ q, basket, onTake, glow, counts, innerRef, size }) {
 
 // A crate full of one kind; the one on top can be dragged (or tapped) into
 // the basket, and another rolls up in its place.
-function Crate({ item, id, pi, count, width, innerRef }) {
+function Crate({ item, id, pi, width, innerRef }) {
   return (
     <div style={{ position: 'relative', width, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <div style={{ display: 'flex', marginBottom: -26, zIndex: 1, alignItems: 'flex-end' }}>
@@ -348,12 +370,6 @@ function Crate({ item, id, pi, count, width, innerRef }) {
         width, height: width * 0.42, boxSizing: 'border-box', borderRadius: 8, border: '4px solid #2a1b3d',
         background: 'repeating-linear-gradient(0deg, #c27a3a 0 12px, #a8642c 12px 15px)', boxShadow: '0 5px 0 rgba(42,27,61,0.35)',
       }} />
-      <AnimatePresence>
-        {count != null && count > 0 && (
-          <motion.span key={count} initial={{ scale: 0.4 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
-            style={{ ...badge, right: -6, top: -6, marginTop: 0, width: 38, height: 38, fontSize: 20 }}>{count}</motion.span>
-        )}
-      </AnimatePresence>
     </div>
   )
 }
@@ -370,16 +386,26 @@ function Counter({ children }) {
   )
 }
 
-// The coins the customers paid, piling up
-function Coins({ n }) {
+// Lumi's money jar: each customer's coins drop in with a clink and pile up
+// inside, so the level's work can be seen filling it.
+function Jar({ n }) {
+  const reduce = useReducedMotion()
+  const shown = Math.min(n, 24)
   return (
-    <div aria-hidden="true" style={{ position: 'relative', width: 76, height: 84 }}>
-      {Array.from({ length: Math.min(n, 18) }, (_, i) => (
-        <motion.div key={i} initial={{ y: -90, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 14 }}
-          style={{ position: 'absolute', left: (i % 3) * 18 + 2, bottom: Math.floor(i / 3) * 9 }}>
-          <Art art="🪙" size={36} />
-        </motion.div>
-      ))}
+    <div aria-hidden="true" style={{ position: 'relative', width: 78, height: 96, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <div style={{ width: 50, height: 12, borderRadius: 4, background: '#e8663a', border: '3px solid #2a1b3d', zIndex: 2 }} />
+      <motion.div key={n} initial={n && !reduce ? { scaleY: 0.94 } : false} animate={{ scaleY: 1 }} transition={{ type: 'spring', stiffness: 500, damping: 12 }}
+        style={{
+          position: 'relative', width: 70, height: 76, marginTop: -3, borderRadius: '14px 14px 20px 20px', border: '3px solid #2a1b3d', overflow: 'hidden',
+          background: 'linear-gradient(90deg, rgba(255,255,255,0.75) 0 18%, rgba(220,240,255,0.55) 18%)', transformOrigin: '50% 100%',
+        }}>
+        {Array.from({ length: shown }, (_, i) => (
+          <motion.div key={i} initial={reduce ? false : { y: -80 }} animate={{ y: 0 }} transition={{ type: 'spring', stiffness: 260, damping: 16 }}
+            style={{ position: 'absolute', left: 4 + (i % 3) * 19 + (Math.floor(i / 3) % 2) * 6, bottom: 2 + Math.floor(i / 3) * 8 }}>
+            <Art art="🪙" size={24} />
+          </motion.div>
+        ))}
+      </motion.div>
     </div>
   )
 }
@@ -391,7 +417,7 @@ function Queue({ list }) {
     <div aria-hidden="true" style={{ display: 'flex', alignItems: 'flex-end', gap: 4, alignSelf: 'flex-end', minWidth: 150 }}>
       <AnimatePresence initial={false}>
         {list.map((c, i) => (
-          <motion.div key={c.key} layout initial={{ x: 80, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -60, opacity: 0 }}>
+          <motion.div key={c.key} layout initial={{ x: 80, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0 } }}>
             <Critter art={c.art} size={i === 0 ? 76 : 62} />
           </motion.div>
         ))}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { sfx } from '../sfx.js'
 import { narrate } from '../narrator.js'
@@ -17,9 +17,13 @@ import { pxButton, INK } from './px.js'
  * In den Lese-Levels stecken die Dinge ganz im Busch; vor jedem steht ein
  * Schild, und Lumi zeigt das Bild dessen, was gesucht wird.
  *
- * Solange ein Wort noch nicht aufgenommen ist (buchstaben/voice.js), zeigt
- * Lumi sein Bild in der Sprechblase: dann wird aus dem Hören ein Suchen
- * nach dem Bild, aber das Spiel bleibt spielbar.
+ * Solange ein Wort noch nicht aufgenommen ist (buchstaben/voice.js), wird
+ * aus dem Hören ein Merken: Alle zeigen sich kurz ganz, dann verstecken sie
+ * sich, und erst jetzt zeigt Lumi, wer gesucht wird — wo hat es sich
+ * versteckt? Je höher das Level, desto kürzer der Blick (SHOW_MS), dazu
+ * kommen mehr Büsche und ähnliche Dinge. Sobald das Wort aufgenommen ist,
+ * ist es wieder das Hörspiel. Die Lese-Levels (8–10) brauchen keine Stimme;
+ * ein Buch in Lumis Sprechblase zeigt, dass hier gelesen wird.
  *
  * Scientific basis:
  *   • Phonological Awareness (National Reading Panel, 2000) — connecting spoken words to images
@@ -104,6 +108,9 @@ const LEVELS = [
   { options:3, read:true, minimal:'all' },
 ]
 const ROUNDS = 8
+// Without a recorded word: how long everything shows itself before it hides
+// (levels 1–7), shorter as the levels rise.
+const SHOW_MS = [3200, 2800, 2600, 2400, 2200, 2000, 1800]
 
 function buildRounds(level) {
   const cfg = LEVELS[Math.max(0, Math.min(level - 1, LEVELS.length - 1))]
@@ -141,6 +148,7 @@ export default function ListenGame({ level = 1, onComplete }) {
   const [bursts, burst] = useBursts()
   const speaking = useSpeaking()
   const rowRef = useRef(null)
+  const gapRef = useRef(null)
 
   // Reading levels never say the word before it is answered — otherwise
   // they would be one more listening task, not reading.
@@ -152,19 +160,28 @@ export default function ListenGame({ level = 1, onComplete }) {
     else narrate([i === 0 && rec('hoeren/wer'), wordRec(target.word)])
   }, [rounds, isReading])
 
-  const { idx, done, leaving, finale, tried, streak, win, miss, reveal, isOver, hasTried } =
+  const { idx, done, leaving, finale, tried, streak, paused, win, miss, reveal, isOver, hasTried } =
     useRounds(rounds.length, { onComplete, sayTask, outroMs: 500 })
   idxRef.current = idx
   const round = rounds[idx]
   const current = round?.target
-  // The word is heard only once Lumi has recorded it; until then Lumi shows its picture.
+  // The word is heard only once Lumi has recorded it; until then it is a
+  // memory game: look, they hide, where is it?
   const heard = !isReading && !!current && !!wordRec(current.word)
+  const memory = !isReading && !heard
   const party = done && !tried.length && streak >= 3
+  const [hiddenAt, setHiddenAt] = useState(-1)   // the round whose things have hidden
+  const looking = memory && hiddenAt !== idx
+  useEffect(() => {
+    if (!looking || paused) return
+    const t = setTimeout(() => { sfx.slideDown(); setHiddenAt(idx) }, 700 + SHOW_MS[Math.min(level, SHOW_MS.length) - 1])
+    return () => clearTimeout(t)
+  }, [looking, paused, idx, level])
 
   useEffect(() => { if (finale) burst(rowRef.current, 'confetti', 18) }, [finale, burst])
 
   const pick = (opt, el) => {
-    if (isOver() || hasTried(opt.word)) return
+    if (looking || isOver() || hasTried(opt.word)) return
     if (opt.word === current.word) {
       const streaky = !tried.length && streak + 1 >= 3
       win(streaky ? 2300 : 1900)
@@ -199,8 +216,12 @@ export default function ListenGame({ level = 1, onComplete }) {
           <motion.div key={idx} initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
             transition={{ type: 'spring', stiffness: 320, damping: 15 }}
             style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {!heard && <Art art={current.emoji} size={84} />}
-            {!heard && !isReading && <span aria-hidden="true" style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 40, color: '#6b3fd6' }}>?</span>}
+            {looking
+              ? <motion.div animate={reduceMotion() ? {} : { scale: [1, 1.12, 1] }} transition={{ duration: 0.9, repeat: Infinity }}><Art art="👀" size={72} /></motion.div>
+              : !heard && <Art art={current.emoji} size={84} />}
+            {memory && !looking && <span aria-hidden="true" style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 40, color: '#6b3fd6' }}>?</span>}
+            {/* reading levels are marked as such: a book */}
+            {isReading && <Art art="📖" size={44} />}
             {voiced && (
               <motion.button
                 whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.92 }}
@@ -226,16 +247,17 @@ export default function ListenGame({ level = 1, onComplete }) {
           const state = finale ? 'out'
             : (done && isAns) ? 'out'
             : tried.includes(opt.word) ? 'tried'
-            : (done || leaving || isReading) ? 'hide' : 'peek'
+            : looking ? 'show'
+            : (done || leaving || isReading || memory) ? 'hide' : 'peek'
           return (
-            <HideBush key={`${idx}-${opt.word}`} i={i} n={round.options.length} item={opt} state={state} sign={isReading ? opt.word : null}
-              disabled={done || tried.includes(opt.word)} bird={isAns && round.bird} party={isAns && party}
+            <HideBush key={`${idx}-${opt.word}`} gapRef={i === 0 ? gapRef : null} i={i} n={round.options.length} item={opt} state={state} sign={isReading ? opt.word : null}
+              disabled={done || looking || tried.includes(opt.word)} bird={isAns && round.bird} party={isAns && party}
               label={isReading ? opt.word : `Busch ${i + 1}`}
               onTap={el => pick(opt, el)} />
           )
         })}
       </div>
-      <HintHand to={rowRef} active={!done && !leaving} delay={hintDelay(idx)} />
+      <HintHand to={gapRef} active={!done && !leaving && !looking} delay={hintDelay(idx)} />
       {bursts}
     </div>
   )
@@ -243,25 +265,28 @@ export default function ListenGame({ level = 1, onComplete }) {
 
 /**
  * A bush with something hiding behind it. state: peek (the top shows and
- * bobs), hide (all of it behind the leaves), out (hops out and cheers),
- * tried (a wrong guess: it shows itself and shrugs).
+ * bobs), show (all of it out, waving: look at me!), hide (all of it behind
+ * the leaves), out (hops out and cheers), tried (a wrong guess: it shows
+ * itself and shrugs).
  */
-function HideBush({ i, n, item, state, sign, disabled, bird, party, label, onTap }) {
+function HideBush({ gapRef, i, n, item, state, sign, disabled, bird, party, label, onTap }) {
   // on a phone four bushes stand two by two, so none gets too small to hit
   const narrow = typeof window !== 'undefined' && window.innerWidth < 600
   const width = narrow && n !== 3 ? 'calc(50% - 8px)' : `calc((100% - ${(n - 1) * 16}px) / ${n})`
   const still = reduceMotion()
   // in parts of the thing's own height: how far it is out of the bush
-  const y = { hide: '15%', peek: '-62%', out: '-95%', tried: '-92%' }[state]
+  const y = { hide: '15%', peek: '-62%', show: '-95%', out: '-95%', tried: '-92%' }[state]
   const thing = still ? { y, opacity: state === 'tried' ? 0.6 : 1 }
     : state === 'out' && party ? { y: ['-62%', '-160%', y, '-125%', y, '-125%', y], rotate: [0, 0, 360, 345, 375, 345, 360], scale: [1, 1.25, 1.12, 1.18, 1.12, 1.18, 1.12], opacity: 1 }
     : state === 'out' ? { y: ['-62%', '-160%', y], rotate: [0, 0, 360], scale: [1, 1.25, 1.12], opacity: 1 }
     : state === 'tried' ? { y, rotate: [0, -12, 12, -8, 0], scale: 0.92, opacity: 0.6 }
     : state === 'peek' ? { y: [y, '-70%', y], rotate: 0, scale: 1, opacity: 1 }
+    : state === 'show' ? { y, rotate: [0, -6, 6, 0], scale: 1, opacity: 1 }
     : { y, rotate: 0, scale: 0.75, opacity: 1 }
   const tt = state === 'out' ? { duration: party ? 1.8 : 0.9, ease: 'easeOut' }
     : state === 'peek' ? { duration: 1.8 + (i % 3) * 0.4, repeat: Infinity, delay: 0.3 + i * 0.12 }
-    : { type: 'spring', stiffness: 260, damping: 16 }
+    : state === 'show' ? { type: 'spring', stiffness: 260, damping: 16, delay: i * 0.08, rotate: { duration: 1.4, repeat: Infinity, delay: 0.5 + i * 0.15 } }
+    : { type: 'spring', stiffness: 260, damping: 16, rotate: { duration: 0.6 } }
 
   return (
     <motion.button type="button" aria-label={label} disabled={disabled}
@@ -271,6 +296,8 @@ function HideBush({ i, n, item, state, sign, disabled, bird, party, label, onTap
         all: 'unset', position: 'relative', width, maxWidth: 168, minWidth: 96, aspectRatio: '168 / 230',
         cursor: disabled ? 'default' : 'pointer', WebkitTapHighlightColor: 'transparent',
       }}>
+      {/* between the first bush and the next: the hint hand taps here, never on one answer */}
+      {gapRef && <span ref={gapRef} aria-hidden="true" style={{ position: 'absolute', right: -9, bottom: '30%', width: 2, height: 2 }} />}
       {/* the thing, behind the leaves */}
       <motion.div initial={{ y: '15%' }} animate={thing} transition={tt}
         style={{ position: 'absolute', left: '18%', width: '64%', bottom: '14%', aspectRatio: '1', display: 'flex', justifyContent: 'center' }}>
