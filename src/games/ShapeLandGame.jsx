@@ -7,6 +7,7 @@ import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
 import { Critter, Art, artSrc, useMood, DragArea, Draggable, DropZone, RoundTrail, HintHand, useBursts } from '../components/play/index.js'
 import { INK } from './px.js'
+import { SCENES, sceneDeck, sceneShown, timesShown } from './shapeScenes.jsx'
 
 /**
  * Formen-Land — Formen erkennen, Größen ordnen, Muster fortsetzen,
@@ -99,189 +100,13 @@ function Shape({ type, color, size = 72, rotate = 0, face = false }) {
   )
 }
 
-// ── The hidden-shape pictures ────────────────────────────────────────────────
-// Each picture is a list of pieces [type, x, y, w, h, colour, tilt?] on a
-// 480 × 300 board, drawn in order (later ones on top), plus some scenery that
-// is not a shape to look for (strings, poles, the ground). Every shape kind
-// appears at least twice; `overlay` is scenery drawn over the pieces. `tilt`
-// marks loose things (a kite, a balloon) that may hang at a slant from level
-// 2. `tall` lays the same pieces out upright for phones, where the wide
-// picture made them too small to tap. A ladybug (`bug`) hides in each
-// picture: a little surprise for whoever taps it.
-const SCENES = [
-  {
-    sky: '#BFE6FF',
-    pieces: [
-      ['circle',    396, 14, 58, 58, '#FFC93C'],               // the sun
-      ['star',       26, 18, 42, 42, '#F2B705', 1],            // a star balloon
-      ['heart',     140, 24, 44, 40, '#E0509A', 1],            // a heart balloon
-      ['oval',      196, 30, 36, 48, '#E8503F', 1],            // a balloon
-      ['rhombus',   262, 18, 46, 64, '#8E6CF0', 1],            // the kite
-      ['rhombus',   334, 74, 34, 46, '#3FA34D', 1],            // a small kite
-      ['rectangle', 108, 70, 20, 40, '#8A4F22'],               // chimney
-      ['triangle',   28, 74, 124, 62, '#E8503F'],              // roof
-      ['circle',     76, 96, 28, 28, '#BFE6FF'],               // round window
-      ['square',     43, 136, 94, 94, '#F2B705'],              // wall
-      ['square',     52, 150, 34, 34, '#BFE6FF'],              // window
-      ['rectangle',  96, 168, 34, 62, '#8A4F22'],              // door
-      ['heart',     100, 180, 26, 24, '#E0509A'],              // heart on the door
-      ['triangle',  158, 112, 66, 92, '#3FA34D'],              // fir tree
-      ['star',      172, 90, 38, 38, '#FFC93C', 1],            // star on top
-      ['rectangle', 182, 204, 18, 28, '#8A4F22'],              // trunk
-      ['oval',      218, 200, 64, 34, '#3FA34D'],              // bush
-      ['square',    324, 144, 40, 40, '#BFE6FF'],              // car cabin
-      ['rectangle', 290, 180, 116, 38, '#3D8BE0'],             // car
-      ['circle',    300, 202, 34, 34, '#2a1b3d'],              // wheel
-      ['circle',    364, 202, 34, 34, '#2a1b3d'],              // wheel
-      ['triangle',  420, 132, 50, 44, '#FFC93C'],              // warning sign
-      ['circle',    250, 248, 32, 32, '#E8503F'],              // ball
-      ['square',    140, 246, 38, 38, '#8E6CF0', 1],           // gift
-      ['oval',      414, 254, 44, 28, '#9A8FB0'],              // a stone
-    ],
-    scenery: (
-      <>
-        <rect x="0" y="230" width="480" height="70" fill="#7CC86A" />
-        <rect x="0" y="230" width="480" height="8" fill="#5CAE52" />
-        <path d="M47 60 Q60 120 70 200 M162 64 Q170 120 160 200 M214 78 Q220 140 236 200 M285 82 Q300 120 290 150" stroke={INK} strokeWidth="1.5" fill="none" opacity="0.6" />
-        <rect x="442" y="170" width="6" height="62" fill="#9A8FB0" stroke={INK} strokeWidth="1.5" />
-      </>
-    ),
+// The hidden-shape pictures (a street, a fair, a ship, a farm, space, a
+// castle, the sea, a train, a party): see shapeScenes.jsx
 
-    // the same pieces, in the same order, on an upright 300 × 420 board for phones
-    tall: {
-      boxes: [[226, 8, 60, 60], [12, 14, 46, 46], [70, 40, 46, 42], [124, 20, 40, 54], [176, 84, 48, 66], [240, 96, 40, 54],
-        [98, 148, 26, 42], [14, 160, 136, 66], [64, 180, 34, 34], [30, 226, 104, 104], [42, 242, 40, 40], [90, 268, 38, 62],
-        [92, 280, 32, 30], [178, 176, 76, 104], [198, 148, 38, 38], [206, 280, 22, 50], [150, 300, 64, 34], [196, 316, 40, 40],
-        [156, 352, 128, 40], [166, 378, 34, 34], [240, 378, 34, 34], [240, 236, 54, 48], [14, 362, 38, 38], [62, 356, 42, 42], [108, 392, 42, 24]],
-      scenery: (
-        <>
-          <rect x="0" y="330" width="300" height="90" fill="#7CC86A" />
-          <rect x="0" y="330" width="300" height="8" fill="#5CAE52" />
-          <path d="M35 60 Q28 110 34 160 M93 82 Q100 120 96 160 M144 74 Q140 120 150 170 M200 150 Q190 165 198 178 M260 150 Q252 165 262 178" stroke={INK} strokeWidth="1.5" fill="none" opacity="0.6" />
-          <rect x="264" y="284" width="6" height="48" fill="#9A8FB0" stroke={INK} strokeWidth="1.5" />
-        </>
-      ),
-      bug: [262, 300],
-    },
-    bug: [446, 212],
-    // when all are found: the balloons and kites fly off, the car drives away
-    go: { fly: [1, 2, 3, 4, 5], drive: [17, 18, 19, 20] },
-  },
-  {
-    sky: '#FFE2C2',
-    pieces: [
-      ['star',       18, 16, 36, 36, '#F2B705', 1],
-      ['star',       84, 30, 34, 34, '#E8503F', 1],
-      ['rhombus',   150, 14, 40, 58, '#3D8BE0', 1],            // kite
-      ['rhombus',   118, 76, 30, 42, '#E0509A', 1],            // small kite
-      ['triangle',  326, 124, 102, 106, '#8A4F22'],            // stand of the wheel
-      ['circle',    300, 24, 154, 154, '#FFE08A'],             // ferris wheel
-      ['square',    362, 14, 30, 30, '#E8503F'],               // cabin
-      ['square',    362, 158, 30, 30, '#3FA34D'],              // cabin
-      ['triangle',   78, 96, 26, 24, '#3D8BE0', 1],            // flag on the tent
-      ['triangle',   26, 118, 130, 112, '#E8503F'],            // tent
-      ['rectangle',  74, 176, 34, 54, '#2a1b3d'],              // tent door
-      ['oval',      170, 120, 74, 30, '#8E6CF0'],              // sign
-      ['rectangle', 172, 150, 70, 80, '#3FA34D'],              // booth
-      ['square',    190, 162, 34, 34, '#BFE6FF'],              // booth window
-      ['heart',     194, 200, 28, 26, '#E0509A'],              // heart on the booth
-      ['oval',      262, 58, 32, 44, '#3D8BE0', 1],            // balloon
-      ['heart',     226, 48, 36, 32, '#E0509A', 1],            // heart balloon
-      ['circle',    272, 108, 32, 32, '#F2B705', 1],           // balloon
-      ['circle',    258, 196, 34, 34, '#E0509A'],              // lollipop
-      ['rectangle',  14, 248, 80, 20, '#8A4F22'],              // bench
-      ['square',    116, 244, 40, 40, '#F2B705', 1],           // crate
-      ['oval',      414, 216, 60, 30, '#3FA34D'],              // bush
-    ],
-    scenery: (
-      <>
-        <rect x="0" y="230" width="480" height="70" fill="#E8C27A" />
-        <rect x="0" y="230" width="480" height="8" fill="#D4A95E" />
-        <path d="M278 102 Q270 160 275 196 M248 80 Q256 150 275 196 M288 140 Q282 170 275 196" stroke={INK} strokeWidth="1.5" fill="none" opacity="0.6" />
-        <rect x="273" y="226" width="5" height="34" fill="#fff" stroke={INK} strokeWidth="1" />
-        <line x1="90" y1="96" x2="90" y2="122" stroke={INK} strokeWidth="2" />
-      </>
-    ),
-    // the wheel's spokes, over the wheel
-    overlay: <Spokes cx={377} cy={101} />,
-    tall: {
-      boxes: [[12, 12, 40, 40], [62, 56, 36, 36], [14, 98, 40, 58], [70, 112, 32, 44], [160, 120, 100, 110], [130, 20, 160, 160],
-        [193, 4, 34, 34], [193, 162, 34, 34], [55, 206, 32, 28], [10, 232, 120, 110], [54, 292, 34, 50], [150, 246, 76, 30],
-        [152, 276, 72, 70], [171, 282, 32, 32], [174, 316, 30, 28], [252, 236, 34, 44], [258, 290, 34, 30], [110, 160, 32, 32],
-        [240, 356, 32, 32], [14, 384, 84, 20], [110, 370, 40, 40], [176, 382, 56, 30]],
-      scenery: (
-        <>
-          <rect x="0" y="346" width="300" height="74" fill="#E8C27A" />
-          <rect x="0" y="346" width="300" height="8" fill="#D4A95E" />
-          <path d="M269 280 Q266 320 276 346 M275 320 Q280 334 276 346 M126 192 Q120 214 118 236" stroke={INK} strokeWidth="1.5" fill="none" opacity="0.6" />
-          <rect x="254" y="386" width="5" height="30" fill="#fff" stroke={INK} strokeWidth="1" />
-          <line x1="70" y1="210" x2="70" y2="236" stroke={INK} strokeWidth="2" />
-        </>
-      ),
-      overlay: <Spokes cx={210} cy={100} />,
-      bug: [262, 196],
-    },
-    bug: [30, 222],
-    go: { fly: [2, 3, 15, 16, 17], drive: [] },
-  },
-  {
-    sky: '#BFE6FF',
-    pieces: [
-      ['circle',    404, 14, 56, 56, '#FFC93C'],               // the sun
-      ['oval',       24, 22, 72, 30, '#FFFFFF'],               // cloud
-      ['oval',      300, 44, 60, 24, '#FFFFFF'],               // cloud
-      ['rectangle', 226, 36, 12, 140, '#8A4F22'],              // mast
-      ['rhombus',   238, 12, 24, 32, '#E0509A', 1],            // pennant
-      ['triangle',  124, 52, 98, 118, '#E8503F'],              // big sail
-      ['triangle',  242, 72, 72, 98, '#F2B705'],               // small sail
-      ['star',      157, 112, 32, 32, '#FFC93C'],              // star on the sail
-      ['square',    322, 140, 30, 30, '#8E6CF0'],              // crate on deck
-      ['rectangle',  96, 170, 270, 44, '#8A4F22'],             // hull
-      ['circle',    120, 180, 24, 24, '#BFE6FF'],              // porthole
-      ['circle',    170, 180, 24, 24, '#BFE6FF'],              // porthole
-      ['circle',    220, 180, 24, 24, '#BFE6FF'],              // porthole
-      ['heart',     300, 180, 28, 26, '#E0509A'],              // heart on the hull
-      ['rectangle', 424, 118, 12, 90, '#8A4F22'],              // palm trunk
-      ['oval',      396, 100, 70, 28, '#3FA34D'],              // palm leaves
-      ['oval',      380, 196, 96, 36, '#E8C27A'],              // island
-      ['rhombus',    40, 180, 30, 44, '#E8503F', 1],           // buoy
-      ['oval',       36, 246, 48, 24, '#F2B705'],              // fish
-      ['triangle',  262, 232, 36, 30, '#9A8FB0'],              // a fin
-      ['star',      190, 250, 36, 36, '#E0509A'],              // starfish
-      ['heart',     120, 262, 28, 26, '#F2B705'],              // shell
-      ['oval',      330, 258, 44, 22, '#8E6CF0'],              // fish
-      ['square',    420, 250, 32, 32, '#3FA34D', 1],           // floating crate
-    ],
-    scenery: (
-      <>
-        <rect x="0" y="200" width="480" height="100" fill="#5BB4E8" />
-        <path d="M0 204 Q20 196 40 204 T80 204 T120 204 T160 204 T200 204 T240 204 T280 204 T320 204 T360 204 T400 204 T440 204 T480 204" stroke="#fff" strokeWidth="3" fill="none" opacity="0.7" />
-        <path d="M30 236 q10 -6 20 0 M150 232 q10 -6 20 0 M380 240 q10 -6 20 0 M260 280 q10 -6 20 0 M80 290 q10 -6 20 0" stroke="#fff" strokeWidth="2" fill="none" opacity="0.7" />
-      </>
-    ),
-    tall: {
-      boxes: [[236, 8, 54, 54], [14, 20, 70, 28], [150, 40, 56, 22], [108, 70, 12, 166], [120, 44, 24, 32], [20, 90, 86, 140],
-        [124, 110, 62, 120], [47, 170, 32, 32], [188, 206, 26, 30], [14, 236, 200, 50], [30, 248, 26, 26], [80, 248, 26, 26],
-        [130, 248, 26, 26], [176, 248, 28, 26], [254, 190, 12, 110], [226, 172, 68, 28], [210, 290, 88, 36], [16, 300, 28, 42],
-        [60, 340, 48, 24], [150, 306, 36, 30], [120, 370, 38, 38], [200, 378, 30, 28], [240, 344, 44, 22], [250, 386, 30, 30]],
-      scenery: (
-        <>
-          <rect x="0" y="270" width="300" height="150" fill="#5BB4E8" />
-          <path d="M0 274 Q20 266 40 274 T80 274 T120 274 T160 274 T200 274 T240 274 T280 274 T320 274" stroke="#fff" strokeWidth="3" fill="none" opacity="0.7" />
-          <path d="M60 316 q10 -6 20 0 M200 338 q10 -6 20 0 M30 400 q10 -6 20 0 M170 410 q10 -6 20 0" stroke="#fff" strokeWidth="2" fill="none" opacity="0.7" />
-        </>
-      ),
-      bug: [272, 292],
-    },
-    bug: [446, 198],
-    // when all are found: the ship sails off
-    go: { fly: [], drive: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13] },
-  },
-]
-
-// The same picture never twice in a level: each of the pictures also comes
-// mirrored, at sunset, at night (the windows lit) and in other colours. Only
-// the look changes: the same shapes, the same number of each kind.
+// A picture seen before comes back in another look: mirrored, at sunset, at
+// night (the windows lit) or in other colours. Only the look changes: the
+// same shapes, the same number of each kind. A picture with a sky of its own
+// (space, the sea, a room) keeps it.
 const LOOKS = [
   { mirror: false, sky: null,      shift: 0 },
   { mirror: true,  sky: '#FFC9A3', shift: 2 },
@@ -302,10 +127,11 @@ function lookOf(scene, k) {
   }
   const flip = (W, x, w) => (look.mirror ? W - x - w : x)
   const mirrored = (W, node) => (look.mirror && node ? <g transform={`translate(${W} 0) scale(-1 1)`}>{node}</g> : node)
-  const stars = W => look.night && NIGHT_STARS.map(([x, y], i) => <circle key={i} cx={x * W / 480} cy={y} r={i % 3 ? 2 : 3} fill="#FFF3B0" />)
+  const stars = W => look.night && !scene.ownSky && NIGHT_STARS.map(([x, y], i) => <circle key={i} cx={x * W / 480} cy={y} r={i % 3 ? 2 : 3} fill="#FFF3B0" />)
   return {
     ...scene,
-    sky: look.sky ?? scene.sky,
+    mirror: look.mirror,
+    sky: (!scene.ownSky && look.sky) || scene.sky,
     pieces: scene.pieces.map(([type, x, y, w, h, color, loose]) => [type, flip(480, x, w), y, w, h, recolour(color), loose]),
     scenery: <>{stars(480)}{mirrored(480, scene.scenery)}</>,
     overlay: mirrored(480, scene.overlay),
@@ -318,18 +144,6 @@ function lookOf(scene, k) {
       bug: [flip(300, scene.tall.bug[0], 26), scene.tall.bug[1]],
     },
   }
-}
-
-function Spokes({ cx, cy }) {
-  return (
-    <g stroke="#C98A52" strokeWidth="4" strokeLinecap="round">
-      {[0, 45, 90, 135].map(a => {
-        const dx = 60 * Math.cos(a * Math.PI / 180), dy = 60 * Math.sin(a * Math.PI / 180)
-        return <line key={a} x1={cx - dx} y1={cy - dy} x2={cx + dx} y2={cy + dy} />
-      })}
-      <circle cx={cx} cy={cy} r="9" fill="#8A4F22" stroke={INK} strokeWidth="2.5" />
-    </g>
-  )
 }
 
 // One shape of a picture, drawn into its box
@@ -399,13 +213,16 @@ function buildRound(level, idx, used) {
     const fresh  = pool.filter(t => !used.match.has(t))
     const answer = shuffle(fresh.length ? fresh : pool)[0]
     used.match.add(answer)
-    const n      = used.scene++
-    const scene  = lookOf(SCENES[n % SCENES.length], Math.floor(n / SCENES.length))
+    // the next picture of the level's own order: none comes twice while
+    // another is still waiting; one seen before comes in another look
+    const n       = used.scene++
+    const sceneId = used.deck[n % used.deck.length]
+    const scene   = lookOf(SCENES[sceneId], timesShown(sceneId) + Math.floor(n / used.deck.length))
     // the pieces of the picture, each with its turn for this round
     const pieces = scene.pieces.map(([type, x, y, w, h, color, loose], id) => ({
       id, type, x, y, w, h, color, rot: loose ? tiltFor(level, type) : 0,
     }))
-    return { mode, answer, scene, pieces, need: pieces.filter(p => p.type === answer).length }
+    return { mode, answer, scene, sceneId, pieces, need: pieces.filter(p => p.type === answer).length }
   }
 
   if (mode === 'size') {
@@ -466,7 +283,7 @@ function useTall() {
 export default function ShapeLandGame({ level = 1, onComplete }) {
   const TOTAL = 8
   const rounds = useState(() => {
-    const used = { object: new Set(), match: new Set(), scene: rand(0, SCENES.length - 1) }
+    const used = { object: new Set(), match: new Set(), scene: 0, deck: sceneDeck() }
     return Array.from({ length: TOTAL }, (_, i) => buildRound(level, i, used))
   })[0]
   const paused = usePaused()
@@ -485,6 +302,7 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
   const [owl,      setOwl]      = useMood()
   const [bursts, burst] = useBursts()
   const missed = useRef(new Set())                   // rounds with a miss
+  const seenIdx = useRef(-1)                         // the last round whose picture was counted
   const timers = useRef([])
   const hint   = { from: useRef(null), to: useRef(null) }
   const owlRef = useRef(null)
@@ -502,6 +320,9 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
     timers.current.forEach(clearTimeout); timers.current = []
     setPicked([]); setWrong([]); setSolved(false); setShake(null); setLook(0)
     setOwl('idle')
+    // the picture counts as seen once it is on screen (once, also when
+    // effects run twice)
+    if (r.mode === 'match' && seenIdx.current !== idx) { seenIdx.current = idx; sceneShown(r.sceneId) }
     lockPreviews()
     sayTask()
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -829,7 +650,7 @@ function Picture({ r, tall, found, shake, solved, onTap }) {
             animate={play ? (p.type === 'circle' ? { rotate: [p.rot, p.rot + 360], scale: [1, 1.2, 1], y: [0, -12, 0] } : { y: [0, -20, 0], scale: [1, 1.15, 1], rotate: [p.rot, p.rot - 10, p.rot + 10, p.rot] })
               : wobble && !reduceMotion() ? { rotate: [p.rot, p.rot - 12, p.rot + 10, p.rot - 6, p.rot], scale: [1, 1.12, 1] }
               : fly ? { y: [0, 12, -H - 80], rotate: [p.rot, p.rot - 10, p.rot + 15], scale: 1 }
-              : drive ? { x: [0, -10, W + 60], scale: 1, rotate: spin ? p.rot + 720 : p.rot }
+              : drive ? { x: r.scene.mirror ? [0, 10, -W - 60] : [0, -10, W + 60], scale: 1, rotate: spin ? p.rot + (r.scene.mirror ? -720 : 720) : p.rot }
               : isFound ? { rotate: spin ? p.rot + 360 : p.rot, scale: [1, 1.25, 1], y: solved && !reduceMotion() ? [0, -8, 0] : 0 }
               : { rotate: p.rot, scale: 1, x: 0, y: 0 }}
             transition={fly ? { duration: 1.8, delay: 0.4 + (p.id % 5) * 0.12, ease: 'easeIn' }
@@ -849,10 +670,10 @@ function Picture({ r, tall, found, shake, solved, onTap }) {
         )
       })}
       {(tall ? r.scene.tall.overlay : r.scene.overlay) && <g pointerEvents="none">{tall ? r.scene.tall.overlay : r.scene.overlay}</g>}
-      {/* the ladybug: tap it and it flies off */}
+      {/* the ladybug (or the picture's own critter): tap it and it flies off */}
       <motion.g initial={false} animate={bugGone ? { x: 160, y: -260, opacity: 0 } : { x: 0, y: 0, opacity: 1 }}
         transition={{ duration: bugGone ? 1.2 : 0 }} onClick={flyAway} style={{ cursor: 'pointer' }}>
-        <image href={artSrc('🐞')} x={bug[0]} y={bug[1]} width="26" height="26" />
+        <image href={artSrc(r.scene.critter ?? '🐞')} x={bug[0]} y={bug[1]} width="26" height="26" />
       </motion.g>
     </svg>
   )
