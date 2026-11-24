@@ -9,7 +9,8 @@ import { narrate } from '../narrator.js'
 import { sfx } from '../sfx.js'
 import { result } from '../lib/score.js'
 import { pxCard, pxButton, pxBubble, INK } from './px.js'
-import { HintHand } from '../components/play/index.js'
+import { HintHand, Art, useBursts } from '../components/play/index.js'
+import './coloring/coloring.css'
 
 const BASE = import.meta.env.BASE_URL || '/LumiLearn/'
 // size of the coloring pages, and of the empty sheet
@@ -71,6 +72,25 @@ const TOOLS = [
 ]
 
 const UNDO_MAX  = 10
+const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+// How each stamp comes alive when the picture is done (in place, over the
+// stamp on the sheet): the butterfly flaps, the rocket lifts, the star spins
+const ALIVE = {
+  '🦋': { scaleX: [1, 0.3, 1, 0.3, 1, 0.3, 1] },
+  '🚀': { y: [0, -14, -4, -18, 0], rotate: [0, -4, 4, -2, 0] },
+  '⭐': { rotate: [0, 180, 360], scale: [1, 1.25, 1] },
+  '❤️': { scale: [1, 1.3, 1, 1.3, 1] },
+  '🐟': { x: [0, -10, 10, -10, 0], rotate: [0, -8, 8, -8, 0] },
+  '🐱': { y: [0, -16, 0, -10, 0] },
+  '🌸': { rotate: [0, 90, 180] },
+  '🌞': { rotate: [0, 120, 240, 360], scale: [1, 1.1, 1, 1] },
+  '🌈': { scaleY: [1, 1.15, 0.95, 1.1, 1] },
+  '🍀': { rotate: [0, -20, 20, -10, 0] },
+  '⚡': { opacity: [1, 0.2, 1, 0.2, 1], scale: [1, 1.2, 1, 1.2, 1] },
+  '☁️': { x: [0, 12, -12, 0] },
+}
+// Every fifth fill a little visitor crawls or flies across the sheet
+const VISITORS = ['🐞', '🦋', '🐌', '🐝']
 const ALBUM_MAX = 30
 
 // ── Album: one per profile, full size, in IndexedDB ───────────────────────────
@@ -269,6 +289,9 @@ export default function ColoringGame({ onComplete }) {
   const [confirm, setConfirm]     = useState(null)    // 'clear' | 'empty' | 'full'
   const [note, setNote]           = useState(null)    // what Lumi just said, shown for a moment
   const [dispSize, setDispSize]   = useState({ w: 0, h: 0 })
+  const [party, setParty]         = useState(false)   // "Fertig": the picture comes alive
+  const [visitor, setVisitor]     = useState(null)    // { art, y, n } crossing the sheet
+  const [bursts, burst]           = useBursts()
 
   const displayRef  = useRef(null)
   const areaRef     = useRef(null)
@@ -286,6 +309,11 @@ export default function ColoringGame({ onComplete }) {
   const albumIdRef  = useRef(null)
   const pendingPaint = useRef(null)                              // album paint to load onto the next sheet
   const noteTimer   = useRef(null)
+  const stamps      = useRef(new Map())                          // imgId -> [{ e, x, y, n }]: the stamps on that sheet
+  const fills       = useRef(0)                                  // fills so far (a visitor every fifth)
+  const finished    = useRef(false)                              // "Fertig" was tapped: once only
+  const partyT      = useRef([])
+  useEffect(() => () => partyT.current.forEach(clearTimeout), [])
 
   const currentImage = IMAGES[imgIdx]
   const brushR = BRUSHES[brushIdx].r
@@ -433,6 +461,7 @@ export default function ColoringGame({ onComplete }) {
   const undo = () => {
     const prev = undoStack.current.pop()
     if (!prev) return
+    stamps.current.set(currentImage.id, (stamps.current.get(currentImage.id) ?? []).filter(st => st.n <= undoStack.current.length))
     paintRef.current.getContext('2d').putImageData(prev, 0, 0)
     setUndoCount(undoStack.current.length)
     let painted = false
@@ -461,6 +490,8 @@ export default function ColoringGame({ onComplete }) {
 
     if (tool === 'stamp') {
       snapshot()
+      const list = stamps.current.get(currentImage.id) ?? []
+      stamps.current.set(currentImage.id, [...list, { e: stamp, x: pos.x, y: pos.y, n: undoStack.current.length }])
       const ctx = paintRef.current.getContext('2d')
       ctx.font = `${STAMP_SIZE}px serif`
       ctx.textAlign = 'center'
@@ -484,6 +515,7 @@ export default function ColoringGame({ onComplete }) {
           setUndoCount(undoStack.current.length)
           setHasPainted(true)
           redraw()
+          if (++fills.current % 5 === 0) setVisitor({ art: VISITORS[(fills.current / 5 - 1) % VISITORS.length], y: 0.2 + Math.random() * 0.6, n: fills.current })
         }
         setFilling(false)
       }, 10)
@@ -515,6 +547,7 @@ export default function ColoringGame({ onComplete }) {
     snapshot()
     const pc = paintRef.current
     pc.getContext('2d').clearRect(0, 0, pc.width, pc.height)
+    stamps.current.set(currentImage.id, [])
     setHasPainted(false)
     redraw()
   }
@@ -549,15 +582,22 @@ export default function ColoringGame({ onComplete }) {
     }
   }
 
+  // "Fertig": the stamps come alive and Lumi hops onto the sheet with
+  // confetti, about 3 s, then the results. A free painting game: finishing
+  // is the achievement, there is nothing to get wrong — one task, done.
   const finish = async () => {
     if (!hasPainted) { say('Mal zuerst etwas!'); return }
+    if (finished.current) return
+    finished.current = true
     const saved = await saveToAlbum({ ask: false })
-    sfx.complete?.()
-    // A free painting game: finishing is the achievement, there is nothing
-    // to get wrong — one task, done.
-    const text = `Fertig! Was für ein schönes Bild. ${colourComment(paintRef.current)}${saved ? ' Es ist jetzt in deinem Album.' : ''}`
-    setNote(text)
-    narrate([{ text }], { onEnd: () => onComplete?.(result(1, 1)) })
+    setParty(true)
+    sfx.tada()
+    const dc = displayRef.current
+    const at = (ms, fn) => partyT.current.push(setTimeout(fn, ms))
+    at(500, () => { burst(dc, 'confetti', 24); sfx.complete?.() })
+    at(1600, () => burst(dc, 'stars', 14))
+    narrate([{ text: `Fertig! Was für ein schönes Bild. ${colourComment(paintRef.current)}${saved ? ' Es ist jetzt in deinem Album.' : ''}` }])
+    at(3300, () => onComplete?.(result(1, 1)))
   }
 
   const continueFromAlbum = (entry) => {
@@ -634,6 +674,38 @@ export default function ColoringGame({ onComplete }) {
           onPointerUp={handleUp}
           onPointerCancel={handleUp}
         />
+        {/* over the sheet: the visitor every fifth fill, and at "Fertig" the
+            stamps come alive and Lumi hops on */}
+        {dispSize.w > 0 && (party || visitor) && (
+          <div aria-hidden="true" style={{ position:'absolute', left: displayRef.current?.offsetLeft ?? 0, top: displayRef.current?.offsetTop ?? 0, width: dispSize.w, height: dispSize.h, overflow:'hidden', pointerEvents:'none' }}>
+            {party && (stamps.current.get(currentImage.id) ?? []).map((st, k) => {
+              const k2 = dispSize.w / canvasSize.current.w, sz = STAMP_SIZE * k2
+              return (
+                <motion.div key={k} animate={reduceMotion() ? undefined : ALIVE[st.e] ?? { y: [0, -10, 0] }}
+                  transition={{ duration: 1.2, repeat: 1, delay: (k % 5) * 0.12 }}
+                  style={{ position:'absolute', left: st.x * k2 - sz / 2, top: st.y * k2 - sz / 2, width: sz, height: sz, display:'flex', alignItems:'center', justifyContent:'center', fontSize: sz }}>
+                  <span className="co-stamp" data-e={st.e} />
+                </motion.div>
+              )
+            })}
+            {party && (
+              <motion.div initial={{ y: dispSize.h * 0.6 }}
+                animate={reduceMotion() ? { y: 0 } : { y: [dispSize.h * 0.6, -dispSize.h * 0.12, 0, -dispSize.h * 0.06, 0] }}
+                transition={{ duration: 1.3, delay: 0.2 }}
+                style={{ position:'absolute', left: '50%', bottom: 6, marginLeft: -Math.min(110, dispSize.w * 0.3) / 2 }}>
+                <Art art="lumi" size={Math.min(110, dispSize.w * 0.3)} />
+              </motion.div>
+            )}
+            {visitor && !party && (
+              <motion.div key={visitor.n} initial={{ x: -60 }} animate={{ x: dispSize.w + 60, y: [0, -14, 6, -10, 0] }}
+                transition={{ duration: reduceMotion() ? 0.01 : 4.5, ease: 'linear' }} onAnimationComplete={() => setVisitor(null)}
+                style={{ position:'absolute', left: 0, top: visitor.y * dispSize.h }}>
+                <Art art={visitor.art} size={Math.max(34, Math.min(60, dispSize.w * 0.09))} />
+              </motion.div>
+            )}
+          </div>
+        )}
+        {bursts}
         {/* until the child has painted: a hand taps the picture */}
         <HintHand to={displayRef} active={ready && !hasPainted && !albumOpen} delay={3000} />
         {!ready && <div style={{ position:'absolute', fontSize:32 }}>⏳</div>}
@@ -718,7 +790,7 @@ export default function ColoringGame({ onComplete }) {
           <button onClick={() => hasPainted && setConfirm('clear')} disabled={!hasPainted} style={actionBtn('red', hasPainted)}>🗑️ Neu</button>
           <button onClick={() => keep()} disabled={!hasPainted} style={actionBtn('parch', hasPainted)}>💾 Aufheben</button>
           {onComplete && (
-            <button onClick={finish} disabled={!hasPainted} title={hasPainted ? '' : 'Male zuerst etwas!'} style={actionBtn('green', hasPainted)}>✅ Fertig</button>
+            <button onClick={finish} disabled={!hasPainted || party} title={hasPainted ? '' : 'Male zuerst etwas!'} style={actionBtn('green', hasPainted)}>✅ Fertig</button>
           )}
         </div>
       </div>

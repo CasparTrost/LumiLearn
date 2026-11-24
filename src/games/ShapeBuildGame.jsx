@@ -377,7 +377,7 @@ function slotBox(p) {
 }
 
 // The workbench: the outline to fill, one drop place per part
-function Board({ fig, customer, rules, filled, wrongSlot, complete, onDrop, size }) {
+function Board({ fig, customer, rules, filled, wrongSlot, stuck, complete, onDrop, size }) {
   const { hover, picked } = useDragState()
   const zones = fig.parts.map((p, i) => ({ i, box: slotBox(p) }))
     .filter(z => !filled.has(z.i))
@@ -413,6 +413,19 @@ function Board({ fig, customer, rules, filled, wrongSlot, complete, onDrop, size
           })}
           {complete && <Face x={fig.face[0]} y={fig.face[1]} s={fig.face[2]} />}
         </motion.g>
+        {/* a piece that does not fit sits in the place for a moment, all
+            wrong and wobbling, then pops back out */}
+        <AnimatePresence>
+          {stuck && (
+            <motion.g key={stuck.n} initial={{ scale: 0.6, opacity: 0 }}
+              animate={reduceMotion() ? { opacity: 1, scale: 1 } : { opacity: 1, scale: [0.6, 1.15, 1, 1.08, 1], rotate: [0, -14, 12, -10, 8] }}
+              exit={{ y: -30, opacity: 0, scale: 0.5, transition: { duration: 0.3 } }}
+              transition={{ duration: 0.8 }} style={{ originX: 0.5, originY: 0.5, transformBox: 'fill-box' }}>
+              <ShapePath shape={stuck.shape} x={stuck.x} y={stuck.y} w={stuck.w} h={stuck.h} rot={stuck.rot}
+                fill={stuck.color} stroke={INK} strokeWidth={1.6} strokeLinejoin="round" />
+            </motion.g>
+          )}
+        </AnimatePresence>
       </svg>
       {/* the customer gets in or tucks in, and moves along with it */}
       <AnimatePresence>
@@ -448,6 +461,36 @@ function Board({ fig, customer, rules, filled, wrongSlot, complete, onDrop, size
   )
 }
 
+// A finished figure, small: for the workshop shelf
+function MiniFigure({ fig, size }) {
+  return (
+    <svg viewBox="-4 -4 108 108" width={size} height={size} aria-hidden="true" style={{ display: 'block', overflow: 'visible' }}>
+      {fig.parts.map((p, i) => <ShapePath key={i} {...p} fill={p.color} stroke={INK} strokeWidth={3} strokeLinejoin="round" />)}
+      <Face x={fig.face[0]} y={fig.face[1]} s={fig.face[2]} />
+    </svg>
+  )
+}
+
+// The wall shelf of the workshop: every finished figure lands on it (it
+// flies up from the workbench, shrinking), so the workshop fills up
+function Shelf({ figs, total }) {
+  return (
+    <div aria-hidden="true" style={{ position: 'relative', width: 'min(100%, 560px)', height: 58, flexShrink: 0, display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: 6 }}>
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 9, borderRadius: 4, background: '#8A5A33', border: `2px solid ${INK}`, boxShadow: '0 4px 0 rgba(42,27,61,0.25)' }} />
+      {Array.from({ length: total }, (_, n) => (
+        <div key={n} style={{ width: 48, height: 48, marginBottom: 9, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+          {figs[n] && (
+            <motion.div initial={reduceMotion() ? false : { y: 240, scale: 3.2, opacity: 0.4 }} animate={{ y: 0, scale: 1, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 120, damping: 15 }}>
+              <MiniFigure fig={figs[n]} size={46} />
+            </motion.div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function useViewportWidth() {
   const [w, setW] = useState(() => window.innerWidth)
   useEffect(() => {
@@ -477,6 +520,7 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
   const [freeMode, setFreeMode] = useState(false)
   const [turnHint, setTurnHint] = useState(null)   // { i, n }: this piece only needs turning
   const [streak,   setStreak]   = useState(0)      // figures built without a miss in a row
+  const [stuck,    setStuck]    = useState(null)   // a wrong piece sitting in a place for a moment
   const [bursts, burst] = useBursts()
   const misses = useRef(0)
   const roundMisses = useRef(0)
@@ -520,7 +564,7 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
   useLayoutEffect(() => {
     if (!fig) return
     timers.current.forEach(clearTimeout); timers.current = []
-    setPlaced([]); setTurns({}); setWrongSlot(null); setTurnHint(null)
+    setPlaced([]); setTurns({}); setWrongSlot(null); setTurnHint(null); setStuck(null)
     roundMisses.current = 0
     lockPreviews()
     sayTask()
@@ -549,14 +593,24 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
     const sameShape = piece.shape === slot.shape
     const sameSize  = sameShape && piece.w === slot.w && piece.h === slot.h
     if (!sameSize || !sameTurn(slot.shape, rotOf(trayIdx), slot.rot)) {
-      setWrongSlot(slotIdx)
-      if (sameSize) setTurnHint({ i: trayIdx, n: Date.now() })
+      // It goes in, looking ridiculous; the customer laughs; then it pops
+      // back out to the tray. Still a miss.
+      if (stuck) return false
       misses.current++
       roundMisses.current++
-      setMood('oops')
+      setStuck({ shape: piece.shape, x: slot.x, y: slot.y, w: slot.w, h: slot.h, rot: rotOf(trayIdx) + 20, color: piece.color, tray: trayIdx, n: Date.now() })
+      setMood('oops', 700)
+      sfx.boing()
       sayWrong()
-      later(() => setWrongSlot(null), 900)
-      return false
+      later(() => { setMood('happy', 900); sfx.giggle() }, 500)
+      later(() => {
+        setStuck(null)
+        sfx.pop()
+        setWrongSlot(slotIdx)
+        if (sameSize) setTurnHint({ i: trayIdx, n: Date.now() })
+      }, 850)
+      later(() => setWrongSlot(null), 1700)
+      return true
     }
     const next = [...placed, { slot: slotIdx, tray: trayIdx }]
     setPlaced(next)
@@ -579,7 +633,7 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
     sayRight()
     afterNarration(() => later(() => (last ? setLastDone(true) : setIdx(i => i + 1)), 0), { minMs: 3000 })
     return true
-  }, [fig, placed, tray, turns, last, streak, burst, later, setMood]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fig, placed, tray, turns, last, streak, stuck, burst, later, setMood]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const turn = i => {
     setTurns(t => ({ ...t, [i]: (t[i] ?? 0) + 90 }))
@@ -602,6 +656,7 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
       {bursts}
       {!freeMode && <HintHand from={trayRef} to={boardRef} delay={idx === 0 ? 2000 : 6000} active={!complete} />}
       <RoundTrail total={rounds.length} done={idx + (complete ? 1 : 0)} walker="🔨" goal="🏠" style={{ width: 'calc(100% - 60px)', maxWidth: 700 }} />
+      {!freeMode && <Shelf figs={rounds.slice(0, lastDone ? rounds.length : idx)} total={rounds.length} />}
 
       {freeMode ? <FreeBuild onDone={finishLevel} /> : (
         <DragArea disabled={complete}>
@@ -615,7 +670,7 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
               </motion.div>
             </AnimatePresence>
             <div ref={boardRef} style={{ ...pxPanel, padding: 'clamp(8px,1.6vw,14px)', background: '#8A5A33' }}>
-              <Board fig={fig} customer={fig.customer} rules={rules} filled={filledSlots} wrongSlot={wrongSlot} complete={complete}
+              <Board fig={fig} customer={fig.customer} rules={rules} filled={filledSlots} wrongSlot={wrongSlot} stuck={stuck} complete={complete}
                 size={boardPx} onDrop={(piece, slot) => dropPiece(piece, slot)} />
             </div>
           </div>
@@ -627,14 +682,6 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
             {lastDone ? (
               <motion.div key="end" initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
                 style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                {/* everything built today, on the workshop shelf */}
-                <div aria-hidden="true" style={{ display: 'flex', gap: 6, padding: '2px 12px 0', borderBottom: '8px solid #8A5A33', borderRadius: 4 }}>
-                  {rounds.map((f, n) => (
-                    <motion.div key={n} initial={{ y: -40, scale: 0 }} animate={{ y: [0, -10, 0], scale: 1 }} transition={{ delay: 0.15 * n, duration: 0.5 }}>
-                      <Art art={f.icon} size={40} />
-                    </motion.div>
-                  ))}
-                </div>
                 <div style={{ display: 'flex', gap: 14 }}>
                   <motion.button whileTap={{ scale: 0.94 }} onClick={() => setFreeMode(true)} aria-label="Frei bauen"
                     style={{ ...pxButton('gold'), padding: '6px 26px', minHeight: 58, fontSize: 28 }}>🧩</motion.button>
@@ -645,7 +692,7 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
             ) : tray.map((p, i) => {
               const used = usedTiles.has(i)
               return (
-                <div key={`${idx}-${i}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, visibility: used ? 'hidden' : 'visible', opacity: complete ? 0.35 : 1, transition: 'opacity .4s' }}>
+                <div key={`${idx}-${i}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, visibility: used || stuck?.tray === i ? 'hidden' : 'visible', opacity: complete ? 0.35 : 1, transition: 'opacity .4s' }}>
                   <Draggable id={`${idx}-${i}`} data={i} label={SHAPE[p.shape].name} disabled={used || complete}>
                     <div style={{ width: tile, height: tile, ...pxCard(), padding: 6, boxSizing: 'border-box' }}>
                       <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%', overflow: 'visible' }}>

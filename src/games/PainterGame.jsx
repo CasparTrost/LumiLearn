@@ -90,7 +90,7 @@ function centerOf(r) {
 const SCENES = [
   // ── Level 1 ──
   {
-    id: 'house', level: 1, client: '🐭', seat: [100, 174], act: 'bounce',
+    id: 'house', level: 1, client: '🐭', seat: [100, 174], act: 'bounce', use: 'light',
     regions: [
       { id: 'wall',   target: 'Orange', name: 'die Wand',    element: 'rect',    x: 30,  y: 110, width: 140, height: 70 },
       { id: 'roof',   target: 'Rot',    name: 'das Dach',    element: 'polygon', points: '15,115 100,36 185,115' },
@@ -99,7 +99,7 @@ const SCENES = [
     ],
   },
   {
-    id: 'apple', level: 1, client: '🐛', seat: [122, 112], act: 'bounce',
+    id: 'apple', level: 1, client: '🐛', seat: [122, 112], act: 'bounce', use: 'bite',
     regions: [
       { id: 'body', target: 'Rot',   name: 'der Apfel', element: 'circle',  cx: 100, cy: 118, r: 65 },
       { id: 'leaf', target: 'Grün',  name: 'das Blatt', element: 'ellipse', cx: 122, cy: 52,  rx: 22, ry: 12, transform: 'rotate(-35,122,52)' },
@@ -107,7 +107,7 @@ const SCENES = [
     ],
   },
   {
-    id: 'sun', level: 1, client: '🦔', seat: [100, 182], act: 'float',
+    id: 'sun', level: 1, client: '🦔', seat: [100, 182], act: 'float', use: 'sparkle',
     regions: [
       { id: 'rays', target: 'Orange', name: 'die Strahlen', element: 'polygon',
         points: '100,10 117,58 164,36 142,83 190,100 142,117 164,164 117,142 100,190 83,142 36,164 58,117 10,100 58,83 36,36 83,58' },
@@ -115,7 +115,7 @@ const SCENES = [
     ],
   },
   {
-    id: 'balloon', level: 1, client: '🐰', seat: [100, 192], act: 'float',
+    id: 'balloon', level: 1, client: '🐰', seat: [100, 192], act: 'away',
     regions: [
       { id: 'ball',   target: 'Rot',  name: 'der Ballon',  element: 'ellipse', cx: 100, cy: 80, rx: 55, ry: 65 },
       { id: 'knot',   target: 'Gelb', name: 'der Knoten',  element: 'circle',  cx: 100, cy: 145, r: 7 },
@@ -123,7 +123,7 @@ const SCENES = [
     ],
   },
   {
-    id: 'star', level: 1, client: '🦉', seat: [100, 104], act: 'float',
+    id: 'star', level: 1, client: '🦉', seat: [100, 104], act: 'float', use: 'sparkle',
     regions: [
       { id: 'body', target: 'Gelb', name: 'der Stern', element: 'polygon',
         points: '100,18 121,70 176,70 132,103 148,158 100,125 52,158 68,103 24,70 79,70' },
@@ -131,7 +131,7 @@ const SCENES = [
   },
   // ── Level 2 ──
   {
-    id: 'butterfly', level: 2, client: '🐞', seat: [100, 84], act: 'float',
+    id: 'butterfly', level: 2, client: '🐞', seat: [100, 84], act: 'away',
     regions: [
       { id: 'wing-tl', target: 'Lila',   name: 'die oberen Flügel',  element: 'ellipse', cx: 62,  cy: 76,  rx: 48, ry: 30, transform: 'rotate(-30,62,76)'  },
       { id: 'wing-tr', target: 'Lila',   name: 'die oberen Flügel',  element: 'ellipse', cx: 138, cy: 76,  rx: 48, ry: 30, transform: 'rotate(30,138,76)'   },
@@ -150,7 +150,7 @@ const SCENES = [
     ],
   },
   {
-    id: 'bear', level: 2, client: '🐿️', seat: [100, 160], act: 'bounce',
+    id: 'bear', level: 2, client: '🐿️', seat: [100, 160], act: 'bounce', use: 'hearts',
     regions: [
       { id: 'ear-l',  target: 'Braun',     name: 'die Ohren',    element: 'circle',  cx: 65,  cy: 45,  r: 22 },
       { id: 'ear-r',  target: 'Braun',     name: 'die Ohren',    element: 'circle',  cx: 135, cy: 45,  r: 22 },
@@ -174,7 +174,7 @@ const SCENES = [
   },
   // ── Level 3 ──
   {
-    id: 'rocket', level: 3, client: '🐶', seat: [100, 104], act: 'float',
+    id: 'rocket', level: 3, client: '🐶', seat: [100, 104], act: 'away',
     regions: [
       { id: 'body',   target: 'Grau',   name: 'der Rumpf',   element: 'rect',    x: 72,  y: 70, width: 56, height: 88, rx: 8 },
       { id: 'nose',   target: 'Rot',    name: 'die Spitze',  element: 'polygon', points: '72,70 100,14 128,70' },
@@ -197,7 +197,7 @@ const SCENES = [
     ],
   },
   {
-    id: 'flower', level: 3, client: '🐝', seat: [100, 96], act: 'bounce',
+    id: 'flower', level: 3, client: '🐝', seat: [100, 96], act: 'bounce', use: 'buzz',
     regions: [
       { id: 'petals', target: 'Pink', name: 'die Blüte', element: 'polygon',
         points: '100,25 115,63 153,47 137,85 175,100 137,115 153,153 115,137 100,175 85,137 47,153 63,115 25,100 63,85 47,47 85,63' },
@@ -309,7 +309,7 @@ function Pot({ color, name, size = 60 }) {
 // ─── The picture: hatched where unpainted, paint poured in where painted ─────
 // `want` is the part being wished for: on the easel it pulses with a dashed
 // outline; in the wish bubble (`mini`) it is shown in its colour.
-function Picture({ scene, size, filled, want, flash, mini = false }) {
+function Picture({ scene, size, filled, want, flash, fx, mini = false }) {
   const pid = `${mini ? 'mini' : 'big'}-${scene.id}`
   const wanted = r => want?.regions.includes(r)
   return (
@@ -348,6 +348,17 @@ function Picture({ scene, size, filled, want, flash, mini = false }) {
           </g>
         )
       })}
+      {/* what the customer does with it: the house window lights up, the
+          caterpillar takes bites out of the apple */}
+      {fx?.lit && scene.regions.filter(r => r.id === 'window').map(r => (
+        <motion.g key="lit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }} style={{ filter: 'drop-shadow(0 0 8px #ffd34d)' }}>
+          <ShapeEl region={r} fill="#FFE066" stroke={INK} strokeWidth="2" />
+        </motion.g>
+      ))}
+      {[-25, 12, 45].slice(0, fx?.bites ?? 0).map(a => (
+        <motion.circle key={a} cx={100 + 66 * Math.cos(a * Math.PI / 180)} cy={118 + 66 * Math.sin(a * Math.PI / 180)} fill="#fffdf7"
+          initial={{ r: 0 }} animate={{ r: 17 }} transition={{ type: 'spring', stiffness: 400, damping: 14 }} />
+      ))}
       {/* the wished part, on top: a dancing dashed outline */}
       {!mini && want && want.regions.map(region => (
         <motion.g key={`want-${region.id}`} animate={{ opacity: [1, 0.35, 1] }} transition={{ duration: 1.2, repeat: Infinity }}>
@@ -360,11 +371,19 @@ function Picture({ scene, size, filled, want, flash, mini = false }) {
 }
 
 // A splash of the wrong colour on the customer's face
+// It stays a while and drips, then the customer shakes it off (it falls).
 function Splat({ color, size }) {
   return (
-    <motion.svg viewBox="0 0 60 60" width={size * 0.5} height={size * 0.5} aria-hidden="true"
-      initial={{ scale: 0, opacity: 1 }} animate={{ scale: [0, 1.2, 1, 1], opacity: [1, 1, 1, 0] }} transition={{ duration: 1.6, times: [0, 0.15, 0.3, 1] }}
-      style={{ position: 'absolute', left: '28%', top: '22%', pointerEvents: 'none', zIndex: 4 }}>
+    <motion.svg viewBox="0 0 60 90" width={size * 0.5} height={size * 0.75} aria-hidden="true"
+      initial={{ scale: 0, opacity: 1 }}
+      animate={{ scale: [0, 1.2, 1, 1, 1], y: [0, 0, 0, 0, size * 0.5], rotate: [0, 0, 0, -10, 25], opacity: [1, 1, 1, 1, 0] }}
+      transition={{ duration: 3, times: [0, 0.06, 0.12, 0.8, 1] }}
+      style={{ position: 'absolute', left: '28%', top: '22%', pointerEvents: 'none', zIndex: 4, overflow: 'visible', transformOrigin: '50% 30%' }}>
+      {[[20, 46], [34, 50], [44, 42]].map(([x, y], k) => (
+        <motion.rect key={k} x={x - 3} y={y - 4} width="6" height="26" rx="3" fill={color} stroke={INK} strokeWidth="1.5"
+          initial={{ scaleY: 0 }} animate={{ scaleY: [0, 0, 1] }} transition={{ duration: 2.2, times: [0, 0.2 + k * 0.1, 1] }}
+          style={{ transformOrigin: `${x}px ${y - 4}px` }} />
+      ))}
       <path d="M30 6 Q36 18 44 10 Q42 22 56 22 Q44 30 54 42 Q40 38 38 54 Q30 42 22 54 Q20 40 6 44 Q16 32 4 22 Q18 22 16 10 Q24 18 30 6 Z"
         fill={color} stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
     </motion.svg>
@@ -395,6 +414,7 @@ function useBox() {
 
 // How the picture and its new owner leave together
 const ACT = {
+  away:   { y: [0, 14, -40, -700], rotate: [0, -3, 3, 0], opacity: [1, 1, 1, 0], transition: { duration: 2.3, delay: 0.8, times: [0, 0.15, 0.4, 1], ease: 'easeIn' } },
   bounce: { y: [0, -30, 0, -16, 0], rotate: [0, -4, 4, 0, 0], transition: { duration: 1.2, delay: 0.7 } },
   float:  { y: [0, -24, -60, -30, 0], rotate: [0, 3, -3, 2, 0], transition: { duration: 2.2, delay: 0.7 } },
   swim:   { x: [0, -24, 24, -16, 0], rotate: [0, -5, 5, -3, 0], transition: { duration: 1.8, delay: 0.7 } },
@@ -434,6 +454,7 @@ export default function PainterGame({ level = 1, onComplete }) {
   const [next,      setNext]      = useState(null)   // 'part' | 'scene' | 'end': what comes once the payoff played
   const [acted,     setActed]     = useState(false)  // a pot was poured (the hand waits longer then)
   const [bowl,      setBowl]      = useState({ n: 0 }) // the mixing bowl: { a, b, out, n }
+  const [fx,        setFx]        = useState({})     // what the moved-in customer does: { lit, bites, gone }
   const [mood,      setMood]      = useMood()
   const paused = usePaused()
   const [bursts, burst] = useBursts()
@@ -476,6 +497,7 @@ export default function PainterGame({ level = 1, onComplete }) {
         setFilled({})
         setMovedIn(false)
         setSplat(null)
+        setFx({})
         setBowl(b => ({ n: b.n + 1 }))
         setMood('idle')
       }
@@ -492,8 +514,10 @@ export default function PainterGame({ level = 1, onComplete }) {
       streak.current = 0
       setFlash(Date.now())
       setSplat({ color: color.value, n: Date.now() })
-      setMood('oops', 1500)
+      setMood('oops', 2300)
       sfx.splash()
+      // it drips a while, then the customer shakes it off with a laugh
+      timers.current.push(setTimeout(() => { setMood('happy', 900); sfx.giggle() }, 2350))
       sayWrong()
       return false
     }
@@ -514,6 +538,14 @@ export default function PainterGame({ level = 1, onComplete }) {
       setMood('idle')
       sfx.tada()
       timers.current.push(setTimeout(() => burst(easelRef.current, 'confetti', 16), 700))
+      // and uses it: the mouse goes in and the light comes on, the
+      // caterpillar takes bites, the bear gets hugged, the sun and the star
+      // sparkle, the bee buzzes round the flower
+      const at = (ms, fn) => timers.current.push(setTimeout(fn, ms))
+      if (scene.use === 'light') { at(1300, () => { setFx({ gone: true }); sfx.pop() }); at(1700, () => { setFx({ gone: true, lit: true }); sfx.sparkle() }) }
+      if (scene.use === 'bite') [1000, 1450, 1900].forEach((ms, k) => at(ms, () => { setFx({ bites: k + 1 }); sfx.chomp() }))
+      if (scene.use === 'hearts') [1000, 1700].forEach(ms => at(ms, () => burst(easelRef.current, 'hearts', 10)))
+      if (scene.use === 'sparkle') [1000, 1600].forEach(ms => at(ms, () => { burst(easelRef.current, 'stars', 12); sfx.sparkle() }))
       setNext('scene')
     }
     return true
@@ -596,19 +628,24 @@ export default function PainterGame({ level = 1, onComplete }) {
                     initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.85, opacity: 0 }}
                     transition={{ type: 'spring', stiffness: 300, damping: 24 }}
                     style={{ position: 'relative' }}>
-                    <motion.div animate={movedIn && !reduceMotion() ? ACT[scene.act] : { x: 0, y: 0, rotate: 0 }}
-                      style={{ ...pxPanel, background: '#fffdf7', padding: easel * 0.04, lineHeight: 0, position: 'relative',
-                        boxShadow: hover ? '0 0 0 6px #ffc93c, 0 5px 0 rgba(42,27,61,0.35)' : pxPanel.boxShadow, transition: 'box-shadow .2s' }}>
-                      <Picture scene={scene} size={easel - easel * 0.08 - 6} filled={filled} want={part} flash={flash} />
-                      {/* the customer, moved in */}
-                      {movedIn && (
-                        <motion.div initial={{ x: -easel * 0.6, y: -easel * 0.3, scale: 1.6, opacity: 0 }}
-                          animate={{ x: 0, y: 0, scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 160, damping: 14 }}
-                          style={{ position: 'absolute', left: `${4 + scene.seat[0] / 200 * 92}%`, top: `${4 + scene.seat[1] / 200 * 92}%`, marginLeft: -easel * 0.12, marginTop: -easel * 0.2 }}>
-                          <Art art={scene.client} size={Math.round(easel * 0.24)} />
-                        </motion.div>
-                      )}
-                    </motion.div>
+                    <div style={{ ...pxPanel, background: '#fffdf7', padding: easel * 0.04, lineHeight: 0, position: 'relative',
+                      boxShadow: hover ? '0 0 0 6px #ffc93c, 0 5px 0 rgba(42,27,61,0.35)' : pxPanel.boxShadow, transition: 'box-shadow .2s' }}>
+                      {/* the picture and its new owner go off together (the balloon lifts the bunny away) */}
+                      <motion.div animate={movedIn && !reduceMotion() ? ACT[scene.act] : { x: 0, y: 0, rotate: 0, opacity: 1 }} style={{ position: 'relative' }}>
+                        <Picture scene={scene} size={easel - easel * 0.08 - 6} filled={filled} want={part} flash={flash} fx={fx} />
+                        {/* the customer, moved in */}
+                        {movedIn && (
+                          <motion.div initial={{ x: -easel * 0.6, y: -easel * 0.3, scale: 1.6, opacity: 0 }}
+                            animate={fx.gone ? { x: 0, y: 0, scale: 0, opacity: 0 }
+                              : scene.use === 'buzz' && !reduceMotion() ? { x: [0, easel * 0.25, 0, -easel * 0.25, 0], y: [0, -easel * 0.15, -easel * 0.3, -easel * 0.15, 0], scale: 1, opacity: 1 }
+                              : { x: 0, y: 0, scale: 1, opacity: 1 }}
+                            transition={scene.use === 'buzz' && !fx.gone ? { duration: 1.4, repeat: 1, delay: 0.6 } : { type: 'spring', stiffness: 160, damping: 14 }}
+                            style={{ position: 'absolute', left: `${scene.seat[0] / 200 * 100}%`, top: `${scene.seat[1] / 200 * 100}%`, marginLeft: -easel * 0.12, marginTop: -easel * 0.2 }}>
+                            <Art art={scene.client} size={Math.round(easel * 0.24)} />
+                          </motion.div>
+                        )}
+                      </motion.div>
+                    </div>
                   </motion.div>
                 </AnimatePresence>
               )}

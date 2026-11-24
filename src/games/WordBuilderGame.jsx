@@ -353,6 +353,15 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
       setTimeout(() => { upd({ claps: 0, demo: false, showClaps: round.syllables.length }); setSaid({}) }, 600)
       return
     }
+    if (ok === 'home') {
+      // the thing joins the pile on the home bank
+      upd({ carry: false })
+      setPile(p => [...p, round.emoji])
+      sfx.coin()
+      if (homeRef.current) burst(homeRef.current, 'stars', 8)
+      afterNarration(() => setReady(true), { minMs: 700 })
+      return
+    }
     if (ok) {
       upd({ solved: true })
       const firstTry = !rs.missed
@@ -373,15 +382,6 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
         ...Array.from({ length: n }, (_, k) => ({ el: pad(n - 1 - k), kind: 'back', ms: k ? 400 : 500 })),
         { el: homeRef.current, kind: 'back', ms: 400 },
       ] })
-      return
-    }
-    if (ok === 'home') {
-      // the thing joins the pile on the home bank
-      upd({ carry: false })
-      setPile(p => [...p, round.emoji])
-      sfx.coin()
-      if (homeRef.current) burst(homeRef.current, 'stars', 8)
-      afterNarration(() => setReady(true), { minMs: 700 })
       return
     }
     // back to the start, dripping; the claps are washed away …
@@ -483,10 +483,10 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
               <Bank side="left" width={bankW}>
                 <div ref={homeRef} style={{ width: 10, height: 10 }} />
                 {/* what the frog brought home so far, a heap at its feet */}
-                <div aria-hidden="true" style={{ position: 'absolute', left: 2, right: 6, bottom: 4, display: 'flex', flexWrap: 'wrap-reverse', justifyContent: 'center', gap: 0 }}>
+                <div aria-hidden="true" style={{ position: 'absolute', left: 0, right: 4, bottom: 4, display: 'flex', flexWrap: 'wrap-reverse', justifyContent: 'center', rowGap: wide ? 0 : -4, paddingLeft: wide ? 8 : 5 }}>
                   {pile.map((e, i) => (
                     <motion.div key={i} initial={{ y: -30, scale: 0.4 }} animate={{ y: 0, scale: 1 }} transition={{ type: 'spring', stiffness: 400, damping: 12 }}
-                      style={{ rotate: `${(i % 3 - 1) * 12}deg` }}>
+                      style={{ rotate: `${(i % 3 - 1) * 12}deg`, marginLeft: wide ? -8 : -5 }}>
                       <Art art={e} size={wide ? 32 : 20} />
                     </motion.div>
                   ))}

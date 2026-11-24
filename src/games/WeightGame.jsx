@@ -167,10 +167,13 @@ const TIP = { type: 'spring', stiffness: 70, damping: 7, mass: 1.4 }
 // A right guess flings the light thing off the plank, and it stays where it
 // lands: in the tree, on the bird's head, on the sun. The longer the streak,
 // the sillier the place, so by the end of a level the tree is full.
-const TREE_SLOTS = [[0.5, 0.16], [0.27, 0.3], [0.72, 0.3], [0.38, 0.5], [0.63, 0.5], [0.16, 0.5]]
+const TREE_SLOTS = [[0.5, 0.16], [0.28, 0.3], [0.72, 0.3], [0.4, 0.48], [0.64, 0.5], [0.2, 0.48]]
 const PERCH = 46                              // a landed thing, drawn this size
 const LIMIT = { tree: TREE_SLOTS.length, head: 3, sun: 3 }
-const treeAt = wide => (wide ? { T: 250, left: -112 } : { T: 220, left: -34 })
+// Held sideways the tree stands beside the seesaw; upright (a phone) there
+// is no room beside it, and the tree grows on a little grass island in the
+// sky above, out of the riders' way.
+const treeAt = wide => (wide ? { T: 250, left: -100, top: H - 4 - 250 } : { T: 168, left: -14, top: -196, island: true })
 
 function chooseSpot(streak, landed, sunOk) {
   const n = kind => landed.filter(l => l.spot.kind === kind).length
@@ -191,9 +194,9 @@ function findSun(box, area) {
   if (!sun || !box || !outer) return null
   const r = sun.getBoundingClientRect(), o = outer.getBoundingClientRect(), b = box.getBoundingClientRect()
   const cx = r.left + r.width / 2, top = r.top
-  if (cx < o.left + 40 || cx > o.right - 40 || top < o.top + 50 || r.bottom > o.bottom) return null
+  if (cx < o.left + 60 || cx > o.right - 20 || top < o.top + 20 || r.bottom > o.bottom) return null
   const k = b.width / box.offsetWidth
-  return { x: (cx - b.left) / k, y: (top - b.top) / k + 6, r: r.width / 2 / k }
+  return { x: (cx - b.left) / k, y: (top + r.height / 2 - b.top) / k, r: r.width / 2 / k }
 }
 
 export default function WeightGame({ level = 1, onComplete }) {
@@ -354,7 +357,7 @@ export default function WeightGame({ level = 1, onComplete }) {
         {wide => (
           <>
             <RoundTrail total={questions.length} done={idx + (answered ? 1 : 0)} walker="🐦" goal="🛝" size={wide ? 36 : 32} style={{ margin: '6px 48px 0 24px' }} />
-            <div ref={areaRef} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: wide ? 'flex-end' : 'center', position: 'relative' }}>
+            <div ref={areaRef} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', position: 'relative' }}>
               <div ref={boxRef} style={{ position: 'relative', width: wide ? 620 : 360, height: H }}>
                 <Yard wide={wide} width={wide ? 620 : 360} landed={landed} sunAt={sunAt} layer="back" />
                 <AnimatePresence mode="wait">
@@ -652,18 +655,24 @@ function Dazed({ on }) {
 // the sun (behind), and the ones still in the air (in front).
 function Yard({ wide, width, landed, sunAt, layer, onLand }) {
   const reduce = useReducedMotion()
-  const { T, left } = treeAt(wide)
-  const top = H - 4 - T
+  const { T, left, top, island } = treeAt(wide)
   const inTree = landed.filter(l => l.spot.kind === 'tree' && l.done).length
   const spotXY = ({ kind, i }) => {
     if (kind === 'tree') return { x: left + TREE_SLOTS[i][0] * T, y: top + TREE_SLOTS[i][1] * T }
-    if (kind === 'sun') return sunAt ? { x: sunAt.x + [0, -0.75, 0.75][i] * sunAt.r, y: sunAt.y - PERCH * 0.3 + [0, 0.45, 0.45][i] * sunAt.r } : null
+    // stuck on the sun's left rim, one below the other
+    if (kind === 'sun') return sunAt ? { x: sunAt.x - [0.8, 1.02, 0.7][i] * sunAt.r, y: sunAt.y + [-0.6, 0.12, 0.8][i] * sunAt.r } : null
     // the bird's head, as the Bird draws its stack
     return { x: width / 2 - 4 + (i % 2 ? 8 : 0), y: PIVOT - 70 - PERCH * 0.62 + PERCH * 0.38 - i * PERCH * 0.55 }
   }
   if (layer === 'back') {
     return (
       <div aria-hidden="true" style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none' }}>
+        {island && (
+          <svg width={T * 0.95} height={T * 0.3} viewBox="0 0 100 32" style={{ position: 'absolute', left: left + T * 0.025, top: top + T * 0.86 }}>
+            <path d="M4 10 Q50 -2 96 10 Q90 22 66 28 Q50 34 34 28 Q10 22 4 10 Z" fill="#a7744a" stroke="#2a1b3d" strokeWidth="2.5" strokeLinejoin="round" />
+            <path d="M4 10 Q50 -2 96 10 Q92 15 50 16 Q8 15 4 10 Z" fill="#7cc95a" stroke="#2a1b3d" strokeWidth="2.5" strokeLinejoin="round" />
+          </svg>
+        )}
         <motion.div key={inTree} initial={false} animate={reduce || !inTree ? {} : { rotate: [0, -2.5, 2, -1, 0] }} transition={{ duration: 0.6 }}
           style={{ position: 'absolute', left, top, width: T, height: T, transformOrigin: '50% 100%' }}>
           <Art art="🌳" size={T} />
@@ -691,7 +700,7 @@ function Yard({ wide, width, landed, sunAt, layer, onLand }) {
           <motion.div key={l.id}
             initial={reduce ? { x: 0, y: 0, scale: 1 } : { x: fx, y: fy, scale: k }}
             animate={reduce ? { x: 0, y: 0, scale: 1 } : {
-              x: [fx, fx * 0.55, 0], y: [fy, Math.min(fy, 0) - 110 - Math.min(l.wild, 6) * 8, 0], scale: [k, k * 0.85, end],
+              x: [fx, fx * 0.55, 0], y: [fy, Math.min(fy, 0) - (fy > 150 ? 50 : 110) - Math.min(l.wild, 6) * 8, 0], scale: [k, k * 0.85, end],
               rotate: l.wild >= 4 ? [0, 360, 720 + (l.spot.flip ? 180 : 0)] : l.spot.flip ? [0, 90, 180] : [0, -15, 0],
             }}
             transition={{ duration: reduce ? 0 : 1.1, times: [0, 0.45, 1], ease: ['easeOut', 'easeIn'] }}

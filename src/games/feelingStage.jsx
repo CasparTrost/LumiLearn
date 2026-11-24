@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, useAnimationControls } from 'framer-motion'
 import { Critter, Art, Wish, DropZone } from '../components/play/index.js'
 import { afterNarration } from '../narrator.js'
 import { usePaused } from '../lib/pause.js'
@@ -314,7 +314,7 @@ const PEOPLE = {
 // people who have a sitting picture (legs bent over a seat)
 const SITS = new Set(['maedchen'])
 /** A cast entry with its person drawn whole: [art, size] */
-function asPerson(art, size, sit) {
+export function asPerson(art, size, sit) {
   const p = PEOPLE[art]
   if (!p) return [art, size, false]
   return [`:px-mensch-${p[0]}${sit && SITS.has(p[0]) ? '-sitzt' : ''}:`, Math.round(size * p[1]), true]
@@ -335,10 +335,12 @@ function Actor({ art, feel, size, flip, label, whole }) {
 
 /** A thing on the stage: a tap makes it wobble with a boing. */
 function Thing({ art, size, flip }) {
-  const [n, setN] = useState(0)
+  // animation controls, not a remount: a remount on pointerdown dropped the
+  // click that followed (tapping a thing to make a story page happen)
+  const controls = useAnimationControls()
   return (
-    <motion.div key={n} animate={n ? { rotate: [0, -12, 10, -5, 0], scale: [1, 1.15, 1] } : {}} transition={{ duration: 0.5 }}
-      onPointerDown={() => { sfx.boing(); setN(k => k + 1) }}
+    <motion.div animate={controls}
+      onPointerDown={() => { sfx.boing(); if (!reduceMotion()) controls.start({ rotate: [0, -12, 10, -5, 0], scale: [1, 1.15, 1], transition: { duration: 0.5 } }) }}
       style={{ width: size, height: size, cursor: 'pointer', transform: flip ? 'scaleX(-1)' : undefined }}>
       <Art art={art} size={size} />
     </motion.div>

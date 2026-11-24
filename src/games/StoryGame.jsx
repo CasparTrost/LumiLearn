@@ -6,7 +6,7 @@ import { sayRight, sayWrong } from '../lib/feedback.js'
 import { sfx } from '../sfx.js'
 import { result } from '../lib/score.js'
 import { shuffle } from './feelings.js'
-import { Stage, FeelLumi, FaceChip, FeelingFace, AskFace, sceneLength, useAfter, useTrayStart } from './feelingStage.jsx'
+import { Stage, FeelLumi, FaceChip, FeelingFace, AskFace, asPerson, sceneLength, useAfter, useTrayStart } from './feelingStage.jsx'
 import { INK, pxButton } from './px.js'
 
 /**
@@ -603,13 +603,17 @@ function levelSetup(level) {
 const plain = s => s.replace(/\s*\p{Extended_Pictographic}️?/gu, '').trim()
 // Before the tap: what already stands there, still, with no feelings yet;
 // everything that arrives or happens comes with the tap. The one to tap is
-// the one the page is about, else the first character, else the first thing.
+// the one the page is about, else the biggest character, else the biggest
+// thing (the shop, the window), else Lumi.
 const STILL = new Set(['none', 'pop', 'bob', 'hop', 'shake', undefined])
 function beforeOf(panel) {
   const still = panel.cast.filter(x => STILL.has(x.act)).map(x => ({ ...x, act: 'none', d: 0, say: undefined, feel: undefined }))
   const who = still.findIndex(x => x.who)
-  const pick = who > -1 ? who : still.findIndex(x => x.char) > -1 ? still.findIndex(x => x.char) : still.length ? 0 : 'lumi'
-  return { cast: still, tap: pick }
+  const biggest = list => list.reduce((b, i) => (b === -1 || (still[i].s ?? 80) > (still[b].s ?? 80) ? i : b), -1)
+  const seen = still.map((x, i) => i).filter(i => still[i].z !== 0)   // not one peeking from behind
+  const char = biggest(seen.filter(i => still[i].char))
+  const thing = biggest(seen)
+  return { cast: still, tap: who > -1 ? who : char > -1 ? char : thing > -1 ? thing : 'lumi' }
 }
 
 // Lumi's backpack with a souvenir from every story; the newest drops in
@@ -851,7 +855,7 @@ function Finale({ stories, bag, narrow, onDone }) {
           <motion.div key={i} initial={{ x: 300, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
             transition={{ delay: 0.3 + i * 0.25, type: 'spring', stiffness: 120, damping: 14 }}>
             <motion.div animate={{ y: [0, -size * 0.35, 0], rotate: [0, -8, 8, 0] }} transition={{ delay: 1.2 + i * 0.2, duration: 0.7, repeat: Infinity, repeatDelay: 0.3 }}>
-              <Art art={a} size={size} />
+              <Art art={asPerson(a, size)[0]} size={asPerson(a, size)[1]} />
             </motion.div>
           </motion.div>
         ))}

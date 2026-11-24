@@ -257,7 +257,7 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
 
   return (
     <DragArea autoTarget="plate" disabled={phase !== 'play'}>
-      <Stage wide={[780, 610]} tall={[440, 790]}>
+      <Stage wide={[780, 640]} tall={[440, 800]}>
         {wide => {
           const sign = <Sign key={`s${idx}`} n={n} color={round.color} fill={helpDots} blow={blow} />
           const wish = n === 0
@@ -335,7 +335,7 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
                       {done}
                     </div>
                   </div>
-                  <Picnic guests={guests} size={58} />
+                  <Picnic guests={guests} size={84} />
                 </>
               ) : (
                 <>
@@ -347,7 +347,7 @@ export default function NumberIntroGame({ level = 1, onComplete }) {
                       {done}
                     </div>
                   </div>
-                  <Picnic guests={guests} size={48} />
+                  <Picnic guests={guests} size={54} />
                 </>
               )}
               {phase === 'finale' && (
@@ -373,8 +373,8 @@ function Sign({ n, color, fill, blow }) {
   const blown = blow > 0 && !reduce
   return (
     <motion.div role="img" aria-label={`${n}`} onClick={() => { setWob(w => w + 1); sfx.boing() }}
-      initial={{ y: -40, rotate: -8, opacity: 0 }}
-      animate={blown ? { y: 0, opacity: 1, rotate: [-3, -78, -78, 12, -6, -3] } : { y: 0, rotate: wob % 2 ? 3 : -3, opacity: 1 }}
+      initial={blown ? false : { y: -40, rotate: -8, opacity: 0 }}
+      animate={blown ? { y: 0, opacity: 1, rotate: [-3, -52, -52, 12, -6, -3] } : { y: 0, rotate: wob % 2 ? 3 : -3, opacity: 1 }}
       transition={blown ? { duration: 1.6, times: [0, 0.18, 0.5, 0.72, 0.88, 1] } : { type: 'spring', stiffness: 300, damping: 9 }}
       key={blown ? `b${blow}` : 'sign'}
       style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', transformOrigin: '50% 100%' }}
@@ -447,10 +447,10 @@ function Puff({ on, size = 1 }) {
 function Picnic({ guests, size }) {
   return (
     <div style={{
-      position: 'relative', minHeight: size + 14, margin: '0 10px 6px', padding: '0 8px', borderRadius: 18,
-      display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 2,
-      background: 'repeating-linear-gradient(90deg, rgba(255,138,122,0.55) 0 22px, rgba(255,243,230,0.55) 22px 44px)',
-      borderTop: '3px dashed rgba(42,27,61,0.35)',
+      position: 'relative', minHeight: size + 8, margin: '0 10px 6px', padding: '0 8px', borderRadius: 18,
+      display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 0,
+      background: 'repeating-conic-gradient(rgba(255,138,122,0.9) 0 25%, rgba(255,243,230,0.9) 0 50%) 0 0 / 36px 36px',
+      border: '3px solid rgba(42,27,61,0.5)', boxShadow: '0 4px 0 rgba(42,27,61,0.2)',
     }}>
       <AnimatePresence>
         {guests.map(g => <Guest key={g.key} art={g.art} label={g.label} size={size} />)}

@@ -226,6 +226,47 @@ const SCENES = [
   },
 ]
 
+// The same picture never twice in a level: each of the pictures also comes
+// mirrored, at sunset, at night (the windows lit) and in other colours. Only
+// the look changes: the same shapes, the same number of each kind.
+const LOOKS = [
+  { mirror: false, sky: null,      shift: 0 },
+  { mirror: true,  sky: '#FFC9A3', shift: 2 },
+  { mirror: false, sky: '#33407A', shift: 4, night: true },
+  { mirror: true,  sky: '#D3F0C4', shift: 1 },
+]
+const NIGHT_STARS = [[30, 20], [90, 50], [150, 16], [210, 60], [270, 26], [330, 52], [380, 14], [440, 40], [60, 80], [250, 90]]
+
+function lookOf(scene, k) {
+  const look = LOOKS[k % LOOKS.length]
+  if (!k) return scene
+  const recolour = c => {
+    const i = COLORS.indexOf(c)
+    if (i >= 0) return COLORS[(i + look.shift) % COLORS.length]
+    if (look.night && c === '#BFE6FF') return '#FFE58A'        // lit windows
+    if (look.night && c === '#2a1b3d') return '#6B6390'        // dark wheels, still seen
+    return c
+  }
+  const flip = (W, x, w) => (look.mirror ? W - x - w : x)
+  const mirrored = (W, node) => (look.mirror && node ? <g transform={`translate(${W} 0) scale(-1 1)`}>{node}</g> : node)
+  const stars = W => look.night && NIGHT_STARS.map(([x, y], i) => <circle key={i} cx={x * W / 480} cy={y} r={i % 3 ? 2 : 3} fill="#FFF3B0" />)
+  return {
+    ...scene,
+    sky: look.sky ?? scene.sky,
+    pieces: scene.pieces.map(([type, x, y, w, h, color, loose]) => [type, flip(480, x, w), y, w, h, recolour(color), loose]),
+    scenery: <>{stars(480)}{mirrored(480, scene.scenery)}</>,
+    overlay: mirrored(480, scene.overlay),
+    bug: [flip(480, scene.bug[0], 26), scene.bug[1]],
+    tall: {
+      ...scene.tall,
+      boxes: scene.tall.boxes.map(([x, y, w, h]) => [flip(300, x, w), y, w, h]),
+      scenery: <>{stars(300)}{mirrored(300, scene.tall.scenery)}</>,
+      overlay: mirrored(300, scene.tall.overlay),
+      bug: [flip(300, scene.tall.bug[0], 26), scene.tall.bug[1]],
+    },
+  }
+}
+
 function Spokes({ cx, cy }) {
   return (
     <g stroke="#C98A52" strokeWidth="4" strokeLinecap="round">
@@ -305,7 +346,8 @@ function buildRound(level, idx, used) {
     const fresh  = pool.filter(t => !used.match.has(t))
     const answer = shuffle(fresh.length ? fresh : pool)[0]
     used.match.add(answer)
-    const scene  = SCENES[used.scene++ % SCENES.length]
+    const n      = used.scene++
+    const scene  = lookOf(SCENES[n % SCENES.length], Math.floor(n / SCENES.length))
     // the pieces of the picture, each with its turn for this round
     const pieces = scene.pieces.map(([type, x, y, w, h, color, loose], id) => ({
       id, type, x, y, w, h, color, rot: loose ? tiltFor(level, type) : 0,

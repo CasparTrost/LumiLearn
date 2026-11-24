@@ -360,9 +360,20 @@ export default function BubblePopGame({ level = 1, onComplete }) {
   // Physics loop: the bubbles rise, sway and nudge each other apart; held
   // while paused, still with reduced motion.
   useAnimationFrame((time, delta) => {
-    if (!arenaRef.current || pausedRef.current || reduce) return
+    if (!arenaRef.current || pausedRef.current) return
     const W = arenaRef.current.clientWidth, H = arenaRef.current.clientHeight
     if (W === 0 || H === 0) return
+    if (reduce) {
+      // holding still: only kept inside the sea, should it change size
+      for (const [id, p] of Object.entries(physicsRef.current)) {
+        const r = p.size / 2 + 2
+        p.x = Math.max(r, Math.min(W - r, p.x))
+        p.y = Math.max(r, Math.min(H - r, p.y))
+        mvsRef.current[id]?.mx.set(p.x)
+        mvsRef.current[id]?.my.set(p.y)
+      }
+      return
+    }
 
     const dt     = Math.min(delta / 1000, 0.05)
     const phys   = physicsRef.current
@@ -467,7 +478,7 @@ export default function BubblePopGame({ level = 1, onComplete }) {
         </div>
 
         {/* The open sea: the bubbles float in the scene behind */}
-        <div ref={arenaRef} style={{ position: 'relative', flex: 1, minHeight: 200 }}>
+        <div ref={arenaRef} style={{ position: 'relative', flex: 1, minHeight: 200, overflow: 'hidden' }}>
           {/* now and then a visitor swims through: a fish in one round, a dolphin in another */}
           {!reduce && phase === 'playing' && roundIdx % 2 === 1 && <Visitor key={roundIdx} art={roundIdx === 1 ? '🐠' : '🐬'} paused={paused} />}
           {aimAt && <div ref={anchorRef} aria-hidden="true" style={{ position: 'absolute', left: aimAt.x, top: aimAt.y, width: 2, height: 2 }} />}

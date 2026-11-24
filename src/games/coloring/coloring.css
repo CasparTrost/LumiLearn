@@ -1,0 +1,4 @@
+/* Mal-Atelier (ColoringGame): a stamp drawn again over the sheet, in the
+   same emoji font the canvas used (an emoji written into JSX would become a
+   cartoon picture and not match the stamp underneath). */
+.co-stamp::after { content: attr(data-e); font-family: serif; line-height: 1; }

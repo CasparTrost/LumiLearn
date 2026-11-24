@@ -498,8 +498,8 @@ export default function MemoryGame({ level = 1, onComplete }) {
                         {/* a wrong pair: lean toward the other one, look, shrug */}
                         <motion.div
                           animate={puz && !reduceMotion()
-                            ? { x: [0, puz * (puzzled.dir || 0) * cardS * 0.1, puz * (puzzled.dir || 0) * cardS * 0.1, 0], y: [0, puz * -(puzzled.up || 0) * cardS * 0.06, -cardS * 0.08, 0],
-                                rotate: [0, puz * (puzzled.dir || 1) * 14, puz * (puzzled.dir || 1) * -8, 0], scaleY: [1, 1, 1.12, 0.9] }
+                            ? { x: [0, puz * (puzzled.dir || 0) * cardS * 0.16, puz * (puzzled.dir || 0) * cardS * 0.16, 0], y: [0, puz * -(puzzled.up || 0) * cardS * 0.06, -cardS * 0.08, 0],
+                                rotate: [0, puz * (puzzled.dir || 1) * 18, puz * (puzzled.dir || 1) * -10, 0], scaleY: [1, 1, 1.12, 0.9] }
                             : { x: 0, y: 0, rotate: 0, scaleY: 1 }}
                           transition={{ duration: 1.2, times: [0, 0.3, 0.7, 1] }}
                           style={{ transformOrigin: '50% 100%' }}>
