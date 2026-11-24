@@ -175,7 +175,7 @@ function hiss(ac, out, t, dur) {
 const BAND = {
   /** frog — a big soft drum: "bum" */
   drum(ac, out, t, v) {
-    wave(ac, shape(ac, out, t, 0.004, 0.28, 0.5 * v), 'sine', t, 0.28, 196, 65.4, 0.17)
+    wave(ac, shape(ac, out, t, 0.004, 0.28, 0.45 * v), 'sine', t, 0.28, 196, 65.4, 0.17)
     // an octave up, so a phone's small speaker has something to play
     wave(ac, shape(ac, out, t, 0.003, 0.13, 0.14 * v), 'triangle', t, 0.13, 392, 130.8, 0.1)
     hiss(ac, filter(ac, shape(ac, out, t, 0.001, 0.04, 0.1 * v), 'lowpass', 1400), t, 0.04)
@@ -213,7 +213,7 @@ const BAND = {
   },
   /** cow — a cowbell: "tonk" (D5 with A5) */
   cowbell(ac, out, t, v) {
-    const bp = filter(ac, shape(ac, out, t, 0.002, 0.3, 0.3 * v), 'bandpass', 900, 1.1)
+    const bp = filter(ac, shape(ac, out, t, 0.002, 0.3, 0.2 * v), 'bandpass', 900, 1.1)
     wave(ac, bp, 'square', t, 0.3, 587.33)
     wave(ac, bp, 'square', t, 0.3, 880)
   },
@@ -224,11 +224,11 @@ const BAND = {
   },
   /** duck — a nasal honk: "quack" */
   quack(ac, out, t, v) {
-    const g = shape(ac, out, t, 0.012, 0.19, 0.55 * v)
-    const o = wave(ac, filter(ac, g, 'bandpass', 1050, 3), 'sawtooth', t, 0.19, 330, 247, 0.15)
-    o.connect(filter(ac, shape(ac, out, t, 0.012, 0.16, 0.18 * v), 'bandpass', 2300, 4))
+    const g = shape(ac, out, t, 0.015, 0.26, 1.2 * v)
+    const o = wave(ac, filter(ac, g, 'bandpass', 1050, 3), 'sawtooth', t, 0.26, 330, 247, 0.2)
+    o.connect(filter(ac, shape(ac, out, t, 0.015, 0.22, 0.4 * v), 'bandpass', 2300, 4))
   },
-  /** elephant — a trumpet: "taa" (G4) */
+  /** elephant — a trumpet: "taa" (C5) */
   trumpet(ac, out, t, v) {
     const g = ac.createGain()
     g.gain.setValueAtTime(0.0001, t)
@@ -236,13 +236,15 @@ const BAND = {
     g.gain.setValueAtTime(0.13 * v, t + 0.2)
     g.gain.exponentialRampToValueAtTime(0.0001, t + 0.34)
     g.connect(out)
-    wave(ac, filter(ac, g, 'lowpass', 1500, 1.2), 'sawtooth', t, 0.34, 370, 392, 0.035)
+    wave(ac, filter(ac, g, 'lowpass', 2100, 1.2), 'sawtooth', t, 0.34, 494, 523.25, 0.035)
   },
-  /** hare — a wood block: "tock" (A5) */
+  /** hare — two sticks of wood: "tick-tock" (A5, then E5) */
   wood(ac, out, t, v) {
-    wave(ac, shape(ac, out, t, 0.001, 0.075, 0.42 * v), 'sine', t, 0.075, 880)
-    wave(ac, shape(ac, out, t, 0.001, 0.03, 0.1 * v), 'sine', t, 0.03, 2349)
-    hiss(ac, filter(ac, shape(ac, out, t, 0.001, 0.014, 0.12 * v), 'bandpass', 2600, 1), t, 0.014)
+    ;[[0, 880, 0.42], [0.13, 659.25, 0.36]].forEach(([d, f, vol]) => {
+      wave(ac, shape(ac, out, t + d, 0.001, 0.08, vol * v), 'sine', t + d, 0.08, f)
+      wave(ac, shape(ac, out, t + d, 0.001, 0.03, 0.1 * v), 'sine', t + d, 0.03, f * 2.67)
+      hiss(ac, filter(ac, shape(ac, out, t + d, 0.001, 0.014, 0.12 * v), 'bandpass', 2600, 1), t + d, 0.014)
+    })
   },
   /** lion — a plucked guitar string: "plong" (E4) */
   guitar(ac, out, t, v) {

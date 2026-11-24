@@ -14,8 +14,9 @@ import { usePaused } from '../../lib/pause.js'
  * The sounds are put on the audio clock a moment ahead (sfx.band with a
  * time), so the rhythm does not depend on how busy the page is; what is
  * seen (`onStep(event, pass)`: the light moves, an animal hops) follows the
- * same clock. Only a fifth of a second is ever laid ahead: stop() or
- * `on: false` silences the band at once, and nothing can pile up.
+ * same clock. Only a third of a second is ever laid ahead, and stop() or
+ * `on: false` silences the band at once, that third included: nothing
+ * can pile up.
  *
  * While `on` is false (the help is open, Lumi speaks, the tab is hidden)
  * nothing plays; when it turns true the piece starts again from its first
@@ -24,7 +25,7 @@ import { usePaused } from '../../lib/pause.js'
  * not yet unlocked by a touch) the page's own clock keeps the time, and the
  * band comes in as soon as it can.
  */
-const AHEAD = 0.2     // seconds of sound laid on the audio clock ahead of time
+const AHEAD = 0.3     // seconds of sound laid on the audio clock ahead of time
 const LEAD = 0.18     // a breath before the first beat
 const SLEPT = 0.7     // a gap this long between two looks at the clock: the page slept
 

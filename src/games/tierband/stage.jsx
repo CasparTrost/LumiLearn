@@ -100,12 +100,13 @@ function Note({ tint, size }) {
 }
 
 /**
- * An animal of the band with its instrument. Each time `pulse` goes up to
+ * An animal of the band with its instrument (drawn at its side). Each time `pulse` goes up to
  * a new number it plays: a hop (not with reduced motion) and a little
  * note; `delay` seconds later for the second, third … of a group.
- * `oops` (a number that goes up) makes it shake its head.
+ * `oops` (a number that goes up) makes it shake its head. `sour`: it sits
+ * where it does not belong; its note comes out grey and falls down.
  */
-export function Performer({ art, size, pulse = 0, delay = 0, dance = false, phase = 0, oops = 0, reduce = false, still = false }) {
+export function Performer({ art, size, pulse = 0, delay = 0, dance = false, phase = 0, oops = 0, sour = false, reduce = false, still = false }) {
   const controls = useAnimationControls()
   const [note, setNote] = useState(0)
   const inst = instOf(art)
@@ -141,10 +142,12 @@ export function Performer({ art, size, pulse = 0, delay = 0, dance = false, phas
       {note > 0 && (
         <motion.div key={note} aria-hidden="true"
           initial={{ opacity: 0, y: 0, scale: 0.6 }}
-          animate={reduce ? { opacity: [0, 1, 1, 0] } : { opacity: [0, 1, 1, 0], y: -size * 0.42, x: size * 0.1, scale: 1, rotate: [0, -12, 10] }}
-          transition={{ duration: 0.55, ease: 'easeOut' }}
+          animate={reduce ? { opacity: [0, 1, 1, 0] }
+            : sour ? { opacity: [0, 1, 1, 0], y: [0, -size * 0.3, size * 0.5], x: [0, size * 0.08, size * 0.2], scale: 1, rotate: [0, 20, 140] }
+              : { opacity: [0, 1, 1, 0], y: -size * 0.42, x: size * 0.1, scale: 1, rotate: [0, -12, 10] }}
+          transition={{ duration: sour ? 0.8 : 0.55, ease: 'easeOut' }}
           style={{ position: 'absolute', right: -size * 0.04, top: -size * 0.12 }}>
-          <Note tint={NOTE_TINT[inst] ?? GOLD} size={Math.max(14, size * 0.3)} />
+          <Note tint={sour ? '#b8b3c9' : NOTE_TINT[inst] ?? GOLD} size={Math.max(14, size * 0.3)} />
         </motion.div>
       )}
     </div>
@@ -152,6 +155,7 @@ export function Performer({ art, size, pulse = 0, delay = 0, dance = false, phas
 }
 
 // A group stands in up to two lines: the back line first (like a choir)
+export const GROUP_PITCH = 1.14   // from one animal of a group to the next, in animals: room for the instrument
 export const colsOf = n => (n <= 2 ? n : Math.ceil(n / 2))
 export const rowsOf = n => (n <= 2 ? 1 : 2)
 /** How high a group of n animals of size e stands. */
@@ -161,7 +165,7 @@ export const groupH = (n, e) => (rowsOf(n) === 1 ? e : e * 1.82)
  * A group of a growing row ("🐸🐸🐸"): its animals side by side, the back
  * line first. `pulseOf(k)` and `delayOf(k)` say when animal number k plays.
  */
-export function Group({ q, token, e, pulseOf = () => 0, delayOf = () => 0, dance, reduce, still }) {
+export function Group({ q, token, e, pulseOf = () => 0, delayOf = () => 0, dance, sour, reduce, still }) {
   const n = countOf(q, token)
   const back = n <= 2 ? n : Math.ceil(n / 2)
   const lines = n <= 2 ? [[...Array(n).keys()]] : [[...Array(back).keys()], [...Array(n - back).keys()].map(i => i + back)]
@@ -169,7 +173,11 @@ export function Group({ q, token, e, pulseOf = () => 0, delayOf = () => 0, dance
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none' }}>
       {lines.map((ks, li) => (
         <div key={li} style={{ display: 'flex', marginTop: li ? -e * 0.18 : 0, position: 'relative', zIndex: li }}>
-          {ks.map(k => <Performer key={k} art={artOf(q, token)} size={e} pulse={pulseOf(k)} delay={delayOf(k)} dance={dance} phase={k} reduce={reduce} still={still} />)}
+          {ks.map(k => (
+            <div key={k} style={{ width: e * GROUP_PITCH, display: 'flex', justifyContent: 'flex-start' }}>
+              <Performer art={artOf(q, token)} size={e} pulse={pulseOf(k)} delay={delayOf(k)} dance={dance} phase={k} sour={sour} reduce={reduce} still={still} />
+            </div>
+          ))}
         </div>
       ))}
     </div>
@@ -247,21 +255,22 @@ export function hillSlots(w, h, a, { pitch = 0.74, taper = 0.2, tiers: most = 3 
 }
 
 /** The hill at the back with the big band: everybody who was in a finished row. */
-export function Hill({ box, a, crowd, slots, dance, reduce, innerRef }) {
+export function Hill({ box, a, crowd, slots, dance, reduce, innerRef, peak = 0.38, pulseOf = () => 0, onTap }) {
   const { w, h } = box
   const bulbs = Math.max(4, Math.round(w / 56))
-  // the dome is never steeper than a hill: in a tall box it stands at the bottom
-  const top = Math.max(0, h - w * 0.62)
+  // `peak`: how far below the top of its box the hill's top is, in box heights
+  const lights = Math.max(0, h * peak - 34)
+  const c1 = h - (h * (1 - peak)) / 0.75, c2 = h - (h * (1 - peak - 0.2)) / 0.75
   return (
     <div ref={innerRef} style={{ position: 'absolute', left: box.x, top: box.y, width: w, height: h, pointerEvents: 'none' }}>
       <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} aria-hidden="true" style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>
-        <path d={`M0 ${h} C${w * 0.12} ${top + (h - top) * 0.18} ${w * 0.88} ${top + (h - top) * 0.18} ${w} ${h} Z`} fill="#3f8f5a" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
-        <path d={`M${w * 0.1} ${h} C${w * 0.22} ${top + (h - top) * 0.42} ${w * 0.78} ${top + (h - top) * 0.42} ${w * 0.9} ${h} Z`} fill="#4fa86a" />
+        <path d={`M0 ${h} C${w * 0.12} ${c1} ${w * 0.88} ${c1} ${w} ${h} Z`} fill="#3f8f5a" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+        <path d={`M${w * 0.1} ${h} C${w * 0.22} ${c2} ${w * 0.78} ${c2} ${w * 0.9} ${h} Z`} fill="#4fa86a" />
         {/* a string of lanterns over the hill */}
-        <path d={`M${w * 0.04} ${top + 16} Q${w / 2} ${top - 8} ${w * 0.96} ${top + 16}`} fill="none" stroke="rgba(255,253,247,0.55)" strokeWidth="2" />
+        <path d={`M${w * 0.04} ${lights + 16} Q${w / 2} ${lights - 8} ${w * 0.96} ${lights + 16}`} fill="none" stroke="rgba(255,253,247,0.55)" strokeWidth="2" />
         {Array.from({ length: bulbs }, (_, i) => {
           const t = (i + 0.5) / bulbs
-          const x = w * (0.04 + 0.92 * t), y = top + 16 - 48 * t * (1 - t) + 5
+          const x = w * (0.04 + 0.92 * t), y = lights + 16 - 48 * t * (1 - t) + 5
           return <circle key={i} className="tb-bulb" style={{ animationDelay: `${-(i % 3) * 0.6}s` }} cx={x} cy={y} r="5"
             fill={['#ffcf4a', '#ff7b8c', '#6fc7ff', '#8fe08a'][i % 4]} stroke={INK} strokeWidth="2" />
         })}
@@ -271,10 +280,9 @@ export function Hill({ box, a, crowd, slots, dance, reduce, innerRef }) {
         if (!s) return null
         return (
           <motion.div key={c.id} initial={reduce ? false : { scale: 0.2 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 380, damping: 14 }}
-            style={{ position: 'absolute', left: s.x - a / 2, top: s.y - a, zIndex: s.z, transformOrigin: '50% 100%' }}>
-            <div className={dance && !reduce ? 'tb-sway' : undefined} style={{ animationDelay: `${-(i % 2) * 0.5}s` }}>
-              <Art art={c.art} size={a} />
-            </div>
+            onPointerDown={onTap ? () => onTap(c, i) : undefined}
+            style={{ position: 'absolute', left: s.x - a / 2, top: s.y - a, zIndex: s.z, transformOrigin: '50% 100%', pointerEvents: onTap ? 'auto' : undefined, cursor: onTap ? 'pointer' : undefined }}>
+            <Performer art={c.art} size={a} pulse={pulseOf(i)} dance={dance} phase={i % 2} reduce={reduce} still />
           </motion.div>
         )
       })}

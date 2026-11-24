@@ -15,7 +15,7 @@ import {
   bpmOf, cheerBpm, timeline, tryFrom, finaleTune, FINALE_BPM, REST,
 } from './tierband/band.js'
 import { useBand, useVisible, useLater, useSize } from './tierband/useBand.js'
-import { INK, Performer, Group, Stool, Bench, Lamp, Hill, Flyer, hillSlots, colsOf, groupH } from './tierband/stage.jsx'
+import { INK, Performer, Group, Stool, Bench, Lamp, Hill, Flyer, hillSlots, colsOf, groupH, GROUP_PITCH } from './tierband/stage.jsx'
 
 /**
  * Musterpark — "Tier-Band": seeing, hearing and continuing a pattern
@@ -91,14 +91,14 @@ function layout(W, H, q) {
   const trail = short ? 20 : narrow ? 24 : 28
   const star = short ? 26 : narrow ? 30 : 36
   const topH = Math.round(trail * 1.35) + 16
-  const hudW = star * 2.4
+  const hudW = star * 3
 
   // the hill of the big band
   let hill, slots, a
   if (short) {
     const w = clamp(W * 0.21, 130, 190)
     a = clamp(w * 0.23, 28, 44)
-    const h = Math.min(H - topH - 10, w * 0.62 + a * 1.3)
+    const h = Math.min(H - topH - 10, w * 0.7 + a)
     hill = { x: W - PAD - w, y: H - 6 - h, w, h }
     slots = hillSlots(w, h, a, { pitch: 0.6, taper: 0.16, tiers: 5 })
   } else {
@@ -119,8 +119,8 @@ function layout(W, H, q) {
   let card
   if (grow) {
     const cols = Math.max(...opts.map(o => colsOf(countOf(q, o))))
-    const e = clamp((Math.min(cellW, 200) - 18) / cols, 30, short ? 38 : narrow ? 48 : 58)
-    card = { w: Math.max(68, cols * e + 18), h: Math.max(68, groupH(3, e) + 18), e }
+    const e = clamp((Math.min(cellW, 220) - 18) / (cols * GROUP_PITCH), 30, short ? 36 : narrow ? 46 : 56)
+    card = { w: Math.max(68, cols * e * GROUP_PITCH + 18), h: Math.max(68, groupH(3, e) + 18), e }
   } else {
     const c = clamp(cellW, 64, short ? 80 : narrow ? 96 : 124)
     card = { w: c, h: c, e: c * 0.8 }
@@ -139,7 +139,7 @@ function layout(W, H, q) {
   const RW = M - PAD * 2 - POST * 2 - 8
   const n = q.tokens.length
   const countAt = i => (q.tokens[i] === EMPTY ? countOf(q, wantedAt(q, slotAt(q, i))) : countOf(q, q.tokens[i]))
-  const unitW = i => (grow ? colsOf(countAt(i)) + 0.3 : 1)       // a place's width, in animals
+  const unitW = i => (grow ? colsOf(countAt(i)) * GROUP_PITCH + 0.3 : 1)   // a place's width, in animals
   const gapU = grow ? 0.42 : 0.06
   const lineU = idx => idx.reduce((sum, i) => sum + unitW(i), 0) + gapU * (idx.length - 1)
   const bodyU = grow ? (q.counts.some(c => c > 2) ? 1.82 : 1) : 1  // an animal or a group, in animals high
@@ -148,7 +148,7 @@ function layout(W, H, q) {
   const roomOf = lines => (availH - (lines.length - 1) * 8) / lines.length - FLOOR - 4
   const fit = lines => Math.min(grow ? 84 : 104, RW / Math.max(...lines.map(lineU)), roomOf(lines) / (bodyU + stoolU + lampU))
   let lines = [all], s = fit(lines)
-  if (!short && n > (narrow ? 5 : 3) && s < (grow ? 46 : narrow ? 72 : 54)) {
+  if (!short && n > (narrow && !grow ? 5 : 3) && s < (grow ? 50 : narrow ? 72 : 54)) {
     // the row goes round the bend: two lines, read like a book, broken
     // between two rounds of the pattern
     const u = q.unit?.length ?? 2
@@ -179,8 +179,8 @@ function layout(W, H, q) {
 
   // the speaker that switches the sound back on: where nothing else is
   const sound = short || !narrow
-    ? { x: Math.max(PAD, Math.min(cards[0].x - 84, stageX)), y: trayTop + (card.h - 60) / 2 }
-    : { x: PAD, y: stageTop - 58 }
+    ? { x: Math.max(PAD, Math.min(cards[0].x - 84, stageX)), y: trayTop + (card.h - 64) / 2 }
+    : { x: PAD, y: stageTop - 62 }
 
   return {
     short, narrow, trail, star, topH, hudW, M, card, cards, trayTop, trayH, hill, a, slots,
@@ -240,7 +240,7 @@ export default function ChoiceGame({ level = 1, onComplete }) {
   const { hit, miss, shake } = juice   // these three never change
 
   // What the band and the taps work on; the state above is its picture
-  const G = useRef({ q, L, phase: 'enter', seats: [], slot: 0, misses: 0, roundMisses: 0, tried: [], firstTry: 0, crowdN: 0, n: 0, resume: null, ended: false }).current
+  const G = useRef({ q, L, phase: 'enter', seats: [], slot: 0, misses: 0, roundMisses: 0, tried: [], firstTry: 0, streak: 0, crowdN: 0, n: 0, resume: null, ended: false }).current
   G.q = q
   G.L = L
   const pausedRef = useRef(paused)
@@ -249,7 +249,9 @@ export default function ChoiceGame({ level = 1, onComplete }) {
   const cardEls = useRef({})
   const dragRef = useRef(null)
   const go = p => { G.phase = p; setPhase(p) }
-  const beatS = 60 / bpmOf(level)
+  // A little faster while it goes well (rows in a row without a miss), slower
+  // after a miss at this stool, so the row is easier to hear
+  const beatS = () => 60 / clamp(bpmOf(level) + 3 * Math.min(4, G.streak) - (G.misses ? 12 : 0), 88, 124)
   const direct = level <= DIRECT_TO
 
   const onStep = ev => {
@@ -271,7 +273,7 @@ export default function ChoiceGame({ level = 1, onComplete }) {
   const loop = () => {
     if (G.phase !== 'play') return
     const help = G.misses >= 2 ? wantedAt(G.q, G.slot) : null
-    band.play({ ...timeline(G.q, G.seats, { help, rest: G.q.kind === 'build' ? 1 : REST }), beat: beatS, loop: true })
+    band.play({ ...timeline(G.q, G.seats, { help, rest: G.q.kind === 'build' ? 1 : REST }), beat: beatS(), loop: true })
   }
   const dark = () => setBeat(b => ({ ...b, lit: false, played: false, ghost: false }))
 
@@ -307,18 +309,31 @@ export default function ChoiceGame({ level = 1, onComplete }) {
   const landed = f => { setFlyers(l => l.filter(x => x.id !== f.id)); f.then?.() }
 
   // An animal plays alone: the band holds its breath and comes in again
-  const audition = (token) => {
+  const audition = (token, who = token) => {
     const n = countOf(G.q, token)
     clearTimeout(G.resume)
     band.stop()
     dark()
     band.sound(instOf(artOf(G.q, token)), n, 0.3)
-    setSolo({ id: ++G.n, token })
+    setSolo({ id: ++G.n, token: who })
     G.resume = setTimeout(loop, 950 + n * 300)
+  }
+  // The animals on the stage and on the hill are toys, too: a tap and
+  // they play (the one on the stage in the light)
+  const tapSeat = i => {
+    const token = seated(G.q, G.seats)[i]
+    if (G.phase !== 'play' || pausedRef.current || !token) return
+    audition(token, `seat-${i}`)
+    setBeat({ id: G.n, place: i, sub: -1, lit: true, played: false, ghost: false })
+  }
+  const tapHill = (c, i) => {
+    if (G.phase !== 'play' || pausedRef.current) return
+    audition(c.art, `hill-${i}`)
   }
 
   const finale = () => {
     go('finale')
+    burst(rootRef.current, 'confetti', 24)
     setBeat(NO_BEAT)
     sfx.sparkle()
     later(reduce ? 200 : 700, () => {
@@ -349,7 +364,7 @@ export default function ChoiceGame({ level = 1, onComplete }) {
   }
 
   const win = () => {
-    if (G.roundMisses === 0) G.firstTry += 1
+    if (G.roundMisses === 0) { G.firstTry += 1; G.streak += 1 } else G.streak = 0
     go('cheer')
     sayRight()
     const places = G.q.tokens.length
@@ -411,7 +426,7 @@ export default function ChoiceGame({ level = 1, onComplete }) {
     go('demo')
     if (qq.kind !== 'grow') band.sound(instOf(token))
     later(qq.kind === 'grow' ? 250 : 550, () => band.play({
-      ...timeline(qq, G.seats, { trial: G.trial, from: tryFrom(qq, place), upTo: place, rest: 0.8 }), beat: beatS, onEnd: reject,
+      ...timeline(qq, G.seats, { trial: G.trial, from: tryFrom(qq, place), upTo: place, rest: 0.8 }), beat: beatS(), onEnd: reject,
     }))
   }
 
@@ -491,7 +506,8 @@ export default function ChoiceGame({ level = 1, onComplete }) {
   const cheer = phase === 'cheer'
   const helping = misses >= 2 && phase === 'play'
   const playing = phase === 'play'
-  const pulseAt = (placeI, k = 0) => (beat.place === placeI && beat.sub === k && beat.played ? beat.id : 0)
+  const pulseAt = (placeI, k = 0) => Math.max(beat.place === placeI && beat.sub === k && beat.played ? beat.id : 0, solo.token === `seat-${placeI}` ? solo.id : 0)
+  const seatDelay = (placeI, k) => (solo.token === `seat-${placeI}` && solo.id >= beat.id ? k * 0.3 : 0)
   // an animal that waits plays when it is tapped (alone), and after two
   // misses the right one plays along from where it waits
   const soloPulse = (token, k) => (solo.token === token || (solo.token === '*' && k === 0) ? solo.id : 0)
@@ -508,7 +524,7 @@ export default function ChoiceGame({ level = 1, onComplete }) {
   const band2 = phase === 'finale' && L ? grid(Math.max(1, crowd.length), size.w - PAD * 4, size.h - L.topH - PAD * 3, 132) : null
 
   return (
-    <div ref={el => { rootRef.current = el; juice.stage.current = el }} data-phase={phase} data-round={idx} data-kind={q.kind}
+    <div ref={el => { rootRef.current = el; juice.stage.current = el }} data-phase={phase} data-round={idx} data-kind={q.kind} data-light={beat.lit ? beat.place : -1}
       style={{ position: 'relative', flex: 1, minHeight: 0, overflow: 'hidden', userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'none' }}>
       {L && (
         <>
@@ -523,7 +539,8 @@ export default function ChoiceGame({ level = 1, onComplete }) {
           <div style={{ position: 'absolute', right: PAD, top: 4, height: L.topH - 6, display: 'flex', alignItems: 'center' }}>{juice.hud}</div>
 
           <motion.div initial={false} animate={{ opacity: phase === 'finale' ? 0 : 1 }} transition={{ duration: 0.4 }}>
-            <Hill box={L.hill} a={L.a} crowd={crowd} slots={L.slots} dance={cheer} reduce={reduce} />
+            <Hill box={L.hill} a={L.a} crowd={crowd} slots={L.slots} dance={cheer} reduce={reduce} peak={L.short ? 0.3 : 0.38}
+              pulseOf={i => (solo.token === `hill-${i}` ? solo.id : 0)} onTap={playing ? tapHill : undefined} />
           </motion.div>
 
           {/* the stage: the rail with its lamp, the row on its stools */}
@@ -552,20 +569,25 @@ export default function ChoiceGame({ level = 1, onComplete }) {
               {q.tokens.map((_, i) => {
                 const p = L.places[i], token = row[i]
                 const isWant = i === wantIdx && !trial
+                const isTrial = !!trial && slotAt(q, i) === trial.slot
                 const open = isWant && playing
                 const seatH = L.body
                 const inner = token
                   ? (grow
-                    ? <Group q={q} token={token} e={L.s} pulseOf={k => pulseAt(i, k)} dance={cheer} reduce={reduce} still />
-                    : <Performer art={token} size={L.s} pulse={pulseAt(i)} dance={cheer} phase={i % 2} oops={trial && slotAt(q, i) === trial.slot ? oops : 0} reduce={reduce} still />)
+                    ? <Group q={q} token={token} e={L.s} pulseOf={k => pulseAt(i, k)} delayOf={k => seatDelay(i, k)} dance={cheer} sour={isTrial} reduce={reduce} still />
+                    : <Performer art={token} size={L.s} pulse={pulseAt(i)} dance={cheer} phase={i % 2} oops={isTrial ? oops : 0} sour={isTrial} reduce={reduce} still />)
                   : null
                 const content = (
                   <>
-                    <div ref={el => { seatEls.current[i] = el }} style={{ width: p.w, height: seatH, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', marginBottom: grow ? -2 : -L.s * 0.1, position: 'relative', zIndex: 1 }}>
-                      {grow && token && trial && slotAt(q, i) === trial.slot
+                    <div ref={el => { seatEls.current[i] = el }} onPointerDown={token && playing ? () => tapSeat(i) : undefined}
+                      style={{ width: p.w, height: seatH, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', marginBottom: grow ? -2 : -L.s * 0.1, position: 'relative', zIndex: 1, cursor: token && playing ? 'pointer' : undefined }}>
+                      {grow && token && isTrial
                         ? <motion.div key={oops} animate={oops && !reduce ? { rotate: [0, -8, 7, -5, 3, 0] } : {}} transition={{ duration: 0.7 }}>{inner}</motion.div>
                         : inner}
                     </div>
+                    {grow && token && countOf(q, token) > 2 && (
+                      <div aria-hidden="true" style={{ position: 'absolute', left: 10, right: 10, bottom: L.stool - 3, height: L.s * 0.8, boxSizing: 'border-box', background: '#b3723f', border: `3px solid ${INK}`, borderRadius: '8px 8px 0 0', boxShadow: 'inset 0 4px 0 rgba(255,255,255,0.25)' }} />
+                    )}
                     <div className={open ? `tb-want${picked || drag ? ' tb-want--now' : ''}` : undefined} style={{ display: 'flex', justifyContent: 'center', transformOrigin: '50% 100%' }}>
                       {grow
                         ? <Bench w={p.w - 6} h={L.stool} want={isWant} />
@@ -660,8 +682,8 @@ export default function ChoiceGame({ level = 1, onComplete }) {
           {/* the app's music is off, so the band is silent: a tap brings the sound back */}
           {muted && phase !== 'finale' && (
             <button type="button" className="tb-sound" onClick={() => music.setEnabled(true)} aria-label="Musik einschalten"
-              style={{ all: 'unset', boxSizing: 'border-box', cursor: 'pointer', position: 'absolute', left: L.sound.x, top: L.sound.y, width: 60, height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ width: 50, height: 50, borderRadius: '50%', background: '#fffdf7', border: `3px solid ${INK}`, boxShadow: '0 4px 0 rgba(42,27,61,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              style={{ all: 'unset', boxSizing: 'border-box', cursor: 'pointer', position: 'absolute', left: L.sound.x, top: L.sound.y, width: 64, height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ width: 52, height: 52, borderRadius: '50%', background: '#fffdf7', border: `3px solid ${INK}`, boxShadow: '0 4px 0 rgba(42,27,61,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true">
                   <path d="M4 12 H10 L17 6 V26 L10 20 H4 Z" fill="#6b3fd6" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
                   <path d="M21 12 L29 20 M29 12 L21 20" stroke="#e8594c" strokeWidth="3.5" strokeLinecap="round" />
