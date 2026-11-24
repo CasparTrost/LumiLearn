@@ -64,12 +64,16 @@ function resample(pts, step = STEP) {
 // ─── The glyphs ──────────────────────────────────────────────────────────────
 // T, E, F, H: the upright first ("erst runter"), then the bars from the left.
 // V, W, Z, N's slant and U are one stroke each, without lifting the pen.
+// B: the upright, then both bowls in one go (Grundschrift, Druckschrift): the
+// pen runs into the upright at the waist and out again, it is not lifted.
 const DEFS = {
   A: [[line([50, 10], [16, 130])], [line([50, 10], [84, 130])], [line([28, 90], [72, 90])]],
   B: [
     [line([24, 10], [24, 130])],
-    [line([24, 10], [44, 10]), arc(44, 38, 27, 28, 270, 450), line([44, 66], [24, 66])],
-    [line([24, 66], [46, 66]), arc(46, 98, 32, 32, 270, 450), line([46, 130], [24, 130])],
+    [
+      line([24, 10], [44, 10]), arc(44, 38, 27, 28, 270, 450), line([44, 66], [24, 66]),
+      line([24, 66], [46, 66]), arc(46, 98, 32, 32, 270, 450), line([46, 130], [24, 130]),
+    ],
   ],
   C: [[arc(56, 70, 40, 60, 320, 40)]],
   D: [[line([24, 10], [24, 130])], [line([24, 10], [42, 10]), arc(42, 70, 38, 60, 270, 450), line([42, 130], [24, 130])]],
@@ -97,7 +101,9 @@ const DEFS = {
   Z: [[line([18, 10], [82, 10], [18, 130], [82, 130])]],
 
   // Digits as taught in German schools: the 1 with its up-stroke and no foot,
-  // the open 4 in two strokes, the 5 with its hat last.
+  // the open 4 in two strokes, the 5 with its hat last, and the 7 with its
+  // cross stroke (as in all three Ausgangsschriften: next to a 1 with an
+  // up-stroke, the cross stroke is what tells the two apart).
   0: [[arc(50, 70, 32, 60, 270, -90)]],
   1: [[line([32, 42], [60, 10], [60, 130])]],
   2: [[arc(50, 42, 30, 32, 195, 400), line([73, 62.6], [20, 130], [82, 130])]],
@@ -105,7 +111,7 @@ const DEFS = {
   4: [[line([52, 10], [18, 92], [82, 92])], [line([64, 48], [64, 130])]],
   5: [[line([30, 10], [30, 66]), arc(48, 95, 32, 35, 236, 500)], [line([30, 10], [76, 10])]],
   6: [[arc(62, 98, 42, 88, 285, 180), arc(50, 98, 30, 32, 180, -170)]],
-  7: [[line([20, 10], [80, 10], [40, 130])]],
+  7: [[line([20, 10], [80, 10], [40, 130])], [line([42, 74], [76, 74])]],
   8: [[arc(50, 40, 26, 30, 270, 90), arc(50, 100, 31, 30, 270, 630), arc(50, 40, 26, 30, 90, -90)]],
   9: [[arc(50, 42, 28, 32, 0, -360), line([78, 42], [74, 130])]],
 }
@@ -215,17 +221,23 @@ const END_AUTO   = 4             // this close to the end, the stroke is done
 const END_UP     = 12            // … or this close when the finger is lifted
 const TAP        = 10            // shorter than this is a tap, not an attempt
 
-function nearestOnSegments(stroke, cum, q, i0, i1) {
-  let best = { d: Infinity, s: 0 }
+// Where a stroke runs back along itself (the waist of the B: into the stem
+// and out again), a finger is exactly as near to the way in as to the way
+// out. `from` is the progress so far: of two equally near places the one
+// ahead of it counts, or the finger would never get out of the stem again.
+function nearestOnSegments(stroke, cum, q, i0, i1, from = null) {
+  let best = { d: Infinity, s: 0 }, ahead = null
   for (let i = i0; i <= i1; i++) {
     const a = stroke[i], b = stroke[i + 1]
     const dx = b.x - a.x, dy = b.y - a.y
     const len2 = dx * dx + dy * dy
     const t = len2 ? Math.max(0, Math.min(1, ((q.x - a.x) * dx + (q.y - a.y) * dy) / len2)) : 0
     const d = Math.hypot(q.x - (a.x + dx * t), q.y - (a.y + dy * t))
-    if (d < best.d) best = { d, s: cum[i] + (cum[i + 1] - cum[i]) * t }
+    const s = cum[i] + (cum[i + 1] - cum[i]) * t
+    if (d < best.d) best = { d, s }
+    if (from != null && s > from && (!ahead || d < ahead.d)) ahead = { d, s }
   }
-  return best
+  return ahead && best.s <= from && ahead.d <= best.d + 1e-3 ? ahead : best
 }
 
 /**
@@ -259,7 +271,7 @@ export function makeTracer(stroke, { tol = TOL, startTol = START_TOL } = {}) {
   // The finger's place on the path, searched only near the progress so far:
   // a little behind (an acute corner, a wobble) and a little ahead.
   function advance(q, step) {
-    const r = nearestOnSegments(stroke, cum, q, segAt(pos - BACK), segAt(pos + AHEAD))
+    const r = nearestOnSegments(stroke, cum, q, segAt(pos - BACK), segAt(pos + AHEAD), pos)
     if (r.d > tol) { sinceAdvance += step; return }        // on another part of the path
     if (r.s > pos + 0.3) {
       const from = r.s - pos <= JUMP ? pos : r.s - STEP
