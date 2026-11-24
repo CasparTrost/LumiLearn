@@ -303,7 +303,7 @@ function FreeBuild({ onDone }) {
         </button>
         <button onClick={finish} disabled={!pieces.length || done} aria-label="Fertig"
           style={{ ...pxButton('green'), color: INK, textShadow: 'none', padding: '8px 30px', minHeight: 56, fontSize: 28, opacity: pieces.length && !done ? 1 : 0.5 }}>
-          ✔
+          <svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6" fill="none" stroke={INK} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </button>
       </div>
     </>

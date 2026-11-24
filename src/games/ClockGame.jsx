@@ -919,7 +919,7 @@ export default function ClockGame({ level = 1, onComplete }) {
         ...pxButton('green'), color: INK, textShadow: '0 1px 0 rgba(255,255,255,0.35)',
         padding: '6px 22px 6px 12px', minHeight: 64, fontSize: 22, opacity: resolved ? 0.5 : 1,
         display: 'flex', alignItems: 'center', gap: 8,
-      }}><Art art="🐦" size={46} />✔</motion.button>
+      }}><Art art="🐦" size={46} /><svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6" fill="none" stroke={INK} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" /></svg></motion.button>
   )
 
   const steppers = [['hour', 'Stundenzeiger', 60, HOUR_C], ['minute', 'Minutenzeiger', 5, MIN_C]].map(([kind, name, stepBy, color]) => (

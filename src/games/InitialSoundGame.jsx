@@ -174,7 +174,8 @@ export default function InitialSoundGame({ level = 1, onComplete }) {
             <circle cx="22%" cy="101" r="7" fill="#555" stroke={INK} strokeWidth="2" />
           </svg>
           <div style={{ position: 'absolute', left: 'max(4px, calc(17% - 70px))', top: 70 }}>
-            <Critter art="lumi" size={92} talks label="Lumi" mood={finale ? 'dance' : done && tried.length < 2 ? 'happy' : 'idle'} />
+            {/* key: a fresh Lumi each round — after 'happy' the kit's idle would spin back from 360° forever */}
+            <Critter key={idx} art="lumi" size={92} talks label="Lumi" mood={finale ? 'dance' : done && tried.length < 2 ? 'happy' : 'idle'} />
           </div>
           {/* where the catch hangs, for the hint hand */}
           <div ref={catchRef} aria-hidden="true" style={{ position: 'absolute', left: '50%', top: HOOK + 50, width: 2, height: 2 }} />

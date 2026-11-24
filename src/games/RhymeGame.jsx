@@ -366,7 +366,7 @@ export default function RhymeGame({ level = 1, onComplete }) {
                   <motion.div key={'t' + idx} initial={{ y: -60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.15 } }}
                     transition={{ delay: 1.1, type: 'spring', stiffness: 260, damping: 16 }}
                     style={{
-                      position: 'absolute', left: '50%', top: 40, x: '-50%', zIndex: 2, width: 'max-content', maxWidth: '70%', textAlign: 'center',
+                      position: 'absolute', left: '50%', top: 40, x: '-50%', zIndex: 2, pointerEvents: 'none', width: 'max-content', maxWidth: '70%', textAlign: 'center',
                       background: '#ffc93c', border: `3px solid ${INK}`, borderRadius: 12, padding: '3px 14px',
                       fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 'clamp(15px,2.6vw,20px)', color: INK,
                     }}>{title}</motion.div>
@@ -441,7 +441,7 @@ function Hook({ pull }) {
       initial={{ x: -220 }}
       animate={still ? { x: -90 } : pull ? { x: [-90, 60, -260], transition: { duration: 0.9, times: [0, 0.35, 1] } }
         : { x: [-100, -80, -100], transition: { duration: 1.6, repeat: Infinity, delay: 0.8 } }}
-      style={{ position: 'absolute', left: 0, bottom: 150, zIndex: 4 }}>
+      style={{ position: 'absolute', left: 0, bottom: 150, zIndex: 4, pointerEvents: 'none' }}>
       <path d="M0 40 H160 a20 20 0 1 0 -20 -20" stroke={INK} strokeWidth="14" fill="none" strokeLinecap="round" />
       <path d="M0 40 H160 a20 20 0 1 0 -20 -20" stroke="#c98a52" strokeWidth="8" fill="none" strokeLinecap="round" />
     </motion.svg>

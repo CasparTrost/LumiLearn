@@ -38,7 +38,7 @@ export default function LetterMonster({ letter, small, color, mood = 'idle', siz
     hungry: { y: -s * 0.03, scale: 1.08, rotate: 0, transition: { type: 'spring', stiffness: 300, damping: 12 } },
     eat:    { scaleY: [1, 0.86, 1.08, 0.88, 1.04, 1], scaleX: [1, 1.1, 0.95, 1.08, 0.98, 1], y: 0, rotate: 0, transition: { duration: 0.8 } },
     yuck:   { rotate: [0, -9, 9, -7, 7, 0], y: 0, scale: 1, transition: { duration: 0.8 } },
-    happy:  { y: [0, -s * 0.28, 0, -s * 0.08, 0], scaleY: [1, 1.1, 0.9, 1.04, 1], rotate: 0, scale: 1, transition: { duration: 1 } },
+    happy:  { y: [0, -s * 0.2, 0, -s * 0.06, 0], scaleY: [1, 1.1, 0.9, 1.04, 1], rotate: 0, scale: 1, transition: { duration: 1 } },
     burp:   { scale: [1, 1.12, 1], y: 0, rotate: 0, transition: { duration: 0.5 } },
     dance:  { rotate: [0, -12, 12, -12, 12, 0], y: [0, -s * 0.12, 0, -s * 0.12, 0, 0], scale: 1, transition: { duration: 1.3 } },
   }[mood] ?? {}

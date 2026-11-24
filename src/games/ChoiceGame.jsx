@@ -32,7 +32,7 @@ const countOf = (q, opt) => glyphs(opt) / glyphs(q.sym)
 // The pictures one token stands for: a growing row's "🐸🐸🐸" is three frogs
 const picsOf = (q, token) => (q.kind === 'grow' ? Array(countOf(q, token)).fill(q.sym) : [token])
 // How wide a token is, in marchers (a group of three stands close together)
-const widthOf = (q, token) => (q.kind === 'grow' && token !== '❓' ? 0.15 + countOf(q, token) * 0.85 : 1)
+const widthOf = (q, token) => (q.kind !== 'grow' ? 1 : token === '❓' ? 1.6 : 0.15 + countOf(q, token) * 0.85)
 // For screen readers: the name, or how many of them
 const labelOf = (q, opt) => (q.kind === 'grow' ? String(countOf(q, opt)) : q.names[opt] ?? '')
 
@@ -172,7 +172,8 @@ export default function ChoiceGame({ moduleId, level, onComplete }) {
   // Marcher size: the whole parade and the giraffe in front fit one line
   // (the groups of a growing row stand apart, so each can be counted)
   const spread = q.kind === 'grow' ? 0.45 : 0.08
-  const leaderW = stageW > 600 ? 1.5 : 1.1
+  // the giraffe (1.25 marchers) and its space in front
+  const leaderW = 1.35 + 2 * spread
   const unitsOf = list => list.reduce((n, i) => n + widthOf(q, q.tokens[i]) + spread, 0)
   const all = q.tokens.map((_, i) => i)
   // On a phone a long parade goes round the bend: two lines, read like a

@@ -64,7 +64,7 @@ export default function Critter({
     if (reduceMotion()) return
     const s = size
     const A = {
-      idle:   { y: [0, -s * 0.02, 0], scaleY: [1, 1.03, 1], rotate: 0, transition: { duration: 2.6, repeat: Infinity, ease: 'easeInOut' } },
+      idle:   { y: [0, -s * 0.02, 0], scaleY: [1, 1.03, 1], transition: { duration: 2.6, repeat: Infinity, ease: 'easeInOut' } },
       talk:   { y: [0, -s * 0.04, 0], rotate: [0, -2, 2, 0], transition: { duration: 0.5, repeat: Infinity } },
       hungry: { y: -s * 0.04, scale: 1.12, rotate: flip ? 6 : -6, transition: { type: 'spring', stiffness: 300, damping: 12 } },
       eat:    { scaleY: [1, 0.82, 1.1, 0.86, 1.06, 1], scaleX: [1, 1.12, 0.94, 1.1, 0.97, 1], y: 0, rotate: 0, transition: { duration: 0.8 } },
@@ -73,8 +73,11 @@ export default function Critter({
       sad:    { y: s * 0.03, scaleY: 0.93, rotate: [0, -4, 4, -3, 0], transition: { duration: 1.4 } },
       oops:   { rotate: [0, -14, 10, -6, 0], y: 0, scale: 1, transition: { duration: 0.8 } },
       wow:    { scaleY: [1, 1.2, 1], y: [0, -s * 0.1, 0], rotate: 0, transition: { duration: 0.6 } },
-      sleep:  { scaleY: [1, 1.04, 1], y: 0, rotate: 0, transition: { duration: 3.6, repeat: Infinity } },
+      sleep:  { scaleY: [1, 1.04, 1], y: 0, transition: { duration: 3.6, repeat: Infinity } },
     }
+    // Upright first: 'happy' ends turned once round (360°), and an endless
+    // idle that animated back to 0° spun the character on every loop
+    if (shown !== 'hungry') controls.set({ rotate: 0 })
     controls.start(A[shown] ?? A.idle)
   }, [shown, size, flip, controls])
 
@@ -83,7 +86,7 @@ export default function Critter({
     sfx.giggle()
     setTickle(t => t + 1)
     if (!reduceMotion()) controls.start({ rotate: [0, -10, 10, -6, 6, 0], scale: [1, 1.08, 1], transition: { duration: 0.6 } })
-      .then(() => controls.start({ y: [0, -size * 0.02, 0], transition: { duration: 2.6, repeat: Infinity } }))
+      .then(() => { controls.set({ rotate: 0 }); controls.start({ y: [0, -size * 0.02, 0], transition: { duration: 2.6, repeat: Infinity } }) })
   }
 
   return (

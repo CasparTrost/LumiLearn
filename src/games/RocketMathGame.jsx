@@ -554,8 +554,10 @@ export default function RocketMathGame({ level = 1, onComplete }) {
             {arrow && (
               <motion.div key={`a${arrow}`} initial={{ opacity: 0, x: 0 }} animate={{ opacity: 1, x: [0, arrow * 18, 0, arrow * 18, 0] }} exit={{ opacity: 0 }}
                 transition={{ duration: 1.4 }}
-                style={{ position: 'absolute', top: rocketPx * 0.15, [arrow > 0 ? 'left' : 'right']: rocketPx * 1.05, fontSize: rocketPx * 0.7, lineHeight: 1, color: '#FFC93C', WebkitTextStroke: `2px ${INK}`, fontWeight: 900 }}>
-                {arrow > 0 ? '➜' : '⬅'}
+                style={{ position: 'absolute', top: rocketPx * 0.2, [arrow > 0 ? 'left' : 'right']: rocketPx * 1.05 }}>
+                <svg width={rocketPx * 0.75} height={rocketPx * 0.6} viewBox="0 0 40 32" style={{ transform: arrow < 0 ? 'scaleX(-1)' : undefined, display: 'block' }}>
+                  <path d="M3 11 H22 V3 L37 16 L22 29 V21 H3 Z" fill="#FFC93C" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+                </svg>
               </motion.div>
             )}
           </AnimatePresence>

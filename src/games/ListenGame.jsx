@@ -193,7 +193,8 @@ export default function ListenGame({ level = 1, onComplete }) {
 
       {/* Lumi is the seeker: calls the word, or shows what to find */}
       <div style={{ position: 'relative', alignSelf: 'flex-start', marginLeft: 'clamp(8px,8vw,120px)', marginTop: 90 }}>
-        <Critter art="lumi" size={108} talks mood={lumiMood} label="Lumi"
+        {/* key: a fresh Lumi each round — after 'happy' the kit's idle would spin back from 360° forever */}
+        <Critter key={idx} art="lumi" size={108} talks mood={lumiMood} label="Lumi"
           accessory={<Art art="🔍" size={46} style={{ position: 'absolute', right: -14, bottom: 6, transform: 'rotate(-15deg)' }} />} />
         <Wish side="right" size={108}>
           <motion.div key={idx} initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
