@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { motion, AnimatePresence, animate, useMotionValue, useTransform, useReducedMotion } from 'framer-motion'
 import { sfx } from '../sfx.js'
 import { lockPreviews, leaveGame } from '../narrator.js'
@@ -163,40 +163,10 @@ const tiltFor = (l, r) => (l > r ? -TILT : r > l ? TILT : 0)
 // and back, then still.
 const TIP = { type: 'spring', stiffness: 70, damping: 7, mass: 1.4 }
 
-// ── Where the light one lands ─────────────────────────────────────────────
-// A right guess flings the light thing off the plank, and it stays where it
-// lands: in the tree, on the bird's head, on the sun. The longer the streak,
-// the sillier the place, so by the end of a level the tree is full.
-const TREE_SLOTS = [[0.5, 0.16], [0.28, 0.3], [0.72, 0.3], [0.4, 0.48], [0.64, 0.5], [0.2, 0.48]]
-const PERCH = 46                              // a landed thing, drawn this size
-const LIMIT = { tree: TREE_SLOTS.length, head: 3, sun: 3 }
-// Held sideways the tree stands beside the seesaw; upright (a phone) it is
-// smaller and stands on the ground behind the seesaw's left end.
-const treeAt = wide => (wide ? { T: 250, left: -100, top: H - 4 - 250 } : { T: 170, left: 2, top: H - 4 - 170 })
-
-function chooseSpot(streak, landed, sunOk) {
-  const n = kind => landed.filter(l => l.spot.kind === kind).length
-  const want = streak === 3 || streak === 7 || (streak >= 9 && streak % 2) ? 'head'
-    : streak === 5 || streak === 8 ? 'sun' : 'tree'
-  for (const kind of [want, 'tree', 'head', 'sun']) {
-    if (kind === 'sun' && !sunOk) continue
-    if (n(kind) < LIMIT[kind]) return { kind, i: n(kind), flip: kind === 'tree' && streak >= 6 }
-  }
-  return null
-}
-
-// The scene's sun, in the seesaw's own coordinates — or null where the
-// backdrop has it cut off (a phone held upright).
-function findSun(box, area) {
-  const sun = [...document.querySelectorAll('svg circle')].find(c => c.getAttribute('fill') === '#ffd84a')
-  const outer = area?.parentElement?.parentElement
-  if (!sun || !box || !outer) return null
-  const r = sun.getBoundingClientRect(), o = outer.getBoundingClientRect(), b = box.getBoundingClientRect()
-  const cx = r.left + r.width / 2, top = r.top
-  if (cx < o.left + 60 || cx > o.right - 20 || top < o.top + 20 || r.bottom > o.bottom) return null
-  const k = b.width / box.offsetWidth
-  return { x: (cx - b.left) / k, y: (top + r.height / 2 - b.top) / k, r: r.width / 2 / k }
-}
+// ── The light one flies off ───────────────────────────────────────────────
+// A right guess flings the light thing off its end of the plank: it flies
+// in an arc out of the picture on its own side and is gone.
+const FLY = 46                                // the flying thing, drawn this size
 
 export default function WeightGame({ level = 1, onComplete }) {
   const [questions] = useState(() => buildQuestions(level))
@@ -208,9 +178,8 @@ export default function WeightGame({ level = 1, onComplete }) {
   const [fly,      setFly]      = useState(0)      // bumps when the light one should fly
   const [verdict,  setVerdict]  = useState(null)   // 'right' | 'wrong', once the plank has spoken
   const [wobble,   setWobble]   = useState(0)      // level 10: a wrong tick makes the plank shake
-  const [landed,   setLanded]   = useState([])     // things flung off the plank that stayed where they landed
-  const [away,     setAway]     = useState(null)   // the side whose rider is flying to its perch
-  const [sunAt,    setSunAt]    = useState(null)
+  const [flying,   setFlying]   = useState([])     // things flung off the plank, on their way out
+  const [away,     setAway]     = useState(null)   // the side whose rider was flung off
   const boxRef = useRef(null), areaRef = useRef(null)
   const reduce = useReducedMotion()
   const firstTry = useRef(0)
@@ -225,13 +194,6 @@ export default function WeightGame({ level = 1, onComplete }) {
   })
 
   useEffect(() => leaveGame, [])
-  // where the sun is, again after the screen turns
-  useLayoutEffect(() => {
-    const measure = () => setSunAt(findSun(boxRef.current, areaRef.current))
-    const t = setTimeout(measure, 400)
-    window.addEventListener('resize', measure)
-    return () => { clearTimeout(t); window.removeEventListener('resize', measure) }
-  }, [])
 
   const q = questions[idx]
   const balance = q.kind === 'balance'
@@ -275,14 +237,13 @@ export default function WeightGame({ level = 1, onComplete }) {
     later(450, () => {
       if (ok) { firstTry.current++; streak.current++; sayRight() }
       else { streak.current = 0; sayWrong() }
-      // a right guess: the light one is flung off to a perch and stays there
+      // a right guess: the light one is flung off its end, out of the picture
       const light = side === 'left' ? 'right' : side === 'right' ? 'left' : null
-      const spot = ok && light ? chooseSpot(streak.current, landed, !!sunAt) : null
-      const box = boxRef.current, el = riderRefs[light]?.current
-      if (spot && box && el) {
+      const box = boxRef.current, el = ok && light ? riderRefs[light]?.current : null
+      if (box && el && !reduce) {
         const r = el.getBoundingClientRect(), b = box.getBoundingClientRect(), k = b.width / box.offsetWidth
         const from = { x: (r.left + r.width / 2 - b.left) / k, y: (r.top + r.height / 2 - b.top) / k, size: r.width / k }
-        setLanded(l => [...l, { id: idx, e: q[light].e, spot, from, wild: streak.current, done: !!reduce }])
+        setFlying(l => [...l, { id: idx, e: q[light].e, from, dir: light === 'left' ? -1 : 1 }])
         setAway(light)
       }
       setFly(f => f + 1)
@@ -291,7 +252,7 @@ export default function WeightGame({ level = 1, onComplete }) {
       // catapulted and flutters back dazed): about two or three seconds
       afterSpeech(next, ok ? 2500 : 3000)
     })
-  }, [answered, balance, heavy, landed, sunAt, idx]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [answered, balance, heavy, idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Level 10: blocks on and off, then check
   const addBlock = () => {
@@ -358,7 +319,6 @@ export default function WeightGame({ level = 1, onComplete }) {
             <RoundTrail total={questions.length} done={idx + (answered ? 1 : 0)} walker="🐦" goal="🛝" size={wide ? 36 : 32} style={{ margin: '6px 48px 0 24px' }} />
             <div ref={areaRef} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', position: 'relative' }}>
               <div ref={boxRef} style={{ position: 'relative', width: wide ? 620 : 360, height: H }}>
-                <Yard wide={wide} width={wide ? 620 : 360} landed={landed} sunAt={sunAt} layer="back" />
                 <AnimatePresence mode="wait">
                   <motion.div key={idx} initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }}
                     style={{ position: 'relative', zIndex: 1 }}>
@@ -366,11 +326,10 @@ export default function WeightGame({ level = 1, onComplete }) {
                       verdict={verdict} wobble={wobble} heavier={q.left.w > q.right.w + (blocks ?? 0) ? 'left' : q.left.w < q.right.w + (blocks ?? 0) ? 'right' : null}
                       sizes={[size(q.left), size(q.right)].map(s => (wide ? s : Math.min(s, 140)))} riderRefs={riderRefs} dropRef={dropRef} pops={pops}
                       onPick={balance ? null : answer} blocks={balance ? blocks : null} onTakeBlock={takeBlock} onDropBlock={addBlock}
-                      away={away} hats={landed.filter(l => l.spot.kind === 'head' && l.done).map(l => l.e)} />
+                      away={away} />
                   </motion.div>
                 </AnimatePresence>
-                <Yard wide={wide} width={wide ? 620 : 360} landed={landed} sunAt={sunAt} layer="front"
-                  onLand={id => setLanded(l => l.map(x => (x.id === id ? { ...x, done: true } : x)))} />
+                <Flyers flying={flying} width={wide ? 620 : 360} onGone={id => setFlying(l => l.filter(x => x.id !== id))} />
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 22, padding: '4px 12px 14px', minHeight: 92 }}>
@@ -413,7 +372,7 @@ export default function WeightGame({ level = 1, onComplete }) {
 // ── The seesaw ─────────────────────────────────────────────────────────────
 const H = 330, PIVOT = H - 64
 
-function Seesaw({ width, q, tilt, fly, answered, heavy, streak, verdict, wobble, heavier, sizes, onPick, blocks, onTakeBlock, onDropBlock, riderRefs, dropRef, pops, away, hats }) {
+function Seesaw({ width, q, tilt, fly, answered, heavy, streak, verdict, wobble, heavier, sizes, onPick, blocks, onTakeBlock, onDropBlock, riderRefs, dropRef, pops, away }) {
   const reduce = useReducedMotion()
   const L = width * 0.44                 // half the plank
   const ang = useMotionValue(tilt)       // plank angle in degrees, + is right side down
@@ -479,7 +438,7 @@ function Seesaw({ width, q, tilt, fly, answered, heavy, streak, verdict, wobble,
         background: 'repeating-linear-gradient(90deg, #e3a462 0 36px, #c98a52 36px 40px)', boxShadow: '0 5px 0 rgba(42,27,61,0.3)',
       }} />
       {/* The bird asks without words: who goes down? (or, in level 10: make it level) */}
-      <Bird x={width / 2} ang={ang} fly={fly} verdict={verdict} wobble={wobble} hats={hats}
+      <Bird x={width / 2} ang={ang} fly={fly} verdict={verdict} wobble={wobble}
         ask={!answered && (balance(q) ? <Art art="⚖️" size={30} /> : <><DownArrow />?</>)} />
       {balance(q) && (
         <>
@@ -524,7 +483,7 @@ function Rider({ side, item, size, d, cx, ang, label, fly, small, wild, away, gu
     if (!fly) return
     if (heavy) { setMood(verdict === 'right' ? 'dance' : 'wow', verdict === 'right' ? 2200 : 1400); return }
     sfx.whoosh()
-    // flung off to a perch: the yard takes over its flight from here
+    // flung off the plank: the flying copy (Flyers) takes over from here
     if (away) return
     if (reduce) { setMood(...after); return }
     // a streak of right guesses flings it higher, with a somersault
@@ -585,7 +544,7 @@ const tag = {
 // guess with a hop; at a wrong one the jolt catapults it, head over heels,
 // and it flutters back down and sits there dazed, stars circling its head.
 // Things flung onto its head stay there, stacked, and go along for the ride.
-function Bird({ x, ang, fly, verdict, wobble, ask, hats = [] }) {
+function Bird({ x, ang, fly, verdict, wobble, ask }) {
   const reduce = useReducedMotion()
   const hop = useMotionValue(0)
   const sway = useMotionValue(0)
@@ -611,24 +570,14 @@ function Bird({ x, ang, fly, verdict, wobble, ask, hats = [] }) {
     return () => { a.stop(); b.stop(); c.stop(); clearTimeout(t) }
   }, [fly]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (wobble) setMood('oops', 1600) }, [wobble]) // eslint-disable-line react-hooks/exhaustive-deps
-  // the stack on its head wobbles whenever it hops
   return (
     <motion.div style={{ position: 'absolute', left: x - 30, top: PIVOT - 70, y: hop, x: sway, rotate: ang, zIndex: 2 }}>
       <motion.div style={{ rotate: spin, position: 'relative' }}>
         <Critter art="🐦" size={60} mood={mood} label="Vogel" shadow={false} />
-        {hats.map((e, i) => (
-          <motion.div key={i} aria-hidden="true"
-            initial={reduce ? false : { scaleY: 0.6, y: -10 }} animate={{ scaleY: 1, y: 0, rotate: fly && !reduce ? [0, (i % 2 ? 9 : -9), 0] : 0 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 9 }}
-            style={{ position: 'absolute', left: 30 - PERCH * 0.38 + (i % 2 ? 4 : -4), top: -PERCH * 0.62 - i * PERCH * 0.55, width: PERCH * 0.76, height: PERCH * 0.76, transformOrigin: '50% 100%', zIndex: 1 + i, pointerEvents: 'none' }}>
-            <Art art={e} size={PERCH * 0.76} />
-          </motion.div>
-        ))}
       </motion.div>
       <Dazed key={dazed} on={dazed > 0} />
-      {/* the question, above whatever is stacked on its head */}
       {ask && (
-        <div style={{ position: 'absolute', left: 0, top: -(hats.length ? PERCH * 0.2 + hats.length * PERCH * 0.55 : 0), width: 60, height: 60, pointerEvents: 'none' }}>
+        <div style={{ position: 'absolute', left: 0, top: 0, width: 60, height: 60, pointerEvents: 'none' }}>
           <Wish side="top" size={60}>{ask}</Wish>
         </div>
       )}
@@ -655,57 +604,23 @@ function Dazed({ on }) {
   )
 }
 
-// ── The yard around the seesaw ─────────────────────────────────────────────
-// A tree beside the seesaw (behind it), the things that landed in it or on
-// the sun (behind), and the ones still in the air (in front).
-function Yard({ wide, width, landed, sunAt, layer, onLand }) {
-  const reduce = useReducedMotion()
-  const { T, left, top } = treeAt(wide)
-  const inTree = landed.filter(l => l.spot.kind === 'tree' && l.done).length
-  const spotXY = ({ kind, i }) => {
-    if (kind === 'tree') return { x: left + TREE_SLOTS[i][0] * T, y: top + TREE_SLOTS[i][1] * T }
-    // stuck on the sun's left rim, one below the other
-    if (kind === 'sun') return sunAt ? { x: sunAt.x - [0.8, 1.02, 0.7][i] * sunAt.r, y: sunAt.y + [-0.6, 0.12, 0.8][i] * sunAt.r } : null
-    // the bird's head, as the Bird draws its stack
-    return { x: width / 2 - 4 + (i % 2 ? 8 : 0), y: PIVOT - 70 - PERCH * 0.62 + PERCH * 0.38 - i * PERCH * 0.55 }
-  }
-  if (layer === 'back') {
-    return (
-      <div aria-hidden="true" style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none' }}>
-        <motion.div key={inTree} initial={false} animate={reduce || !inTree ? {} : { rotate: [0, -2.5, 2, -1, 0] }} transition={{ duration: 0.6 }}
-          style={{ position: 'absolute', left, top, width: T, height: T, transformOrigin: '50% 100%' }}>
-          <Art art="🌳" size={T} />
-        </motion.div>
-        {landed.filter(l => l.done && l.spot.kind !== 'head').map(l => {
-          const p = spotXY(l.spot)
-          if (!p) return null
-          return (
-            <motion.div key={l.id} initial={reduce ? false : { scaleY: 0.6, y: 6 }} animate={{ scaleY: 1, y: 0 }} transition={{ type: 'spring', stiffness: 320, damping: 8 }}
-              style={{ position: 'absolute', left: p.x - PERCH / 2, top: p.y - PERCH / 2, width: PERCH, height: PERCH, transformOrigin: '50% 100%' }}>
-              <div style={{ transform: l.spot.flip ? 'rotate(180deg)' : undefined }}><Art art={l.e} size={PERCH} /></div>
-            </motion.div>
-          )
-        })}
-      </div>
-    )
-  }
+// ── Things flying off ──────────────────────────────────────────────────────
+// The light one, flung off its end: up in an arc, turning, and out of the
+// picture on its own side.
+function Flyers({ flying, width, onGone }) {
   return (
     <div aria-hidden="true" style={{ position: 'absolute', inset: 0, zIndex: 5, pointerEvents: 'none' }}>
-      {landed.filter(l => !l.done).map(l => {
-        const p = spotXY(l.spot) ?? { x: l.from.x, y: l.from.y }
-        const fx = l.from.x - p.x, fy = l.from.y - p.y, k = l.from.size / PERCH, end = l.spot.kind === 'head' ? 0.76 : 1
-        const land = () => { sfx.boing(); onLand(l.id) }
+      {flying.map(l => {
+        const k = l.from.size / FLY
+        const dx = l.dir * (width / 2 + 420)
         return (
           <motion.div key={l.id}
-            initial={reduce ? { x: 0, y: 0, scale: 1 } : { x: fx, y: fy, scale: k }}
-            animate={reduce ? { x: 0, y: 0, scale: 1 } : {
-              x: [fx, fx * 0.55, 0], y: [fy, Math.min(fy, 0) - (fy > 150 ? 50 : 110) - Math.min(l.wild, 6) * 8, 0], scale: [k, k * 0.85, end],
-              rotate: l.wild >= 4 ? [0, 360, 720 + (l.spot.flip ? 180 : 0)] : l.spot.flip ? [0, 90, 180] : [0, -15, 0],
-            }}
-            transition={{ duration: reduce ? 0 : 1.1, times: [0, 0.45, 1], ease: ['easeOut', 'easeIn'] }}
-            onAnimationComplete={land}
-            style={{ position: 'absolute', left: p.x - PERCH / 2, top: p.y - PERCH / 2, width: PERCH, height: PERCH }}>
-            <Art art={l.e} size={PERCH} />
+            initial={{ x: 0, y: 0, scale: k, rotate: 0 }}
+            animate={{ x: [0, dx * 0.35, dx], y: [0, -150, -40], scale: [k, k * 0.9, k * 0.8], rotate: [0, l.dir * 200, l.dir * 400] }}
+            transition={{ duration: 1.1, times: [0, 0.4, 1], ease: 'easeOut' }}
+            onAnimationComplete={() => onGone(l.id)}
+            style={{ position: 'absolute', left: l.from.x - FLY / 2, top: l.from.y - FLY / 2, width: FLY, height: FLY }}>
+            <Art art={l.e} size={FLY} />
           </motion.div>
         )
       })}

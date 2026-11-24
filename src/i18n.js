@@ -69,7 +69,7 @@ export const translations = {
     'module.patterns': 'Musterpark',
     'module.sort': 'Sortier-Spaß',
     'module.weight': 'Waage-Welt',
-    'module.clock': 'Uhren-Uhr',
+    'module.clock': 'Kuckucksuhr',
     'module.maze': 'Lumi-Labyrinth',
     'module.stories': 'Lumis Abenteuer',
     'module.coloring': 'Mal-Atelier',

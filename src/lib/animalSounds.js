@@ -24,6 +24,9 @@ export function animalSound(art) {
 
 const cache = new Map()
 let last = 0
+const lastOf = new Map()
+// the same animal's sound not again within this time
+const SAME_MS = 4000
 
 /**
  * Plays the animal's sound. Never two at once: a whole party of happy
@@ -33,8 +36,9 @@ export function playAnimal(art, { volume = 0.75 } = {}) {
   const name = animalSound(art)
   if (!name || typeof Audio === 'undefined') return false
   const now = Date.now()
-  if (now - last < 900) return false
+  if (now - last < 900 || now - (lastOf.get(name) ?? 0) < SAME_MS) return false
   last = now
+  lastOf.set(name, now)
   try {
     let a = cache.get(name)
     if (!a) { a = new Audio(asset(`audio/tiere/${name}.mp3`)); a.preload = 'auto'; cache.set(name, a) }

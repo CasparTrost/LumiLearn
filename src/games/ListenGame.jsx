@@ -11,22 +11,17 @@ import { pxButton, INK } from './px.js'
 /**
  * Hörabenteuer: das Versteckspiel — Phonologisches Bewusstsein
  *
- * Hinter Büschen gucken Tiere und Dinge hervor. Lumi ruft ein Wort, das Kind
- * tippt auf den richtigen Busch, und das Gesuchte hüpft lachend heraus. Wer
- * sich irrt, lockt das Falsche hervor: es zeigt sich und guckt verdutzt.
- * In den Lese-Levels stecken die Dinge ganz im Busch; vor jedem steht ein
+ * Erst versteckt das Kind die Dinge selbst: jedes, das es antippt, taucht
+ * raschelnd ganz in seinen Busch (wer trödelt, dem verstecken sie sich nach
+ * einer Weile von selbst; je höher das Level, desto eher, SHOW_MS). Dann
+ * ruft Lumi eines beim Namen, ohne Bild: das Kind hört das Wort, erinnert
+ * sich, wo es sich versteckt hat, und tippt den Busch an; das Gesuchte hüpft
+ * lachend heraus. Wer sich irrt, lockt das Falsche hervor, und Lumi zeigt
+ * jetzt auch das Bild. Ist ein Wort noch nicht aufgenommen, zeigt Lumi
+ * gleich das Bild. Beim Suchen streckt ab und zu ein freches Eichhörnchen
+ * den Kopf aus einem Busch, nur Spaß, es ist nie die Antwort. In den
+ * Lese-Levels (8–10) stecken die Dinge ganz im Busch, vor jedem steht ein
  * Schild, und Lumi zeigt das Bild dessen, was gesucht wird.
- *
- * Solange ein Wort noch nicht aufgenommen ist (buchstaben/voice.js), wird
- * aus dem Hören ein Merken: Alle zeigen sich ganz, und das Kind versteckt
- * sie selbst — jedes, das es antippt, taucht raschelnd in seinen Busch.
- * Erst dann zeigt Lumi, wer gesucht wird: Wo hat es sich versteckt? Wer
- * trödelt, dem verstecken sie sich nach einer Weile von selbst; je höher
- * das Level, desto eher (SHOW_MS), dazu kommen mehr Büsche und ähnliche
- * Dinge. Beim Suchen streckt ab und zu ein freches Eichhörnchen den Kopf aus
- * einem Busch — nur Spaß, es ist nie die Antwort und zeigt auf keine. Sobald das Wort aufgenommen ist,
- * ist es wieder das Hörspiel. Die Lese-Levels (8–10) brauchen keine Stimme;
- * ein Buch in Lumis Sprechblase zeigt, dass hier gelesen wird.
  *
  * Scientific basis:
  *   • Phonological Awareness (National Reading Panel, 2000) — connecting spoken words to images
@@ -156,11 +151,13 @@ export default function ListenGame({ level = 1, onComplete }) {
   // Reading levels never say the word before it is answered — otherwise
   // they would be one more listening task, not reading.
   const idxRef = useRef(0)
+  const lookingRef = useRef(false)
   const sayTask = useCallback(() => {
     const i = idxRef.current, target = rounds[i]?.target
     if (!target) return
     if (isReading) narrate([rec('hoeren/lies')])
-    else narrate([i === 0 && rec('hoeren/wer'), wordRec(target.word)])
+    // while the child hides the things, nothing is asked yet
+    else if (!lookingRef.current) narrate([i === 0 && rec('hoeren/wer'), wordRec(target.word)])
   }, [rounds, isReading])
 
   const { idx, done, leaving, finale, tried, streak, paused, win, miss, reveal, isOver, hasTried } =
@@ -168,15 +165,19 @@ export default function ListenGame({ level = 1, onComplete }) {
   idxRef.current = idx
   const round = rounds[idx]
   const current = round?.target
-  // The word is heard only once Lumi has recorded it; until then it is a
-  // memory game: look, they hide, where is it?
+  // First the child hides the things in the bushes, then Lumi calls one by
+  // its word (without a picture: listening is the task) and the child
+  // remembers where it went. Without a recording of the word Lumi shows
+  // its picture instead.
   const heard = !isReading && !!current && !!wordRec(current.word)
   const memory = !isReading && !heard
+  const hideFirst = !isReading
   const party = done && !tried.length && streak >= 3
   const [hiddenAt, setHiddenAt] = useState(-1)   // the round whose things have hidden
   const [tuckedIn, setTucked] = useState({ i: -1, words: [] })   // hidden by the child, this round
   const tucked = tuckedIn.i === idx ? tuckedIn.words : []
-  const looking = memory && hiddenAt !== idx
+  const looking = hideFirst && hiddenAt !== idx
+  lookingRef.current = looking
   const hideRef = useRef(null)    // the first thing still out, for the hint hand
   // whoever dawdles: they hide by themselves after a while
   useEffect(() => {
@@ -184,6 +185,12 @@ export default function ListenGame({ level = 1, onComplete }) {
     const t = setTimeout(() => { sfx.slideDown(); setHiddenAt(idx) }, 2700 + SHOW_MS[Math.min(level, SHOW_MS.length) - 1])
     return () => clearTimeout(t)
   }, [looking, paused, idx, level])
+  // the search begins: now Lumi calls the word
+  useEffect(() => {
+    if (!heard || hiddenAt !== idx || paused) return
+    const t = setTimeout(sayTask, 450)
+    return () => clearTimeout(t)
+  }, [heard, hiddenAt, idx, paused, sayTask])
   // all hidden by the child: now the search
   useEffect(() => {
     if (!looking || !round || tucked.length < round.options.length) return
@@ -230,7 +237,7 @@ export default function ListenGame({ level = 1, onComplete }) {
 
   if (!current) return null
   const lumiMood = finale ? 'dance' : done ? (tried.length < 2 ? 'happy' : 'idle') : tried.length ? 'oops' : 'idle'
-  const voiced = isReading ? !!rec('hoeren/lies') : heard
+  const voiced = isReading ? !!rec('hoeren/lies') : heard && !looking
 
   return (
     <div style={{
@@ -249,7 +256,7 @@ export default function ListenGame({ level = 1, onComplete }) {
             style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {looking
               ? <motion.div animate={reduceMotion() ? {} : { scale: [1, 1.12, 1] }} transition={{ duration: 0.9, repeat: Infinity }}><Art art="👀" size={72} /></motion.div>
-              : !heard && <Art art={current.emoji} size={84} />}
+              : (!heard || tried.length > 0) && <Art art={current.emoji} size={heard ? 60 : 84} />}
             {memory && !looking && <span aria-hidden="true" style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 40, color: '#6b3fd6' }}>?</span>}
             {/* reading levels are marked as such: a book */}
             {isReading && <Art art="📖" size={44} />}
@@ -279,7 +286,7 @@ export default function ListenGame({ level = 1, onComplete }) {
             : (done && isAns) ? 'out'
             : tried.includes(opt.word) ? 'tried'
             : looking && !tucked.includes(opt.word) ? 'show'
-            : (done || leaving || isReading || memory) ? 'hide' : 'peek'
+            : (done || leaving || isReading || hideFirst) ? 'hide' : 'peek'
           return (
             <HideBush key={`${idx}-${opt.word}`} gapRef={i === 0 ? gapRef : null}
               tapRef={looking && opt.word === round.options.find(o => !tucked.includes(o.word))?.word ? hideRef : null}
