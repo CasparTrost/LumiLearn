@@ -1,7 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { sfx } from '../sfx.js'
-import { lockPreviews, afterNarration, stopNarration } from '../narrator.js'
+import { lockPreviews, afterNarration, leaveGame } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
@@ -165,7 +165,7 @@ export default function TraceGame({ level = 1, onComplete }) {
   }, [g])
   const canTrace = !done && !demo && !paused && !finale
 
-  useEffect(() => { lockPreviews(); return () => stopNarration() }, [])
+  useEffect(() => { lockPreviews(); return () => leaveGame() }, [])
 
   // The task is the glyph with its green start dot; Lumi says it once per
   // level, when recorded

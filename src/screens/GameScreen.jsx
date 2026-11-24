@@ -7,7 +7,7 @@ import ConfirmDialog from '../components/ConfirmDialog.jsx'
 import MusicButton from '../components/MusicControls.jsx'
 import TileArt from '../components/TileArt.jsx'
 import LumiBuddy from '../components/LumiBuddy.jsx'
-import { stopNarration, lockPreviews } from '../narrator.js'
+import { stopNarration, lockPreviews, leaveGame } from '../narrator.js'
 import FitBox from '../components/FitBox.jsx'
 import { lazyWithReload } from '../lib/lazyWithReload.js'
 import { PauseContext } from '../lib/pause.js'
@@ -98,7 +98,7 @@ export default function GameScreen() {
   // beim Verlassen wird alles Gesprochene gestoppt.
   // Beim Betreten und beim Wechsel gilt dasselbe wie bei einer neuen Aufgabe:
   // erst die Ansage, dann darf das Darüberfahren vorlesen.
-  useEffect(() => { lockPreviews(); return stopNarration }, [moduleId, level])
+  useEffect(() => { lockPreviews(); return leaveGame }, [moduleId, level])
 
   // Time in the game, for the parent area and the daily time limit
   const startedAt = useRef(Date.now())

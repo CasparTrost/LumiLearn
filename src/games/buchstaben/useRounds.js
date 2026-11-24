@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { lockPreviews, afterNarration, stopNarration, onNarrationChange } from '../../narrator.js'
+import { lockPreviews, afterNarration, onNarrationChange, leaveGame } from '../../narrator.js'
 import { sfx } from '../../sfx.js'
 import { result } from '../../lib/score.js'
 import { usePaused } from '../../lib/pause.js'
@@ -36,7 +36,7 @@ export function useRounds(total, { onComplete, sayTask, outroMs = 450, finaleMs 
   task.current = sayTask
   const done = hold > 0
 
-  useEffect(() => { lockPreviews(); return () => stopNarration() }, [])
+  useEffect(() => { lockPreviews(); return () => leaveGame() }, [])
 
   useEffect(() => {
     if (paused || done) return

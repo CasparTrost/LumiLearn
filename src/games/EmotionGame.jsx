@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DragArea, Draggable, RoundTrail, Art, HintHand, useBursts } from '../components/play/index.js'
-import { narrate, stopNarration } from '../narrator.js'
+import { narrate, leaveGame } from '../narrator.js'
 import { sayRight, sayWrong } from '../lib/feedback.js'
 import { sfx } from '../sfx.js'
 import { result } from '../lib/score.js'
@@ -437,7 +437,7 @@ export default function EmotionGame({ level = 1, onComplete }) {
   const calm = ch && CALM[ch.emotion]
   const narrow = typeof window !== 'undefined' && window.innerWidth < 600
 
-  useEffect(() => () => stopNarration(), [])
+  useEffect(() => () => leaveGame(), [])
 
   // A round: the scene plays in full, then the faces come. The recorded
   // situation (audio/gefuehlswelt) plays where there is one.

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DragArea, Draggable, DropZone, RoundTrail, Art, HintHand, useBursts, useDragState } from '../components/play/index.js'
-import { stopNarration } from '../narrator.js'
+import { leaveGame } from '../narrator.js'
 import { sayRight, sayWrong } from '../lib/feedback.js'
 import { sfx } from '../sfx.js'
 import { result } from '../lib/score.js'
@@ -678,7 +678,7 @@ export default function StoryGame({ level = 1, onComplete }) {
     ? shuffle([ask.feeling, ...shuffle(DECOYS[ask.feeling]).slice(0, faces - 1)])
     : [], [stepKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => () => stopNarration(), [])
+  useEffect(() => () => leaveGame(), [])
 
   // A page first stands still: the child taps the one it is about (the
   // hedgehog, the shop, the vase …) and the page happens. Then its question,
