@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { readdirSync, statSync, writeFileSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { join, relative, resolve } from 'node:path'
 import emojiArt from './build/babel-plugin-emoji-art.js'
 
 // Every picture in public/sprites and public/images, for the service worker
@@ -12,12 +12,14 @@ function mediaManifest() {
     const p = join(dir, f)
     return statSync(p).isDirectory() ? list(p) : /\.(webp|png|gif|jpg|svg)$/.test(f) ? [p] : []
   })
+  let outDir = 'dist'
   return {
     name: 'media-manifest',
     apply: 'build',
+    configResolved(c) { outDir = resolve(c.root, c.build.outDir) },
     closeBundle() {
       const files = ['public/sprites', 'public/images'].flatMap(d => list(d)).map(p => relative('public', p).split('\\').join('/'))
-      writeFileSync('dist/media-manifest.json', JSON.stringify(files))
+      writeFileSync(join(outDir, 'media-manifest.json'), JSON.stringify(files))
     },
   }
 }

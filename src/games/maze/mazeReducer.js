@@ -158,7 +158,7 @@ export function mazeReducer(s, a) {
 
     // A pink potion: big for the next `steps` moves
     case 'BIG':
-      return { ...s, bigUntil: s.moves + a.steps }
+      return { ...s, bigUntil: Math.max(s.bigUntil, s.moves + a.steps) }
 
     case 'SET_MOVING':
       return { ...s, moving: a.value }
