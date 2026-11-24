@@ -415,7 +415,7 @@ export function Stage({ lumi, cast = [], fx, drop, bubbles = {}, looks = {}, tin
   const box = useRef(null)
   // On a tall screen (phone, tablet upright) the scene moves closer
   // together instead of shrinking: things keep their size, the gaps narrow.
-  const [{ scale, squeeze }, setFit] = useState({ scale: 1, squeeze: 1 })
+  const [{ scale, squeeze, vis }, setFit] = useState({ scale: 1, squeeze: 1, vis: W })
   const paused = usePaused()
   const [started, setStarted] = useState(!paused)
   useEffect(() => { if (!paused) setStarted(true) }, [paused])
@@ -426,7 +426,8 @@ export function Stage({ lumi, cast = [], fx, drop, bubbles = {}, looks = {}, tin
     const fit = () => {
       const w = el.clientWidth, h = el.clientHeight
       const sq = w / h < 1 ? 0.6 : w / h < 1.4 ? 0.72 : 1
-      setFit({ scale: Math.max(0.3, Math.min(w / (W * sq), h / H)), squeeze: sq })
+      const sc = Math.max(0.3, Math.min(w / (W * sq), h / H))
+      setFit({ scale: sc, squeeze: sq, vis: Math.min(W, w / sc) })
     }
     fit()
     const ro = new ResizeObserver(fit)
@@ -437,6 +438,9 @@ export function Stage({ lumi, cast = [], fx, drop, bubbles = {}, looks = {}, tin
   const X = x => W / 2 + (x - W / 2) * squeeze
   // what Lumi holds stays in Lumi's hand when the scene squeezes
   const Xc = x => (lumi && Math.abs(x - lumi.x) < 110 ? X(lumi.x) + x - lumi.x : X(x))
+  // a thing standing at the edge stays on the visible part of the stage
+  // (on a phone a prop at the right end was a few pixels off the screen)
+  const inside = (x, size) => Math.max(W / 2 - vis / 2 + size / 2 + 4, Math.min(W / 2 + vis / 2 - size / 2 - 4, x))
 
   const wrapDrop = (who, node, size) => (drop && drop.who === who
     ? <DropZone id={drop.id ?? 'stage-target'} onDrop={drop.onDrop} label={drop.label} slop={40}>
@@ -456,8 +460,8 @@ export function Stage({ lumi, cast = [], fx, drop, bubbles = {}, looks = {}, tin
         <div style={{ position: 'absolute', left: 30, right: 30, bottom: 4, height: 44, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(255,255,255,.45), rgba(255,255,255,0) 70%)' }} />
         {started && <Fx kind={fx} />}
         {started && cast.map((raw, i) => {
-          const c = { ...raw, x: Xc(raw.x), to: raw.to != null ? Xc(raw.to) : undefined }
-          const s = c.s ?? 80
+          const s = raw.s ?? 80
+          const c = { ...raw, x: inside(Xc(raw.x), s), to: raw.to != null ? Xc(raw.to) : undefined }
           const feel = looks[i] ?? c.feel
           const m = reduceMotion() ? { initial: false, animate: {} } : act(c, s)
           const body = c.node ?? (c.char || c.feel
