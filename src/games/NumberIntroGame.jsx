@@ -1,459 +1,632 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
-import { lockPreviews, leaveGame, narrate } from '../narrator.js'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { motion, AnimatePresence, useAnimationFrame, useAnimationControls, useMotionValue, motionValue, useReducedMotion } from 'framer-motion'
+import { lockPreviews, leaveGame, narrate, afterNarration } from '../narrator.js'
 import { numberWord } from '../lib/words.js'
+import { LINES, line } from '../lib/lumiLines.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
+import { usePaused } from '../lib/pause.js'
 import { sfx } from '../sfx.js'
-import { Critter, Art, useMood, DragArea, Draggable, DropZone, RoundTrail, useBursts, HintHand } from '../components/play/index.js'
-import { Stage, useLater, DoneButton, Pips, usePops, Finale } from './zahlen/stage.jsx'
+import { Critter, useMood, useBursts, useJuice, HintHand } from '../components/play/index.js'
+import { Stage, useLater, usePops, Finale } from './zahlen/stage.jsx'
+import { levelConfig, tasksFor, capacity, isRight, judge, nextDrop, dropX, paceAfter, slotOf, colsFor } from './zahlen/fangen.js'
+import { Basket, Nest, Fruit, Boot, Crown, Trunk, Grass, Sign, MampfButton, Picnic, CompareBoard, boardLayout, BASKET_H, BASKET_FLOOR } from './zahlen/fangenParts.jsx'
 
 /**
- * Zahlen entdecken — "Bruno hat Hunger"
+ * Zahlen entdecken — "Bruno fängt": counting out exactly n and stopping;
+ * numeral and amount
  *
- * A hungry animal holds up a sign with a number. The child lays exactly
- * that many things on its plate (each one pops up its count) and taps the
- * tick. Then the animal eats: just right and it is happy (hearts), three
- * in a row and it dances with confetti; too few and it is still hungry, too many and it is stuffed and
- * the rest rolls back. Counting out n of more things and deciding when to
- * stop is the "give me n" task, the measure of cardinality.
+ * Fruit falls from a tree. The child moves Bruno the bear with his basket
+ * (he follows the finger anywhere on the screen) and catches it. The sign
+ * says how many: the numeral, the fruit, the amount as dots. Every catch
+ * lands in the basket where it can be counted, its number pops up and Lumi
+ * counts along ("eins, zwei, drei"). Fruit that is not caught lands on the
+ * grass and bounces away; that is never a miss.
  *
- * Every animal that has eaten sits down on the picnic blanket along the
- * bottom (tap one: it makes its sound), so by the end of the level the
- * whole party is there.
+ *   • Levels 1–3: the basket has one hollow per fruit wanted; a full basket
+ *     is eaten at once. One fruit at a time, slowly, always within reach.
+ *   • Levels 4–6: no hollows. Fruit keeps falling, and the child decides
+ *     when it is enough and presses "Mampf" (a face with its mouth open).
+ *       – exactly right: the animal eats and sits down at the picnic
+ *       – too few: the basket is laid against the sign's dots, one fruit
+ *         on each dot; the empty dots are what is missing. Go on catching.
+ *       – too many: the same board; the fruit without a dot rolls away one
+ *         by one, then the animal eats (not a first try).
+ *   • Levels 7–8: two kinds fall, only the one on the sign is wanted (the
+ *     other bounces off the rim, the animal shakes its head), and an old
+ *     boot is to be dodged (caught: it hops out again, the streak is over).
+ *   • Levels 9–10: two amounts at once ("2 apples and 3 pears"), a basket
+ *     with two halves, a little faster.
  *
- * Nothing here needs words: the sign shows the number (numeral, dots),
- * the bubble shows the food, a hand shows the move when a child waits.
+ * After two wrong presses in a task the hollows come back for that task.
+ * Different animals take turns; everyone who has eaten sits down on the
+ * picnic blanket, which has one place per task: that is the collection and
+ * the progress of the level. The result is the number of tasks eaten right
+ * on the first "Mampf" (or the first full basket).
+ *
+ * Game feel (components/play/Juice.jsx): every catch that was still wanted
+ * is a hit (a note that climbs, a star to the counter); a catch too many
+ * only thuds. A golden fruit now and then counts as one like any other and
+ * showers stars. The fall speed eases up after a miss and picks up a little
+ * after a task done right (zahlen/fangen.js, paceAfter).
+ *
+ * Why this: giving exactly n of more things and stopping is the "give me
+ * n" task, the measure of whether a child knows what a number word means
+ * (cardinality; Wynn 1992, Sarnecka & Carey 2008). Here stopping is the
+ * game: the fruit keeps coming.
  */
 
-const NUMBER_WORDS = ['null','eins','zwei','drei','vier','fünf','sechs','sieben','acht','neun','zehn']
-// Content colours for the numerals; the ink outline keeps even the light ones
-// readable.
-const NUM_COLORS = ['#9AB0CC','#FF6B5B','#FF9F43','#FFC93C','#5CC45A','#4AA3FF','#8E6CF0','#FD79A8','#2FB8A6','#E8663A','#3E7BD6']
+const FS = 54                 // a falling fruit
+const ANIMAL = 124
+const ANIMAL_UP = 60          // the animal stands behind the basket, this far up
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
 
-// Who is hungry, and for what. Only food that is one thing in its picture
-// (no cherry pairs, no grape bunches), so every picture counts as one.
-const EATERS = [
-  { art: '🐻', label: 'Bruno, der Bär', foods: [['🍓', 'Erdbeere'], ['🍎', 'Apfel'], ['🧁', 'Muffin']] },
-  { art: '🐰', label: 'Hase',         foods: [['🥕', 'Karotte']] },
-  { art: '🐒', label: 'Affe',         foods: [['🍌', 'Banane']] },
-  { art: '🐭', label: 'Maus',         foods: [['🧀', 'Käse']] },
-  { art: '🐶', label: 'Hund',         foods: [['🦴', 'Knochen']] },
-  { art: '🐱', label: 'Katze',        foods: [['🐟', 'Fisch']] },
-  { art: '🐿️', label: 'Eichhörnchen', foods: [['🌰', 'Kastanie']] },
-  { art: '🦛', label: 'Nilpferd',     foods: [['🍉', 'Melone']] },
-  { art: '🐷', label: 'Schwein',      foods: [['🍩', 'Donut']] },
-  { art: '🦖', label: 'Dino',         foods: [['🍕', 'Pizza']] },
-  { art: '🐼', label: 'Panda',        foods: [['🍪', 'Keks']] },
-  { art: '🐘', label: 'Elefant',      foods: [['🥨', 'Brezel']] },
-  { art: '🐧', label: 'Pinguin',      foods: [['🍦', 'Eis']] },
-  { art: '🦔', label: 'Igel',         foods: [['🍐', 'Birne']] },
-]
-
-function rnd(arr) { return [...arr].sort(() => Math.random() - 0.5) }
-
-// Zero comes in once the counting is familiar, never as the opening round.
-const withZero = seq => { const at = 2 + Math.floor(Math.random() * (seq.length - 1)); return [...seq.slice(0, at), 0, ...seq.slice(at)] }
-
-function buildRounds(level) {
-  let seq
-  if (level <= 1)      seq = rnd([1, 1, 2, 2, 3, 3])
-  else if (level <= 2) seq = rnd([1, 2, 3, 4, 5])
-  else if (level <= 3) seq = withZero(rnd([1, 2, 3, 4, 5, 6, 7]))
-  // The last level is about the hard numbers: all of six to ten, two smaller
-  // ones and the zero in between — eight rounds instead of ten long ones.
-  else seq = withZero(rnd([6, 7, 8, 9, 10, ...rnd([2, 3, 4, 5]).slice(0, 2)]))
-  // Bruno opens every level; his friends follow, a new one each round.
-  const [bruno, ...friends] = EATERS
-  const eaters = [bruno, ...rnd(friends)]
-  // A few things more than wanted: tapping everything must not be right,
-  // the child has to count out n and stop.
-  const extra = level <= 1 ? 1 : level <= 2 ? 2 : 3
-  return seq.map((n, i) => {
-    const eater = eaters[i % eaters.length]
-    const [emoji, name] = eater.foods[Math.floor(Math.random() * eater.foods.length)]
-    return { n, total: n + extra, eater, food: { emoji, name }, color: NUM_COLORS[n] }
-  })
+// Lines Lumi may get later; the game is silent there until they are recorded
+const optional = key => (LINES[key] ? line(key) : null)
+const SAY = {
+  nests: 'bruno/fang-so-viele',
+  free: 'bruno/genug-dann-mampf',
+  other: 'bruno/nur-vom-schild',
+  pair: 'bruno/zwei-sorten',
+  few: 'bruno/zu-wenig',
+  many: 'bruno/zu-viel',
 }
 
 export default function NumberIntroGame({ level = 1, onComplete }) {
-  const rounds = useMemo(() => buildRounds(level), [level])
+  // wide: sign and "Mampf" left, picnic right · tall: sign above, picnic and "Mampf" below
+  return (
+    <Stage wide={[800, 470]} tall={[440, 760]}>
+      {wide => <Play wide={wide} level={level} onComplete={onComplete} />}
+    </Stage>
+  )
+}
+
+function Play({ wide, level, onComplete }) {
+  const cfg = useMemo(() => levelConfig(level), [level])
+  const tasks = useMemo(() => tasksFor(level), [level])
+  const paused = usePaused()
+  const pausedRef = useRef(paused)
+  pausedRef.current = paused
   const reduce = useReducedMotion()
-  const { later, afterSpeech, clear } = useLater()
-  const [mood, setMood] = useMood()
+  const { later, afterSpeech } = useLater()
+  const juice = useJuice({ hudSize: 36 })
+  const { hit, miss, shake } = juice   // these three never change
   const [bursts, burst] = useBursts()
-  const [pops, pop] = usePops()
-  const [bitePops, bitePop] = usePops({ color: '#ff6b5b' })
-  const critterRef = useRef(null)
-  const pileRef = useRef(null), plateRef = useRef(null), doneRef = useRef(null)
+  const [mood, setMood] = useMood()
+  const [pops, pop] = usePops({ size: 62 })
+  const nope = useAnimationControls()
+  const squash = useAnimationControls()
 
-  const [idx,    setIdx]    = useState(0)
-  const [pile,   setPile]   = useState(() => [...Array(rounds[0].total).keys()])
-  const [plate,  setPlate]  = useState([])        // ids, in the order they were laid down
-  const [eaten,  setEaten]  = useState(0)
-  const [phase,  setPhase]  = useState('play')    // play | eat | stuffed | done | finale
-  const [misses, setMisses] = useState(0)         // on this round
-  const [guests, setGuests] = useState([])        // animals fed so far, at the picnic
+  const fieldRef = useRef(null), basketRef = useRef(null), animalRef = useRef(null), mampfRef = useRef(null), anchorRef = useRef(null)
+  const [size, setSize] = useState(null)        // the field, in its own (unscaled) px
+
+  const [idx, setIdx] = useState(0)
+  const [phase, setPhase] = useState('enter')   // enter | play | check | eat | leave | finale
+  const [air, setAir] = useState([])            // what is falling
+  const [basket, setBasket] = useState([[], []]) // what was caught, per kind
+  const [guests, setGuests] = useState([])      // who has eaten and sits at the picnic
+  const [misses, setMisses] = useState(0)       // wrong presses in this task
+  const [cmp, setCmp] = useState(null)          // the basket laid against the dots
+  const [eating, setEating] = useState(false)
+  const [stuffed, setStuffed] = useState(false)
+  const [facing, setFacing] = useState(1)
+  const [boot, setBoot] = useState(null)        // a boot that landed in the basket
+  const [bump, setBump] = useState(0)           // the sign hops
+  const [aim, setAim] = useState(null)          // where the hand points: { x } | 'mampf'
   const firstTry = useRef(0)
-  const streak = useRef(0)                        // right on the first try, in a row
 
-  const round = rounds[idx]
-  const { n, food: f, eater } = round
+  const bx = useMotionValue(-400), tilt = useMotionValue(0), lag = useMotionValue(0), fade = useMotionValue(0)
+
+  // What the clock works on; the state above is its picture
+  const g = useRef({
+    t: 0, phase: 'enter', bx: -400, bv: 0, target: 0, locked: false, facing: 1, ready: false,
+    items: new Map(), seq: 0, nextSpawn: 0, sinceWanted: 0, goldDone: false, first: true,
+    counts: [0, 0], misses: 0, pace: 1, rightSince: null, lastInput: 0, done: false,
+  }).current
+
+  const task = tasks[idx]
+  const pair = task.wants.length > 1
+  const free = cfg.mode !== 'nests'
+  const nests = !free || misses >= 2
+  const BW = pair ? 230 : 190
+  const cols = colsFor(task, nests)
+  const cell = pair ? 32 : cols <= 4 ? 40 : 34
+  const crownH = wide ? 76 : 84
+  const fw = size?.w ?? 0, fh = size?.h ?? 0
+  const groundY = fh - 12
+  const halfX = k => (pair ? (k === 0 ? -1 : 1) * (BW / 4 + 1) : 0)
+
+  const go = p => { g.phase = p; setPhase(p) }
 
   useEffect(() => leaveGame, [])
 
-  // A new animal walks in: Lumi's turn to listen, the child's to act.
+  useLayoutEffect(() => {
+    const el = fieldRef.current
+    const measure = () => {
+      const w = el.clientWidth, h = el.clientHeight
+      if (w && h) setSize(s => (s && s.w === w && s.h === h ? s : { w, h }))
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  // A new animal comes in with an empty basket: Lumi says the number
   useEffect(() => {
     lockPreviews()
     sayTask()
-  }, [idx])
+    const intro = idx === 0 ? optional(SAY[pair ? 'pair' : task.other ? 'other' : free ? 'free' : 'nests']) : null
+    const words = task.wants.map((w, k) => { const p = numberWord(w.n); return p && k > 0 ? { ...p, gap: 250 } : p })
+    // after any praise still being spoken, not over it
+    return afterNarration(() => narrate([intro, ...words]))
+  }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const next = () => {
-    // the animal that just ate sits down at the picnic
-    setGuests(g => [...g, { art: eater.art, label: eater.label, key: idx }])
-    if (idx + 1 >= rounds.length) { setPhase('finale'); return }
-    clear()
-    setIdx(idx + 1)
-    setPile([...Array(rounds[idx + 1].total).keys()])
-    setPlate([])
-    setEaten(0)
-    setMisses(0)
-    setMood('idle')
-    setPhase('play')
+  // ── What happens ────────────────────────────────────────────────────────
+
+  const dropItem = id => { g.items.delete(id); setAir(l => l.filter(a => a.id !== id)) }
+
+  // Everything still in the air is gone in a puff (the basket is being looked at)
+  const clearAir = () => { for (const it of g.items.values()) if (it.state !== 'poof') { it.state = 'poof'; it.t0 = g.t } }
+
+  const leave = () => {
+    go('leave')
+    g.locked = true
+    g.target = g.fw + 420
+    later(reduce ? 300 : 750, () => {
+      setGuests(l => [...l, { art: task.eater.art, label: task.eater.label }])
+      sfx.pop()
+      if (idx + 1 >= tasks.length) { go('finale'); return }
+      g.counts = [0, 0]; g.misses = 0; g.first = true; g.goldDone = false; g.sinceWanted = 0; g.rightSince = null
+      g.bx = -420; g.bv = 0; g.target = g.fw / 2; g.locked = false
+      setBasket([[], []]); setMisses(0); setMood('idle'); setIdx(idx + 1); setBump(b => b + 1)
+      go('enter')
+    })
   }
 
-  // Something lands on the plate: its count pops up over the plate,
-  // going on from what was eaten already.
-  const lay = id => {
-    if (phase !== 'play') return false
-    const k = eaten + plate.length + 1
-    setPile(p => p.filter(x => x !== id))
-    setPlate(p => [...p, id])
-    sfx.pop()
-    pop(n === 0 ? '?' : k)
-    // Lumi counts along: eins, zwei, drei …
-    if (n !== 0) narrate([numberWord(k)])
-    if (n === 0) setMood('oops', 900)
+  // The animal eats what is in the basket, one after the other
+  const eat = clean => {
+    go('eat')
+    g.locked = true
+    g.target = g.bx
+    clearAir()
+    const total = g.counts[0] + g.counts[1]
+    setEating(true)
+    setMood('eat', 400 + total * 130)
+    for (let i = 0; i < Math.ceil(total / 2); i++) later(120 + i * 260, () => sfx.chomp())
+    later(420 + total * 130, () => {
+      setEating(false)
+      setBasket([[], []])
+      let big = false
+      if (clean) {
+        firstTry.current += 1
+        g.pace = paceAfter(g.pace, 'right')
+        // two stars more for the animal fed right on the first try
+        big = hit(basketRef.current, { stars: 2, silent: true }).milestone
+        sfx.slideUp()
+      }
+      setMood(big ? 'dance' : 'happy', big ? 2200 : 1300)
+      burst(animalRef.current, big ? 'confetti' : 'hearts', big ? 18 : 10)
+      sayRight()
+      afterSpeech(leave, big ? 2000 : 1300)
+    })
+  }
+
+  // "Mampf" with the wrong amount: the basket is laid against the sign's dots
+  const wrong = verdict => {
+    go('check')
+    g.locked = true
+    g.target = g.bx
+    g.misses += 1
+    g.pace = paceAfter(g.pace, 'miss')
+    g.rightSince = null
+    setMisses(g.misses)
+    clearAir()
+    miss(mampfRef.current)
+    sayWrong()
+    const said = optional(SAY[verdict === 'few' ? 'few' : 'many'])
+    if (said) narrate([said])
+    const counts = [...g.counts]
+    const most = Math.max(...counts)
+    const L = boardLayout(task.wants, counts, wide ? 46 : 44)
+    const top = crownH + 16
+    setCmp({ counts, rolled: [0, 0], show: false, top, from: { x: g.bx - (g.fw / 2 - L.width / 2), y: groundY - BASKET_H / 2 - top } })
+    const flown = (reduce ? 300 : 520) + most * 80
+    if (verdict === 'few') setMood('hungry', flown + 1900)
+    later(flown, () => {
+      setCmp(c => c && { ...c, show: true })
+      setBump(b => b + 1)
+      if (verdict !== 'few') { setStuffed(true); shake(0.6) }
+    })
+    const back = () => {
+      setCmp(null)
+      setStuffed(false)
+      g.locked = false
+      g.nextSpawn = g.t + 0.5
+      go('play')
+    }
+    if (verdict === 'few') { later(flown + 1900, back); return }
+    // the ones too many roll away, one by one, and Lumi counts back
+    const extras = task.wants.flatMap((w, k) => Array.from({ length: Math.max(0, counts[k] - w.n) }, () => k))
+    extras.forEach((k, e) => later(flown + 800 + e * 560, () => {
+      g.counts[k] -= 1
+      setCmp(c => c && { ...c, rolled: c.rolled.map((r, j) => (j === k ? r + 1 : r)) })
+      setBasket(b => b.map((list, j) => (j === k ? list.slice(0, -1) : list)))
+      sfx.boing()
+      narrate([numberWord(g.counts[k])])
+    }))
+    later(flown + 800 + extras.length * 560 + 500, () => {
+      if (verdict === 'many') {
+        setCmp(null)
+        setStuffed(false)
+        sfx.burp()
+        later(350, () => eat(false))
+      } else back()
+    })
+  }
+
+  const mampf = () => {
+    if (g.phase !== 'play' || pausedRef.current) return
+    g.lastInput = Date.now()
+    const { verdict } = judge(g.counts, task.wants)
+    if (verdict === 'right') eat(g.misses === 0)
+    else wrong(verdict)
+  }
+
+  // Something reached the basket. → true when it is in, false when it bounced off
+  const caught = (it, dx) => {
+    const off = () => {
+      it.state = 'bounce'
+      it.vy = -430
+      it.vx = (dx >= 0 ? 1 : -1) * 170 + g.bv * 0.25
+      it.vr = (dx >= 0 ? 1 : -1) * 420
+      sfx.boing()
+    }
+    if (it.kind === 'boot') {
+      // an old boot: in, and out again
+      dropItem(it.id)
+      setBoot({ id: it.id, dir: dx >= 0 ? 1 : -1, x: clamp(dx, -BW / 3, BW / 3) })
+      miss(basketRef.current)
+      shake(0.8)
+      sfx.slideDown()
+      g.pace = paceAfter(g.pace, 'miss')
+      shakeHead()
+      return true
+    }
+    const k = it.which
+    const want = task.wants[k]
+    const cap = nests ? want.n : capacity(task, k)
+    if (it.kind === 'other' || g.counts[k] >= cap) {
+      off()
+      if (it.kind === 'other') shakeHead()
+      return false
+    }
+    g.counts[k] += 1
+    const c = g.counts[k]
+    const s = slotOf(c - 1, cols)
+    const sx = s.x * cell + halfX(k), sy = BASKET_FLOOR - cell * s.row - cell / 2
+    dropItem(it.id)
+    setBasket(b => b.map((list, j) => (j === k ? [...list, { id: it.id, gold: it.gold, fx: dx - sx, fy: it.y - (groundY - BASKET_H) - sy }] : list)))
+    sfx.drum()
+    if (!reduce) squash.start({ scaleY: [1, 0.86, 1.05, 1], scaleX: [1, 1.05, 0.98, 1], transition: { duration: 0.32 } })
+    pop(c, halfX(k))
+    narrate([numberWord(c)])
+    if (c <= want.n) {
+      // one that was still wanted: a note, a star
+      hit(basketRef.current, { stars: it.gold ? 3 : 1 })
+      if (it.gold) { burst(basketRef.current, 'stars', 16); sfx.sparkle() }
+    }
+    const right = isRight(g.counts, task.wants)
+    g.rightSince = right ? g.t : null
+    if (cfg.gap == null) g.nextSpawn = g.t + 0.5
+    // a basket with hollows is eaten as soon as it is full
+    if (nests && right) later(520, () => { if (g.phase === 'play') eat(g.misses === 0) })
     return true
   }
-  // A tap on the plate takes that thing back, so a slip is easy to fix —
-  // and a stuffed animal is helped by taking the extra ones away.
-  const takeBack = id => {
-    if (phase !== 'play' && phase !== 'stuffed') return
-    const rest = plate.filter(x => x !== id)
-    setPlate(rest)
-    setPile(p => [...p, id].sort((a, b) => a - b))
-    sfx.slideUp()
-    if (phase === 'stuffed' && rest.length === 0) {
-      // Everything extra is off the plate: relief, a giggle, done.
-      // It still was a miss, so this round is not right on the first try.
-      setPhase('done')
-      setMood('happy', 1600)
-      sfx.giggle()
-      burst(critterRef.current, 'hearts', 8)
-      sayRight()
-      afterSpeech(next, 2200)
+
+  const shakeHead = () => { if (!reduce) nope.start({ rotate: [0, -10, 9, -7, 5, 0], transition: { duration: 0.5 } }) }
+
+  // The loop reads the newest of all this
+  const live = useRef(null)
+  live.current = { task, cfg, nests, BW, caught, reduce, crownH, groundY, level, idx }
+
+  // ── The clock: the catcher, what falls ──────────────────────────────────
+
+  useAnimationFrame((_, delta) => {
+    const L = live.current
+    if (pausedRef.current || !g.ready) return
+    const dt = Math.min(delta / 1000, 0.05)
+    g.t += dt
+    const half = L.BW / 2
+
+    // The catcher follows the finger with a little lag; the basket leans and trails
+    const lo = half - 6, hi = g.fw - half + 6
+    const tx = g.locked ? g.target : clamp(g.target, lo, hi)
+    g.bv += (110 * (tx - g.bx) - 21 * g.bv) * dt
+    const vmax = g.phase === 'enter' || g.phase === 'leave' ? 560 : 1500
+    g.bv = clamp(g.bv, -vmax, vmax)
+    g.bx += g.bv * dt
+    bx.set(g.bx)
+    const trail = L.reduce ? 0 : clamp(-g.bv * 0.02, -12, 12)
+    lag.set(trail)
+    tilt.set(L.reduce ? 0 : clamp(g.bv * 0.022, -9, 9))
+    fade.set(clamp(1 - Math.max(-60 - g.bx, g.bx - g.fw - 60, 0) / 90, 0, 1))
+    if (Math.abs(g.bv) > 50 && g.phase !== 'leave') {
+      const f = g.bv > 0 ? 1 : -1
+      if (f !== g.facing) { g.facing = f; setFacing(f) }
     }
-  }
+    if (g.phase === 'enter' && g.bx > lo - 20) { g.nextSpawn = g.t + 0.4; go('play') }
 
-  const miss = () => { setMisses(m => m + 1); streak.current = 0 }
+    // Something new in the tree
+    const active = []
+    for (const it of g.items.values()) if (it.state === 'hang' || it.state === 'fall') active.push(it)
+    if (g.phase === 'play' && g.t >= g.nextSpawn && (L.cfg.gap == null ? active.length === 0 : active.length < 4)) {
+      const right = isRight(g.counts, L.task.wants)
+      const d = nextDrop(L.cfg, { counts: g.counts, wants: L.task.wants, hasOther: !!L.task.other, sinceWanted: g.sinceWanted, goldDone: g.goldDone, first: g.first })
+      const x = dropX({
+        lo: 46, hi: g.fw - 46, bx: g.bx, reach: L.cfg.reach, width: g.fw, taken: active.map(i => i.x), half,
+        avoid: right && Math.random() < L.cfg.safe, onto: g.first && L.idx === 0 && L.level <= 3,
+      })
+      const id = ++g.seq
+      const y = L.crownH - 10
+      const fruit = d.kind === 'boot' ? null : d.kind === 'other' ? L.task.other : L.task.wants[d.which].fruit
+      g.items.set(id, {
+        id, kind: d.kind, which: d.which, gold: d.gold, x, y, vx: 0, vy: 0, rot: 0, vr: (Math.random() - 0.5) * 160, state: 'hang', t0: g.t,
+        until: g.t + (L.level <= 3 ? 0.8 : 0.55), bounced: false,
+        mx: motionValue(x), my: motionValue(y), mr: motionValue(0), ms: motionValue(1),
+      })
+      setAir(l => [...l, { id, kind: d.kind, which: d.which, gold: d.gold, fruit }])
+      g.first = false
+      g.sinceWanted = d.kind === 'want' ? 0 : g.sinceWanted + 1
+      if (d.gold) g.goldDone = true
+      g.nextSpawn = L.cfg.gap == null ? g.t : g.t + (L.cfg.gap / g.pace) * (0.85 + Math.random() * 0.3)
+    }
 
-  const check = () => {
-    if (phase !== 'play') return
-    const k = plate.length, t = eaten + k
-    if (n === 0) {
-      if (k === 0) {
-        // Full already, and nothing came: a happy nap.
-        setPhase('done')
-        if (misses === 0) firstTry.current++
-        setMood('sleep', 2400)
-        sayRight()
-        afterSpeech(next, 2200)
-      } else {
-        // Full already: everything is pushed back to the pile.
-        miss()
-        setMood('oops', 1600)
-        sfx.boing()
-        setPile(p => [...p, ...plate].sort((a, b) => a - b))
-        setPlate([])
-        setPhase('eat')
-        sayWrong()
-        afterSpeech(() => setPhase('play'), 1400)
+    // What is in the air
+    const rimY = L.groundY - BASKET_H + 30, landY = L.groundY - FS / 2 + 4
+    const speed = ((rimY - (L.crownH - 10)) / L.cfg.fall) * g.pace * (L.reduce ? 0.85 : 1)
+    const catchHalf = half - 14 + (L.level <= 3 ? 12 : 4)
+    const basketX = g.bx + trail
+    for (const it of [...g.items.values()]) {
+      if (it.state === 'hang') {
+        // it wiggles before it lets go, so the child sees where the next one comes from
+        it.rot = L.reduce ? 0 : Math.sin((g.t - it.t0) * 24) * 10
+        if (g.t >= it.until) { it.state = 'fall'; it.t0 = g.t; it.rot = 0 }
+      } else if (it.state === 'fall') {
+        it.y += speed * Math.min(1, 0.3 + (g.t - it.t0) * 2.4) * dt
+        if (!L.reduce) it.rot += it.vr * dt
+        if (g.phase === 'play' && it.y >= rimY && it.y <= rimY + 30) {
+          const dx = it.x - basketX
+          if (Math.abs(dx) <= catchHalf) { if (L.caught(it, dx)) continue }
+          else if (!it.rim && Math.abs(dx) <= half + FS * 0.3) {
+            // off the rim: so close
+            it.rim = true; it.state = 'bounce'; it.vy = -380; it.vx = Math.sign(dx) * 190; it.vr = Math.sign(dx) * 400
+            sfx.step()
+          }
+        }
+        if (it.state === 'fall' && it.y >= landY) {
+          // on the grass: a bounce, and away. Never a miss.
+          if (L.reduce) { it.state = 'poof'; it.t0 = g.t }
+          else { it.state = 'roll'; it.vy = -260; it.vx = (Math.random() < 0.5 ? -1 : 1) * (60 + Math.random() * 60); it.vr = Math.sign(it.vx) * 300 }
+          sfx.step()
+          if (L.cfg.gap == null) g.nextSpawn = g.t + 0.45
+        }
+      } else if (it.state === 'roll' || it.state === 'bounce') {
+        it.vy += 1500 * dt
+        it.x += it.vx * dt
+        it.y += it.vy * dt
+        it.rot += it.vr * dt
+        if (it.state === 'roll' && it.y >= landY && it.vy > 0) {
+          if (it.bounced) { it.state = 'poof'; it.t0 = g.t }
+          else { it.bounced = true; it.y = landY; it.vy = -150 }
+        }
+        if (it.y > g.fh + 80) { g.items.delete(it.id); setAir(l => l.filter(a => a.id !== it.id)); if (L.cfg.gap == null) g.nextSpawn = g.t + 0.3; continue }
+      } else if (it.state === 'poof') {
+        const s = 1 - (g.t - it.t0) / 0.18
+        if (s <= 0) { g.items.delete(it.id); setAir(l => l.filter(a => a.id !== it.id)); continue }
+        it.ms.set(s)
       }
-      return
+      it.mx.set(it.x); it.my.set(it.y); it.mr.set(it.rot)
     }
-    setPhase('eat')
-    // A wrong amount is eaten bite by bite and each bite pops its number,
-    // so the child sees where it went wrong; the right one goes
-    // munch-munch-munch.
-    const bites = Math.min(k, n - eaten), counted = t !== n, e0 = eaten
-    const bite = i => {
-      if (i >= bites) { ate(t); return }
-      setPlate(p => p.slice(1))
-      setEaten(e0 + i + 1)
-      setMood('eat', 700)
-      sfx.chomp()
-      if (counted) bitePop(e0 + i + 1)
-      later(counted ? 620 : 300, () => bite(i + 1))
-    }
-    later(200, () => bite(0))
-  }
+  })
 
-  const ate = t => {
-    if (t === n) {
-      setPhase('done')
-      if (misses === 0) { firstTry.current++; streak.current++ } else streak.current = 0
-      // Full and happy: hearts; three in a row and it dances with confetti
-      const big = streak.current >= 3
-      setMood(big ? 'dance' : 'happy', big ? 2200 : 1400)
-      if (big) later(200, () => burst(critterRef.current, 'confetti', 20))
-      burst(critterRef.current, 'hearts', 10)
-      sayRight()
-      afterSpeech(next, big ? 2800 : 2300)
-    } else if (t > n) {
-      // Stuffed: the belly bulges, the animal wobbles and won't eat the
-      // rest — the extra ones stay on the plate, shaking, until the child
-      // takes them off.
-      miss()
-      setMood('oops', 0)
-      sfx.boing()
-      setPhase('stuffed')
-      sayWrong()
-    } else {
-      // Still hungry: what was eaten stays eaten, the bubble shows how many
-      // more, and the child gives the rest.
-      miss()
-      setMood('hungry', 0)
-      sayWrong()
-      afterSpeech(() => { setMood('idle'); setPhase('play') }, 1400)
-    }
-  }
+  // The field got its size (or a new one): the catcher comes in from the left
+  useEffect(() => {
+    if (!size) return
+    g.fw = size.w; g.fh = size.h
+    if (!g.ready) { g.ready = true; g.target = size.w / 2; g.lastInput = Date.now() }
+    else if (!g.locked) g.target = clamp(g.target, 0, size.w)
+  }, [size, g])
 
-  const canCheck = phase === 'play' && (plate.length > 0 || n === 0)
-  // After two misses the sign's dots fill with what was given — shown from
-  // the start, it would give the end away: fill until every dot is full.
-  const helpDots = misses >= 2 && n > 0 ? Math.min(n, eaten + plate.length) : null
-  const belly = 1 + Math.min(eaten, 10) * 0.04 + (phase === 'stuffed' ? 0.18 : 0)
-  const wantMore = n - eaten
-  // The hand: drag food onto the plate; once something is on it, tap the
-  // tick (and in the zero round, the tick straight away).
-  const hint = phase === 'stuffed'
-    ? <HintHand to={plateRef} delay={1800} key={`s${idx}`} />
-    : n === 0 || plate.length > 0
-    ? <HintHand to={doneRef} active={phase === 'play'} delay={n === 0 ? 6000 : 9000} key={`t${idx}`} />
-    : <HintHand from={pileRef} to={plateRef} active={phase === 'play'} delay={idx === 0 && eaten === 0 ? 2000 : 6000} key={`d${idx}`} />
+  // ── The finger ──────────────────────────────────────────────────────────
+
+  const steer = e => {
+    if (e.target.closest?.('[data-nosteer]')) return
+    const el = fieldRef.current
+    const r = el.getBoundingClientRect()
+    if (!r.width) return
+    g.lastInput = Date.now()
+    if (!g.locked) g.target = ((e.clientX - r.left) / r.width) * el.clientWidth
+  }
+  useEffect(() => {
+    const key = e => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+      g.lastInput = Date.now()
+      if (!g.locked && g.phase === 'play') g.target = clamp(g.bx + (e.key === 'ArrowLeft' ? -110 : 110), 0, g.fw)
+    }
+    window.addEventListener('keydown', key)
+    return () => window.removeEventListener('keydown', key)
+  }, [g])
+
+  // A child that waits is shown the move: the hand drags the basket under
+  // a falling fruit; and when the basket is right, it taps "Mampf".
+  useEffect(() => {
+    const iv = setInterval(() => {
+      if (pausedRef.current || g.phase !== 'play') { setAim(null); return }
+      const L = live.current
+      const mampfAfter = L.level === 4 && L.idx < 2 ? 2.5 : 7
+      if (!L.nests && g.rightSince != null && g.t - g.rightSince > mampfAfter) { setAim('mampf'); return }
+      const idleFor = Date.now() - g.lastInput
+      if (idleFor < (L.idx === 0 && L.level <= 4 ? 2600 : 7000)) { setAim(null); return }
+      // a wanted fruit that still has a while to fall
+      const rimY = L.groundY - BASKET_H + 30
+      let best = null
+      for (const it of g.items.values()) {
+        if (it.kind !== 'want' || (it.state !== 'hang' && it.state !== 'fall')) continue
+        if (L.nests ? false : g.counts[it.which] >= L.task.wants[it.which].n) continue
+        if (it.y < rimY * 0.55 && (!best || it.y > best.y)) best = it
+      }
+      setAim(a => (best ? (a && a !== 'mampf' && Math.abs(a.x - best.x) < 4 ? a : { x: best.x }) : (a === 'mampf' ? null : a)))
+    }, 400)
+    return () => clearInterval(iv)
+  }, [g])
+
+  // ── The picture ─────────────────────────────────────────────────────────
+
+  const counts = basket.map(l => l.length)
+  const canPress = phase === 'play' && counts[0] + counts[1] > 0
+  const seats = tasks.length
+  const fruits = [...task.wants.map(w => w.fruit), ...(task.other ? [task.other] : [])]
+  const board = cmp && boardLayout(task.wants, cmp.counts, wide ? 46 : 44)
+
+  const sign = <Sign wants={task.wants} row={!wide} post={wide} bump={bump} />
+  const button = free && (
+    <MampfButton innerRef={mampfRef} size={wide ? 118 : 112} fruit={task.wants[0].fruit} disabled={!canPress}
+      hint={aim === 'mampf'} onPress={mampf} />
+  )
+  const picnic = wide
+    ? <Picnic seats={seats} guests={guests} size={60} cols={2} />
+    : <Picnic seats={seats} guests={guests} size={free ? 58 : 60} cols={free ? Math.ceil(seats / 2) : seats} />
+
+  const field = (
+    <div ref={fieldRef} data-field="1" style={{ position: 'relative', flex: 1, minWidth: 0, minHeight: 0, maxWidth: wide ? 720 : undefined }}>
+      {size && (
+        <>
+          <Trunk x={fw / 2} top={crownH * 0.6} bottom={groundY - 6} />
+          <Grass width={fw} height={30} />
+
+          {/* The catcher: the animal behind, its basket in front */}
+          <motion.div style={{ position: 'absolute', left: 0, top: groundY, width: 0, height: 0, x: bx, opacity: fade, zIndex: 3 }}>
+            <motion.div animate={nope} role="img" aria-label={task.eater.label}
+              style={{ position: 'absolute', left: -ANIMAL / 2, top: -(ANIMAL_UP + ANIMAL), width: ANIMAL, height: ANIMAL, transformOrigin: '50% 100%', pointerEvents: 'none' }}>
+              <motion.div ref={animalRef}
+                animate={stuffed && !reduce ? { scaleX: 1.24, rotate: [0, -5, 5, -3, 0] } : { scaleX: stuffed ? 1.24 : 1, rotate: 0 }}
+                transition={stuffed ? { rotate: { duration: 0.9, repeat: Infinity }, scaleX: { type: 'spring', stiffness: 300, damping: 10 } } : { duration: 0.25 }}
+                style={{ transformOrigin: '50% 100%' }}>
+                <Critter key={idx} art={task.eater.art} size={ANIMAL} mood={mood} flip={facing > 0} shadow={false} />
+              </motion.div>
+            </motion.div>
+            <motion.div ref={basketRef} data-basket="1" data-count={counts.slice(0, task.wants.length).join(',')}
+              style={{ position: 'absolute', left: -BW / 2, top: -BASKET_H, width: BW, x: lag, rotate: tilt, transformOrigin: '50% 100%' }}>
+              <motion.div animate={squash} style={{ transformOrigin: '50% 100%' }}>
+                <Basket width={BW} split={pair}>
+                  {nests && task.wants.map((w, k) => Array.from({ length: Math.max(0, w.n - counts[k]) }, (_, j) => {
+                    const s = slotOf(counts[k] + j, cols)
+                    return (
+                      <span key={`n${k}-${counts[k] + j}`} style={{ position: 'absolute', left: s.x * cell + halfX(k) - cell / 2, top: BASKET_FLOOR - cell * (s.row + 1), display: 'flex' }}>
+                        <Nest size={cell} />
+                      </span>
+                    )
+                  }))}
+                  {!cmp && basket.map((list, k) => list.map((b, i) => {
+                    const s = slotOf(i, cols)
+                    const sx = s.x * cell + halfX(k), top = BASKET_FLOOR - cell * (s.row + 1)
+                    const order = k === 0 ? i : basket[0].length + i
+                    return (
+                      <motion.div key={b.id}
+                        initial={reduce ? { opacity: 0 } : { x: b.fx, y: b.fy, scale: (FS / cell) * 0.9 }}
+                        animate={eating ? { x: -sx, y: -(ANIMAL_UP + ANIMAL * 0.4) - top, scale: 0.25, opacity: 0 } : { x: 0, y: 0, scale: 1, opacity: 1 }}
+                        transition={eating ? { duration: 0.26, delay: order * 0.13, ease: 'easeIn' } : { type: 'spring', stiffness: 520, damping: 24 }}
+                        style={{ position: 'absolute', left: sx - cell / 2, top, width: cell, height: cell, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 - s.row }}>
+                        <Fruit fruit={task.wants[k].fruit} size={cell + 2} gold={b.gold} />
+                      </motion.div>
+                    )
+                  }))}
+                  {boot && (
+                    <motion.div key={boot.id} initial={{ x: boot.x, y: -30, rotate: 0, opacity: 1 }}
+                      animate={reduce ? { opacity: [1, 1, 0] } : { x: [boot.x, boot.x, boot.x + boot.dir * 60, boot.x + boot.dir * 150], y: [-30, 14, -90, 70], rotate: [0, -8, boot.dir * 120, boot.dir * 260], opacity: [1, 1, 1, 0] }}
+                      transition={{ duration: 1.05, times: [0, 0.18, 0.6, 1] }}
+                      onAnimationComplete={() => setBoot(null)}
+                      style={{ position: 'absolute', left: -28, top: 0, zIndex: 12 }}>
+                      <Boot size={56} />
+                    </motion.div>
+                  )}
+                </Basket>
+              </motion.div>
+              {/* the count pops up over the basket */}
+              <div style={{ position: 'absolute', left: BW / 2, top: -20, width: 0, height: 0 }}>{pops}</div>
+            </motion.div>
+          </motion.div>
+
+          {/* What is falling */}
+          {air.map(a => {
+            const it = g.items.get(a.id)
+            if (!it) return null
+            return (
+              <motion.div key={a.id} data-drop={a.kind === 'want' ? `want${a.which}` : a.kind} data-gold={a.gold ? '1' : undefined} aria-hidden="true"
+                style={{ position: 'absolute', left: -FS / 2, top: -FS / 2, width: FS, height: FS, x: it.mx, y: it.my, rotate: it.mr, scale: it.ms, zIndex: 4, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {a.kind === 'boot' ? <Boot size={FS + 4} /> : <Fruit fruit={a.fruit} size={FS} gold={a.gold} />}
+              </motion.div>
+            )
+          })}
+
+          <div style={{ position: 'absolute', left: 0, top: 0, zIndex: 5 }}><Crown width={fw} height={crownH} fruits={fruits} /></div>
+
+          {/* The basket against the sign's dots */}
+          <AnimatePresence>
+            {cmp && (
+              <div key="cmp" style={{ position: 'absolute', left: fw / 2 - board.width / 2, top: cmp.top, zIndex: 20 }}>
+                <CompareBoard wants={task.wants} counts={cmp.counts} cell={wide ? 46 : 44} from={cmp.from} rolled={cmp.rolled} show={cmp.show} />
+              </div>
+            )}
+          </AnimatePresence>
+
+          {aim && aim !== 'mampf' && <div ref={anchorRef} aria-hidden="true" style={{ position: 'absolute', left: aim.x, top: groundY - BASKET_H * 0.6, width: 2, height: 2 }} />}
+        </>
+      )}
+    </div>
+  )
 
   return (
-    <DragArea autoTarget="plate" disabled={phase !== 'play'}>
-      <Stage wide={[780, 640]} tall={[440, 800]}>
-        {wide => {
-          const sign = <Sign key={`s${idx}`} n={n} color={round.color} fill={helpDots} />
-          const wish = n === 0
-            ? <Art art="🍽️" size={40} />
-            : <>{eaten > 0 && <span style={{ fontSize: 30 }}>{wantMore}</span>}<Art art={f.emoji} size={40} /></>
-          const showWish = phase === 'play' || phase === 'stuffed'
-          const animal = (
-            <DropZone id="plate" onDrop={lay} label={`Teller von ${eater.label}`}
-              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              {(hover, { ready }) => (
-                <>
-                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16 }}>
-                    {!wide && sign}
-                    <AnimatePresence mode="wait">
-                      <motion.div key={idx} ref={critterRef}
-                        initial={reduce ? { opacity: 0 } : { x: 260, opacity: 0 }}
-                        animate={phase === 'stuffed' && !reduce
-                          ? { x: 0, opacity: 1, scaleX: belly, scaleY: 1 + (belly - 1) * 0.3, rotate: [0, -7, 6, -4, 0] }
-                          : { x: 0, opacity: 1, scaleX: belly, scaleY: 1 + (belly - 1) * 0.3, rotate: 0 }}
-                        exit={reduce ? { opacity: 0 } : { x: -260, opacity: 0, transition: { duration: 0.35 } }}
-                        transition={phase === 'stuffed' ? { rotate: { duration: 1.2, repeat: Infinity, repeatDelay: 0.6 }, default: { type: 'spring', stiffness: 160, damping: 18 } } : { type: 'spring', stiffness: 160, damping: 18 }}
-                        style={{ position: 'relative', transformOrigin: '50% 100%' }}>
-                        <Critter art={eater.art} size={wide ? 200 : 170} label={eater.label} flip={wide}
-                          mood={phase === 'play' && (hover || ready) && n > 0 ? 'hungry' : phase === 'play' && n === 0 && mood === 'idle' ? 'sleep' : mood}
-                          wish={showWish ? wish : null} wishSide={wide ? 'right' : 'top'} />
-                        <div style={{ position: 'absolute', left: 0, right: 0, top: '30%' }}>{bitePops}</div>
-                      </motion.div>
-                    </AnimatePresence>
-                  </div>
-                  <div ref={plateRef} style={{ position: 'relative' }}>
-                    <Plate items={plate} food={f} start={eaten} onTake={takeBack} glow={hover} shake={phase === 'stuffed'} width={wide ? 280 : 380} item={wide ? 50 : 58}
-                      rows={Math.ceil(Math.min(round.total, n + 1) / (wide ? 4 : 5))} />
-                    {pops}
-                  </div>
-                </>
-              )}
-            </DropZone>
-          )
-          // The blanket closes up as things are taken, rows fold away
-          // smoothly; the box around it keeps its size, so nothing else on
-          // the stage moves.
-          const cols = Math.min(round.total, wide ? 3 : 4)
-          const heap = (
-            <div style={{ width: cols * 64 + 32, height: Math.ceil(round.total / cols) * 64 + 32, display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
-              <Blanket>
-                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.max(1, Math.min(pile.length, cols))}, 60px)`, gap: 4, justifyContent: 'center' }}>
-                  <AnimatePresence initial={false}>
-                    {pile.map((id, i) => (
-                      <motion.div key={`${idx}-${id}`} ref={i === 0 ? pileRef : undefined} layout={reduce ? false : 'position'}
-                        initial={{ scale: 0, rotate: -30 }} animate={{ scale: 1, rotate: ((id * 37) % 21) - 10 }} exit={{ scale: 0, transition: { duration: 0.12 } }}
-                        transition={{ type: 'spring', stiffness: 380, damping: 24 }} style={{ width: 60, height: 60 }}>
-                        <Draggable id={`${idx}-${id}`} data={id} label={f.name} style={{ padding: 3, borderRadius: 14 }}>
-                          <Art art={f.emoji} size={54} />
-                        </Draggable>
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                </div>
-              </Blanket>
-            </div>
-          )
-          const trail = <RoundTrail total={rounds.length} done={idx + (phase === 'done' || phase === 'finale' ? 1 : 0)} walker="🐻" goal="🍯" size={wide ? 38 : 34} style={{ margin: '6px 48px 0 24px' }} />
-          const done = <div ref={doneRef}><DoneButton onClick={check} disabled={!canCheck} size={wide ? 84 : 80} /></div>
-          return (
-            <>
-              {wide ? (
-                <>
-                  {trail}
-                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 28, padding: '0 12px 12px' }}>
-                    {sign}
-                    {animal}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18 }}>
-                      {heap}
-                      {done}
-                    </div>
-                  </div>
-                  <Picnic guests={guests} size={84} />
-                </>
-              ) : (
-                <>
-                  {trail}
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-evenly', padding: '0 10px 12px' }}>
-                    {animal}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      {heap}
-                      {done}
-                    </div>
-                  </div>
-                  <Picnic guests={guests} size={54} />
-                </>
-              )}
-              {phase === 'finale' && (
-                <Finale cast={[...new Set(rounds.map(r => r.eater.art))]} size={wide ? 120 : 96}
-                  onDone={() => onComplete(result(firstTry.current, rounds.length))} />
-              )}
-            </>
-          )
-        }}
-      </Stage>
-      {hint}
+    <div ref={juice.stage} data-game="bruno" data-phase={phase} data-task={idx} data-level={level}
+      onPointerDown={steer} onPointerMove={steer}
+      style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: wide ? 'row' : 'column', justifyContent: 'center', overflow: 'hidden', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}>
+      {wide ? (
+        <>
+          <div style={{ width: 204, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: free ? 'space-between' : 'center', padding: '12px 6px 18px', boxSizing: 'border-box', zIndex: 6 }}>
+            {sign}
+            {button}
+          </div>
+          {field}
+          <div style={{ width: 156, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', padding: '12px 6px 18px', boxSizing: 'border-box', zIndex: 6 }}>
+            {juice.hud}
+            {picnic}
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, padding: '8px 10px 4px', zIndex: 6 }}>
+            {sign}
+            {juice.hud}
+          </div>
+          {field}
+          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: free ? 'space-between' : 'center', gap: 10, padding: '6px 12px 10px', zIndex: 6 }}>
+            {picnic}
+            {button}
+          </div>
+        </>
+      )}
+
+      {/* The hand shows the move */}
+      <HintHand key={`h${idx}-${aim && aim !== 'mampf' ? Math.round(aim.x) : ''}`} from={basketRef} to={anchorRef} active={!!aim && aim !== 'mampf' && phase === 'play'} delay={0} repeat={2} />
+      <HintHand key={`m${idx}`} to={mampfRef} active={aim === 'mampf' && phase === 'play'} delay={0} />
+
+      {phase === 'finale' && (
+        <Finale cast={[...new Set(tasks.map(t => t.eater.art))]} size={wide ? 104 : 84}
+          onDone={() => { if (!g.done) { g.done = true; onComplete(result(firstTry.current, tasks.length)) } }} />
+      )}
       {bursts}
-    </DragArea>
-  )
-}
-
-// The sign the animal holds up: the numeral, its word and its dots.
-// A tap makes it wobble.
-function Sign({ n, color, fill }) {
-  const [wob, setWob] = useState(0)
-  return (
-    <motion.div role="img" aria-label={`${n}`} onClick={() => { setWob(w => w + 1); sfx.boing() }}
-      initial={{ y: -40, rotate: -8, opacity: 0 }}
-      animate={{ y: 0, rotate: wob % 2 ? 3 : -3, opacity: 1 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 9 }}
-      style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', transformOrigin: '50% 100%' }}
-      data-n={n}>
-      <div style={{
-        position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-        padding: '6px 18px 12px', minWidth: 140, borderRadius: 18,
-        background: '#fffdf7', border: '5px solid #8a4f22', boxShadow: '0 0 0 3px #2a1b3d, 0 8px 0 3px rgba(42,27,61,0.3)',
-      }}>
-        <span style={{
-          fontFamily: 'var(--font-heading)', fontSize: 112, lineHeight: 1, color,
-          textShadow: '-4px -4px 0 #2a1b3d, 4px -4px 0 #2a1b3d, -4px 4px 0 #2a1b3d, 4px 4px 0 #2a1b3d, 0 -4px 0 #2a1b3d, 0 4px 0 #2a1b3d, -4px 0 0 #2a1b3d, 4px 0 0 #2a1b3d, 0 9px 0 rgba(42,27,61,0.3)',
-        }}>{n}</span>
-        <span style={{ fontFamily: 'var(--font-heading)', fontSize: 28, color: '#5b4a6e', marginTop: -6 }}>{NUMBER_WORDS[n]}</span>
-        <Pips n={n} size={66} color={color} fill={fill ?? n} />
-      </div>
-      <div aria-hidden="true" style={{ width: 14, height: 46, background: '#8a4f22', border: '3px solid #2a1b3d', borderTop: 'none', borderRadius: '0 0 6px 6px' }} />
-    </motion.div>
-  )
-}
-
-// The plate in front of the animal; everything on it is numbered on, from
-// what was eaten already.
-// Its height is set for the round (room for one more than wanted), so
-// the animal above does not jump as things are laid down.
-function Plate({ items, food: f, start, onTake, glow, shake, width, item, rows }) {
-  return (
-    <div style={{
-      marginTop: -8, width, minHeight: Math.max(96, rows * (item + 4) + 28), padding: '14px 22px', boxSizing: 'border-box',
-      display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignContent: 'center', gap: 4,
-      background: 'radial-gradient(ellipse at 50% 40%, #ffffff 55%, #e4f1ff 100%)', borderRadius: 999,
-      border: '4px solid #2a1b3d', boxShadow: `inset 0 0 0 7px ${glow ? '#ffc93c' : '#bcdcff'}, 0 6px 0 rgba(42,27,61,0.3)`,
-      transition: 'box-shadow .2s',
-    }}>
-      <AnimatePresence>
-        {items.map((id, i) => (
-          <motion.button key={id} type="button" onClick={e => { e.stopPropagation(); onTake(id) }}
-            aria-label={`${f.name} ${start + i + 1}, zurücklegen`}
-            initial={{ scale: 0, y: -30 }} animate={shake ? { scale: 1, y: 0, rotate: [0, -12, 12, -8, 0], x: [0, 4, -4, 2, 0] } : { scale: 1, y: 0, rotate: 0, x: 0 }}
-            exit={{ scale: 0, y: -40, opacity: 0 }}
-            transition={shake ? { rotate: { duration: 0.7, repeat: Infinity, repeatDelay: 0.5 }, x: { duration: 0.7, repeat: Infinity, repeatDelay: 0.5 } } : { type: 'spring', stiffness: 500, damping: 20 }}
-            style={{ all: 'unset', cursor: 'pointer', position: 'relative', width: item, height: item, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Art art={f.emoji} size={item - 6} />
-            <span style={{
-              position: 'absolute', top: -10, right: -10, minWidth: 30, height: 30, borderRadius: 15, padding: '0 4px', boxSizing: 'border-box',
-              background: '#fffdf7', border: '3px solid #2a1b3d', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18, lineHeight: '24px', textAlign: 'center', color: '#2a1b3d',
-            }}>{start + i + 1}</span>
-          </motion.button>
-        ))}
-      </AnimatePresence>
+      {juice.layer}
     </div>
-  )
-}
-
-// The picnic along the bottom: everyone who has eaten sits there, happy
-// and full. A tap on one makes it say hello.
-function Picnic({ guests, size }) {
-  return (
-    <div style={{
-      position: 'relative', minHeight: size + 8, margin: '0 10px 6px', padding: '0 8px', borderRadius: 18,
-      display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 0,
-      background: 'repeating-conic-gradient(rgba(255,138,122,0.9) 0 25%, rgba(255,243,230,0.9) 0 50%) 0 0 / 36px 36px',
-      border: '3px solid rgba(42,27,61,0.5)', boxShadow: '0 4px 0 rgba(42,27,61,0.2)',
-    }}>
-      <AnimatePresence>
-        {guests.map(g => <Guest key={g.key} art={g.art} label={g.label} size={size} />)}
-      </AnimatePresence>
-    </div>
-  )
-}
-
-function Guest({ art, label, size }) {
-  const [mood, setMood] = useMood()
-  useEffect(() => { setMood('happy', 1400) }, [setMood])
-  // a tap: it makes its own sound (Critter) and is happy again
-  const tap = () => setMood('happy', 1200)
-  return (
-    <motion.div initial={{ y: -60, opacity: 0, scale: 1.3 }} animate={{ y: 0, opacity: 1, scale: 1 }}
-      transition={{ type: 'spring', stiffness: 260, damping: 15, delay: 0.25 }}
-      style={{ position: 'relative' }}>
-      <Critter art={art} size={size} mood={mood} label={`${label}, satt`} onTap={tap} shadow={false} />
-    </motion.div>
-  )
-}
-
-// The picnic blanket the food lies on
-function Blanket({ children }) {
-  const reduce = useReducedMotion()
-  return (
-    <motion.div layout={!reduce} transition={{ type: 'spring', stiffness: 380, damping: 30 }} style={{
-      padding: 12, borderRadius: 22, border: '4px solid #2a1b3d', minHeight: 90, minWidth: 150,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'repeating-conic-gradient(#ff8a7a 0 25%, #fff3e6 0 50%) 0 0 / 44px 44px',
-      boxShadow: '0 6px 0 rgba(42,27,61,0.3)',
-    }}>
-      {children}
-    </motion.div>
   )
 }

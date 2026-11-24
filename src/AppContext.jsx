@@ -8,7 +8,7 @@ import { stickerForDay } from './lib/stickers.js'
 export const AppContext = createContext(null)
 
 export const MAX_LEVELS = {
-  'number-intro': 4,
+  'number-intro': 10,
   'letter-intro': 5,
   numbers:        10,
   letters:        10,
