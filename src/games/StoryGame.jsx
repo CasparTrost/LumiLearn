@@ -369,7 +369,7 @@ const STORIES = [
           { text: 'Lumi zählt laut bis zehn. Dann darf Ida schaukeln.',
             lumi: { feel: 'happy', x: 300, y: 40, size: 130, act: 'swing', say: '10' }, cast: [t(ROCK, 300, 'none', { s: 230 }), c('👧', 500, 'none', { s: 130 })] },
           { text: 'So wechseln sie sich ab, immer wieder. Ida lacht laut.',
-            lumi: { feel: 'happy', x: 140 }, cast: [t(ROCK, 330, 'none', { s: 230 }), c('👧', 330, 'swing', { s: 110, y: 40, feel: 'happy', who: true })],
+            lumi: { feel: 'happy', x: 140 }, cast: [t(ROCK, 330, 'none', { s: 230 }), c('👧', 330, 'swing', { s: 120, y: 52, sit: true, feel: 'happy', who: true })],
             ask: { who: 'Ida', feeling: 'Glücklich' } },
         ],
         lesson: 'Abwechseln ist fair. So kommt jeder dran!',
@@ -377,7 +377,7 @@ const STORIES = [
       now: {
         panels: [
           { text: 'Ida schaukelt, und Lumi schubst sie an. Höher, höher!',
-            lumi: { feel: 'happy', x: 140 }, cast: [t(ROCK, 330, 'none', { s: 230 }), c('👧', 330, 'swing', { s: 110, y: 40, feel: 'happy', who: true })],
+            lumi: { feel: 'happy', x: 140 }, cast: [t(ROCK, 330, 'none', { s: 230 }), c('👧', 330, 'swing', { s: 120, y: 52, sit: true, feel: 'happy', who: true })],
             ask: { who: 'Ida', feeling: 'Glücklich' } },
           { text: 'Danach darf Lumi wieder. Jetzt schubst Ida.',
             lumi: { feel: 'excited', x: 300, y: 40, size: 130, act: 'swing' }, cast: [t(ROCK, 300, 'none', { s: 230 }), c('👧', 490, 'none', { s: 130, feel: 'happy' })] },
@@ -427,24 +427,24 @@ const STORIES = [
     id: 'climbingframe', tier: 2, title: 'Lumi und der große Kletterturm',
     panels: [
       { text: 'Im Park steht ein großer Kletterturm. Alle Kinder klettern hinauf. Lumi bleibt unten. „Das ist so hoch … was ist, wenn ich falle?“',
-        lumi: { feel: 'scared' }, cast: [t('🪜', 430, 'pop', { s: 240 }), c('🧒', 430, 'pop', { s: 70, y: 170, d: 0.5 }), c('👦', 500, 'hop', { s: 80, d: 0.8 })],
+        lumi: { feel: 'scared' }, cast: [t(':px-klettergeruest:', 430, 'pop', { s: 240 }), c('🧒', 430, 'pop', { s: 70, y: 126, d: 0.5 }), c('👦', 500, 'hop', { s: 80, d: 0.8 })],
         ask: { who: 'Lumi', feeling: 'Ängstlich' } },
       { text: 'Mia reicht Lumi die Hand: „Ich bin neben dir. Versuch es Schritt für Schritt!“',
-        lumi: { feel: 'scared', strength: 0 }, cast: [t('🪜', 450, 'none', { s: 240 }), c('👧', 310, 'in', { s: 120, say: ['🤝'] })] },
+        lumi: { feel: 'scared', strength: 0 }, cast: [t(':px-klettergeruest:', 450, 'none', { s: 240 }), c('👧', 310, 'in', { s: 120, say: ['🤝'] })] },
     ],
     choice: {
       options: [
-        { text: '🧗 Lumi versucht es, Schritt für Schritt', value: 'brave', pic: ['🧗', '🪜'] },
-        { text: '🌳 Lumi bleibt lieber unten', value: 'stay', pic: ['🌱', '🪜'] },
+        { text: '🧗 Lumi versucht es, Schritt für Schritt', value: 'brave', pic: ['🧗', ':px-klettergeruest:'] },
+        { text: '🌳 Lumi bleibt lieber unten', value: 'stay', pic: ['🌱', ':px-klettergeruest:'] },
       ],
     },
     outcomes: {
       brave: {
         panels: [
           { text: 'Schritt … für … Schritt. Lumi klettert! Von oben sieht die Welt ganz anders aus.',
-            lumi: { feel: 'excited', x: 430, act: 'climb', up: 115, size: 100 }, cast: [t('🪜', 430, 'none', { s: 210, z: 0 }), c('👧', 300, 'none', { s: 110 })] },
+            lumi: { feel: 'excited', x: 430, act: 'climb', up: 115, size: 100 }, cast: [t(':px-klettergeruest:', 430, 'none', { s: 210, z: 0 }), c('👧', 300, 'none', { s: 110 })] },
           { text: '„Ich habe es geschafft!“ Alle jubeln.',
-            lumi: { feel: 'proud', x: 430, y: 115, size: 100 }, cast: [t('🪜', 430, 'none', { s: 210, z: 0 }), c('👧', 300, 'hop', { s: 100 }), c('🧒', 200, 'hop', { s: 90, d: 0.3 }), t('🏆', 530, 'drop', { s: 60, y: 150, d: 0.6 })],
+            lumi: { feel: 'proud', x: 430, y: 115, size: 100 }, cast: [t(':px-klettergeruest:', 430, 'none', { s: 210, z: 0 }), c('👧', 300, 'hop', { s: 100 }), c('🧒', 200, 'hop', { s: 90, d: 0.3 }), t('🏆', 530, 'drop', { s: 60, y: 150, d: 0.6 })],
             ask: { who: 'Lumi', feeling: 'Stolz' } },
         ],
         lesson: 'Mutig sein heißt nicht, keine Angst zu haben. Mutig sein heißt, es trotzdem zu versuchen!',
@@ -452,9 +452,9 @@ const STORIES = [
       stay: {
         panels: [
           { text: 'Lumi bleibt unten. Das ist auch in Ordnung! Lumi weiß: Der große Turm ist heute noch zu hoch.',
-            lumi: { feel: 'calm' }, cast: [t('🪜', 470, 'none', { s: 240 }), t('🌱', 320, 'pop', { s: 60 })] },
+            lumi: { feel: 'calm' }, cast: [t(':px-klettergeruest:', 470, 'none', { s: 240 }), t('🌱', 320, 'pop', { s: 60 })] },
           { text: 'Lumi klettert auf den kleinen Turm, bis ganz nach oben: „Nächstes Mal probiere ich den großen!“',
-            lumi: { feel: 'proud', x: 330, act: 'climb', up: 80, size: 110 }, cast: [t('🪜', 330, 'none', { s: 120, z: 0 }), t('✨', 420, 'bob', { s: 50, y: 160, d: 1.6 })],
+            lumi: { feel: 'proud', x: 330, act: 'climb', up: 80, size: 110 }, cast: [t(':px-klettergeruest:', 330, 'none', { s: 120, z: 0 }), t('✨', 420, 'bob', { s: 50, y: 160, d: 1.6 })],
             ask: { who: 'Lumi', feeling: 'Stolz' } },
         ],
         lesson: 'Jeden Tag ein kleiner Schritt weiter, das ist auch Mut!',
@@ -489,7 +489,7 @@ const STORIES = [
       stay: {
         panels: [
           { text: 'Lumi spielt weiter. Da klingelt bei Ben das Telefon. Es ist Oma. Oma weiß nicht, wo Lumi bleibt.',
-            lumi: { feel: 'happy' }, cast: [c('👦', 330, 'hop', { s: 110 }), t('📱', 430, 'shake', { s: 60, y: 60, d: 0.4 }), c('👵', 520, 'pop', { s: 120, y: 90, feel: 'scared', who: true, d: 0.8 })],
+            lumi: { feel: 'happy' }, cast: [c('👦', 330, 'hop', { s: 110 }), t('📱', 430, 'shake', { s: 60, y: 60, d: 0.4 }), c('👵', 520, 'pop', { s: 120, y: 90, sit: true, feel: 'scared', who: true, d: 0.8 })],
             ask: { who: 'Oma', feeling: 'Ängstlich' } },
           { text: 'Lumi läuft schnell nach Hause. Oma und Lumi nehmen sich fest in den Arm.',
             lumi: { feel: 'thankful', act: 'run' }, cast: [c('👵', 330, 'none', { s: 150, feel: 'happy' }), t('💛', 250, 'pop', { s: 44, y: 200, d: 1 })] },
@@ -503,8 +503,8 @@ const STORIES = [
     panels: [
       { text: 'Beim Spielen im Park findet Lumi ein Portemonnaie im Gras. Darin sind Geld und ein Foto.',
         lumi: { feel: 'curious', act: 'in' }, cast: [t('🌿', 420, 'pop', { s: 110 }), t(':px-portemonnaie:', 360, 'jack', { s: 64, d: 1 })] },
-      { text: 'Mama sitzt auf der Bank gleich daneben. Lumi könnte das Portemonnaie behalten … oder es Mama zeigen.',
-        lumi: { feel: 'curious' }, cast: [t(':px-portemonnaie:', HAND, 'pop', { s: 56, y: 60 }), t('🪑', 470, 'pop', { s: 150 }), c('👩', 470, 'pop', { s: 120, y: 40, d: 0.3 })] },
+      { text: 'Mama steht gleich daneben. Lumi könnte das Portemonnaie behalten … oder es Mama zeigen.',
+        lumi: { feel: 'curious' }, cast: [t(':px-portemonnaie:', HAND, 'pop', { s: 56, y: 60 }), t('🪑', 420, 'pop', { s: 130 }), c('👩', 540, 'pop', { s: 120, d: 0.3 })] },
     ],
     choice: {
       options: [
@@ -564,7 +564,7 @@ const STORIES = [
       hide: {
         panels: [
           { text: 'Lumi stopft den Pulli in den Schrank. Aber Lumi muss die ganze Zeit daran denken.',
-            lumi: { feel: 'scared' }, cast: [t('🚪', 440, 'pop', { s: 170 }), t('👕', 440, 'sink', { s: 70, y: 40, d: 0.6 })],
+            lumi: { feel: 'scared' }, cast: [t(':px-kleiderschrank:', 440, 'pop', { s: 170 }), t('👕', 440, 'sink', { s: 70, y: 40, d: 0.6 })],
             ask: { who: 'Lumi', feeling: 'Ängstlich' } },
           { text: 'Am Abend sucht Lea den Pulli. Da sagt Lumi: „Ich war das. Es tut mir leid.“ Lea seufzt: „Gut, dass du es sagst. Komm, wir waschen ihn zusammen.“',
             lumi: { feel: 'shy', say: ['👕', '💧'] }, cast: [c('👧', 450, 'in', { s: 140 }), t('🫧', 350, 'bob', { s: 60, y: 120, d: 1 })] },

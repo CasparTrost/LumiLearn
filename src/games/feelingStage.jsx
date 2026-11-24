@@ -286,29 +286,60 @@ export function FeelLumi({ feel = 'neutral', strength = 1, size = 150, flip = fa
 // A feeling on an emoji character: the kit's moods plus what they lack
 const ACTOR_MOOD = { happy: 'happy', excited: 'dance', sad: 'sad', lonely: 'sad', tired: 'sleep', surprised: 'wow', proud: 'wow', thankful: 'happy', curious: 'oops' }
 
-function ActorMarks({ feel, s }) {
-  if (feel === 'scared') return <Art art="💧" size={s * 0.26} style={{ position: 'absolute', top: s * 0.02, right: s * 0.02 }} />
+function ActorMarks({ feel, s, whole }) {
+  // a whole figure has its face small at the top, the emoji's fills the picture
+  const k = whole ? 0.55 : 1
+  const at = whole ? { scared: [0, 0.28], angry: [-0.12, 0.22], proud: [-0.06, 0.26], sad: [0.12, 0.38] }
+    : { scared: [0.02, 0.02], angry: [-0.1, -0.08], proud: [-0.08, -0.04], sad: [0.3, 0.12] }
+  if (feel === 'scared') return <Art art="💧" size={s * 0.26 * k} style={{ position: 'absolute', top: s * at.scared[0], right: s * at.scared[1] }} />
   if (feel === 'angry') return (
     <motion.div animate={{ y: [0, -8, 0], opacity: [0.6, 1, 0.6] }} transition={{ duration: 0.8, repeat: Infinity }}
-      style={{ position: 'absolute', top: -s * 0.1, right: -s * 0.08, pointerEvents: 'none' }}><Art art="💨" size={s * 0.34} /></motion.div>
+      style={{ position: 'absolute', top: s * at.angry[0], right: s * at.angry[1], pointerEvents: 'none' }}><Art art="💨" size={s * 0.34 * k} /></motion.div>
   )
-  if (feel === 'proud') return <Art art="✨" size={s * 0.3} style={{ position: 'absolute', top: -s * 0.08, left: -s * 0.04 }} />
+  if (feel === 'proud') return <Art art="✨" size={s * 0.3 * k} style={{ position: 'absolute', top: s * at.proud[0], left: s * at.proud[1] }} />
   if (feel === 'sad') return (
-    <motion.div animate={{ y: [0, s * 0.15], opacity: [1, 0] }} transition={{ duration: 1.3, repeat: Infinity }}
-      style={{ position: 'absolute', top: s * 0.3, left: s * 0.12, pointerEvents: 'none' }}><Art art="💧" size={s * 0.2} /></motion.div>
+    <motion.div animate={{ y: [0, s * 0.15 * k], opacity: [1, 0] }} transition={{ duration: 1.3, repeat: Infinity }}
+      style={{ position: 'absolute', top: s * at.sad[0], left: s * at.sad[1], pointerEvents: 'none' }}><Art art="💧" size={s * 0.2 * k} /></motion.div>
   )
   return null
 }
 
+// People stand on the stage as whole figures (pictures made with Tripo),
+// not as the emoji's head and shoulders, which looked like heads sticking
+// out of the meadow. Grown-ups a little taller than children.
+const PEOPLE = {
+  '👵': ['oma', 1.45], '👴': ['opa', 1.45], '👩': ['mama', 1.5], '👨': ['papa', 1.5], '👮': ['polizei', 1.5],
+  '👧': ['maedchen', 1.25], '👦': ['junge', 1.25], '🧒': ['kleinkind', 1.1],
+}
+// how much of a whole figure's height is hidden below the seat
+const SIT_CUT = 0.42
+const SIT_MASK = `linear-gradient(to bottom, #000 ${(1 - SIT_CUT) * 100 - 8}%, transparent ${(1 - SIT_CUT) * 100}%)`
+/** A cast entry with its person drawn whole: [art, size] */
+function asPerson(art, size) {
+  const p = PEOPLE[art]
+  return p ? [`:px-mensch-${p[0]}:`, Math.round(size * p[1]), true] : [art, size, false]
+}
+
 /** An emoji character with a feeling: a frightened kitten trembles, an angry child steams. */
-function Actor({ art, feel, size, flip, label }) {
+function Actor({ art, feel, size, flip, label, whole, sit }) {
   const shake = feel === 'scared' || feel === 'angry'
   return (
     <motion.div animate={shake && !reduceMotion() ? { x: feel === 'scared' ? [-2, 2] : [-3, 3] } : { x: 0 }}
       transition={shake ? { duration: feel === 'scared' ? 0.07 : 0.1, repeat: Infinity, repeatType: 'mirror' } : {}}
       style={{ position: 'relative', width: size, height: size, filter: feel === 'angry' ? 'drop-shadow(0 0 6px rgba(255,80,60,.7))' : undefined }}>
-      <Critter art={art} size={size} mood={ACTOR_MOOD[feel] ?? 'idle'} flip={flip} label={label} />
-      <ActorMarks feel={feel} s={size} />
+      {sit
+        // sitting (on a swing, behind a seat): only the upper body shows,
+        // lowered so the hips are where the seat is, fading out below
+        ? <div style={{ position: 'absolute', inset: 0, transform: `translateY(${SIT_CUT * 100}%)` }}>
+            <div style={{ WebkitMaskImage: SIT_MASK, maskImage: SIT_MASK }}>
+              <Critter art={art} size={size} mood={ACTOR_MOOD[feel] ?? 'idle'} flip={flip} label={label} />
+            </div>
+            <ActorMarks feel={feel} s={size} whole={whole} />
+          </div>
+        : <>
+            <Critter art={art} size={size} mood={ACTOR_MOOD[feel] ?? 'idle'} flip={flip} label={label} />
+            <ActorMarks feel={feel} s={size} whole={whole} />
+          </>}
     </motion.div>
   )
 }
@@ -469,12 +500,12 @@ export function Stage({ lumi, cast = [], fx, drop, bubbles = {}, looks = {}, tin
         <div style={{ position: 'absolute', left: 30, right: 30, bottom: 4, height: 44, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(255,255,255,.45), rgba(255,255,255,0) 70%)' }} />
         {started && <Fx kind={fx} />}
         {started && cast.map((raw, i) => {
-          const s = raw.s ?? 80
-          const c = { ...raw, x: inside(Xc(raw.x), s), to: raw.to != null ? Xc(raw.to) : undefined }
+          const [art, s, whole] = asPerson(raw.a, raw.s ?? 80)
+          const c = { ...raw, a: art, s, whole, x: inside(Xc(raw.x), s), to: raw.to != null ? Xc(raw.to) : undefined }
           const feel = looks[i] ?? c.feel
           const m = reduceMotion() ? { initial: false, animate: {} } : act(c, s)
           const body = c.node ?? (c.char || c.feel
-            ? <Actor art={c.a} feel={feel} size={s} flip={c.flip} label={c.label} />
+            ? <Actor art={c.a} feel={feel} size={s} flip={c.flip} label={c.label} whole={c.whole} sit={c.whole && c.sit} />
             : <Thing art={c.a} size={s} flip={c.flip} />)
           return (
             <div key={i} style={{ position: 'absolute', left: c.x - s / 2, bottom: GROUND + (c.y ?? 0), width: s, height: s, zIndex: c.z ?? 1, transform: c.rot ? `rotate(${c.rot}deg)` : undefined }}>

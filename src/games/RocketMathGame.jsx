@@ -1,4 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react'
+import { customArtSrc } from '../lib/emojiArt.jsx'
 import { motion, AnimatePresence } from 'framer-motion'
 import { sfx } from '../sfx.js'
 import { afterNarration, lockPreviews } from '../narrator.js'
@@ -77,6 +78,8 @@ function makeTask(p, i) {
 
 // Each alien has its own colour, and each planet someone else at home
 const ALIEN_COLORS = ['#5CC45A', '#FF8FB8', '#4AA3FF', '#FFA94D', '#B78CF2', '#3FC1A8']
+// The alien picture is green; each task's alien is tinted by turning its hue
+const ALIEN_HUE = { '#5CC45A': 0, '#FF8FB8': 230, '#4AA3FF': 105, '#FFA94D': 290, '#B78CF2': 160, '#3FC1A8': 55 }
 const RESIDENTS = ['🐙', '🤖', '🐌', '🐢', '🦀', '🐸']
 const PLANET_COLORS = ['#FF8A65', '#4FC3F7', '#FFD54F', '#AED581', '#CE93D8', '#F48FB1', '#80CBC4']
 
@@ -110,39 +113,8 @@ function Alien({ size = 110, color = '#5CC45A', mood = 'idle', onTap, label }) {
   return (
     <motion.button type="button" onClick={onTap} aria-label={label} tabIndex={label ? 0 : -1} animate={anim}
       style={{ all: 'unset', cursor: onTap ? 'pointer' : 'default', width: size, height: size, display: 'block', transformOrigin: '50% 100%', flexShrink: 0 }}>
-      <svg viewBox="0 0 100 100" width={size} height={size} aria-hidden="true" style={{ overflow: 'visible', display: 'block' }}>
-        <ellipse cx="50" cy="96" rx="26" ry="4" fill="rgba(0,0,0,0.25)" />
-        {/* antennae */}
-        <path d="M38 30 Q32 14 26 10 M62 30 Q68 14 74 10" stroke={INK} strokeWidth="3" fill="none" strokeLinecap="round" />
-        <circle cx="26" cy="10" r="6" fill="#FFC93C" stroke={INK} strokeWidth="2.5" />
-        <circle cx="74" cy="10" r="6" fill="#FFC93C" stroke={INK} strokeWidth="2.5" />
-        {/* the waving arm, behind the body */}
-        <motion.g animate={mood === 'idle' && !reduceMotion() ? { rotate: [0, -35, 0, -35, 0] } : { rotate: mood === 'happy' ? -50 : 0 }}
-          transition={{ duration: 1.4, repeat: mood === 'idle' ? Infinity : 0, repeatDelay: 1 }}
-          style={{ originX: '78px', originY: '62px' }}>
-          <path d="M76 62 Q92 52 94 36" stroke={INK} strokeWidth="10" fill="none" strokeLinecap="round" />
-          <path d="M76 62 Q92 52 94 36" stroke={color} strokeWidth="5.5" fill="none" strokeLinecap="round" />
-        </motion.g>
-        <path d="M24 62 Q10 70 10 82" stroke={INK} strokeWidth="10" fill="none" strokeLinecap="round" />
-        <path d="M24 62 Q10 70 10 82" stroke={color} strokeWidth="5.5" fill="none" strokeLinecap="round" />
-        {/* body */}
-        <path d="M50 26 C76 26 84 50 82 70 C80 88 68 94 50 94 C32 94 20 88 18 70 C16 50 24 26 50 26Z" fill={color} stroke={INK} strokeWidth="3.5" />
-        <ellipse cx="50" cy="78" rx="18" ry="11" fill="#fff" opacity="0.35" />
-        {/* eyes that blink */}
-        <g className="pl-blink">
-          <ellipse cx="39" cy="52" rx="9" ry="11" fill="#fff" stroke={INK} strokeWidth="2.5" />
-          <ellipse cx="61" cy="52" rx="9" ry="11" fill="#fff" stroke={INK} strokeWidth="2.5" />
-          <circle cx="41" cy="54" r="4.5" fill={INK} />
-          <circle cx="63" cy="54" r="4.5" fill={INK} />
-          <circle cx="42.5" cy="52" r="1.5" fill="#fff" />
-          <circle cx="64.5" cy="52" r="1.5" fill="#fff" />
-        </g>
-        {mood === 'oops'
-          ? <ellipse cx="50" cy="72" rx="5" ry="4" fill={INK} />
-          : <path d="M40 68 Q50 78 60 68" stroke={INK} strokeWidth="3" fill="none" strokeLinecap="round" />}
-        <circle cx="30" cy="64" r="4" fill="#FF6B9A" opacity="0.6" />
-        <circle cx="70" cy="64" r="4" fill="#FF6B9A" opacity="0.6" />
-      </svg>
+      <img src={customArtSrc('alien')} alt="" draggable={false}
+        style={{ width: size, height: size, display: 'block', objectFit: 'contain', filter: `hue-rotate(${ALIEN_HUE[color] ?? 0}deg) drop-shadow(0 4px 0 rgba(42,27,61,0.25))` }} />
     </motion.button>
   )
 }

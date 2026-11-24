@@ -18,10 +18,14 @@ import { EMOJI_ART, CUSTOM_ART } from './emojiArtList.js'
 const BASE = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '')
 const EMOJI = /:px-([a-z0-9-]+):|\p{Regional_Indicator}{2}|\p{Extended_Pictographic}️?\p{Emoji_Modifier}?(?:‍\p{Extended_Pictographic}️?\p{Emoji_Modifier}?)*/gu
 
+// Emoji drawn by one of the custom pictures (no picture of its own)
+const CUSTOM_FOR = { '🪣': 'eimer' }
+const customFor = e => CUSTOM_FOR[e.replace(/\uFE0F/g, '')]
+
 export const emojiCode    = e => [...e].filter(c => c !== '‍' && c !== '️').map(c => c.codePointAt(0).toString(16)).join('-')
-export const emojiSrc     = e => `${BASE}/sprites/emoji/${emojiCode(e)}.webp`
-export const hasEmojiArt  = e => EMOJI_ART.has(emojiCode(e))
 export const customArtSrc = name => `${BASE}/sprites/emoji/custom/${name}.webp`
+export const emojiSrc     = e => (customFor(e) ? customArtSrc(customFor(e)) : `${BASE}/sprites/emoji/${emojiCode(e)}.webp`)
+export const hasEmojiArt  = e => !!customFor(e) || EMOJI_ART.has(emojiCode(e))
 /** `:px-tisch:` -> 'tisch', anything else -> null */
 export const customName   = s => (typeof s === 'string' && /^:px-([a-z0-9-]+):$/.exec(s)?.[1]) || null
 

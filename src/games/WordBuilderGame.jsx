@@ -198,7 +198,7 @@ function TaskCard({ round, placed, glowNext, wide }) {
       <Art art={round.emoji} size={pic} />
       {round.kind === 'clap' ? (
         <div aria-label="Wie oft klatschen?" style={{ display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: pic * 0.6, color: '#2a1b3d' }}>
-          <Art art="👏" size={pic * 0.8} />?
+          <Art art=":px-klatschen:" size={pic * 0.8} />?
         </div>
       ) : (
         <div aria-label={round.syllables.join('-')} style={{ display: 'flex', gap: 4 }}>
@@ -502,7 +502,7 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
                     background: 'radial-gradient(circle at 40% 35%, #fff3b0, #ffc93c 70%)', border: '4px solid #2a1b3d',
                     boxShadow: '0 6px 0 rgba(42,27,61,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
-                  <Art art="👏" size={wide ? 70 : 58} />
+                  <Art art=":px-klatschen:" size={wide ? 70 : 58} />
                 </motion.button>
               </div>
             )}

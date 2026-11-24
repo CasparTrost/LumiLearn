@@ -1,14 +1,11 @@
 import { motion } from 'framer-motion'
+import { lumiArt } from '../lib/assets.js'
 
-// Lumi as the pixel sprite (same as in the maze and on the home screen).
-// Same API as the old SVG Lumi, so every game keeps calling it with a mood:
-// a cheering mood shows the beaming frame and bounces livelier.
-const BASE = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '')
-const CHEER = new Set(['happy', 'excited', 'encouraging'])
+// Lumi in its cartoon poses (lib/assets.js lumiArt). Same API as before, so
+// every screen keeps calling it with a mood; an excited Lumi bounces livelier.
 
 export default function LumiCharacter({ mood = 'happy', size = 120 }) {
-  const cheer = CHEER.has(mood) && mood !== 'happy'
-  const src = `${BASE}/sprites/maze/${cheer ? 'lumi_happy' : 'lumi_idle'}.png`
+  const src = lumiArt(mood === 'happy' ? 'idle' : mood)
   return (
     <motion.div
       animate={{ y: [0, -size * (mood === 'excited' ? 0.1 : 0.05), 0] }}
@@ -20,9 +17,8 @@ export default function LumiCharacter({ mood = 'happy', size = 120 }) {
         alt=""
         draggable={false}
         style={{
-          width: size, height: size, display: 'block', imageRendering: 'pixelated',
-          // sleepy: only a little paler — saturate(0.6) made Lumi look olive and ill
-          filter: mood === 'sleepy' ? 'saturate(0.85) brightness(0.96) drop-shadow(0 3px 0 rgba(42,27,61,0.3))' : 'drop-shadow(0 3px 0 rgba(42,27,61,0.3))',
+          width: size, height: size, display: 'block', objectFit: 'contain',
+          filter: 'drop-shadow(0 3px 0 rgba(42,27,61,0.3))',
         }}
       />
     </motion.div>
