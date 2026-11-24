@@ -130,6 +130,36 @@ async function playShadows(page) {
   await page.context().close()
 }
 
+// 3b. Zahlenland (Sternbilder): the stars of a level connected in order, one
+// wrong star on the way, to the results
+{
+  const page = await newPage(SIZES.phone, save)
+  await page.goto(URL); await page.waitForTimeout(1500)
+  await page.getByRole('button', { name: /^Zahlenland, Level/ }).last().click()
+  const game = page.locator('[data-module="numbers"] [data-phase]')
+  await page.locator('[data-star="next"]').waitFor({ timeout: 10000 }).catch(() => problems.push('Sternbilder: no stars'))
+  let missed = false
+  for (let i = 0; i < 400 && (await game.count()); i++) {
+    const phase = await game.getAttribute('data-phase').catch(() => null)
+    if (phase !== 'play') { await page.waitForTimeout(250); continue }
+    // once, after the second star: a wrong one wobbles and the line stays where it was
+    if (!missed && (await page.locator('[data-star="done"]').count()) === 2) {
+      missed = true
+      await page.locator('[data-star="todo"]').last().click(); await page.waitForTimeout(300)
+      if ((await page.locator('[data-star="done"]').count()) !== 2) problems.push('Sternbilder: a wrong star was connected')
+      continue
+    }
+    await page.locator('[data-star="next"]').click({ timeout: 3000 }).catch(() => {})
+    await page.waitForTimeout(120)
+  }
+  await page.waitForTimeout(2500)
+  const text = await page.evaluate(() => document.body.innerText)
+  if (!/3 von 4 gleich beim ersten Mal richtig/.test(text)) problems.push(`Sternbilder: results not as expected: ${text.slice(0, 120).replace(/\n/g, ' | ')}`)
+  await check(page, 'Sternbilder results')
+  problems.push(...page.errors.map(e => `Sternbilder: ${e}`))
+  await page.context().close()
+}
+
 // 4. Lumi's ideas for today: the last idea from the home screen, the
 // movement break the results suggest, the sticker, the album
 {
