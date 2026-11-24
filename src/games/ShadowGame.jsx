@@ -237,6 +237,34 @@ function CornerCat({ x, y, seen, size }) {
   )
 }
 
+// What a found thing does when the light goes on (about 1.5 s): animals
+// hop, sea creatures swim, things with wings fly up, vehicles drive off and
+// come back, instruments play, the rooster crows, the volcano rumbles.
+const ACT_OF = {
+  swim: ['🦈', '🐬', '🐳', '🦀', '🐙', '🦢', '🐊'],
+  fly: ['🦋', '🐝', '🦜', '🦅', '🚀', '✈️', '🚁', '🪁', '🎈'],
+  drive: ['🚂', '🚲', '🛴', '🚜', '⛵'],
+  music: ['🎸', '🎺', '🎻', '🥁'],
+  crow: ['🐓'],
+  crawl: ['🐌', '🐍', '🐢'],
+  rumble: ['🌋'],
+}
+const actOf = e => Object.keys(ACT_OF).find(k => ACT_OF[k].includes(e)) ?? 'hop'
+const ACTS = {
+  hop:    s => ({ animate: { y: [0, -s * 0.35, 0, -s * 0.2, 0, -s * 0.1, 0] }, duration: 1.4, sound: () => sfx.boing() }),
+  swim:   s => ({ animate: { x: [0, -s * 0.25, s * 0.25, -s * 0.15, 0], rotate: [0, -12, 12, -6, 0] }, duration: 1.5, sound: () => sfx.splash() }),
+  fly:    s => ({ animate: { y: [0, -s * 0.5, -s * 0.7, -s * 0.3, 0], rotate: [0, -8, 8, -4, 0] }, duration: 1.5, sound: () => sfx.whoosh() }),
+  drive:  (s, w) => ({ animate: { x: [0, w * 0.7, -w * 0.7, 0], opacity: [1, 0, 0, 1] }, times: [0, 0.4, 0.42, 1], duration: 1.7, sound: () => sfx.whoosh() }),
+  music:  () => ({ animate: { rotate: [0, -10, 10, -10, 10, 0], scale: [1, 1.1, 1, 1.1, 1, 1] }, duration: 1.5, sound: () => [0, 300, 600, 900].forEach((d, i) => setTimeout(() => sfx.drum(i % 2 === 0), d)) }),
+  crow:   s => ({ animate: { rotate: [0, -18, -18, -18, 0], y: [0, -s * 0.12, -s * 0.12, -s * 0.12, 0] }, duration: 1.4, sound: () => sfx.slideUp() }),
+  crawl:  s => ({ animate: { x: [0, s * 0.18, s * 0.18, 0], scaleX: [1, 1.12, 0.92, 1] }, duration: 1.6, sound: () => sfx.giggle() }),
+  rumble: () => ({ animate: { x: [0, -6, 6, -6, 6, -4, 4, 0], scale: [1, 1.04, 1, 1.06, 1, 1.04, 1, 1] }, duration: 1.4, sound: () => sfx.boing() }),
+}
+
+// Where the friends found earlier sit in the room: down the left and right
+// walls, out of the way. In the dark only their eyes glow and blink.
+const seatOf = k => ({ x: k % 2 ? 95 : 5, y: 22 + Math.min(5, Math.floor(k / 2)) * 12 })
+
 // A big round button with a picture
 function PicButton({ art, label, onClick }) {
   return (
@@ -266,6 +294,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
   const [found,      setFound]      = useState([])
   const [wave,       setWave]       = useState({ n: 0, upto: 0 })   // the friends hop (a run of right answers)
   const [catSeen,    setCatSeen]    = useState(false)
+  const [acting,     setActing]     = useState(false)   // the found thing does its act
   const paused      = usePaused()
   const firstTryRef = useRef(0)
   const streak      = useRef(0)
@@ -426,6 +455,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
     setHintUsed(false)
     setFlash(false)
     setCatSeen(false)
+    setActing(false)
   }, [solved, last, challenges.length, onComplete])
 
   // The payoff plays out in full (light on, colours back, a wave), then the
@@ -459,6 +489,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
     setFound(f => [...f, { emoji: ch.shadow, name: ch.name }])
     sfx.sparkle()
     later(() => setColored(true), 600)
+    later(() => { setActing(true); ACTS[actOf(ch.shadow)](shadowSize, card.w).sound() }, 900)
     later(() => { sfx.giggle(); burst(shadowRef.current, last ? 'confetti' : 'stars', last ? 20 : 10) }, 900)
     later(() => setShowNext(true), 800)
     if (streak.current >= 3) {
@@ -480,6 +511,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
 
   if (!ch) return null
   const dark = !solved && !fullLight && !flash
+  const act = ACTS[actOf(ch.shadow)](shadowSize, card.w)
 
   return (
     <DragArea autoTarget="room" disabled={solved || paused}>
@@ -531,14 +563,26 @@ export default function ShadowGame({ level = 1, onComplete }) {
                   transition={{ type: 'spring', stiffness: 140, damping: 16 }}
                   style={{ position: 'absolute', pointerEvents: 'none', lineHeight: 1, userSelect: 'none', zIndex: 3 }}
                 >
-                  {/* brightness(0) = pure black silhouette, coloured once found */}
-                  <motion.span ref={shadowRef}
-                    animate={{ filter: colored ? 'brightness(1)' : 'brightness(0)' }}
-                    transition={{ duration: 0.6, ease: 'easeInOut' }}
-                    style={{ fontSize: shadowSize, display: 'block', mixBlendMode: solved ? 'normal' : 'multiply' }}
-                  >
-                    {ch.shadow}
-                  </motion.span>
+                  {/* brightness(0) = pure black silhouette, coloured once found;
+                      then it does its act */}
+                  <motion.div animate={acting && !reduceMotion() ? act.animate : { x: 0, y: 0, rotate: 0, scale: 1, scaleX: 1, opacity: 1 }}
+                    transition={acting ? { duration: act.duration, times: act.times } : { duration: 0.2 }}>
+                    <motion.span ref={shadowRef}
+                      animate={{ filter: colored ? 'brightness(1)' : 'brightness(0)' }}
+                      transition={{ duration: 0.6, ease: 'easeInOut' }}
+                      style={{ fontSize: shadowSize, display: 'block', mixBlendMode: solved ? 'normal' : 'multiply' }}
+                    >
+                      {ch.shadow}
+                    </motion.span>
+                  </motion.div>
+                  {/* instruments play: notes float up */}
+                  {acting && actOf(ch.shadow) === 'music' && !reduceMotion() && [0, 1, 2].map(k => (
+                    <motion.div key={k} aria-hidden="true" initial={{ y: 0, opacity: 0 }} animate={{ y: -shadowSize * 0.9, x: (k - 1) * shadowSize * 0.3, opacity: [0, 1, 0] }}
+                      transition={{ duration: 1.3, delay: k * 0.3 }}
+                      style={{ position: 'absolute', left: '40%', top: '10%' }}>
+                      <Art art="🎵" size={Math.round(shadowSize * 0.28)} />
+                    </motion.div>
+                  ))}
                   {/* found: it thinks of its fun fact, as a picture */}
                   {colored && ch.see && (
                     <motion.div aria-hidden="true" initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
@@ -584,7 +628,24 @@ export default function ShadowGame({ level = 1, onComplete }) {
                       style={{ position:'absolute', inset:0, pointerEvents:'none', zIndex:10, background:'rgb(6,0,15)' }} />
                   )}
                 </AnimatePresence>
-                {dark && spot.cat && <CornerCat x={spot.cat.x} y={spot.cat.y} seen={catSeen} size={Math.round(Math.min(90, card.h * 0.22))} />}
+                {/* the friends found earlier: glowing eyes in the dark, sitting there in the light */}
+                {!(last && colored) && found.slice(0, solved ? -1 : undefined).map((f, k) => {
+                  const { x, y } = seatOf(k)
+                  const sz = Math.round(Math.min(44, card.h * 0.11))
+                  return (
+                    <div key={f.emoji} aria-hidden="true" style={{ position:'absolute', left:`${x}%`, top:`${y}%`, transform:'translate(-50%, -50%)', zIndex: dark ? 11 : 4, pointerEvents:'none' }}>
+                      {dark
+                        ? <svg viewBox="0 0 40 14" width={sz * 0.6} height={sz * 0.21} className="pl-blink" style={{ display:'block', animationDelay:`${-k * 0.7}s` }}>
+                            <ellipse cx="10" cy="7" rx="6" ry="5" fill="#bfe8ff" /><ellipse cx="30" cy="7" rx="6" ry="5" fill="#bfe8ff" />
+                            <circle cx="10" cy="7" r="2.4" fill="#2a1b3d" /><circle cx="30" cy="7" r="2.4" fill="#2a1b3d" />
+                          </svg>
+                        : <motion.div initial={{ scale: 0.6 }} animate={reduceMotion() ? { scale: 1 } : { scale: 1, y: [0, -8, 0] }} transition={{ duration: 0.5, delay: 0.6 + k * 0.06 }}>
+                            <Art art={f.emoji} size={sz} />
+                          </motion.div>}
+                    </div>
+                  )
+                })}
+                {dark && spot.cat && found.length <= 4 && <CornerCat x={spot.cat.x} y={spot.cat.y} seen={catSeen} size={Math.round(Math.min(90, card.h * 0.22))} />}
                 {dark && (
                   <div ref={torchRef} aria-hidden="true"
                     style={{ position:'absolute', left:0, top:0, zIndex:11, opacity:0, pointerEvents:'none', transformOrigin:'50% 50%', filter:'drop-shadow(0 4px 4px rgba(0,0,0,0.5))' }}>
@@ -620,15 +681,14 @@ export default function ShadowGame({ level = 1, onComplete }) {
                       initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:8 }}
                       transition={{ delay: 0.5 }}
                       style={{
-                        position:'absolute', bottom:8, left:'4%', width:'92%', zIndex:12, boxSizing:'border-box',
-                        display:'flex', alignItems:'center', justifyContent:'center', gap:12,
-                        background:'rgba(255,253,247,0.92)', border:`3px solid ${INK}`, borderRadius:14,
-                        boxShadow:'0 4px 0 rgba(42,27,61,0.35)', padding:'6px 8px 6px 14px',
-                        fontFamily:'var(--font-body)', fontWeight:700, fontSize:'clamp(13px,2vw,16px)', lineHeight:1.25,
-                        color:INK, textAlign:'center',
+                        position:'absolute', bottom:6, left:'4%', width:'92%', zIndex:12, boxSizing:'border-box',
+                        display:'flex', alignItems:'center', justifyContent:'flex-end', gap:10,
+                        padding:'2px 2px 2px 10px',
+                        fontFamily:'var(--font-body)', fontWeight:700, fontSize:'clamp(11px,1.6vw,13px)', lineHeight:1.2,
+                        color:'rgba(42,27,61,0.75)', textAlign:'left',
                       }}
                     >
-                      <span style={{ flex:1 }}>{ch.fact}</span>
+                      <span style={{ flex:1, background:'rgba(255,253,247,0.8)', borderRadius:8, padding:'3px 8px' }}>{ch.fact}</span>
                       {showNext && <PicButton art={last ? '🏁' : '➡️'} label={last ? 'Fertig' : 'Weiter'} onClick={goOn} />}
                     </motion.div>
                   )}

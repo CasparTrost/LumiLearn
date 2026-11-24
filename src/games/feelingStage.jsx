@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, useAnimationControls } from 'framer-motion'
 import { Critter, Art, Wish, DropZone } from '../components/play/index.js'
 import { afterNarration } from '../narrator.js'
 import { usePaused } from '../lib/pause.js'
@@ -314,7 +314,7 @@ const PEOPLE = {
 // people who have a sitting picture (legs bent over a seat)
 const SITS = new Set(['maedchen'])
 /** A cast entry with its person drawn whole: [art, size] */
-function asPerson(art, size, sit) {
+export function asPerson(art, size, sit) {
   const p = PEOPLE[art]
   if (!p) return [art, size, false]
   return [`:px-mensch-${p[0]}${sit && SITS.has(p[0]) ? '-sitzt' : ''}:`, Math.round(size * p[1]), true]
@@ -335,10 +335,12 @@ function Actor({ art, feel, size, flip, label, whole }) {
 
 /** A thing on the stage: a tap makes it wobble with a boing. */
 function Thing({ art, size, flip }) {
-  const [n, setN] = useState(0)
+  // animation controls, not a remount: a remount on pointerdown dropped the
+  // click that followed (tapping a thing to make a story page happen)
+  const controls = useAnimationControls()
   return (
-    <motion.div key={n} animate={n ? { rotate: [0, -12, 10, -5, 0], scale: [1, 1.15, 1] } : {}} transition={{ duration: 0.5 }}
-      onPointerDown={() => { sfx.boing(); setN(k => k + 1) }}
+    <motion.div animate={controls}
+      onPointerDown={() => { sfx.boing(); if (!reduceMotion()) controls.start({ rotate: [0, -12, 10, -5, 0], scale: [1, 1.15, 1], transition: { duration: 0.5 } }) }}
       style={{ width: size, height: size, cursor: 'pointer', transform: flip ? 'scaleX(-1)' : undefined }}>
       <Art art={art} size={size} />
     </motion.div>
@@ -362,6 +364,7 @@ function act(c, s) {
     case 'out':   return { initial: { x: 0 }, animate: { x: offR + 60, y: [0, -12, 0, -12, 0], transitionEnd: { visibility: 'hidden' } }, transition: { duration: 1.4, delay: d, ease: 'easeIn' } }
     case 'visit': return { initial: { x: offR }, animate: { x: [offR, 0, 0, offR + 60], transitionEnd: { visibility: 'hidden' } }, transition: { duration: 2.6, times: [0, 0.3, 0.65, 1], delay: d } }
     case 'grab':  return { initial: { x: 0 }, animate: { x: [0, 0, c.to - x, offR + 60], transitionEnd: { visibility: 'hidden' } }, transition: { duration: 2.6, times: [0, 0.35, 0.45, 1], delay: d } }
+    case 'pass':  return { initial: { x: 0, y: 0 }, animate: { x: [0, c.to - x, 0, c.to - x, 0], y: [0, -60, 0, -60, 0, -60, 0, -60, 0] }, transition: { duration: 2, delay: d, ease: 'easeInOut' } }
     case 'give':  return { initial: { x: 0, y: 0 }, animate: { x: c.to - x, y: [0, -50, 0] }, transition: { duration: 0.9, delay: d } }
     case 'up':    return { initial: { y: 0 }, animate: { y: -(H + y + s), x: [0, -14, 12, -8, 6], transitionEnd: { visibility: 'hidden' } }, transition: { duration: 3.2, delay: d, ease: 'easeIn' } }
     case 'fall':  return { initial: { y: 0, rotate: 0 }, animate: { y: [0, -14, y], rotate: [0, -12, 110], scaleY: [1, 1, 0.75] }, transition: { duration: 0.8, delay: d, ease: 'easeIn' } }
@@ -425,6 +428,10 @@ function Fx({ kind }) {
       ))}
     </div>
   )
+  if (kind === 'glow') return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: [0, 1, 0.7] }} transition={{ duration: 1.2, delay: 1 }}
+      style={{ ...frame, background: 'radial-gradient(ellipse at 50% 40%, rgba(255,240,150,.75), rgba(255,240,150,0) 70%)' }} />
+  )
   if (kind === 'spot') return (
     <div style={{ ...frame, background: 'radial-gradient(ellipse 120px 220px at 170px 230px, rgba(255,240,180,.25), rgba(20,10,40,.7) 100%)' }} />
   )
@@ -440,7 +447,7 @@ function Fx({ kind }) {
  * after something happened ({ 2: 'happy' }), `tint` greys someone out
  * ({ 2: 0.3 }: saturation) until the colour comes back.
  */
-export function Stage({ lumi, cast = [], fx, drop, bubbles = {}, looks = {}, tint = {}, playKey, children, minHeight = 230 }) {
+export function Stage({ lumi, cast = [], fx, drop, tap, bubbles = {}, looks = {}, tint = {}, playKey, children, minHeight = 230 }) {
   const box = useRef(null)
   // On a tall screen (phone, tablet upright) the scene moves closer
   // together instead of shrinking: things keep their size, the gaps narrow.
@@ -471,6 +478,15 @@ export function Stage({ lumi, cast = [], fx, drop, bubbles = {}, looks = {}, tin
   // (on a phone a prop at the right end was a few pixels off the screen)
   const inside = (x, size) => Math.max(W / 2 - vis / 2 + size / 2 + 4, Math.min(W / 2 + vis / 2 - size / 2 - 4, x))
 
+  // `tap`: { who, onTap } — someone to tap to make the scene happen; it
+  // wiggles and glows until it is tapped
+  const wrapTap = (who, node, size) => (tap && tap.who === who
+    ? <motion.div data-tap-actor="" role="button" tabIndex={0} aria-label={tap.label} onClick={tap.onTap}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') tap.onTap() }}
+        animate={reduceMotion() ? {} : { rotate: [0, -6, 6, -4, 0], scale: [1, 1.06, 1] }} transition={{ duration: 0.9, repeat: Infinity, repeatDelay: 0.8 }}
+        style={{ cursor: 'pointer', width: size, borderRadius: '50%', filter: 'drop-shadow(0 0 10px rgba(255,201,60,.95))', transformOrigin: '50% 100%' }}>{node}</motion.div>
+    : node)
+
   const wrapDrop = (who, node, size) => (drop && drop.who === who
     ? <DropZone id={drop.id ?? 'stage-target'} onDrop={drop.onDrop} label={drop.label} slop={40}>
         {hover => <motion.div animate={{ scale: hover ? 1.1 : 1, y: hover ? -6 : 0 }} style={{ position: 'relative', width: size }}>{node}</motion.div>}
@@ -497,11 +513,11 @@ export function Stage({ lumi, cast = [], fx, drop, bubbles = {}, looks = {}, tin
             ? <Actor art={c.a} feel={feel} size={s} flip={c.flip} label={c.label} whole={c.whole} />
             : <Thing art={c.a} size={s} flip={c.flip} />)
           return (
-            <div key={i} style={{ position: 'absolute', left: c.x - s / 2, bottom: GROUND + (c.y ?? 0), width: s, height: s, zIndex: c.z ?? 1, transform: c.rot ? `rotate(${c.rot}deg)` : undefined }}>
+            <div key={i} style={{ position: 'absolute', left: c.x - s / 2, bottom: GROUND + (c.y ?? 0), width: s, height: s, zIndex: tap?.who === i ? 4 : c.z ?? 1, transform: c.rot ? `rotate(${c.rot}deg)` : undefined }}>
               <motion.div {...m} style={{ width: s, height: s, position: 'relative' }}>
                 {c.act === 'down' && <div style={{ position: 'absolute', left: '50%', bottom: '80%', width: 2, height: H, background: '#4a3a6b' }} />}
                 <div style={{ filter: tint[i] != null ? `saturate(${tint[i]})` : undefined, transition: 'filter .9s' }}>
-                  {wrapDrop(i, body, s)}
+                  {wrapTap(i, wrapDrop(i, body, s), s)}
                 </div>
                 {c.say && <Wish size={s * 0.8} side={c.x > W / 2 ? 'left' : 'right'} style={{ fontSize: 20 }}><Said say={c.say} /></Wish>}
                 {bubble(i, s)}
@@ -518,9 +534,11 @@ export function Stage({ lumi, cast = [], fx, drop, bubbles = {}, looks = {}, tin
               <motion.div {...m} style={{ position: 'relative', width: s }}>
                 {/* `pulse`: a new number makes Lumi swell and settle once (a breath, a hug) */}
                 <motion.div key={lumi.pulse ?? 0} animate={lumi.pulse ? { scale: [1, 1.2, 1] } : {}} transition={{ duration: 1, ease: 'easeInOut' }} style={{ transformOrigin: '50% 100%' }}>
-                  {wrapDrop('lumi', <FeelLumi feel={lumi.feel} strength={lumi.strength} size={s} flip={lumi.flip} />, s)}
+                  {wrapTap('lumi', wrapDrop('lumi', <FeelLumi feel={lumi.feel} strength={lumi.strength} size={s} flip={lumi.flip} />, s), s)}
                 </motion.div>
                 {lumi.say && <Wish size={s * 0.7} side="right" style={{ fontSize: 20 }}><Said say={lumi.say} /></Wish>}
+                {/* `hold`: something at Lumi's mouth or hand (a balloon being blown up) */}
+                {lumi.hold && <div style={{ position: 'absolute', left: s * 0.72, bottom: s * 0.32, pointerEvents: 'none' }}>{lumi.hold}</div>}
                 {bubble('lumi', s)}
               </motion.div>
             </div>
@@ -651,7 +669,7 @@ export function AskFace({ size = 44, art }) {
 
 // How long the moves of a scene take, in ms: the child acts once it has played
 const ACT_MS = { drop: 900, in: 1300, inL: 1300, out: 1400, visit: 2600, grab: 2600, give: 900, up: 2200, fall: 800, topple: 1300,
-  bang: 500, down: 2000, grow: 1200, sweep: 2400, zoom: 1800, sink: 1400, jack: 700, scribble: 2700, flicker: 1200 }
+  bang: 500, down: 2000, grow: 1200, pass: 2000, sweep: 2400, zoom: 1800, sink: 1400, jack: 700, scribble: 2700, flicker: 1200 }
 const LUMI_MS = { in: 1400, run: 1100, stumble: 2200, climb: 1800, away: 2000 }
 export function sceneLength(cast = [], lumi) {
   if (reduceMotion()) return 600

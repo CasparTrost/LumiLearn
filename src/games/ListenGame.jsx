@@ -18,10 +18,13 @@ import { pxButton, INK } from './px.js'
  * Schild, und Lumi zeigt das Bild dessen, was gesucht wird.
  *
  * Solange ein Wort noch nicht aufgenommen ist (buchstaben/voice.js), wird
- * aus dem Hören ein Merken: Alle zeigen sich kurz ganz, dann verstecken sie
- * sich, und erst jetzt zeigt Lumi, wer gesucht wird — wo hat es sich
- * versteckt? Je höher das Level, desto kürzer der Blick (SHOW_MS), dazu
- * kommen mehr Büsche und ähnliche Dinge. Sobald das Wort aufgenommen ist,
+ * aus dem Hören ein Merken: Alle zeigen sich ganz, und das Kind versteckt
+ * sie selbst — jedes, das es antippt, taucht raschelnd in seinen Busch.
+ * Erst dann zeigt Lumi, wer gesucht wird: Wo hat es sich versteckt? Wer
+ * trödelt, dem verstecken sie sich nach einer Weile von selbst; je höher
+ * das Level, desto eher (SHOW_MS), dazu kommen mehr Büsche und ähnliche
+ * Dinge. Beim Suchen streckt ab und zu ein freches Eichhörnchen den Kopf aus
+ * einem Busch — nur Spaß, es ist nie die Antwort und zeigt auf keine. Sobald das Wort aufgenommen ist,
  * ist es wieder das Hörspiel. Die Lese-Levels (8–10) brauchen keine Stimme;
  * ein Buch in Lumis Sprechblase zeigt, dass hier gelesen wird.
  *
@@ -171,17 +174,45 @@ export default function ListenGame({ level = 1, onComplete }) {
   const memory = !isReading && !heard
   const party = done && !tried.length && streak >= 3
   const [hiddenAt, setHiddenAt] = useState(-1)   // the round whose things have hidden
+  const [tuckedIn, setTucked] = useState({ i: -1, words: [] })   // hidden by the child, this round
+  const tucked = tuckedIn.i === idx ? tuckedIn.words : []
   const looking = memory && hiddenAt !== idx
+  const hideRef = useRef(null)    // the first thing still out, for the hint hand
+  // whoever dawdles: they hide by themselves after a while
   useEffect(() => {
     if (!looking || paused) return
-    const t = setTimeout(() => { sfx.slideDown(); setHiddenAt(idx) }, 700 + SHOW_MS[Math.min(level, SHOW_MS.length) - 1])
+    const t = setTimeout(() => { sfx.slideDown(); setHiddenAt(idx) }, 2700 + SHOW_MS[Math.min(level, SHOW_MS.length) - 1])
     return () => clearTimeout(t)
   }, [looking, paused, idx, level])
+  // all hidden by the child: now the search
+  useEffect(() => {
+    if (!looking || !round || tucked.length < round.options.length) return
+    const t = setTimeout(() => setHiddenAt(idx), 500)
+    return () => clearTimeout(t)
+  }, [looking, tucked.length, round, idx])
+
+  const tuck = (opt) => {
+    if (tucked.includes(opt.word)) return
+    sfx.slideDown()
+    setTucked({ i: idx, words: [...tucked, opt.word] })
+  }
+
+  // The cheeky squirrel: now and then, while the child searches, it pokes
+  // its head out of a random bush, sticks out its tongue and ducks again.
+  const searching = !looking && !done && !leaving && !finale
+  const [cheeky, setCheeky] = useState(null)   // { at: bush index, n }
+  useEffect(() => {
+    if (!searching || paused || reduceMotion()) return
+    const t = setTimeout(() => setCheeky(c => ({ at: Math.floor(Math.random() * round.options.length), n: (c?.n ?? 0) + 1 })), 3500 + Math.random() * 3000)
+    return () => clearTimeout(t)
+  }, [searching, paused, cheeky, round])
+  useEffect(() => { setCheeky(null) }, [idx])
 
   useEffect(() => { if (finale) burst(rowRef.current, 'confetti', 18) }, [finale, burst])
 
   const pick = (opt, el) => {
-    if (looking || isOver() || hasTried(opt.word)) return
+    if (looking) { tuck(opt); return }
+    if (isOver() || hasTried(opt.word)) return
     if (opt.word === current.word) {
       const streaky = !tried.length && streak + 1 >= 3
       win(streaky ? 2300 : 1900)
@@ -247,17 +278,20 @@ export default function ListenGame({ level = 1, onComplete }) {
           const state = finale ? 'out'
             : (done && isAns) ? 'out'
             : tried.includes(opt.word) ? 'tried'
-            : looking ? 'show'
+            : looking && !tucked.includes(opt.word) ? 'show'
             : (done || leaving || isReading || memory) ? 'hide' : 'peek'
           return (
-            <HideBush key={`${idx}-${opt.word}`} gapRef={i === 0 ? gapRef : null} i={i} n={round.options.length} item={opt} state={state} sign={isReading ? opt.word : null}
-              disabled={done || looking || tried.includes(opt.word)} bird={isAns && round.bird} party={isAns && party}
+            <HideBush key={`${idx}-${opt.word}`} gapRef={i === 0 ? gapRef : null}
+              tapRef={looking && opt.word === round.options.find(o => !tucked.includes(o.word))?.word ? hideRef : null}
+              cheeky={searching && cheeky?.at === i ? cheeky.n : 0} i={i} n={round.options.length} item={opt} state={state} sign={isReading ? opt.word : null}
+              disabled={done || tried.includes(opt.word) || (looking && tucked.includes(opt.word))} bird={isAns && round.bird} party={isAns && party}
               label={isReading ? opt.word : `Busch ${i + 1}`}
               onTap={el => pick(opt, el)} />
           )
         })}
       </div>
-      <HintHand to={gapRef} active={!done && !leaving && !looking} delay={hintDelay(idx)} />
+      {/* show phase: the hand taps a thing to hide it; then it taps between the bushes */}
+      <HintHand key={looking ? 'hide' : 'find'} to={looking ? hideRef : gapRef} active={!done && !leaving && !finale} delay={looking ? (idx === 0 ? 1200 : 3000) : hintDelay(idx)} />
       {bursts}
     </div>
   )
@@ -267,9 +301,9 @@ export default function ListenGame({ level = 1, onComplete }) {
  * A bush with something hiding behind it. state: peek (the top shows and
  * bobs), show (all of it out, waving: look at me!), hide (all of it behind
  * the leaves), out (hops out and cheers), tried (a wrong guess: it shows
- * itself and shrugs).
+ * itself and shrugs). `cheeky` (a counter): the squirrel pokes out once.
  */
-function HideBush({ gapRef, i, n, item, state, sign, disabled, bird, party, label, onTap }) {
+function HideBush({ gapRef, tapRef, cheeky, i, n, item, state, sign, disabled, bird, party, label, onTap }) {
   // on a phone four bushes stand two by two, so none gets too small to hit
   const narrow = typeof window !== 'undefined' && window.innerWidth < 600
   const width = narrow && n !== 3 ? 'calc(50% - 8px)' : `calc((100% - ${(n - 1) * 16}px) / ${n})`
@@ -298,6 +332,19 @@ function HideBush({ gapRef, i, n, item, state, sign, disabled, bird, party, labe
       }}>
       {/* between the first bush and the next: the hint hand taps here, never on one answer */}
       {gapRef && <span ref={gapRef} aria-hidden="true" style={{ position: 'absolute', right: -9, bottom: '30%', width: 2, height: 2 }} />}
+      {tapRef && <span ref={tapRef} aria-hidden="true" style={{ position: 'absolute', left: '50%', top: '10%', width: 2, height: 2 }} />}
+      {/* the cheeky squirrel, out of the side of the bush */}
+      {cheeky > 0 && (
+        <motion.div key={cheeky} aria-hidden="true" initial={{ y: 30, opacity: 0, rotate: 0 }}
+          animate={{ y: [30, -18, -18, -18, 30], opacity: [0, 1, 1, 1, 0], rotate: [0, -12, 10, -12, 0] }}
+          transition={{ duration: 1.6, times: [0, 0.2, 0.5, 0.8, 1] }}
+          onAnimationStart={() => sfx.giggle()}
+          style={{ position: 'absolute', right: '-4%', top: '22%', width: '34%', zIndex: 0, pointerEvents: 'none' }}>
+          <Art art="🐿️" size={60} style={{ width: '100%', height: 'auto' }} />
+          <motion.span animate={{ scaleY: [0, 0, 1, 1, 0] }} transition={{ duration: 1.6, times: [0, 0.25, 0.35, 0.75, 0.85] }}
+            style={{ position: 'absolute', left: '30%', top: '58%', width: 10, height: 12, borderRadius: '0 0 6px 6px', background: '#ff7a9a', border: `2px solid ${INK}`, borderTop: 'none', transformOrigin: '50% 0' }} />
+        </motion.div>
+      )}
       {/* the thing, behind the leaves */}
       <motion.div initial={{ y: '15%' }} animate={thing} transition={tt}
         style={{ position: 'absolute', left: '18%', width: '64%', bottom: '14%', aspectRatio: '1', display: 'flex', justifyContent: 'center' }}>

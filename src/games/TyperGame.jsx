@@ -6,7 +6,7 @@ import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
 import { Art, Wish, RoundTrail, HintHand, useBursts } from '../components/play/index.js'
-import { Cauldron, WitchLumi, Puff, Alive, useFliers } from './kessel/Cauldron.jsx'
+import { Cauldron, WitchLumi, Puff, Alive, Firefly, Hill, useFliers } from './kessel/Cauldron.jsx'
 import { voice, KEY } from './woerter/voice.js'
 import Finale from './woerter/Finale.jsx'
 import { INK, pxCard } from './px.js'
@@ -243,12 +243,16 @@ function useAct() {
  * in (a splash, the potion changes colour), wrong ones are coughed back out,
  * and the finished word comes alive. The running gag: now and then Lumi's
  * hat jumps off, or the cauldron burps; a run of words conjured at once
- * makes the payoff bigger.
+ * makes the payoff bigger. Everything conjured stays on the hill next to
+ * the cauldron (`zoo`) and jumps when the next word is done (`cheer`).
  */
 function useKessel() {
   const [lumi, act] = useAct()
   const [cough, setCough] = useState(false)
   const [splash, setSplash] = useState(0)
+  const [zoo, setZoo] = useState([])
+  const [cheer, setCheer] = useState(0)
+  const wandRef = useRef(null)
   const [fliers, fly] = useFliers()
   const [bursts, burst] = useBursts()
   const mouthRef = useRef(null)
@@ -262,6 +266,22 @@ function useKessel() {
     act('stir', 500)
     later(() => { setSplash(n => n + 1); sfx.pop() }, 480)
   }
+  // The falling letter: a star shoots from Lumi's wand, zaps it, and the
+  // letter flies into the pot
+  const zapIn = (starEl, char, keyEl) => {
+    const r = starEl.getBoundingClientRect()
+    const rect = { left: r.left, top: r.top, width: r.width, height: r.height }
+    fly(wandRef.current, rect, null, true, 'zap')
+    act('zap', 400)
+    if (keyEl) burst(keyEl, 'stars', 5)
+    sfx.whoosh()
+    later(() => {
+      sfx.sparkle()
+      burst({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }, 'stars', 10)
+      fly(rect, mouthRef.current, char, true)
+    }, 260)
+    later(() => { setSplash(n => n + 1); sfx.pop() }, 740)
+  }
   const letterOut = (fromEl, char) => {
     fly(fromEl, mouthRef.current, char, false)
     later(() => { sfx.burp(); setCough(true); act('cough', 800) }, 480)
@@ -269,6 +289,7 @@ function useKessel() {
   }
   const wordDone = (streak) => {
     sfx.tada()
+    setCheer(c => c + 1)
     later(() => sfx.sparkle(), 400)
     if (streak >= 3) later(() => { if (mouthRef.current) burst(mouthRef.current, 'confetti', 18) }, 350)
     if (Math.random() < 0.35) {
@@ -279,7 +300,9 @@ function useKessel() {
   }
   const tickle = () => { sfx.giggle(); act('stir', 500) }
   const stir = () => { sfx.pop(); setSplash(n => n + 1) }
-  return { lumi, cough, splash, fliers, bursts, mouthRef, letterIn, letterOut, wordDone, tickle, stir }
+  // the conjured thing walks over to the hill
+  const keep = word => setZoo(z => [...z, { art: WORDS[word], move: MOVE_OF[word] ?? 'hop' }])
+  return { lumi, cough, splash, fliers, bursts, mouthRef, wandRef, zoo, cheer, letterIn, zapIn, letterOut, wordDone, keep, tickle, stir }
 }
 
 /**
@@ -325,7 +348,7 @@ function KesselStage({ word, typed, done, streak, k, lumiSize, potW }) {
     // the wish over Lumi's hat stands higher than the cauldron: room for it
     <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'center', gap:'clamp(10px,3vw,44px)', flexShrink:0,
       marginTop: Math.max(potW * 0.2, lumiSize * 2.15 - potW * 0.92) }}>
-      <WitchLumi size={lumiSize} act={k.lumi.act} beat={k.lumi.beat} onTap={k.tickle}
+      <WitchLumi size={lumiSize} act={k.lumi.act} beat={k.lumi.beat} onTap={k.tickle} wandRef={k.wandRef}
         wish={!done && (
           <Wish side="top" size={lumiSize}>
             <motion.div key={word} initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type:'spring', stiffness: 300, damping: 12 }}>
@@ -434,6 +457,7 @@ function FallingLettersGame({ level, onComplete }) {
 
   const nextWord = useCallback(() => {
     const nextIdx = wIdx + 1
+    k.keep(word)
     if (nextIdx >= words.length) { setFinale(true); return }
     setWIdx(nextIdx)
     setTyped(0)
@@ -447,7 +471,7 @@ function FallingLettersGame({ level, onComplete }) {
     setLetterY(-10)
     setCompleting(false)
     completingRef.current = false
-  }, [wIdx, words.length])
+  }, [wIdx, words.length, word, k])
   const advance = useAdvance(nextWord, paused)
 
   const finishWord = useCallback((helped) => {
@@ -510,8 +534,9 @@ function FallingLettersGame({ level, onComplete }) {
       sayWrong()
       return
     }
-    // the falling star itself is caught by the cauldron
-    k.letterIn(starRef.current ?? el, char, el)
+    // Lumi zaps the falling letter into the cauldron
+    if (starRef.current) k.zapIn(starRef.current, char, el)
+    else k.letterIn(el, char, el)
     const newTyped = typed + 1
     setTyped(newTyped)
     setMisses(0)
@@ -567,6 +592,8 @@ function FallingLettersGame({ level, onComplete }) {
             transition={{ rotate: { duration: 0.9, repeat: Infinity, repeatType: 'reverse' } }}
           >
             {targetChar}
+            {/* it rides a firefly */}
+            <div style={{ position:'absolute', top:-28, left:'50%', marginLeft:-24 }}><Firefly size={48} /></div>
           </motion.div>
         )}
         <AnimatePresence>
@@ -580,6 +607,7 @@ function FallingLettersGame({ level, onComplete }) {
 
       <Slots word={word} typed={typed} nudge={misses > 0} />
       <KesselStage word={word} typed={typed} done={completing} streak={streak} k={k} lumiSize={90} potW={190} />
+      <Hill items={k.zoo} cheer={k.cheer} size={34} height={50} />
 
       <Keyboard word={word} hint={showHint && !completing ? targetChar : null} onKey={handleChar} />
       <HintHand from={first ? starRef : null} to={keyRef} active={!completing && !finale && (first || showHint)} delay={first ? 2000 : 300} />
@@ -660,10 +688,11 @@ function StaticTyperGame({ level, onComplete }) {
   }, [wIdx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const nextWord = useCallback(() => {
+    k.keep(word)
     if (wIdx + 1 >= words.length) { setFinale(true); return }
     setWIdx(i => i + 1)
     setTyped('')
-  }, [wIdx, words.length])
+  }, [wIdx, words.length, word, k])
   const advance = useAdvance(nextWord, paused)
 
   // Word complete: puff, the thing comes alive, and the next word once the
@@ -693,6 +722,7 @@ function StaticTyperGame({ level, onComplete }) {
         <Slots word={word} typed={typed.length} nudge={misses > 0} currentRef={slotRef} />
         <KesselStage word={word} typed={typed.length} done={finished} streak={streak} k={k}
           lumiSize={narrow ? 86 : 120} potW={narrow ? 196 : 250} />
+        <Hill items={k.zoo} cheer={k.cheer} size={narrow ? 32 : 40} height={narrow ? 50 : 60} />
       </div>
 
       <Keyboard word={word} hint={hintOn && !finished ? nextChar : null} onKey={handleKey} pictures />

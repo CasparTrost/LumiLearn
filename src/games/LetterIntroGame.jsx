@@ -17,8 +17,10 @@ import { pxButton, INK } from './px.js'
  * zeigt es, wie es klingt: "A" und ein Affe. Es hat Hunger, aber nur auf
  * Dinge, die so anfangen wie sein Laut. Das Kind füttert es: ziehen oder
  * antippen. Ein falsches Ding spuckt es wieder aus ("Bäh!") und zeigt
- * daran dessen Buchstaben; ein richtiges mampft es, und es landet in der
- * Sprechblase bei den anderen. Gelernt wird dasselbe wie vorher: Buchstabe,
+ * daran dessen Buchstaben, und es fliegt in die Ecke, wo es für den Rest des
+ * Levels liegen bleibt; ein richtiges mampft es, und es landet in der
+ * Sprechblase bei den anderen. Satte Monster gehen nicht weg: Sie stellen
+ * sich in eine Reihe am Waldrand, die über das Level wächst. Gelernt wird dasselbe wie vorher: Buchstabe,
  * Laut und Wörter mit diesem Anlaut.
  */
 
@@ -113,11 +115,15 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
   const speaking = useSpeaking()
   const monsterRef = useRef(null)
   const gapRef = useRef(null)
+  const rootRef = useRef(null)
 
   const [readyAt, setReadyAt] = useState(-1)    // the round whose task has been said
   const [eatenIn, setEaten]   = useState(null)  // { i, opt }: the right thing of round i, eaten
   const [spit,    setSpit]    = useState(null)  // a wrong thing, flying back out
   const [shout,   setShout]   = useState(0)     // tickled: it shows its letter
+  const [lineup,  setLineup]  = useState([])    // the fed monsters, in a row at the forest edge
+  const [pile,    setPile]    = useState([])    // spat-out things, stuck in the corners for the level
+  const [cheers,  setCheers]  = useState(0)     // the row wiggles each time a monster eats
 
   // The example and the sound ("A wie Affe." "Ah"), once Lumi has recorded
   // them. Until it is said, nothing can be fed: whoever fed at once cut the
@@ -139,12 +145,34 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
 
   // a new monster starts calm, whatever the last one was doing
   useEffect(() => { setMood('idle'); setSpit(null) }, [idx, setMood])
+  // a fed monster hops into the row (at the end of the level, too)
+  useEffect(() => {
+    if (!(leaving || finale) || !q) return
+    setLineup(l => (l.some(m => m.i === idx) ? l : [...l, { i: idx, letter: lower ? q.letter.toLowerCase() : q.letter, color: colorOf(q.letter) }]))
+  }, [leaving, finale]) // eslint-disable-line react-hooks/exhaustive-deps
   // the end of the level: one more dance and confetti
   useEffect(() => {
     if (!finale) return
     setMood('dance', 1800)
     burst(monsterRef.current, 'confetti', 18)
   }, [finale, setMood, burst])
+
+  // A spat-out thing flies from the monster's mouth into a corner, where it
+  // stays: left, right, left … one under the other, in game units (FitBox).
+  const spitOut = (opt) => {
+    const root = rootRef.current, m = monsterRef.current
+    if (!root || !m) return
+    const rr = root.getBoundingClientRect(), mr = m.getBoundingClientRect()
+    const k = rr.width / root.offsetWidth || 1
+    setPile(list => {
+      const n = list.length, right = n % 2 === 1, row = Math.floor(n / 2) % 6
+      const tx = right ? root.offsetWidth - 58 - (row % 2) * 26 : 10 + (row % 2) * 26
+      return [...list, {
+        id: n, e: opt.e, tx, ty: 92 + row * 38, rot: (n * 37 % 50) - 25,
+        sx: (mr.left + mr.width / 2 - rr.left) / k - 24, sy: (mr.top + mr.height * 0.55 - rr.top) / k - 24,
+      }]
+    })
+  }
 
   const munch = (then) => {
     setMood('eat', 900)
@@ -156,6 +184,7 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
     if (isOver() || hasTried(opt)) return false
     if (opt === q.correct) {
       setEaten({ i: idx, opt })
+      setTimeout(() => setCheers(c => c + 1), 850)
       const party = !tried.length && streak + 1 >= 3   // three in a row: it dances
       win(party ? 2800 : 2300)
       sayRight()
@@ -169,13 +198,13 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
       return true
     }
     setSpit(opt)
-    munch(() => { setMood('yuck', 1100); sfx.boing() })
+    munch(() => { setMood('yuck', 1100); sfx.boing(); spitOut(opt) })
     setTimeout(() => setSpit(s => (s === opt ? null : s)), 1700)
     sayWrong()
     if (miss(opt) >= 2) {
       // Nach zwei Fehlern zeigt das Monster die Lösung und frisst sie selbst.
       reveal(3200)
-      setTimeout(() => { setEaten({ i: idx, opt: q.correct }); munch(() => setMood('happy', 1200)) }, 1500)
+      setTimeout(() => { setEaten({ i: idx, opt: q.correct }); munch(() => { setMood('happy', 1200); setCheers(c => c + 1) }) }, 1500)
     }
     return true
   }
@@ -201,8 +230,8 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
   const heard = q.options.map(o => wordRec(o.w)).filter(Boolean)
 
   return (
-    <div style={{
-      flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'space-evenly',
+    <div ref={rootRef} style={{
+      position:'relative', flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'space-evenly',
       gap:'clamp(6px,1.5vh,14px)', padding:'clamp(10px,2vw,20px) clamp(12px,3vw,24px)', width:'100%', boxSizing:'border-box',
     }}>
       <RoundTrail total={questions.length} done={idx + (done ? 1 : 0)} walker="🐛" goal="🎂" style={{ width:'calc(100% - 80px)', maxWidth:520 }} />
@@ -242,7 +271,7 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
         {/* The monster walks in, eats, and walks off */}
         <motion.div key={idx} ref={monsterRef}
           initial={reduceMotion() ? { opacity:0 } : { x:-420, opacity:0 }}
-          animate={leaving ? (reduceMotion() ? { opacity:0 } : { x:460, opacity:0, rotate:8 }) : { x:0, opacity:1, rotate:0 }}
+          animate={leaving ? (reduceMotion() ? { opacity:0 } : { y:[0, -40, 150], scale:[1, 1, 0.2], opacity:[1, 1, 0] }) : { x:0, opacity:1, rotate:0 }}
           transition={leaving ? { duration:0.5, ease:'easeIn' } : { type:'spring', stiffness:140, damping:15 }}
           style={{ position:'relative' }}>
           <DropZone id="monster" onDrop={feed} label={`Buchstaben-Monster ${shown}`} slop={40}>
@@ -263,18 +292,10 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
                   fontSize:56, color, WebkitTextStroke:`2.5px ${INK}`, paintOrder:'stroke fill' }}>{shown}!</motion.div>
             )}
           </AnimatePresence>
-          <AnimatePresence>
-            {spit && !reduceMotion() && (
-              <motion.div key={spit.w} aria-hidden="true"
-                initial={{ x:0, y:0, scale:0.3, rotate:0, opacity:0 }}
-                animate={{ x:[0, 0, 170], y:[0, 0, -90, 60], scale:[0.3, 0.3, 1, 0.9], rotate:[0, 0, 300, 420], opacity:[0, 1, 1, 0] }}
-                transition={{ duration:1.4, times:[0, 0.35, 0.7, 1] }}
-                style={{ position:'absolute', left:'50%', top:'55%', marginLeft:-45, marginTop:-45, pointerEvents:'none' }}>
-                <Art art={spit.e} size={90} />
-              </motion.div>
-            )}
-          </AnimatePresence>
         </motion.div>
+
+        {/* The fed monsters, in a row at the forest edge */}
+        <Lineup monsters={lineup} cheers={cheers} party={finale} />
 
         {/* Food on the picnic blanket */}
         <div style={{
@@ -326,7 +347,60 @@ export default function LetterIntroGame({ level = 1, onComplete }) {
         </div>
         <HintHand from={gapRef} to={monsterRef} active={live && !leaving && !finale} delay={hintDelay(idx)} />
       </DragArea>
+      {/* spat-out things, stuck where they landed */}
+      {pile.map(t => <Spat key={t.id} t={t} />)}
       {bursts}
+    </div>
+  )
+}
+
+/** A spat-out thing: it flies in an arc from the mouth and stays where it lands. */
+function Spat({ t }) {
+  const still = reduceMotion()
+  return (
+    <motion.div aria-hidden="true"
+      initial={still ? { x:t.tx, y:t.ty, rotate:t.rot } : { x:t.sx, y:t.sy, scale:0.4, rotate:0 }}
+      animate={still ? {} : { x:[t.sx, (t.sx + t.tx) / 2, t.tx], y:[t.sy, Math.min(t.sy, t.ty) - 110, t.ty], scale:[0.4, 1.1, 1], rotate:[0, 300, 360 + t.rot] }}
+      transition={{ duration:1.1, ease:'easeOut' }}
+      style={{ position:'absolute', left:0, top:0, pointerEvents:'none', zIndex:2, filter:'drop-shadow(0 3px 0 rgba(42,27,61,0.25))' }}>
+      <Art art={t.e} size={48} />
+    </motion.div>
+  )
+}
+
+/**
+ * The row of fed monsters: little letters with eyes. They all wiggle when
+ * the next one eats, a tap tickles one, and at the end the whole row dances.
+ */
+function Lineup({ monsters, cheers, party }) {
+  const still = reduceMotion()
+  const [tickled, setTickled] = useState(null)
+  const tight = monsters.length > 8
+  return (
+    <div style={{ display:'flex', justifyContent:'center', alignItems:'flex-end', minHeight:54, maxWidth:'100%', marginTop:-6 }}>
+      {monsters.map((m, i) => (
+        <motion.button key={m.i} type="button" aria-label={`Monster ${m.letter}`}
+          onClick={() => { sfx.giggle(); setTickled({ i: m.i, n: (tickled?.n ?? 0) + 1 }) }}
+          initial={still ? false : { scale:0, y:-40 }}
+          animate={still ? {} : party ? { scale:1, y:[0, -22, 0], rotate:[0, -12, 12, 0] }
+            : { scale:1, y:0, rotate:0 }}
+          transition={party ? { duration:0.6, repeat:Infinity, delay:i * 0.08 } : { type:'spring', stiffness:380, damping:14 }}
+          style={{ all:'unset', cursor:'pointer', position:'relative', margin: tight ? '0 -4px' : '0 2px', transformOrigin:'50% 100%' }}>
+          <motion.div key={`${cheers}-${tickled?.i === m.i ? tickled.n : 0}`}
+            animate={still || (!cheers && tickled?.i !== m.i) ? {} : { rotate:[0, -14, 12, -8, 0], scaleY:[1, 0.85, 1.1, 1] }}
+            transition={{ duration:0.6, delay: tickled?.i === m.i ? 0 : i * 0.05 }}
+            style={{ position:'relative', width:40, height:52, display:'flex', alignItems:'flex-end', justifyContent:'center', transformOrigin:'50% 100%' }}>
+            <span style={{ fontFamily:'var(--font-heading)', fontWeight:700, fontSize:42, lineHeight:1, color:m.color,
+              WebkitTextStroke:`2px ${INK}`, paintOrder:'stroke fill' }}>{m.letter}</span>
+            {[-1, 1].map(d => (
+              <span key={d} style={{ position:'absolute', top:0, left:`calc(50% + ${d * 7}px - 6px)`, width:12, height:12, borderRadius:'50%',
+                background:'#fff', border:`2px solid ${INK}`, boxSizing:'border-box' }}>
+                <span style={{ position:'absolute', left:3, top:3, width:4, height:4, borderRadius:'50%', background:INK }} />
+              </span>
+            ))}
+          </motion.div>
+        </motion.button>
+      ))}
     </div>
   )
 }

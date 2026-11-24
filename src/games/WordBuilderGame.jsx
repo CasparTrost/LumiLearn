@@ -180,7 +180,8 @@ const CLAP_WAIT_MS = 1300
 // What a round starts with
 // (`demo`: after a wrong count the frog hops the right number of pads once;
 // `showClaps`: then the hand claps that many times)
-const FRESH = { placed: [], slotMisses: 0, missed: false, claps: 0, solved: false, sunk: false, splash: null, dunk: false, demo: false, showClaps: 0 }
+// (`carry`: the frog carries the thing home; `gone`: it left the far bank)
+const FRESH = { placed: [], slotMisses: 0, missed: false, claps: 0, solved: false, sunk: false, splash: null, dunk: false, demo: false, showClaps: 0, carry: false, gone: false }
 
 /**
  * The task as a picture card above the pond: the thing, and either a clap
@@ -236,6 +237,8 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
   const [streak,  setStreak]  = useState(0)
   const [ready,   setReady]   = useState(false)       // the payoff is over: next round
   const [finale,  setFinale]  = useState(false)
+  const [pile,    setPile]    = useState([])          // the things the frog brought home
+  const [beat,    setBeat]    = useState(0)           // the thing claps its word back, one bounce per syllable
   const [frogMood,  setFrogMood]  = useMood()
   const [thingMood, setThingMood] = useMood()
   const firstTryRef = useRef(0)
@@ -300,9 +303,16 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
     const t = setTimeout(() => {
       const step = hop.route[hop.i]
       if (!step) { hopDone(hop.ok); return }
-      // on the far bank the frog lands next to the thing, not on it
-      if (step.el) frogAt(step.el, true)
+      if (step.kind === 'clapback') {
+        // the thing bounces once per syllable, to a drum
+        setBeat(b => b + 1)
+        sfx.drum(step.n % 2 === 1)
+      } else if (step.kind === 'grab') {
+        upd({ carry: true, gone: true })
+        sfx.boing()
+      } else if (step.el) frogAt(step.el, true)
       else frogTo(step.pt, true)
+      if (step.kind === 'back') sfx.step()
       if (step.syl) {
         voice([KEY.syllable(step.syl)])
         if (step.key) setTimeout(() => setSaid(s => ({ ...s, [step.key]: step.syl })), 380)
@@ -320,7 +330,7 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
         }, 380)
       }
       setHop(h => h && { ...h, i: h.i + 1 })
-    }, hop.i === 0 ? 150 : HOP_MS)
+    }, hop.route[hop.i]?.ms ?? (hop.i === 0 ? 150 : HOP_MS))
     return () => clearTimeout(t)
   }, [hop, paused]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -330,6 +340,7 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
     setReady(false)
     if (idx + 1 >= total) { setFinale(true); return }
     setSaid({})
+    setBeat(0)
     setRs(FRESH)
     setIdx(i => i + 1)
   }, [ready, paused]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -340,6 +351,15 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
       // the right number shown: back home, and now the child claps it
       frogAt(homeRef.current, true)
       setTimeout(() => { upd({ claps: 0, demo: false, showClaps: round.syllables.length }); setSaid({}) }, 600)
+      return
+    }
+    if (ok === 'home') {
+      // the thing joins the pile on the home bank
+      upd({ carry: false })
+      setPile(p => [...p, round.emoji])
+      sfx.coin()
+      if (homeRef.current) burst(homeRef.current, 'stars', 8)
+      afterNarration(() => setReady(true), { minMs: 700 })
       return
     }
     if (ok) {
@@ -353,7 +373,15 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
       sfx.tada()
       if (thingRef.current) burst(thingRef.current, 'confetti', s >= 3 ? 26 : 14)
       sayRight(null, { onEnd: () => voice([KEY.word(round.name)]) })
-      afterNarration(() => setReady(true), { minMs: 1700 })
+      // the thing claps its word back, the frog grabs it and hops home with it
+      const n = round.syllables.length
+      const pad = i => padRefs.current[isBuild ? `b-${i}` : `c-${i}`]
+      setHop({ ok: 'home', i: 0, route: [
+        ...round.syllables.map((_, i) => ({ kind: 'clapback', n: i, ms: i ? 380 : 700 })),
+        { kind: 'grab', ms: 500 },
+        ...Array.from({ length: n }, (_, k) => ({ el: pad(n - 1 - k), kind: 'back', ms: k ? 400 : 500 })),
+        { el: homeRef.current, kind: 'back', ms: 400 },
+      ] })
       return
     }
     // back to the start, dripping; the claps are washed away …
@@ -448,18 +476,32 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
       </div>
 
       <DragArea autoTarget={isBuild ? `slot-${rs.placed.length}` : null} disabled={busy}>
-        <div ref={waterRef} data-word={round.syllables.join('-')} style={{ position: 'relative', width: '100%', maxWidth: 900, flexShrink: 0 }}>
+        <div ref={waterRef} data-word={round.syllables.join('-')} data-round={idx} style={{ position: 'relative', width: '100%', maxWidth: 900, flexShrink: 0 }}>
           <Water>
             {/* The crossing: the frog's bank, the pads, the other bank */}
             <div style={{ position: 'relative', height: rowH + 40, padding: `20px ${bankW}px`, boxSizing: 'border-box' }}>
-              <Bank side="left" width={bankW}><div ref={homeRef} style={{ width: 10, height: 10 }} /></Bank>
+              <Bank side="left" width={bankW}>
+                <div ref={homeRef} style={{ width: 10, height: 10 }} />
+                {/* what the frog brought home so far, a heap at its feet */}
+                <div aria-hidden="true" style={{ position: 'absolute', left: 0, right: 4, bottom: 4, display: 'flex', flexWrap: 'wrap-reverse', justifyContent: 'center', rowGap: wide ? 0 : -4, paddingLeft: wide ? 8 : 5 }}>
+                  {pile.map((e, i) => (
+                    <motion.div key={i} initial={{ y: -30, scale: 0.4 }} animate={{ y: 0, scale: 1 }} transition={{ type: 'spring', stiffness: 400, damping: 12 }}
+                      style={{ rotate: `${(i % 3 - 1) * 12}deg`, marginLeft: wide ? -8 : -5 }}>
+                      <Art art={e} size={wide ? 32 : 20} />
+                    </motion.div>
+                  ))}
+                </div>
+              </Bank>
               <Bank side="right" width={bankW}>
                 {/* the thing, and the place next to (tablet) or below (phone) it where the frog lands */}
                 <div style={{ display: 'flex', flexDirection: wide ? 'row-reverse' : 'column', alignItems: 'center', gap: wide ? 0 : 4 }}>
-                  <div ref={thingRef} style={{ display: 'flex' }}>
+                  <motion.div ref={thingRef} key={`b${beat}`}
+                    animate={beat && !reduceMotion() ? { y: [0, -thingS * 0.35, 0], scaleY: [1, 1.1, 0.9, 1] } : {}}
+                    transition={{ duration: 0.34 }}
+                    style={{ display: 'flex', visibility: rs.gone ? 'hidden' : 'visible' }}>
                     <Critter art={round.emoji} size={thingS} mood={thingMood} label={round.name}
                       onTap={() => { setThingMood('wow', 900); voice([KEY.word(round.name)]) }} />
-                  </div>
+                  </motion.div>
                   <div ref={goalRef} style={{ width: wide ? 40 : 10, height: wide ? 10 : frogS * 0.9 }} />
                 </div>
               </Bank>
@@ -546,7 +588,12 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
               transition={frog.arc ? { duration: 0.42, ease: 'easeOut', y: { duration: 0.42, times: [0, 0.45, 1] } } : { duration: 0 }}
               style={{ position: 'absolute', left: 0, top: 0, width: frogS, height: frogS, zIndex: 5 }}>
               <motion.div animate={rs.dunk ? { y: frogS * 0.35, scale: 0.75, opacity: 0.55 } : { y: 0, scale: 1, opacity: 1 }} transition={{ duration: 0.3 }}>
-                <Critter art="🐸" size={frogS} mood={frogMood} label="Frosch" />
+                <Critter art="🐸" size={frogS} mood={frogMood} label="Frosch"
+                  accessory={rs.carry && (
+                    <div aria-hidden="true" style={{ position: 'absolute', left: '50%', top: -frogS * 0.42, marginLeft: -frogS * 0.32 }}>
+                      <Art art={round.emoji} size={frogS * 0.64} />
+                    </div>
+                  )} />
               </motion.div>
             </motion.div>
           )}

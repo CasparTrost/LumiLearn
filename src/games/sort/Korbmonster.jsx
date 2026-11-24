@@ -14,7 +14,9 @@ import { Art } from '../../components/play/index.js'
  *     items={[{ id, emoji }]} mood="idle" look={0} />
  *
  * Without `sign` it collects whatever the child decides.
- * Moods: idle · hungry · happy · bah · burp · point (look, it is me!) · dance
+ * Moods: idle · hungry · happy · bah · burp · point (look, it is me!) · dance · chomp
+ * `use`: what it does with the newest thing — 'bounce' (a ball on its head)
+ * or 'climb' (an animal climbs onto the rim)
  * `renderItem` lets a game wrap the things in the basket (the free sorting
  * round makes them draggable again).
  */
@@ -32,9 +34,18 @@ const MOTION = {
   burp:   { scaleY: [1, 0.86, 1.12, 1], scaleX: [1, 1.1, 0.95, 1], y: 0, transition: { duration: 0.6 } },
   point:  { y: [0, -18, 0, -18, 0], scale: [1, 1.06, 1, 1.06, 1], rotate: 0, transition: { duration: 1.1 } },
   dance:  { rotate: [0, -10, 10, -10, 10, 0], y: [0, -14, 0, -14, 0, 0], scale: 1, transition: { duration: 1.1, repeat: 2 } },
+  chomp:  { scaleY: [1, 0.9, 1.06, 0.9, 1.06, 1], scaleX: [1, 1.06, 0.97, 1.06, 0.97, 1], y: 0, rotate: 0, transition: { duration: 0.9 } },
 }
 
-export default function Korbmonster({ width = 200, tint, sign, items = [], mood = 'idle', look = 0, renderItem }) {
+// How the newest thing arrives, by what the monster does with it (`use`):
+// a ball bounces on its head before it drops in, an animal climbs up onto
+// the rim and waves. Food goes in as usual, and the monster munches.
+const ARRIVE = {
+  bounce: W => ({ initial: { scale: 1, y: -W * 0.95 }, animate: { scale: 1, y: [-W * 0.95, -W * 0.3, -W * 0.75, -W * 0.25, -W * 0.5, 0], rotate: [0, 120, 240, 360, 480, 540] }, transition: { duration: 1.4, ease: 'easeOut' } }),
+  climb:  W => ({ initial: { scale: 1, y: W * 0.3 }, animate: { scale: 1, y: [W * 0.3, -W * 0.16, -W * 0.1, 0], rotate: [0, -14, 12, 0] }, transition: { duration: 1 } }),
+}
+
+export default function Korbmonster({ width = 200, tint, sign, items = [], mood = 'idle', look = 0, use, renderItem }) {
   const W = width
   const signH = W * 0.3
   const H = signH + W * 0.98
@@ -59,9 +70,10 @@ export default function Korbmonster({ width = 200, tint, sign, items = [], mood 
         <AnimatePresence>
           {items.map((it, i) => {
             const [u, up] = PILE[i % PILE.length]
+            const arrive = i === items.length - 1 && ARRIVE[use] && !reduceMotion() ? ARRIVE[use](W) : null
             return (
-              <motion.div key={it.id} initial={{ scale: 0, y: -40 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0 }}
-                transition={{ type: 'spring', stiffness: 420, damping: 16 }}
+              <motion.div key={it.id} initial={arrive?.initial ?? { scale: 0, y: -40 }} animate={arrive?.animate ?? { scale: 1, y: 0 }} exit={{ scale: 0 }}
+                transition={arrive?.transition ?? { type: 'spring', stiffness: 420, damping: 16 }}
                 style={{ position: 'absolute', left: W * (0.14 + u * 0.72) - s / 2, top: rimY - s * 0.72 + up * W, width: s, height: s }}>
                 {renderItem ? renderItem(it, s) : <Art art={it.emoji} size={s} />}
               </motion.div>
@@ -120,6 +132,20 @@ export default function Korbmonster({ width = 200, tint, sign, items = [], mood 
           {sign.label && W >= 130 && <span style={{ whiteSpace: 'normal', textAlign: 'center' }}>{sign.label}</span>}
         </motion.div>
       )}
+
+      {/* crumbs fly while it munches */}
+      <AnimatePresence>
+        {mood === 'chomp' && !reduceMotion() && (
+          <motion.div key="crumbs" exit={{ opacity: 0 }} style={{ position: 'absolute', left: W * 0.5, top: signH + W * 0.7, width: 0, height: 0, pointerEvents: 'none' }}>
+            {[0, 1, 2, 3, 4, 5].map(k => (
+              <motion.span key={k} initial={{ x: 0, y: 0, opacity: 1 }}
+                animate={{ x: (k - 2.5) * W * 0.09, y: [0, -W * 0.08, W * 0.16], opacity: [1, 1, 0] }}
+                transition={{ duration: 0.8, delay: 0.1 + (k % 3) * 0.15 }}
+                style={{ position: 'absolute', width: W * 0.04, height: W * 0.04, borderRadius: 2, background: ['#e8a85a', '#ffd34d', '#c98a52'][k % 3] }} />
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* "Bäh!" or a burp, from its mouth */}
       <AnimatePresence>
@@ -199,6 +225,9 @@ function Face({ mood, look }) {
         </g>
       ) : mood === 'burp' ? (
         <ellipse cx="100" cy="142" rx="9" ry="8" fill="#5a1f2e" stroke={INK} strokeWidth="3" />
+      ) : mood === 'chomp' ? (
+        <motion.ellipse cx="100" cy="142" rx="16" fill="#5a1f2e" stroke={INK} strokeWidth="3"
+          initial={{ ry: 3 }} animate={{ ry: [3, 13, 3, 13, 3] }} transition={{ duration: 0.9 }} />
       ) : (
         <path d="M84 136 Q100 150 116 136" fill="none" stroke={INK} strokeWidth="4" strokeLinecap="round" />
       )}

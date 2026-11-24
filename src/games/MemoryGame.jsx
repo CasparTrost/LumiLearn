@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { sfx } from '../sfx.js'
 import { afterNarration } from '../narrator.js'
@@ -212,7 +212,7 @@ export default function MemoryGame({ level = 1, onComplete }) {
   const [moves,    setMoves]    = useState(0)
   const [guests,   setGuests]   = useState([])            // pairs at the party: [{ key, pics }]
   const [hug,      setHug]      = useState(null)          // { a, b, dx, dy } two cards meeting
-  const [shaking,  setShaking]  = useState(() => new Set())
+  const [puzzled,  setPuzzled]  = useState(null)          // { a, b, dir } two wrong ones look at each other
   const [jumps,    setJumps]    = useState({})            // card id -> how often it was turned
   const [streak,   setStreak]   = useState(0)             // pairs in a row without a wrong pair
   const [mismatchCount, setMismatchCount] = useState(0)
@@ -225,6 +225,8 @@ export default function MemoryGame({ level = 1, onComplete }) {
   const resultRef = useRef(null)
   // pairs one of whose cards was part of a wrong pair before it was found
   const missedRef = useRef(new Set())
+  // cards the child has turned over at least once, for the hint hand
+  const seenRef   = useRef(new Set())
   // pairs found so far, counted at once (the guests join the party later)
   const foundRef  = useRef(0)
   const cardRefs  = useRef({})
@@ -251,6 +253,7 @@ export default function MemoryGame({ level = 1, onComplete }) {
     setCards(next)
     setFlipped(newFlipped)
     setJumps(j => ({ ...j, [id]: (j[id] ?? 0) + 1 }))
+    seenRef.current.add(id)
     voice([KEY.word(card.name)])
 
     if (newFlipped.length < 2) return
@@ -279,7 +282,7 @@ export default function MemoryGame({ level = 1, onComplete }) {
         if (eb) burst(eb, 'hearts', s >= 3 ? 14 : 8)
         const found = next[a].found
         const last = ++foundRef.current >= pairCount
-        // … and dance off to the party
+        // … then dance in their places on the board, and join the party
         setTimeout(() => {
           setCards(prev => prev.map(c => (c.id === a || c.id === b) ? { ...c, matched: true } : c))
           setHug(null)
@@ -304,13 +307,23 @@ export default function MemoryGame({ level = 1, onComplete }) {
         const newCount = mismatchCount + 1
         setMismatchCount(newCount)
         if (newCount === 4) sayWrong()
-        setCards(prev => prev.map(c => (c.id === a || c.id === b) ? { ...c, flipped: false } : c))
-        setShaking(new Set([a, b]))
-        setTimeout(() => setShaking(new Set()), 640)
+        // they look at each other, shrug, and duck back down
+        const ea = cardRefs.current[a], eb = cardRefs.current[b]
+        const dx = ea && eb ? eb.offsetLeft - ea.offsetLeft : 1
+        const dy = ea && eb ? eb.offsetTop - ea.offsetTop : 0
+        setPuzzled({ a, b, dir: Math.abs(dx) >= Math.abs(dy) ? Math.sign(dx) || 1 : 0, up: Math.sign(dy) })
+        setTimeout(() => {
+          setPuzzled(null)
+          sfx.slideDown()
+          setCards(prev => prev.map(c => (c.id === a || c.id === b) ? { ...c, flipped: false } : c))
+          setFlipped([])
+          setLocked(false)
+        }, reduceMotion() ? 600 : 1300)
+        return
       }
       setFlipped([])
       setLocked(false)
-    }, match ? 520 : 1000)
+    }, match ? 520 : 600)
   }, [locked, phase, cards, flipped, moves, streak, mismatchCount, pairCount, burst])
 
   // Preview countdown (held while the help is open); the cards turn over
@@ -357,8 +370,26 @@ export default function MemoryGame({ level = 1, onComplete }) {
   const partyH    = 26 + partyRows * (guestS + 8)
   // what makes a pair, shown before any is found
   const example = useAssociations ? ['🐄', '🥛'] : ['🎈', '🎈']
-  // the hand taps a card that is still face down
-  const handCard = phase === 'playing' && !locked ? cards.find(c => !c.matched && !c.flipped) : null
+  // The hand taps a card worth turning: the partner of the open card, or a
+  // card of a pair the child has already seen both of; otherwise a card not
+  // seen yet (never the same one over and over)
+  const handCard = useMemo(() => {
+    if (phase !== 'playing' || locked) return null
+    const seen = seenRef.current
+    const down = cards.filter(c => !c.matched && !c.flipped)
+    const open = cards.find(c => c.flipped && !c.matched)
+    const partner = c => down.find(d => d.pairKey === c.pairKey && d.id !== c.id)
+    if (open) {
+      const p = partner(open)
+      if (p && seen.has(p.id)) return p
+    } else {
+      const known = down.find(c => seen.has(c.id) && seen.has(partner(c)?.id))
+      if (known) return known
+    }
+    const fresh = down.filter(c => !seen.has(c.id))
+    const pool = fresh.length ? fresh : down
+    return pool[Math.floor(Math.random() * pool.length)] ?? null
+  }, [phase, locked, cards])
 
   return (
     <div style={{
@@ -423,9 +454,21 @@ export default function MemoryGame({ level = 1, onComplete }) {
               const inHug = hug && (hug.a === card.id || hug.b === card.id)
               const sign = hug?.a === card.id ? 1 : -1
               if (card.matched) {
-                return <div key={card.id} ref={el => { cardRefs.current[card.id] = el }} aria-hidden="true"
-                  style={{ width: cardS, height: cardS, borderRadius: 16, border: '3px dashed rgba(42,27,61,0.18)', boxSizing: 'border-box' }} />
+                // a found guest dances in its place
+                return (
+                  <div key={card.id} ref={el => { cardRefs.current[card.id] = el }} aria-hidden="true"
+                    style={{ position: 'relative', width: cardS, height: cardS, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+                    <div style={{ position: 'absolute', width: cardS * 0.6, height: cardS * 0.12, marginBottom: cardS * 0.06, borderRadius: '50%', background: 'rgba(42,27,61,0.15)' }} />
+                    <motion.div initial={{ scale: 0.4, y: -cardS * 0.3 }}
+                      animate={reduceMotion() ? { scale: 1, y: 0 } : { scale: 1, y: [0, -cardS * 0.16, 0], rotate: card.id % 2 ? [-10, 10, -10] : [10, -10, 10] }}
+                      transition={{ scale: { type: 'spring', stiffness: 300, damping: 12 }, y: { duration: 0.7, repeat: Infinity, delay: (card.id % 4) * 0.15 }, rotate: { duration: 1.4, repeat: Infinity } }}
+                      style={{ transformOrigin: '50% 100%', marginBottom: cardS * 0.1 }}>
+                      <Art art={card.emoji} size={cardS * 0.62} />
+                    </motion.div>
+                  </div>
+                )
               }
+              const puz = puzzled && (puzzled.a === card.id || puzzled.b === card.id) ? (puzzled.a === card.id ? 1 : -1) : 0
               return (
                 <motion.div key={card.id} ref={el => { cardRefs.current[card.id] = el }}
                   role="button" tabIndex={-1} aria-label={face ? card.name : 'Karte'} data-pair={card.pairKey}
@@ -433,11 +476,11 @@ export default function MemoryGame({ level = 1, onComplete }) {
                   whileHover={!face && phase === 'playing' ? { scale: 1.05, rotate: -2 } : {}}
                   whileTap={!face && phase === 'playing' ? { scale: 0.9, rotate: 3 } : {}}
                   animate={inHug && !reduceMotion()
-                    ? { x: [0, hug.dx * sign * 0.9, hug.dx * sign * 0.9], y: [0, hug.dy * sign * 0.9, hug.dy * sign * 0.9 - 20], rotate: [0, sign * 10, -sign * 10], scale: [1, 1.08, 0.2], opacity: [1, 1, 0] }
-                    : shaking.has(card.id) ? { x: [0, -10, 10, -8, 8, 0], rotate: [0, -4, 4, -2, 0] } : { x: 0, y: 0, rotate: 0, scale: 1, opacity: 1 }}
+                    ? { x: [0, hug.dx * sign * 0.8, 0], y: [0, hug.dy * sign * 0.8 - 10, 0], rotate: [0, sign * 10, 0], scale: [1, 1.08, 1] }
+                    : { x: 0, y: 0, rotate: 0, scale: 1 }}
                   transition={inHug ? { duration: 0.9, times: [0, 0.45, 1] } : { duration: 0.5 }}
                   style={{
-                    width: cardS, height: cardS, cursor: face ? 'default' : 'pointer', perspective: 700, zIndex: inHug ? 2 : 1,
+                    position: 'relative', width: cardS, height: cardS, cursor: face ? 'default' : 'pointer', perspective: 700, zIndex: inHug ? 2 : 1,
                     outline: usingKeys && card.id === cursor ? `4px solid ${INK}` : 'none', outlineOffset: 4, borderRadius: 16,
                   }}>
                   <motion.div
@@ -452,8 +495,21 @@ export default function MemoryGame({ level = 1, onComplete }) {
                       <motion.div key={jumps[card.id] ?? 0}
                         animate={jumps[card.id] && !reduceMotion() ? { y: [0, -cardS * 0.18, 0, -cardS * 0.06, 0], rotate: [0, -10, 10, -4, 0], scale: [0.8, 1.1, 1] } : {}}
                         transition={{ duration: 0.8, delay: 0.15 }}>
-                        <Art art={card.emoji} size={cardS * 0.72} />
+                        {/* a wrong pair: lean toward the other one, look, shrug */}
+                        <motion.div
+                          animate={puz && !reduceMotion()
+                            ? { x: [0, puz * (puzzled.dir || 0) * cardS * 0.16, puz * (puzzled.dir || 0) * cardS * 0.16, 0], y: [0, puz * -(puzzled.up || 0) * cardS * 0.06, -cardS * 0.08, 0],
+                                rotate: [0, puz * (puzzled.dir || 1) * 18, puz * (puzzled.dir || 1) * -10, 0], scaleY: [1, 1, 1.12, 0.9] }
+                            : { x: 0, y: 0, rotate: 0, scaleY: 1 }}
+                          transition={{ duration: 1.2, times: [0, 0.3, 0.7, 1] }}
+                          style={{ transformOrigin: '50% 100%' }}>
+                          <Art art={card.emoji} size={cardS * 0.72} />
+                        </motion.div>
                       </motion.div>
+                      {puz !== 0 && (
+                        <motion.div aria-hidden="true" initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.45, type: 'spring', stiffness: 400 }}
+                          style={{ position: 'absolute', top: cardS * 0.02, right: cardS * 0.08, fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: cardS * 0.26, color: '#6b3fd6', WebkitTextStroke: '1.5px #2a1b3d' }}>?</motion.div>
+                      )}
                     </div>
                     {/* Back: a present */}
                     <div style={{ position: 'absolute', inset: 0, backfaceVisibility: 'hidden', transform: 'rotateY(180deg)', filter: 'drop-shadow(0 5px 0 rgba(42,27,61,0.3))' }}>
@@ -473,7 +529,7 @@ export default function MemoryGame({ level = 1, onComplete }) {
           ⌨️ Pfeiltasten: wählen · Enter oder Leertaste: umdrehen
         </p>
       )}
-      <HintHand to={handCard ? { current: cardRefs.current[handCard.id] } : null} active={!!handCard && !finale}
+      <HintHand key={handCard?.id ?? 'none'} to={handCard ? { current: cardRefs.current[handCard.id] } : null} active={!!handCard && !finale}
         delay={moves === 0 ? 2000 : 6000} />
       {finale && <Finale items={[...new Set(guests.flatMap(g => g.pics))].slice(0, 14)} hero="lumi" onDone={() => onComplete(resultRef.current)} />}
       {bursts}

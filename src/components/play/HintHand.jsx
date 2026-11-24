@@ -64,16 +64,24 @@ export default function HintHand({ from, to, active = true, delay = 5000, repeat
   const tx = box.t.x, ty = box.t.y
   const fx = box.f?.x ?? tx, fy = box.f?.y ?? ty
   const drag = !!box.f
-  return createPortal(
-    <motion.div aria-hidden="true" key={`${round}-${fx}-${fy}-${tx}-${ty}`}
-      initial={{ x: fx, y: fy, opacity: 0, scale: 1 }}
-      animate={drag
-        ? { x: [fx, fx, tx, tx], y: [fy, fy, ty, ty], opacity: [0, 1, 1, 0], scale: [1, 0.85, 0.85, 1] }
-        : { x: tx, y: ty, opacity: [0, 1, 1, 1, 0], scale: [1, 1, 0.8, 1, 1] }}
-      transition={{ duration: drag ? 2 : 1.4, times: drag ? [0, 0.2, 0.75, 1] : [0, 0.2, 0.45, 0.7, 1], repeat: repeat - 1, repeatDelay: 0.5, ease: 'easeInOut' }}
-      style={{ position: 'fixed', left: 0, top: 0, zIndex: 9997, pointerEvents: 'none', marginLeft: -14, marginTop: -6, filter: 'drop-shadow(0 4px 3px rgba(42,27,61,0.35))' }}>
-      <Art art="👆" size={60} />
-    </motion.div>,
+  const look = { position: 'fixed', left: 0, top: 0, zIndex: 9997, pointerEvents: 'none', marginLeft: -14, marginTop: -6, filter: 'drop-shadow(0 4px 3px rgba(42,27,61,0.35))' }
+  return createPortal(drag
+    ? <motion.div aria-hidden="true" key={`${round}-${fx}-${fy}-${tx}-${ty}`}
+        initial={{ x: fx, y: fy, opacity: 0, scale: 1 }}
+        animate={{ x: [fx, fx, tx, tx], y: [fy, fy, ty, ty], opacity: [0, 1, 1, 0], scale: [1, 0.85, 0.85, 1] }}
+        transition={{ duration: 2, times: [0, 0.2, 0.75, 1], repeat: repeat - 1, repeatDelay: 0.5, ease: 'easeInOut' }}
+        style={look}>
+        <Art art="👆" size={60} />
+      </motion.div>
+    // a tap: the hand follows a moving target smoothly instead of starting
+    // its tapping over each time the target drifts to a new spot
+    : <motion.div aria-hidden="true" key={round} initial={{ x: tx, y: ty }} animate={{ x: tx, y: ty }}
+        transition={{ duration: 0.45, ease: 'easeOut' }} style={look}>
+        <motion.div initial={{ opacity: 0, scale: 1 }} animate={{ opacity: [0, 1, 1, 1, 0], scale: [1, 1, 0.8, 1, 1] }}
+          transition={{ duration: 1.4, times: [0, 0.2, 0.45, 0.7, 1], repeat: repeat - 1, repeatDelay: 0.5, ease: 'easeInOut' }}>
+          <Art art="👆" size={60} />
+        </motion.div>
+      </motion.div>,
     document.body,
   )
 }

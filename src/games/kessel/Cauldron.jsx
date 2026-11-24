@@ -90,6 +90,7 @@ function Hat({ size }) {
  * Lumi with a witch's hat and a wand. The play kit's Critter cannot carry a
  * hat that moves along with it, so Lumi moves here as one piece.
  *   act: idle · stir (a letter went in) · cough (a wrong one) · cheer · hat (the hat jumps off)
+ *        · zap (a star shoots from the wand)
  */
 const ACTS = {
   idle:  { y: [0, -4, 0], transition: { duration: 2.4, repeat: Infinity, ease: 'easeInOut' } },
@@ -97,8 +98,9 @@ const ACTS = {
   cough: { rotate: [0, -10, 8, -6, 0], x: [0, -6, 4, -3, 0], y: 0, transition: { duration: 0.7 } },
   cheer: { y: [0, -40, 0, -14, 0], rotate: [0, 0, 360, 360, 360], transition: { duration: 1.1, ease: 'easeOut' } },
   hat:   { y: [0, -6, 0], rotate: 0, transition: { duration: 0.6 } },
+  zap:   { y: [0, -10, 0], rotate: [0, -6, 0], transition: { duration: 0.35 } },
 }
-export function WitchLumi({ size = 110, act = 'idle', beat = 0, wish, onTap }) {
+export function WitchLumi({ size = 110, act = 'idle', beat = 0, wish, onTap, wandRef }) {
   const still = reduceMotion()
   const happy = act === 'cheer' || act === 'hat'
   const controls = useAnimationControls()
@@ -126,8 +128,8 @@ export function WitchLumi({ size = 110, act = 'idle', beat = 0, wish, onTap }) {
         style={{ position: 'absolute', left: size * 0.16, top: size * 0.02, width: size * 0.68 }}>
         <Hat size={size * 0.68} />
       </motion.div>
-      <motion.div aria-hidden="true"
-        animate={act === 'stir' || act === 'cheer' ? { rotate: [0, -30, 10, 0] } : { rotate: 0 }}
+      <motion.div aria-hidden="true" ref={wandRef}
+        animate={act === 'stir' || act === 'cheer' || act === 'zap' ? { rotate: [0, -30, 10, 0] } : { rotate: 0 }}
         transition={{ duration: 0.5 }}
         style={{ position: 'absolute', right: -size * 0.12, bottom: size * 0.18, transformOrigin: '20% 80%' }}>
         <Art art="🪄" size={size * 0.42} />
@@ -191,28 +193,40 @@ export function Alive({ art, size = 150, move = 'hop' }) {
  * matter.
  *   const [fliers, fly] = useFliers()
  *   fly(keyEl, mouthEl, 'K', ok)
+ *   fly(wandEl, starRect, null, true, 'zap')   // a star from the wand
+ * `from` and `to` are elements or screen rectangles.
  */
+const rectOf = x => (x?.getBoundingClientRect ? x.getBoundingClientRect() : x)
 export function useFliers() {
   const [list, setList] = useState([])
-  const fly = useCallback((from, to, char, ok) => {
+  const fly = useCallback((from, to, char, ok, kind = 'letter') => {
     if (!from || !to || reduceMotion()) return
-    const a = from.getBoundingClientRect(), b = to.getBoundingClientRect()
-    const s = Math.max(36, Math.min(64, a.height))
+    const a = rectOf(from), b = rectOf(to)
+    const s = kind === 'zap' ? 34 : Math.max(36, Math.min(64, a.height))
     const id = Math.random()
     setList(l => [...l.slice(-5), {
-      id, char, ok, s,
+      id, char, ok, s, kind,
       x0: a.left + a.width / 2 - s / 2, y0: a.top + a.height / 2 - s / 2,
       x1: b.left + b.width / 2 - s / 2, y1: b.top + b.height / 2 - s / 2,
     }])
     setTimeout(() => setList(l => l.filter(f => f.id !== id)), ok ? 700 : 1500)
-    sfx.whoosh()
+    if (kind !== 'zap') sfx.whoosh()
   }, [])
   const node = typeof document === 'undefined' ? null : createPortal(
     <>{list.map(f => <Flier key={f.id} {...f} />)}</>, document.body)
   return [node, fly]
 }
 
-function Flier({ char, ok, s, x0, y0, x1, y1 }) {
+function Flier({ char, ok, s, kind, x0, y0, x1, y1 }) {
+  // the wand's star: straight and fast, spinning
+  if (kind === 'zap') return (
+    <motion.svg aria-hidden="true" viewBox="0 0 24 24" width={s} height={s}
+      initial={{ x: x0, y: y0, rotate: 0, scale: 0.5 }} animate={{ x: x1, y: y1, rotate: 360, scale: 1.1 }}
+      transition={{ duration: 0.26, ease: 'easeIn' }}
+      style={{ position: 'fixed', left: 0, top: 0, zIndex: 9999, pointerEvents: 'none', filter: 'drop-shadow(0 0 8px #fff3a0)' }}>
+      <path d="M12 1.5l3.1 6.6 7.2.9-5.3 5 1.4 7.1L12 17.6l-6.4 3.5 1.4-7.1-5.3-5 7.2-.9z" fill="#ffe066" stroke={INK} strokeWidth="1.6" strokeLinejoin="round" />
+    </motion.svg>
+  )
   // the arc's peak stays below the game's top bar
   const top = Math.min(y0, y1, Math.max(96, Math.min(y0, y1) - 120))
   // a wrong letter goes in, the cauldron coughs it up, and it tumbles away
@@ -232,5 +246,58 @@ function Flier({ char, ok, s, x0, y0, x1, y1 }) {
       }}>
       {char}
     </motion.div>
+  )
+}
+
+/** A firefly that carries the falling letter: glowing tail, buzzing wings. */
+export function Firefly({ size = 44 }) {
+  return (
+    <svg viewBox="0 0 60 40" width={size} height={size * 0.67} aria-hidden="true" style={{ display: 'block', overflow: 'visible' }}>
+      <ellipse className="ks-wing" cx={22} cy={10} rx={13} ry={8} fill="#e8f6ff" fillOpacity={0.85} stroke={INK} strokeWidth={2} />
+      <ellipse className="ks-wing" cx={38} cy={10} rx={13} ry={8} fill="#e8f6ff" fillOpacity={0.85} stroke={INK} strokeWidth={2} style={{ animationDelay: '-0.06s' }} />
+      <circle className="ks-twinkle" cx={30} cy={30} r={11} fill="#fff27a" opacity={0.6} />
+      <ellipse cx={30} cy={22} rx={9} ry={12} fill="#5b4a2e" stroke={INK} strokeWidth={2.5} />
+      <ellipse cx={30} cy={29} rx={7} ry={5} fill="#ffe94d" stroke={INK} strokeWidth={2} />
+      <circle cx={30} cy={11} r={6} fill="#3d2f52" stroke={INK} strokeWidth={2} />
+      <circle cx={27.5} cy={10} r={1.6} fill="#fff" /><circle cx={32.5} cy={10} r={1.6} fill="#fff" />
+    </svg>
+  )
+}
+
+// What the things on the hill do all the time, small (the same kinds of
+// move as when they came out of the cauldron)
+const IDLE = {
+  hop:   { y: [0, -7, 0] },
+  drive: { x: [-5, 5, -5] },
+  fly:   { y: [0, -9, 0], rotate: [-8, 8, -8] },
+  swim:  { rotate: [-10, 10, -10] },
+  spin:  { rotate: [0, 360] },
+}
+
+/**
+ * The night hill next to the cauldron: everything conjured in this level
+ * stays here and moves about. When a new word is done (`cheer` changes),
+ * they all jump.
+ */
+export function Hill({ items, cheer, size = 38, height = 56 }) {
+  const still = reduceMotion()
+  return (
+    <div aria-hidden="true" style={{ position: 'relative', width: '100%', maxWidth: 560, height, flexShrink: 0 }}>
+      <div style={{ position: 'absolute', left: '4%', right: '4%', bottom: 0, height: height * 0.55, borderRadius: '50% 50% 0 0 / 100% 100% 0 0', background: 'linear-gradient(180deg, #3e3a73, #2a2552)', opacity: 0.85 }} />
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: size * 0.3, paddingBottom: height * 0.18 }}>
+        {items.map(({ art, move }, i) => (
+          <motion.div key={i} initial={{ scale: 0, y: -40 }} animate={{ scale: 1, y: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 12 }}>
+            <motion.div key={`c${cheer}`} animate={cheer && !still ? { y: [0, -size * 0.7, 0], rotate: [0, i % 2 ? 15 : -15, 0] } : {}}
+              transition={{ duration: 0.5, delay: i * 0.06 }}>
+              <motion.div animate={still ? {} : IDLE[move] ?? IDLE.hop}
+                transition={{ duration: move === 'spin' ? 2.4 : 1.4, repeat: Infinity, ease: move === 'spin' ? 'linear' : 'easeInOut', delay: i * 0.2 }}
+                style={{ transformOrigin: move === 'spin' ? '50% 50%' : '50% 100%', filter: 'drop-shadow(0 3px 0 rgba(0,0,0,0.3))' }}>
+                <Art art={art} size={size} />
+              </motion.div>
+            </motion.div>
+          </motion.div>
+        ))}
+      </div>
+    </div>
   )
 }

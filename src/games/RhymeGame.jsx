@@ -203,7 +203,7 @@ function taskOf(r, first) {
 
 const BALLOONS = ['#ff6b5b', '#4aa3ff', '#ffc93c', '#5cc45a']
 // how long a scene plays before the curtain closes
-const SCENE_MS = 3000
+const SCENE_MS = 3600
 
 export default function RhymeGame({ level = 1, onComplete }) {
   const rounds = useMemo(() => buildRounds(level), [level])
@@ -239,13 +239,19 @@ export default function RhymeGame({ level = 1, onComplete }) {
   }, [demo, demoStep, paused])
   useEffect(() => { if (finale) { sfx.giggle(); burst(stageRef.current, 'confetti', 20) } }, [finale, burst])
 
-  // Curtain up for the pair: the one named first climbs onto the other,
-  // the audience laughs — louder after three in a row.
+  // Curtain up for the pair: the one named first climbs onto the other and
+  // bounces three times, the other one squashes under it, and the audience
+  // laughs — louder with every scene, and after three in a row.
+  const [scenes, setScenes] = useState(0)   // scenes played this level: the laugh grows
+  const [lit, setLit] = useState(0)         // audience members won for good (one per right answer)
   const perform = (a, b, gone = null, big = false) => {
     setPlay({ i: idx, pair: [a, b], gone, big })
+    setScenes(n => n + 1)
     setTimeout(() => { sfx.slideUp(); burst(stageRef.current, 'confetti', big ? 20 : 10) }, 500)
-    setTimeout(() => sfx.giggle(), 1300)
+    ;[1500, 1950, 2400].forEach(ms => setTimeout(() => sfx.boing(), ms))
+    setTimeout(() => sfx.giggle(), 2600)
   }
+  const won = ms => { win(ms); setLit(n => n + 1) }
   const streaky = () => !tried.length && streak + 1 >= 3
   // praise, then the scene's line once it is recorded
   const cheer = (key) => {
@@ -260,7 +266,7 @@ export default function RhymeGame({ level = 1, onComplete }) {
   const bring = (opt) => {
     if (isOver() || hasTried(opt)) return false
     if (opt === r.correct) {
-      win(SCENE_MS)
+      won(SCENE_MS)
       perform(r.base, opt, null, streaky())
       cheer(sceneKey(r, r.base, opt))
       return true
@@ -280,7 +286,7 @@ export default function RhymeGame({ level = 1, onComplete }) {
     if (isOver() || hasTried(opt)) return
     const [a, b] = [r.base, r.partner]
     if (opt === r.correct) {
-      win(SCENE_MS + 400)
+      won(SCENE_MS + 400)
       sfx.whoosh()
       perform(a, b, opt, streaky())
       cheer(sceneKey(r, a, b))
@@ -297,7 +303,7 @@ export default function RhymeGame({ level = 1, onComplete }) {
   // Ja / Nein: one chance, then the answer
   const answer = (yes) => {
     if (isOver()) return
-    if (yes === r.rhymes) { win(r.rhymes ? SCENE_MS : 1800); sayRight() }
+    if (yes === r.rhymes) { won(r.rhymes ? SCENE_MS : 1800); sayRight() }
     else { miss(yes); reveal(r.rhymes ? SCENE_MS : 1800); sayWrong() }
     if (r.rhymes) perform(r.base, r.other, null, yes && streaky())
     else setPlay({ i: idx, pair: null })
@@ -376,6 +382,7 @@ export default function RhymeGame({ level = 1, onComplete }) {
                       shy={tried.includes(c) || (scene && !scene.pair)}
                       visiting={c === visitor}
                       ride={c === rider ? (onStage.indexOf(c) === 0 ? 1 : -1) : 0}
+                      seat={!!rider && c !== rider && !!scene?.pair?.includes(c)}
                       onTap={() => shoo(c)} />
                   ))}
                   {asking && <Wanted key={`want-${idx}`} />}
@@ -429,7 +436,7 @@ export default function RhymeGame({ level = 1, onComplete }) {
             </motion.button>
           ))}
         </div>
-      ) : <Audience laughing={!!scene?.pair || finale} cheer={!!scene?.big || finale} />}
+      ) : <Audience laughing={!!scene?.pair || finale} cheer={!!scene?.big || finale} lit={finale ? AUDIENCE.length : lit} loud={scenes} />}
       {bursts}
     </div>
   )
@@ -554,10 +561,18 @@ function Balloon({ item, color, i }) {
  * floats off. `tappable`: odd-one-out rounds; the odd one is yanked off by
  * a hook when it leaves.
  */
-function Actor({ item, n, ride, visiting, shy, tappable, rime, onTap }) {
+function Actor({ item, n, ride, seat, visiting, shy, tappable, rime, onTap }) {
   const still = reduceMotion()
+  // the scene: climb on (1.4 s), then bounce three times; the seat squashes along
+  const BOUNCE = [0, 0.38, 0.54, 0.62, 0.71, 0.79, 0.88, 1]
   const anim = still ? {}
-    : ride ? { x: ['0%', `${ride * 50}%`, `${ride * 88}%`], y: ['0%', '-62%', '-44%'], rotate: [0, ride * 20, 0, -6, 6, 0], transition: { duration: 1.4, ease: 'easeOut' } }
+    : ride ? {
+      x: ['0%', `${ride * 50}%`, `${ride * 88}%`, `${ride * 88}%`, `${ride * 88}%`, `${ride * 88}%`, `${ride * 88}%`, `${ride * 88}%`],
+      y: ['0%', '-62%', '-44%', '-70%', '-44%', '-70%', '-44%', '-44%'],
+      rotate: [0, ride * 20, 0, -8, 0, 8, 0, 0],
+      transition: { duration: 2.6, times: BOUNCE, ease: 'easeOut' },
+    }
+    : seat ? { scaleY: [1, 1, 1, 1, 0.8, 1, 0.8, 1, 0.8, 1], scaleX: [1, 1, 1, 1, 1.12, 1, 1.12, 1, 1.12, 1], transition: { duration: 2.6, times: [0, 0.38, 0.54, 0.6, 0.65, 0.7, 0.75, 0.8, 0.86, 1] } }
     : visiting ? { y: [0, -10, 0], rotate: [0, -8, 8, 0], transition: { duration: 0.9 } }
     : shy ? { rotate: [0, -10, 10, -6, 0], scale: 0.92, transition: { duration: 0.7 } }
     : { y: [0, -6, 0], transition: { duration: 2.2, repeat: Infinity } }
@@ -601,18 +616,24 @@ function Curtains({ closed, k }) {
   ))
 }
 
+// one seat for every round: the hall is full by the end
+const AUDIENCE = ['🐻', '🐰', '🐱', '🐸', '🦊', '🐶', '🐼', '🐨']
+
 /** The audience: dark heads in a row; when the scene plays the house
- * lights come up on them, and they laugh. */
-function Audience({ laughing, cheer }) {
+ * lights come up on them, and they laugh. Each right answer wins one of
+ * them for good (`lit`): it stays in the light. */
+function Audience({ laughing, cheer, lit, loud }) {
   const still = reduceMotion()
+  // every scene a little louder: higher jumps, more of them shout
+  const jump = Math.min(40, 14 + loud * 3) + (cheer ? 10 : 0)
   return (
-    <div aria-hidden="true" style={{ display: 'flex', justifyContent: 'center', gap: 'clamp(4px,2vw,18px)', marginTop: -6, height: 70 }}>
-      {['🐻', '🐰', '🐱', '🐸', '🦊', '🐶'].map((a, i) => (
-        <motion.div key={a + laughing} animate={laughing && !still ? { y: cheer ? [0, -30, 0, -24, 0] : [0, -18, 0, -12, 0], rotate: [0, -8, 8, 0] } : { y: 0 }}
-          transition={{ duration: 0.8, delay: 0.6 + i * 0.07, repeat: laughing ? (cheer ? 2 : 1) : 0 }}
-          style={{ position: 'relative', filter: laughing ? 'none' : 'brightness(0.18) saturate(0)', transition: 'filter .5s' }}>
-          <Art art={a} size={58} style={{ width: 'min(58px, 12vw)', height: 'auto' }} />
-          {laughing && i % 2 === 0 && (
+    <div aria-hidden="true" style={{ display: 'flex', justifyContent: 'center', gap: 'clamp(2px,1.4vw,14px)', marginTop: -6, height: 70 }}>
+      {AUDIENCE.map((a, i) => (
+        <motion.div key={a + laughing} animate={laughing && !still ? { y: [0, -jump, 0, -jump * 0.7, 0], rotate: [0, -8, 8, 0] } : { y: 0 }}
+          transition={{ duration: 0.8, delay: 0.6 + i * 0.07, repeat: laughing ? (cheer || loud > 4 ? 2 : 1) : 0 }}
+          style={{ position: 'relative', filter: laughing || i < lit ? 'none' : 'brightness(0.18) saturate(0)', transition: 'filter .5s' }}>
+          <Art art={a} size={58} style={{ width: 'min(54px, 10.5vw)', height: 'auto' }} />
+          {laughing && (i % 2 === 0 || i < loud - 2) && (
             <motion.span initial={{ opacity: 0, y: 0, scale: 0.5 }} animate={{ opacity: [0, 1, 1, 0], y: -34, scale: 1 }}
               transition={{ duration: 1.4, delay: 0.7 + i * 0.1 }}
               style={{ position: 'absolute', left: '50%', top: -6, transform: 'translateX(-50%)', fontFamily: 'var(--font-heading)', fontWeight: 700,

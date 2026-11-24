@@ -6,7 +6,7 @@ import { sayRight, sayWrong } from '../lib/feedback.js'
 import { sfx } from '../sfx.js'
 import { result } from '../lib/score.js'
 import { shuffle } from './feelings.js'
-import { Stage, FeelLumi, FaceChip, FeelingFace, AskFace, sceneLength, useAfter, useTrayStart } from './feelingStage.jsx'
+import { Stage, FeelLumi, FaceChip, FeelingFace, AskFace, asPerson, sceneLength, useAfter, useTrayStart } from './feelingStage.jsx'
 import { INK, pxButton } from './px.js'
 
 /**
@@ -46,7 +46,7 @@ const ROCK = ':px-schaukel:'
 // Each panel: what is read (`text`), Lumi's face (`lumi`), the others (`cast`).
 const STORIES = [
   {
-    id: 'forest', tier: 0, title: 'Lumi im Wald',
+    id: 'forest', tier: 0, souvenir: '🍎', title: 'Lumi im Wald',
     panels: [
       { text: 'Lumi spaziert durch den bunten Herbstwald. Plötzlich hört Lumi ein leises Weinen …',
         lumi: { feel: 'curious', act: 'in' }, cast: [c('🦔', 470, 'pop', { s: 50, feel: 'sad', d: 1.2, z: 0 }), t('🌲', 420, 'pop', { s: 170 }), t('🌳', 540, 'pop', { s: 140, d: 0.2 }), t('🍂', 330, 'drop', { s: 40, d: 0.6 })] },
@@ -84,7 +84,7 @@ const STORIES = [
     },
   },
   {
-    id: 'bakery', tier: 0, title: 'Der Kuchenladen',
+    id: 'bakery', tier: 0, souvenir: '🍰', title: 'Der Kuchenladen',
     panels: [
       { text: 'Lumi steht vor dem Kuchenladen. Es riecht nach frischem Kuchen!',
         lumi: { feel: 'happy', say: ['🍰'] }, cast: [t('🏪', 440, 'pop', { s: 190 })] },
@@ -122,7 +122,7 @@ const STORIES = [
     },
   },
   {
-    id: 'playground', tier: 0, title: 'Auf dem Spielplatz',
+    id: 'playground', tier: 0, souvenir: '🛝', title: 'Auf dem Spielplatz',
     panels: [
       { text: 'Lumi will rutschen. Aber vor der Rutsche wartet schon eine lange Reihe Kinder.',
         lumi: { feel: 'curious', act: 'in' }, cast: [t('🛝', 520, 'pop', { s: 170 }), c('👦', 440, 'pop', { s: 90 }), c('👧', 375, 'pop', { s: 90, d: 0.2 }), c('🧒', 310, 'pop', { s: 90, d: 0.4 })] },
@@ -159,7 +159,7 @@ const STORIES = [
     },
   },
   {
-    id: 'kitten', tier: 0, title: 'Das Kätzchen im Regen',
+    id: 'kitten', tier: 0, souvenir: '🐾', title: 'Das Kätzchen im Regen',
     panels: [
       { text: 'Es regnet. Auf dem Heimweg hört Lumi ein leises Miauen. Unter einer Bank sitzt ein kleines Kätzchen, ganz nass.', fx: 'rain',
         lumi: { feel: 'curious', act: 'in' }, cast: [t('🪑', 400, 'pop', { s: 140 }), c('🐱', 400, 'pop', { s: 70, d: 0.8, feel: 'scared', z: 0 })] },
@@ -198,7 +198,7 @@ const STORIES = [
     },
   },
   {
-    id: 'rain', tier: 0, title: 'Der Regentag',
+    id: 'rain', tier: 0, souvenir: '🍪', title: 'Der Regentag',
     panels: [
       { text: 'Es regnet! Lumi wollte draußen spielen. Das ist schade …', fx: 'rain',
         lumi: { feel: 'sad', say: ['⚽'] }, cast: [t('🪟', 430, 'pop', { s: 160, y: 60 })],
@@ -236,7 +236,7 @@ const STORIES = [
     },
   },
   {
-    id: 'lunchbox', tier: 1, title: 'Kein Frühstück',
+    id: 'lunchbox', tier: 1, souvenir: '🥪', title: 'Kein Frühstück',
     panels: [
       { text: 'In der Pause macht Lumi die Brotdose auf. Leckere Butterbrote! Aber Jonas sitzt still daneben und schaut auf den Boden.',
         lumi: { feel: 'happy' }, cast: [t('🥪', HAND, 'pop', { s: 56, y: 50 }), c('👦', 420, 'pop', { s: 130, feel: 'sad', d: 0.8 })] },
@@ -274,7 +274,7 @@ const STORIES = [
     },
   },
   {
-    id: 'vase', tier: 1, title: 'Die zerbrochene Vase',
+    id: 'vase', tier: 1, souvenir: '🧹', title: 'Die zerbrochene Vase',
     panels: [
       { text: 'Peng! Beim Spielen stößt Lumi aus Versehen Omas Lieblingsvase vom Tisch. Überall liegen Scherben. Vorsicht, die sind scharf! Lumi fasst sie nicht an.',
         lumi: { feel: 'surprised' }, cast: [t(':px-tisch:', 410, 'pop', { s: 150 }), t('🏺', 410, 'fall', { s: 70, y: 110, d: 0.8 }), t('💥', 430, 'bang', { s: 90, y: 10, d: 1.6 })] },
@@ -312,7 +312,7 @@ const STORIES = [
     },
   },
   {
-    id: 'newkid', tier: 1, title: 'Das neue Mädchen',
+    id: 'newkid', tier: 1, souvenir: '🎀', title: 'Das neue Mädchen',
     panels: [
       { text: 'Im Kindergarten gibt es ein neues Mädchen: Emma. Emma steht ganz allein in der Ecke und schaut auf den Boden.',
         lumi: { feel: 'curious' }, cast: [t('🏫', 520, 'pop', { s: 160 }), c('👧', 390, 'pop', { s: 120, feel: 'sad', who: true, d: 0.4 })],
@@ -350,7 +350,7 @@ const STORIES = [
     },
   },
   {
-    id: 'swing', tier: 1, title: 'Die Schaukel',
+    id: 'swing', tier: 1, souvenir: '🌸', title: 'Die Schaukel',
     panels: [
       { text: 'Lumi schaukelt hoch in den Himmel. Juhu!',
         lumi: { feel: 'excited', x: 300, y: 40, act: 'swing' }, cast: [t(ROCK, 300, 'none', { s: 230 })] },
@@ -387,7 +387,7 @@ const STORIES = [
     },
   },
   {
-    id: 'screentime', tier: 1, title: 'Das Tablet',
+    id: 'screentime', tier: 1, souvenir: '🃏', title: 'Das Tablet',
     panels: [
       { text: 'Lumi spielt schon lange auf dem Tablet. Mama sagt: „Noch zehn Minuten, dann ist Pause.“',
         lumi: { feel: 'happy' }, cast: [t('📱', HAND, 'pop', { s: 56, y: 60 }), c('👩', 460, 'in', { s: 150, say: ['⏰'] })] },
@@ -424,10 +424,10 @@ const STORIES = [
     },
   },
   {
-    id: 'climbingframe', tier: 2, title: 'Lumi und der große Kletterturm',
+    id: 'climbingframe', tier: 2, souvenir: '🏆', title: 'Lumi und der große Kletterturm',
     panels: [
       { text: 'Im Park steht ein großer Kletterturm. Alle Kinder klettern hinauf. Lumi bleibt unten. „Das ist so hoch … was ist, wenn ich falle?“',
-        lumi: { feel: 'scared' }, cast: [t(':px-klettergeruest:', 430, 'pop', { s: 240 }), c('🧒', 430, 'pop', { s: 70, y: 126, d: 0.5 }), c('👦', 500, 'hop', { s: 80, d: 0.8 })],
+        lumi: { feel: 'scared' }, cast: [t(':px-klettergeruest:', 430, 'pop', { s: 240 }), c('🧒', 330, 'hop', { s: 70, d: 0.5 }), c('👦', 500, 'hop', { s: 80, d: 0.8 })],
         ask: { who: 'Lumi', feeling: 'Ängstlich' } },
       { text: 'Mia reicht Lumi die Hand: „Ich bin neben dir. Versuch es Schritt für Schritt!“',
         lumi: { feel: 'scared', strength: 0 }, cast: [t(':px-klettergeruest:', 450, 'none', { s: 240 }), c('👧', 310, 'in', { s: 120, say: ['🤝'] })] },
@@ -462,7 +462,7 @@ const STORIES = [
     },
   },
   {
-    id: 'promise', tier: 2, title: 'Das Versprechen',
+    id: 'promise', tier: 2, souvenir: '⏰', title: 'Das Versprechen',
     panels: [
       { text: 'Lumi spielt beim Nachbarskind Ben. Lumi hat Oma versprochen, zum Abendessen pünktlich heimzukommen.',
         lumi: { feel: 'happy', say: ['👵', '🍲'] }, cast: [t('🏠', 480, 'pop', { s: 180 }), c('👦', 350, 'pop', { s: 120 })] },
@@ -489,7 +489,7 @@ const STORIES = [
       stay: {
         panels: [
           { text: 'Lumi spielt weiter. Da klingelt bei Ben das Telefon. Es ist Oma. Oma weiß nicht, wo Lumi bleibt.',
-            lumi: { feel: 'happy' }, cast: [c('👦', 330, 'hop', { s: 110 }), t('📱', 430, 'shake', { s: 60, y: 60, d: 0.4 }), c('👵', 520, 'pop', { s: 120, feel: 'scared', who: true, d: 0.8 })],
+            lumi: { feel: 'happy' }, cast: [c('👦', 330, 'hop', { s: 110 }), t('📱', 430, 'shake', { s: 60, y: 60, d: 0.4 }), c('👵', 530, 'pop', { s: 110, feel: 'scared', who: true, d: 0.8, say: ['📱'] })],
             ask: { who: 'Oma', feeling: 'Ängstlich' } },
           { text: 'Lumi läuft schnell nach Hause. Oma und Lumi nehmen sich fest in den Arm.',
             lumi: { feel: 'thankful', act: 'run' }, cast: [c('👵', 330, 'none', { s: 150, feel: 'happy' }), t('💛', 250, 'pop', { s: 44, y: 200, d: 1 })] },
@@ -499,7 +499,7 @@ const STORIES = [
     },
   },
   {
-    id: 'wallet', tier: 2, title: 'Das gefundene Portemonnaie',
+    id: 'wallet', tier: 2, souvenir: '📷', title: 'Das gefundene Portemonnaie',
     panels: [
       { text: 'Beim Spielen im Park findet Lumi ein Portemonnaie im Gras. Darin sind Geld und ein Foto.',
         lumi: { feel: 'curious', act: 'in' }, cast: [t('🌿', 420, 'pop', { s: 110 }), t(':px-portemonnaie:', 360, 'jack', { s: 64, d: 1 })] },
@@ -536,7 +536,7 @@ const STORIES = [
     },
   },
   {
-    id: 'sweater', tier: 2, title: 'Der bekleckste Pulli',
+    id: 'sweater', tier: 2, souvenir: '🫧', title: 'Der bekleckste Pulli',
     panels: [
       { text: 'Lumi malt mit Wasserfarben. Auf dem Stuhl liegt der Lieblingspulli von Lumis großer Schwester Lea.',
         lumi: { feel: 'happy' }, cast: [t('🎨', HAND, 'pop', { s: 56, y: 50 }), t('🪑', 420, 'pop', { s: 140 }), t('👕', 420, 'pop', { s: 80, y: 60, d: 0.4 })] },
@@ -601,6 +601,35 @@ function levelSetup(level) {
 }
 
 const plain = s => s.replace(/\s*\p{Extended_Pictographic}️?/gu, '').trim()
+// Before the tap: what already stands there, still, with no feelings yet;
+// everything that arrives or happens comes with the tap. The one to tap is
+// the one the page is about, else the biggest character, else the biggest
+// thing (the shop, the window), else Lumi.
+const STILL = new Set(['none', 'pop', 'bob', 'hop', 'shake', undefined])
+function beforeOf(panel) {
+  const still = panel.cast.filter(x => STILL.has(x.act)).map(x => ({ ...x, act: 'none', d: 0, say: undefined, feel: undefined }))
+  const who = still.findIndex(x => x.who)
+  const biggest = list => list.reduce((b, i) => (b === -1 || (still[i].s ?? 80) > (still[b].s ?? 80) ? i : b), -1)
+  const seen = still.map((x, i) => i).filter(i => still[i].z !== 0)   // not one peeking from behind
+  const char = biggest(seen.filter(i => still[i].char))
+  const thing = biggest(seen)
+  return { cast: still, tap: who > -1 ? who : char > -1 ? char : thing > -1 ? thing : 'lumi' }
+}
+
+// Lumi's backpack with a souvenir from every story; the newest drops in
+function Backpack({ bag, fresh }) {
+  return (
+    <div style={{ position: 'relative', width: 70, height: 70 }}>
+      <Art art="🎒" size={70} />
+      <motion.div key={fresh} initial={{ y: -120, scale: 1.6, opacity: 1 }} animate={{ y: 6, scale: 0.6, opacity: [1, 1, 0] }} transition={{ duration: 1.3, delay: 0.5 }}
+        style={{ position: 'absolute', left: 13, top: 0 }}><Art art={fresh} size={44} /></motion.div>
+      <div style={{ position: 'absolute', left: -10, right: -10, bottom: -26, display: 'flex', justifyContent: 'center', gap: 1 }}>
+        {bag.map(a => <Art key={a} art={a} size={22} />)}
+      </div>
+    </div>
+  )
+}
+
 // what is still where it was at the end of a scene (the lesson shows it again)
 const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 const STAYS = new Set(['none', 'pop', 'bob', 'drop', 'shake', 'hop', 'jack', 'bang', undefined])
@@ -618,7 +647,11 @@ export default function StoryGame({ level = 1, onComplete }) {
   const [answer,     setAnswer]     = useState(null)
   const [asked,      setAsked]      = useState(0)
   const [firstTry,   setFirstTry]   = useState(0)
+  const [touched,    setTouched]    = useState(false)   // the child tapped and made this page happen
+  const [fallback,   setFallback]   = useState(false)   // nobody tapped for a while: the arrow does it too
+  const [bag,        setBag]        = useState([])      // a souvenir from every story, in Lumi's backpack
   const [after, cancel] = useAfter()
+  const [later] = useAfter()
   const [bursts, burst] = useBursts()
   const trayRef = useRef(null), nextRef = useRef(null)
   const trayStart = useTrayStart(trayRef)
@@ -626,6 +659,7 @@ export default function StoryGame({ level = 1, onComplete }) {
   const [whoRef] = useState(() => ref('[data-story-stage] .pl-drop'))
   const [lumiRef] = useState(() => ref('[data-fork-lumi]'))
   const [signRef] = useState(() => ref('[data-sign="hint"]'))
+  const [actorRef] = useState(() => ref('[data-story-stage] [data-tap-actor]'))
   const narrow = typeof window !== 'undefined' && window.innerWidth < 600
 
   const story   = stories[storyIdx]
@@ -646,11 +680,26 @@ export default function StoryGame({ level = 1, onComplete }) {
 
   useEffect(() => () => stopNarration(), [])
 
-  // A scene plays in full; then its question, or the page can be turned
+  // A page first stands still: the child taps the one it is about (the
+  // hedgehog, the shop, the vase …) and the page happens. Then its question,
+  // or the next page by itself. If nobody taps, an arrow comes to do it.
+  const before = useMemo(() => (panel ? beforeOf(panel) : null), [stepKey]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    setAnswer(null); setReady(false)
-    if (panel) after(() => setReady(true), Math.max(1500, sceneLength(panel.cast, panel.lumi)), { quiet: false })
+    setAnswer(null); setReady(false); setTouched(false); setFallback(false)
+    if (panel) later(() => setFallback(true), 6000, { quiet: false })
+    if (phase === 'lesson' && !bag.includes(story.souvenir)) setBag(b => [...b, story.souvenir])
   }, [stepKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const happened = useRef(null)
+  const happen = () => {
+    if (happened.current === stepKey || !panel) return
+    happened.current = stepKey
+    setTouched(true)
+    sfx.pop()
+    const len = sceneLength(panel.cast, panel.lumi)
+    if (ask) after(() => setReady(true), Math.max(1500, len), { quiet: false })
+    else after(advance, Math.max(2800, len + 1800), { quiet: false })
+  }
 
   // once per page: a second tap on the page-turn button (it stays on screen
   // while it shrinks away) turned two pages and ran past the last one
@@ -695,12 +744,12 @@ export default function StoryGame({ level = 1, onComplete }) {
 
   const openAlt = () => { setSawAlt(true); setPanelIdx(0); setPhase('alt') }
 
-  if (phase === 'end') return <Finale stories={stories} narrow={narrow} onDone={() => { if (turned.current !== 'end') { turned.current = 'end'; onComplete(result(firstTry, asked)) } }} />
+  if (phase === 'end') return <Finale stories={stories} bag={bag} narrow={narrow} onDone={() => { if (turned.current !== 'end') { turned.current = 'end'; onComplete(result(firstTry, asked)) } }} />
 
   const whoIdx = panel?.cast?.findIndex(x => x.who) ?? -1
   const target = ask ? (ask.who === 'Lumi' ? 'lumi' : whoIdx) : null
   const last = outcome?.panels[outcome.panels.length - 1]
-  const turnPage = panel && ready && !ask
+  const stillPage = panel && !touched
 
   return (
     <DragArea autoTarget={phase === 'choice' ? null : 'who'} disabled={phase !== 'choice' && (!asking || !!answer)}>
@@ -717,13 +766,17 @@ export default function StoryGame({ level = 1, onComplete }) {
         <div data-story-stage role="img" aria-label={panel ? plain(panel.text) : phase === 'lesson' ? outcome.lesson : story.title} style={{ flex: 1, width: '100%', maxWidth: 980, display: 'flex', minHeight: 0 }}>
           {phase === 'choice'
             ? <Fork options={story.choice.options} hint={storyIdx % 2} onChoose={choose} narrow={narrow} />
+            : stillPage
+              ? <Stage key={`${stepKey}-still`} playKey={`${stepKey}-still`} cast={before.cast} fx={panel.fx}
+                  lumi={{ x: 170, size: 150, ...panel.lumi, act: undefined, say: undefined, feel: 'neutral' }}
+                  tap={{ who: before.tap, onTap: happen, label: 'Antippen' }} />
             : panel
               ? <Stage key={stepKey} playKey={stepKey} cast={panel.cast} fx={panel.fx}
                   lumi={{ x: 170, size: 150, ...panel.lumi, ...(target === 'lumi' && !answer ? { feel: 'neutral', say: undefined } : {}) }}
                   drop={target != null && target !== -1 ? { who: target, id: 'who', onDrop: d => giveFace(d.feeling), label: ask.who } : undefined}
                   bubbles={asking && target != null ? { [target]: answer ? <FeelingFace feeling={ask.feeling} size={44} /> : <AskFace /> } : {}} />
               : <Stage key={stepKey} playKey={stepKey} cast={last.cast.filter(x => x.char || STAYS.has(x.act)).map(x => ({ ...x, act: 'none', say: undefined, d: 0 }))}
-                  lumi={{ x: 170, size: 150, feel: 'happy' }} bubbles={{ lumi: <Art art="💡" size={44} /> }} />}
+                  lumi={{ x: 170, size: 150, feel: 'happy', hold: <Backpack bag={bag} fresh={story.souvenir} /> }} bubbles={{ lumi: <Art art="💡" size={44} /> }} />}
         </div>
 
         {/* clipped: the tray sliding in must not count as content height
@@ -741,8 +794,8 @@ export default function StoryGame({ level = 1, onComplete }) {
                 ))}
               </motion.div>
             )}
-            {turnPage && (
-              <motion.button key={`next-${stepKey}`} ref={nextRef} onClick={advance} aria-label="Weiter"
+            {stillPage && fallback && (
+              <motion.button key={`next-${stepKey}`} ref={nextRef} onClick={happen} aria-label="Weiter"
                 initial={{ scale: 0, rotate: -30 }} animate={{ scale: 1, rotate: 0 }} exit={{ scale: 0, opacity: 0 }} whileTap={{ scale: 0.88 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 15 }}
                 style={{ ...GO, width: 92, height: 92, borderRadius: '50%', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -769,7 +822,7 @@ export default function StoryGame({ level = 1, onComplete }) {
         </div>
       </div>
       {asking && !answer && <HintHand from={trayStart} to={whoRef} delay={asked === 0 ? 2000 : 6000} />}
-      {turnPage && <HintHand to={nextRef} delay={storyIdx === 0 && phase === 'intro' && panelIdx === 0 ? 2500 : 7000} />}
+      {stillPage && <HintHand to={actorRef} delay={storyIdx === 0 && phase === 'intro' && panelIdx < 2 ? 1500 : 4000} />}
       {phase === 'choice' && <HintHand from={lumiRef} to={signRef} delay={storyIdx === 0 ? 2500 : 6000} />}
       {bursts}
     </DragArea>
@@ -777,7 +830,7 @@ export default function StoryGame({ level = 1, onComplete }) {
 }
 
 // The end of the level: Lumi at the castle with everyone from the stories
-function Finale({ stories, narrow, onDone }) {
+function Finale({ stories, bag, narrow, onDone }) {
   useEffect(() => { sfx.tada() }, [])
   // the first character of each story
   const pals = stories.map(s => [...s.panels, ...s.panels].flatMap(p => p.cast).find(x => x.char)?.a).filter(Boolean)
@@ -787,13 +840,24 @@ function Finale({ stories, narrow, onDone }) {
       <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 180, damping: 12 }}>
         <Art art="🏰" size={narrow ? 130 : 200} />
       </motion.div>
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: narrow ? 6 : 16 }}>
-        <FeelLumi feel="excited" size={size * 1.3} />
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', flexWrap: 'wrap', gap: narrow ? 6 : 16, maxWidth: '100%' }}>
+        <div style={{ position: 'relative' }}>
+          <FeelLumi feel="excited" size={size * 1.3} />
+          {/* the backpack, and everything from the stories bouncing out of it */}
+          <div style={{ position: 'absolute', right: -size * 0.2, bottom: 0 }}><Art art="🎒" size={size * 0.55} /></div>
+          {bag.map((a, i) => (
+            <motion.div key={a} initial={{ y: 0, opacity: 0 }} animate={{ y: [0, -size * (0.9 + i * 0.25), -size * (0.7 + i * 0.25)], opacity: 1 }}
+              transition={{ delay: 0.8 + i * 0.3, duration: 0.8 }}
+              style={{ position: 'absolute', right: -size * 0.1 + (i % 2) * size * 0.3, bottom: size * 0.3, pointerEvents: 'none' }}>
+              <Art art={a} size={size * 0.4} />
+            </motion.div>
+          ))}
+        </div>
         {pals.map((a, i) => (
           <motion.div key={i} initial={{ x: 300, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
             transition={{ delay: 0.3 + i * 0.25, type: 'spring', stiffness: 120, damping: 14 }}>
             <motion.div animate={{ y: [0, -size * 0.35, 0], rotate: [0, -8, 8, 0] }} transition={{ delay: 1.2 + i * 0.2, duration: 0.7, repeat: Infinity, repeatDelay: 0.3 }}>
-              <Art art={a} size={size} />
+              <Art art={asPerson(a, size)[0]} size={asPerson(a, size)[1]} />
             </motion.div>
           </motion.div>
         ))}

@@ -221,7 +221,7 @@ const SCENES = [
     ] },
   { feeling: 'Glücklich', name: 'Noah',
     situation: 'Noahs Oma ist zu Besuch gekommen. Noah strahlt.',
-    props: [pal('👵', 440, 'in', { s: 130, flip: true })],
+    props: [pal('👵', 520, 'in', { s: 118, flip: true })],
     best: 'Ich sage: Schön, dass deine Oma da ist!', bi: ['🗣️', '💛'],
     other: [
       { t: 'Ich sage, dass meine Oma netter ist.', i: ['🗣️', '😠'] },
@@ -262,6 +262,30 @@ function pickScenes(rounds) {
 // The heavy feelings start pale; help brings the colour back
 const GREY = new Set(['Traurig', 'Einsam', 'Wütend', 'Ängstlich', 'Müde'])
 const FRIEND_X = 300
+// How each kind of help plays out once it is given: where Lumi stands
+// (`dx` left of the friend), what moves between them, what bursts out.
+// Lumi stands at `lx`; things fly between Lumi and the friend.
+const ACTS = {
+  hug:    { dx: 95, burst: 'hearts', items: lx => [t('❤️', (lx + FRIEND_X) / 2, 'bang', { s: 50, y: 170, d: 1.2 }), t('❤️', (lx + FRIEND_X) / 2 + 30, 'bang', { s: 40, y: 200, d: 1.5 })] },
+  play:   { dx: 190, burst: 'stars', items: lx => [t('⚽', lx + 50, 'pass', { s: 44, to: FRIEND_X - 50, d: 1.2 })] },
+  dice:   { dx: 190, burst: 'stars', items: lx => [t('🎲', lx + 50, 'pass', { s: 44, to: FRIEND_X - 50, d: 1.2 })] },
+  words:  { dx: 150, burst: 'hearts', items: lx => [t('💛', lx + 40, 'give', { s: 44, y: 120, to: FRIEND_X - 20, d: 1.2 }), t('💛', lx + 40, 'give', { s: 36, y: 140, to: FRIEND_X - 10, d: 1.6 })] },
+  listen: { dx: 100, burst: 'hearts', items: () => [t('🗣️', FRIEND_X - 50, 'bang', { s: 40, y: 190, d: 1.2 })] },
+  clap:   { dx: 150, burst: 'stars', items: lx => [t('👏', lx + 30, 'shake', { s: 50, y: 150, d: 1.1 })] },
+  light:  { dx: 150, burst: 'stars', fx: 'glow', items: () => [] },
+  rest:   { dx: 160, burst: null, items: () => [t('🛏️', FRIEND_X + 20, 'drop', { s: 90, d: 1.1, z: 1 }), t('💤', FRIEND_X + 50, 'bob', { s: 40, y: 170, d: 1.6 })] },
+  party:  { dx: 150, burst: 'confetti', items: lx => [t('🎉', lx + 30, 'shake', { s: 50, y: 150, d: 1.1 })] },
+  walk:   { dx: 95, burst: 'hearts', items: () => [] },
+  search: { dx: 150, burst: 'stars', items: () => [] },
+}
+const actOf = arts => ACTS[
+  arts.includes('⚽') ? 'play' : arts.includes('🎲') ? 'dice' : arts.includes('💡') ? 'light'
+  : arts[0] === '🤗' ? 'hug' : arts[0] === '🗣️' ? 'words' : arts.includes('👂') ? 'listen'
+  : arts[0] === '👏' || arts[0] === '👀' ? 'clap' : arts[0] === '🛏️' ? 'rest'
+  : arts[0] === '🎉' || arts[0] === '🎁' ? 'party' : arts[0] === '🔍' ? 'search' : 'walk']
+// where the friends helped earlier stand at the back
+const BACK_X = [60, 545, 120, 485, 20, 590]
+
 // once helped, the friend is visibly glad; glad friends get gladder
 const GLAD = { 'Stolz': 'proud', 'Müde': 'calm', 'Glücklich': 'excited' }
 
@@ -281,7 +305,8 @@ export default function EmpathyGame({ level = 1, onComplete }) {
   const [tried,    setTried]    = useState([])         // faces or helps that did not fit
   const [given,    setGiven]    = useState([])         // kind helps the friend got
   const [missed,   setMissed]   = useState(false)      // this scene no longer counts as first try
-  const [react,    setReact]    = useState(null)       // a short reaction: 'more' (the feeling, stronger), 'smile', 'away'
+  const [react,    setReact]    = useState(null)
+  const [cheering, setCheering] = useState([])         // friends helped so far, waving at the back       // a short reaction: 'more' (the feeling, stronger), 'smile', 'away'
   // a ref: the round ends from a callback scheduled before the last point is counted
   const firstTry = useRef(0)
   const [after] = useAfter()
@@ -340,7 +365,10 @@ export default function EmpathyGame({ level = 1, onComplete }) {
       sfx.tada()
       sayRight()
       burst(friendAt(), 'hearts', 14)
-      after(next, 2600, { quiet: false })
+      // the help plays out (Lumi walks over, then hugs, plays, listens …)
+      const kind = actOf(h.i)
+      if (kind.burst) later(() => burst(friendAt(), kind.burst, 16), 1500, { quiet: false })
+      after(next, 3400, { quiet: false })
       return true
     }
     setTried(t => [...t, h.t])
@@ -357,6 +385,7 @@ export default function EmpathyGame({ level = 1, onComplete }) {
   }
 
   const next = () => {
+    setCheering(c => [...c, sc.look].slice(-6))
     if (idx + 1 >= scenes.length) setPhase('end')
     else setIdx(i => i + 1)
   }
@@ -386,10 +415,14 @@ export default function EmpathyGame({ level = 1, onComplete }) {
     say: helped ? ['💛'] : undefined,
   }
   const props = helped && sc.then ? sc.then : showProps ? sc.props : []
-  const cast = [friend, ...props]
   // the best help: Lumi comes and does it with the friend
   const best = sc.helps.find(h => h.best)
-  const helper = helped ? { x: FRIEND_X - 150, size: 120, act: 'in', feel: 'happy', say: best.i } : undefined
+  const doing = actOf(best.i)
+  const helper = helped ? { x: FRIEND_X - doing.dx, size: 120, act: 'in', feel: 'happy', say: best.i } : undefined
+  // friends helped earlier wave from the back of the meadow
+  const back = cheering.map((look, n) => ({ x: BACK_X[n], y: 70, s: 60, act: 'none', z: 0,
+    node: <motion.div animate={{ y: [0, -10, 0], rotate: [0, -6, 6, 0] }} transition={{ duration: 1.2, repeat: Infinity, delay: n * 0.2 }}><FeelLumi feel="happy" look={look} size={58} /></motion.div> }))
+  const cast = [friend, ...props, ...(helped ? doing.items(FRIEND_X - doing.dx) : []), ...back]
 
   const step = phase === 'help' || phase === 'done' ? 'help' : 'feeling'
   const trayOn = phase === 'feeling' || phase === 'help'
@@ -415,7 +448,7 @@ export default function EmpathyGame({ level = 1, onComplete }) {
         </div>
 
         <div data-empathy-stage role="img" aria-label={sc.situation} style={{ flex: 1, width: '100%', maxWidth: 980, display: 'flex', minHeight: 0 }}>
-          <Stage key={idx} playKey={idx} cast={cast} lumi={helper} fx={showProps && !(helped && sc.then) ? sc.fx : undefined}
+          <Stage key={idx} playKey={idx} cast={cast} lumi={helper} fx={helped ? doing.fx ?? (sc.then ? undefined : sc.fx) : showProps ? sc.fx : undefined}
             drop={{ who: 0, id: 'friend', onDrop, label: sc.name }}
             tint={{ 0: sat }}
             bubbles={bubble ? { 0: bubble } : {}} />

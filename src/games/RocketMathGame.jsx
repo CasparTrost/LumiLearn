@@ -1,6 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react'
 import { customArtSrc } from '../lib/emojiArt.jsx'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useAnimationControls } from 'framer-motion'
 import { sfx } from '../sfx.js'
 import { afterNarration, lockPreviews } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
@@ -119,6 +119,39 @@ function Alien({ size = 110, color = '#5CC45A', mood = 'idle', onTap, label }) {
   )
 }
 
+// ── The passenger tower ─────────────────────────────────────────────────────
+// Everyone picked up rides on the roof of the taxi, three to a row, the
+// newest climbing on top. The tower sways at every hop.
+function Tower({ riders, rocketPx, hop, ending }) {
+  const reduce = reduceMotion()
+  const s = rocketPx * 0.5
+  const n = riders.length
+  const sway = useAnimationControls()
+  useEffect(() => {
+    if (reduce || (!hop && !ending)) return
+    sway.start(ending ? { rotate: [0, -12, 9, -7, 4, 0], transition: { duration: 1.6 } } : { rotate: [0, -7, 6, -3, 0], transition: { duration: 0.6 } })
+  }, [hop, ending, sway, reduce])
+  if (!n) return null
+  return (
+    <motion.div aria-hidden="true" animate={sway}
+      style={{ position: 'absolute', left: rocketPx / 2, bottom: rocketPx * 0.72, width: 0, height: 0, transformOrigin: '0 100%', pointerEvents: 'none', zIndex: 3 }}>
+      {riders.map((c, i) => {
+        const row = Math.floor(i / 3), col = i % 3
+        const inRow = Math.min(3, n - row * 3)
+        const x = (col - (inRow - 1) / 2) * s * 0.78 + (row % 2 ? s * 0.08 : -s * 0.08)
+        return (
+          <motion.div key={i} initial={reduce ? false : { y: rocketPx * 1.2, scale: 0, opacity: 0 }}
+            animate={{ x: x - s / 2, y: -s - row * s * 0.62, scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 13 }}
+            style={{ position: 'absolute', left: 0, top: 0, width: s, height: s, zIndex: 1 + row }}>
+            <Alien size={s} color={c} mood="idle" />
+          </motion.div>
+        )
+      })}
+    </motion.div>
+  )
+}
+
 // ── Ten frame ────────────────────────────────────────────────────────────────
 // The sum as blocks: the start in purple, what is added in gold.
 function TenFrame({ filled, added }) {
@@ -201,6 +234,7 @@ export default function RocketMathGame({ level = 1, onComplete }) {
   const [riders,  setRiders]  = useState([])     // the aliens picked up so far
   const [ending,  setEnding]  = useState(false)
   const [lineW,   setLineW]   = useState(0)
+  const [puffs,   setPuffs]   = useState([])     // flame puffs: a tap on the rocket mid-flight
   const [bursts, burst] = useBursts()
   const firstTry = useRef(0)                     // tasks right on the first try
   const timers   = useRef([])
@@ -287,6 +321,16 @@ export default function RocketMathGame({ level = 1, onComplete }) {
     }
     later(stepOnce, 650)
   }, [later])
+
+  // A tap on the rocket while it flies: a puff of flame and a whoosh. Only
+  // for fun — the flight takes as long as before.
+  const boost = () => {
+    if (!hopping) return
+    sfx.whoosh()
+    const id = Date.now() + Math.random()
+    setPuffs(p => [...p.slice(-3), id])
+    later(() => setPuffs(p => p.filter(x => x !== id)), 700)
+  }
 
   const nextTask = useCallback(() => {
     if (idx + 1 < tasks.length) { setIdx(i => i + 1); return }
@@ -509,6 +553,9 @@ export default function RocketMathGame({ level = 1, onComplete }) {
           animate={ending && !reduceMotion() ? { left: '115%', y: -500, opacity: 0 } : { left: at(pos), y: 0, opacity: 1 }}
           transition={ending ? { duration: 1.8, ease: 'easeIn' } : { type: 'spring', stiffness: hopping ? 260 : 120, damping: hopping ? 22 : 18 }}
           style={{ position: 'absolute', top: 6 + lift(pos), width: rocketPx, height: rocketPx, marginLeft: -rocketPx / 2, pointerEvents: 'none', zIndex: 2 }}>
+          {/* the passengers so far ride on top, in a tower that wobbles
+              at every hop and goes along on the last flight */}
+          <Tower riders={riders} rocketPx={rocketPx} hop={trail.length} ending={ending} />
           <motion.div key={trail.length} animate={trail.length && !reduceMotion() ? { y: [0, -rocketPx * 0.45, 0] } : {}} transition={{ duration: 0.4 }}>
             <motion.div initial={false}
               animate={launching && !reduceMotion() ? { x: [0, -4, 4, -4, 4, 0], rotate: heading, scaleX: back ? -1 : 1 }
@@ -516,18 +563,25 @@ export default function RocketMathGame({ level = 1, onComplete }) {
                 : { x: 0, rotate: ending ? 45 : heading, scaleX: back && !ending ? -1 : 1 }}
               transition={{ duration: aboard && streak >= 3 ? 0.8 : 0.3, repeat: launching ? 1 : 0 }}>
               <Art art="🚀" size={rocketPx} />
+              {/* flame puffs out of the tail (the picture points up and to the right) */}
+              <AnimatePresence>
+                {puffs.map(id => (
+                  <motion.div key={id} aria-hidden="true" initial={{ scale: 0.3, opacity: 1, x: 0, y: 0 }}
+                    animate={{ scale: [0.3, 1.4, 1.8], opacity: [1, 1, 0], x: -rocketPx * 0.5, y: rocketPx * 0.5 }} exit={{ opacity: 0 }}
+                    transition={{ duration: 0.6, ease: 'easeOut' }}
+                    style={{ position: 'absolute', left: -rocketPx * 0.22, top: rocketPx * 0.42, width: rocketPx * 0.75, height: rocketPx * 0.75, pointerEvents: 'none' }}>
+                    <div style={{ transform: 'rotate(-135deg)' }}><Art art="🔥" size={rocketPx * 0.75} /></div>
+                    <div style={{ position: 'absolute', left: -rocketPx * 0.2, top: rocketPx * 0.3, width: rocketPx * 0.4, height: rocketPx * 0.4, borderRadius: '50%', background: 'rgba(255,255,255,0.75)', filter: 'blur(2px)' }} />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             </motion.div>
           </motion.div>
-          {/* the alien rides along once picked up */}
-          <AnimatePresence>
-            {aboard && (
-              <motion.div key="rider" initial={{ y: rocketPx, scale: 0 }} animate={{ y: [rocketPx, -rocketPx * 0.9, -rocketPx * 0.45], scale: [0, 1, 0.7] }}
-                transition={{ duration: 0.8 }}
-                style={{ position: 'absolute', left: rocketPx * 0.05, top: 0 }}>
-                <Alien size={rocketPx * 0.8} color={t.color} mood="happy" />
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {/* tap the rocket in flight: the engine gives a puff */}
+          {hopping && (
+            <button type="button" aria-label="Rakete" onPointerDown={boost}
+              style={{ all: 'unset', position: 'absolute', inset: -rocketPx * 0.2, borderRadius: '50%', cursor: 'pointer', pointerEvents: 'auto' }} />
+          )}
           {/* the way to fly, after a planet the wrong way round */}
           <AnimatePresence>
             {arrow && (
@@ -576,16 +630,6 @@ export default function RocketMathGame({ level = 1, onComplete }) {
         )}
       </div>
 
-      {/* the passengers so far, waving from the taxi rank */}
-      <div aria-hidden="true" style={{ display: 'flex', gap: 2, minHeight: 34, marginTop: -8 }}>
-        {riders.map((c, i) => (
-          <motion.div key={i} initial={{ y: -30, scale: 0 }}
-            animate={ending && !reduceMotion() ? { y: -600, x: 400, scale: 0.6 } : { y: 0, scale: 1 }}
-            transition={ending ? { duration: 1.6, delay: 0.2 + i * 0.06, ease: 'easeIn' } : { type: 'spring', stiffness: 300, damping: 14 }}>
-            <Alien size={40} color={c} mood="idle" />
-          </motion.div>
-        ))}
-      </div>
     </div>
   )
 }
