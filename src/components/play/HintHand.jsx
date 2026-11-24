@@ -29,11 +29,14 @@ export default function HintHand({ from, to, active = true, delay = 5000, repeat
 
   useEffect(() => {
     if (!show) { setBox(null); return }
+    // On a 24 px grid: a target that drifts a little (a floating bubble)
+    // must not restart the hand every half second
+    const snap = p => p && { x: Math.round(p.x / 24) * 24, y: Math.round(p.y / 24) * 24 }
     const measure = () => {
-      const t = rectOf(to)
+      const t = snap(rectOf(to))
       if (!t) { setBox(null); return }
-      const f = from ? rectOf(from) : null
-      setBox({ f, t })
+      const f = from ? snap(rectOf(from)) : null
+      setBox(b => (b && same(b.t, t) && same(b.f, f) ? b : { f, t }))
     }
     measure()
     const id = setInterval(measure, 500)
@@ -57,6 +60,8 @@ export default function HintHand({ from, to, active = true, delay = 5000, repeat
     document.body,
   )
 }
+
+const same = (a, b) => (!a && !b) || (a && b && a.x === b.x && a.y === b.y)
 
 // Middle of an element (a ref or an element) on screen
 function rectOf(t) {

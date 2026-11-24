@@ -701,7 +701,7 @@ function Picture({ r, tall, found, shake, solved, onTap }) {
 // order is clear without words. Tapped shapes hop onto the steps in turn;
 // the camera flashes at the end.
 function Photo({ r, picked, shake, solved, look, onPick, rowRef }) {
-  const max = 'min(22vw, 120px)'
+  const max = 'min(26vw, 124px)'
   const waiting = r.items.filter(it => !picked.includes(it.id))
   const order = picked.map(id => r.items.find(it => it.id === id))
   const wanted = [...r.sizes].sort((a, b) => (r.down ? b - a : a - b))
