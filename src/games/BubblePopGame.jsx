@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react'
 import { motion, AnimatePresence, useAnimationFrame, useAnimationControls, motionValue, useReducedMotion } from 'framer-motion'
 import { sfx } from '../sfx.js'
-import { lockPreviews } from '../narrator.js'
+import { lockPreviews, narrate, afterNarration } from '../narrator.js'
+import { numberWord } from '../lib/words.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
@@ -208,6 +209,8 @@ export default function BubblePopGame({ level = 1, onComplete }) {
     setPhase('playing')
     lockPreviews()
     sayTask()
+    // after any praise still being spoken, not over it
+    return afterNarration(() => narrate([numberWord(t)]))
   }, [roundIdx, cfg, launch])
 
   // The party after the last round: every bubble is a star bubble, for
