@@ -684,7 +684,7 @@ const POWER_GLOW  = ['rgba(255,120,200,0.55)', 'rgba(80,240,230,0.55)', 'rgba(25
 // the long way round, and found only by wandering. Opened, it pops
 // confetti and gives Lumi a sticker, shown again at the win.
 const LOOT = ['💎', '👑', '🦄', '🌈', '🔮', '⭐']
-function treasureSpot({ g, start, exit, potions, mainPath }, avoid) {
+function treasureSpot({ g, start, exit, potions, mainPath }) {
   const key = p => `${p.x},${p.y}`
   const dist = new Map((mainPath ?? []).map(p => [key(p), 0]))
   const queue = [...(mainPath ?? [])]
@@ -697,15 +697,17 @@ function treasureSpot({ g, start, exit, potions, mainPath }, avoid) {
       queue.push(n)
     }
   }
-  const taken = new Set([start, exit, ...potions, ...avoid].map(key))
+  const taken = new Set([start, exit, ...potions].map(key))
+  // a dead end if there is one (the small mazes have loops and few dead
+  // ends), else the cell farthest off the way
   let best = null
   for (let y = 1; y < g.length - 1; y++) for (let x = 1; x < g[0].length - 1; x++) {
     if (g[y][x] !== 0 || taken.has(`${x},${y}`)) continue
-    const ways = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) => g[y + dy]?.[x + dx] === 0).length
-    if (ways !== 1) continue
+    const end = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) => g[y + dy]?.[x + dx] === 0).length === 1
     const off = dist.get(`${x},${y}`) ?? 0
     const far = Math.abs(x - start.x) + Math.abs(y - start.y)
-    if (!best || off > best.off || (off === best.off && far > best.far)) best = { x, y, off, far }
+    const better = !best || end > best.end || (end === best.end && (off > best.off || (off === best.off && far > best.far)))
+    if (better) best = { x, y, off, far, end }
   }
   return best
 }
@@ -975,8 +977,9 @@ export default function MazeGame({ level = 1, onComplete }) {
   // ── FRIENDS — little animals in dead ends of the open mazes ────────
   // They hop and send hearts when Lumi visits: something to discover on
   // the way, with no score attached.
-  const friends = useMemo(() => (cfg.fogRadius ? [] : deadEnds(mazeRef.current).slice(0, 2)
-    .map((c, i) => ({ ...c, art: FRIENDS[(level + i) % FRIENDS.length] }))), [cfg.fogRadius, level])
+  const chest = useMemo(() => treasureSpot(mazeRef.current), [])
+  const friends = useMemo(() => (cfg.fogRadius ? [] : deadEnds(mazeRef.current).filter(c => !chest || c.x !== chest.x || c.y !== chest.y).slice(0, 2)
+    .map((c, i) => ({ ...c, art: FRIENDS[(level + i) % FRIENDS.length] }))), [cfg.fogRadius, level, chest])
   const [met, setMet] = useState([])
   useEffect(() => {
     const f = friends.find(c => Math.abs(c.x - st.pos.x) + Math.abs(c.y - st.pos.y) <= 1)
@@ -992,7 +995,6 @@ export default function MazeGame({ level = 1, onComplete }) {
   }, [st.moves]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── THE CHEST ─────────────────────────────────────────────────────
-  const chest = useMemo(() => treasureSpot(mazeRef.current, friends), [friends])
   useEffect(() => {
     if (!chest || chestOpen || st.pos.x !== chest.x || st.pos.y !== chest.y) return
     setChestOpen(Date.now())
@@ -1296,7 +1298,9 @@ export default function MazeGame({ level = 1, onComplete }) {
             {/* The treasure chest in a far dead end */}
             {chest && (
               <div ref={chestRef} aria-label={chestOpen ? undefined : 'Schatztruhe'} role={chestOpen ? undefined : 'img'}
-                style={{ position: 'absolute', left: chest.x * cellSize, top: chest.y * cellSize, width: cellSize, height: cellSize, zIndex: 18,
+                style={{ position: 'absolute', left: chest.x * cellSize, top: chest.y * cellSize, width: cellSize, height: cellSize,
+                  // while it opens it stands in front of Lumi, bigger, so the lid is seen
+                  zIndex: chestOpen && Date.now() - chestOpen < 2600 ? 21 : 18, transform: chestOpen && Date.now() - chestOpen < 2600 ? 'scale(1.35)' : 'none', transition: 'transform .3s',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
                 <motion.div animate={chestOpen ? { y: 0 } : { y: [0, -2, 0], rotate: [0, -3, 3, 0] }} transition={chestOpen ? {} : { duration: 1.8, repeat: Infinity }}
                   style={{ filter: chestOpen ? undefined : 'drop-shadow(0 0 6px rgba(255,215,80,0.9))' }}>
