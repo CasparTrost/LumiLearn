@@ -208,7 +208,7 @@ export default function ResultsScreen() {
         </div>
 
         {showFraction && (
-          <div style={{ fontFamily: 'var(--font-heading)', color: 'var(--px-ink)', fontSize: 18, fontWeight: 600, textAlign: 'center' }}>
+          <div style={{ fontFamily: 'var(--font-heading)', color: 'var(--px-ink)', fontSize: 'clamp(18px,2.4vw,24px)', fontWeight: 600, textAlign: 'center' }}>
             {score} von {total} gleich beim ersten Mal richtig
           </div>
         )}

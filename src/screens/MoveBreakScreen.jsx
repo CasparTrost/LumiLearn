@@ -10,6 +10,8 @@ import { sfx } from '../sfx.js'
 import { startStop } from '../lib/journeyNav.js'
 import { nextStopIndex } from '../lib/learning.js'
 import { line } from '../lib/lumiLines.js'
+import { STICKER_BY_EMOJI } from '../lib/stickers.js'
+import { Art } from '../components/play/index.js'
 
 /**
  * The movement break, which Lumi suggests after a while of playing (results
@@ -85,6 +87,9 @@ export default function MoveBreakScreen() {
   const [step, setStep] = useState(0)          // which move
   const [count, setCount] = useState(0)        // numbers said in this move
   const [finished, setFinished] = useState(false)
+  // the break was the last of today's ideas: the sticker comes out here
+  const [hadSticker] = useState(() => !!profile?.journey?.chest)
+  const sticker = !hadSticker && finished ? profile?.journey?.chest : null
   const timers = useRef([])
   const later = (fn, ms) => { timers.current.push(setTimeout(fn, ms)) }
 
@@ -145,6 +150,14 @@ export default function MoveBreakScreen() {
             <motion.div key="done" initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
               <Figure pic="clap" beat={700} />
               <div className="px-title" style={{ fontSize: 'clamp(26px,5vw,40px)' }}>Super gemacht!</div>
+              {sticker && STICKER_BY_EMOJI[sticker] && (
+                <motion.div initial={{ scale: 0, rotate: -20 }} animate={{ scale: 1, rotate: 0 }} transition={{ delay: 0.5, type: 'spring', stiffness: 260, damping: 12 }}
+                  aria-label={`Neuer Sticker: ${STICKER_BY_EMOJI[sticker].name}`}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 14px', borderRadius: 14, background: '#fff3c4', border: '3px solid var(--px-ink)' }}>
+                  <img src={journeyArt('chest-open.png')} alt="" style={{ width: 56, height: 56, imageRendering: 'pixelated' }} />
+                  <Art art={sticker} size={56} />
+                </motion.div>
+              )}
               <button className="px-btn px-btn--green px-btn--lg" onClick={goOn}><PxIcon name="play" size={22} /> Weiter spielen</button>
             </motion.div>
           ) : m && (

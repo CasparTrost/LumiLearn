@@ -9,6 +9,7 @@ import { narrate } from '../narrator.js'
 import { sfx } from '../sfx.js'
 import { result } from '../lib/score.js'
 import { pxCard, pxButton, pxBubble, INK } from './px.js'
+import { HintHand } from '../components/play/index.js'
 
 const BASE = import.meta.env.BASE_URL || '/LumiLearn/'
 // size of the coloring pages, and of the empty sheet
@@ -249,7 +250,9 @@ const actionBtn = (color, enabled = true) => ({
 export default function ColoringGame({ onComplete }) {
   const { state } = useApp()
   const profile = state.activeProfileId ?? 'default'
-  const [imgIdx, setImgIdx]       = useState(0)
+  // a picture to fill first: on the empty sheet the first tap of the paint
+  // bucket flooded everything
+  const [imgIdx, setImgIdx]       = useState(1)
   const [color, setColor]         = useState(COLORS[0].value)
   const [brushIdx, setBrushIdx]   = useState(1)
   const [tool, setTool]           = useState('fill')
@@ -403,6 +406,8 @@ export default function ColoringGame({ onComplete }) {
     if (idx === imgIdx) return
     keepSheet()
     say(IMAGES[idx].label)
+    // on the empty sheet the bucket would flood the whole page: draw instead
+    if (IMAGES[idx].free && tool === 'fill') setTool('brush')
     setImgIdx(idx)
   }
 
@@ -629,6 +634,8 @@ export default function ColoringGame({ onComplete }) {
           onPointerUp={handleUp}
           onPointerCancel={handleUp}
         />
+        {/* until the child has painted: a hand taps the picture */}
+        <HintHand to={displayRef} active={ready && !hasPainted && !albumOpen} delay={3000} />
         {!ready && <div style={{ position:'absolute', fontSize:32 }}>⏳</div>}
         {filling && <div style={{ position:'absolute', fontSize:40, pointerEvents:'none' }}>🎨</div>}
         <AnimatePresence>

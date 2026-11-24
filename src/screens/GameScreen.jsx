@@ -124,7 +124,13 @@ export default function GameScreen() {
 
   const GameComponent = gameComponent(moduleId, attempt)
 
+  // One result per round played: a second tap on a game's last button (or a
+  // timer firing twice) counted the game twice — plays, review, stars
+  const completed = useRef(false)
+  useEffect(() => { completed.current = false }, [moduleId, level, attempt])
   const handleComplete = ({ score, total, stars: providedStars }) => {
+    if (completed.current) return
+    completed.current = true
     // Games that rate by something other than first-try answers (Memo by
     // moves) pass their own stars, the number they show the child; all
     // others are rated the same way (lib/score.js), score kept in 0..total.
