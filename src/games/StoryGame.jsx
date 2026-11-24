@@ -369,7 +369,7 @@ const STORIES = [
           { text: 'Lumi zählt laut bis zehn. Dann darf Ida schaukeln.',
             lumi: { feel: 'happy', x: 300, y: 40, size: 130, act: 'swing', say: '10' }, cast: [t(ROCK, 300, 'none', { s: 230 }), c('👧', 500, 'none', { s: 130 })] },
           { text: 'So wechseln sie sich ab, immer wieder. Ida lacht laut.',
-            lumi: { feel: 'happy', x: 140 }, cast: [t(ROCK, 330, 'none', { s: 230 }), c('👧', 330, 'swing', { s: 120, y: 52, sit: true, feel: 'happy', who: true })],
+            lumi: { feel: 'happy', x: 140 }, cast: [t(ROCK, 330, 'none', { s: 230 }), c('👧', 330, 'swing', { s: 166, y: 14, z: 2, sit: true, feel: 'happy', who: true })],
             ask: { who: 'Ida', feeling: 'Glücklich' } },
         ],
         lesson: 'Abwechseln ist fair. So kommt jeder dran!',
@@ -377,7 +377,7 @@ const STORIES = [
       now: {
         panels: [
           { text: 'Ida schaukelt, und Lumi schubst sie an. Höher, höher!',
-            lumi: { feel: 'happy', x: 140 }, cast: [t(ROCK, 330, 'none', { s: 230 }), c('👧', 330, 'swing', { s: 120, y: 52, sit: true, feel: 'happy', who: true })],
+            lumi: { feel: 'happy', x: 140 }, cast: [t(ROCK, 330, 'none', { s: 230 }), c('👧', 330, 'swing', { s: 166, y: 14, z: 2, sit: true, feel: 'happy', who: true })],
             ask: { who: 'Ida', feeling: 'Glücklich' } },
           { text: 'Danach darf Lumi wieder. Jetzt schubst Ida.',
             lumi: { feel: 'excited', x: 300, y: 40, size: 130, act: 'swing' }, cast: [t(ROCK, 300, 'none', { s: 230 }), c('👧', 490, 'none', { s: 130, feel: 'happy' })] },
@@ -489,7 +489,7 @@ const STORIES = [
       stay: {
         panels: [
           { text: 'Lumi spielt weiter. Da klingelt bei Ben das Telefon. Es ist Oma. Oma weiß nicht, wo Lumi bleibt.',
-            lumi: { feel: 'happy' }, cast: [c('👦', 330, 'hop', { s: 110 }), t('📱', 430, 'shake', { s: 60, y: 60, d: 0.4 }), c('👵', 520, 'pop', { s: 120, y: 90, sit: true, feel: 'scared', who: true, d: 0.8 })],
+            lumi: { feel: 'happy' }, cast: [c('👦', 330, 'hop', { s: 110 }), t('📱', 430, 'shake', { s: 60, y: 60, d: 0.4 }), c('👵', 520, 'pop', { s: 120, feel: 'scared', who: true, d: 0.8 })],
             ask: { who: 'Oma', feeling: 'Ängstlich' } },
           { text: 'Lumi läuft schnell nach Hause. Oma und Lumi nehmen sich fest in den Arm.',
             lumi: { feel: 'thankful', act: 'run' }, cast: [c('👵', 330, 'none', { s: 150, feel: 'happy' }), t('💛', 250, 'pop', { s: 44, y: 200, d: 1 })] },

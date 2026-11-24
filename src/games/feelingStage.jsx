@@ -311,35 +311,24 @@ const PEOPLE = {
   '👵': ['oma', 1.45], '👴': ['opa', 1.45], '👩': ['mama', 1.5], '👨': ['papa', 1.5], '👮': ['polizei', 1.5],
   '👧': ['maedchen', 1.25], '👦': ['junge', 1.25], '🧒': ['kleinkind', 1.1],
 }
-// how much of a whole figure's height is hidden below the seat
-const SIT_CUT = 0.42
-const SIT_MASK = `linear-gradient(to bottom, #000 ${(1 - SIT_CUT) * 100 - 8}%, transparent ${(1 - SIT_CUT) * 100}%)`
+// people who have a sitting picture (legs bent over a seat)
+const SITS = new Set(['maedchen'])
 /** A cast entry with its person drawn whole: [art, size] */
-function asPerson(art, size) {
+function asPerson(art, size, sit) {
   const p = PEOPLE[art]
-  return p ? [`:px-mensch-${p[0]}:`, Math.round(size * p[1]), true] : [art, size, false]
+  if (!p) return [art, size, false]
+  return [`:px-mensch-${p[0]}${sit && SITS.has(p[0]) ? '-sitzt' : ''}:`, Math.round(size * p[1]), true]
 }
 
 /** An emoji character with a feeling: a frightened kitten trembles, an angry child steams. */
-function Actor({ art, feel, size, flip, label, whole, sit }) {
+function Actor({ art, feel, size, flip, label, whole }) {
   const shake = feel === 'scared' || feel === 'angry'
   return (
     <motion.div animate={shake && !reduceMotion() ? { x: feel === 'scared' ? [-2, 2] : [-3, 3] } : { x: 0 }}
       transition={shake ? { duration: feel === 'scared' ? 0.07 : 0.1, repeat: Infinity, repeatType: 'mirror' } : {}}
       style={{ position: 'relative', width: size, height: size, filter: feel === 'angry' ? 'drop-shadow(0 0 6px rgba(255,80,60,.7))' : undefined }}>
-      {sit
-        // sitting (on a swing, behind a seat): only the upper body shows,
-        // lowered so the hips are where the seat is, fading out below
-        ? <div style={{ position: 'absolute', inset: 0, transform: `translateY(${SIT_CUT * 100}%)` }}>
-            <div style={{ WebkitMaskImage: SIT_MASK, maskImage: SIT_MASK }}>
-              <Critter art={art} size={size} mood={ACTOR_MOOD[feel] ?? 'idle'} flip={flip} label={label} />
-            </div>
-            <ActorMarks feel={feel} s={size} whole={whole} />
-          </div>
-        : <>
-            <Critter art={art} size={size} mood={ACTOR_MOOD[feel] ?? 'idle'} flip={flip} label={label} />
-            <ActorMarks feel={feel} s={size} whole={whole} />
-          </>}
+      <Critter art={art} size={size} mood={ACTOR_MOOD[feel] ?? 'idle'} flip={flip} label={label} />
+      <ActorMarks feel={feel} s={size} whole={whole} />
     </motion.div>
   )
 }
@@ -389,7 +378,7 @@ function act(c, s) {
     case 'scribble': return { initial: { scale: 0 }, animate: { scale: 1, x: [0, -40, 30, -30, 40, 0], y: [0, 20, -10, 24, -6, 0] }, transition: { scale: spring, x: { duration: 1.2, delay: d + 0.3, repeat: 1 }, y: { duration: 1.2, delay: d + 0.3, repeat: 1 } } }
     case 'flicker':  return { initial: { opacity: 1 }, animate: { opacity: [1, 0.2, 1, 0.1, 1, 0.15] }, transition: { duration: 1.2, delay: d } }
     case 'buzz':  return { initial: { scale: 0 }, animate: { scale: 1, x: [0, 60, -30, 40, 0], y: [0, -30, 10, -40, 0] }, transition: { scale: spring, x: { duration: 3, repeat: Infinity, delay: d }, y: { duration: 2.2, repeat: Infinity, delay: d } } }
-    case 'swing': return { initial: false, animate: { x: [-36, 36], rotate: [-10, 10] }, transition: { duration: 1.1, repeat: Infinity, repeatType: 'mirror', ease: 'easeInOut', delay: d } }
+    case 'swing': return { initial: false, animate: { x: [-7, 7], rotate: [-4, 4] }, transition: { duration: 1.1, repeat: Infinity, repeatType: 'mirror', ease: 'easeInOut', delay: d } }
     case 'jack':  return { initial: { scale: 0, y: 30 }, animate: { scale: [0, 1.25, 1], y: [30, -30, 0] }, transition: { duration: 0.7, delay: d } }
     case 'none':  return { initial: false, animate: {}, transition: {} }
     default:      return { initial: { scale: 0 }, animate: { scale: 1 }, transition: spring } // pop
@@ -405,7 +394,7 @@ function lumiAct(l) {
     case 'hop':     return { initial: false, animate: { y: [0, -30, 0] }, transition: { duration: 0.55, repeat: Infinity, repeatDelay: 0.3, delay: d } }
     case 'stumble': return { initial: false, animate: { rotate: [0, 0, -80, -80, 0], x: [0, 0, -16, -16, 0] }, transition: { duration: 2.2, times: [0, 0.3, 0.45, 0.8, 1], delay: d } }
     case 'climb':   return { initial: { y: 0 }, animate: { y: -(l.up ?? 120) }, transition: { duration: 1.8, delay: d, ease: 'easeInOut' } }
-    case 'swing':   return { initial: false, animate: { x: [-36, 36], rotate: [-10, 10] }, transition: { duration: 1.1, repeat: Infinity, repeatType: 'mirror', ease: 'easeInOut', delay: d } }
+    case 'swing':   return { initial: false, animate: { x: [-7, 7], rotate: [-4, 4] }, transition: { duration: 1.1, repeat: Infinity, repeatType: 'mirror', ease: 'easeInOut', delay: d } }
     case 'away':    return { initial: false, animate: { x: [0, 0, -(l.x + 200)] }, transition: { duration: 2, times: [0, 0.3, 1], delay: d } }
     default:        return { initial: false, animate: {}, transition: {} }
   }
@@ -500,12 +489,12 @@ export function Stage({ lumi, cast = [], fx, drop, bubbles = {}, looks = {}, tin
         <div style={{ position: 'absolute', left: 30, right: 30, bottom: 4, height: 44, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(255,255,255,.45), rgba(255,255,255,0) 70%)' }} />
         {started && <Fx kind={fx} />}
         {started && cast.map((raw, i) => {
-          const [art, s, whole] = asPerson(raw.a, raw.s ?? 80)
+          const [art, s, whole] = asPerson(raw.a, raw.s ?? 80, raw.sit)
           const c = { ...raw, a: art, s, whole, x: inside(Xc(raw.x), s), to: raw.to != null ? Xc(raw.to) : undefined }
           const feel = looks[i] ?? c.feel
           const m = reduceMotion() ? { initial: false, animate: {} } : act(c, s)
           const body = c.node ?? (c.char || c.feel
-            ? <Actor art={c.a} feel={feel} size={s} flip={c.flip} label={c.label} whole={c.whole} sit={c.whole && c.sit} />
+            ? <Actor art={c.a} feel={feel} size={s} flip={c.flip} label={c.label} whole={c.whole} />
             : <Thing art={c.a} size={s} flip={c.flip} />)
           return (
             <div key={i} style={{ position: 'absolute', left: c.x - s / 2, bottom: GROUND + (c.y ?? 0), width: s, height: s, zIndex: c.z ?? 1, transform: c.rot ? `rotate(${c.rot}deg)` : undefined }}>

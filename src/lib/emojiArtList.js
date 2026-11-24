@@ -65,7 +65,7 @@ export const EMOJI_ART = new Set([
 ])
 export const CUSTOM_ART = new Set([
   'alien', 'eimer', 'klatschen', 'kleiderschrank', 'klettergeruest', 'lumi-happy', 'lumi-idle', 'lumi-sad',
-  'lumi-sleep', 'lumi-think', 'lumi-wave', 'mensch-junge', 'mensch-kleinkind', 'mensch-maedchen', 'mensch-mama', 'mensch-oma',
-  'mensch-opa', 'mensch-papa', 'mensch-polizei', 'oelkanne', 'portemonnaie', 'schaukel', 'tatze', 'tisch',
-  'xylofon',
+  'lumi-sleep', 'lumi-think', 'lumi-wave', 'mensch-junge', 'mensch-kleinkind', 'mensch-maedchen', 'mensch-maedchen-sitzt', 'mensch-mama',
+  'mensch-oma', 'mensch-opa', 'mensch-papa', 'mensch-polizei', 'oelkanne', 'portemonnaie', 'schaukel', 'tatze',
+  'tisch', 'xylofon',
 ])
