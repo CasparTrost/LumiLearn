@@ -453,7 +453,8 @@ async function playShadows(page, { wrongOnce = false } = {}) {
       const set = await until(x => x.pos === s.target, 5000)
       for (let t = 0; t < 3000 && (await page.locator('[data-flying]').count()); t += 100) await page.waitForTimeout(100)
       if (!set) problems.push('Planeten-Hüpfer: the rocket flown by hand did not come down on the planet')
-      await page.getByRole('button', { name: 'Landen' }).click({ timeout: 3000 }).catch(() => {})
+      // where it is set down is the answer: no tick needed
+      if (!(await until(x => x.phase !== 'play' || +x.idx !== +s.idx, 6000))) problems.push('Planeten-Hüpfer: landing by hand was not taken as the answer')
       round = +s.idx
       await page.waitForTimeout(400)
       continue

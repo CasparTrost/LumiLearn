@@ -1,11 +1,13 @@
 // Planeten-Hüpfer: flying the rocket by hand, and the one rule of the hops.
 // No React here, so it can be tested (tests/unit/rakete.test.js).
 //
-// The rocket's place on the line is a number x (planet 3 is 3, half way to
-// 4 is 3.5). While the child holds it, it follows the finger with a little
-// lag and never faster than FLY_MAX planets a second, so every planet on
-// the way registers: when x reaches the next planet, that is one hop, the
-// same hop a press on the flame makes (its arc, its number, its count).
+// The rocket's place along the line is a number x (planet 3 is 3, half way
+// to 4 is 3.5); its height over the line is free. While the child holds it,
+// it follows the finger anywhere in the sky with a little lag, along the
+// line never faster than FLY_MAX planets a second, so every planet on the
+// way registers: when x reaches the next planet, that is one hop, the same
+// hop a press on the flame makes (its arc, its number, its count). Where the
+// child lets go, the rocket comes down, and that planet is the answer.
 
 import { MINUS, TOP } from './tasks.js'
 
@@ -42,6 +44,22 @@ export function crossings(cell, x) {
   while (x <= c - 1) passed.push(--c)
   return { cell: c, passed }
 }
+
+/** How quickly the rocket follows the finger up and down (per second). */
+export const FLY_RISE = 9
+/**
+ * The rocket's height over the line of planets while it is flown by hand:
+ * free, wherever the finger goes (with a little lag), between a low hover
+ * and the edge of the sky. `finger`: how far the finger has moved away from
+ * the line since it took hold.
+ */
+export function flyHeight(h, finger, dt, { hover, top }) {
+  const want = Math.max(hover, Math.min(top, hover + finger))
+  const t = Math.max(0, Math.min(0.1, dt))
+  return h + (want - h) * Math.min(1, FLY_RISE * t)
+}
+/** Coming down after the finger let go: `speed` px a second, never below the planet. */
+export const flyDown = (h, dt, speed) => Math.max(0, h - speed * Math.max(0, Math.min(0.1, dt)))
 
 /** Letting go: the nearer planet, within reach. */
 export function releaseAt(x, reach) {

@@ -3,7 +3,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { TOP, PLUS, MINUS, levelPlan, buildTasks, countChoices, judge, gapsBetween, freeGap, RESIDENTS, dirOf, starsWon, landingLead, tapHelp } from '../../src/games/rakete/tasks.js'
 import { layout, hopPath, bow, clamp, moonFlight, lineAt } from '../../src/games/rakete/layout.js'
-import { FLY_MAX, flyStep, crossings, releaseAt, reachOf, hopArcs } from '../../src/games/rakete/fly.js'
+import { FLY_MAX, flyStep, flyHeight, flyDown, crossings, releaseAt, reachOf, hopArcs } from '../../src/games/rakete/fly.js'
 import { windowSpots, ThrustButton } from '../../src/games/rakete/parts.jsx'
 import { hasEmojiArt } from '../../src/lib/emojiArt.jsx'
 
@@ -384,5 +384,32 @@ describe('Planeten-Hüpfer: flying by hand, and hopping back', () => {
     const full = renderToStaticMarkup(createElement(ThrustButton, { op: MINUS, way: 'left', size: 64, onPress: () => {} }))
     expect(full).toContain('aria-label="Rückwärts hüpfen"')
     expect(full).toContain('>−<')
+  })
+})
+
+describe('Rechen-Rakete: free flight', () => {
+  const sky = { hover: 30, top: 300 }
+  it('the rocket rises and sinks with the finger, between the hover and the edge of the sky', () => {
+    let h = 0
+    for (let i = 0; i < 120; i++) h = flyHeight(h, 0, 1 / 60, sky)
+    expect(h).toBeCloseTo(30, 0)                       // held still: a low hover
+    for (let i = 0; i < 120; i++) h = flyHeight(h, 150, 1 / 60, sky)
+    expect(h).toBeCloseTo(180, 0)                      // the finger went up 150 px
+    for (let i = 0; i < 120; i++) h = flyHeight(h, 900, 1 / 60, sky)
+    expect(h).toBeCloseTo(300, 0)                      // never out of the sky
+    for (let i = 0; i < 120; i++) h = flyHeight(h, -500, 1 / 60, sky)
+    expect(h).toBeCloseTo(30, 0)                       // never into the planets
+  })
+  it('follows with a little lag, not in one jump', () => {
+    const h = flyHeight(30, 200, 1 / 60, sky)
+    expect(h).toBeGreaterThan(30)
+    expect(h).toBeLessThan(230)
+  })
+  it('let go, it comes down onto the planet and stops there', () => {
+    let h = 200, frames = 0
+    while (h > 0 && frames < 600) { h = flyDown(h, 1 / 60, 400); frames++ }
+    expect(h).toBe(0)
+    expect(frames).toBeGreaterThan(20)                 // a descent to see, about half a second
+    expect(frames).toBeLessThan(60)
   })
 })

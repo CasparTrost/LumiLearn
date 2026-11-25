@@ -11,7 +11,7 @@ import { usePaused } from '../lib/pause.js'
 import { useLater } from './zahlen/stage.jsx'
 import { ALIEN_HUES, MINUS, PLUS, TOP, buildTasks, countChoices, dirOf, freeGap, judge, landingLead, levelPlan, residentOf, starsWon, tapHelp } from './rakete/tasks.js'
 import { bow, clamp, hopPath, layout, lineAt, moonFlight } from './rakete/layout.js'
-import { DRAG_PX, FLY_MAX, crossings, flyStep, hopArcs, reachOf, releaseAt } from './rakete/fly.js'
+import { DRAG_PX, FLY_MAX, crossings, flyDown, flyHeight, flyStep, hopArcs, reachOf, releaseAt } from './rakete/fly.js'
 import {
   AlienPic, BonusStar, CountBubble, GOLD, HopArcs, INK, LandButton, Moon, Planet, Rocket, SIGN_COLOR, ThrustButton, windowSpots,
 } from './rakete/parts.jsx'
@@ -340,7 +340,8 @@ export default function RocketMathGame({ level = 1, onComplete }) {
 
   const takeOff = () => {
     const start = g.pos
-    g.drag = { x: start, cell: start, start, goal: null, mode: 'hold', lift: 0, rot: 0, facing: dirOf(S.task.op), last: performance.now() }
+    // h: the height over the line, in px; off0: where the finger was when it took hold
+    g.drag = { x: start, cell: start, start, goal: null, mode: 'hold', h: 0, off0: null, rot: 0, facing: dirOf(S.task.op), last: performance.now() }
     g.air = true
     g.queue = []
     setDragging(true)
@@ -378,10 +379,22 @@ export default function RocketMathGame({ level = 1, onComplete }) {
     D.last = now
     if (D.mode === 'hold' && (S.paused || g.phase !== 'play')) { finger.current = null; letGo() }
     let target = D.x
+    // free flight: along the line after the finger (within reach), and as high as the finger goes
+    const hover = (Lx.arcH + 24) * 0.55
     if (D.mode === 'hold') {
       const f = finger.current, r = rootRef.current?.getBoundingClientRect()
       const reach = reachOf(S.plan, S.task)
-      if (f && r) target = clamp(lineAt(Lx, { x: f.px - r.left, y: f.py - r.top }), reach.lo, reach.hi)
+      if (f && r) {
+        const fp = { x: f.px - r.left, y: f.py - r.top }
+        target = clamp(lineAt(Lx, fp), reach.lo, reach.hi)
+        // how far the finger is from the line, on the rocket's side of it
+        const o = Lx.P(0, 0), n1 = Lx.P(0, 1)
+        const off = (fp.x - o.x) * (n1.x - o.x) + (fp.y - o.y) * (n1.y - o.y)
+        if (D.off0 == null) D.off0 = off
+        // the sky ends where the rocket would leave the screen
+        const top = Math.max(hover, (Lx.vertical ? Lx.w - o.x : o.y) - Lx.pr - Lx.rh - 10)
+        D.h = flyHeight(D.h, off - D.off0, dt, { hover, top })
+      }
     } else target = D.goal
     let x = flyStep(D.x, target, dt)
     // the glide down: arrive at the planet rather than creep towards it
@@ -393,19 +406,18 @@ export default function RocketMathGame({ level = 1, onComplete }) {
     let from = D.cell
     for (const m of passed) { passOver(from, m); from = m }
     D.cell = cell
-    // up into the air while held, down onto the planet at the end
-    if (D.mode === 'glide' && x === D.goal) D.mode = 'down'
-    const want = D.mode === 'down' ? 0 : 1
-    D.lift += clamp(want - D.lift, -dt * 4, dt * 5)
+    // let go: over to the nearer planet, then down onto it
+    if (D.mode === 'glide' && x === D.goal) { D.mode = 'down'; D.h0 = Math.max(D.h, 1) }
+    if (D.mode === 'down') D.h = flyDown(D.h, dt, Math.max(260, D.h0 / 0.45))
     // leaning the way it flies; on a phone held upright, nose the way it goes
     const lean = Lx.vertical ? -90 * D.facing : 22 * clamp(v / FLY_MAX, -1, 1)
     D.rot += (lean - D.rot) * Math.min(1, dt * 8)
     const bob = D.mode === 'hold' && !S.reduce ? Math.sin(now / 220) * 3 : 0
     // the flame (its feet) over the planet, as at the top of a button hop: on
     // a phone held upright the body points on, and the arcs behind stay in sight
-    const p = Lx.P(x, Lx.pr + D.lift * (Lx.arcH + 24 + bob))
-    rx.set(p.x); ry.set(p.y); rot.set(D.mode === 'down' ? D.rot * D.lift : D.rot)
-    if (D.mode === 'down' && D.lift <= 0) { touchDown(D); return }
+    const p = Lx.P(x, Lx.pr + D.h + (D.mode === 'hold' ? bob : 0))
+    rx.set(p.x); ry.set(p.y); rot.set(D.mode === 'down' ? D.rot * Math.min(1, D.h / D.h0) : D.rot)
+    if (D.mode === 'down' && D.h <= 0) { touchDown(D); return }
     frame.current = requestAnimationFrame(flyFrame)
   }
 
@@ -419,10 +431,13 @@ export default function RocketMathGame({ level = 1, onComplete }) {
     setFlame(0)
     squash(0.8)
     sfx.bump()
-    if (S.plan.mode !== 'tap' || g.phase !== 'play') return
-    // the tap levels: where it was set down is the answer
+    if (g.phase !== 'play') return
+    // Where the rocket is set down is the answer, in every level it can be
+    // flown in. Back on the planet it started from: nothing was answered.
     if (D.goal === D.start) { nudge(); return }
-    answerByHand(D.start, D.goal)
+    if (S.plan.mode === 'tap') { answerByHand(D.start, D.goal); return }
+    // the hop levels: the hops were counted on the way, the landing is the tick
+    land(true)
   }
 
   // The tap levels: the arcs come after, as proof, then the landing
