@@ -1477,7 +1477,7 @@ export default function MazeGame({ level = 1, onComplete }) {
                 }} />
               )}
 
-              {/* the potion's power: a glow, and the potion with a pip per step left */}
+              {/* the potion's power: a glow, and a badge with the potion and a bar that runs down */}
               {powerOn !== null && (
                 <div className="mz-shimmer" aria-hidden="true" style={{ position: 'absolute', inset: big ? '-110%' : '-70%', borderRadius: '50%',
                   background: `radial-gradient(circle, ${POWER_GLOW[powerOn]} 0%, transparent 62%)`, transition: 'inset .35s' }} />
