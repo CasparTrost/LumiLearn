@@ -118,6 +118,20 @@ describe('Frosch-Hüpfer: levels', () => {
   it('gives wrong syllables that can be said', () => {
     for (const w of POOLS.FOUR) for (const s of decoys(w, 2, seeded(3))) expect(KEY.syllable(s) in LINES, s).toBe(true)
   })
+  it('every four-syllable word is recorded, whole and in parts: twenty to draw levels 9 and 10 from', () => {
+    expect(POOLS.FOUR.map(w => w.word).sort()).toEqual(FOUR_SOURCE.map(w => w.word).sort())
+    expect(POOLS.FOUR.length).toBeGreaterThanOrEqual(20)
+  })
+
+  it('no wrong syllable is one letter away from a right one ("GER" beside "GE")', () => {
+    const snd = s => String(LINES[KEY.syllable(s)] ?? s).toLowerCase().replace(/[^a-zäöüß]/g, '')
+    for (const pool of Object.values(POOLS)) for (const w of pool) for (let seed = 1; seed <= 12; seed++) {
+      for (const d of decoys(w, 3, seeded(seed))) for (const o of w.syllables) {
+        const a = snd(d), b = snd(o)
+        expect(a === b || ((a.startsWith(b) || b.startsWith(a)) && Math.abs(a.length - b.length) <= 1), `${d} beside ${o} in ${w.word}`).toBe(false)
+      }
+    }
+  })
 })
 
 // The stage as the game gets it (own pixels, scale): a tablet, a phone held

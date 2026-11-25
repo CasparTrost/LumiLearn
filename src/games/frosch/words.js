@@ -124,10 +124,13 @@ export function shuffle(arr, rnd = Math.random) {
 // How a syllable sounds when Lumi says it ('SEL' and 'SELL' sound the same)
 const sound = s => String(LINES[KEY.syllable(s)] ?? s).toLowerCase().replace(/[^a-zäöüß]/g, '')
 const VOWELS = /[aeiouäöü]+/i
+// Too alike to tell apart by ear: the same sound, or one more letter at the
+// end ("Ge" beside "Ger", "Te" beside "Ter")
+const alike = (a, b) => a === b || ((a.startsWith(b) || b.startsWith(a)) && Math.abs(a.length - b.length) <= 1)
 
 /**
  * Wrong syllables for a build round: none that sounds like one of the
- * word's own, and rather ones that are easy to mix up with them (the same
+ * word's own or nearly so, and rather ones that are easy to mix up with them (the same
  * first letter or the same vowel) than any at all.
  */
 export function decoys(word, count, rnd = Math.random) {
@@ -135,7 +138,7 @@ export function decoys(word, count, rnd = Math.random) {
   const own = new Set(word.syllables.map(sound))
   const firsts = new Set(word.syllables.map(s => s[0]))
   const vowels = new Set(word.syllables.map(s => s.match(VOWELS)?.[0]))
-  const scored = shuffle(ALL_SYLLABLES.filter(s => !own.has(sound(s))), rnd)
+  const scored = shuffle(ALL_SYLLABLES.filter(s => ![...own].some(o => alike(o, sound(s)))), rnd)
     .map(s => ({ s, near: (firsts.has(s[0]) ? 1 : 0) + (vowels.has(s.match(VOWELS)?.[0]) ? 1 : 0) }))
     .sort((a, b) => b.near - a.near)
   const out = [], taken = new Set()
