@@ -333,6 +333,52 @@ describe('paper and light', () => {
   })
 })
 
+describe('what is not the drawing', () => {
+  it('highlighter strokes beside a pen drawing are not drawn round; with more lines they are', () => {
+    const px = sheet(W, H, () => 250)
+    ring(px, W, 300, 330, 150, 5, 0, [25, 25, 25])
+    rect(px, W, 120, 318, 480, 346, [255, 246, 165])             // one stroke across the ring
+    rect(px, W, 150, 640, 450, 668, [255, 246, 165])             // one below it
+    ring(px, W, 300, 330, 150, 5, 0, [25, 25, 25])               // (the pen lies over the highlighter)
+    const res = toColoringPage(px, W, H)
+    expect(res.kind).toBe('lines')
+    expect(res.regions).toBe(2)                                  // inside the ring and outside
+    expect(area(res, 300, 654)).toBe(area(res, 20, 20))          // the lower stroke is no box
+    expect(area(res, 300, 332)).toBe(area(res, 300, 250))        // the ring is not cut in two
+    for (let x = 160; x < 440; x += 20) expect(inkAt(res, x, 640)).toBe(false)
+    const more = toColoringPage(px, W, H, 2)
+    expect(area(more, 300, 654)).not.toBe(area(more, 20, 20))
+  })
+
+  it('a phone\'s shadow over the corner of a coloured-in drawing on a table leaves no line in the sky', () => {
+    const px = sheet(W, H, () => 0)
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const on = x >= 50 && x < 550 && y >= 60 && y < 740
+      put(px, W, x, y, on ? [246, 245, 240] : [118 + (y % 9 === 0 ? -20 : 0), 78, 44])
+    }
+    disc(px, W, 420, 250, 60, [250, 205, 40])                    // a sun, coloured in
+    ring(px, W, 420, 250, 60, 5, 0, [25, 25, 25])
+    rect(px, W, 220, 480, 400, 640, [60, 120, 220])              // a blue house
+    for (const [x0, y0, x1, y1] of [[216, 476, 404, 482], [216, 638, 404, 644], [216, 476, 222, 644], [398, 476, 404, 644]]) rect(px, W, x0, y0, x1, y1, [25, 25, 25])
+    // the shadow: from the top left corner, over table and sheet, fading out over 60 pixels
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const d = Math.hypot(x - 60, y - 70) - 150
+      const k = d <= 0 ? 0.45 : d >= 60 ? 1 : 0.45 + 0.55 * (d / 60)
+      const p = (y * W + x) * 4
+      px[p] *= k; px[p + 1] *= k; px[p + 2] *= k
+    }
+    const res = toColoringPage(px, W, H)
+    expect(res.kind).toBe('mixed')
+    // nothing drawn where only the shadow is: along its rim and inside it
+    let ink = 0
+    for (let y = 70; y < 330; y++) for (let x = 60; x < 330; x++) if (inkAt(res, x, y)) ink++
+    expect(ink).toBe(0)
+    expect(area(res, 100, 110)).toBe(area(res, 300, 700))        // one white ground, table and shadow included
+    expect(area(res, 420, 250)).not.toBe(area(res, 300, 700))    // the sun
+    expect(area(res, 310, 560)).not.toBe(area(res, 300, 700))    // the house
+  })
+})
+
 describe('joining line ends', () => {
   it('joins an end to the line it points at, not to itself', () => {
     const w = 120, h = 80, m = new Uint8Array(w * h)
