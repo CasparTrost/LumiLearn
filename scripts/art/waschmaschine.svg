@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- The source of public/sprites/emoji/custom/waschmaschine.webp ("Waschmaschine"):
+       a white front loader, washing turning behind the round door.
+       Render: scripts/art/render-svg.mjs -->
+  <defs>
+    <clipPath id="glass"><circle cx="128" cy="150" r="46"/></clipPath>
+  </defs>
+  <g stroke="#2a1b3d" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">
+    <!-- feet -->
+    <rect x="50" y="222" width="26" height="18" rx="4" fill="#4a4556"/>
+    <rect x="180" y="222" width="26" height="18" rx="4" fill="#4a4556"/>
+    <!-- the cabinet -->
+    <rect x="34" y="18" width="188" height="214" rx="18" fill="#f5f7fa"/>
+    <!-- the control panel -->
+    <path d="M34 72 L222 72" />
+    <!-- the drawer for the powder -->
+    <rect x="50" y="32" width="58" height="28" rx="5" fill="#e3e8ee"/>
+    <!-- the dial -->
+    <circle cx="186" cy="45" r="17" fill="#cfd7e0"/>
+    <!-- the door: chrome ring and glass -->
+    <circle cx="128" cy="150" r="64" fill="#c7cfd9"/>
+    <circle cx="128" cy="150" r="46" fill="#5fb8ec"/>
+  </g>
+  <!-- the dial's pointer and the lamps -->
+  <path d="M186 45 L186 32" stroke="#2a1b3d" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="132" cy="46" r="6" fill="#3fc35a" stroke="#2a1b3d" stroke-width="3"/>
+  <circle cx="152" cy="46" r="6" fill="#f2b32a" stroke="#2a1b3d" stroke-width="3"/>
+  <!-- the drawer handle -->
+  <path d="M64 46 L94 46" stroke="#2a1b3d" stroke-width="4" stroke-linecap="round"/>
+  <!-- the washing turning in the water -->
+  <g clip-path="url(#glass)">
+    <path d="M78 150 Q98 136 118 150 T158 150 T198 150 L198 210 L78 210 Z" fill="#2f8fd0"/>
+    <path d="M96 166 Q104 148 122 154 Q128 170 112 178 Q100 182 96 166 Z" fill="#ff6b8a" stroke="#2a1b3d" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M130 152 L144 142 L154 148 L164 142 L178 152 L172 164 L166 160 L166 184 L142 184 L142 160 L136 164 Z" fill="#ffd21f" stroke="#2a1b3d" stroke-width="4" stroke-linejoin="round"/>
+    <circle cx="112" cy="124" r="5" fill="#bfe6fb"/>
+    <circle cx="146" cy="132" r="4" fill="#bfe6fb"/>
+    <circle cx="128" cy="114" r="3" fill="#bfe6fb"/>
+  </g>
+  <!-- the glass shines -->
+  <path d="M96 136 A36 36 0 0 1 120 112" stroke="#ffffff" stroke-width="7" fill="none" stroke-linecap="round" opacity="0.85"/>
+  <!-- the door handle on the ring -->
+  <rect x="186" y="136" width="12" height="28" rx="5" fill="#9aa4b1" stroke="#2a1b3d" stroke-width="4"/>
+  <!-- shade on the right of the cabinet -->
+  <path d="M210 84 L210 218" stroke="#d4dbe3" stroke-width="10" stroke-linecap="round"/>
+</svg>

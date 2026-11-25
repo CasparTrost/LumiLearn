@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- The source of public/sprites/emoji/custom/kinderwagen.webp ("Kinderwagen"):
+       a pram with its hood up, a pushing handle and four wheels.
+       Render: scripts/art/render-svg.mjs -->
+  <defs>
+    <g id="wheel">
+      <circle r="28" fill="#4a4556" stroke="#2a1b3d" stroke-width="6"/>
+      <circle r="17" fill="#d9dee5" stroke="#2a1b3d" stroke-width="4"/>
+      <path d="M-17 0 L17 0 M0 -17 L0 17 M-12 -12 L12 12 M-12 12 L12 -12" stroke="#8b8597" stroke-width="3"/>
+      <circle r="5" fill="#4a4556" stroke="#2a1b3d" stroke-width="3"/>
+    </g>
+  </defs>
+  <g stroke="#2a1b3d" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" fill="none">
+    <!-- the wheels at the back, half hidden -->
+    <use href="#wheel" transform="translate(98 206)"/>
+    <use href="#wheel" transform="translate(194 206)"/>
+    <!-- the frame from the body down to the wheels -->
+    <path d="M78 176 L70 210 M178 176 L170 210" stroke-width="7"/>
+    <!-- the handle -->
+    <path d="M196 132 L232 70" stroke-width="12"/>
+    <path d="M196 132 L232 70" stroke="#8b8597" stroke-width="5"/>
+    <path d="M220 62 L244 76" stroke-width="16"/>
+    <path d="M220 62 L244 76" stroke="#4a4556" stroke-width="8"/>
+    <!-- the body -->
+    <path d="M26 118 L212 118 Q216 182 150 190 L90 190 Q26 184 26 118 Z" fill="#4f8fe0"/>
+    <!-- the hood -->
+    <path d="M30 122 Q30 34 132 30 L136 122 Z" fill="#2f6dc0"/>
+  </g>
+  <!-- folds of the hood -->
+  <path d="M134 118 L64 54 M134 118 L44 92 M134 118 L100 36" stroke="#2a1b3d" stroke-width="4" stroke-linecap="round"/>
+  <!-- the blanket rolled over the rim -->
+  <path d="M136 118 L208 118" stroke="#2a1b3d" stroke-width="18" stroke-linecap="round"/>
+  <path d="M136 118 L208 118" stroke="#ffffff" stroke-width="10" stroke-linecap="round"/>
+  <!-- light along the body, shade underneath -->
+  <path d="M44 136 Q50 164 84 174" stroke="#8cbaf5" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <path d="M108 180 L158 180" stroke="#2f6dc0" stroke-width="8" stroke-linecap="round"/>
+  <path d="M52 76 Q66 50 98 42" stroke="#5b95e6" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <!-- the front wheels -->
+  <use href="#wheel" transform="translate(70 214)"/>
+  <use href="#wheel" transform="translate(170 214)"/>
+</svg>

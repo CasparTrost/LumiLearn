@@ -7,10 +7,11 @@ import { KEY } from '../woerter/voice.js'
 // shows exactly its word, the word a five-year-old says when it sees it:
 // from level 5 the hops are silent, and a picture the child names with
 // another number of syllables (⚽ "Fußball", 🥕 "Karotte", 🦍 "Affe",
-// ☂️ "Schirm", 🫐 "Blaubeere", 🚒 "Feuerwehrauto", 🛒 "Einkaufswagen",
-// 🍊 "Orange") makes it hop wrong. So those are left out, and no picture is
-// used for two words (🐰 was both "Hase" and "Osterhase", 🎈 "Luftballon"
-// and, to most children, "Ballon"). Hard words with hard pictures
+// ☂️ "Schirm", 🫐 "Blaubeere", 🚒 "Feuerwehrauto", 🍊 "Orange") makes it
+// hop wrong. So those are left out, and no picture is used for two words
+// (🐰 was both "Hase" and "Osterhase": the Osterhase now has its own picture
+// with a basket of eggs; 🎈 "Luftballon" and, to most children, "Ballon").
+// Hard words with hard pictures
 // (Akkordeon, Butter) are out too. Words with a syllable that starts with
 // CH or CK are left out: on their own those sound wrong ("Che" as "Tsche").
 const parse = list => list.map(spec => {
@@ -56,11 +57,21 @@ const THREE_LONG = pool([
   'HUB-SCHRAU-BER 🚁', 'PO-LI-ZIST 👮', 'WEIH-NACHTS-MANN 🎅', 'KA-RUS-SELL 🎠', 'HAM-BUR-GER 🍔',
   'FLE-DER-MAUS 🦇', 'MI-KRO-FON 🎤', 'PRIN-ZES-SIN 👸', 'KO-KOS-NUSS 🥥', 'SPIN-NEN-NETZ 🕸️', 'BROK-KO-LI 🥦',
 ])
-// four syllables (never more: five were out of reach at this age)
-const FOUR = pool([
+// four syllables (never more: five were out of reach at this age). Levels 9
+// and 10 take seven or eight of them, so the list is long; the :px-…:
+// pictures are drawn for exactly these words (scripts/art/).
+const FOUR_LIST = [
   'TA-SCHEN-LAM-PE 🔦', 'SEI-FEN-BLA-SE 🫧', 'SCHO-KO-LA-DE 🍫', 'SON-NEN-BLU-ME 🌻', 'RE-GEN-BO-GEN 🌈',
   'KRAN-KEN-WA-GEN 🚑', 'A-VO-CA-DO 🥑', 'BA-DE-WAN-NE 🛁', 'SON-NEN-BRIL-LE 🕶️',
-])
+  'EIN-KAUFS-WA-GEN 🛒', 'KLET-TER-GE-RÜST :px-klettergeruest:', 'OS-TER-HA-SE :px-osterhase:',
+  'FEU-ER-LÖ-SCHER :px-feuerloescher:', 'WERK-ZEUG-KAS-TEN :px-werkzeugkasten:', 'PUS-TE-BLU-ME :px-pusteblume:',
+  'GUM-MI-STIE-FEL :px-gummistiefel:', 'PA-PIER-FLIE-GER :px-papierflieger:', 'WASCH-MA-SCHI-NE :px-waschmaschine:',
+  'RA-DIER-GUM-MI :px-radiergummi:', 'KIN-DER-WA-GEN :px-kinderwagen:',
+]
+const FOUR = pool(FOUR_LIST)
+
+/** Every four-syllable word, recorded or not: each must have its picture. */
+export const FOUR_SOURCE = parse(FOUR_LIST)
 
 export const POOLS = { ONE, TWO_OPEN, TWO_CLOSED, THREE, THREE_LONG, FOUR }
 const ALL = [ONE, TWO_OPEN, TWO_CLOSED, THREE, THREE_LONG, FOUR].flat()
