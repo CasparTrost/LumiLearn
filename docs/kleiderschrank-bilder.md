@@ -23,7 +23,7 @@ Chrome des Nutzers). Ziel: für jedes Ding unten EIN Bild erzeugen und unter dem
 
 ## Die Dinge
 
-Die Liste wächst noch auf über 50 Dinge (weitere Hüte, Brillen, Halsteile, Dinge für den Rücken und für die Hand).
+Es kommen noch rund 15 Dinge dazu (für den Rücken und für die Hand).
 Vor dem Start `git pull` ausführen und diese Datei neu lesen.
 
 ### 1. Bommelmütze (Kopf) → `tripo-in/wardrobe/muetze.png`
@@ -144,4 +144,244 @@ Prompt:
 
 ```
 a golden crown with five points, a small golden ball on each point and three round gems in red, blue and green on the band, the lower edge is a gentle flat curve. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 13. Cowboyhut (Kopf) → `tripo-in/wardrobe/cowboyhut.png`
+
+Brauner Cowboyhut mit hochgebogener Krempe und einem Band mit Stern.
+
+Prompt:
+
+```
+a brown cowboy hat with a curved brim turned up at the sides and a hat band with a small golden star, the lower edge is a gentle flat curve. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 14. Kochmütze (Kopf) → `tripo-in/wardrobe/kochmuetze.png`
+
+Weiße, bauschige Kochmütze mit geradem Bund.
+
+Prompt:
+
+```
+a white puffy chef hat with a straight band at the bottom, the lower edge is flat. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 15. Feuerwehrhelm (Kopf) → `tripo-in/wardrobe/feuerwehrhelm.png`
+
+Roter Feuerwehrhelm mit gelbem Schild vorn, ohne Schrift.
+
+Prompt:
+
+```
+a red firefighter helmet with a yellow shield badge on the front without any letters, a short brim, the lower edge is a gentle flat curve. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 16. Matrosenmütze (Kopf) → `tripo-in/wardrobe/matrosenmuetze.png`
+
+Weiße Matrosenmütze mit blauem Band und kleinem Anker.
+
+Prompt:
+
+```
+a white sailor cap with a navy blue band and a small golden anchor on the front, flat lower edge. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 17. Basecap (Kopf) → `tripo-in/wardrobe/basecap.png`
+
+Blaue Schirmmütze von vorn, der Schirm zeigt nach vorn unten, kein Logo.
+
+Prompt:
+
+```
+a blue baseball cap seen from the front, the visor points forward and slightly down, a small button on top, no logo, no letters. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 18. Zylinder (Kopf) → `tripo-in/wardrobe/zylinder.png`
+
+Schwarzer, niedriger Zylinder mit rotem Band.
+
+Prompt:
+
+```
+a short black top hat with a red band and a flat round brim seen from the front as a flat ellipse. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 19. Hasenohren (Kopf) → `tripo-in/wardrobe/hasenohren.png`
+
+Zwei weiße Hasenohren mit rosa Innenseite an einem Haarreif.
+
+Prompt:
+
+```
+a hairband with two upright white bunny ears with pink insides, the hairband is a thin arc at the bottom. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 20. Katzenohren (Kopf) → `tripo-in/wardrobe/katzenohren.png`
+
+Zwei graue Katzenohren mit rosa Innenseite an einem Haarreif.
+
+Prompt:
+
+```
+a hairband with two small grey cat ears with pink insides, the hairband is a thin arc at the bottom. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 21. Strohhut (Kopf) → `tripo-in/wardrobe/strohhut.png`
+
+Gelber Strohhut mit breiter Krempe und rotem Band.
+
+Prompt:
+
+```
+a yellow straw sun hat with a wide brim seen from the front as a flat ellipse and a red ribbon band. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 22. Weihnachtsmütze (Kopf) → `tripo-in/wardrobe/weihnachtsmuetze.png`
+
+Rote Weihnachtsmütze mit weißem Rand und weißem Bommel, die Spitze hängt zur Seite.
+
+Prompt:
+
+```
+a red Santa hat with a white fluffy rim and a white pompom, the tip hangs down to the right, the lower edge is a gentle flat curve. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 23. Sternbrille (Gesicht) → `tripo-in/wardrobe/sternbrille.png`
+
+Brille mit zwei gelben Sternen als Rahmen, die Gläser sind leer.
+
+Prompt:
+
+```
+a pair of glasses with two star-shaped yellow frames and a short bridge, empty frames without lenses, the inside of both stars is fully transparent, the temples are not visible. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 24. Taucherbrille (Gesicht) → `tripo-in/wardrobe/taucherbrille.png`
+
+Blaue Taucherbrille, ein großes durchsichtiges Glas, ohne Band.
+
+Prompt:
+
+```
+a blue diving mask with one wide lens area that is fully transparent, thick rounded frame, no strap visible. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 25. Clownsnase (Gesicht) → `tripo-in/wardrobe/clownsnase.png`
+
+Eine runde rote Clownsnase mit Glanzlicht.
+
+Prompt:
+
+```
+a single round shiny red clown nose with a white highlight. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 26. Heldenmaske (Gesicht) → `tripo-in/wardrobe/heldenmaske.png`
+
+Rote Augenmaske eines Superhelden mit zwei Augenlöchern.
+
+Prompt:
+
+```
+a red superhero eye mask with two eye holes that are fully transparent, pointed outer corners, no strap visible. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 27. Monokel (Gesicht) → `tripo-in/wardrobe/monokel.png`
+
+Ein goldenes Monokel mit kurzer Kette, das Glas ist leer.
+
+Prompt:
+
+```
+a single golden monocle with a short golden chain hanging from its side, empty frame without lens. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 28. Skibrille (Gesicht) → `tripo-in/wardrobe/skibrille.png`
+
+Skibrille mit orange getöntem, durchscheinendem Glas und grünem Rahmen.
+
+Prompt:
+
+```
+a pair of ski goggles with a green frame and one wide lightly orange tinted translucent lens, no strap visible. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 29. Schnurrbart (Gesicht) → `tripo-in/wardrobe/schnurrbart.png`
+
+Ein brauner, geschwungener Schnurrbart.
+
+Prompt:
+
+```
+a brown curly handlebar moustache. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 30. Perlenkette (Hals) → `tripo-in/wardrobe/perlenkette.png`
+
+Kette aus weißen Perlen, als Bogen von vorn.
+
+Prompt:
+
+```
+a white pearl necklace seen from the front as one open arc curving downwards. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 31. Blumenkette (Hals) → `tripo-in/wardrobe/blumenkette.png`
+
+Bunte Blumenkette (Lei), als Bogen von vorn.
+
+Prompt:
+
+```
+a colourful flower lei necklace seen from the front as one open arc curving downwards, pink, yellow and orange flowers. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 32. Halstuch (Hals) → `tripo-in/wardrobe/halstuch.png`
+
+Rotes Halstuch mit weißen Punkten, vorn als Dreieck gebunden.
+
+Prompt:
+
+```
+a red bandana with white polka dots tied around an invisible neck, hanging as a triangle in front. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 33. Krawatte (Hals) → `tripo-in/wardrobe/krawatte.png`
+
+Kurze blau-gelb gestreifte Krawatte mit Knoten.
+
+Prompt:
+
+```
+a short necktie with a knot, diagonal blue and yellow stripes. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 34. Glöckchen (Hals) → `tripo-in/wardrobe/gloeckchen.png`
+
+Goldenes Glöckchen an einem roten Band.
+
+Prompt:
+
+```
+a small golden bell hanging on a red ribbon that forms an open arc. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 35. Herzkette (Hals) → `tripo-in/wardrobe/herzkette.png`
+
+Rotes Herz an einer feinen goldenen Kette.
+
+Prompt:
+
+```
+a red heart pendant hanging on a thin golden chain that forms a V shape. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 36. Sternabzeichen (Hals) → `tripo-in/wardrobe/sternabzeichen.png`
+
+Goldener Stern an einem blauen Band.
+
+Prompt:
+
+```
+a golden star badge hanging on a blue ribbon that forms a V shape. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
 ```
