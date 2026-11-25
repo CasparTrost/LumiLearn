@@ -82,7 +82,7 @@ function GameLoadingFallback() {
 // Diese Spiele rechnen mit echten Zeigerkoordinaten oder zeichnen auf eine
 // Leinwand — ein Maßstab würde dort Treffer verschieben oder Pixel verwaschen.
 // Sie bemessen sich stattdessen selbst an ihrem Container.
-const NO_SCALE = new Set(['trace', 'bubbles', 'clock', 'coloring', 'numbers', 'shapes', 'shadows', 'maze', 'sort', 'letter-intro', 'patterns', 'initial-sound'])
+const NO_SCALE = new Set(['trace', 'bubbles', 'clock', 'coloring', 'numbers', 'shapes', 'shadows', 'maze', 'sort', 'letter-intro', 'patterns', 'initial-sound', 'rocket-math'])
 
 const SAY_QUIT = line('menue/wirklich-aufhoeren')
 

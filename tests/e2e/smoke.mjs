@@ -385,6 +385,52 @@ async function playShadows(page) {
   await page.context().close()
 }
 
+// 3i. Rechen-Rakete (Planeten-Hüpfer): level 1 flown with the thrust
+// button, a hop per number and then the landing button; in the second sum
+// one hop too many: someone else lives there, and the rocket flies back to
+// the start; to the results
+{
+  const page = await newPage(SIZES.phone, save)
+  await page.goto(URL); await page.waitForTimeout(1500)
+  await page.getByRole('button', { name: /^Rechen-Rakete, Level/ }).last().click()
+  const game = page.locator('[data-game="rakete"]')
+  await game.waitFor({ timeout: 10000 }).catch(() => problems.push('Planeten-Hüpfer: the game did not start'))
+  const state = () => game.evaluate(el => ({ ...el.dataset })).catch(() => null)
+  const until = async (ok, ms) => {
+    for (let t = 0; t < ms; t += 100) { const s = await state(); if (!s || ok(s)) return s; await page.waitForTimeout(100) }
+    return null
+  }
+  let round = -1, overshot = false
+  for (let i = 0; i < 40 && (await game.count()); i++) {
+    const s = await until(x => x.phase === 'play', 15000)
+    if (!s) break
+    if (+s.idx === round) { await page.waitForTimeout(200); continue }
+    const steps = Math.abs(+s.target - +s.from)
+    const over = !overshot && s.idx === '1' && +s.target < 10
+    for (let k = 0; k < steps + (over ? 1 : 0); k++) {
+      await page.getByRole('button', { name: 'Vorwärts hüpfen' }).click({ timeout: 3000 }).catch(() => {})
+      await page.waitForTimeout(520)
+    }
+    await page.getByRole('button', { name: 'Landen' }).click({ timeout: 3000 }).catch(() => {})
+    if (over) {
+      overshot = true
+      await page.waitForTimeout(600)
+      if (!(await page.locator('[data-creature="resident"]').count())) problems.push('Planeten-Hüpfer: nobody else answered on the wrong planet')
+      const back = await until(x => x.phase === 'play', 6000)
+      if (back?.pos !== s.from) problems.push('Planeten-Hüpfer: after a wrong landing the rocket is not back at the start')
+      continue
+    }
+    round = +s.idx
+    await page.waitForTimeout(400)
+  }
+  await page.waitForTimeout(6000)
+  const text = await page.evaluate(() => document.body.innerText)
+  if (!/5 von 6 gleich beim ersten Mal richtig/.test(text)) problems.push(`Planeten-Hüpfer: results not as expected: ${text.slice(0, 120).replace(/\n/g, ' | ')}`)
+  await check(page, 'Planeten-Hüpfer results')
+  problems.push(...page.errors.map(e => `Planeten-Hüpfer: ${e}`))
+  await page.context().close()
+}
+
 // 4. Lumi's ideas for today: the last idea from the home screen, the
 // movement break the results suggest, the sticker, the album
 {
