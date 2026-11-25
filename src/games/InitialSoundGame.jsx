@@ -1,401 +1,790 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { AnimatePresence, useAnimationFrame, useReducedMotion } from 'framer-motion'
 import { sfx } from '../sfx.js'
-import { narrate } from '../narrator.js'
+import { narrate, leaveGame, lockPreviews } from '../narrator.js'
 import { sayRight, sayWrong } from '../lib/feedback.js'
-import { Critter, Art, DragArea, Draggable, DropZone, RoundTrail, HintHand, useBursts, useDragState } from '../components/play/index.js'
-import { useRounds, reduceMotion, shuffle, chance, hintDelay } from './buchstaben/useRounds.js'
-import { rec, wordRec, soundRec } from './buchstaben/voice.js'
-import { pxButton, ACCENT, INK } from './px.js'
+import { result } from '../lib/score.js'
+import { usePaused } from '../lib/pause.js'
+import { Critter, Art, HintHand, useBursts, useJuice, useMood } from '../components/play/index.js'
+import { useLater } from './zahlen/stage.jsx'
+import { rec, wordRec, soundRec, slug } from './buchstaben/voice.js'
+import { levelConfig, pickBuckets, nextWord, layoutFor, lanesFor, keyFor } from './buchstaben/angeln.js'
+import { Pond, Bank, Boat, Boot, Chest, BinFrog, Splash, FrogUnit, BUCKET_COLORS } from './buchstaben/AngelnParts.jsx'
 
 /**
- * Anlaut-Detektiv: Anlaut-Angeln — welcher Buchstabe macht diesen Laut?
+ * Anlaut-Detektiv — "Anlaut-Angeln": hearing the first sound of a word and
+ * finding its letter.
  *
- * Lumi angelt am Teich, und am Haken hängt jedes Mal etwas Überraschendes:
- * eine Maus, ein Sofa, ein Mond, tropfnass. Am Ufer sitzen Frösche, jeder
- * mit einem Eimer, auf dem sein Buchstabe steht. Das Kind bringt den Fang
- * in den Eimer mit dem Buchstaben, mit dem das Wort anfängt (ziehen, oder
- * erst den Fang und dann den Eimer antippen). Ein Frosch, den man antippt,
- * quakt seinen Buchstaben. Der Fang bleibt im Eimer: Über das Level füllen
- * sich die Eimer, und jeder Frosch reagiert auf das, was bei ihm landet —
- * er kichert, wird schläfrig oder springt vor Schreck vom Eimer. Einmal je
- * Level hängt etwas Schweres am Haken und reißt Lumi fast ins Wasser. Nach einem Fehler zeigt jeder Eimer ein Bild,
- * das mit seinem Buchstaben anfängt — eine kleine Anlauttabelle, die ohne
- * Worte hilft: Maus fängt an wie Mond.
+ * Lumi sits in a little boat on the pond. Under the surface things swim to
+ * and fro at different depths: a fish, but also a sofa, the moon, a rocket.
+ * The child fishes: a tap in the water sends the hook there (the boat glides
+ * over, the line swings and sinks; a finger held down steers the hook). A
+ * thing that touches the hook bites — the float dips, the boat jolts — and
+ * comes up dripping, dangling from the rod, and Lumi says its word. On the
+ * bank stand frogs on buckets, one letter each (two buckets in level 1,
+ * four at the end). The child drags the catch into the bucket of the letter
+ * the word begins with, or taps that bucket.
+ *   • Right: a splash into the bucket, the frog giggles, dozes or jumps,
+ *     and croaks its sound ("Mmm"); the word appears written over the
+ *     bucket; the bucket keeps the catch, so the buckets fill over the
+ *     level, and a star flies to the counter.
+ *   • Wrong: the frog shakes its head and hands the catch back. From then
+ *     on every bucket shows a picture that starts with its letter (a little
+ *     table of initial sounds: Maus starts like Mond), and its frog says
+ *     "Mmm wie Maus!". After two misses the right frog waves and the hand
+ *     shows the way.
+ *   • Now and then an old boot bites (a frog on a rubbish bin pops up and
+ *     takes it) or a treasure chest (it opens: a shower of stars).
+ * Tapping a frog always says its sound; tapping the catch says the word.
+ * Fishing is never scored and never fails: a hook that catches nothing
+ * comes up empty, with a drip. The score is the catches put into the right
+ * bucket at the first try.
  *
- * Fills the gap between two existing modules: Hörabenteuer stops at meaning
- * (hear a word, find its picture) and ABC-Abenteuer starts from the letter
- * (see a B, pick a word beginning with it). Neither ever asks the question
- * that actually links sound to writing — which letter makes this sound? —
- * even though that mapping is what reading is built on.
+ * Over the levels: more buckets (2 → 4), swimmers quicker and deeper, the
+ * long sounds (M, S, F) first, then vowels, then the short ones (B, D, G)
+ * and at the top look-alike sounds side by side (B/P, D/T, G/K)
+ * (buchstaben/angeln.js).
  *
- * Scientific basis:
- *   • Grapheme-phoneme correspondence — isolating a word's first sound and
- *     assigning it a letter is the core skill of alphabetic decoding
- *     (Ehri's phase theory: this is the step into the alphabetic phase).
- *   • The child only sees the picture and hears the word; the written word
- *     appears once the round is solved. Shown beforehand, it could be solved
- *     by matching its first letter without listening at all.
- *   • Letters speak as sounds ("Fff", "Mmm"), never as letter names ("Eff",
- *     "Em") — the name of a letter is not the sound at the start of a word.
+ * Why: isolating a word's first sound and giving it its letter is the core
+ * of alphabetic decoding (Ehri: the step into the alphabetic phase). The
+ * child sees the picture and hears the word; the written word appears only
+ * once it is in the right bucket, so it cannot be solved by matching
+ * letters without listening. Letters speak as sounds ("Mmm"), never as
+ * letter names ("Em").
  */
 
-// Only words whose first sound really is the letter's own sound, with a
-// picture that shows just that word: no Vogel under V (that is an F sound),
-// no Pferd (pf), no chair for "Tisch", no light bulb for "Lampe".
-const WORDS = [
-  ['A','Apfel','🍎'], ['A','Affe','🐒'], ['A','Ameise','🐜'], ['A','Ananas','🍍'],
-  ['E','Ente','🦆'],  ['E','Elefant','🐘'], ['E','Esel','🫏'],
-  ['I','Igel','🦔'],  ['I','Insel','🏝️'],
-  ['O','Ohr','👂'],   ['O','Oma','👵'], ['O','Orange','🍊'],
-  ['U','Ufo','🛸'],   ['U','Uhu','🦉'],
-  ['M','Maus','🐭'],  ['M','Mond','🌙'], ['M','Milch','🥛'], ['M','Möhre','🥕'],
-  ['S','Sonne','☀️'], ['S','Socke','🧦'], ['S','Sofa','🛋️'], ['S','Seife','🧼'],
-  ['F','Fisch','🐟'], ['F','Fuchs','🦊'], ['F','Feder','🪶'], ['F','Fuß','🦶'],
-  ['L','Löwe','🦁'],  ['L','Leiter','🪜'], ['L','Lama','🦙'],
-  ['N','Nase','👃'],  ['N','Nest','🪺'], ['N','Nudeln','🍝'],
-  ['R','Rose','🌹'],  ['R','Rakete','🚀'], ['R','Roboter','🤖'],
-  ['W','Wolke','☁️'], ['W','Wolf','🐺'], ['W','Wal','🐋'], ['W','Wurm','🪱'],
-  ['H','Hund','🐕'],  ['H','Haus','🏠'], ['H','Hase','🐰'], ['H','Hahn','🐓'],
-  ['B','Banane','🍌'], ['B','Biene','🐝'], ['B','Bär','🐻'], ['B','Baum','🌳'],
-  ['P','Pilz','🍄'],  ['P','Pinguin','🐧'], ['P','Panda','🐼'], ['P','Pinsel','🖌️'],
-  ['D','Dose','🥫'],  ['D','Dino','🦖'], ['D','Delfin','🐬'],
-  ['T','Tomate','🍅'], ['T','Tiger','🐯'], ['T','Tür','🚪'],
-  ['G','Giraffe','🦒'], ['G','Gurke','🥒'], ['G','Geist','👻'], ['G','Geschenk','🎁'],
-  ['K','Katze','🐱'], ['K','Koala','🐨'], ['K','Kuh','🐄'], ['K','Käse','🧀'],
-  ['Z','Zebra','🦓'], ['Z','Zahn','🦷'], ['Z','Zitrone','🍋'], ['Z','Zelt','⛺'],
-  ['J','Jo-Jo','🪀'],
-]
-const ALL = [...new Set(WORDS.map(w => w[0]))].join('')
-
-// Sounds that are easy to mix up. Kept apart in the early levels, offered
-// side by side at the end — telling B from P is the hard part.
-const PARTNER = { B:'P', P:'B', D:'T', T:'D', G:'K', K:'G', M:'N', N:'M' }
-
-// The steps: long sounds you can hold (mmm, sss, fff), then the vowels, then
-// the short ones (b, d, g …), and last the look-alike pairs.
-// `targets` are asked, `extra` letters only appear as wrong answers.
-const LEVELS = [
-  { targets:'MSF',                              options:3 },
-  { targets:'MSFLNR',                           options:3 },
-  { targets:'MSFLNRWH',                         options:4 },
-  { targets:'AEO',      extra:'MSFL',           options:3 },
-  { targets:'AEIOU',    extra:'MSFLNR',         options:4 },
-  { targets:'AEIOUMSFLNRWH',                    options:4 },
-  { targets:'BDGKPT',   extra:'MSFLNR',         options:4 },
-  { targets:'BDGKPTZJ', extra:'AEIOUMSFLNRWH',  options:4 },
-  { targets:'BDGKPTMN',                         options:4, pairs:true },
-  { targets:ALL,                                options:5, pairs:true },
-]
-
-function buildRounds(level, count = 8) {
-  const cfg = LEVELS[Math.max(0, Math.min(level - 1, LEVELS.length - 1))]
-  const targets = shuffle([...cfg.targets])
-  const pool = [...new Set([...cfg.targets, ...(cfg.extra ?? '')])]
-  const unused = shuffle(WORDS)
-  // the round with the heavy catch: once per level, never the first
-  const heavy = 1 + Math.floor(Math.random() * (count - 1))
-  return Array.from({ length: count }, (_, i) => {
-    const letter = targets[i % targets.length]
-    // a word not seen yet in this level, if this letter still has one
-    const at = unused.findIndex(w => w[0] === letter)
-    const [, word, emoji] = at >= 0 ? unused.splice(at, 1)[0] : shuffle(WORDS.filter(w => w[0] === letter))[0]
-    const partner = PARTNER[letter]
-    let others = shuffle(pool.filter(l => l !== letter && l !== partner))
-    if (cfg.pairs && partner && pool.includes(partner)) others = [partner, ...others]
-    return { letter, word, emoji, fish: chance(0.3), options: shuffle([letter, ...others.slice(0, cfg.options - 1)]) }
-  }).map((r, i) => ({ ...r, heavy: i === heavy }))
-}
-// What a frog does when something lands in its bucket, in turn
-const REACTIONS = ['giggle', 'sleepy', 'jump']
-// Where the catches peek out of a bucket: beside the frog, left and right
-const PILE_AT = [{ x: 22, y: 52, r: -14 }, { x: 78, y: 52, r: 12 }, { x: 10, y: 44, r: -24 }, { x: 90, y: 44, r: 22 }]
-
-// The picture a bucket shows as a hint: another word with its letter
-const keyOf = (L, word) => WORDS.find(w => w[0] === L && w[1] !== word)?.[2] ?? null
-
-const BUCKET_COLORS = ['#e8483b', '#2f7fd8', '#e07a10', '#8a4fd0', '#13968c']
-const HOOK = 150   // how far below the rod tip the catch hangs
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
+const rand = (a, b) => a + Math.random() * (b - a)
+const G = 2200            // the pendulum's gravity (px/s²)
+const SINK = 430          // how fast the hook sinks in the water (px/s)
+const DROP = 1100         // … and falls through the air
+const REEL = 560          // how fast it comes up with a catch
 
 export default function InitialSoundGame({ level = 1, onComplete }) {
-  const rounds = useMemo(() => buildRounds(level), [level])
+  const cfg = useMemo(() => levelConfig(level), [level])
+  const buckets = useMemo(() => pickBuckets(level), [level])
+  const total = cfg.catches
+  const paused = usePaused()
+  const pausedRef = useRef(paused)
+  pausedRef.current = paused
+  const reduce = useReducedMotion()
+  const { later, afterSpeech } = useLater()
+  const juice = useJuice({ hudSize: 34 })
+  const { hit, miss, shake } = juice
   const [bursts, burst] = useBursts()
-  const [gotIn, setGot] = useState(null)   // { i, L }: the catch of round i is in bucket L
-  const [piles, setPiles] = useState({})   // letter -> the catches in its bucket, over the level
-  const idxRef = useRef(0)
-  const catchRef = useRef(null)
-  const pondRef = useRef(null)
-  const gapRef = useRef(null)
+  const [mood, setMood] = useMood()
 
-  // The word, and on the first catch the question — once Lumi has recorded them.
-  const sayTask = useCallback(() => {
-    const i = idxRef.current, r = rounds[i]
-    if (r) narrate([wordRec(r.word), i === 0 && rec('anlaut/womit')])
-  }, [rounds])
+  const fieldRef = useRef(null)
+  const [size, setSize] = useState(null)
+  const L = useMemo(() => (size ? layoutFor(size.w, size.h, buckets.length, cfg.swimmers) : null), [size, buckets.length, cfg.swimmers])
 
-  const { idx, done, leaving, finale, tried, streak, win, miss, reveal, isOver, hasTried } =
-    useRounds(rounds.length, { onComplete, sayTask, outroMs: 450 })
-  idxRef.current = idx
-  const r = rounds[idx]
-  const got = gotIn?.i === idx ? gotIn.L : null
-  const land = L => {
-    setGot({ i: idx, L })
-    setPiles(p => ({ ...p, [L]: [...(p[L] ?? []), r.emoji] }))
-  }
-  // the heavy catch: Lumi is yanked forward, a big splash, then it surfaces
-  useEffect(() => {
-    if (!rounds[idx]?.heavy || reduceMotion()) return
-    const t = [setTimeout(() => sfx.whoosh(), 250), setTimeout(() => sfx.splash(), 650), setTimeout(() => sfx.splash(), 1150)]
-    return () => t.forEach(clearTimeout)
-  }, [idx, rounds])
-  // three in a row, and the end: all frogs jump together
+  // the picture: what the loop does not move by itself
+  const [items, setItems] = useState([])        // what is in the water / on the hook
+  const [phase, setPhase] = useState('fish')    // fish | hold | busy | finale
+  const [facing, setFacing] = useState(1)
+  const [tried, setTried] = useState([])        // buckets missed with this catch
+  const [help, setHelp] = useState(false)       // two misses: the right bucket shows itself
+  const [hover, setHover] = useState(null)      // the bucket under the dragged catch
+  const [piles, setPiles] = useState({})        // letter → the catches in its bucket
+  const [landed, setLanded] = useState({})      // letter → how many landed right
+  const [nope, setNope] = useState({})          // letter → how often its frog handed one back
+  const [label, setLabel] = useState({})        // letter → the word just put in, written
+  const [caught, setCaught] = useState([])      // the level's catches so far (the row at the top)
+  const [splashes, setSplashes] = useState([])
+  const [bin, setBin] = useState(null)          // the frog on the rubbish bin, for the boot
+  const [chestOpen, setChestOpen] = useState(null)
   const [chorus, setChorus] = useState(0)
-  useEffect(() => { if (finale) { setChorus(c => c + 1); burst(pondRef.current, 'confetti', 18) } }, [finale, burst])
+  const [heldWord, setHeldWord] = useState(null) // the word on the hook
 
-  if (!r) return null
+  const boatRef = useRef(null), rodRef = useRef(null), rodInRef = useRef(null), lineRef = useRef(null), floatRef = useRef(null), hookRef = useRef(null)
+  const aimRef = useRef(null), catchRef = useRef(null), gapRef = useRef(null)
+  const bucketEls = useRef({})
+  const rightRef = useRef(null)
 
-  const drop = (L, el) => {
-    if (isOver() || hasTried(L)) return false
-    if (L === r.letter) {
-      land(L)
-      const streaky = !tried.length && streak + 1 >= 3
-      win(streaky ? 2600 : 2200)
-      sfx.splash()
-      burst(el, streaky ? 'confetti' : 'stars', streaky ? 16 : 10)
-      if (streaky) setTimeout(() => setChorus(c => c + 1), 500)
-      sayRight()
+  // What the clock works on; the state above is its picture
+  const g = useRef({
+    t: 0, ready: false, seq: 0, items: new Map(), lanes: [],
+    boat: { x: 0, v: 0, tx: 0, dir: 1 },
+    hook: { st: 'idle', len: 40, th: 0, om: 0, tx: 0, ty: 0, until: 0, prey: null, tug: -9, hy: 0 },
+    phase: 'fish', pace: 1, sorted: 0, sortedBy: {}, used: {}, misses: 0, firstTry: 0, tried: new Set(),
+    chestDone: false, bootDone: false, spawnAt: 0.2, drag: null, steer: null, done: false, held: null, lastHover: null,
+  }).current
+  const live = useRef(null)
+  live.current = { L, cfg, buckets, reduce }
+
+  const go = p => { g.phase = p; setPhase(p) }
+
+  useEffect(() => { lockPreviews(); return () => leaveGame() }, [])
+
+  useLayoutEffect(() => {
+    const el = fieldRef.current
+    const measure = () => {
+      const w = el.clientWidth, h = el.clientHeight
+      if (w && h) setSize(s => (s && s.w === w && s.h === h ? s : { w, h }))
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  // A new layout (first, or the screen turned): everything finds its place again
+  useEffect(() => {
+    if (!L) return
+    g.lanes = lanesFor(L, cfg.swimmers, cfg.depth)
+    const lo = L.pond.x + L.S * 0.6, hi = L.pond.x + L.pond.w - L.S * 0.6
+    for (const it of g.items.values()) it.x = clamp(it.x, lo, hi)
+    if (!g.ready) {
+      g.ready = true
+      g.boat.x = g.boat.tx = L.pond.x + L.pond.w * 0.5
+      g.hook.len = idleLen(L)
+    } else g.boat.tx = clamp(g.boat.tx, L.pond.x + L.lumi, L.pond.x + L.pond.w - L.lumi)
+  }, [L, cfg, g])
+
+  // ── Things in the water ────────────────────────────────────────────────
+
+  const bounds = () => {
+    const { L } = live.current
+    return [L.pond.x + L.S * 0.6, L.pond.x + L.pond.w - L.S * 0.6]
+  }
+  const speed = () => {
+    const { L, cfg, reduce } = live.current
+    if (reduce) return 0
+    return rand(cfg.speed[0], cfg.speed[1]) * clamp(L.pond.w / 600, 0.7, 1.4)
+  }
+  const inWater = it => it.st === 'in' || it.st === 'swim'
+  const words = () => [...g.items.values()].filter(it => it.kind === 'word' && it.st !== 'gone' && it.st !== 'leave' && !it.sorted)
+
+  const add = (it, entering) => {
+    const [lo, hi] = bounds()
+    const id = ++g.seq
+    const v = speed()
+    const fromLeft = Math.random() < 0.5
+    let x = entering ? (fromLeft ? lo : hi) : rand(lo, hi)
+    if (!entering || live.current.reduce) {
+      // somewhere free, not on top of another one
+      const others = [...g.items.values()].filter(inWater)
+      for (let k = 0; k < 12; k++) {
+        const c = rand(lo, hi)
+        if (others.every(o => Math.abs(o.x - c) > live.current.L.S * 1.1 || o.lane !== it.lane)) { x = c; break }
+      }
+    }
+    const thing = { id, x, y: 0, vx: (entering ? (fromLeft ? 1 : -1) : Math.random() < 0.5 ? 1 : -1) * v, a: 0, sc: 1, rot: 0, st: 'in', ph: Math.random() * 6, face: 0, wet: false, ...it }
+    g.items.set(id, thing)
+    setItems(l => [...l, { id, kind: thing.kind, emoji: thing.emoji, word: thing.word, letter: thing.letter }])
+    return thing
+  }
+
+  const spawnWord = entering => {
+    const { buckets, cfg } = live.current
+    const swimming = words()
+    const w = nextWord(buckets, { sorted: g.sortedBy, swimming, used: g.used })
+    g.used[w.word] = (g.used[w.word] ?? 0) + 1
+    // a depth nobody else swims at, if there is one
+    const busy = new Set(swimming.filter(inWater).map(s => s.lane))
+    const free = [...Array(cfg.swimmers).keys()].filter(k => !busy.has(k))
+    const lane = free.length ? free[Math.floor(Math.random() * free.length)] : Math.floor(Math.random() * cfg.swimmers)
+    add({ kind: 'word', ...w, lane }, entering)
+  }
+
+  const spawnThing = kind => {
+    const it = add({ kind, lane: 'bottom', emoji: null, word: null, letter: null }, kind === 'boot')
+    if (kind === 'chest') it.vx = 0
+    else it.vx = Math.sign(it.vx || 1) * (live.current.reduce ? 0 : 18)
+  }
+
+  const drop = id => { g.items.delete(id); setItems(l => l.filter(i => i.id !== id)) }
+
+  const splash = (x, y, big) => {
+    const id = ++g.seq
+    setSplashes(l => [...l.slice(-4), { id, x, y, big }])
+    later(800, () => setSplashes(l => l.filter(s => s.id !== id)))
+  }
+
+  // ── Fishing ────────────────────────────────────────────────────────────
+
+  const tip = () => {
+    const { L } = live.current
+    return { x: g.boat.x + g.boat.dir * reachOf(L), y: L.surface - L.rodUp }
+  }
+
+  // The hook goes to (x, y): the boat glides over, the hook sinks there
+  const cast = (x, y, retarget = false) => {
+    const { L, cfg } = live.current
+    const h = g.hook
+    if (!retarget && !['idle', 'wait', 'sink', 'reel'].includes(h.st)) return
+    if (h.st === 'reel' && h.prey) return
+    let tx = clamp(x, L.pond.x + 24, L.pond.x + L.pond.w - 24)
+    let ty = clamp(y, L.surface + L.S * 0.3, L.water.bottom - L.S * 0.3)
+    // a little help with aiming: a tap close to a swimmer goes where it will be
+    if (!retarget) {
+      let best = null, bd = L.S * 1.4
+      for (const it of g.items.values()) {
+        if (it.st !== 'swim') continue
+        const d = Math.hypot(it.x - tx, it.y - ty)
+        if (d < bd) { bd = d; best = it }
+      }
+      if (best) {
+        const T = Math.abs(best.x - tip().x) / 900 + (best.y - L.surface) / SINK
+        const [lo, hi] = bounds()
+        tx = clamp(best.x + best.vx * g.pace * T * 0.7, lo, hi)
+        ty = best.y
+      }
+    }
+    // which way Lumi faces: towards the spot, unless the boat would leave the pond
+    const reach = reachOf(L)
+    const half = L.lumi * 0.85
+    let dir = Math.abs(tx - tip().x) < 30 ? g.boat.dir : tx >= g.boat.x ? 1 : -1
+    let bx = tx - dir * reach
+    if (bx < L.pond.x + half || bx > L.pond.x + L.pond.w - half) { dir = -dir; bx = tx - dir * reach }
+    g.boat.tx = clamp(bx, L.pond.x + half, L.pond.x + L.pond.w - half)
+    if (dir !== g.boat.dir) { g.boat.dir = dir; setFacing(dir) }
+    if (h.st === 'idle' || h.st === 'reel') sfx.whoosh()
+    h.tx = tx; h.ty = ty
+    h.st = 'sink'
+    h.until = g.t + cfg.dwell + 0.6
+  }
+
+  // Something touched the hook
+  const bite = it => {
+    const h = g.hook
+    h.st = 'bite'; h.prey = it.id; h.tug = g.t
+    it.st = 'hooked'
+    g.boat.v += g.boat.dir * 40
+    shake(0.45)
+    sfx.boing()
+    setMood('wow', 900)
+    later(260, () => { if (h.st === 'bite') h.st = 'reel' })
+  }
+
+  // The catch is out of the water and dangles from the rod
+  const landedOnHook = it => {
+    const h = g.hook
+    h.st = 'held'
+    it.st = 'held'
+    catchRef.current = it.el
+    if (it.kind === 'word') {
+      g.held = it; g.misses = 0; g.tried = new Set()
+      setTried([]); setHelp(false); setHeldWord(it.word)
+      go('hold')
+      narrate([wordRec(it.word), g.sorted === 0 && rec('anlaut/womit')])
+      return
+    }
+    go('busy')
+    if (it.kind === 'chest') {
+      g.chestDone = true
+      later(250, () => {
+        setChestOpen(it.id)
+        sfx.sparkle()
+        hit(it.el, { stars: 3 })
+        burst(it.el, 'stars', 18)
+        setMood('happy', 1600)
+        narrate([rec('anlaut/schatz')])
+      })
+      later(1700, () => { it.st = 'leave'; it.vx = 0; h.st = 'idle'; h.prey = null; go('fish') })
+      return
+    }
+    // the boot: a frog on a rubbish bin comes up at the far side and takes it
+    g.bootDone = true
+    const { L } = live.current
+    const left = g.boat.x > L.pond.x + L.pond.w / 2
+    const bs = Math.round(L.lumi * 0.9)
+    const bx = left ? L.pond.x + bs * 0.75 : L.pond.x + L.pond.w - bs * 0.75
+    setMood('oops', 1400)
+    sfx.slideDown()
+    narrate([rec('anlaut/stiefel')])
+    setBin({ x: bx, y: L.surface + 6, size: bs, open: false })
+    later(700, () => {
+      fly(it, { x: bx, y: L.surface - bs * 0.85 }, 0.5, 0.45, () => {
+        drop(it.id)
+        setBin(b => b && { ...b, open: true })
+        sfx.burp()
+        h.st = 'idle'; h.prey = null
+        go('fish')
+        later(900, () => setBin(null))
+      })
+    })
+  }
+
+  // Fly a thing from where it is to `to` along an arc
+  const fly = (it, to, dur, scale, done) => {
+    it.st = 'fly'
+    it.fly = { x0: it.x, y0: it.y, s0: it.sc, x1: to.x, y1: to.y, s1: scale, t0: g.t, dur: live.current.reduce ? dur * 0.5 : dur, done }
+  }
+
+  // ── Sorting ────────────────────────────────────────────────────────────
+
+  const bucketMouth = letter => {
+    const { L, buckets } = live.current
+    const u = L.units[buckets.indexOf(letter)]
+    return { x: u.x + u.uw / 2, y: u.y + u.f * 0.72 + u.bh * 0.12 }
+  }
+
+  const deliver = letter => {
+    const it = g.held
+    if (!it || g.phase !== 'hold' || g.tried.has(letter)) return false
+    const { L } = live.current
+    const right = letter === it.letter
+    const el = bucketEls.current[letter]
+    go('busy')
+    setHover(null)
+    if (right) {
+      fly(it, bucketMouth(letter), 0.42, 0.45, () => {
+        it.sorted = true
+        drop(it.id)
+        g.held = null; catchRef.current = null; setHeldWord(null)
+        g.hook.st = 'idle'; g.hook.prey = null
+        const first = g.misses === 0
+        if (first) { g.firstTry += 1; g.pace = Math.min(1.18, g.pace * 1.04) }
+        g.sorted += 1
+        g.sortedBy[letter] = (g.sortedBy[letter] ?? 0) + 1
+        const m = bucketMouth(letter)
+        splash(m.x, m.y, false)
+        sfx.splash()
+        setPiles(p => ({ ...p, [letter]: [...(p[letter] ?? []), it.emoji] }))
+        setLanded(p => ({ ...p, [letter]: (p[letter] ?? 0) + 1 }))
+        const key = g.seq + 1
+        setLabel(p => ({ ...p, [letter]: { key, text: it.word } }))
+        later(1500, () => setLabel(p => (p[letter]?.key === key ? { ...p, [letter]: null } : p)))
+        setCaught(c => [...c, it.emoji])
+        setTried([]); setHelp(false)
+        const { milestone } = hit(el)
+        if (milestone) { setChorus(c => c + 1); setMood('dance', 1800) } else setMood('happy', 1200)
+        // the frog croaks its sound, then (now and then) praise
+        sayRight(null, { lead: [soundRec(letter)] })
+        if (g.sorted >= total) finale()
+        else go('fish')
+      })
       return true
     }
-    sayWrong()
-    if (miss(L) >= 2) {
-      // After two misses the catch goes into the right bucket by itself.
-      reveal(3000)
-      setTimeout(() => { sfx.whoosh(); land(r.letter) }, 1200)
-    }
+    // the wrong bucket: the frog takes a look, shakes its head and hands it back
+    const m = bucketMouth(letter)
+    fly(it, { x: m.x, y: m.y - L.units[0].f * 0.35 }, 0.36, 0.6, () => {
+      it.st = 'rest'
+      g.misses += 1
+      g.tried.add(letter)
+      g.pace = Math.max(0.75, g.pace * 0.9)
+      setNope(p => ({ ...p, [letter]: (p[letter] ?? 0) + 1 }))
+      setTried([...g.tried])
+      miss(el)
+      setMood('oops', 1000)
+      sayWrong()
+      later(700, () => {
+        sfx.whoosh()
+        fly(it, holdSpot(), 0.45, L.C / L.S, () => {
+          it.st = 'held'
+          if (g.misses >= 2 || g.tried.size >= live.current.buckets.length - 1) setHelp(true)
+          go('hold')
+          // the word again, to listen once more
+          afterSpeech(() => { if (g.held === it) narrate([wordRec(it.word)]) }, 200)
+        })
+      })
+    })
     return false
   }
 
-  // After solving: the word, its first letter picked out
-  const spelled = <><strong style={{ color: ACCENT, fontSize: '1.3em' }}>{r.word[0]}</strong>{r.word.slice(1)}</>
-  const voiced = !!wordRec(r.word)
+  const holdSpot = () => {
+    const { L } = live.current
+    const t = tip()
+    return { x: t.x, y: t.y + holdLen() + L.C / 2 }
+  }
+
+  const finale = () => {
+    go('finale')
+    for (const it of g.items.values()) if (inWater(it)) { it.st = 'leave'; it.vx = (it.vx >= 0 ? 1 : -1) * 160 }
+    setChorus(c => c + 1)
+    setMood('dance', 3000)
+    later(300, () => { sfx.tada(); burst(bucketEls.current[live.current.buckets[0]], 'confetti', 20) })
+    afterSpeech(() => later(1500, () => {
+      if (g.done) return
+      g.done = true
+      sfx.complete()
+      onComplete(result(g.firstTry, total))
+    }), 600)
+  }
+
+  // ── The clock ──────────────────────────────────────────────────────────
+
+  useAnimationFrame((_, delta) => {
+    const { L, cfg, reduce } = live.current
+    if (pausedRef.current || !g.ready || !L) return
+    const dt = Math.min(delta / 1000, 0.05)
+    g.t += dt
+    const h = g.hook, b = g.boat
+
+    // the boat glides to where it is sent
+    const v0 = b.v
+    if (reduce) { b.x += clamp(b.tx - b.x, -900 * dt, 900 * dt); b.v = 0 }
+    else {
+      b.v += (55 * (b.tx - b.x) - 13 * b.v) * dt
+      b.v = clamp(b.v, -650, 650)
+      b.x += b.v * dt
+    }
+    const ax = (b.v - v0) / dt
+    const reach = reachOf(L)
+    const tug = g.t - h.tug < 0.3 ? Math.sin(((g.t - h.tug) / 0.3) * Math.PI) * 12 : 0
+    const tx0 = b.x + b.dir * reach, ty0 = L.surface - L.rodUp + tug
+
+    // the line: its length by what the hook is doing, the swing by the boat
+    const target = h.st === 'sink' || h.st === 'wait' ? Math.max(idleLen(L), h.ty - ty0)
+      : h.st === 'held' || (h.st === 'reel' && h.prey) ? holdLen()
+      : idleLen(L)
+    const under = ty0 + h.len > L.surface
+    if (h.st === 'sink' || h.st === 'wait') {
+      if (h.len < target) h.len = Math.min(target, h.len + (under ? SINK : DROP) * dt)
+      else h.len = Math.max(target, h.len - REEL * dt)
+      if (h.st === 'sink' && Math.abs(h.len - target) < 1 && Math.abs(b.tx - b.x) < 20) { h.st = 'wait'; h.until = g.t + cfg.dwell }
+      if (h.st === 'wait' && g.t > h.until) h.st = 'reel'
+      if (h.st === 'sink' && g.t > h.until + 2) h.st = 'reel'
+    } else if (h.st === 'reel') {
+      h.len = Math.max(target, h.len - (h.prey ? REEL : 800) * dt)
+      if (h.len <= target + 0.5) {
+        if (h.prey) { const it = g.items.get(h.prey); if (it) landedOnHook(it); else { h.st = 'idle'; h.prey = null } }
+        else h.st = 'idle'
+      }
+    } else if (h.st === 'idle' || h.st === 'held') {
+      h.len += clamp(target - h.len, -600 * dt, 600 * dt)
+    }
+    if (reduce) { h.th = 0; h.om = 0 }
+    else {
+      const damp = under ? 7 : 1.6
+      h.om += (-(G / Math.max(30, h.len)) * Math.sin(h.th) - damp * h.om - (ax / Math.max(30, h.len)) * Math.cos(h.th) * 0.5) * dt
+      h.th = clamp(h.th + h.om * dt, -0.9, 0.9)
+    }
+    const hx = tx0 + h.len * Math.sin(h.th), hy = ty0 + h.len * Math.cos(h.th)
+    // through the surface: a splash going in; a big one when a catch comes out
+    if ((h.hy <= L.surface) !== (hy <= L.surface) && h.hy) {
+      if (hy > L.surface) { splash(hx, L.surface, false); sfx.pop() }
+      else if (h.prey) { splash(hx, L.surface, true); sfx.splash() }
+      else { splash(hx, L.surface, false) }
+    }
+    h.hy = hy
+    const wet = hy > L.surface + 4
+
+    // a bite?
+    if ((h.st === 'sink' || h.st === 'wait') && wet) {
+      let best = null, bd = L.S * 0.62
+      for (const it of g.items.values()) {
+        if (it.st !== 'swim' || it.a < 0.6) continue
+        const d = Math.hypot(it.x - hx, it.y - hy)
+        if (d < bd) { bd = d; best = it }
+      }
+      if (best) bite(best)
+    }
+
+    // everything in the water
+    const [lo, hi] = bounds()
+    for (const it of [...g.items.values()]) {
+      if (it.st === 'in' || it.st === 'swim') {
+        it.a = Math.min(1, it.a + dt * 2.2)
+        if (it.st === 'in' && it.a >= 1) it.st = 'swim'
+        it.x += it.vx * g.pace * dt
+        if (it.x < lo) { it.x = lo; it.vx = Math.abs(it.vx) }
+        if (it.x > hi) { it.x = hi; it.vx = -Math.abs(it.vx) }
+        const laneY = it.lane === 'bottom' ? L.water.bottom - L.S * 0.42 : g.lanes[it.lane] ?? L.water.top + L.S
+        it.y = laneY + (reduce || it.kind === 'chest' ? 0 : Math.sin(g.t * 1.7 + it.ph) * 5)
+        it.rot = reduce || it.kind !== 'word' ? 0 : Math.sin(g.t * 2.3 + it.ph) * 5
+        // a word near the hook swims to it: they bite gladly
+        if (it.kind === 'word' && wet && (h.st === 'sink' || h.st === 'wait') && !reduce) {
+          const dx = hx - it.x, dy = hy - it.y, d = Math.hypot(dx, dy)
+          if (d < L.S * 1.6 && d > 1) {
+            const p = cfg.pull * clamp(L.S / 80, 0.7, 1.2) * dt
+            it.x += (dx / d) * p; it.y += (dy / d) * p
+          }
+        }
+      } else if (it.st === 'hooked') {
+        // under water it keeps its size; out of it, it grows to a catch you can take
+        it.x = hx; it.sc = hy < L.surface ? Math.min(L.C / L.S, it.sc + dt * 2) : 1
+        it.y = hy + (L.S * it.sc) / 2
+        it.rot = reduce ? 0 : Math.sin(g.t * 18) * 8
+      } else if (it.st === 'held') {
+        it.sc = L.C / L.S
+        it.x = hx; it.y = hy + L.C / 2
+        it.rot = reduce ? 0 : -h.th * 30 + (it.wiggle && g.t - it.wiggle < 0.5 ? Math.sin((g.t - it.wiggle) * 40) * 10 : 0)
+      } else if (it.st === 'fly') {
+        const f = it.fly, u = clamp((g.t - f.t0) / f.dur, 0, 1)
+        const e = u < 0.5 ? 2 * u * u : 1 - (2 - 2 * u) ** 2 / 2
+        it.x = f.x0 + (f.x1 - f.x0) * e
+        it.y = f.y0 + (f.y1 - f.y0) * e - Math.sin(u * Math.PI) * Math.min(90, Math.hypot(f.x1 - f.x0, f.y1 - f.y0) * 0.3)
+        it.sc = f.s0 + (f.s1 - f.s0) * e
+        it.rot = 0
+        if (u >= 1 && !f.fired) { f.fired = true; f.done?.() }
+      } else if (it.st === 'leave') {
+        it.x += it.vx * dt
+        it.a -= dt * 1.4
+        if (it.a <= 0) { drop(it.id); continue }
+      }
+      paint(it, L)
+    }
+
+    // new swimmers, the chest and the boot
+    if (g.phase !== 'finale' && g.t >= g.spawnAt) {
+      const ws = words().filter(w => inWater(w)).length
+      const things = [...g.items.values()].filter(it => it.kind !== 'word' && it.st !== 'leave').length
+      if (ws < cfg.swimmers) { spawnWord(g.t > 1); g.spawnAt = g.t + (g.t > 1 ? 0.9 : 0.15) }
+      else if (!things && cfg.chestAt != null && !g.chestDone && g.sorted >= cfg.chestAt) { g.chestDone = true; spawnThing('chest'); g.spawnAt = g.t + 1 }
+      else if (!things && cfg.bootAt != null && !g.bootDone && g.sorted >= cfg.bootAt) { g.bootDone = true; spawnThing('boot'); g.spawnAt = g.t + 1 }
+    }
+
+    // the boat, the rod, the line, the float, the hook
+    if (boatRef.current) boatRef.current.style.transform = `translate(${b.x}px, ${L.surface + (reduce ? 0 : Math.sin(g.t * 2) * 2)}px) rotate(${reduce ? 0 : clamp(b.v * 0.012, -5, 5)}deg)`
+    const handX = b.x + b.dir * L.lumi * 0.22, handY = L.surface - L.lumi * 0.4
+    const rodD = `M${handX} ${handY} Q${(handX + tx0) / 2 - b.dir * 6} ${(handY + ty0) / 2 - 10} ${tx0} ${ty0}`
+    rodRef.current?.setAttribute('d', rodD)
+    rodInRef.current?.setAttribute('d', rodD)
+    const slack = h.st === 'idle' || h.st === 'held' ? 7 : 2
+    lineRef.current?.setAttribute('d', `M${tx0} ${ty0} Q${(tx0 + hx) / 2 + slack} ${(ty0 + hy) / 2} ${hx} ${hy}`)
+    if (floatRef.current) {
+      let fx, fy
+      if (hy > L.surface) { const u = (L.surface - ty0) / (hy - ty0); fx = tx0 + (hx - tx0) * u; fy = L.surface - 2 + (h.st === 'bite' ? 10 : 0) }
+      else { fx = tx0 + (hx - tx0) * 0.55; fy = ty0 + (hy - ty0) * 0.55 }
+      floatRef.current.setAttribute('transform', `translate(${fx} ${fy})`)
+    }
+    hookRef.current?.setAttribute('transform', `translate(${hx} ${hy}) rotate(${(-h.th * 180) / Math.PI})`)
+  })
+
+  // ── The finger ─────────────────────────────────────────────────────────
+
+  const local = e => {
+    const r = fieldRef.current.getBoundingClientRect()
+    return { x: e.clientX - r.left, y: e.clientY - r.top }
+  }
+  const bucketAt = p => {
+    const { L, buckets } = live.current
+    let best = null, bd = Infinity
+    L.units.forEach((u, i) => {
+      if (p.x < u.x - 14 || p.x > u.x + u.uw + 14 || p.y < u.y - 14 || p.y > u.y + u.uh + 14) return
+      const d = Math.hypot(p.x - (u.x + u.uw / 2), p.y - (u.y + u.uh / 2))
+      if (d < bd) { bd = d; best = buckets[i] }
+    })
+    return best
+  }
+
+  const onDown = e => {
+    const { L } = live.current
+    if (!L || pausedRef.current || g.phase === 'finale') return
+    if (e.target.closest?.('button')) return
+    const p = local(e)
+    const it = g.held
+    if (g.phase === 'hold' && it && it.st === 'held') {
+      if (Math.hypot(p.x - it.x, p.y - it.y) < L.C * 0.8) {
+        g.drag = { pid: e.pointerId, x0: p.x, y0: p.y, ox: it.x - p.x, oy: it.y - p.y, moved: false }
+        it.st = 'drag'
+        fieldRef.current.setPointerCapture?.(e.pointerId)
+        return
+      }
+      // a tap anywhere else while a catch hangs there: the catch wiggles
+      if (p.y > L.surface) { it.wiggle = g.t; sfx.boing() }
+      return
+    }
+    if (g.phase === 'fish' && p.x >= L.pond.x && p.x <= L.pond.x + L.pond.w && p.y > L.pond.y + 8) {
+      cast(p.x, p.y)
+      g.steer = e.pointerId
+      fieldRef.current.setPointerCapture?.(e.pointerId)
+    }
+  }
+  const onMove = e => {
+    const p = local(e)
+    const d = g.drag
+    if (d && d.pid === e.pointerId && g.held) {
+      const it = g.held
+      if (Math.hypot(p.x - d.x0, p.y - d.y0) > 8) d.moved = true
+      it.x = p.x + d.ox; it.y = p.y + d.oy
+      it.sc = live.current.L.C / live.current.L.S
+      paint(it, live.current.L)
+      const over = bucketAt(p)
+      if (over !== g.lastHover) {
+        g.lastHover = over
+        setHover(over)
+        if (over && !g.tried.has(over)) narrate([soundRec(over)], { priority: 'preview' })
+      }
+      return
+    }
+    if (g.steer === e.pointerId && (g.hook.st === 'sink' || g.hook.st === 'wait')) cast(p.x, p.y, true)
+  }
+  const onUp = e => {
+    const d = g.drag
+    if (d && d.pid === e.pointerId) {
+      g.drag = null
+      const it = g.held
+      const over = g.lastHover
+      g.lastHover = null
+      setHover(null)
+      if (!it) return
+      if (over && !g.tried.has(over)) { it.st = 'held'; deliver(over); return }
+      if (!d.moved) {
+        // a tap on the catch: its word again
+        it.st = 'held'; it.wiggle = g.t
+        narrate([wordRec(it.word)])
+        return
+      }
+      fly(it, holdSpot(), 0.35, live.current.L.C / live.current.L.S, () => { it.st = 'held' })
+      return
+    }
+    if (g.steer === e.pointerId) g.steer = null
+  }
+
+  // keyboard: space casts at the nearest swimmer
+  useEffect(() => {
+    const key = e => {
+      if (e.key !== ' ' || e.target.closest?.('button') || pausedRef.current || g.phase !== 'fish') return
+      const it = [...g.items.values()].filter(i => i.st === 'swim').sort((a, b) => Math.abs(a.x - g.boat.x) - Math.abs(b.x - g.boat.x))[0]
+      if (it) { e.preventDefault(); cast(it.x, it.y) }
+    }
+    window.addEventListener('keydown', key)
+    return () => window.removeEventListener('keydown', key)
+  })
+
+  const onFrog = letter => {
+    sfx.pop()
+    const hint = tried.length > 0 ? keyFor(letter, heldWord) : null
+    const said = hint ? rec(`laut/${slug(letter)}-wie-${slug(hint.word)}`) : null
+    narrate([said ?? soundRec(letter)])
+  }
+  const onBucket = letter => {
+    if (g.phase === 'hold' && g.held) { deliver(letter); return }
+    onFrog(letter)
+  }
+
+  // the hand points at a swimmer when the child waits
+  useEffect(() => {
+    const iv = setInterval(() => {
+      if (g.phase !== 'fish') return
+      const { L } = live.current
+      if (!L) return
+      const it = [...g.items.values()].filter(i => i.kind === 'word' && i.st === 'swim')
+        .sort((a, b) => (a.y - b.y) * 0.5 + Math.abs(a.x - g.boat.x) - Math.abs(b.x - g.boat.x))[0]
+      aimRef.current = it?.el ?? null
+    }, 500)
+    return () => clearInterval(iv)
+  }, [g])
+
+  // ── The picture ────────────────────────────────────────────────────────
+
+  const held = heldWord ? g.held : null
+  rightRef.current = held ? bucketEls.current[held.letter] ?? null : null
 
   return (
-    <div style={{
-      flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between',
-      padding: 'clamp(10px,2vw,22px) clamp(12px,3vw,32px) clamp(14px,3vh,30px)', gap: 8,
-    }}>
-      <RoundTrail total={rounds.length} done={idx + (done ? 1 : 0)} walker="🐟" goal="🐸" style={{ width: 'calc(100% - 80px)', maxWidth: 560 }} />
+    <div ref={juice.stage} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <div ref={fieldRef} data-field="1" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
+        style={{ position: 'relative', flex: 1, minHeight: 0, overflow: 'hidden', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}>
+        {L && (
+          <>
+            <Pond L={L} />
+            <Bank L={L} />
 
-      <DragArea disabled={done}>
-        {/* Lumi fishing: the rod, the line, and what hangs on the hook */}
-        <div style={{ position: 'relative', width: '100%', maxWidth: 760, height: HOOK + 225, overflow: 'hidden', flexShrink: 0 }}>
-          <svg aria-hidden="true" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
-            <line x1="17%" y1="118" x2="50%" y2="6" stroke="#8a5a2b" strokeWidth="7" strokeLinecap="round" />
-            <line x1="17%" y1="118" x2="50%" y2="6" stroke="#b88450" strokeWidth="3" strokeLinecap="round" />
-            <circle cx="22%" cy="101" r="7" fill="#555" stroke={INK} strokeWidth="2" />
-          </svg>
-          <motion.div key={'lumi' + idx} style={{ position: 'absolute', left: 'max(4px, calc(17% - 70px))', top: 70, transformOrigin: '50% 100%' }}
-            animate={r.heavy && !reduceMotion() ? { x: [0, 0, 46, 40, 0], rotate: [0, 0, 22, 16, 0] } : {}}
-            transition={{ duration: 1.8, times: [0, 0.12, 0.3, 0.7, 1] }}>
-            <Critter art="lumi" size={92} talks label="Lumi" mood={finale ? 'dance' : r.heavy && !done ? 'wow' : done && tried.length < 2 ? 'happy' : 'idle'} />
-          </motion.div>
-          {/* the heavy catch: a big splash where the line goes in */}
-          {r.heavy && !reduceMotion() && !got && (
-            <div key={'splash' + idx} aria-hidden="true" style={{ position: 'absolute', left: '50%', bottom: 6, width: 0, height: 0, pointerEvents: 'none' }}>
-              {Array.from({ length: 10 }, (_, k) => (
-                <motion.div key={k} initial={{ x: 0, y: 0, opacity: 0, scale: 0.4 }}
-                  animate={{ x: (k - 4.5) * 22, y: [0, -110 - (k % 3) * 30, 20], opacity: [0, 1, 0], scale: 1 }}
-                  transition={{ duration: 0.9, delay: 0.6 + (k % 2) * 0.45, ease: 'easeOut' }}
-                  style={{ position: 'absolute', left: -8, top: -8, width: 16, height: 20, borderRadius: '50% 50% 50% 50% / 60% 60% 40% 40%', background: '#4aa3ff', border: `2px solid ${INK}` }} />
-              ))}
+            {/* the row of catches so far, and the star counter */}
+            <div style={{ position: 'absolute', left: L.strip.x, top: L.strip.y, width: L.strip.w, height: L.strip.h, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 10px', boxSizing: 'border-box', zIndex: 4, gap: 6 }}>
+              <Progress total={total} caught={caught} size={Math.max(16, Math.min(30, (L.strip.w - 110) / total - 4))} />
+              <div style={{ flexShrink: 0 }}>{juice.hud}</div>
             </div>
-          )}
-          {/* where the catch hangs, for the hint hand */}
-          <div ref={catchRef} aria-hidden="true" style={{ position: 'absolute', left: '50%', top: HOOK + 80, width: 2, height: 2 }} />
 
-          <AnimatePresence mode="popLayout">
-            {!got && !leaving && <Catch key={idx} item={r} heavy={r.heavy} />}
-          </AnimatePresence>
-          {/* solved: the word, written, where the catch was */}
-          <AnimatePresence>
-            {got && !leaving && (
-              <motion.div key={'w' + idx} initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.15 } }}
-                transition={{ type: 'spring', stiffness: 360, damping: 16, delay: 0.25 }}
-                style={{
-                  position: 'absolute', left: '50%', top: HOOK - 10, x: '-50%', display: 'flex', alignItems: 'center', gap: 10, pointerEvents: 'none',
-                  background: '#fffdf7', border: `3px solid ${INK}`, borderRadius: 18, boxShadow: '0 5px 0 rgba(42,27,61,0.3)',
-                  padding: '6px 18px', fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 'clamp(26px,5vw,36px)', color: INK,
-                }}>
-                <Art art={r.emoji} size={52} /><span>{spelled}</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
+            {buckets.map((letter, i) => (
+              <FrogUnit key={letter} u={L.units[i]} L={letter} i={i} color={BUCKET_COLORS[i % BUCKET_COLORS.length]}
+                state={tried.includes(letter) ? 'tried' : help && held ? (held.letter === letter ? 'help' : 'off') : 'wait'}
+                hover={hover === letter} pile={piles[letter] ?? []} landed={landed[letter] ?? 0} nope={nope[letter] ?? 0}
+                chorus={chorus} finale={phase === 'finale'}
+                hint={tried.length > 0 && heldWord ? keyFor(letter, heldWord) : null}
+                word={label[letter] ?? null}
+                bucketRef={el => { bucketEls.current[letter] = el }}
+                onFrog={onFrog} onBucket={onBucket} />
+            ))}
+            <span ref={gapRef} aria-hidden="true" style={{ position: 'absolute', left: L.gapAt.x, top: L.gapAt.y, width: 2, height: 2 }} />
 
-          {voiced && (
-            <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} onClick={sayTask}
-              aria-label="Wort noch einmal anhören"
-              style={{ ...pxButton('gold'), position: 'absolute', right: 'clamp(4px,4%,40px)', top: HOOK, width: 60, height: 60, padding: 0, fontSize: 28, lineHeight: 1 }}>🔊</motion.button>
-          )}
-        </div>
+            {/* Lumi in the boat */}
+            <Boat boatRef={boatRef} size={L.lumi} dir={facing}>
+              <Critter art="lumi" size={L.lumi} talks label="Lumi" mood={mood} flip={facing < 0} shadow={false} />
+            </Boat>
 
-        {/* The frogs with their buckets, at the edge of the pond */}
-        <div ref={pondRef} style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: 12, width: '100%', maxWidth: 820 }}>
-          {r.options.map((L, i) => (
-            <FrogBucket key={`${idx}-${L}`} gapRef={i === 0 ? gapRef : null} L={L} i={i} n={r.options.length}
-              color={BUCKET_COLORS[i % BUCKET_COLORS.length]}
-              state={got === L ? 'got' : tried.includes(L) ? 'tried' : 'wait'}
-              pile={piles[L] ?? []} landed={got === L}
-              hint={tried.length > 0 && !got ? keyOf(L, r.word) : null}
-              chorus={chorus}
-              onDrop={drop} />
-          ))}
-          {/* the running gag: now and then a fish leaps over the pond */}
-          {r.fish && !reduceMotion() && (
-            <div aria-hidden="true" style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
-              <motion.div key={'fish' + idx} initial={{ left: '-8%', y: 0, opacity: 0, rotate: -30 }}
-                animate={{ left: ['-8%', '45%', '100%'], y: [0, -90, 0], opacity: [0, 1, 0], rotate: [-30, 0, 40] }}
-                transition={{ duration: 1.6, delay: 1.2, ease: 'easeInOut' }}
-                onAnimationComplete={() => sfx.splash()}
-                style={{ position: 'absolute', bottom: 4, width: 48, height: 48 }}>
-                <Art art="🐟" size={48} />
-              </motion.div>
-            </div>
-          )}
-        </div>
-        <HintHand from={catchRef} to={gapRef} active={!done && !leaving} delay={hintDelay(idx)} />
-      </DragArea>
+            {/* what swims, and what hangs on the hook */}
+            {items.map(it => (
+              <Thing key={it.id} it={it} S={L.S} open={chestOpen === it.id}
+                setEl={el => { const r = g.items.get(it.id); if (r) { r.el = el; if (el) paint(r, L) } }} />
+            ))}
+
+            {/* the rod and the line, over everything in the water */}
+            <svg aria-hidden="true" width={size.w} height={size.h} style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none', zIndex: 6, overflow: 'visible' }}>
+              <path ref={rodRef} d="M0 0" stroke="#2a1b3d" strokeWidth="7" fill="none" strokeLinecap="round" />
+              <path ref={rodInRef} d="M0 0" stroke="#c98d4f" strokeWidth="3.5" fill="none" strokeLinecap="round" />
+              <path ref={lineRef} d="M0 0" stroke="#2a1b3d" strokeWidth="2" fill="none" />
+              <g ref={floatRef}>
+                <g className="ang-bob">
+                  <ellipse cx="0" cy="-4" rx="7" ry="9" fill="#e8483b" stroke="#2a1b3d" strokeWidth="2.5" />
+                  <path d="M-7 -2 A7 9 0 0 0 7 -2 Z" fill="#fffdf7" stroke="#2a1b3d" strokeWidth="2" />
+                </g>
+              </g>
+              <g ref={hookRef}>
+                <path d="M0 -2 V10 a6 6 0 0 1 -11 2" stroke="#56566a" strokeWidth="3.5" fill="none" strokeLinecap="round" />
+              </g>
+            </svg>
+
+            <AnimatePresence>{bin && <BinFrog key="bin" x={bin.x} y={bin.y} size={bin.size} open={bin.open} />}</AnimatePresence>
+            {splashes.map(s => <Splash key={s.id} x={s.x} y={s.y} big={s.big} />)}
+          </>
+        )}
+      </div>
+
+      {/* the hand: tap a swimmer; take the catch to the buckets; after two misses, to the right one */}
+      <HintHand key={`aim${caught.length}`} to={aimRef} active={phase === 'fish' && !!L} delay={caught.length === 0 ? 2500 : 8000} repeat={2} />
+      <HintHand key={`gap${caught.length}`} from={catchRef} to={gapRef} active={phase === 'hold' && !help} delay={caught.length === 0 ? 2500 : 6500} />
+      <HintHand key={`help${caught.length}`} from={catchRef} to={rightRef} active={phase === 'hold' && help} delay={0} />
       {bursts}
+      {juice.layer}
     </div>
   )
 }
 
-/** What hangs on the hook: it comes up out of the water, drips and swings. */
-function Catch({ item, heavy }) {
-  const still = reduceMotion()
-  // the heavy one surfaces later, slowly, after Lumi was yanked
-  const late = heavy && !still ? 1.5 : 0
-  useEffect(() => { const t = setTimeout(sfx.splash, 150 + late * 1000); return () => clearTimeout(t) }, [late])
+const reachOf = L => L.lumi * 0.5 + 24
+const idleLen = L => L.rodUp * 0.5
+const holdLen = () => 12
+
+/** Put a thing where the clock says. */
+function paint(it, L) {
+  const el = it.el
+  if (!el) return
+  el.style.transform = `translate(${it.x - L.S / 2}px, ${it.y - L.S / 2}px) rotate(${it.rot}deg) scale(${it.sc})`
+  el.style.opacity = String(clamp(it.a, 0, 1))
+  const top = it.st === 'held' || it.st === 'drag' || it.st === 'fly' || it.st === 'rest' || it.st === 'hooked'
+  el.style.zIndex = top ? (it.st === 'hooked' ? '5' : '8') : '2'
+  const face = it.vx > 0 ? -1 : 1
+  if (it.kind === 'word' && face !== it.face && (it.st === 'swim' || it.st === 'in')) {
+    it.face = face
+    if (el.firstChild) el.firstChild.style.transform = `scaleX(${face})`
+  }
+  const wet = (it.st === 'held' || it.st === 'drag') && it.kind === 'word'
+  if (wet !== it.wet) { it.wet = wet; el.dataset.wet = wet ? '1' : '0' }
+  const dry = it.st !== 'swim' && it.st !== 'in'
+  if (dry !== it.dry) { it.dry = dry; el.dataset.dry = dry ? '1' : '0' }
+}
+
+/** One thing in the pond: a word's picture, the boot or the chest. */
+function Thing({ it, S, open, setEl }) {
   return (
-    <motion.div
-      initial={still ? { opacity: 0 } : { y: 240, opacity: 0, rotate: 0 }}
-      animate={still ? { y: 0, opacity: 1 } : { y: 0, opacity: 1, rotate: [0, -5, 4, -3, 0] }}
-      exit={{ scale: 0.4, opacity: 0, y: 60 }}
-      transition={{ y: { duration: late ? 0.8 : 0.35, delay: late, ease: [0.2, 1.4, 0.5, 1] }, opacity: { duration: 0.15, delay: late }, rotate: { duration: 3.2, repeat: Infinity, delay: 1 + late } }}
-      style={{ position: 'absolute', left: '50%', top: HOOK, marginLeft: -95, width: 190, transformOrigin: `50% -${HOOK}px` }}>
-      {/* the line up to the rod, and the hook */}
-      <div aria-hidden="true" style={{ position: 'absolute', left: 94, bottom: '100%', width: 2, height: HOOK + 260, background: INK }} />
-      <svg aria-hidden="true" width="26" height="30" viewBox="0 0 26 30" style={{ position: 'absolute', left: 82, top: -14 }}>
-        <path d="M13 0 V18 a7 7 0 0 1 -12 2" stroke="#6b6b7a" strokeWidth="4" fill="none" strokeLinecap="round" />
-      </svg>
-      <Draggable id="catch" data={item} label={`Der Fang am Haken`}>
-        <div style={{ padding: 4 }}>
-          <Art art={item.emoji} size={180} />
-        </div>
-      </Draggable>
-      {/* drips */}
-      {!still && [0, 1, 2].map(k => (
-        <motion.div key={k} aria-hidden="true" initial={{ y: 0, opacity: 0 }} animate={{ y: [0, 70], opacity: [0, 1, 0] }}
-          transition={{ duration: 1.1, repeat: Infinity, delay: 0.6 + k * 0.45 }}
-          style={{ position: 'absolute', left: 50 + k * 44, top: 160, width: 9, height: 13, borderRadius: '50% 50% 50% 50% / 60% 60% 40% 40%', background: '#4aa3ff', border: `2px solid ${INK}`, pointerEvents: 'none' }} />
+    <div ref={setEl} data-swimmer={it.kind} data-letter={it.letter ?? undefined} data-word={it.word ?? undefined}
+      role={it.word ? 'img' : undefined} aria-label={it.word ?? undefined}
+      style={{ position: 'absolute', left: 0, top: 0, width: S, height: S, pointerEvents: 'none', willChange: 'transform', opacity: 0 }}>
+      <div style={{ width: S, height: S }}>
+        {it.kind === 'boot' ? <Boot size={S} /> : it.kind === 'chest' ? <Chest size={S} open={open} /> : <Art art={it.emoji} size={S} />}
+      </div>
+      <span className="ang-bubble" style={{ left: '8%', top: '10%' }} />
+      <span className="ang-bubble" style={{ left: '20%', top: '0%', animationDelay: '1.3s' }} />
+      {[0.25, 0.5, 0.75].map((x, k) => (
+        <span key={k} className="ang-drip" style={{ left: `${x * 100}%`, top: '88%', animationDelay: `${k * 0.37}s` }} />
       ))}
-    </motion.div>
+    </div>
   )
 }
 
-/**
- * A frog with a bucket that has its letter on it. The catch goes into the
- * bucket; tapping the frog (with nothing picked up) makes it croak its
- * letter. `hint` is a picture that starts with that letter (after a miss).
- * `pile`: what landed in this bucket over the level; the frog reacts to
- * each new one (`landed`).
- */
-function FrogBucket({ gapRef, L, i, n, color, state, pile, landed, hint, chorus, onDrop }) {
-  const { picked } = useDragState()
-  const [croak, setCroak] = useState(0)
-  const ref = useRef(null)
-  const still = reduceMotion()
-  const sayIt = () => {
-    if (picked) return
-    sfx.pop()
-    setCroak(c => c + 1)
-    narrate([soundRec(L)], { priority: 'preview' })
-  }
-  const spring = { type: 'spring', stiffness: 300, damping: 14 }
-  const react = landed ? REACTIONS[(pile.length - 1) % REACTIONS.length] : null
-  useEffect(() => {
-    if (react === 'giggle') { const t = setTimeout(sfx.giggle, 500); return () => clearTimeout(t) }
-    if (react === 'jump') { const t = setTimeout(sfx.splash, 900); return () => clearTimeout(t) }
-  }, [react])
+/** The catches of the level so far: an empty ring for each still to come. */
+function Progress({ total, caught, size }) {
   return (
-    <div ref={ref} style={{ position: 'relative', width: `calc((100% - ${(n - 1) * 12}px) / ${n})`, maxWidth: 190, minWidth: 0 }}>
-      {/* between the first bucket and the next: the hint hand drags here, never into one answer */}
-      {gapRef && <span ref={gapRef} aria-hidden="true" style={{ position: 'absolute', right: -7, top: '45%', width: 2, height: 2 }} />}
-      <DropZone id={`eimer-${L}`} label={`Eimer ${L}`} onDrop={() => onDrop(L, ref.current)} slop={16}>
-        {hover => (
-          <div onClick={sayIt} style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
-            {/* the frog: bobs, leans out when the catch comes near, flips when it gets it */}
-            <motion.div
-              animate={still ? {}
-                : react === 'jump' ? { x: [0, 30, 90, 90, 0], y: [0, -90, 30, 30, 0], rotate: [0, 20, 40, 40, 0], scale: 1, transition: { duration: 1.6, times: [0, 0.25, 0.5, 0.7, 1] } }
-                : react === 'sleepy' ? { y: [0, 6], scaleY: [1, 0.9], rotate: [0, -8], scale: 1, transition: { duration: 1.2 } }
-                : state === 'got' ? { y: [0, -70, 0, -24, 0], rotate: [0, 0, 360, 360, 360], scale: 1, transition: { duration: 1 } }
-                : state === 'tried' ? { y: 30, rotate: [0, -10, 10, 0], scale: 1, transition: spring }
-                : hover ? { y: -14, scale: 1.12, rotate: 0, transition: spring }
-                : { y: [0, -4, 0], scale: 1, rotate: 0, transition: { duration: 2 + i * 0.3, repeat: Infinity } }}
-              style={{ width: '70%', aspectRatio: '1', marginBottom: '-18%', zIndex: 0, filter: state === 'tried' ? 'grayscale(0.8) brightness(0.9)' : undefined }}>
-              {/* a hop of its own: tapped, or all frogs together */}
-              <motion.div key={croak + chorus * 1000} style={{ width: '100%', height: '100%', transformOrigin: '50% 100%' }}
-                animate={still || croak + chorus === 0 ? {} : { y: [0, -36, 0], scaleY: [1, 0.85, 1.12, 1] }}
-                transition={{ duration: 0.55, delay: chorus && !croak ? i * 0.08 : 0 }}>
-                <Art art="🐸" size={100} style={{ width: '100%', height: '100%' }} />
-              </motion.div>
-            </motion.div>
-            {/* tapped: it croaks its letter */}
-            <AnimatePresence>
-              {croak > 0 && (
-                <motion.div key={croak} aria-hidden="true" initial={{ scale: 0.3, opacity: 0, y: 0 }}
-                  animate={{ scale: [0.3, 1.15, 1], opacity: [0, 1, 0], y: -40 }} transition={{ duration: 1 }}
-                  style={{ position: 'absolute', top: '-8%', left: '62%', zIndex: 2, pointerEvents: 'none', fontFamily: 'var(--font-heading)',
-                    fontWeight: 700, fontSize: 34, color, WebkitTextStroke: `2px ${INK}`, paintOrder: 'stroke fill' }}>{L}!</motion.div>
-              )}
-            </AnimatePresence>
-            <svg viewBox="0 0 100 92" style={{ width: '88%', height: 'auto', position: 'relative', zIndex: 1, overflow: 'visible', opacity: state === 'tried' ? 0.7 : 1 }} aria-hidden="true">
-              <path d="M10 14 Q50 -10 90 14" stroke={INK} strokeWidth="4" fill="none" />
-              <path d="M8 18 L18 86 Q50 96 82 86 L92 18 Z" fill={color} stroke={INK} strokeWidth="4" strokeLinejoin="round" />
-              <ellipse cx="50" cy="18" rx="42" ry="9" fill={color} stroke={INK} strokeWidth="4" style={{ filter: 'brightness(0.75)' }} />
-              <circle cx="50" cy="54" r="27" fill="#fffdf7" stroke={INK} strokeWidth="3" />
-              <text x="50" y="55" textAnchor="middle" dominantBaseline="central" fontFamily="Fredoka, Nunito, sans-serif" fontWeight="700" fontSize="40" fill={INK}>{L}</text>
-            </svg>
-            {/* the hint: a picture that starts like the letter */}
-            <AnimatePresence>
-              {hint && state !== 'tried' && (
-                <motion.div key="hint" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={spring}
-                  style={{ position: 'absolute', right: '-4%', bottom: 12, zIndex: 2, width: '42%', maxWidth: 52, aspectRatio: '1', borderRadius: '50%',
-                    background: '#fffdf7', border: `3px solid ${INK}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Art art={hint} size={40} style={{ width: '78%', height: '78%' }} />
-                </motion.div>
-              )}
-            </AnimatePresence>
-            {/* the catches of the level, peeking out of the bucket beside the frog */}
-            {pile.map((e, k) => {
-              const at = PILE_AT[k % PILE_AT.length], up = Math.floor(k / PILE_AT.length) * 10
-              return (
-                <motion.div key={k} initial={{ y: -80, scale: 0.3, opacity: 0 }} animate={{ y: 0, scale: 1, opacity: 1 }} transition={spring}
-                  style={{ position: 'absolute', left: `${at.x}%`, bottom: `${at.y + up}%`, width: '34%', marginLeft: '-17%', zIndex: 0, rotate: `${at.r}deg` }}>
-                  <Art art={e} size={60} style={{ width: '100%', height: 'auto' }} />
-                </motion.div>
-              )
-            })}
-            {/* sleepy: Zzz */}
-            {react === 'sleepy' && !still && (
-              <motion.div aria-hidden="true" initial={{ opacity: 0, y: 0 }} animate={{ opacity: [0, 1, 1, 0], y: -40 }} transition={{ duration: 2, delay: 0.6 }}
-                style={{ position: 'absolute', top: '-4%', right: '8%', zIndex: 2, pointerEvents: 'none', fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 22, color: '#4aa3ff' }}>Zzz</motion.div>
-            )}
-            {/* lily pad */}
-            <div aria-hidden="true" style={{ width: '104%', height: 18, marginTop: -10, borderRadius: '50%', background: '#5cc45a', border: `3px solid ${INK}`, zIndex: 0 }} />
-          </div>
-        )}
-      </DropZone>
+    <div aria-label={`${caught.length} von ${total}`} role="img" style={{ display: 'flex', gap: 4, minWidth: 0, flexWrap: 'nowrap' }}>
+      {Array.from({ length: total }, (_, k) => (
+        <div key={k} style={{ width: size, height: size, borderRadius: '50%', flexShrink: 0, background: caught[k] ? '#fffdf7' : 'rgba(255,253,247,0.55)',
+          border: '2.5px solid #2a1b3d', display: 'flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' }}>
+          {caught[k] && <Art art={caught[k]} size={size * 0.78} />}
+        </div>
+      ))}
     </div>
   )
 }
