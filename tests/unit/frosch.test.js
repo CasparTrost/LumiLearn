@@ -23,6 +23,18 @@ describe('Frosch-Hüpfer: words', () => {
     }
   })
 
+  it('never shows the same picture for two words', () => {
+    // 🐰 was "Hase" in level 1 and "Osterhase" in level 8: a child who knows
+    // the picture as "Hase" hops twice where the game wants four
+    const pic = e => e.replace(/️/g, '')
+    const byPic = new Map()
+    for (const w of ALL) {
+      expect(byPic.get(pic(w.emoji)), `${w.emoji} ${w.name}`).toBeUndefined()
+      byPic.set(pic(w.emoji), w.name)
+    }
+    expect(new Set(ALL.map(w => w.name)).size).toBe(ALL.length)
+  })
+
   it('sorts the words by their number of syllables', () => {
     for (const w of POOLS.ONE) expect(w.syllables.length).toBe(1)
     for (const w of [...POOLS.TWO_OPEN, ...POOLS.TWO_CLOSED]) expect(w.syllables.length).toBe(2)

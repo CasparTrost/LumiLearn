@@ -82,6 +82,22 @@ function Present({ s }) {
   )
 }
 
+/**
+ * The tries counter's sign: a card back and a turned card with an arrow
+ * between them, "cards turned over". The card back alone (a present) read
+ * as presents won.
+ */
+function TurnedCards({ s }) {
+  return (
+    <svg viewBox="0 0 100 100" width={s * 1.3} height={s} aria-hidden="true" style={{ display: 'block', overflow: 'visible' }}>
+      <rect x={-2} y={28} width={44} height={62} rx={8} fill="#8e6cf0" stroke={INK} strokeWidth={6} transform="rotate(-10 20 59)" />
+      <rect x={58} y={28} width={44} height={62} rx={8} fill="#fffdf7" stroke={INK} strokeWidth={6} transform="rotate(10 80 59)" />
+      <path d="M22 22 Q50 -4 76 20" fill="none" stroke={INK} strokeWidth={7} strokeLinecap="round" />
+      <path d="M64 14 L80 23 L70 36" fill="none" stroke={INK} strokeWidth={7} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 /** Lumi's wing, the "paw" that turns Lumi's cards. Its tip is at (14, 52). */
 function Wing({ s }) {
   return (
@@ -587,8 +603,10 @@ export default function MemoryGame({ level = 1, onComplete }) {
   // ── Drawing ─────────────────────────────────────────────────────────
   const { cards, phase, turn, peek, piles } = game
   const versus = cfg.versus
-  const childActive = phase === 'play' && turn === 'child'
-  const lumiActive = phase === 'play' && turn === 'lumi'
+  // after the last pair it is nobody's turn (the hand pointed on before)
+  const allFound = !cards.some(c => !c.matched && !c.joker)
+  const childActive = phase === 'play' && turn === 'child' && !allFound
+  const lumiActive = phase === 'play' && turn === 'lumi' && !allFound
   const s = grid?.s ?? 0
   // Lumi's wing: over its card, or waiting at Lumi's edge of the board
   const pawHome = wide ? { x: gridW + s * 0.2, y: gridH / 2 - s * 0.4 } : { x: gridW / 2, y: -s * 0.75 }
@@ -604,7 +622,7 @@ export default function MemoryGame({ level = 1, onComplete }) {
       {juice.hud}
       {/* the child's tries: Memo's own rating comes from them */}
       <div aria-label={`${game.tries} Versuche`} style={{ ...pxCard(), padding: `1px ${8 * ui}px`, fontFamily: 'var(--font-heading)', fontSize: 17 * ui, color: INK, display: 'flex', alignItems: 'center', gap: 3, borderRadius: 999 }}>
-        <Present s={18 * ui} />{game.tries}
+        <TurnedCards s={18 * ui} />{game.tries}
       </div>
     </div>
   )

@@ -4,7 +4,7 @@ import { Art } from '../../components/play/index.js'
 import './frosch.css'
 
 // Frosch-Hüpfer: the pieces of the pond — the water in its meadow, lily
-// pads, rings and splashes, the frog's tongue, the stork.
+// pads, rings and splashes, the frog's tongue, the duck.
 
 const INK = '#2a1b3d'
 
@@ -83,7 +83,7 @@ export function Greenery({ L }) {
  * (the frog sits on the back half). `bump` counts landings: the pad dips
  * and springs back. `dip` counts wrong taps: it goes under with a few
  * bubbles and comes up again. `lit`: the frog has been here. `glow`: this
- * one is next (the help after two misses, the stork's hint).
+ * one is next (the help after two misses, the duck's hint).
  */
 export function Pad({ w, h, text, lit = false, glow = false, bump = 0, dip = 0, flower = false, reduce = false }) {
   const controls = useAnimationControls()
@@ -136,7 +136,7 @@ function Bubbles({ w, h }) {
   )
 }
 
-/** Rings where the next hop would land. Gold when the stork points here. */
+/** Rings where the next hop would land. Gold when the duck points here. */
 export function HopSpot({ pt, w, hint = false }) {
   const h = w * 0.5
   return (
@@ -222,43 +222,44 @@ export function Tongue({ dx, dy, fly = 36, onDone }) {
   )
 }
 
-// The stork is drawn in a box of 130 × 150 with its feet at (45, 148) and
-// its beak to the right. Bent down to peck, the tip of the beak is here:
-export const STORK_PECK = { x: 80 / 150, y: -58 / 150 }
+// The duck is drawn in a box of 130 × 150 with its feet at (45, 148) and
+// its bill to the right. Bent down to peck, the tip of the bill is here:
+export const DUCK_PECK = { x: 71 / 150, y: -13 / 150 }
 
 /**
- * The stork. It wades up when a child waits long, and taps what comes next
- * with its beak. Placed by its feet; `peck` counts its pecks.
+ * The duck. It waddles up when a child waits long, and taps what comes next
+ * with its bill (a friend of the frog: a stork would eat it). Placed by its
+ * feet; `peck` counts its pecks.
  */
-export function Stork({ size, flip = false, walking = false, peck = 0, reduce = false }) {
+export function Duck({ size, flip = false, walking = false, peck = 0, reduce = false }) {
   const k = size / 150
-  const leg = (x, cls) => (
-    <g className={walking && !reduce ? cls : undefined} style={{ transformBox: 'view-box', transformOrigin: `${x}px 94px` }}>
-      <path d={`M${x} 94 L${x - 2} 122 L${x} 146 M${x} 146 L${x + 11} 147.5 M${x} 146 L${x - 7} 148`} stroke={INK} strokeWidth="6.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-      <path d={`M${x} 94 L${x - 2} 122 L${x} 146 M${x} 146 L${x + 11} 147.5 M${x} 146 L${x - 7} 148`} stroke="#f0603a" strokeWidth="3.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+  const foot = (x, cls) => (
+    <g className={walking && !reduce ? cls : undefined} style={{ transformBox: 'view-box', transformOrigin: `${x}px 136px` }}>
+      <path d={`M${x} 134 L${x} 145 M${x - 4} 148 L${x + 11} 148 L${x + 1} 143 Z`} stroke={INK} strokeWidth="5.5" fill="#f59a23" strokeLinecap="round" strokeLinejoin="round" />
+      <path d={`M${x} 134 L${x} 145`} stroke="#f59a23" strokeWidth="2.5" strokeLinecap="round" />
     </g>
   )
   return (
     <div aria-hidden="true" style={{ position: 'absolute', left: -45 * k, top: -148 * k, width: 130 * k, height: 150 * k, transform: flip ? 'scaleX(-1)' : undefined, transformOrigin: `${45 * k}px 50%`, pointerEvents: 'none' }}>
       <div className={walking && !reduce ? 'fr-strut' : undefined} style={{ position: 'absolute', inset: 0 }}>
         <svg viewBox="0 0 130 150" width="100%" height="100%" style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>
-          <ellipse cx="46" cy="148" rx="22" ry="4.5" fill="rgba(20,40,80,0.2)" />
-          {leg(40, 'fr-leg-a')}
-          {leg(51, 'fr-leg-b')}
-          <path d="M22 84 L2 92 L18 95 L6 104 L32 99 Z" fill={INK} />
-          <ellipse cx="45" cy="80" rx="27" ry="18.5" fill="#fffdf7" stroke={INK} strokeWidth="3.5" transform="rotate(-12 45 80)" />
-          <path d="M24 82 Q40 67 61 76 Q50 93 28 92 Z" fill="#ece6da" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
-          <path d="M24 82 Q30 90 28 92 L40 91 Q32 86 24 82 Z" fill={INK} />
+          <ellipse cx="48" cy="149" rx="30" ry="4.5" fill="rgba(20,40,80,0.2)" />
+          {foot(38, 'fr-leg-a')}
+          {foot(54, 'fr-leg-b')}
+          <path d="M14 112 Q4 98 8 92 Q18 100 30 104 Z" fill="#fff6d8" stroke={INK} strokeWidth="3.5" strokeLinejoin="round" />
+          <ellipse cx="48" cy="116" rx="36" ry="22" fill="#fff6d8" stroke={INK} strokeWidth="3.5" />
+          <path d="M26 110 Q44 98 62 108 Q52 126 32 122 Z" fill="#f3e6bf" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
         </svg>
         <motion.div key={peck} animate={peck && !reduce ? { rotate: [0, 55, 42, 55, 0] } : { rotate: peck && reduce ? 55 : 0 }}
           transition={{ duration: 0.9, times: [0, 0.28, 0.45, 0.62, 1], ease: 'easeInOut' }}
-          style={{ position: 'absolute', inset: 0, transformOrigin: `${60 * k}px ${72 * k}px` }}>
+          style={{ position: 'absolute', inset: 0, transformOrigin: `${72 * k}px ${110 * k}px` }}>
           <svg viewBox="0 0 130 150" width="100%" height="100%" style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>
-            <path d="M60 74 Q49 48 70 30" stroke={INK} strokeWidth="14" fill="none" strokeLinecap="round" />
-            <path d="M80 20.5 L113 29 L80 32.5 Z" fill="#f0603a" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
-            <circle cx="73" cy="26" r="10.5" fill="#fffdf7" stroke={INK} strokeWidth="3.5" />
-            <path d="M60 74 Q49 48 70 30" stroke="#fffdf7" strokeWidth="7.5" fill="none" strokeLinecap="round" />
-            <circle cx="76.5" cy="24" r="2.2" fill={INK} />
+            <path d="M66 112 Q64 96 76 88" stroke={INK} strokeWidth="21" fill="none" strokeLinecap="round" />
+            <path d="M94 80 Q112 80 119 88 Q110 95 94 93 Z" fill="#f59a23" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+            <circle cx="82" cy="82" r="16" fill="#fff6d8" stroke={INK} strokeWidth="3.5" />
+            <path d="M66 112 Q64 96 76 88" stroke="#fff6d8" strokeWidth="14" fill="none" strokeLinecap="round" />
+            <circle cx="87" cy="78" r="2.6" fill={INK} />
+            <circle cx="79" cy="86" r="3.5" fill="#ffb3c1" opacity="0.8" />
           </svg>
         </motion.div>
       </div>

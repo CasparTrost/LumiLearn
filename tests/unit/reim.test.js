@@ -86,6 +86,16 @@ describe('Reim-Theater: scenes and verses', () => {
 
 describe('Reim-Theater: rounds', () => {
   const rhymes = (a, b) => groupOf(a.w) === groupOf(b.w)
+  it('Ja/Nein: exactly half of the pairs rhyme, not always in the same order', () => {
+    const orders = new Set()
+    for (let seed = 1; seed <= 60; seed++) {
+      const rounds = buildRounds(4, { rnd: seeded(seed) })
+      expect(rounds.filter(r => r.rhymes)).toHaveLength(4)
+      orders.add(rounds.map(r => (r.rhymes ? 'j' : 'n')).join(''))
+    }
+    expect(orders.size).toBeGreaterThan(10)
+  })
+
   for (let level = 1; level <= LEVELS.length; level++) {
     it(`level ${level}: every round can be heard and has one right answer`, () => {
       for (let seed = 1; seed <= 60; seed++) {

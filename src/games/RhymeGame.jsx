@@ -75,7 +75,7 @@ const hearIt = (w, enabled = true) => {
  * sits in a row below the stage. Short (a phone held sideways): it sits in
  * the two front corners, and the balloon cards lose their names.
  */
-export function stageLayout(w, h, { verse = false, n = 0 } = {}) {
+export function stageLayout(w, h, { verse = false, n = 0, balloons = true } = {}) {
   const row = h >= 380
   const W = w, H = h
   const valH = row ? clamp(H * 0.07, 28, 40) + (verse ? 16 : 0) : clamp(H * 0.1, 26, 34) + (verse ? 8 : 0)
@@ -86,7 +86,9 @@ export function stageLayout(w, h, { verse = false, n = 0 } = {}) {
   const floorH = labelH + lampH + 8
   const floorBottom = H - audH
   const floorTop = floorBottom - floorH
-  const S = clamp(Math.min((H - valH - audH - floorH) * (row ? 0.4 : 0.42), W * 0.3), 56, 170)
+  // the figures leave room above them for the balloons; without balloons
+  // (Ja/Nein, odd one out) they take the stage
+  const S = clamp(Math.min((H - valH - audH - floorH) * (!balloons ? 0.62 : row ? 0.4 : 0.42), W * 0.3), 56, 170)
   const open = { left: W * 0.08, right: W * 0.92 }
   const flyTop = valH + 6, flyBottom = floorTop - S - 6
   const flyH = Math.max(0, flyBottom - flyTop)
@@ -129,7 +131,7 @@ export default function RhymeGame({ level = 1, onComplete }) {
     const i = idxRef.current, r = rounds[i]
     if (r) narrate(taskOf(r, i === 0))
   }, [rounds])
-  const { idx, done, leaving, finale, paused, win, miss, reveal, isOver, hasTried } =
+  const { idx, done, leaving, finale, paused, win, miss, reveal, isOver, hasTried, tried } =
     useRounds(rounds.length, { onComplete, sayTask, outroMs: 650, finaleMs: 2400 })
   idxRef.current = idx
   const r = rounds[Math.min(idx, rounds.length - 1)]
@@ -174,7 +176,7 @@ export default function RhymeGame({ level = 1, onComplete }) {
   const bz = yesno ? (sideBuzzers ? clamp(room.h * 0.34, 72, 110) : clamp(Math.min(room.w * 0.22, room.h * 0.15), 76, 110)) : 0
   const tw = Math.min(980, room.w - (sideBuzzers ? 2 * (bz + 16) : 0))
   const th = Math.min(room.h - (yesno && !sideBuzzers ? bz + 14 : 0), Math.max(300, tw * 1.9))
-  const lay = useMemo(() => stageLayout(tw, th, { verse: r.mode === 'verse', n: r.options?.length ?? 0 }), [tw, th, r])
+  const lay = useMemo(() => stageLayout(tw, th, { verse: r.mode === 'verse', n: r.options?.length ?? 0, balloons: r.mode === 'pick' || r.mode === 'verse' }), [tw, th, r])
 
   // ── state of the round ──
   const [popped, setPopped] = useState([])     // balloons popped this round
@@ -376,16 +378,16 @@ export default function RhymeGame({ level = 1, onComplete }) {
     get current() {
       const R = rounds[idxRef.current]
       if (!R) return null
-      let keys
-      if (R.mode === 'yesno') keys = ['yes', 'no']
-      else if (R.mode === 'odd') keys = R.options.map(o => `actor-${o.w}`)
-      // after a miss the hand shows the right one; before, it taps them in turn
-      else keys = els.current.missedOnce ? [`balloon-${R.correct.w}`] : R.options.map(o => `balloon-${o.w}`)
-      const live = keys.map(k => els.current[k]).filter(Boolean)
-      return live.length ? live[Math.floor(Date.now() / 1900) % live.length] : null
+      // A four-year-old taps where the hand taps, so it never shows a wrong
+      // answer: until the child has tried, it taps the speaker (hear the
+      // words again); after a miss it shows the right one. Ja/Nein has one
+      // buzz only, so there it always taps the speaker.
+      const key = R.mode === 'yesno' || !els.current.missedOnce ? 'speaker'
+        : R.mode === 'odd' ? `actor-${R.correct.w}` : `balloon-${R.correct.w}`
+      return els.current[key] ?? null
     },
   }), [rounds])
-  els.current.missedOnce = popped.length > 0
+  els.current.missedOnce = tried.length > 0
 
   const balloonsUp = (r.mode === 'pick' || r.mode === 'verse') ? r.options.filter(o => !popped.includes(o)) : []
   const speaker = [...taskOf(r, true), ...balloonsUp.map(o => wordVoice(o.w) && { ...wordVoice(o.w), gap: 300 })]
@@ -411,7 +413,7 @@ export default function RhymeGame({ level = 1, onComplete }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', maxWidth: 760, flexShrink: 0 }}>
         <RoundTrail total={rounds.length} done={idx + (done ? 1 : 0)} walker="🎈" goal="🎭" size={room.h && room.h < 330 ? 28 : 36} style={{ flex: 1 }} />
         {juice.hud}
-        <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} onClick={() => narrate(speaker)}
+        <motion.button ref={ref('speaker')} whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} onClick={() => narrate(speaker)}
           aria-label="Noch einmal anhören"
           style={{ ...pxButton('gold'), width: 52, height: 52, padding: 0, fontSize: 26, lineHeight: 1, flexShrink: 0 }}>🔊</motion.button>
       </div>
@@ -632,7 +634,7 @@ function Actor({ item, lay, x, size, rime, nope = 0, tappable = true, shy, onTap
   )
 }
 
-/** The empty place beside the figure: someone is wanted here. */
+/** The empty place beside the figure: a spot of light, someone is wanted here (no "?": nobody here reads it). */
 function Wanted({ lay, x }) {
   const still = reduceMotion()
   const d = lay.S * 0.78
@@ -641,10 +643,8 @@ function Wanted({ lay, x }) {
       transition={still ? {} : { scale: { duration: 1.4, repeat: Infinity, delay: 0.6 }, opacity: { delay: 0.6 } }}
       style={{
         position: 'absolute', left: x - d / 2, top: lay.feetY - lay.S / 2 - d / 2, width: d, height: d, borderRadius: '50%', zIndex: 1,
-        border: `5px dashed ${GOLD}`, background: 'rgba(255,201,60,0.12)', boxSizing: 'border-box',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: d * 0.5, color: GOLD,
-      }}>?</motion.div>
+        border: `5px dashed ${GOLD}`, background: 'radial-gradient(circle, rgba(255,240,180,0.55), rgba(255,201,60,0.12) 70%)', boxSizing: 'border-box',
+      }} />
   )
 }
 
@@ -667,7 +667,7 @@ function Tableau({ lay, mover, seat, place, from, names = [seat, mover] }) {
   const apexY = Math.min(m0.y, ty) - S * (clip ? 0.55 : 0.4)
   const size = place.size
   const box = { position: 'absolute', left: 0, top: 0, width: S, height: S }
-  const pic = <Art art={mover.e} size={140} style={{ width: '100%', height: 'auto', filter: place.red ? 'sepia(1) saturate(7) hue-rotate(-38deg) brightness(0.95)' : undefined }} />
+  const pic = <Art art={mover.e} size={140} style={{ width: '100%', height: 'auto', filter: place.red ? 'grayscale(1) brightness(0.8) sepia(1) hue-rotate(-45deg) saturate(12)' : undefined }} />
   const act = still ? {} : ACTS[place.act]?.(S) ?? {}
   // the seat squashes when something lands on it
   const seatAct = still ? {} : place.how === 'on' ? { scaleY: [1, 0.86, 1, 0.9, 1], scaleX: [1, 1.08, 1, 1.05, 1] } : place.act === 'glow' && place.how === 'beside' ? GLOW : {}
@@ -703,7 +703,15 @@ function Tableau({ lay, mover, seat, place, from, names = [seat, mover] }) {
       ) : (
         <motion.div key="there" initial={{ x: tx - S / 2, y: ty - S / 2, scale: place.how === 'peek' ? 0 : size }}
           animate={{ scale: size }} transition={{ type: 'spring', stiffness: 260, damping: 14 }} style={{ ...box, zIndex: 3 }}>
-          <motion.div animate={act} transition={{ duration: 1.4, delay: 0.25, repeat: 1 }} style={{ width: '100%', height: '100%', transformOrigin: '50% 60%' }}>{pic}</motion.div>
+          <motion.div animate={act} transition={{ duration: 1.4, delay: 0.25, repeat: 1 }} style={{ width: '100%', height: '100%', transformOrigin: '50% 60%' }}>
+            {pic}
+            {place.prop && (
+              <div style={{ position: 'absolute', left: S * (0.5 + place.prop.at[0] - place.prop.size / 2), top: S * (0.5 + place.prop.at[1] - place.prop.size / 2),
+                width: S * place.prop.size, height: S * place.prop.size, transform: `rotate(${place.prop.rotate ?? 0}deg)` }}>
+                <Art art={place.prop.art} size={140} style={{ width: '100%', height: 'auto' }} />
+              </div>
+            )}
+          </motion.div>
         </motion.div>
       )}
       {/* both names, the rhyme coloured, under the pair */}
@@ -882,7 +890,7 @@ function Valance({ lay, title, verse, bonus }) {
               <motion.span key={verse.answer ? 'a' : 'q'} initial={{ scale: 0.4 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 400, damping: 14, delay: verse.answer ? 0.6 : 0 }}
                 style={{ flexShrink: 0, width: fs * 1.8, height: fs * 1.6, borderRadius: 8, border: verse.answer ? `2px solid ${INK}` : '3px dashed #d6336c',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', background: verse.answer ? '#ffe28a' : 'transparent', color: '#d6336c', boxSizing: 'border-box' }}>
-                {verse.answer ? <Art art={verse.answer.e} size={Math.round(fs * 1.4)} /> : '?'}
+                {verse.answer && <Art art={verse.answer.e} size={Math.round(fs * 1.4)} />}
               </motion.span>
             </motion.div>
           ) : bonus ? (
