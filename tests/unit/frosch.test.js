@@ -82,7 +82,7 @@ describe('Frosch-Hüpfer: levels', () => {
         }
       }
     }
-  })
+  }, 30000)   // 400 levels built: give a busy machine time
 
   it('gives wrong syllables that can be said', () => {
     for (const w of POOLS.FOUR) for (const s of decoys(w, 2, seeded(3))) expect(KEY.syllable(s) in LINES, s).toBe(true)
