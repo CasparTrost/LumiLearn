@@ -1,7 +1,7 @@
 import { motion, useTransform } from 'framer-motion'
 import { Art } from '../../components/play/index.js'
 import { SIGN_H, MONSTER_H } from './layout.js'
-import { MOTION, Shout } from './Korbmonster.jsx'
+import { motionFor, Shout } from './Korbmonster.jsx'
 import './fliessband.css'
 
 // Fließband-Füttern (SortGame.jsx): the kitchen, the belt with its pipe,
@@ -68,7 +68,7 @@ export function Belt({ L, roll, lumps, pipeIn, pipeOut }) {
         <motion.div key={l.id} initial={{ x: pipe.right.x - pipe.left.x - pipe.mouthW * 0.6, scale: 0.6 }}
           animate={{ x: pipe.mouthW * 0.2, scale: [0.6, 1, 1, 0.6] }} transition={{ duration: l.s, ease: 'easeInOut' }}
           style={{
-            position: 'absolute', left: pipe.left.x, top: pipe.top - pipe.h * 0.28, width: pipe.h * 2.1, height: pipe.h * 1.56, boxSizing: 'border-box', zIndex: 4,
+            position: 'absolute', left: pipe.left.x, top: pipe.top - pipe.h * 0.4, width: pipe.h * 2.6, height: pipe.h * 1.8, boxSizing: 'border-box', zIndex: 4,
             border: `3px solid ${INK}`, borderRadius: '50%', background: `linear-gradient(${PIPE_LIGHT}, ${PIPE} 45%, ${PIPE_DARK})`,
           }} />
       ))}
@@ -105,7 +105,7 @@ export function Tonne({ width = 200, need = 0, have = 0, mood = 'idle' }) {
   const flap = mood === 'point' || mood === 'dance'
   const seg = 108 / Math.max(1, need)
   return (
-    <motion.div animate={reduceMotion() ? undefined : MOTION[mood] ?? MOTION.idle}
+    <motion.div animate={reduceMotion() ? undefined : motionFor(mood, W) ?? motionFor('idle', W)}
       style={{ position: 'relative', width: W, height: W * MONSTER_H, transformOrigin: '50% 100%' }}>
       <svg viewBox="0 0 200 196" width={W} height={W * 0.98} style={{ position: 'absolute', left: 0, top: signH, overflow: 'visible', display: 'block' }} aria-hidden="true">
         <defs>
@@ -178,9 +178,10 @@ function RubbishArt({ kind, size }) {
   }
   if (kind === 'papier') return (
     <svg {...common}>
-      <path d="M20 42 L32 20 L56 12 L78 24 L90 48 L80 72 L60 88 L34 84 L16 64 Z" fill="#faf7ee" stroke={INK} strokeWidth="4.5" strokeLinejoin="round" />
-      <path d="M46 42 L66 34 L54 62 Z M54 62 L80 72 L60 88 L34 84 Z M32 20 L46 42 L20 42 Z" fill="#dcd6c6" />
-      <path d="M32 20 L46 42 L20 42 M46 42 L66 34 L56 12 M66 34 L90 48 M46 42 L54 62 L80 72 M54 62 L34 84 M54 62 L16 64 M66 34 L78 24" fill="none" stroke="#9c9685" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+      <path d="M18 44 L26 26 L38 30 L44 14 L60 20 L70 12 L80 30 L92 40 L84 56 L90 70 L72 76 L64 90 L46 82 L30 88 L26 70 L12 62 Z" fill="#fbf8ef" stroke={INK} strokeWidth="4.5" strokeLinejoin="round" />
+      <path d="M38 30 L52 40 L44 14 Z M52 40 L80 30 L84 56 L62 58 Z M26 70 L46 62 L46 82 L30 88 Z" fill="#ddd7c7" />
+      <path d="M38 30 L52 40 L44 14 M52 40 L80 30 M52 40 L62 58 L84 56 M62 58 L72 76 M62 58 L46 62 L26 70 M46 62 L46 82 M46 62 L26 26 M18 44 L46 62" fill="none" stroke="#a39d8b" strokeWidth="2.6" strokeLinejoin="round" strokeLinecap="round" />
+      <path d="M58 26 l10 -3 M60 32 l12 -3 M66 66 l10 -3 M30 50 l8 3 M32 76 l8 -2" fill="none" stroke="#4aa3ff" strokeWidth="2.6" strokeLinecap="round" />
     </svg>
   )
   if (kind === 'dose') return (
@@ -232,7 +233,7 @@ export function Thing({ thing, size, picked = false }) {
           ))}
         </>
       )}
-      {picked && <div className="fb-ring" aria-hidden="true" style={{ position: 'absolute', inset: -size * 0.1, borderRadius: '50%', border: '5px solid #ffc93c', boxShadow: `0 0 0 3px ${INK}, inset 0 0 0 3px ${INK}`, background: 'rgba(255,253,247,0.55)' }} />}
+      {picked && <div className="fb-ring" aria-hidden="true" style={{ position: 'absolute', inset: -size * 0.08, borderRadius: '50%', border: '4px solid #ffc93c', boxShadow: `0 0 0 2.5px ${INK}, inset 0 0 0 2.5px ${INK}`, background: 'rgba(255,253,247,0.3)' }} />}
       <div style={{ position: 'relative', filter: thing.golden ? 'drop-shadow(0 0 3px #fff3b0) drop-shadow(0 0 5px #ffc93c)' : undefined }}>
         <ThingArt art={thing.art} size={size} />
       </div>

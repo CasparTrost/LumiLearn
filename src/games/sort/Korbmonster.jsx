@@ -26,17 +26,23 @@ const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.(
 // Where the things in the basket sit: x across the rim (0..1), how far up
 const PILE = [[0.5, 0], [0.26, 0.06], [0.74, 0.06], [0.38, -0.2], [0.62, -0.2], [0.5, -0.36]]
 
-export const MOTION = {
-  idle:   { y: [0, -3, 0], rotate: 0, scale: 1, scaleX: 1, scaleY: 1, x: 0, transition: { duration: 2.4, repeat: Infinity, ease: 'easeInOut' } },
-  ready:  { y: [0, -5, 0], rotate: 0, scale: 1.03, scaleX: 1, scaleY: 1, x: 0, transition: { duration: 0.9, repeat: Infinity, ease: 'easeInOut' } },
-  full:   { y: 0, rotate: [0, -1.5, 1.5, 0], scale: 1, scaleX: 1, scaleY: [1, 1.02, 1], x: 0, transition: { duration: 3.2, repeat: Infinity, ease: 'easeInOut' } },
-  hungry: { y: -6, rotate: 0, scale: 1.08, scaleX: 1, scaleY: 1, x: 0, transition: { type: 'spring', stiffness: 320, damping: 14 } },
-  happy:  { y: [0, -28, 0, -10, 0], rotate: [0, -6, 6, 0, 0], scale: 1, scaleX: 1, scaleY: 1, x: 0, transition: { duration: 0.8 } },
-  bah:    { x: [0, -10, 10, -8, 8, 0], rotate: [0, -5, 5, -3, 0], y: 0, scale: 1, scaleX: 1, scaleY: 1, transition: { duration: 0.6 } },
-  burp:   { scaleY: [1, 0.86, 1.12, 1], scaleX: [1, 1.1, 0.95, 1], y: 0, x: 0, rotate: 0, scale: 1, transition: { duration: 0.6 } },
-  point:  { y: [0, -16, 0, -16, 0], scale: 1.04, rotate: 0, scaleX: 1, scaleY: 1, x: 0, transition: { duration: 1.1, repeat: Infinity, repeatDelay: 0.4 } },
-  dance:  { rotate: [0, -10, 10, -10, 10, 0], y: [0, -14, 0, -14, 0, 0], scale: 1, scaleX: 1, scaleY: 1, x: 0, transition: { duration: 1.1, repeat: Infinity } },
-  chomp:  { scaleY: [1, 0.86, 1.08, 0.9, 1.05, 1], scaleX: [1, 1.08, 0.96, 1.06, 0.98, 1], y: 0, x: 0, rotate: 0, scale: 1, transition: { duration: 0.7 } },
+// How a monster (or the bin) of width W moves in each mood. The hops grow
+// with its size, so a small one on a phone does not jump out of the screen.
+export const motionFor = (mood, W) => {
+  const still = { x: 0, y: 0, rotate: 0, scale: 1, scaleX: 1, scaleY: 1 }
+  const h = W * 0.1
+  return ({
+    idle:   { ...still, y: [0, -3, 0], transition: { duration: 2.4, repeat: Infinity, ease: 'easeInOut' } },
+    ready:  { ...still, y: [0, -h * 0.3, 0], scale: 1.03, transition: { duration: 0.9, repeat: Infinity, ease: 'easeInOut' } },
+    full:   { ...still, rotate: [0, -1.5, 1.5, 0], scaleY: [1, 1.02, 1], transition: { duration: 3.2, repeat: Infinity, ease: 'easeInOut' } },
+    hungry: { ...still, scale: 1.06, transition: { type: 'spring', stiffness: 320, damping: 14 } },
+    happy:  { ...still, y: [0, -h, 0, -h * 0.4, 0], rotate: [0, -4, 4, 0, 0], transition: { duration: 0.8 } },
+    bah:    { ...still, x: [0, -8, 8, -6, 6, 0], rotate: [0, -4, 4, -3, 0], transition: { duration: 0.6 } },
+    burp:   { ...still, scaleY: [1, 0.86, 1.1, 1], scaleX: [1, 1.1, 0.95, 1], transition: { duration: 0.6 } },
+    point:  { ...still, y: [0, -h * 0.6, 0, -h * 0.6, 0], scale: 1.03, transition: { duration: 1.1, repeat: Infinity, repeatDelay: 0.4 } },
+    dance:  { ...still, rotate: [0, -4, 4, -4, 4, 0], y: [0, -h * 0.7, 0, -h * 0.7, 0, 0], transition: { duration: 1.1, repeat: Infinity } },
+    chomp:  { ...still, scaleY: [1, 0.86, 1.08, 0.9, 1.05, 1], scaleX: [1, 1.08, 0.96, 1.06, 0.98, 1], transition: { duration: 0.7 } },
+  })[mood]
 }
 
 export default function Korbmonster({ width = 200, tint, sign, items = [], need = 0, mood = 'idle', look = 0, gaze }) {
@@ -54,7 +60,7 @@ export default function Korbmonster({ width = 200, tint, sign, items = [], need 
   const shown = items.slice(-PILE.length)
 
   return (
-    <motion.div animate={reduceMotion() ? undefined : MOTION[mood] ?? MOTION.idle}
+    <motion.div animate={reduceMotion() ? undefined : motionFor(mood, W) ?? motionFor('idle', W)}
       style={{ position: 'relative', width: W, height: H, transformOrigin: '50% 100%' }}>
       {/* the sign's stick (the board is drawn last, so a full basket never hides it) */}
       {sign && <div style={{ position: 'absolute', left: W * 0.5 - 3, top: W * 0.26, width: 6, height: rimY - W * 0.24, background: '#8a4f22', border: `2px solid ${INK}`, borderRadius: 3 }} />}

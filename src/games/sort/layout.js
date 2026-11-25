@@ -46,7 +46,8 @@ export function layoutFor(W, H, n) {
     // on a small screen the monsters stand right behind the belt: what rides
     // past covers their feet, and they can be a good deal bigger
     const feet = small ? beltTop - S * 0.72 : beltTop - S - 14
-    const fit = aw => Math.min(clamp(H * 0.55, 140, 300), aw / (n + GAP * (n - 1)), (feet - pad) / MONSTER_H)
+    // (a little room above the signs: a monster that hops must not hit the ceiling)
+    const fit = aw => Math.min(clamp(H * 0.55, 140, 300), aw / (n + GAP * (n - 1)), (feet - pad) / (MONSTER_H + 0.09))
     mw = fit(W - 2 * pad)
     // the star counter sits top right: a row that reaches under it moves over
     if (feet - mw * MONSTER_H < hud.y + hud.h + 4 && (W + rowWidth(n, mw)) / 2 > hud.x - 8) {

@@ -64,7 +64,7 @@ export default function SortGame({ level = 1, onComplete }) {
   const total = plan.things.length
   const byId = useMemo(() => Object.fromEntries(plan.things.map(t => [t.id, t])), [plan])
   const reduce = useReducedMotion()
-  const { later, paused } = useLater()
+  const { later, afterSpeech, paused } = useLater()
   const pausedRef = useRef(paused)
   pausedRef.current = paused
   const [bursts, burst] = useBursts()
@@ -260,7 +260,8 @@ export default function SortGame({ level = 1, onComplete }) {
       setMood(i, 'bah', 1100)
       sfx.boing()
       miss(el)
-      sayWrong()
+      // (the thing's name, said when it was picked up, is not cut off)
+      afterSpeech(() => sayWrong())
       later(reduce ? 80 : 340, () => spit(t.id))
       later(450, () => setMood(t.to, 'point', 1700))
       return
@@ -281,7 +282,7 @@ export default function SortGame({ level = 1, onComplete }) {
     } else burst(el, 'stars', 5)
     // a streak: the others cheer along
     if (milestone) plan.targets.forEach((x, j) => j !== i && setMood(j, 'happy', 800))
-    sayRight()
+    afterSpeech(() => sayRight())
     if (fedCount.current >= total) { finale(); return }
     if (list[i].length >= plan.targets[i].need) later(750, () => { setMood(i, 'burp', 800); sfx.burp(); shake(0.4) })
   }
