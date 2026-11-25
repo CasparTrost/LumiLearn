@@ -7,12 +7,18 @@
 // line never faster than FLY_MAX planets a second, so every planet on the
 // way registers: when x reaches the next planet, that is one hop, the same
 // hop a press on the flame makes (its arc, its number, its count). Where the
-// child lets go, the rocket comes down, and that planet is the answer.
+// child lets go, the rocket comes down: on the planet under the finger at
+// that moment (Lumi: "Wo du loslässt, landet sie"), flying on there slowly,
+// counting, if it lagged behind. That planet is the answer.
 
 import { MINUS, TOP } from './tasks.js'
 
-/** Top speed by hand, in planets per second: slow enough to hear each number. */
-export const FLY_MAX = 2
+/**
+ * Top speed by hand, in planets per second: slow enough to hear each number
+ * (the number clips are 0.66–0.8 s long; at 2 a second each one was cut off
+ * by the next). `hushed` holds the rocket back as long as one still plays.
+ */
+export const FLY_MAX = 1.25
 /** How quickly the rocket closes the distance to the finger (per second). */
 export const FLY_LAG = 6
 /** How far a finger moves (px) before a touch on the rocket is a flight, not a tap. */
@@ -61,10 +67,41 @@ export function flyHeight(h, finger, dt, { hover, top }) {
 /** Coming down after the finger let go: `speed` px a second, never below the planet. */
 export const flyDown = (h, dt, speed) => Math.max(0, h - speed * Math.max(0, Math.min(0.1, dt)))
 
-/** Letting go: the nearer planet, within reach. */
+/**
+ * While the number of the planet just reached is still being said, the
+ * rocket does not reach the next one: it waits just short of it, so every
+ * number is heard to its end, at any speed of the finger.
+ */
+export function hushed(x, cell, hush) {
+  return hush ? Math.max(cell - 0.97, Math.min(cell + 0.97, x)) : x
+}
+
+/** How long (s) the finger has to rest before the rocket settles onto the planet under it. */
+export const REST_S = 0.25
+/**
+ * Where the rocket flies while the finger holds it: after the finger, and
+ * once the finger rests, onto the planet under it, so a rocket held over a
+ * planet has counted that planet (its arc, its number) before it is let go.
+ */
+export function holdTarget(target, stillFor) {
+  return stillFor >= REST_S ? Math.round(target) : target
+}
+
+/**
+ * Letting go: the planet under the finger (or, without one, the rocket),
+ * within reach. Not where the lagging rocket happens to be: after a quick
+ * swipe it flies on there.
+ */
 export function releaseAt(x, reach) {
   return Math.max(reach.lo, Math.min(reach.hi, Math.round(x)))
 }
+
+/**
+ * Set down by hand on planet n: is that the child's answer? Wherever it
+ * stands, also on a planet the flame took it to (no tick needed), except on
+ * the start of the sum, where nothing was done yet.
+ */
+export const setDownAnswers = (task, n) => n !== task.from
 
 /**
  * How far the rocket can go in a sum, by hand and with the buttons alike.
