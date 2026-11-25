@@ -79,7 +79,7 @@ export const GROUPS = {
   klein: group('Klein', 'blue', [
     ['🐭', 'die Maus'], ['🐜', 'die Ameise'],
     ['🐞', 'der Käfer'], ['🐝', 'die Biene'], ['🦋', 'der Schmetterling'], ['🐛', 'die Raupe'], ['🐌', 'die Schnecke'],
-    ['🐤', 'das Küken'], ['🕷️', 'die Spinne']], { signs: 2, signScale: 0.5 }),
+    ['🐤', 'das Küken'], ['🕷️', 'die Spinne']], { signs: 2, signScale: 0.65 }),
   lebt: group('Lebt', 'green', [
     ['🌳', 'der Baum'], ['🐕', 'der Hund'], ['🌸', 'die Blume'],
     ['🐟', 'der Fisch'], ['🍄', 'der Pilz'], ['🐝', 'die Biene'], ['🐌', 'die Schnecke'], ['🌵', 'der Kaktus'],

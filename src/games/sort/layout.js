@@ -58,7 +58,7 @@ export function layoutFor(W, H, n) {
     rowY = [feet - mw * MONSTER_H]
   } else {
     const strip = hud.h + pad
-    const g = small ? 8 : 14
+    const g = small ? 12 : 14
     const assembly = S + thick + 3 + pipeH
     const per = Math.max(...rows)
     mw = Math.min(clamp(W * 0.6, 140, 300), (W - 2 * pad) / (per + GAP * (per - 1)), (H - strip - assembly - 2 * g - pad) / 2 / MONSTER_H)
