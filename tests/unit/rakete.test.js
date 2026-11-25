@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { TOP, PLUS, MINUS, levelPlan, buildTasks, countChoices, judge, gapsBetween, freeGap, RESIDENTS, dirOf, starsWon, landingLead, tapHelp } from '../../src/games/rakete/tasks.js'
-import { layout, hopPath, bow, clamp, moonFlight } from '../../src/games/rakete/layout.js'
+import { layout, hopPath, bow, clamp, moonFlight, lineAt } from '../../src/games/rakete/layout.js'
+import { FLY_MAX, flyStep, crossings, releaseAt, reachOf, hopArcs } from '../../src/games/rakete/fly.js'
 import { windowSpots, ThrustButton } from '../../src/games/rakete/parts.jsx'
 import { hasEmojiArt } from '../../src/lib/emojiArt.jsx'
 
@@ -238,5 +239,150 @@ describe('Planeten-Hüpfer: the layout', () => {
         }
       }
     }
+  })
+})
+
+describe('Planeten-Hüpfer: flying by hand, and hopping back', () => {
+  // the frame loop of RocketMathGame (flyFrame), without the drawing: the
+  // finger at `finger(t)`, 60 frames a second; returns what the buttons
+  // would have made of it (arcs, where the rocket is, the planets said)
+  const fly = ({ start, finger, seconds, reach = { lo: 0, hi: TOP }, arcs = [], release = true }) => {
+    let x = start, cell = start, id = 0
+    const said = [], dt = 1 / 60
+    const pass = target => {
+      let nx = flyStep(x, target, dt)
+      if (release && target === goal && Math.abs(nx - goal) < 0.04) nx = goal
+      const c = crossings(cell, nx)
+      let from = cell
+      for (const m of c.passed) { arcs = hopArcs(arcs, from, m, ++id); said.push(m); from = m }
+      cell = c.cell; x = nx
+    }
+    let goal = null
+    for (let t = 0; t < seconds; t += dt) pass(clamp(finger(t), reach.lo, reach.hi))
+    if (release) {
+      goal = releaseAt(x, reach)
+      for (let i = 0; i < 600 && x !== goal; i++) pass(goal)
+    }
+    return { x, cell, arcs, said, goal }
+  }
+
+  it('follows the finger with a lag, and never faster than the top speed', () => {
+    // one frame never moves more than FLY_MAX · dt, however far the finger is
+    for (const dt of [1 / 120, 1 / 60, 1 / 30, 0.1, 5]) {
+      const step = flyStep(0, 10, dt)
+      expect(step).toBeLessThanOrEqual(FLY_MAX * Math.min(dt, 0.1) + 1e-9)
+      expect(step).toBeGreaterThan(0)
+    }
+    // the finger at the end of the line at once: after a second the rocket is only FLY_MAX planets on
+    const r = fly({ start: 0, finger: () => 10, seconds: 1, release: false })
+    expect(r.x).toBeLessThanOrEqual(FLY_MAX + 1e-6)
+    expect(r.x).toBeGreaterThan(FLY_MAX * 0.9)
+    // a lag: a small way is not done in one frame
+    expect(flyStep(3, 3.5, 1 / 60)).toBeLessThan(3.5)
+    expect(flyStep(3, 3.5, 1 / 60)).toBeGreaterThan(3)
+    // and it gets there
+    expect(fly({ start: 3, finger: () => 3.5, seconds: 3, release: false }).x).toBe(3.5)
+  })
+
+  it('every planet on the way is a hop, in order, said and counted as the buttons do', () => {
+    const r = fly({ start: 2, finger: () => 9, seconds: 2.4, release: false })
+    // 2.4 s at two planets a second: over 3, 4, 5, 6 (and close to 7), none skipped
+    expect(r.said).toEqual([3, 4, 5, 6])
+    expect(r.arcs.map(h => [h.a, h.b])).toEqual([[2, 3], [3, 4], [4, 5], [5, 6]])
+    // a planet counts when the rocket is over it, not half way there
+    expect(crossings(3, 3.6)).toEqual({ cell: 3, passed: [] })
+    expect(crossings(3, 4)).toEqual({ cell: 4, passed: [4] })
+    expect(crossings(3, 5.2)).toEqual({ cell: 5, passed: [4, 5] })
+    expect(crossings(5, 4.4)).toEqual({ cell: 5, passed: [] })
+    expect(crossings(5, 4)).toEqual({ cell: 4, passed: [4] })
+  })
+
+  it('letting go over a planet sets it down there; between planets it glides to the nearer one', () => {
+    expect(releaseAt(4, { lo: 0, hi: TOP })).toBe(4)
+    expect(releaseAt(4.4, { lo: 0, hi: TOP })).toBe(4)
+    expect(releaseAt(4.6, { lo: 0, hi: TOP })).toBe(5)
+    expect(releaseAt(-0.4, { lo: 0, hi: TOP })).toBe(0)
+    expect(releaseAt(2.2, { lo: 3, hi: TOP })).toBe(3)
+    // let go at 5.6 (coming from 3): it glides on to 6, and that is the third hop
+    const r = fly({ start: 3, finger: () => 5.6, seconds: 4 })
+    expect(r.goal).toBe(6)
+    expect(r.x).toBe(6)
+    expect(r.arcs).toHaveLength(3)
+    expect(r.said).toEqual([4, 5, 6])
+    // let go at 5.3: back to 5, two hops
+    const s = fly({ start: 3, finger: () => 5.3, seconds: 4 })
+    expect(s.x).toBe(5)
+    expect(s.arcs.map(h => h.b)).toEqual([4, 5])
+  })
+
+  it('going back takes a hop off the count, by hand and with the buttons alike', () => {
+    // with the buttons: 3 → 4 → 5 → 6, one too far, back to 5
+    let arcs = []
+    for (const [a, b] of [[3, 4], [4, 5], [5, 6], [6, 5]]) arcs = hopArcs(arcs, a, b, arcs.length + 1)
+    expect(arcs.map(h => [h.a, h.b])).toEqual([[3, 4], [4, 5]])
+    // by hand: on to 6, then back to 5 before letting go
+    const r = fly({ start: 3, finger: t => (t < 2.5 ? 6 : 5), seconds: 4.5 })
+    expect(r.x).toBe(5)
+    expect(r.said).toEqual([4, 5, 6, 5])
+    expect(r.arcs.map(h => [h.a, h.b])).toEqual([[3, 4], [4, 5]])
+    // so the count, the badge and the verdict are those of the place: 3 + 2 is right at 5
+    const t = { op: PLUS, from: 3, step: 2, target: 5 }
+    expect(judge(t, r.x)).toBe('right')
+    expect(r.arcs.length).toBe(Math.abs(r.x - t.from))
+    // in a minus sum it is the other way round: forward takes a minus hop off
+    let m = []
+    for (const [a, b] of [[7, 6], [6, 5], [5, 4], [4, 5]]) m = hopArcs(m, a, b, m.length + 1)
+    expect(m.map(h => [h.a, h.b])).toEqual([[7, 6], [6, 5]])
+    expect(judge({ op: MINUS, from: 7, step: 2, target: 5 }, 5)).toBe('right')
+  })
+
+  it('a level with one sign cannot go behind the start; a mixed level can go the wrong way', () => {
+    const plus = { op: PLUS, from: 3, step: 2, target: 5 }, minus = { op: MINUS, from: 7, step: 2, target: 5 }
+    for (const level of [1, 2, 3, 9]) expect(reachOf(levelPlan(level), plus)).toEqual({ lo: 3, hi: TOP })
+    expect(reachOf(levelPlan(4), minus)).toEqual({ lo: 0, hi: 7 })
+    for (const level of [5, 6]) {
+      expect(reachOf(levelPlan(level), plus)).toEqual({ lo: 0, hi: TOP })
+      expect(reachOf(levelPlan(level), minus)).toEqual({ lo: 0, hi: TOP })
+    }
+    // by hand in level 1: the finger pulls behind the start, the rocket stays at 3, no hop
+    const r = fly({ start: 3, finger: () => 0, seconds: 2, reach: reachOf(levelPlan(1), plus) })
+    expect(r.x).toBe(3)
+    expect(r.arcs).toEqual([])
+    // in level 5 the same pull is the wrong way: hops back, and the verdict says so
+    const w = fly({ start: 3, finger: () => 1, seconds: 3, reach: reachOf(levelPlan(5), plus) })
+    expect(w.x).toBe(1)
+    expect(w.arcs).toHaveLength(2)
+    expect(judge(plus, w.x)).toBe('wrongway')
+  })
+
+  it('the finger is found on the line whichever way it runs, and the rocket held up stays on the screen', () => {
+    for (const [w, h] of [[1024, 692], [390, 772], [844, 314]]) {
+      const L = layout(w, h)
+      for (const n of [0, 3.5, 10]) {
+        expect(lineAt(L, L.P(n)), `${w}x${h}`).toBeCloseTo(n, 6)
+        // off the line (above it, or to its side) it is the same place
+        expect(lineAt(L, L.P(n, 80))).toBeCloseTo(n, 6)
+      }
+      // held up: the feet at pr + arcH + 27 (with the bob), nose up (or the way it flies)
+      for (let n = 0; n <= TOP; n++) {
+        const f = L.P(n, L.pr + L.arcH + 27)
+        if (L.vertical) {
+          expect(f.x + L.rw / 2, `${w}x${h} held rocket beside the column`).toBeLessThanOrEqual(L.card.x)
+        } else {
+          expect(f.y - L.rh, `${w}x${h} nose at ${n}`).toBeGreaterThanOrEqual(L.short ? 0 : L.card.y + L.card.h)
+        }
+      }
+    }
+  })
+
+  it('in a level with one sign the button back is plain: no sign, its own name', () => {
+    const html = renderToStaticMarkup(createElement(ThrustButton, { op: MINUS, way: 'left', size: 64, onPress: () => {}, undo: true, disabled: true }))
+    expect(html).toContain('aria-label="Zurück hüpfen"')
+    expect(html).toContain('data-undo')
+    expect(html).toContain('aria-disabled="true"')
+    expect(html).not.toContain('>−<')
+    const full = renderToStaticMarkup(createElement(ThrustButton, { op: MINUS, way: 'left', size: 64, onPress: () => {} }))
+    expect(full).toContain('aria-label="Rückwärts hüpfen"')
+    expect(full).toContain('>−<')
   })
 })

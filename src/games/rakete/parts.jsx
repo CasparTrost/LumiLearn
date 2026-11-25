@@ -11,6 +11,8 @@ export const GOLD = '#ffc93c'
 export const PARCH = '#fffdf7'
 /** The two signs have a colour each, in the sum and on their thrust button. */
 export const SIGN_COLOR = { '+': '#ff9a3d', '−': '#4aa3ff' }
+/** The button that only takes hops back (a level with one sign): no sign's colour. */
+export const UNDO_COLOR = '#b8a6ea'
 const PLANET_COLORS = ['#ff8a65', '#4fc3f7', '#ffd54f', '#aed581', '#ce93d8', '#f48fb1', '#80cbc4']
 export const ALIEN_SRC = customArtSrc('alien')
 
@@ -73,7 +75,8 @@ export function Rocket({ w, h, seats, riders, flame = 0, upright = 0, newest = -
   return (
     <svg viewBox="0 0 100 160" width={w} height={h} aria-hidden="true" style={{ display: 'block', overflow: 'visible' }}>
       {/* the flame under the nozzle */}
-      <motion.g style={{ originX: '50px', originY: '146px' }}
+      {/* framer-motion turns about the flame's own box (fill-box): its top edge, the nozzle */}
+      <motion.g style={{ originX: 0.5, originY: 0 }}
         animate={{ scaleY: flame ? (reduce ? 1 : [0.8 + flame * 0.5, 1 + flame * 0.7, 0.85 + flame * 0.5]) : 0, opacity: flame ? 1 : 0 }}
         transition={flame && !reduce ? { duration: 0.18, repeat: Infinity } : { duration: 0.15 }}>
         <path d="M34 146 Q50 214 66 146 Z" fill="#ff6b3d" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
@@ -132,29 +135,33 @@ const round = (size, bg) => ({
  * two buttons of levels 4–6 point apart. The sign it stands for sits in its
  * corner (in the sign's colour, as in the sum).
  * `way` is the way of the hop on screen: 'right' | 'left' | 'up' | 'down'.
+ * `undo`: in a level with one sign, the button the other way only takes
+ * hops back (fly.js, reachOf): smaller, a plain lilac, no sign in its corner
+ * (it is no minus in a plus sum), and dim while there is no hop to take back.
  */
-export function ThrustButton({ op, way, size, onPress, btnRef, pulse = 0 }) {
+export function ThrustButton({ op, way, size, onPress, btnRef, pulse = 0, undo = false, disabled = false }) {
   const reduce = useReducedMotion()
   const turn = { right: 0, down: 90, left: 180, up: 270 }[way]
   return (
-    <motion.button ref={btnRef} type="button" aria-label={op === PLUS ? 'Vorwärts hüpfen' : 'Rückwärts hüpfen'}
-      data-thrust={op === PLUS ? 'plus' : 'minus'}
-      onPointerDown={e => { e.preventDefault(); onPress() }}
-      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPress() } }}
-      whileTap={reduce ? undefined : { scale: 0.88, y: 3 }}
-      animate={pulse && !reduce ? { rotate: [0, -8, 8, -6, 6, 0], scale: [1, 1.1, 1] } : { rotate: 0, scale: 1 }}
-      transition={{ duration: 0.7 }}
+    <motion.button ref={btnRef} type="button"
+      aria-label={undo ? 'Zurück hüpfen' : op === PLUS ? 'Vorwärts hüpfen' : 'Rückwärts hüpfen'} aria-disabled={disabled || undefined}
+      data-thrust={op === PLUS ? 'plus' : 'minus'} data-undo={undo ? '' : undefined}
+      onPointerDown={e => { e.preventDefault(); if (!disabled) onPress() }}
+      onKeyDown={e => { if ((e.key === 'Enter' || e.key === ' ') && !disabled) { e.preventDefault(); onPress() } }}
+      whileTap={reduce || disabled ? undefined : { scale: 0.88, y: 3 }}
+      animate={pulse && !reduce ? { rotate: [0, -8, 8, -6, 6, 0], scale: [1, 1.1, 1] } : { rotate: 0, scale: disabled ? 0.92 : 1, opacity: disabled ? 0.45 : 1 }}
+      transition={{ duration: pulse ? 0.7 : 0.2 }}
       key={pulse}
-      style={round(size, SIGN_COLOR[op])}>
+      style={{ ...round(size, undo ? UNDO_COLOR : SIGN_COLOR[op]), cursor: disabled ? 'default' : 'pointer' }}>
       <svg viewBox="0 0 100 100" width={size * 0.84} height={size * 0.84} aria-hidden="true" data-flame={way} style={{ transform: `rotate(${turn}deg)`, overflow: 'visible' }}>
         <FlameShape />
       </svg>
-      <span aria-hidden="true" style={{
+      {!undo && <span aria-hidden="true" style={{
         position: 'absolute', top: -12, right: -12, width: size * 0.42, height: size * 0.42, borderRadius: '50%',
         background: PARCH, border: `3px solid ${INK}`, boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: size * 0.36, lineHeight: 1, color: SIGN_COLOR[op],
         WebkitTextStroke: `1.5px ${INK}`,
-      }}>{op}</span>
+      }}>{op}</span>}
     </motion.button>
   )
 }

@@ -440,6 +440,38 @@ async function playShadows(page, { wrongOnce = false } = {}) {
     if (+s.idx === round) { await page.waitForTimeout(200); continue }
     const steps = Math.abs(+s.target - +s.from)
     const over = !overshot && s.idx === '1' && +s.target < 10
+    if (s.idx === '3') {
+      // flown by hand: hold the rocket, move slowly to the planet, let go
+      const box = async sel => { const b = await page.locator(sel).first().boundingBox(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 } }
+      const r = await box('[data-rocket]'), p = await box(`[data-planet="${s.target}"] svg`), q = await box('[data-planet="0"] svg')
+      const upright = Math.abs(p.y - q.y) > Math.abs(p.x - q.x)
+      const to = upright ? { x: r.x, y: p.y } : { x: p.x, y: r.y }
+      await page.mouse.move(r.x, r.y); await page.mouse.down()
+      for (let i = 1; i <= 20; i++) { await page.mouse.move(r.x + (to.x - r.x) * i / 20, r.y + (to.y - r.y) * i / 20); await page.waitForTimeout(30) }
+      await page.waitForTimeout(steps * 550 + 600)
+      await page.mouse.up()
+      const set = await until(x => x.pos === s.target, 5000)
+      for (let t = 0; t < 3000 && (await page.locator('[data-flying]').count()); t += 100) await page.waitForTimeout(100)
+      if (!set) problems.push('Planeten-Hüpfer: the rocket flown by hand did not come down on the planet')
+      await page.getByRole('button', { name: 'Landen' }).click({ timeout: 3000 }).catch(() => {})
+      round = +s.idx
+      await page.waitForTimeout(400)
+      continue
+    }
+    if (s.idx === '2' && +s.target < 10) {
+      // one hop too far, then the plain button back: the count goes back with it
+      for (let k = 0; k <= steps; k++) {
+        await page.getByRole('button', { name: 'Vorwärts hüpfen' }).click({ timeout: 3000 }).catch(() => {})
+        await page.waitForTimeout(520)
+      }
+      await page.getByRole('button', { name: 'Zurück hüpfen' }).click({ timeout: 3000 }).catch(() => problems.push('Planeten-Hüpfer: no button back in level 1'))
+      await page.waitForTimeout(600)
+      if ((await state())?.pos !== s.target) problems.push('Planeten-Hüpfer: the button back did not hop back')
+      await page.getByRole('button', { name: 'Landen' }).click({ timeout: 3000 }).catch(() => {})
+      round = +s.idx
+      await page.waitForTimeout(400)
+      continue
+    }
     for (let k = 0; k < steps + (over ? 1 : 0); k++) {
       await page.getByRole('button', { name: 'Vorwärts hüpfen' }).click({ timeout: 3000 }).catch(() => {})
       await page.waitForTimeout(520)
