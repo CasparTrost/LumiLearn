@@ -164,9 +164,9 @@ export default function InitialSoundGame({ level = 1, onComplete }) {
     if (!entering || live.current.reduce) {
       // somewhere free, not on top of another one
       const others = [...g.items.values()].filter(inWater)
-      for (let k = 0; k < 12; k++) {
+      for (let k = 0; k < 20; k++) {
         const c = rand(lo, hi)
-        if (others.every(o => Math.abs(o.x - c) > live.current.L.S * 1.1 || o.lane !== it.lane)) { x = c; break }
+        if (others.every(o => Math.abs(o.x - c) > live.current.L.S * 1.1)) { x = c; break }
       }
     }
     const thing = { id, x, y: 0, vx: (entering ? (fromLeft ? 1 : -1) : Math.random() < 0.5 ? 1 : -1) * v, a: 0, sc: 1, rot: 0, st: 'in', ph: Math.random() * 6, face: 0, wet: false, ...it }
