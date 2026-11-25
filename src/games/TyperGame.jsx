@@ -42,17 +42,19 @@ import { INK, pxCard } from './px.js'
 // Word length rises with the level, one step at a time.
 const STATIC_LEN = { 1: [3, 3], 2: [4, 4], 3: [5, 5] }
 const STATIC_WORDS = 6
-// fallS: seconds from the branch to the forest floor. Level 4 leaves a
-// six-year-old who hunts for the key on the big keyboard plenty of time;
-// it gets quicker by about half a second a level, never frantic.
+// fallS: seconds a leaf drifts from the branch to the forest floor (after
+// 1.5 s wiggling on the branch and being blown to its lane). Level 4 leaves
+// a six-year-old who hunts for the key on the big keyboard plenty of time;
+// it gets quicker by about half a second a level, never frantic, and
+// slower again after a leaf was lost.
 const FALLING = {
-  4:  { len: [3, 3], fallS: 14 },
-  5:  { len: [4, 4], fallS: 13 },
-  6:  { len: [4, 5], fallS: 12.5 },
-  7:  { len: [5, 5], fallS: 12 },
-  8:  { len: [5, 6], fallS: 11 },
-  9:  { len: [6, 7], fallS: 10.5 },
-  10: { len: [7, 8], fallS: 10 },
+  4:  { len: [3, 3], fallS: 12 },
+  5:  { len: [4, 4], fallS: 11 },
+  6:  { len: [4, 5], fallS: 10.5 },
+  7:  { len: [5, 5], fallS: 10 },
+  8:  { len: [5, 6], fallS: 9 },
+  9:  { len: [6, 7], fallS: 8.5 },
+  10: { len: [7, 8], fallS: 8 },
 }
 const FALLING_WORDS = 5
 // The game slows down after a leaf was lost and picks up when it goes well
@@ -500,7 +502,7 @@ function useDrop(paused) {
   useEffect(() => {
     let raf, last = performance.now()
     const tick = now => {
-      const dt = Math.min(50, now - last)
+      const dt = Math.min(100, now - last)
       last = now
       const r = run.current
       if (r && !pausedRef.current && r.phase !== 'down') {
@@ -552,6 +554,7 @@ function FallingLettersGame({ level, onComplete }) {
   const layoutRef = useRef(null)
   const slotRef   = useRef(null)
   const leafRef   = useRef(null)
+  const floorLeafRef = useRef(null)
   const ravenRef  = useRef(null)
   const timers    = useRef([])
   useEffect(() => () => timers.current.forEach(clearTimeout), [])
@@ -578,8 +581,12 @@ function FallingLettersGame({ level, onComplete }) {
     if (!L || !words[wIdx] || typedRef.current !== index || index >= words[wIdx].length) return
     const w = words[wIdx], char = w[index]
     const leafS = clamp(room.tap * 0.95, 60, 96)
-    const laneX = L.lanes.length > 1 ? L.lanes[(index + wIdx) % 2] : L.lanes[0] ?? L.w * 0.85
-    const top = duel && ravenRef.current ? L.vineBottom + L.raven * 0.95 : L.vineBottom + 6
+    // left and right in turn; in the duel the raven sits over the right-hand
+    // lane, so the leaves come down on the left, or below the raven when
+    // there is only the one lane
+    const two = L.lanes.length > 1
+    const laneX = two ? L.lanes[duel ? 0 : (index + wIdx) % 2] : L.lanes[0] ?? L.w * 0.85
+    const top = duel && !two ? L.vineBottom + L.raven * 0.95 : L.vineBottom + 6
     const landY = L.floorY + L.floorH * 0.4 - leafS * 1.18
     run.current = {
       t: 0, phase: 'hang', sway: Math.min(14, L.w * 0.02),
@@ -587,7 +594,7 @@ function FallingLettersGame({ level, onComplete }) {
       fallMs: cfg.fallS * 1000 * slowRef.current * (duel ? 1.1 : 1),
       onLand: () => {
         const r = run.current
-        setLanded({ id: Date.now(), x: r ? x.get() : laneX, y: L.floorY + L.floorH * 0.4, from: laneX < L.w / 2 ? -1 : 1, char, size: leafS })
+        setLanded({ id: Date.now(), index, x: r ? x.get() : laneX, y: L.floorY + L.floorH * 0.4, from: laneX < L.w / 2 ? -1 : 1, char, size: leafS })
         setDrop(null)
       },
     }
@@ -653,6 +660,8 @@ function FallingLettersGame({ level, onComplete }) {
   // heart goes; in the duel the raven only laughs, and the leaf goes back
   // up. Either way the key is shown from now on and the leaves fall slower.
   const hedgehogTook = useCallback(() => {
+    helpedRef.current = true
+    slowRef.current = SLOWER
     juice.miss(stageRef.current)
     sfx.chomp()
     sayWrong()
@@ -661,7 +670,10 @@ function FallingLettersGame({ level, onComplete }) {
     setLives(n)
   }, [juice])
   const hedgehogGone = useCallback(() => {
+    const index = landed?.index
     setLanded(null)
+    // the letter was typed while the hedgehog ran off with its leaf
+    if (typedRef.current !== index) return
     if (livesRef.current <= 0) {
       // all hearts gone: the word is conjured anyway, and the next one comes
       setTyped(word.length)
@@ -670,20 +682,21 @@ function FallingLettersGame({ level, onComplete }) {
     }
     setShowHint(true)
     release(typed)
-  }, [word, typed, finishWord, release])
+  }, [landed, word, typed, finishWord, release])
   useEffect(() => {
-    if (!landed) return
-    helpedRef.current = true
+    if (!landed || !duel) return
+    sfx.giggle()
+    setRuffle(r => r + 1)
     slowRef.current = SLOWER
-    if (duel) {
-      sfx.giggle()
-      setRuffle(r => r + 1)
-      later(() => { setLanded(null); setShowHint(true); release(typed) }, 900)
-    }
-  }, [landed]) // eslint-disable-line react-hooks/exhaustive-deps
+    const index = landed.index
+    later(() => {
+      if (typedRef.current !== index) return   // typed just in time
+      setLanded(null); setShowHint(true); release(index)
+    }, 900)
+  }, [landed?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleChar = useCallback((char, el) => {
-    if (paused || done || finale || !targetChar || landed) return
+    if (paused || done || finale || !targetChar) return
     if (char !== targetChar) {
       k.letterOut(el, char)
       const n = misses + 1
@@ -693,10 +706,15 @@ function FallingLettersGame({ level, onComplete }) {
       sayWrong()
       return
     }
-    // Lumi zaps the leaf into the cauldron (typed before it came out, the
-    // letter flies straight from the key)
+    // Lumi zaps the leaf into the cauldron: on its way down, or just in time
+    // from the forest floor before the hedgehog has it. Typed before the
+    // leaf came out (or while the hedgehog runs off with it), the letter
+    // flies straight from the key.
+    const onFloor = landed && !landed.taken && landed.index === typed
     if (run.current && leafRef.current) k.zapIn(leafRef.current, char, el)
+    else if (onFloor && floorLeafRef.current) k.zapIn(floorLeafRef.current, char, el)
     else k.letterIn(el, char, el)
+    if (onFloor) setLanded(null)
     run.current = null
     setDrop(null)
     const n = typed + 1
@@ -729,13 +747,13 @@ function FallingLettersGame({ level, onComplete }) {
   const L = layoutRef.current
   const keyboardH = room.h - 84
   return (
-    <div ref={rootRef} style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: 'clamp(6px,1.4vw,14px) clamp(8px,2vw,20px)', gap: 8, overflow: 'hidden', userSelect: 'none' }}>
+    <div ref={rootRef} data-phase={finale ? 'finale' : 'play'} style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: 'clamp(6px,1.4vw,14px) clamp(8px,2vw,20px)', gap: 8, overflow: 'hidden', userSelect: 'none' }}>
       <TopRow total={FALLING_WORDS} done={wIdx + (done ? 1 : 0)} hud={juice.hud}>
         {!duel && <Hearts lives={lives} />}
       </TopRow>
       <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: room.kind === 'flat' ? 'row' : 'column', gap: 10 }}>
         <div ref={juice.stage} style={{ flex: 1, minHeight: 0, minWidth: 0, display: 'flex' }}>
-          <Clearing word={word} typed={typed} gapAt={drop || landed ? typed : -1} done={done && !(duel && !ravenGone)} k={k} wish={!duel} party={finale}
+          <Clearing word={word} typed={typed} gapAt={drop || landed ? typed : -1} done={done && !(duel && !ravenGone) && !finale} k={k} wish={!duel && !finale} party={finale}
             stageRef={stageRef} layoutRef={layoutRef} slotRef={slotRef} falling>
             {/* the leaf on its way down */}
             {drop && (
@@ -745,7 +763,7 @@ function FallingLettersGame({ level, onComplete }) {
             )}
             {/* …on the floor, until the hedgehog has it */}
             {landed && !landed.taken && (
-              <div style={{ position: 'absolute', left: landed.x - landed.size / 2, top: landed.y - landed.size * 1.1, zIndex: 5, transform: 'rotate(70deg)', transformOrigin: '50% 100%' }}>
+              <div data-landed ref={floorLeafRef} style={{ position: 'absolute', left: landed.x - landed.size / 2, top: landed.y - landed.size * 1.1, zIndex: 5, transform: 'rotate(-28deg)', transformOrigin: '50% 100%' }}>
                 <Leaf char={landed.char} size={landed.size} look="fall" />
               </div>
             )}
@@ -877,11 +895,11 @@ function StaticTyperGame({ level, onComplete }) {
   const keyboardH = room.h - 84
 
   return (
-    <div ref={rootRef} style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: 'clamp(6px,1.4vw,14px) clamp(8px,2vw,20px)', gap: 8, overflow: 'hidden', userSelect: 'none' }}>
+    <div ref={rootRef} data-phase={finale ? 'finale' : 'play'} style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: 'clamp(6px,1.4vw,14px) clamp(8px,2vw,20px)', gap: 8, overflow: 'hidden', userSelect: 'none' }}>
       <TopRow total={words.length} done={wIdx + (finished ? 1 : 0)} hud={juice.hud} />
       <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: room.kind === 'flat' ? 'row' : 'column', gap: 10 }}>
         <div ref={juice.stage} style={{ flex: 1, minHeight: 0, minWidth: 0, display: 'flex' }}>
-          <Clearing word={word} typed={typed.length} done={finished} k={k} party={finale}
+          <Clearing word={word} typed={typed.length} done={finished && !finale} wish={!finale} k={k} party={finale}
             stageRef={stageRef} layoutRef={layoutRef} slotRef={slotRef} />
         </div>
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>

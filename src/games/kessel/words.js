@@ -16,7 +16,7 @@ import { KEY, slug } from '../woerter/voice.js'
 // (a log), SALZ (a salt shaker), BURG (a Schloss to most children), SCHULE
 // (a house), ZIRKUS (a tent, next to ZELT), INSEL (a palm, next to PALME),
 // BRÜCKE (a city at night), PFANNE (a fried egg), KREBS (a Krabbe), KÄFER (a
-// Marienkäfer) and KLAVIER (a row of keys).
+// Marienkäfer), KLAVIER (a row of keys) and MUSCHEL (a Schneckenhaus).
 export const WORDS = {
   // 3 letters
   OMA:'👵', OPA:'👴', EIS:'🍦', ZUG:'🚂', BUS:'🚌', HUT:'🎩', FEE:'🧚', OHR:'👂',
@@ -43,7 +43,7 @@ export const WORDS = {
   ANANAS:'🍍', WAFFEL:'🧇', QUALLE:'🪼',
   // 7 letters
   ROBOTER:'🤖', ELEFANT:'🐘', ZITRONE:'🍋', GITARRE:'🎸', PINGUIN:'🐧', KÄNGURU:'🦘',
-  HAMSTER:'🐹', MUSCHEL:'🐚', TROMMEL:'🥁', PAPAGEI:'🦜', TRAKTOR:'🚜', GIRAFFE:'🦒',
+  HAMSTER:'🐹', TROMMEL:'🥁', PAPAGEI:'🦜', TRAKTOR:'🚜', GIRAFFE:'🦒',
   SPIEGEL:'🪞', FENSTER:'🪟', EINHORN:'🦄', FAHRRAD:'🚲', ZWIEBEL:'🧅', PAPRIKA:'🫑',
   SCHWEIN:'🐷', KNOCHEN:'🦴', DIAMANT:'💎', TROPFEN:'💧',
   // 8 letters
@@ -110,7 +110,7 @@ export const MOVE_OF = Object.fromEntries([
   ['swim',  'FISCH HAI DELFIN KRAKE ROBBE ENTE BOOT WAL QUALLE GANS'],
   ['crawl', 'SCHNECKE RAUPE SCHLANGE AMEISE SPINNE KROKODIL'],
   ['spin',  'BALL STERN SONNE KRONE RING TELLER PIZZA KEKS MOND BREZEL WAFFEL DIAMANT'],
-  ['grow',  'HAUS BAUM ZELT KIRCHE PALME KAKTUS BLUME ROSE TULPE PILZ FENSTER SPIEGEL BETT SOFA TOR NEST MUSCHEL'],
+  ['grow',  'HAUS BAUM ZELT KIRCHE PALME KAKTUS BLUME ROSE TULPE PILZ FENSTER SPIEGEL BETT SOFA TOR NEST'],
   ['hop',   'OMA OPA KUH BÄR HUND WOLF IGEL HAHN HASE MAUS AFFE ESEL LÖWE LAMA DINO KATZE KAMEL PFERD TIGER SCHAF ZEBRA PANDA KOALA KÜKEN ZIEGE ELEFANT PINGUIN KÄNGURU HAMSTER SCHWEIN FROSCH ROBOTER EINHORN TEDDY'],
 ].flatMap(([move, words]) => words.split(' ').map(w => [w, move])))
 export const moveOf = word => MOVE_OF[word] ?? 'bounce'

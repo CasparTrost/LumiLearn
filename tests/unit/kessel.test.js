@@ -74,7 +74,6 @@ describe('Buchstabenwald: words and key pictures', () => {
     expect(moveOf('HAUS')).toBe('grow')
     expect(moveOf('BAUM')).toBe('grow')
     expect(moveOf('SCHNECKE')).toBe('crawl')
-    expect(moveOf('MUSCHEL')).not.toBe('swim')
     expect(moveOf('BUCH')).toBe('bounce')
   })
 })
