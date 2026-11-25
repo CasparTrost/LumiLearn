@@ -160,7 +160,7 @@ export default function FinishWall({ picture, from, sheet, stamps = [], earlier 
         </motion.div>
       </motion.div>
 
-      {party && <Confetti position="absolute" count={44} zIndex={2} yFrom="-5vh" yTo="105vh" />}
+      {party && !still && <Confetti position="absolute" count={44} zIndex={2} yFrom="-5vh" yTo="105vh" />}
     </div>
   )
 }

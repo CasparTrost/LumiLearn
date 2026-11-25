@@ -486,7 +486,7 @@ export default function ParentScreen({ onClose }) {
                     </button>
                     <div style={{ flex:'1 1 140px', minWidth:0 }}>
                       <div style={{ fontFamily:'var(--font-heading)', fontSize:16, fontWeight:700, color:'var(--px-ink)', overflowWrap:'anywhere' }}>
-                        {title}{prog?.completed ? ' 🏆' : ''}
+                        {title}{prog?.completed && hasLevels(id) ? ' 🏆' : ''}
                       </div>
                       <div style={{ ...SMALL, fontSize:14, color: shown ? SMALL.color : 'var(--px-ink)' }}>
                         {shown ? '' : 'Ausgeblendet · '}{hasLevels(id) ? `Level ${curLv} von ${maxLv} · ${stars} ⭐` : 'ohne Level'}
