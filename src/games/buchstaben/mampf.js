@@ -174,14 +174,21 @@ export function pickThing({ targets, afloat = [], avoid = [], count = 3, near = 
     if (unseen.length || !all.length) return unseen
     return [all.reduce((a, b) => (avoid.lastIndexOf(b.word) < avoid.lastIndexOf(a.word) ? b : a))]
   }
-  const fresh = L => rested(thingsOf(L).filter(t => !up.has(t.word)))
+  // Two monsters: a rabbit for the H monster does not come while a K
+  // monster is hungry too ("Kaninchen"), if H has anything else to eat
+  const fresh = L => {
+    const free = WORDS[L].filter(([w]) => !up.has(w))
+    const clear = free.filter(([, , never = '']) => !targets.some(T => T !== L && never.includes(T)))
+    return rested((clear.length ? clear : free).map(w => thing(L, w)))
+  }
   const inAir = L => afloat.filter(t => t.letter === L).length
 
   const starving = targets.filter(L => inAir(L) === 0 && fresh(L).length)
   if (starving.length) {
     const L = starving[0]
-    const head = thing(L, WORDS[L][0])
-    return first && !up.has(head.word) ? head : pick(fresh(L))
+    const [word, , never = ''] = WORDS[L][0]
+    const head = first && !up.has(word) && !targets.some(T => T !== L && never.includes(T))
+    return head ? thing(L, WORDS[L][0]) : pick(fresh(L))
   }
   const fits = targets.reduce((n, L) => n + inAir(L), 0)
   const more = targets.filter(L => fresh(L).length)
@@ -247,13 +254,13 @@ export function layoutFor(w, h, { duo = false, slots = 5 } = {}) {
   // On a phone held sideways the monster takes more of the height, or its
   // letter would be too small; the things then pass right before its eyes.
   let mh = wide ? Math.min(clamp(h * 0.47, 190, 380), h * 0.66) : clamp(h * 0.36, 150, 320)
-  mh = Math.min(mh, (bandW * (duo ? 0.46 : 0.62)) * MONSTER_RATIO)
+  mh = Math.min(mh, (bandW * (duo ? (wide ? 0.42 : 0.46) : 0.62)) * MONSTER_RATIO)
   mh = Math.round(mh)
   const mw = Math.round(mh / MONSTER_RATIO)
   const mid = w / 2
   const fitsMid = mid - mw / 2 >= band[0] && mid + mw / 2 <= band[1]
   const monX = duo
-    ? [band[0] + bandW * 0.26, band[0] + bandW * 0.74]
+    ? [band[0] + bandW * (wide ? 0.27 : 0.26), band[0] + bandW * (wide ? 0.73 : 0.74)]
     : [fitsMid ? mid : band[0] + bandW / 2]
 
   // the sky: from under the top strip to the monster's eyes

@@ -105,6 +105,17 @@ describe('Monster-Mampf: what floats in', () => {
     expect(t.letter).toBe('R')
   })
 
+  it('two monsters: nothing comes that the other one could claim by another name', () => {
+    const rnd = seeded(9)
+    for (let i = 0; i < 300; i++) {
+      const t = pickThing({ targets: ['H', 'K'], afloat: [], count: 4 }, rnd)
+      expect(t.letter).toBe('H')
+      expect(t.word).not.toBe('Hase')   // "Kaninchen" would be right for the K monster
+      const p = pickThing({ targets: ['B', 'P'], afloat: [{ word: 'Bär', letter: 'B' }], count: 4 }, rnd)
+      expect(p.word).not.toBe('Panda')
+    }
+  })
+
   it('never more than half of what is in the air fits, and nothing is there twice', () => {
     for (let seed = 1; seed <= 30; seed++) {
       const rnd = seeded(seed)
