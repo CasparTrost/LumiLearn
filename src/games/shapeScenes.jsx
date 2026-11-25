@@ -1,23 +1,34 @@
 import { INK } from './px.js'
 
 // ── The hidden-shape pictures of Formen-Land ─────────────────────────────────
-// Each picture is a list of pieces [type, x, y, w, h, colour, tilt?] on a
-// 480 × 300 board, drawn in order (later ones on top), plus some scenery that
-// is not a shape to look for (strings, poles, the ground). Every shape kind
-// appears at least twice; `overlay` is scenery drawn over the pieces. `tilt`
-// marks loose things (a kite, a balloon) that may hang at a slant from level
-// 2. `tall` lays the same pieces out upright for phones, where the wide
-// picture made them too small to tap. A ladybug (`bug`) hides in each
-// picture: a little surprise for whoever taps it.
-
-// The newer pictures are written part by part, each part with both of its
-// boxes side by side: [type, colour, wide box, upright box, what it does].
-// `does` may say 'loose' (may hang at a slant), 'fly' and 'drive' (how it
-// leaves once all are found). `ownSky`: the sky is part of the picture
-// (space, the sea, a room) and stays as it is in every look. `critter`: the
-// little surprise that hides in the picture (default the ladybug). Plants
-// are green #3C9A48, outside the shape colours, so they stay green in every
-// look.
+// Each picture is written part by part, each part with both of its boxes
+// side by side: [type, colour, wide box, upright box, what it does]. The wide
+// box is [x, y, w, h] on a 480 × 300 board, the upright one on 300 × 420 (for
+// phones held upright, where the wide picture made the pieces too small to
+// tap). Parts are drawn in order, later ones on top.
+//
+// Every kind of shape appears at least twice, and every part looks like the
+// shape it is called, as it is drawn: a circle and a square are as high as
+// wide, a rhombus is clearly longer one way (a square on its corner is no
+// "Raute" to a child), and no part is half hidden behind another (a rhombus
+// behind the rocket was a triangle to look at). tests/unit/shapeScenes.test.js
+// checks all of it.
+//
+// `does`, words in any order:
+//   loose  may hang at a slant from level 2 (a kite, a balloon)
+//   fly    flies up and away once all are found     ┐ every picture has its
+//   drive  drives off to the side                   │ moment when the last
+//   spin   turns about `spinAt` (the big wheel)     │ shape is found
+//   wave   waves where it is (a flag)               ┘
+//
+// Around the parts: `scenery` is what is no shape to look for (the ground,
+// rails, a fence), and nothing in it looks like one: poles and sticks are
+// plain lines. `strings` hang on things that fly off and go with them.
+// `overlay` is scenery drawn over the parts. `ownSky`: the sky is part of
+// the picture (space, the sea, a room) and stays as it is in every look.
+// `critter`: the little surprise that hides in the picture at `bug` (default
+// the ladybug). Plants are green #3C9A48, outside the shape colours, so they
+// stay green in every look.
 function picture({ parts, tall, ...rest }) {
   const does = (p, what) => (p[4] ?? '').split(' ').includes(what)
   const ids = what => parts.flatMap((p, id) => (does(p, what) ? [id] : []))
@@ -25,7 +36,7 @@ function picture({ parts, tall, ...rest }) {
     ...rest,
     pieces: parts.map(p => [p[0], ...p[2], p[1], does(p, 'loose') ? 1 : 0]),
     tall: { ...tall, boxes: parts.map(p => p[3]) },
-    go: { fly: ids('fly'), drive: ids('drive') },
+    go: { fly: ids('fly'), drive: ids('drive'), spin: ids('spin'), wave: ids('wave') },
   }
 }
 
@@ -38,149 +49,148 @@ function Twinkles({ at }) {
   )
 }
 
+// a pole, a stick: a line, never a thin rectangle with an outline
+const pole = (d, color = '#9A8FB0') => <path d={d} stroke={color} strokeWidth="5" strokeLinecap="round" fill="none" />
+// the string of a balloon or a kite
+const string = d => <path d={d} stroke={INK} strokeWidth="1.5" fill="none" opacity="0.6" />
+
 export const SCENES = [
-  {
+  // ── a street: a house, a fir tree, a car, balloons and kites ──
+  picture({
     sky: '#BFE6FF',
-    pieces: [
-      ['circle',    396, 14, 58, 58, '#FFC93C'],               // the sun
-      ['star',       26, 18, 42, 42, '#F2B705', 1],            // a star balloon
-      ['heart',     140, 24, 44, 40, '#E0509A', 1],            // a heart balloon
-      ['oval',      196, 30, 36, 48, '#E8503F', 1],            // a balloon
-      ['rhombus',   262, 18, 46, 64, '#8E6CF0', 1],            // the kite
-      ['rhombus',   334, 74, 34, 46, '#3FA34D', 1],            // a small kite
-      ['rectangle', 108, 70, 20, 40, '#8A4F22'],               // chimney
-      ['triangle',   28, 74, 124, 62, '#E8503F'],              // roof
-      ['circle',     76, 96, 28, 28, '#BFE6FF'],               // round window
-      ['square',     43, 136, 94, 94, '#F2B705'],              // wall
-      ['square',     52, 150, 34, 34, '#BFE6FF'],              // window
-      ['rectangle',  96, 168, 34, 62, '#8A4F22'],              // door
-      ['heart',     100, 180, 26, 24, '#E0509A'],              // heart on the door
-      ['triangle',  158, 112, 66, 92, '#3FA34D'],              // fir tree
-      ['star',      172, 90, 38, 38, '#FFC93C', 1],            // star on top
-      ['rectangle', 182, 204, 18, 28, '#8A4F22'],              // trunk
-      ['oval',      218, 200, 64, 34, '#3FA34D'],              // bush
-      ['square',    324, 144, 40, 40, '#BFE6FF'],              // car cabin
-      ['rectangle', 290, 180, 116, 38, '#3D8BE0'],             // car
-      ['circle',    300, 202, 34, 34, '#2a1b3d'],              // wheel
-      ['circle',    364, 202, 34, 34, '#2a1b3d'],              // wheel
-      ['triangle',  420, 132, 50, 44, '#FFC93C'],              // warning sign
-      ['circle',    250, 248, 32, 32, '#E8503F'],              // ball
-      ['square',    140, 246, 38, 38, '#8E6CF0', 1],           // gift
-      ['oval',      414, 254, 44, 28, '#9A8FB0'],              // a stone
+    parts: [
+      ['circle',    '#FFC93C', [396, 14, 58, 58],   [226, 8, 60, 60]],                // the sun
+      ['star',      '#F2B705', [26, 18, 42, 42],    [12, 14, 46, 46], 'loose fly'],   // a star balloon
+      ['heart',     '#E0509A', [140, 24, 44, 40],   [70, 40, 46, 42], 'loose fly'],   // a heart balloon
+      ['oval',      '#E8503F', [196, 30, 36, 48],   [124, 20, 40, 54], 'loose fly'],  // a balloon
+      ['rhombus',   '#8E6CF0', [262, 18, 46, 64],   [176, 80, 48, 66], 'loose fly'],  // the kite
+      ['rhombus',   '#3FA34D', [334, 74, 34, 46],   [240, 96, 40, 54], 'loose fly'],  // a small kite
+      ['triangle',  '#E8503F', [28, 74, 124, 62],   [14, 160, 136, 66]],              // roof
+      ['rectangle', '#8A4F22', [108, 70, 20, 40],   [98, 148, 26, 42]],               // chimney, in front of the roof
+      ['circle',    '#BFE6FF', [76, 96, 28, 28],    [64, 180, 34, 34]],               // round window
+      ['square',    '#F2B705', [43, 136, 94, 94],   [30, 226, 104, 104]],             // wall
+      ['square',    '#BFE6FF', [52, 150, 34, 34],   [42, 242, 40, 40]],               // window
+      ['rectangle', '#8A4F22', [96, 168, 34, 62],   [90, 268, 38, 62]],               // door
+      ['heart',     '#E0509A', [100, 180, 26, 24],  [92, 280, 32, 30]],               // heart on the door
+      ['triangle',  '#3FA34D', [158, 112, 66, 92],  [176, 176, 70, 104]],             // fir tree
+      ['star',      '#FFC93C', [172, 90, 38, 38],   [192, 148, 38, 38], 'loose'],     // star on top
+      ['rectangle', '#8A4F22', [182, 204, 18, 28],  [200, 280, 22, 30]],              // trunk
+      ['oval',      '#3FA34D', [218, 200, 64, 34],  [134, 300, 62, 32]],              // bush
+      ['square',    '#BFE6FF', [324, 140, 40, 40],  [196, 312, 40, 40], 'drive'],     // car cabin
+      ['rectangle', '#3D8BE0', [290, 180, 116, 38], [156, 352, 128, 40], 'drive'],    // car
+      ['circle',    '#2a1b3d', [300, 202, 34, 34],  [166, 378, 34, 34], 'drive'],     // wheel
+      ['circle',    '#2a1b3d', [364, 202, 34, 34],  [240, 378, 34, 34], 'drive'],     // wheel
+      ['triangle',  '#FFC93C', [420, 132, 50, 44],  [246, 236, 52, 46]],              // warning sign
+      ['circle',    '#E8503F', [250, 248, 32, 32],  [14, 362, 38, 38]],               // ball
+      ['square',    '#8E6CF0', [140, 246, 38, 38],  [62, 356, 42, 42], 'loose'],      // gift
+      ['oval',      '#9A8FB0', [414, 254, 44, 28],  [108, 392, 42, 24]],              // a stone
     ],
     scenery: (
       <>
         <rect x="0" y="230" width="480" height="70" fill="#7CC86A" />
         <rect x="0" y="230" width="480" height="8" fill="#5CAE52" />
-        <path d="M47 60 Q60 120 70 200 M162 64 Q170 120 160 200 M214 78 Q220 140 236 200 M285 82 Q300 120 290 150" stroke={INK} strokeWidth="1.5" fill="none" opacity="0.6" />
-        <rect x="442" y="170" width="6" height="62" fill="#9A8FB0" stroke={INK} strokeWidth="1.5" />
+        {pole('M445 176 V232')}
       </>
     ),
-
-    // the same pieces, in the same order, on an upright 300 × 420 board for phones
+    strings: string('M47 60 Q60 120 70 200 M162 64 Q170 120 160 200 M214 78 Q220 140 236 200 M285 82 Q300 120 290 150'),
     tall: {
-      boxes: [[226, 8, 60, 60], [12, 14, 46, 46], [70, 40, 46, 42], [124, 20, 40, 54], [176, 84, 48, 66], [240, 96, 40, 54],
-        [98, 148, 26, 42], [14, 160, 136, 66], [64, 180, 34, 34], [30, 226, 104, 104], [42, 242, 40, 40], [90, 268, 38, 62],
-        [92, 280, 32, 30], [178, 176, 76, 104], [198, 148, 38, 38], [206, 280, 22, 50], [150, 300, 64, 34], [196, 316, 40, 40],
-        [156, 352, 128, 40], [166, 378, 34, 34], [240, 378, 34, 34], [240, 236, 54, 48], [14, 362, 38, 38], [62, 356, 42, 42], [108, 392, 42, 24]],
       scenery: (
         <>
           <rect x="0" y="330" width="300" height="90" fill="#7CC86A" />
           <rect x="0" y="330" width="300" height="8" fill="#5CAE52" />
-          <path d="M35 60 Q28 110 34 160 M93 82 Q100 120 96 160 M144 74 Q140 120 150 170 M200 150 Q190 165 198 178 M260 150 Q252 165 262 178" stroke={INK} strokeWidth="1.5" fill="none" opacity="0.6" />
-          <rect x="264" y="284" width="6" height="48" fill="#9A8FB0" stroke={INK} strokeWidth="1.5" />
+          {pole('M272 282 V332')}
         </>
       ),
+      strings: string('M35 60 Q28 110 34 160 M93 82 Q100 120 96 160 M144 74 Q140 120 150 170 M200 146 Q190 162 198 176 M260 150 Q252 165 262 178'),
       bug: [262, 300],
     },
     bug: [446, 212],
-    // when all are found: the balloons and kites fly off, the car drives away
-    go: { fly: [1, 2, 3, 4, 5], drive: [17, 18, 19, 20] },
-  },
-  {
+  }),
+
+  // ── a fair: the big wheel, a tent, a booth ──
+  picture({
     sky: '#FFE2C2',
-    pieces: [
-      ['star',       18, 16, 36, 36, '#F2B705', 1],
-      ['star',       84, 30, 34, 34, '#E8503F', 1],
-      ['rhombus',   150, 14, 40, 58, '#3D8BE0', 1],            // kite
-      ['rhombus',   118, 76, 30, 42, '#E0509A', 1],            // small kite
-      ['triangle',  326, 124, 102, 106, '#8A4F22'],            // stand of the wheel
-      ['circle',    300, 24, 154, 154, '#FFE08A'],             // ferris wheel
-      ['square',    362, 14, 30, 30, '#E8503F'],               // cabin
-      ['square',    362, 158, 30, 30, '#3FA34D'],              // cabin
-      ['triangle',   78, 96, 26, 24, '#3D8BE0', 1],            // flag on the tent
-      ['triangle',   26, 118, 130, 112, '#E8503F'],            // tent
-      ['rectangle',  74, 176, 34, 54, '#2a1b3d'],              // tent door
-      ['oval',      170, 120, 74, 30, '#8E6CF0'],              // sign
-      ['rectangle', 176, 150, 62, 80, '#3FA34D'],              // booth
-      ['square',    190, 162, 34, 34, '#BFE6FF'],              // booth window
-      ['heart',     194, 200, 28, 26, '#E0509A'],              // heart on the booth
-      ['oval',      262, 58, 32, 44, '#3D8BE0', 1],            // balloon
-      ['heart',     226, 48, 36, 32, '#E0509A', 1],            // heart balloon
-      ['circle',    272, 108, 32, 32, '#F2B705', 1],           // balloon
-      ['circle',    258, 196, 34, 34, '#E0509A'],              // lollipop
-      ['rectangle',  14, 248, 80, 20, '#8A4F22'],              // bench
-      ['square',    116, 244, 40, 40, '#F2B705', 1],           // crate
-      ['oval',      414, 216, 60, 30, '#3FA34D'],              // bush
+    parts: [
+      ['star',      '#F2B705', [18, 16, 36, 36],    [12, 12, 40, 40], 'loose'],
+      ['star',      '#E8503F', [84, 30, 34, 34],    [66, 44, 36, 36], 'loose'],
+      ['rhombus',   '#3D8BE0', [150, 14, 40, 58],   [14, 84, 40, 58], 'loose fly'],   // kite
+      ['rhombus',   '#E0509A', [118, 76, 30, 42],   [70, 98, 32, 44], 'loose fly'],   // small kite
+      ['circle',    '#FFE08A', [300, 24, 154, 154], [133, 37, 150, 150], 'spin'],     // the big wheel
+      ['square',    '#E8503F', [362, 32, 30, 30],   [193, 45, 30, 30], 'spin'],       // cabin, inside the rim
+      ['square',    '#3FA34D', [308, 86, 30, 30],   [141, 97, 30, 30], 'spin'],       // cabin
+      ['square',    '#3D8BE0', [416, 86, 30, 30],   [245, 97, 30, 30], 'spin'],       // cabin
+      ['triangle',  '#8A4F22', [317, 101, 120, 129], [153, 112, 110, 188]],           // its stand, in front, from the hub to the ground
+      ['triangle',  '#3D8BE0', [78, 92, 26, 24],    [45, 292, 26, 24], 'loose'],      // flag on the tent
+      ['triangle',  '#E8503F', [26, 118, 130, 112], [6, 318, 104, 96]],               // tent
+      ['rectangle', '#2a1b3d', [74, 176, 34, 54],   [41, 366, 34, 48]],               // tent door
+      ['oval',      '#8E6CF0', [170, 120, 74, 30],  [188, 304, 76, 28]],              // sign
+      ['rectangle', '#3FA34D', [176, 150, 62, 80],  [195, 332, 62, 82]],              // booth
+      ['square',    '#BFE6FF', [190, 162, 34, 34],  [209, 342, 34, 34]],              // booth window
+      ['heart',     '#E0509A', [194, 200, 28, 26],  [212, 382, 28, 26]],              // heart on the booth
+      ['oval',      '#3D8BE0', [246, 56, 32, 44],   [20, 150, 34, 44], 'loose fly'],  // balloon
+      ['heart',     '#E0509A', [206, 44, 36, 32],   [60, 196, 34, 30], 'loose fly'],  // heart balloon
+      ['circle',    '#F2B705', [252, 118, 30, 30],  [96, 150, 32, 32], 'loose fly'],  // balloon
+      ['circle',    '#E0509A', [258, 196, 34, 34],  [264, 330, 30, 30]],              // lollipop
+      ['rectangle', '#8A4F22', [14, 248, 80, 20],   [116, 396, 72, 18]],              // bench
+      ['square',    '#F2B705', [116, 244, 40, 40],  [120, 346, 38, 38], 'loose'],     // crate
+      ['oval',      '#3FA34D', [416, 238, 58, 28],  [258, 392, 40, 24]],              // bush
     ],
     scenery: (
       <>
         <rect x="0" y="230" width="480" height="70" fill="#E8C27A" />
         <rect x="0" y="230" width="480" height="8" fill="#D4A95E" />
-        <path d="M278 102 Q270 160 275 196 M248 80 Q256 150 275 196 M288 140 Q282 170 275 196" stroke={INK} strokeWidth="1.5" fill="none" opacity="0.6" />
-        <rect x="273" y="226" width="5" height="34" fill="#fff" stroke={INK} strokeWidth="1" />
-        <line x1="90" y1="96" x2="90" y2="122" stroke={INK} strokeWidth="2" />
+        {pole('M275 228 V260', '#fff')}
+        <path d="M91 96 V122" stroke={INK} strokeWidth="2" />
       </>
     ),
-    // the wheel's spokes, over the wheel
-    overlay: <Spokes cx={377} cy={101} />,
+    // the balloons are tied to the booth …
+    strings: string('M224 76 Q232 120 238 152 M262 100 Q256 130 238 152 M267 148 Q252 150 238 152'),
+    spinAt: [377, 101],
     tall: {
-      boxes: [[12, 12, 40, 40], [62, 56, 36, 36], [14, 98, 40, 58], [70, 112, 32, 44], [160, 120, 100, 110], [130, 20, 160, 160],
-        [193, 4, 34, 34], [193, 162, 34, 34], [55, 206, 32, 28], [10, 232, 120, 110], [54, 292, 34, 50], [150, 236, 76, 30],
-        [156, 266, 62, 80], [171, 282, 32, 32], [174, 316, 30, 28], [252, 236, 34, 44], [258, 290, 34, 30], [110, 160, 32, 32],
-        [240, 356, 32, 32], [14, 384, 84, 20], [110, 370, 40, 40], [176, 382, 56, 30]],
       scenery: (
         <>
-          <rect x="0" y="346" width="300" height="74" fill="#E8C27A" />
-          <rect x="0" y="346" width="300" height="8" fill="#D4A95E" />
-          <path d="M269 280 Q266 320 276 346 M275 320 Q280 334 276 346 M126 192 Q120 214 118 236" stroke={INK} strokeWidth="1.5" fill="none" opacity="0.6" />
-          <rect x="254" y="386" width="5" height="30" fill="#fff" stroke={INK} strokeWidth="1" />
-          <line x1="70" y1="210" x2="70" y2="236" stroke={INK} strokeWidth="2" />
+          <rect x="0" y="296" width="300" height="124" fill="#E8C27A" />
+          <rect x="0" y="296" width="300" height="8" fill="#D4A95E" />
+          {pole('M279 358 V390', '#fff')}
+          <path d="M58 296 V320" stroke={INK} strokeWidth="2" />
         </>
       ),
-      overlay: <Spokes cx={210} cy={100} />,
-      bug: [262, 196],
+      // … and to the top of the tent
+      strings: string('M37 194 Q40 260 58 318 M77 226 Q70 280 58 318 M112 182 Q100 260 58 318'),
+      spinAt: [208, 112],
+      bug: [268, 240],
     },
     bug: [30, 222],
-    go: { fly: [2, 3, 15, 16, 17], drive: [] },
-  },
-  {
+  }),
+
+  // ── a sailing ship by an island ──
+  picture({
     sky: '#BFE6FF',
-    pieces: [
-      ['circle',    404, 14, 56, 56, '#FFC93C'],               // the sun
-      ['oval',       24, 22, 72, 30, '#FFFFFF'],               // cloud
-      ['oval',      300, 44, 60, 24, '#FFFFFF'],               // cloud
-      ['rectangle', 226, 36, 12, 140, '#8A4F22'],              // mast
-      ['rhombus',   238, 12, 24, 32, '#E0509A', 1],            // pennant
-      ['triangle',  124, 52, 98, 118, '#E8503F'],              // big sail
-      ['triangle',  242, 72, 72, 98, '#F2B705'],               // small sail
-      ['star',      157, 112, 32, 32, '#FFC93C'],              // star on the sail
-      ['square',    322, 140, 30, 30, '#8E6CF0'],              // crate on deck
-      ['rectangle',  96, 170, 270, 44, '#8A4F22'],             // hull
-      ['circle',    120, 180, 24, 24, '#BFE6FF'],              // porthole
-      ['circle',    170, 180, 24, 24, '#BFE6FF'],              // porthole
-      ['circle',    220, 180, 24, 24, '#BFE6FF'],              // porthole
-      ['heart',     300, 180, 28, 26, '#E0509A'],              // heart on the hull
-      ['rectangle', 424, 118, 12, 90, '#8A4F22'],              // palm trunk
-      ['oval',      396, 100, 70, 28, '#3FA34D'],              // palm leaves
-      ['oval',      380, 196, 96, 36, '#E8C27A'],              // island
-      ['rhombus',    40, 180, 30, 44, '#E8503F', 1],           // buoy
-      ['oval',       36, 246, 48, 24, '#F2B705'],              // fish
-      ['triangle',  262, 232, 36, 30, '#9A8FB0'],              // a fin
-      ['star',      190, 250, 36, 36, '#E0509A'],              // starfish
-      ['heart',     120, 262, 28, 26, '#F2B705'],              // shell
-      ['oval',      330, 258, 44, 22, '#8E6CF0'],              // fish
-      ['square',    420, 250, 32, 32, '#3FA34D', 1],           // floating crate
+    parts: [
+      ['circle',    '#FFC93C', [404, 14, 56, 56],   [236, 8, 54, 54]],                // the sun
+      ['oval',      '#FFFFFF', [24, 22, 72, 30],    [14, 20, 70, 28]],                // cloud
+      ['oval',      '#FFFFFF', [300, 44, 60, 24],   [150, 40, 56, 22]],               // cloud
+      ['rectangle', '#8A4F22', [226, 36, 12, 140],  [108, 70, 12, 166], 'drive'],     // mast
+      ['rhombus',   '#E0509A', [238, 12, 24, 32],   [120, 44, 24, 32], 'loose drive'], // pennant
+      ['triangle',  '#E8503F', [124, 52, 98, 118],  [20, 90, 86, 140], 'drive'],      // big sail
+      ['triangle',  '#F2B705', [242, 72, 72, 98],   [124, 110, 62, 120], 'drive'],    // small sail
+      ['star',      '#FFC93C', [157, 112, 32, 32],  [47, 170, 32, 32], 'drive'],      // star on the sail
+      ['square',    '#8E6CF0', [322, 140, 30, 30],  [186, 208, 28, 28], 'drive'],     // crate on deck
+      ['rectangle', '#8A4F22', [96, 170, 270, 44],  [14, 236, 200, 50], 'drive'],     // hull
+      ['circle',    '#BFE6FF', [120, 180, 24, 24],  [30, 248, 26, 26], 'drive'],      // porthole
+      ['circle',    '#BFE6FF', [170, 180, 24, 24],  [80, 248, 26, 26], 'drive'],      // porthole
+      ['circle',    '#BFE6FF', [220, 180, 24, 24],  [130, 248, 26, 26], 'drive'],     // porthole
+      ['heart',     '#E0509A', [300, 180, 28, 26],  [176, 248, 28, 26], 'drive'],     // heart on the hull
+      ['oval',      '#3FA34D', [396, 100, 70, 28],  [226, 172, 68, 28]],              // palm leaves
+      ['oval',      '#E8C27A', [380, 196, 96, 36],  [210, 290, 88, 36]],              // island
+      ['rectangle', '#8A4F22', [424, 118, 12, 90],  [254, 190, 12, 110]],             // palm trunk, in front of both
+      ['rhombus',   '#E8503F', [40, 180, 30, 44],   [16, 300, 28, 42], 'loose'],      // buoy
+      ['oval',      '#F2B705', [36, 246, 48, 24],   [60, 340, 48, 24]],               // fish
+      ['triangle',  '#9A8FB0', [262, 232, 36, 30],  [150, 306, 36, 30]],              // a fin
+      ['star',      '#E0509A', [190, 250, 36, 36],  [120, 370, 38, 38]],              // starfish
+      ['heart',     '#F2B705', [120, 262, 28, 26],  [200, 378, 30, 28]],              // shell
+      ['oval',      '#8E6CF0', [330, 258, 44, 22],  [240, 344, 44, 22]],              // fish
+      ['square',    '#3FA34D', [420, 250, 32, 32],  [250, 386, 30, 30], 'loose'],     // floating crate
     ],
     scenery: (
       <>
@@ -190,10 +200,6 @@ export const SCENES = [
       </>
     ),
     tall: {
-      boxes: [[236, 8, 54, 54], [14, 20, 70, 28], [150, 40, 56, 22], [108, 70, 12, 166], [120, 44, 24, 32], [20, 90, 86, 140],
-        [124, 110, 62, 120], [47, 170, 32, 32], [182, 206, 30, 30], [14, 236, 200, 50], [30, 248, 26, 26], [80, 248, 26, 26],
-        [130, 248, 26, 26], [176, 248, 28, 26], [254, 190, 12, 110], [226, 172, 68, 28], [210, 290, 88, 36], [16, 300, 28, 42],
-        [60, 340, 48, 24], [150, 306, 36, 30], [120, 370, 38, 38], [200, 378, 30, 28], [240, 344, 44, 22], [250, 386, 30, 30]],
       scenery: (
         <>
           <rect x="0" y="270" width="300" height="150" fill="#5BB4E8" />
@@ -204,9 +210,8 @@ export const SCENES = [
       bug: [272, 292],
     },
     bug: [446, 198],
-    // when all are found: the ship sails off
-    go: { fly: [], drive: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13] },
-  },
+  }),
+
   // ── the farm: a red barn, a tractor, hay, a tree ──
   picture({
     sky: '#BFE6FF',
@@ -216,15 +221,15 @@ export const SCENES = [
       ['oval',      '#FFFFFF', [236, 34, 62, 24],  [100, 72, 58, 22]],             // cloud
       ['rhombus',   '#8E6CF0', [330, 22, 36, 50],  [168, 26, 36, 50], 'loose fly'], // kite
       ['square',    '#E8503F', [40, 120, 110, 110], [20, 190, 112, 112]],          // barn
-      ['triangle',  '#8A4F22', [28, 58, 134, 66],  [8, 124, 136, 70]],             // barn roof
-      ['rhombus',   '#F2B705', [80, 78, 30, 40],   [61, 146, 30, 40]],             // hay loft window
+      ['triangle',  '#8A4F22', [28, 54, 134, 66],  [8, 120, 136, 70]],             // barn roof, on the wall
+      ['rhombus',   '#F2B705', [80, 74, 30, 40],   [61, 142, 30, 40]],             // hay loft window
       ['rectangle', '#8A4F22', [72, 166, 46, 64],  [53, 236, 46, 66]],             // barn door
       ['heart',     '#E0509A', [82, 180, 26, 24],  [63, 250, 26, 24]],             // heart on the door
-      ['rectangle', '#8A4F22', [424, 162, 20, 68], [236, 196, 20, 104]],           // tree trunk
       ['oval',      '#3C9A48', [400, 78, 68, 90],  [210, 112, 72, 98]],            // tree top
-      ['triangle',  '#E8C27A', [166, 166, 64, 64], [148, 236, 64, 64]],            // haystack
-      ['circle',    '#E8C27A', [222, 194, 38, 38], [190, 262, 40, 40]],            // hay bale
-      ['square',    '#BFE6FF', [284, 132, 46, 46], [150, 312, 46, 46], 'drive'],   // tractor cabin
+      ['rectangle', '#8A4F22', [424, 162, 20, 68], [236, 196, 20, 104]],           // tree trunk, in front of it
+      ['triangle',  '#E8C27A', [166, 166, 64, 64], [136, 240, 60, 60]],            // haystack
+      ['circle',    '#E8C27A', [232, 192, 38, 38], [198, 264, 36, 36]],            // hay bale, beside it
+      ['square',    '#BFE6FF', [284, 130, 46, 46], [150, 310, 46, 46], 'drive'],   // tractor cabin
       ['rectangle', '#3FA34D', [278, 176, 100, 34], [144, 356, 104, 34], 'drive'], // tractor
       ['circle',    '#2a1b3d', [274, 188, 46, 46], [140, 368, 46, 46], 'drive'],   // big wheel
       ['circle',    '#2a1b3d', [346, 202, 30, 30], [214, 382, 30, 30], 'drive'],   // small wheel
@@ -237,20 +242,20 @@ export const SCENES = [
         <rect x="0" y="226" width="480" height="74" fill="#7CC86A" />
         <rect x="0" y="226" width="480" height="8" fill="#5CAE52" />
         <path d="M372 196 V230 M392 196 V230 M466 196 V230 M366 204 H480 M366 218 H480" stroke="#C98A52" strokeWidth="5" strokeLinecap="round" />
-        <path d="M348 72 Q340 92 350 108 T344 140" stroke={INK} strokeWidth="1.5" fill="none" opacity="0.6" />
         <path d="M31 278 V296 M411 280 V296 M144 282 V296" stroke="#3E8A3A" strokeWidth="3" strokeLinecap="round" />
       </>
     ),
+    strings: string('M348 72 Q340 92 350 108 T344 140'),
     tall: {
       scenery: (
         <>
           <rect x="0" y="300" width="300" height="120" fill="#7CC86A" />
           <rect x="0" y="300" width="300" height="8" fill="#5CAE52" />
           <path d="M150 262 V300 M206 262 V300 M150 272 H290 M150 288 H290" stroke="#C98A52" strokeWidth="5" strokeLinecap="round" />
-          <path d="M186 76 Q178 96 188 112 T182 140" stroke={INK} strokeWidth="1.5" fill="none" opacity="0.6" />
           <path d="M33 360 V378 M273 360 V376 M86 398 V412" stroke="#3E8A3A" strokeWidth="3" strokeLinecap="round" />
         </>
       ),
+      strings: string('M186 76 Q178 96 188 112 T182 140'),
       bug: [262, 392],
     },
     bug: [306, 262],
@@ -267,10 +272,10 @@ export const SCENES = [
       ['star',      '#F2B705', [120, 16, 36, 36],  [84, 12, 34, 34]],
       ['star',      '#FFC93C', [300, 116, 30, 30], [250, 140, 30, 30]],
       ['star',      '#FFFFFF', [444, 126, 26, 26], [18, 136, 28, 28]],
-      ['oval',      '#3FA34D', [128, 72, 72, 24],  [206, 222, 72, 24]],            // flying saucer
-      ['oval',      '#F2B705', [216, 176, 40, 52], [130, 244, 40, 54], 'fly'],     // the flame
-      ['rhombus',   '#3D8BE0', [186, 124, 30, 62], [96, 184, 30, 64], 'fly'],      // fin
-      ['rhombus',   '#3D8BE0', [256, 124, 30, 62], [174, 184, 30, 64], 'fly'],     // fin
+      ['oval',      '#3FA34D', [128, 72, 72, 24],  [216, 226, 72, 24]],            // flying saucer
+      ['oval',      '#F2B705', [216, 182, 40, 52], [130, 250, 40, 54], 'fly'],     // the flame, under the rocket
+      ['rhombus',   '#3D8BE0', [176, 124, 30, 62], [88, 184, 30, 64], 'fly'],      // fin, beside the rocket
+      ['rhombus',   '#3D8BE0', [266, 124, 30, 62], [182, 184, 30, 64], 'fly'],     // fin
       ['rectangle', '#FFFFFF', [206, 66, 60, 116], [118, 122, 64, 128], 'fly'],    // the rocket
       ['triangle',  '#E8503F', [206, 18, 60, 52],  [118, 70, 64, 56], 'fly'],      // its nose
       ['circle',    '#BFE6FF', [220, 84, 32, 32],  [134, 142, 32, 32], 'fly'],     // window
@@ -281,7 +286,7 @@ export const SCENES = [
       ['triangle',  '#3FA34D', [74, 212, 30, 26],  [32, 296, 30, 26]],             // flag on the moon
       ['triangle',  '#9A8FB0', [404, 188, 68, 64], [222, 290, 70, 64]],            // moon mountain
       ['heart',     '#E8503F', [358, 214, 24, 22], [158, 336, 24, 22], 'drive'],   // heart on the moon car
-      ['square',    '#BFE6FF', [318, 208, 32, 32], [120, 330, 32, 32], 'drive'],   // moon car cabin
+      ['square',    '#BFE6FF', [318, 204, 32, 32], [120, 326, 32, 32], 'drive'],   // moon car cabin
       ['rectangle', '#F2B705', [306, 236, 84, 24], [108, 358, 84, 24], 'drive'],   // moon car
       ['circle',    '#2a1b3d', [312, 252, 26, 26], [114, 374, 26, 26], 'drive'],   // wheel
       ['circle',    '#2a1b3d', [358, 252, 26, 26], [162, 374, 26, 26], 'drive'],   // wheel
@@ -301,7 +306,7 @@ export const SCENES = [
           <Twinkles at={[[70, 64], [150, 30], [280, 128], [20, 200], [70, 280], [276, 190], [240, 14], [120, 56]]} />
           <path d="M0 330 Q75 318 150 330 T300 326 V420 H0Z" fill="#C9C3D9" stroke={INK} strokeWidth="2" />
           <path d="M20 370 q16 -8 32 0 M220 380 q18 -8 36 0 M200 404 q10 -5 20 0" stroke="#9A8FB0" strokeWidth="3" fill="none" strokeLinecap="round" />
-          <path d="M221 224 A21 21 0 0 1 263 224 Z" fill="#BFE6FF" stroke={INK} strokeWidth="2.5" />
+          <path d="M231 228 A21 21 0 0 1 273 228 Z" fill="#BFE6FF" stroke={INK} strokeWidth="2.5" />
           <path d="M59 80 V66 M32 296 V342" stroke="#9A8FB0" strokeWidth="3" strokeLinecap="round" />
         </>
       ),
@@ -310,23 +315,23 @@ export const SCENES = [
     bug: [150, 262],
   }),
 
-  // ── a castle on a hill ──
+  // ── a castle on a hill: fireworks from the towers when all are found ──
   picture({
     sky: '#BFE6FF',
     parts: [
       ['circle',    '#FFC93C', [412, 12, 52, 52],  [124, 8, 52, 52]],              // the sun
-      ['oval',      '#FFFFFF', [18, 26, 74, 28],   [10, 14, 70, 26]],              // cloud
-      ['oval',      '#FFFFFF', [392, 92, 70, 26],  [214, 16, 74, 26]],             // cloud
+      ['oval',      '#FFFFFF', [18, 26, 74, 28],   [10, 14, 70, 26], 'drive'],     // cloud
+      ['oval',      '#FFFFFF', [392, 92, 70, 26],  [214, 16, 74, 26], 'drive'],    // cloud
       ['rectangle', '#9A8FB0', [110, 96, 60, 136], [24, 146, 60, 170]],            // tower
       ['rectangle', '#9A8FB0', [310, 96, 60, 136], [216, 146, 60, 170]],           // tower
       ['square',    '#C9C3D9', [175, 102, 130, 130], [88, 192, 124, 124]],         // the castle
-      ['triangle',  '#3D8BE0', [102, 40, 76, 60],  [14, 86, 80, 64]],              // tower roof
-      ['triangle',  '#3D8BE0', [302, 40, 76, 60],  [206, 86, 80, 64]],             // tower roof
-      ['triangle',  '#E8503F', [166, 46, 148, 60], [78, 132, 144, 64]],            // castle roof
-      ['rhombus',   '#E0509A', [142, 4, 24, 32],   [56, 48, 24, 32], 'loose fly'], // flag
-      ['rhombus',   '#3FA34D', [342, 4, 24, 32],   [248, 48, 24, 32], 'loose fly'], // flag
-      ['star',      '#FFC93C', [126, 66, 28, 28],  [40, 116, 28, 28]],             // star on the roof
-      ['star',      '#FFC93C', [326, 66, 28, 28],  [232, 116, 28, 28]],            // star on the roof
+      ['triangle',  '#3D8BE0', [106, 44, 68, 54],  [20, 92, 68, 56]],              // tower roof
+      ['triangle',  '#3D8BE0', [306, 44, 68, 54],  [212, 92, 68, 56]],             // tower roof
+      ['triangle',  '#E8503F', [172, 46, 136, 56], [86, 136, 128, 56]],            // castle roof, between the towers
+      ['rhombus',   '#E0509A', [142, 6, 24, 32],   [56, 54, 24, 32], 'loose wave'], // flag
+      ['rhombus',   '#3FA34D', [342, 6, 24, 32],   [248, 54, 24, 32], 'loose wave'], // flag
+      ['star',      '#FFC93C', [126, 64, 28, 28],  [40, 114, 28, 28], 'fly'],      // star on the roof
+      ['star',      '#FFC93C', [326, 64, 28, 28],  [232, 114, 28, 28], 'fly'],     // star on the roof
       ['square',    '#BFE6FF', [125, 120, 30, 30], [39, 168, 30, 30]],             // tower window
       ['square',    '#BFE6FF', [325, 120, 30, 30], [231, 168, 30, 30]],            // tower window
       ['circle',    '#BFE6FF', [222, 116, 36, 36], [132, 204, 36, 36]],            // round window
@@ -341,7 +346,7 @@ export const SCENES = [
         <path d="M0 236 Q240 214 480 236 V300 H0Z" fill="#7CC86A" />
         <path d="M0 236 Q240 214 480 236" stroke="#5CAE52" strokeWidth="8" fill="none" />
         <path d="M212 232 L262 232 L300 300 L180 300Z" fill="#E8C27A" />
-        <path d="M140 40 V6 M340 40 V6" stroke={INK} strokeWidth="2.5" />
+        <path d="M140 44 V8 M340 44 V8" stroke={INK} strokeWidth="2.5" />
       </>
     ),
     tall: {
@@ -350,7 +355,7 @@ export const SCENES = [
           <path d="M0 318 Q150 304 300 318 V420 H0Z" fill="#7CC86A" />
           <path d="M0 318 Q150 304 300 318" stroke="#5CAE52" strokeWidth="8" fill="none" />
           <path d="M122 316 L178 316 L196 420 L104 420Z" fill="#E8C27A" />
-          <path d="M54 86 V50 M246 86 V50" stroke={INK} strokeWidth="2.5" />
+          <path d="M54 92 V56 M246 92 V56" stroke={INK} strokeWidth="2.5" />
         </>
       ),
       bug: [30, 392],
@@ -367,16 +372,16 @@ export const SCENES = [
       ['circle',    '#E8F7FF', [204, 20, 30, 30],  [234, 12, 30, 30], 'fly'],      // bubble
       ['circle',    '#E8F7FF', [228, 58, 24, 24],  [262, 50, 24, 24], 'fly'],      // bubble
       ['circle',    '#E8F7FF', [180, 100, 26, 26], [22, 120, 26, 26], 'fly'],      // bubble
-      ['rhombus',   '#E8503F', [244, 86, 20, 38],  [82, 94, 20, 40], 'drive'],     // propeller
-      ['rectangle', '#9A8FB0', [358, 22, 10, 32],  [192, 26, 10, 34], 'drive'],    // periscope
-      ['rectangle', '#F2B705', [318, 48, 48, 30],  [150, 54, 48, 30], 'drive'],    // tower
+      ['rhombus',   '#E8503F', [238, 84, 20, 38],  [76, 90, 20, 40], 'drive'],     // propeller, at the stern
+      ['rectangle', '#9A8FB0', [352, 22, 10, 32],  [184, 26, 10, 34], 'drive'],    // periscope
       ['oval',      '#F2B705', [260, 70, 154, 66], [98, 76, 156, 68], 'drive'],    // submarine
+      ['rectangle', '#F2B705', [318, 48, 48, 30],  [150, 54, 48, 30], 'drive'],    // tower, on it
       ['circle',    '#BFE6FF', [288, 90, 26, 26],  [126, 96, 28, 28], 'drive'],    // porthole
       ['circle',    '#BFE6FF', [330, 90, 26, 26],  [170, 96, 28, 28], 'drive'],    // porthole
       ['oval',      '#E8503F', [38, 92, 66, 38],   [30, 182, 70, 40]],             // fish
-      ['rhombus',   '#E8503F', [100, 95, 30, 32],  [96, 186, 32, 32]],             // its tail
+      ['rhombus',   '#E8503F', [100, 90, 24, 42],  [96, 181, 24, 42]],             // its tail
       ['oval',      '#8E6CF0', [120, 170, 56, 32], [168, 222, 58, 32]],            // fish
-      ['rhombus',   '#8E6CF0', [172, 172, 26, 28], [222, 224, 28, 28]],            // its tail
+      ['rhombus',   '#8E6CF0', [172, 168, 20, 36], [222, 220, 20, 36]],            // its tail
       ['triangle',  '#3C9A48', [12, 140, 44, 112], [8, 238, 44, 116]],             // seaweed
       ['triangle',  '#3C9A48', [434, 160, 36, 92], [256, 262, 36, 92]],            // seaweed
       ['square',    '#C98A52', [298, 204, 48, 48], [120, 300, 48, 48], 'loose'],   // sunken box
@@ -442,10 +447,10 @@ export const SCENES = [
         <path d="M0 238 H480" stroke="#8A4F22" strokeWidth="6" />
         <path d="M0 233 H480" stroke="#6B6390" strokeWidth="3" />
         <path d="M10 238 v6 M40 238 v6 M70 238 v6 M100 238 v6 M130 238 v6 M160 238 v6 M190 238 v6 M220 238 v6 M250 238 v6 M280 238 v6 M310 238 v6 M340 238 v6 M370 238 v6 M400 238 v6 M430 238 v6 M460 238 v6" stroke="#8A4F22" strokeWidth="5" />
-        <path d="M172 112 Q180 140 168 152" stroke={INK} strokeWidth="1.5" fill="none" opacity="0.6" />
-        <rect x="457" y="178" width="6" height="52" fill="#9A8FB0" stroke={INK} strokeWidth="1.5" />
+        {pole('M460 180 V230')}
       </>
     ),
+    strings: string('M172 112 Q180 140 168 152'),
     tall: {
       scenery: (
         <>
@@ -454,10 +459,10 @@ export const SCENES = [
           <path d="M0 270 H300" stroke="#8A4F22" strokeWidth="6" />
           <path d="M0 265 H300" stroke="#6B6390" strokeWidth="3" />
           <path d="M10 270 v6 M40 270 v6 M70 270 v6 M100 270 v6 M130 270 v6 M160 270 v6 M190 270 v6 M220 270 v6 M250 270 v6 M280 270 v6" stroke="#8A4F22" strokeWidth="5" />
-          <path d="M76 146 Q84 170 72 190" stroke={INK} strokeWidth="1.5" fill="none" opacity="0.6" />
-          <rect x="245" y="334" width="6" height="62" fill="#9A8FB0" stroke={INK} strokeWidth="1.5" />
+          {pole('M248 336 V396')}
         </>
       ),
+      strings: string('M76 146 Q84 170 72 190'),
       bug: [210, 390],
     },
     bug: [300, 262],
@@ -469,13 +474,15 @@ export const SCENES = [
     ownSky: true,
     parts: [
       ['circle',    '#FFFFFF', [24, 26, 50, 50],   [14, 60, 46, 46]],              // the clock
-      ['rhombus',   '#E8503F', [157, 18, 26, 34],  [30, 16, 26, 34]],              // garland
-      ['rhombus',   '#3FA34D', [227, 26, 26, 34],  [137, 26, 26, 34]],             // garland
-      ['rhombus',   '#3D8BE0', [297, 18, 26, 34],  [244, 16, 26, 34]],             // garland
+      ['rhombus',   '#E8503F', [157, 18, 26, 34],  [30, 16, 26, 34], 'wave'],      // garland
+      ['rhombus',   '#3FA34D', [227, 26, 26, 34],  [137, 26, 26, 34], 'wave'],     // garland
+      ['rhombus',   '#3D8BE0', [297, 18, 26, 34],  [244, 16, 26, 34], 'wave'],     // garland
       ['circle',    '#F2B705', [324, 70, 36, 36],  [196, 104, 34, 34], 'loose fly'], // balloon
       ['oval',      '#E8503F', [362, 26, 40, 54],  [214, 46, 38, 52], 'loose fly'],  // balloon
-      ['heart',     '#E0509A', [408, 44, 42, 38],  [250, 68, 40, 36], 'loose fly'],  // heart balloon
+      ['heart',     '#E0509A', [408, 44, 42, 38],  [254, 68, 40, 36], 'loose fly'],  // heart balloon
       ['oval',      '#8E6CF0', [432, 92, 36, 50],  [244, 112, 36, 50], 'loose fly'], // balloon
+      ['rectangle', '#A9703F', [42, 228, 12, 64],  [22, 284, 12, 74]],             // table leg: a shape too
+      ['rectangle', '#A9703F', [426, 228, 12, 64], [266, 284, 12, 74]],            // table leg
       ['rectangle', '#C98A52', [26, 206, 428, 22], [10, 262, 280, 22]],            // the table
       ['star',      '#FFC93C', [222, 62, 36, 36],  [132, 90, 36, 36]],             // star on the cake
       ['rectangle', '#FFFFFF', [196, 110, 88, 42], [104, 140, 92, 46]],            // cake, top
@@ -494,12 +501,10 @@ export const SCENES = [
         <rect x="0" y="258" width="480" height="42" fill="#E0B98A" />
         <rect x="0" y="258" width="480" height="5" fill="#C99B68" />
         <path d="M110 10 Q240 54 370 10" stroke={INK} strokeWidth="2" fill="none" />
-        <rect x="44" y="226" width="9" height="66" fill="#A9703F" stroke={INK} strokeWidth="2" />
-        <rect x="427" y="226" width="9" height="66" fill="#A9703F" stroke={INK} strokeWidth="2" />
         <path d="M240 96 V112" stroke={INK} strokeWidth="3" />
-        <path d="M342 106 Q350 128 356 146 M382 80 Q370 120 356 146 M429 82 Q400 120 356 146 M450 142 Q420 150 410 168" stroke={INK} strokeWidth="1.5" fill="none" opacity="0.6" />
       </>
     ),
+    strings: string('M342 106 Q350 128 356 146 M382 80 Q370 120 356 146 M429 82 Q400 120 356 146 M450 142 Q420 150 410 168'),
     // the clock's hands and the bows on the presents
     overlay: (
       <g stroke={INK} strokeWidth="3" strokeLinecap="round" fill="none">
@@ -514,12 +519,10 @@ export const SCENES = [
           <rect x="0" y="320" width="300" height="100" fill="#E0B98A" />
           <rect x="0" y="320" width="300" height="5" fill="#C99B68" />
           <path d="M0 8 Q150 52 300 8" stroke={INK} strokeWidth="2" fill="none" />
-          <rect x="24" y="282" width="9" height="80" fill="#A9703F" stroke={INK} strokeWidth="2" />
-          <rect x="267" y="282" width="9" height="80" fill="#A9703F" stroke={INK} strokeWidth="2" />
           <path d="M150 126 V142" stroke={INK} strokeWidth="3" />
-          <path d="M213 138 Q230 200 262 262 M233 98 Q244 180 262 262 M270 104 Q268 180 262 262 M262 162 V262" stroke={INK} strokeWidth="1.5" fill="none" opacity="0.6" />
         </>
       ),
+      strings: string('M213 138 Q230 200 262 262 M233 98 Q244 180 262 262 M274 104 Q270 180 262 262 M262 162 V262'),
       overlay: (
         <g stroke={INK} strokeWidth="3" strokeLinecap="round" fill="none">
           <path d="M37 83 V70 M37 83 H47" />
@@ -533,14 +536,14 @@ export const SCENES = [
   }),
 ]
 
-export function Spokes({ cx, cy }) {
+// The spokes of the big wheel: lines, drawn over it and turning with it
+export function Spokes({ cx, cy, r = 60 }) {
   return (
     <g stroke="#C98A52" strokeWidth="4" strokeLinecap="round">
       {[0, 45, 90, 135].map(a => {
-        const dx = 60 * Math.cos(a * Math.PI / 180), dy = 60 * Math.sin(a * Math.PI / 180)
+        const dx = r * Math.cos(a * Math.PI / 180), dy = r * Math.sin(a * Math.PI / 180)
         return <line key={a} x1={cx - dx} y1={cy - dy} x2={cx + dx} y2={cy + dy} />
       })}
-      <circle cx={cx} cy={cy} r="9" fill="#8A4F22" stroke={INK} strokeWidth="2.5" />
     </g>
   )
 }
