@@ -422,7 +422,7 @@ export default function RhymeGame({ level = 1, onComplete }) {
       }}>
         {sideBuzzers && buzzers && buzzers[0]}
         {ready && (
-          <div ref={juice.stage} data-stage={`${Math.round(lay.W)}x${Math.round(lay.H)} ${lay.row ? "row" : "flank"} room ${room.w}x${room.h}`} style={{
+          <div ref={juice.stage} data-stage={lay.row ? 'row' : 'corners'} style={{
             position: 'relative', width: lay.W, height: lay.H, flexShrink: 0, overflow: 'hidden',
             background: PURPLE, border: `4px solid ${INK}`, borderRadius: '18px 18px 10px 10px', boxSizing: 'border-box',
             boxShadow: '0 6px 0 rgba(42,27,61,0.35)',
