@@ -705,7 +705,7 @@ function Sticker({ art, size }) {
 
 // The win with all the coins: the chest pops up, its lid flips open and
 // the sticker inside jumps out
-function ChestOpening({ loot, size, chestRef, top }) {
+function ChestOpening({ loot, size, chestRef }) {
   const [open, setOpen] = useState(false)
   useEffect(() => {
     const t = setTimeout(() => setOpen(true), 800)
@@ -713,7 +713,7 @@ function ChestOpening({ loot, size, chestRef, top }) {
   }, [])
   return (
     <motion.div ref={chestRef} aria-label="Schatztruhe" role="img" initial={{ scale: 0, y: 30 }} animate={{ scale: 1, y: 0 }} transition={{ delay: 0.3, type: 'spring', stiffness: 260, damping: 14 }}
-      style={{ position: 'absolute', left: '5%', ...(top ? { top: '5%' } : { bottom: '6%' }), display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
       <div style={{ height: size, display: 'flex', alignItems: 'flex-end' }}>
         <AnimatePresence>
           {open && (
@@ -1151,8 +1151,8 @@ export default function MazeGame({ level = 1, onComplete }) {
   const allLanded = coinList.length > 0 && landed.length >= coinList.length
   // the chest and its sticker at the win, as big as the board allows
   const winS = Math.round(Math.max(36, Math.min(64, vRows * cellSize * 0.2)))
-  // a low board (a phone held sideways): chest and dragon in the top
-  // corners, beside Lumi, where they cover no words
+  // a low board (a phone held sideways): the dragon in the top corner,
+  // where it covers no words
   const winLow = vRows * cellSize < 320
   const banner = (
     <AnimatePresence>
@@ -1719,6 +1719,9 @@ export default function MazeGame({ level = 1, onComplete }) {
                   }}
                 >
                   {showOverlay === 'won' ? (
+                    // all the coins: beside Lumi the chest opens and its sticker jumps out
+                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14 }}>
+                    {rich && <ChestOpening loot={loot} size={winS} chestRef={chestRef} />}
                     <div style={{ position: 'relative', width: 'min(128px, 24vh)', aspectRatio: '1' }}>
                       <img
                         src={spr('lumi_happy.png')}
@@ -1759,12 +1762,11 @@ export default function MazeGame({ level = 1, onComplete }) {
                         </motion.span>
                       ))}
                     </div>
+                    </div>
                   ) : (
                     <Art art="💔" size={72} />
                   )}
-                  {/* all the coins: the chest opens and its sticker jumps out;
-                      and the dragon waves goodbye */}
-                  {showOverlay === 'won' && rich && <ChestOpening loot={loot} size={winS} chestRef={chestRef} top={winLow} />}
+                  {/* the dragon waves goodbye */}
                   {showOverlay === 'won' && hasDragon && (
                     <motion.div aria-label="Der Drache winkt" role="img" initial={{ x: 80, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.4 }}
                       style={{ position: 'absolute', right: '6%', ...(winLow ? { top: '6%' } : { bottom: '6%' }), display: 'flex', alignItems: 'flex-end' }}>

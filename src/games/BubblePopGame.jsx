@@ -263,9 +263,19 @@ export default function BubblePopGame({ level = 1, onComplete }) {
         const { W: w, H: h } = seaSize()
         const size = giantSize(w, h), dir = Math.random() < 0.5 ? 1 : -1
         const g = { ...makeGiant(t, cfg), size, dir }
-        // with reduced motion it simply holds still in the middle for a while
-        const x = reduce ? w / 2 : dir > 0 ? -size / 2 : w + size / 2
-        place([{ ...g, left: (x / w) * 100, top: 50 }], true)
+        // with reduced motion it holds still for a while, where it covers
+        // the fewest bubbles (they hold still too)
+        let at = { x: dir > 0 ? -size / 2 : w + size / 2, y: h / 2 }
+        if (reduce) {
+          const others = Object.values(physicsRef.current)
+          let best = -Infinity
+          for (let k = 0; k < 40; k++) {
+            const x = size / 2 + Math.random() * Math.max(0, w - size), y = size / 2 + Math.random() * Math.max(0, h - size)
+            const room = Math.min(Infinity, ...others.map(o => Math.hypot(o.x - x, o.y - y) - o.size / 2 - size / 2))
+            if (room > best) { best = room; at = { x, y } }
+          }
+        }
+        place([{ ...g, left: (at.x / w) * 100, top: (at.y / h) * 100 }], true)
         if (reduce) later(driftS(level) * 1000, () => { if (!gone) remove(g.id) })
       })
     }
