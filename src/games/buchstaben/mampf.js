@@ -16,6 +16,11 @@
 // "Kaninchen" is right to feed it to the K monster, so the rabbit never
 // floats past a hungry K. '*' marks pictures a small child may not know by
 // name: they only ever come for their own monster.
+//
+// One picture, one name in the whole app: the owl is "Eule" (Memo, Kessel,
+// Silben), so U has the Ufo alone ("Uh wie Ufo!"), and the jacket is drawn
+// short with a zip (:px-jacke:), as the 🧥 emoji is a long coat. V has only
+// words that begin like "Vogel", with an f: Vase and Vulkan begin with a w.
 export const WORDS = {
   A: [['Affe', '🐒'], ['Apfel', '🍎'], ['Ananas', '🍍'], ['Anker', '⚓', '*'], ['Ameise', '🐜', 'K'], ['Adler', '🦅', 'V']],
   B: [['Bär', '🐻'], ['Banane', '🍌'], ['Biene', '🐝'], ['Blume', '🌸'], ['Baum', '🌳'], ['Buch', '📖'], ['Bus', '🚌'], ['Brot', '🍞', 'T'], ['Bett', '🛏️'], ['Brille', '👓', 'S'], ['Ball', '⚽', 'F']],
@@ -26,7 +31,7 @@ export const WORDS = {
   G: [['Giraffe', '🦒'], ['Geist', '👻'], ['Gurke', '🥒'], ['Gitarre', '🎸'], ['Geschenk', '🎁', 'P']],
   H: [['Hund', '🐶'], ['Haus', '🏠'], ['Hut', '🎩', 'Z'], ['Hose', '👖', 'J'], ['Hubschrauber', '🚁'], ['Hahn', '🐓', 'G'], ['Hase', '🐰', 'K'], ['Hai', '🦈', 'F']],
   I: [['Igel', '🦔'], ['Insel', '🏝️', 'PS']],
-  J: [['Jacke', '🧥', 'MA'], ['Jo-Jo', '🪀', '*']],
+  J: [['Jacke', ':px-jacke:', 'A'], ['Jo-Jo', '🪀', '*']],
   K: [['Katze', '🐱'], ['Kuh', '🐄'], ['Käse', '🧀'], ['Kerze', '🕯️'], ['Krokodil', '🐊'], ['Krone', '👑'], ['Keks', '🍪', 'P'], ['Koala', '🐨', 'B'], ['Koffer', '🧳', 'T']],
   L: [['Löwe', '🦁'], ['Leiter', '🪜'], ['Lama', '🦙', 'SA']],
   M: [['Maus', '🐭', 'R'], ['Mond', '🌙'], ['Mais', '🌽'], ['Milch', '🥛', 'GW']],
@@ -37,8 +42,8 @@ export const WORDS = {
   R: [['Rakete', '🚀'], ['Roboter', '🤖'], ['Regenbogen', '🌈', 'W'], ['Rose', '🌹', 'B']],
   S: [['Sonne', '☀️'], ['Socke', '🧦'], ['Sofa', '🛋️', 'CKL'], ['Salat', '🥗', 'G'], ['Seife', '🧼', '*']],
   T: [['Tiger', '🐯'], ['Tomate', '🍅'], ['Trommel', '🥁'], ['Traktor', '🚜'], ['Tür', '🚪'], ['Tisch', ':px-tisch:']],
-  U: [['Uhu', '🦉', 'E'], ['Ufo', '🛸', 'R']],
-  V: [['Vogel', '🐦'], ['Vase', '🏺', '*'], ['Vulkan', '🌋', 'B']],
+  U: [['Ufo', '🛸', 'R']],
+  V: [['Vogel', '🐦']],
   W: [['Wal', '🐋', 'F'], ['Wolke', '☁️'], ['Wolf', '🐺', 'HF'], ['Wurm', '🪱', 'R']],
   X: [['Xylofon', ':px-xylofon:', '*']],
   Y: [['Yoga', '🧘', '*']],
@@ -139,12 +144,15 @@ export function planLevel(level, rnd = Math.random) {
     groups = letters.slice(0, cfg.monsters).map(L => [L])
   }
   let slot = 0
+  // every monster of a level wears its own colour: they all dance together
+  // at the end (a letter keeps its colour where it can)
+  const worn = new Set()
   return {
     cfg,
-    groups: groups.map(g => g.map((L, i) => {
-      // two monsters on stage never wear the same colour
+    groups: groups.map(g => g.map(L => {
       let c = colorIndex(L)
-      if (i > 0 && c === colorIndex(g[0])) c = (c + 3) % COLORS.length
+      while (worn.has(c)) c = (c + 3) % COLORS.length
+      worn.add(c)
       const small = L.toLowerCase()
       return { slot: slot++, letter: L, shown: cfg.lower ? small : L, tag: cfg.lower ? L : null, color: COLORS[c], need: needOf(L) }
     })),

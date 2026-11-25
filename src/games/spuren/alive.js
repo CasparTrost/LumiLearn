@@ -47,3 +47,39 @@ export function bodyOf(g) {
 
   return (cache[g] = { face, legs, centre: { x: (x0 + x1) / 2, y: (y0 + y1) / 2 }, box: { x0, y0, x1, y1 } })
 }
+
+/**
+ * Where the picture that pops out of a finished glyph lands: a square in
+ * the board's `view` that covers no ink and no foot, so the letter just
+ * written stays whole. A corner if one is free (bottom right first), else a
+ * place along a side; as big as `size` allows, never under `min`. Returns
+ * { x, y, s } (top left and side, in the glyph box's units).
+ */
+const spots = {}
+export function picSpot(g, view, size, min = size * 0.6) {
+  const id = [g, view.x, view.y, view.w, view.h, size, min].join()
+  return (spots[id] ??= findSpot(g, view, size, min))
+}
+function findSpot(g, view, size, min) {
+  const ink = GLYPHS[g].flat()
+  const { legs } = bodyOf(g)
+  // what must stay visible: the stroke with its outline, the legs and feet
+  const keep = [
+    ...ink.map(p => ({ ...p, r: 8.5 })),
+    ...legs.flatMap(l => [{ x: l.x, y: l.y + 6, r: 3 }, { x: l.x + 2.2, y: l.y + 11.6, r: 6 }]),
+  ]
+  const clear = (x, y, s) => keep.every(p => {
+    const dx = Math.max(x - p.x, 0, p.x - (x + s)), dy = Math.max(y - p.y, 0, p.y - (y + s))
+    return dx * dx + dy * dy > p.r * p.r
+  })
+  const edge = 1
+  for (let s = size; s >= min; s -= 2) {
+    const left = view.x + edge, right = view.x + view.w - edge - s
+    const top = view.y + edge, bottom = view.y + view.h - edge - s
+    const tries = [[right, bottom], [left, bottom], [right, top], [left, top]]
+    for (let y = bottom - 4; y > top; y -= 4) tries.push([right, y], [left, y])
+    const at = tries.find(([x, y]) => clear(x, y, s))
+    if (at) return { x: at[0], y: at[1], s }
+  }
+  return { x: view.x + view.w - edge - min, y: view.y + view.h - edge - min, s: min }
+}

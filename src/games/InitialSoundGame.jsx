@@ -7,7 +7,7 @@ import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
 import { Critter, Art, HintHand, useBursts, useJuice, useMood } from '../components/play/index.js'
 import { useLater } from './zahlen/stage.jsx'
-import { rec, wordRec, soundRec, slug } from './buchstaben/voice.js'
+import { rec, wordRec, soundRec, soundLikeRec } from './buchstaben/voice.js'
 import { levelConfig, pickBuckets, nextWord, layoutFor, lanesFor, keyFor } from './buchstaben/angeln.js'
 import { Pond, Bank, Boat, Boot, Chest, BinFrog, Splash, FrogUnit, BUCKET_COLORS } from './buchstaben/AngelnParts.jsx'
 
@@ -524,7 +524,10 @@ export default function InitialSoundGame({ level = 1, onComplete }) {
     if (g.phase !== 'finale' && g.t >= g.spawnAt) {
       const ws = words().filter(w => inWater(w)).length
       const things = [...g.items.values()].filter(it => it.kind !== 'word' && it.st !== 'leave').length
-      if (ws < cfg.swimmers) { spawnWord(g.t > 1); g.spawnAt = g.t + (g.t > 1 ? 0.9 : 0.15) }
+      // never more words than catches: the pond is fished empty at the end,
+      // and no thing swims in twice (angeln.js pickBuckets)
+      const more = g.sorted + words().length < total
+      if (ws < cfg.swimmers && more) { spawnWord(g.t > 1); g.spawnAt = g.t + (g.t > 1 ? 0.9 : 0.15) }
       else if (!things && cfg.chestAt != null && !g.chestDone && g.sorted >= cfg.chestAt) { g.chestDone = true; spawnThing('chest'); g.spawnAt = g.t + 1 }
       else if (!things && cfg.bootAt != null && !g.bootDone && g.sorted >= cfg.bootAt) { g.bootDone = true; spawnThing('boot'); g.spawnAt = g.t + 1 }
     }
@@ -641,8 +644,8 @@ export default function InitialSoundGame({ level = 1, onComplete }) {
   const onFrog = letter => {
     sfx.pop()
     const hint = tried.length > 0 ? keyFor(letter, heldWord) : null
-    const said = hint ? rec(`laut/${slug(letter)}-wie-${slug(hint.word)}`) : null
-    narrate([said ?? soundRec(letter)])
+    // "Mmm wie Maus!", "L wie Löwe." (buchstaben/voice.js: never "Lö")
+    narrate([(hint && soundLikeRec(letter, hint.word)) || soundRec(letter)])
   }
   const onBucket = letter => {
     if (g.phase === 'hold' && g.held) { deliver(letter); return }

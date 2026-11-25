@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- The source of public/sprites/emoji/custom/jacke.webp ("J wie Jacke"):
+       a short zipped jacket with a hood, so it is never read as a coat.
+       Render: scripts/art/render-svg.mjs -->
+  <g stroke="#2b1d14" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">
+    <!-- the hood, lying behind the collar -->
+    <path d="M90 74 C84 30 172 30 166 74 Z" fill="#c13a33"/>
+    <path d="M104 68 C102 44 154 44 152 68 Z" fill="#8f2a25" stroke-width="4"/>
+    <!-- sleeves -->
+    <path d="M86 72 C60 80 46 118 36 166 L66 176 C72 148 78 128 90 112 Z" fill="#e5483f"/>
+    <path d="M170 72 C196 80 210 118 220 166 L190 176 C184 148 178 128 166 112 Z" fill="#e5483f"/>
+    <!-- ribbed cuffs -->
+    <path d="M34 164 L68 175 L63 196 L29 185 Z" fill="#b8322c"/>
+    <path d="M222 164 L188 175 L193 196 L227 185 Z" fill="#b8322c"/>
+    <!-- the body: short, it ends at the hips -->
+    <path d="M86 72 Q110 66 112 58 L144 58 Q146 66 170 72 L176 198 L80 198 Z" fill="#e5483f"/>
+    <!-- ribbed hem band -->
+    <rect x="77" y="194" width="102" height="24" rx="6" fill="#b8322c"/>
+    <!-- stand-up collar -->
+    <path d="M108 50 L148 50 L152 74 L104 74 Z" fill="#c13a33"/>
+    <!-- slanted pockets -->
+    <path d="M98 146 L110 176" stroke-width="7"/>
+    <path d="M158 146 L146 176" stroke-width="7"/>
+  </g>
+  <!-- ribs on cuffs and hem -->
+  <g stroke="#8f2a25" stroke-width="3" stroke-linecap="round">
+    <path d="M40 171 L36 184 M48 173 L44 187 M56 176 L52 189"/>
+    <path d="M216 171 L220 184 M208 173 L212 187 M200 176 L204 189"/>
+    <path d="M90 200 L90 212 M102 200 L102 212 M114 200 L114 212 M142 200 L142 212 M154 200 L154 212 M166 200 L166 212"/>
+  </g>
+  <!-- light on the left side -->
+  <path d="M96 84 Q92 130 94 186" stroke="#f47e73" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <path d="M74 92 Q60 120 52 156" stroke="#f47e73" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <!-- the zip, from the collar down to the hem, with its pull -->
+  <path d="M128 50 L128 218" stroke="#2b1d14" stroke-width="9" stroke-linecap="round"/>
+  <path d="M128 52 L128 216" stroke="#c9d1d8" stroke-width="4" stroke-dasharray="3 4"/>
+  <rect x="120" y="76" width="16" height="26" rx="5" fill="#dfe5ea" stroke="#2b1d14" stroke-width="4"/>
+  <circle cx="128" cy="94" r="3" fill="#2b1d14"/>
+</svg>

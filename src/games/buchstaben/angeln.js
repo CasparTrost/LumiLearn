@@ -7,13 +7,14 @@ import { shuffle } from './useRounds.js'
 // Only words whose first sound really is the letter's own sound, with a
 // picture that shows just that word: no Vogel under V (that is an F sound),
 // no Pferd (pf), no chair for "Tisch", no light bulb for "Lampe", no Eule
-// or Eis (eu, ei), no cup that could be "Kaffee".
+// or Eis (eu, ei), no cup that could be "Kaffee". The owl is "Eule" in the
+// whole app, so it is no "Uhu" here: U has only the Ufo, too few for a bucket.
 export const WORDS = [
   ['A','Apfel','🍎'], ['A','Affe','🐒'], ['A','Ameise','🐜'], ['A','Ananas','🍍'], ['A','Anker','⚓'],
   ['E','Ente','🦆'],  ['E','Elefant','🐘'], ['E','Esel','🫏'],
   ['I','Igel','🦔'],  ['I','Insel','🏝️'],
   ['O','Ohr','👂'],   ['O','Oma','👵'], ['O','Orange','🍊'],
-  ['U','Ufo','🛸'],   ['U','Uhu','🦉'],
+  ['U','Ufo','🛸'],
   ['M','Maus','🐭'],  ['M','Mond','🌙'], ['M','Milch','🥛'], ['M','Möhre','🥕'], ['M','Mais','🌽'],
   ['S','Sonne','☀️'], ['S','Socke','🧦'], ['S','Sofa','🛋️'], ['S','Seife','🧼'],
   ['F','Fisch','🐟'], ['F','Fuchs','🦊'], ['F','Feder','🪶'], ['F','Fuß','🦶'],
@@ -29,7 +30,7 @@ export const WORDS = [
   ['G','Giraffe','🦒'], ['G','Gurke','🥒'], ['G','Geist','👻'], ['G','Geschenk','🎁'],
   ['K','Katze','🐱'], ['K','Koala','🐨'], ['K','Kuh','🐄'], ['K','Käse','🧀'],
   ['Z','Zebra','🦓'], ['Z','Zahn','🦷'], ['Z','Zitrone','🍋'], ['Z','Zelt','⛺'],
-  ['J','Jo-Jo','🪀'],
+  ['J','Jacke',':px-jacke:'], ['J','Jo-Jo','🪀'],
 ].map(([letter, word, emoji]) => ({ letter, word, emoji }))
 
 export const wordsOf = L => WORDS.filter(w => w.letter === L)
@@ -40,10 +41,11 @@ const VOWELS = 'AEIOU'
 // side at the end — telling B from P is the hard part.
 export const PARTNER = { B:'P', P:'B', D:'T', T:'D', G:'K', K:'G', M:'N', N:'M' }
 
-// The picture a bucket shows after a miss: the word of Lumi's recorded
-// "Mmm wie Maus!" (laut/m-wie-maus), so the frog can say it too.
+// The picture a bucket shows after a miss: the thing of Lumi's sentence for
+// the letter, so the frog can say it too: "Mmm wie Maus!" for a sound one
+// can hold, "L wie Löwe." for the others (buchstaben/voice.js soundLikeKey).
 export const KEY = {
-  A:'Affe', B:'Bär', D:'Dino', E:'Ente', F:'Fisch', G:'Gurke', H:'Haus', I:'Igel', K:'Katze', L:'Löwe',
+  A:'Affe', B:'Bär', D:'Dino', E:'Ente', F:'Fisch', G:'Giraffe', H:'Hund', I:'Igel', J:'Jacke', K:'Katze', L:'Löwe',
   M:'Maus', N:'Nase', O:'Oma', P:'Pinguin', R:'Rakete', S:'Sonne', T:'Tiger', U:'Ufo', W:'Wal', Z:'Zebra',
 }
 
@@ -85,13 +87,16 @@ export const levelConfig = level => LEVELS[Math.max(0, Math.min(LEVELS.length - 
 
 /**
  * The letters on the buckets for a level, left to right. A letter needs two
- * words at least (J has only the yo-yo); partners are kept apart unless the
- * level is about them, and then they stand side by side.
+ * words at least (U has only the Ufo), and the buckets together need a word
+ * for every catch of the level (the game sends in no more words than that),
+ * so no thing comes twice; partners are kept apart unless the level is about
+ * them, and then they stand side by side.
  */
 export function pickBuckets(level) {
   const cfg = levelConfig(level)
   const usable = [...cfg.pool].filter(L => wordsOf(L).length >= 2)
   const n = Math.min(cfg.buckets, usable.length)
+  const enough = out => out.reduce((k, L) => k + wordsOf(L).length, 0) >= cfg.catches
   for (let tries = 0; tries < 400; tries++) {
     if (cfg.pairs) {
       const pairs = shuffle(usable.filter(L => usable.includes(PARTNER[L]) && L < PARTNER[L]))
@@ -105,12 +110,13 @@ export function pickBuckets(level) {
       // a lone letter goes to one end, the pairs stay together
       const groups = shuffle([...pairs, ...rest.map(L => [L])])
       const out = groups.flat()
-      if (out.length === n) return out
+      if (out.length === n && enough(out)) return out
       continue
     }
     const out = shuffle(usable).slice(0, n)
     if (out.some(L => out.includes(PARTNER[L]))) continue
     if (cfg.mix && (!out.some(L => VOWELS.includes(L)) || out.every(L => VOWELS.includes(L)))) continue
+    if (!enough(out)) continue
     return out
   }
   return usable.slice(0, n)
@@ -119,12 +125,18 @@ export function pickBuckets(level) {
 /**
  * The next word to swim in: for the bucket that has least so far (sorted
  * and swimming), a word not in the water now and used least in this level.
+ * Only buckets with a word that has not swum yet take part while there is
+ * one: a thing does not come twice in a level.
  */
 export function nextWord(buckets, { sorted = {}, swimming = [], used = {} } = {}) {
   const load = L => (sorted[L] ?? 0) + swimming.filter(w => w.letter === L).length
-  const low = Math.min(...buckets.map(load))
-  const letter = shuffle(buckets.filter(L => load(L) === low))[0]
-  const free = wordsOf(letter).filter(w => !swimming.some(s => s.word === w.word))
+  const dry = L => wordsOf(L).filter(w => !swimming.some(s => s.word === w.word))
+  const unseen = buckets.filter(L => dry(L).some(w => !used[w.word]))
+  const notInWater = buckets.filter(L => dry(L).length)
+  const from = unseen.length ? unseen : notInWater.length ? notInWater : buckets
+  const low = Math.min(...from.map(load))
+  const letter = shuffle(from.filter(L => load(L) === low))[0]
+  const free = dry(letter)
   const pool = free.length ? free : wordsOf(letter)
   const least = Math.min(...pool.map(w => used[w.word] ?? 0))
   return shuffle(pool.filter(w => (used[w.word] ?? 0) === least))[0]
