@@ -43,7 +43,7 @@ export function layoutFor(W, H, n, total) {
   const bh = B * (narrow && H > W * 1.25 ? 0.95 : BUSH_RATIO), T = B * (narrow ? 0.68 : THING_RATIO)
   // a screen held upright: the ground comes up to four fifths of the
   // field, Lumi and her bubble stand in the sky above
-  const tall = !side && H > W * 1.25
+  const tall = !side && H > W * 1.15
   const ground = tall ? Math.round(zone.y + zone.h * 0.8) : zone.y + zone.h - 4
   const rowW = n * B + (n - 1) * gap
   const x0 = zone.x + (zone.w - rowW) / 2
