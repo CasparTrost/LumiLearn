@@ -349,8 +349,13 @@ const Board = memo(function Board({ maze, cellSize, coll, theme, tint, lights })
                     style={{
                       // the bottle fills only the middle of its picture:
                       // drawn a little larger than the cell, it reads on a phone too
-                      width:          Math.round(cellSize * 0.96),
-                      height:         Math.round(cellSize * 0.96),
+                      // (and never below 22 px: in the whole-maze preview of
+                      // a big maze on a phone the cells are 13 px)
+                      width:          Math.round(Math.max(22, cellSize * 0.96)),
+                      height:         Math.round(Math.max(22, cellSize * 0.96)),
+                      flexShrink:     0,
+                      maxWidth:       'none',
+                      maxHeight:      'none',
                       imageRendering: 'pixelated',
                       filter:         potionFilter(potion.type) + 'drop-shadow(0 0 5px rgba(255,255,255,0.8))',
                     }}
@@ -1392,7 +1397,7 @@ export default function MazeGame({ level = 1, onComplete }) {
                   display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
                 <motion.div animate={{ y: [0, -cellSize * 0.08, 0], scaleX: [1, 0.55, 1] }} transition={{ duration: 1.8, repeat: Infinity, delay: c.id * 0.4 }}
                   style={{ display: 'flex', filter: 'drop-shadow(0 0 5px rgba(255,215,80,0.95))' }}>
-                  <Art art="🪙" size={Math.round(cellSize * 0.74)} />
+                  <Art art="🪙" size={Math.round(Math.max(18, cellSize * 0.74))} />
                 </motion.div>
               </div>
             ))}
@@ -1481,7 +1486,7 @@ export default function MazeGame({ level = 1, onComplete }) {
                 {powerOn !== null && (
                   // a clear badge: the potion, and eight blocks that run down step by step;
                   // under Lumi when Lumi stands in the top row of the view
-                  <motion.div key={`pw${power.until}`} aria-hidden="true" initial={{ scale: 0, y: 10 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0, opacity: 0 }}
+                  <motion.div key={`pw${power.until}`} aria-hidden="true" data-power={powerOn} initial={{ scale: 0, y: 10 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0, opacity: 0 }}
                     style={{ position: 'absolute', left: '50%', zIndex: 2, transition: 'top .35s',
                       top: st.pos.y - cam.y < (big ? 2 : 1) ? cellSize + 2 : -(big ? cellSize * 0.6 : 0) - badgeH - 2,
                       marginLeft: -badgeW / 2, width: badgeW, height: badgeH, boxSizing: 'border-box',
@@ -1810,8 +1815,9 @@ export default function MazeGame({ level = 1, onComplete }) {
           (or, with all of them, the gate) when a child waits */}
       <HintHand to={dpadRefs[nextDir]} delay={st.moves === 0 ? 2000 : 6000} active={!!nextDir && !preview && !intro && !st.won && !st.dead} />
       {/* Below the arrows room for the hint hand, which hangs under the
-          arrow it taps (it was cut off by the screen's edge) */}
-      <div style={{ flexShrink: 0, marginTop: wide ? 0 : 8, marginBottom: wide ? 0 : 30, userSelect: 'none', WebkitUserSelect: 'none' }}>
+          arrow it taps (it was cut off by the screen's edge), and beside
+          them on a screen held sideways */}
+      <div style={{ flexShrink: 0, marginTop: wide ? 0 : 8, marginBottom: wide ? 0 : 30, marginRight: wide ? 14 : 0, userSelect: 'none', WebkitUserSelect: 'none' }}>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6 }}>
           <span ref={dpadRefs.up}><DPadButton dir="up" label="Nach oben" size={padSize} onPress={() => doMove(0, -1)} /></span>
         </div>
