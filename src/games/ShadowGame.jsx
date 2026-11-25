@@ -414,6 +414,8 @@ export default function ShadowGame({ level = 1, onComplete }) {
     const touch = e.pointerType !== 'mouse'
     w.input = { id: e.pointerId, touch }
     w.downAt = w.t
+    // what is lit already when the finger comes down (see `fresh` in the clock)
+    w.litAtDown = new Set(w.shadows.filter(x => x.state === 'caught').map(x => x.id))
     // touching a lit shadow makes it the focus (the light shines above a finger, not on it)
     const lit = shadowAt(e.clientX, e.clientY)
     w.pin = lit ? { id: lit.id, x: e.clientX, y: e.clientY } : null
@@ -611,7 +613,9 @@ export default function ShadowGame({ level = 1, onComplete }) {
       // (it rests above the finger that pauses on its way to the cards). It
       // moves the focus only to a shadow it caught in this very touch; one
       // that is lit already is chosen by touching it.
-      const fresh = !beam.touch || (w.shadows.find(x => x.id === want)?.caughtAt ?? -1) >= (w.downAt ?? Infinity)
+      // (a shadow that was lit when the finger came down, went dark under it
+      // and is caught again by the resting finger is not a new find)
+      const fresh = !beam.touch || (!w.litAtDown?.has(want) && (w.shadows.find(x => x.id === want)?.caughtAt ?? -1) >= (w.downAt ?? Infinity))
       const next = settleFocus(w.focus, want, w.shadows, w.dwell, w.t, !!w.pin, fresh && w.beamSpeed < REST_SPEED)
       w.dwell = next.dwell
       setFocus(next.focus)
