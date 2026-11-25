@@ -1,11 +1,11 @@
 import { motion, useTransform } from 'framer-motion'
 import { Art } from '../../components/play/index.js'
 import { SIGN_H, MONSTER_H } from './layout.js'
-import { motionFor, Shout } from './Korbmonster.jsx'
+import { motionFor } from './Korbmonster.jsx'
 import './fliessband.css'
 
-// Fließband-Füttern (SortGame.jsx): the kitchen, the belt with its pipe,
-// the bin, and the looks of the things on the belt.
+// Sortier-Spaß, the belt (SortGame.jsx): the kitchen, the belt with its
+// pipe, the bin, and the looks of the things on the belt.
 
 const INK = '#2a1b3d'
 const PIPE = '#35b6a4', PIPE_DARK = '#1f8f80', PIPE_LIGHT = '#8fe3d6'
@@ -94,14 +94,14 @@ export function Belt({ L, roll, lumps, pipeIn, pipeOut }) {
 
 /**
  * The bin, for what belongs to no monster. It has the same box as a monster
- * and the same moods: its lid opens when rubbish comes its way and slams
- * shut on it; anything else it spits out again.
+ * and the same moods: its lid opens when rubbish comes its way and claps
+ * shut on it; anything else it shakes off and pushes back.
  */
 export function Tonne({ width = 200, need = 0, have = 0, mood = 'idle' }) {
   const W = width
   const signH = W * SIGN_H
   const full = need > 0 && have >= need
-  const open = mood === 'hungry' ? -44 : mood === 'ready' ? -30 : mood === 'bah' ? -62 : mood === 'burp' ? -20 : 0
+  const open = mood === 'eager' ? -44 : mood === 'ready' ? -30 : mood === 'nope' ? -24 : mood === 'cheer' ? -20 : 0
   const flap = mood === 'point' || mood === 'dance'
   const seg = 108 / Math.max(1, need)
   return (
@@ -150,14 +150,13 @@ export function Tonne({ width = 200, need = 0, have = 0, mood = 'idle' }) {
           </g>
         )}
       </svg>
-      <Shout mood={mood === 'bah' ? 'bah' : null} W={W} top={signH + W * 0.4} />
     </motion.div>
   )
 }
 
 const BONE = '#f6f0df'
 
-// Rubbish no emoji shows: a fish bone, a ball of paper, an open tin, an old shoe
+// Rubbish no emoji shows: a fish bone, a ball of paper, an open tin, a broken cup
 function RubbishArt({ kind, size }) {
   const common = { viewBox: '0 0 100 100', width: size, height: size, style: { display: 'block', flexShrink: 0 }, 'aria-hidden': true }
   if (kind === 'graete') {
@@ -194,18 +193,15 @@ function RubbishArt({ kind, size }) {
       <path d="M30 37 L20 14 L27 17 L30 10 L37 14 L42 7 L48 13 L55 8 L58 16 L66 14 L64 24 Q48 22 30 37 Z" fill="#dfe5ea" stroke={INK} strokeWidth="4.5" strokeLinejoin="round" />
     </svg>
   )
-  // an old shoe: the sole hangs loose at the toe, a patch, a lace undone
+  // a cup broken in two, with a shard beside it
   return (
     <svg {...common}>
-      <path d="M12 72 L12 30 Q12 20 24 20 L38 20 Q46 20 46 30 L47 44 Q62 47 78 54 Q91 60 91 71 Z" fill="#a8703f" stroke={INK} strokeWidth="4.5" strokeLinejoin="round" />
-      <path d="M8 72 L66 72 L92 84 Q88 90 78 88 L62 82 L18 84 Q8 84 8 76 Z" fill="#5b3a22" stroke={INK} strokeWidth="4.5" strokeLinejoin="round" />
-      <path d="M66 72 L91 71 L92 84 Z" fill="#3b2a4f" stroke={INK} strokeWidth="4" strokeLinejoin="round" />
-      <path d="M72 72 l0 5 M79 72 l0 7 M86 72 l0 9" stroke="#fff" strokeWidth="3" strokeLinecap="round" />
-      <path d="M16 27 Q29 34 43 27" fill="none" stroke={INK} strokeWidth="3.5" strokeLinecap="round" />
-      <rect x="20" y="48" width="16" height="13" rx="2" fill="#e0b85c" stroke={INK} strokeWidth="3" transform="rotate(-8 28 54)" />
-      <path d="M24 51 l0 7 M32 50 l0 7" stroke={INK} strokeWidth="2" strokeLinecap="round" transform="rotate(-8 28 54)" />
-      <path d="M47 34 l11 -5 M48 42 l12 -3 M58 29 q12 2 8 16 q-2 8 4 10" fill="none" stroke={INK} strokeWidth="6" strokeLinecap="round" />
-      <path d="M47 34 l11 -5 M48 42 l12 -3 M58 29 q12 2 8 16 q-2 8 4 10" fill="none" stroke="#fdf6e3" strokeWidth="2.6" strokeLinecap="round" />
+      <path d="M14 34 L40 34 L36 48 L42 58 L34 72 L36 86 L24 86 Q16 86 15 76 Z" fill="#f4f1ff" stroke={INK} strokeWidth="4.5" strokeLinejoin="round" />
+      <path d="M52 30 L78 30 L74 76 Q73 86 64 86 L48 86 L52 74 L44 62 L50 50 L46 40 Z" fill="#f4f1ff" stroke={INK} strokeWidth="4.5" strokeLinejoin="round" transform="rotate(10 64 58)" />
+      <path d="M78 42 Q94 44 92 58 Q90 70 76 68" fill="none" stroke={INK} strokeWidth="9" strokeLinecap="round" transform="rotate(10 64 58)" />
+      <path d="M78 42 Q94 44 92 58 Q90 70 76 68" fill="none" stroke="#f4f1ff" strokeWidth="3.5" strokeLinecap="round" transform="rotate(10 64 58)" />
+      <path d="M17 50 L37 50 M56 48 L74 51" stroke="#4aa3ff" strokeWidth="5" strokeLinecap="round" />
+      <path d="M8 92 L16 82 L24 92 Z" fill="#f4f1ff" stroke={INK} strokeWidth="3.5" strokeLinejoin="round" />
     </svg>
   )
 }
@@ -217,9 +213,12 @@ export function ThingArt({ art, size }) {
 
 /**
  * A thing as it rides, flies or peeks out of a basket: its picture, wavy
- * stink lines for rubbish, a golden shine for the golden one.
+ * stink lines for rubbish, a golden shine for the golden one. A small
+ * animal (`thing.size` < 1) is drawn small, standing on the bottom of its
+ * box, so big and small can be seen on the belt.
  */
 export function Thing({ thing, size, picked = false }) {
+  const art = size * (thing.size ?? 1)
   return (
     <div style={{ position: 'relative', width: size, height: size }}>
       {thing.golden && (
@@ -234,8 +233,8 @@ export function Thing({ thing, size, picked = false }) {
         </>
       )}
       {picked && <div className="fb-ring" aria-hidden="true" style={{ position: 'absolute', inset: -size * 0.08, borderRadius: '50%', border: '4px solid #ffc93c', boxShadow: `0 0 0 2.5px ${INK}, inset 0 0 0 2.5px ${INK}`, background: 'rgba(255,253,247,0.3)' }} />}
-      <div style={{ position: 'relative', filter: thing.golden ? 'drop-shadow(0 0 3px #fff3b0) drop-shadow(0 0 5px #ffc93c)' : undefined }}>
-        <ThingArt art={thing.art} size={size} />
+      <div style={{ position: 'absolute', left: (size - art) / 2, top: size - art, filter: thing.golden ? 'drop-shadow(0 0 3px #fff3b0) drop-shadow(0 0 5px #ffc93c)' : undefined }}>
+        <ThingArt art={thing.art} size={art} />
       </div>
       {thing.rubbish && (
         <svg className="fb-stink" viewBox="0 0 60 30" width={size * 0.6} height={size * 0.3} aria-hidden="true"

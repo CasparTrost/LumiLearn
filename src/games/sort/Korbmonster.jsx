@@ -4,21 +4,23 @@ import { SIGN_H, MONSTER_H } from './layout.js'
 import './fliessband.css'
 
 /**
- * A basket monster of Fließband-Füttern (SortGame): a woven basket with a
- * face and feet that eats one kind of thing. Its sign shows what, as
- * pictures (the word underneath is for the parents). It follows the thing
- * in the child's hand with its eyes, opens its mouth when the thing comes
- * its way, munches, and gets fatter with every bite; what it ate peeks out
- * over the rim, and the bar on the rim fills. The wrong thing makes it pull
- * a face ("Bäh!").
+ * A basket monster of the sorting belt (SortGame): a woven basket with a
+ * face and feet that collects one kind of thing. It eats nothing: a thing
+ * hops into the basket (plop), sits there peeking out over the rim, and
+ * the monster beams. Its sign shows what it collects, as pictures (the
+ * word underneath is for the parents). It follows the thing in the child's
+ * hand with its eyes, opens its eyes wide when the thing comes its way,
+ * gets a little rounder with every thing, and the bar on the rim fills.
+ * The wrong thing it does not want: it shakes its head and hands it back.
  *
  *   <Korbmonster width={200} tint={{ bg, ring }} sign={{ pics: ['🐕', '🐱'], label: 'Tiere', scale: 1 }}
  *     items={[{ id, art }]} need={4} mood="idle" look={0} gaze={{ x, y }} renderItem={…} />
  *
- * Moods: idle · ready (something is held up) · hungry (it comes my way) ·
- * chomp · bah · burp · happy · point (waves: "to me!") · dance · full
+ * Moods: idle · ready (something is held up) · eager (it comes my way) ·
+ * catch (it landed in the basket) · nope (not mine, head shake) · cheer
+ * (the basket is full) · happy · point (waves: "to me!") · dance · full
  * `gaze`: two MotionValues, −1 … 1, where the eyes look.
- * `need`: bites until it is full; `items.length` of them are eaten.
+ * `need`: things until it is full; `items.length` of them are in it.
  */
 const INK = '#2a1b3d'
 const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
@@ -35,13 +37,13 @@ export const motionFor = (mood, W) => {
     idle:   { ...still, y: [0, -3, 0], transition: { duration: 2.4, repeat: Infinity, ease: 'easeInOut' } },
     ready:  { ...still, y: [0, -h * 0.3, 0], scale: 1.03, transition: { duration: 0.9, repeat: Infinity, ease: 'easeInOut' } },
     full:   { ...still, rotate: [0, -1.5, 1.5, 0], scaleY: [1, 1.02, 1], transition: { duration: 3.2, repeat: Infinity, ease: 'easeInOut' } },
-    hungry: { ...still, scale: 1.06, transition: { type: 'spring', stiffness: 320, damping: 14 } },
+    eager:  { ...still, scale: 1.06, transition: { type: 'spring', stiffness: 320, damping: 14 } },
     happy:  { ...still, y: [0, -h, 0, -h * 0.4, 0], rotate: [0, -4, 4, 0, 0], transition: { duration: 0.8 } },
-    bah:    { ...still, x: [0, -8, 8, -6, 6, 0], rotate: [0, -4, 4, -3, 0], transition: { duration: 0.6 } },
-    burp:   { ...still, scaleY: [1, 0.86, 1.1, 1], scaleX: [1, 1.1, 0.95, 1], transition: { duration: 0.6 } },
+    nope:   { ...still, rotate: [0, -6, 6, -5, 5, 0], transition: { duration: 0.7 } },
+    cheer:  { ...still, y: [0, -h * 1.1, 0, -h * 0.5, 0], scaleY: [1, 1.06, 0.94, 1.03, 1], transition: { duration: 0.8 } },
     point:  { ...still, y: [0, -h * 0.6, 0, -h * 0.6, 0], scale: 1.03, transition: { duration: 1.1, repeat: Infinity, repeatDelay: 0.4 } },
     dance:  { ...still, rotate: [0, -4, 4, -4, 4, 0], y: [0, -h * 0.7, 0, -h * 0.7, 0, 0], transition: { duration: 1.1, repeat: Infinity } },
-    chomp:  { ...still, scaleY: [1, 0.86, 1.08, 0.9, 1.05, 1], scaleX: [1, 1.08, 0.96, 1.06, 0.98, 1], transition: { duration: 0.7 } },
+    catch:  { ...still, scaleY: [1, 0.88, 1.06, 0.97, 1], scaleX: [1, 1.07, 0.97, 1.02, 1], transition: { duration: 0.55 } },
   })[mood]
 }
 
@@ -54,7 +56,7 @@ export default function Korbmonster({ width = 200, tint, sign, items = [], need 
   const id = `km-${look}-${tint.ring.slice(1)}`
   const have = items.length
   const full = need > 0 && have >= need
-  // fatter with every bite
+  // a little rounder with every thing in it
   const fat = { scaleX: 1 + 0.22 * (need ? Math.min(1, have / need) : 0) }
   const fatSpring = { type: 'spring', stiffness: 300, damping: 9 }
   const shown = items.slice(-PILE.length)
@@ -72,14 +74,14 @@ export default function Korbmonster({ width = 200, tint, sign, items = [], need 
         </svg>
       </motion.div>
 
-      {/* what it ate, peeking out over the rim */}
+      {/* what it collected, peeking out over the rim */}
       <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
         <AnimatePresence>
           {shown.map((it, i) => {
             const [u, up] = PILE[i]
             return (
-              <motion.div key={it.id} initial={{ scale: 0.4, y: -W * 0.16 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0 }}
-                transition={{ type: 'spring', stiffness: 420, damping: 16 }}
+              <motion.div key={it.id} initial={{ scale: 0.4, y: -W * 0.16 }} animate={{ scale: 1, y: [W * 0.08, -W * 0.06, 0] }} exit={{ scale: 0 }}
+                transition={{ type: 'spring', stiffness: 420, damping: 16, y: { duration: 0.5, times: [0, 0.55, 1] } }}
                 style={{ position: 'absolute', left: W * (0.14 + u * 0.72) - s / 2, top: rimY - s * 0.72 + up * W, width: s, height: s }}>
                 {it.node ?? <Art art={it.art} size={s} />}
               </motion.div>
@@ -115,7 +117,7 @@ export default function Korbmonster({ width = 200, tint, sign, items = [], need 
           <ellipse cx="134" cy="184" rx="20" ry="10" fill="#ffb347" stroke={INK} strokeWidth="3" />
           {/* body */}
           <path d="M26 70 Q28 164 52 178 L148 178 Q172 164 174 70 A74 17 0 0 1 26 70 Z" fill={`url(#${id})`} stroke={INK} strokeWidth="4" strokeLinejoin="round" />
-          {/* the front of the rim is the bar that fills: one piece per bite */}
+          {/* the front of the rim is the bar that fills: one piece per thing */}
           <path d="M26 71 A74 17 0 0 0 174 71" fill="none" stroke={INK} strokeWidth="17" />
           <path d="M26 71 A74 17 0 0 0 174 71" fill="none" stroke="#fffdf7" strokeWidth="11" />
           {need > 0 && (
@@ -146,21 +148,6 @@ export default function Korbmonster({ width = 200, tint, sign, items = [], need 
 
       {sign && <Sign sign={sign} W={W} glow={mood === 'point'} tint={tint} full={full} />}
 
-      {/* crumbs fly while it munches */}
-      <AnimatePresence>
-        {mood === 'chomp' && !reduceMotion() && (
-          <motion.div key="crumbs" exit={{ opacity: 0 }} style={{ position: 'absolute', left: W * 0.5, top: signH + W * 0.7, width: 0, height: 0, pointerEvents: 'none' }}>
-            {[0, 1, 2, 3, 4, 5].map(k => (
-              <motion.span key={k} initial={{ x: 0, y: 0, opacity: 1 }}
-                animate={{ x: (k - 2.5) * W * 0.09, y: [0, -W * 0.08, W * 0.16], opacity: [1, 1, 0] }}
-                transition={{ duration: 0.7, delay: 0.05 + (k % 3) * 0.1 }}
-                style={{ position: 'absolute', width: W * 0.04, height: W * 0.04, borderRadius: 2, background: ['#e8a85a', '#ffd34d', '#c98a52'][k % 3] }} />
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <Shout mood={mood} W={W} top={signH + W * 0.36} />
     </motion.div>
   )
 }
@@ -202,40 +189,19 @@ function Sign({ sign, W, glow, tint, full }) {
   )
 }
 
-// "Bäh!" or a burp, from its mouth
-export function Shout({ mood, W, top }) {
-  return (
-    <AnimatePresence>
-      {(mood === 'bah' || mood === 'burp') && (
-        <motion.div key={mood} initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }}
-          style={{
-            position: 'absolute', right: 0, top, padding: '2px 8px', zIndex: 2,
-            background: '#fffdf7', border: `3px solid ${INK}`, borderRadius: 14, boxShadow: '0 3px 0 rgba(42,27,61,0.3)',
-            fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: Math.max(14, W * 0.11), color: INK, pointerEvents: 'none',
-          }}>
-          {mood === 'bah' ? 'Bäh!' : 'Rülps!'}
-        </motion.div>
-      )}
-    </AnimatePresence>
-  )
-}
-
 // Eyes and mouth for each mood; the pupils follow `gaze`
 function Face({ mood, look, gaze }) {
   const zero = useMotionValue(0)
   const gx = useTransform(gaze?.x ?? zero, v => v * 6)
   const gy = useTransform(gaze?.y ?? zero, v => v * 5)
-  const shut = mood === 'happy' || mood === 'dance' || mood === 'full' || mood === 'burp'
-  const squeeze = mood === 'bah'
-  const big = mood === 'hungry' || mood === 'point' || mood === 'ready'
+  const shut = mood === 'happy' || mood === 'dance' || mood === 'full' || mood === 'cheer' || mood === 'catch'
+  const big = mood === 'eager' || mood === 'point' || mood === 'ready'
   return (
     <g>
-      {[72, 128].map((x, i) => (
+      {[72, 128].map(x => (
         <g key={x}>
           {shut ? (
             <path d={`M${x - 12} 114 Q${x} 100 ${x + 12} 114`} fill="none" stroke={INK} strokeWidth="5" strokeLinecap="round" />
-          ) : squeeze ? (
-            <path d={i ? `M${x + 10} 102 L${x - 8} 110 L${x + 10} 118` : `M${x - 10} 102 L${x + 8} 110 L${x - 10} 118`} fill="none" stroke={INK} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
           ) : (
             <g className="pl-blink">
               <ellipse cx={x} cy="108" rx={big ? 17 : 15} ry={big ? 19 : 17} fill="#fff" stroke={INK} strokeWidth="3" />
@@ -250,31 +216,23 @@ function Face({ mood, look, gaze }) {
       ))}
       <circle cx="52" cy="134" r="8" fill="#ff8fb8" opacity="0.7" />
       <circle cx="148" cy="134" r="8" fill="#ff8fb8" opacity="0.7" />
-      {mood === 'hungry' || mood === 'point' ? (
+      {mood === 'point' ? (
+        // calling "to me!"
         <g>
           <ellipse cx="100" cy="144" rx="21" ry="16" fill="#5a1f2e" stroke={INK} strokeWidth="3" />
           <ellipse cx="100" cy="153" rx="12" ry="6" fill="#ff6b81" />
         </g>
-      ) : mood === 'ready' ? (
-        <g>
-          <ellipse cx="100" cy="144" rx="13" ry="10" fill="#5a1f2e" stroke={INK} strokeWidth="3" />
-          <ellipse cx="100" cy="150" rx="7" ry="3.5" fill="#ff6b81" />
-        </g>
-      ) : mood === 'happy' || mood === 'dance' ? (
+      ) : mood === 'eager' || mood === 'ready' ? (
+        // a big smile: is it for me?
+        <path d="M78 136 Q100 160 122 136" fill="none" stroke={INK} strokeWidth="5" strokeLinecap="round" />
+      ) : mood === 'happy' || mood === 'dance' || mood === 'catch' || mood === 'cheer' ? (
         <g>
           <path d="M74 134 Q100 168 126 134 Z" fill="#5a1f2e" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
           <path d="M88 152 Q100 160 112 152 Q100 148 88 152" fill="#ff6b81" />
         </g>
-      ) : squeeze ? (
-        <g>
-          <path d="M80 142 Q88 136 96 142 Q104 148 112 142 Q118 138 122 142" fill="none" stroke={INK} strokeWidth="4" strokeLinecap="round" />
-          <path d="M96 143 Q100 162 108 160 Q114 152 110 144" fill="#ff6b81" stroke={INK} strokeWidth="3" />
-        </g>
-      ) : mood === 'burp' ? (
-        <ellipse cx="100" cy="144" rx="10" ry="9" fill="#5a1f2e" stroke={INK} strokeWidth="3" />
-      ) : mood === 'chomp' ? (
-        <motion.ellipse cx="100" cy="144" rx="17" fill="#5a1f2e" stroke={INK} strokeWidth="3"
-          initial={{ ry: 13 }} animate={{ ry: [13, 3, 12, 3, 9, 3] }} transition={{ duration: 0.7 }} />
+      ) : mood === 'nope' ? (
+        // a small, sorry mouth: not mine
+        <path d="M88 146 Q100 140 112 146" fill="none" stroke={INK} strokeWidth="4" strokeLinecap="round" />
       ) : (
         <path d="M84 138 Q100 152 116 138" fill="none" stroke={INK} strokeWidth="4" strokeLinecap="round" />
       )}
