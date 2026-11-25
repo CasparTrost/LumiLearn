@@ -1080,16 +1080,18 @@ function Play({ wide, level, onComplete }) {
             const w = where[it.id]
             if (w === 'out') return null
             const up = w === 'air' || w === 'held'
-            // a small thing still gets a finger-sized place to tap
+            // a small thing still gets a finger-sized place to tap, reaching
+            // up from where it stands (never below the ground, off the screen)
             const hitS = Math.max(s, wide ? 88 : 76)
             return (
               <motion.button key={it.id} ref={el => { refOf(it.id).current = el }} type="button" data-item={it.id} data-w={it.w}
                 data-where={w} data-step={mode === 'order' && S.steps ? S.steps.indexOf(it.id) : undefined}
                 aria-label={it.kind === 'parcel' ? `Paket ${it.n}` : it.label} onClick={keyTap(it.id)}
                 style={{
-                  all: 'unset', position: 'absolute', left: -hitS / 2, top: -hitS / 2, width: hitS, height: hitS, x: m.x, y: m.y, rotate: m.r, scale: m.s,
+                  all: 'unset', position: 'absolute', left: -hitS / 2, top: s / 2 - hitS, width: hitS, height: hitS, x: m.x, y: m.y, rotate: m.r, scale: m.s,
+                  transformOrigin: `50% ${((hitS - s / 2) / hitS) * 100}%`,
                   zIndex: up ? 9 : w === 'plank' ? 5 : w === 'gone' ? 3 : 6, cursor: 'pointer', touchAction: 'none',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent',
+                  display: 'flex', alignItems: 'flex-end', justifyContent: 'center', WebkitTapHighlightColor: 'transparent',
                 }}>
                 <motion.div key={`w${wiggle}`} animate={wiggle && blink.includes(it.e) && !reduce ? { rotate: [0, -12, 10, -8, 5, 0] } : {}} transition={{ duration: 0.6 }}
                   style={{ position: 'relative', width: s, height: s, display: 'flex', alignItems: 'center', justifyContent: 'center', filter: w === 'held' ? 'drop-shadow(0 10px 6px rgba(42,27,61,0.3))' : undefined }}>
