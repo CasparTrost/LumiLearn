@@ -19,7 +19,10 @@ export const THING_RATIO = 0.62 // thing size : bush width
 export const thingY = (bh, T) => ({ top: bh * 0.3 - T, hidden: bh * 0.37 })
 
 export function layoutFor(W, H, n, total) {
-  const pad = 8
+  // on a phone every pixel of width goes to the bushes, and the things are
+  // a little bigger for their bush
+  const narrow = W < 600
+  const pad = narrow ? 4 : 8
   const stripH = clamp(H * 0.075, 36, 50)
   const strip = { x: pad, y: 6, w: W - pad * 2, h: stripH }
   const top = strip.y + stripH + 6
@@ -28,12 +31,12 @@ export function layoutFor(W, H, n, total) {
 
   const lw = side ? clamp(W * 0.23, 140, 250) : 0
   const zone = { x: pad + lw, y: top, w: W - pad * 2 - lw, h: mainH }
-  const gap = clamp(zone.w * 0.018, 4, 16)
+  const gap = narrow ? 3 : clamp(zone.w * 0.018, 4, 16)
   // a bush with its thing standing on top and room for a jump: 1.85 B high
   let B = Math.min(210, (zone.w - (n - 1) * gap) / n)
   B = Math.min(B, side ? (zone.h - 6) / 1.85 : (mainH - 170) / 1.85)
   B = Math.max(B, 64)
-  const bh = B * BUSH_RATIO, T = B * THING_RATIO
+  const bh = B * BUSH_RATIO, T = B * (narrow ? 0.68 : THING_RATIO)
   const ground = zone.y + zone.h - 4
   const rowW = n * B + (n - 1) * gap
   const x0 = zone.x + (zone.w - rowW) / 2
@@ -46,16 +49,20 @@ export function layoutFor(W, H, n, total) {
     const s = clamp(Math.min(lw * 0.7, mainH * 0.46), 76, 170)
     lumi = { x: pad + (lw - s) / 2, y: ground - s, s }
     const room = lumi.y - top - 16
-    bubble = { side: 'top', ax: lumi.x + s * 0.62, ay: lumi.y + s * 0.06, maxW: lw + 40, maxH: Math.max(76, room), size: clamp(Math.min(room, lw * 0.62), 76, 140) }
+    const ax = lumi.x + s * 0.6
+    // centred over her, never past the left edge
+    bubble = { side: 'top', ax, ay: lumi.y + s * 0.06, maxW: 2 * (ax - pad), maxH: Math.max(76, room), size: clamp(Math.min(room, lw * 0.62), 76, 140) }
   } else {
     const room = thingTop - top
-    const s = clamp(room * 0.62, 90, 190)
+    // the bubble needs room for the loudspeaker and a picture beside it
+    const bubbleW = clamp(W * 0.5, 190, 300)
+    const s = clamp(room * 0.62, 90, Math.min(190, W - pad * 2 - bubbleW - 4))
     const size = clamp(s * 0.8, 76, 150)
-    const groupW = s + 18 + size
+    const groupW = s * 0.94 + 14 + bubbleW
     const gx = Math.max(pad, (W - groupW) / 2)
     const y = Math.max(top + 4, thingTop - s - clamp(room * 0.12, 6, 40))
     lumi = { x: gx, y, s }
-    bubble = { side: 'left', ax: gx + s * 0.94, ay: y + s * 0.42, maxW: W - pad - (gx + s + 14), maxH: s * 1.2, size }
+    bubble = { side: 'left', ax: gx + s * 0.94, ay: y + s * 0.42, maxW: Math.min(bubbleW, W - pad - (gx + s * 0.94 + 14)), maxH: s * 1.2, size }
     // the stump Lumi stands on, down behind the bushes
     stump = { x: gx + s / 2, top: y + s * 0.93, bottom: ground - bh * 0.5, w: clamp(s * 0.62, 56, 110) }
   }

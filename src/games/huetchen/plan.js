@@ -33,7 +33,7 @@ export const BANK = [
   W('Trommel', '🥁', 'ding'), W('Anker', '⚓', 'ding'), W('Zauberstab', '🪄', 'ding'), W('Hut', '🎩', 'ding'), W('Eimer', '🪣', 'ding'),
   W('Schuh', '👟', 'ding'), W('Socke', '🧦', 'ding'), W('Hose', '👖', 'ding'), W('Roboter', '🤖', 'ding'), W('Tasse', '☕', 'ding'),
   W('Tasche', '👜', 'ding'), W('Schal', '🧣', 'ding'), W('Dose', '🥫', 'ding'), W('Vase', '🏺', 'ding'), W('Kanne', '🫖', 'ding'),
-  W('Pfanne', '🍳', 'ding'), W('Stein', '🪨', 'ding'), W('Feder', '🪶', 'ding'),
+  W('Stein', '🪨', 'ding'), W('Feder', '🪶', 'ding'),
   // vehicles
   W('Rakete', '🚀', 'fahrt'), W('Zug', '🚂', 'fahrt'), W('Auto', '🚗', 'fahrt'), W('Flugzeug', '✈️', 'fahrt'), W('Schiff', '🚢', 'fahrt'),
   W('Fahrrad', '🚲', 'fahrt'), W('Traktor', '🚜', 'fahrt'), W('Hubschrauber', '🚁', 'fahrt'), W('Bus', '🚌', 'fahrt'), W('Ufo', '🛸', 'fahrt'),
@@ -53,7 +53,7 @@ const EASY = ['Hund', 'Katze', 'Kuh', 'Schwein', 'Löwe', 'Bär', 'Elefant', 'Af
 // hides in every shuffle, and one of it is called. Here a child has to
 // listen to the whole word, not only guess from what it means.
 export const SOUND_SETS = [
-  ['Maus', 'Haus', 'Mais'], ['Hase', 'Vase', 'Hose'], ['Rose', 'Hose', 'Dose'], ['Kanne', 'Pfanne'],
+  ['Maus', 'Haus', 'Mais'], ['Hase', 'Vase', 'Hose'], ['Rose', 'Hose', 'Dose'], ['Kanne', 'Tanne'],
   ['Mond', 'Hund'], ['Schwein', 'Stein'], ['Kuh', 'Schuh'], ['Fisch', 'Tisch'],
   ['Tasse', 'Tasche'], ['Wal', 'Schal'],
 ]
@@ -66,7 +66,7 @@ const READ_MID = [...READ_SHORT, 'Sonne', 'Tiger', 'Zebra', 'Panda', 'Fisch', 'T
 // Look-alike words for the last level: the first letter decides
 export const LOOK_SETS = [
   ['Maus', 'Haus'], ['Hase', 'Vase', 'Nase'], ['Rose', 'Hose', 'Dose'], ['Hund', 'Mund'], ['Fisch', 'Tisch'],
-  ['Tasse', 'Tasche'], ['Wal', 'Schal'], ['Kanne', 'Tanne'], ['Mond', 'Hund'], ['Hahn', 'Zahn'],
+  ['Tasse', 'Tasche'], ['Wal', 'Schal'], ['Kanne', 'Tanne'], ['Hahn', 'Zahn'],
 ]
 // Words only the sets above use (pictures that do not stand alone well)
 const EXTRA = [W('Tisch', ':px-tisch:', 'ding'), W('Nase', '👃', 'ding'), W('Mund', '👄', 'ding'), W('Tanne', '🌲', 'natur'),
@@ -84,7 +84,9 @@ export const tooClose = (a, b) => a !== b && (CLOSE.some(g => g.includes(a) && g
 /**
  * The ten levels.
  *   bushes   how many (five only where the screen is wide enough)
- *   swaps    swaps per shuffle; `near`: only neighbours swap
+ *   swaps    swaps per shuffle (always two neighbours: a swap over a
+ *            third bush hid that one behind the bush in front for a moment,
+ *            and the eye lost which was which)
  *   ms       how long one swap takes (made quicker or slower by how it goes)
  *   finds    things called per shuffle
  *   shuffles per level
@@ -94,8 +96,8 @@ export const tooClose = (a, b) => a !== b && (CLOSE.some(g => g.includes(a) && g
  */
 export const LEVELS = [
   { bushes: 3, swaps: 0, ms: 0,    finds: 1, shuffles: 6, words: 'easy', gap: 1150 },
-  { bushes: 3, swaps: 1, ms: 1400, finds: 1, shuffles: 6, words: 'easy', gap: 1100, near: true },
-  { bushes: 4, swaps: 2, ms: 1200, finds: 1, shuffles: 6, words: 'easy', gap: 1050, near: true },
+  { bushes: 3, swaps: 1, ms: 1400, finds: 1, shuffles: 6, words: 'easy', gap: 1100 },
+  { bushes: 4, swaps: 2, ms: 1200, finds: 1, shuffles: 6, words: 'easy', gap: 1050 },
   { bushes: 4, swaps: 2, ms: 1100, finds: 1, shuffles: 6, words: 'all',  gap: 1000 },
   { bushes: 4, swaps: 3, ms: 1000, finds: 2, shuffles: 5, words: 'all',  gap: 950 },
   { bushes: 4, swaps: 3, ms: 900,  finds: 2, shuffles: 5, words: 'sound', gap: 950 },
@@ -127,17 +129,16 @@ function pool(cfg) {
 }
 
 /**
- * The swaps of one shuffle: pairs of places [a, b]. Never the same pair
- * twice in a row (that would undo it); with `near` only neighbours.
+ * The swaps of one shuffle: pairs of neighbouring places [a, a + 1].
+ * Never the same pair twice in a row (that would undo it).
  */
 export function makeSwaps(cfg, n, rnd = Math.random) {
   const out = []
   for (let k = 0; k < cfg.swaps; k++) {
     let pair
     for (let t = 0; t < 30; t++) {
-      const a = Math.floor(rnd() * n)
-      const b = cfg.near ? (a === n - 1 ? a - 1 : a === 0 ? 1 : a + (rnd() < 0.5 ? -1 : 1)) : (a + 1 + Math.floor(rnd() * (n - 1))) % n
-      const p = [Math.min(a, b), Math.max(a, b)]
+      const a = Math.floor(rnd() * (n - 1))
+      const p = [a, a + 1]
       const last = out[out.length - 1]
       pair = p
       if (!last || last[0] !== p[0] || last[1] !== p[1]) break

@@ -30,9 +30,11 @@ export function Bush({ L, b, mode, reduce, cheeky, onTap, setEl }) {
       // down a little and bigger; both overshoot and settle
       const over = Math.sign(x1 - x0) * B * 0.08
       const back = sw.role === 'back'
+      // over a bush standing between them the one behind goes higher
+      const lift = bh * (0.34 + 0.2 * (Math.abs(sw.to - sw.from) - 1))
       animate = {
         x: [x0, (x0 + x1) / 2, x1 + over, x1],
-        y: back ? [0, -bh * 0.34, 0, 0] : [0, bh * 0.07, 0, 0],
+        y: back ? [0, -lift, 0, 0] : [0, bh * 0.07, 0, 0],
         scale: back ? [1, 0.82, 1.03, 1] : [1, 1.1, 0.98, 1],
         opacity: 1,
       }
@@ -107,7 +109,7 @@ export function Bush({ L, b, mode, reduce, cheeky, onTap, setEl }) {
 function thingMotion(st, Y, T, B, reduce) {
   const fast = { duration: 0.12 }
   if (reduce) {
-    const y = st === 'in' || st === 'gone' ? Y.hidden : st === 'help' ? Y.hidden - T * 0.4 : st === 'out' ? Y.top - T * 0.1 : Y.top
+    const y = st === 'in' || st === 'gone' ? Y.hidden : st === 'help' ? Y.hidden - T * 0.7 : st === 'out' ? Y.top - T * 0.1 : Y.top
     return { animate: { y, scale: 1, rotate: 0, opacity: st === 'gone' || st === 'leave' ? 0 : 1 }, transition: fast }
   }
   switch (st) {
@@ -131,7 +133,7 @@ function thingMotion(st, Y, T, B, reduce) {
     }
     case 'help': return {
       // the top of it peeks out of the leaves
-      animate: { y: [Y.hidden - T * 0.3, Y.hidden - T * 0.45, Y.hidden - T * 0.3], scale: 0.9, rotate: 0, opacity: 1 },
+      animate: { y: [Y.hidden - T * 0.62, Y.hidden - T * 0.8, Y.hidden - T * 0.62], scale: 0.9, rotate: 0, opacity: 1 },
       transition: { duration: 1.2, repeat: Infinity, ease: 'easeInOut' },
     }
     case 'leave': return {
@@ -177,18 +179,18 @@ function Leaves({ B, bh, many }) {
   const n = many ? 9 : 6
   const leaves = Array.from({ length: n }, (_, i) => {
     const a = -Math.PI / 2 + (i / (n - 1) - 0.5) * 2.4 + rand(-0.2, 0.2)
-    const d = B * rand(0.35, 0.7)
-    return { id: i, dx: Math.cos(a) * d, dy: Math.sin(a) * d, r: rand(-260, 260), s: B * rand(0.1, 0.15), c: i % 3 ? '#6cc565' : '#a6de7a' }
+    const d = B * rand(0.4, 0.75)
+    return { id: i, dx: Math.cos(a) * d, dy: Math.sin(a) * d, r: rand(-260, 260), s: Math.max(16, B * rand(0.15, 0.21)), c: ['#3c9447', '#5bbd55', '#8ad66f'][i % 3] }
   })
   return (
     <div aria-hidden="true" style={{ position: 'absolute', left: '50%', top: bh * 0.25, width: 0, height: 0, pointerEvents: 'none', zIndex: 6 }}>
       {leaves.map(l => (
         <motion.svg key={l.id} viewBox="0 0 20 12" width={l.s} height={l.s * 0.6}
           initial={{ x: 0, y: 0, rotate: 0, opacity: 1 }}
-          animate={{ x: [0, l.dx, l.dx * 1.2], y: [0, l.dy, l.dy + B * 0.45], rotate: [0, l.r * 0.6, l.r], opacity: [1, 1, 0] }}
-          transition={{ duration: 1, times: [0, 0.35, 1], ease: 'easeOut' }}
+          animate={{ x: [0, l.dx, l.dx * 1.25], y: [0, l.dy, l.dy + B * 0.5], rotate: [0, l.r * 0.6, l.r], opacity: [1, 1, 1, 0] }}
+          transition={{ duration: 1.2, times: [0, 0.3, 1], ease: 'easeOut', opacity: { duration: 1.2, times: [0, 0.3, 0.75, 1] } }}
           style={{ position: 'absolute', left: -l.s / 2, top: -l.s * 0.3 }}>
-          <path d="M1 6 Q10 -3 19 6 Q10 15 1 6 Z" fill={l.c} stroke={INK} strokeWidth="1.6" />
+          <path d="M1 6 Q10 -3 19 6 Q10 15 1 6 Z" fill={l.c} stroke={INK} strokeWidth="1.8" />
           <path d="M3 6 H16" stroke={INK} strokeWidth="1" />
         </motion.svg>
       ))}
@@ -223,15 +225,11 @@ export function Bubble({ L, children, wood, k }) {
   const bb = L.bubble
   const left = bb.side === 'left'
   const bg = wood ? '#e9b872' : '#fffdf7'
-  const pos = left
-    ? { left: bb.ax + 14, top: bb.ay, y: '-50%' }
-    : { left: bb.ax, bottom: L.H - bb.ay + 14, x: '-50%' }
-  const { x, y, ...place } = pos
-  return (
-    <motion.div key={k} initial={{ scale: 0.3, opacity: 0, x, y }} animate={{ scale: 1, opacity: 1, x, y }}
+  const box = (
+    <motion.div key={k} initial={{ scale: 0.3, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
       transition={{ type: 'spring', stiffness: 380, damping: 18 }}
       style={{
-        position: 'absolute', ...place, zIndex: 7, maxWidth: bb.maxW, boxSizing: 'border-box',
+        position: 'relative', maxWidth: bb.maxW, boxSizing: 'border-box', pointerEvents: 'auto',
         background: bg, border: `4px solid ${INK}`, borderRadius: wood ? 14 : 22, padding: wood ? '6px 10px' : 8,
         boxShadow: wood ? 'inset 0 4px 0 rgba(255,255,255,0.35), inset 0 -5px 0 rgba(0,0,0,0.14), 0 5px 0 rgba(42,27,61,0.3)' : '0 5px 0 rgba(42,27,61,0.28)',
         display: 'flex', alignItems: 'center', gap: 8, transformOrigin: left ? '0% 50%' : '50% 100%',
@@ -251,6 +249,11 @@ export function Bubble({ L, children, wood, k }) {
       }} />
     </motion.div>
   )
+  // to her right, its middle level with her face; or above her, centred on
+  // her (in a column as wide as there is room on both sides)
+  return left
+    ? <div style={{ position: 'absolute', left: bb.ax + 14, top: bb.ay, transform: 'translateY(-50%)', zIndex: 7 }}>{box}</div>
+    : <div style={{ position: 'absolute', left: bb.ax - bb.maxW / 2, width: bb.maxW, bottom: L.H - bb.ay + 14, zIndex: 7, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>{box}</div>
 }
 
 /** The loudspeaker: Lumi says the word again. */

@@ -276,6 +276,7 @@ export default function ListenGame({ level = 1, onComplete }) {
     setMood('oops', 1000)
     patch(b.id, { thing: 'peek' })
     rustle(b.id)
+    sfx.boing()
     // the one in there says who it is
     narrate([wordRec(b.word)])
     const t = g.target
@@ -366,7 +367,9 @@ export default function ListenGame({ level = 1, onComplete }) {
         </Bubble>
       )
     } else if (calling && cfg.read) {
-      const fs = clamp(bs * 0.36, 28, 50)
+      // the word as big as it fits, next to its picture once it is found
+      const picS = clamp(bs * 0.55, 48, 80)
+      const fs = Math.max(20, Math.min(clamp(bs * 0.36, 28, 50), (L.bubble.maxW - 52 - (phase === 'found' ? picS + 8 : 0)) / (0.64 * target.word.length + 0.5)))
       bubble = (
         <Bubble L={L} k={`sign-${target.word}`} wood>
           <motion.button type="button" ref={speakerRef} onClick={say} aria-label={`${target.word}. Vorlesen`}
@@ -376,17 +379,19 @@ export default function ListenGame({ level = 1, onComplete }) {
               display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff3d6', border: '3px solid #2a1b3d', borderRadius: 10,
               fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: fs, color: '#2a1b3d', letterSpacing: 1, whiteSpace: 'nowrap',
             }}>{target.word}</motion.button>
-          {phase === 'found' && <Art art={target.emoji} size={clamp(bs * 0.55, 48, 80)} />}
+          {phase === 'found' && <Art art={target.emoji} size={picS} />}
         </Bubble>
       )
     } else if (calling) {
+      // the loudspeaker and the picture beside it, as big as the bubble allows
       const sp = clamp(bs * 0.6, 64, 84)
+      const picC = Math.max(44, Math.min(clamp(bs * 0.62, 56, 96), L.bubble.maxW - 24 - 8 - sp))
       bubble = (
         <Bubble L={L} k="call">
           <Speaker size={sp} onTap={say} pulse={phase === 'find' && !reduce} btnRef={speakerRef} />
           {pic && (
             <motion.div key={target.word} initial={reduce ? false : { scale: 0, rotate: -30 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 360, damping: 13 }}>
-              <Art art={target.emoji} size={clamp(bs * 0.62, 56, 96)} />
+              <Art art={target.emoji} size={picC} />
             </motion.div>
           )}
         </Bubble>
