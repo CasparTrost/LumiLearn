@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { THINGS, ROOMS, ROOM_IDS, LEVELS, CAT, planLevel, planRoom, levelConfig, tasksIn } from '../../src/games/schatten/data.js'
+import { THINGS, ROOMS, ROOM_IDS, LEVELS, CAT, planLevel, planRoom, levelConfig, tasksIn, tiltOf } from '../../src/games/schatten/data.js'
 import { layoutFor, MIN_CARD } from '../../src/games/schatten/layout.js'
-import { makeRoom, spawn, step, flee, inLight, lookOf } from '../../src/games/schatten/sim.js'
+import { makeRoom, spawn, step, flee, inLight, lookOf, placeApart, tapTarget, ceilingOf, behindFurniture } from '../../src/games/schatten/sim.js'
 import { hasEmojiArt } from '../../src/lib/emojiArt.jsx'
 import { LINES } from '../../src/lib/lumiLines.js'
 
@@ -15,6 +15,9 @@ const group = e => THINGS[e].group
 
 describe('what hides in the rooms', () => {
   it('has a picture and a recorded word for every thing', () => {
+    // no toadstool among the food; orange and lemon count as look-alikes
+    expect(ROOMS.kueche).not.toContain('🍄')
+    expect(THINGS['🍊'].group).toBe(THINGS['🍋'].group)
     for (const [e, t] of Object.entries(THINGS)) {
       expect(hasEmojiArt(e), `${t.name} ${e}`).toBe(true)
       expect(LINES[t.word], `${t.name}: ${t.word}`).toBeTruthy()
@@ -151,5 +154,92 @@ describe('the shadows in the dark', () => {
     expect(lookOf('🐌')).toBe(1)
     expect(lookOf('🍎')).toBe(0)
     expect(lookOf('🦋')).toBe(0)
+  })
+})
+
+describe('a tapped card', () => {
+  const S = 80
+  const off = { a: 0, x: 0, y: 0, r: 100 }
+  const lit = (id, e, x, y, seenAt = null) => ({ id, e, x, y, state: 'caught', seenAt })
+
+  it('goes to the lit shadow in the light now, whatever card it is', () => {
+    const a = lit('a', '🐕', 100, 100, 5), b = lit('b', '🐺', 400, 100, 9)
+    expect(tapTarget([a, b], { a: 1, x: 105, y: 100, r: 100 }, S)).toBe(a)
+  })
+
+  it('else goes to the one looked at last, never to the one it fits', () => {
+    const a = lit('a', '🐕', 100, 100, 5), b = lit('b', '🐺', 400, 100, 9)
+    expect(tapTarget([a, b], off, S)).toBe(b)
+    // the rule knows nothing of the card: the same target for every card
+    expect(tapTarget.length).toBe(3)
+  })
+
+  it('does not go to shadows the joker lit that the child has not looked at', () => {
+    const a = lit('a', '🐕', 100, 100), b = lit('b', '🐺', 400, 100)
+    expect(tapTarget([a, b], off, S)).toBe(null)
+    b.seenAt = 3
+    expect(tapTarget([a, b], off, S)).toBe(b)
+  })
+
+  it('waits while a card is on its way to the one looked at last', () => {
+    const a = lit('a', '🐕', 100, 100, 5), b = { ...lit('b', '🐺', 400, 100, 9), state: 'flying' }
+    expect(tapTarget([a, b], off, S)).toBe(null)
+  })
+
+  it('cannot solve a room by tapping every card blind after the joker', () => {
+    // the game's loop, cut down: joker lights all, the nearest gets the focus;
+    // every card is tapped once from left to right and judged where it lands
+    for (let seed = 1; seed <= 200; seed++) {
+      const rnd = seeded(seed)
+      const plan = planRoom('stall', levelConfig(10), new Set(), rnd)
+      const shadows = plan.shadows.map((e, i) => lit(i, e, 100 + i * 120, 150))
+      shadows[Math.floor(rnd() * shadows.length)].seenAt = 0
+      let right = 0
+      for (const card of plan.cards) {
+        const s = tapTarget(shadows, off, S)
+        if (s && s.e === card) { s.state = 'found'; right++ }
+      }
+      expect(right, plan.cards.join('')).toBeLessThanOrEqual(1)
+    }
+  })
+})
+
+describe('caught shadows', () => {
+  it('hold still apart from each other, both ways, so no two outlines merge', () => {
+    for (const [W, H, S] of [[988, 484, 145], [370, 519, 81], [570, 252, 76]]) {
+      const room = makeRoom(W, H, S, [{ x: W * 0.3, w: W * 0.2, top: H * 0.8 }])
+      for (let seed = 1; seed <= 40; seed++) {
+        const rnd = seeded(seed)
+        // the joker: five caught at once, standing close together
+        const held = []
+        for (let i = 0; i < 6; i++) {
+          held.push(placeApart({ x: W / 2 + (rnd() - 0.5) * S, y: H * 0.6 + (rnd() - 0.5) * S * 0.5 }, held, room))
+        }
+        for (const p of held) {
+          expect(p.x).toBeGreaterThanOrEqual(room.x0 - 0.01)
+          expect(p.x).toBeLessThanOrEqual(room.x1 + 0.01)
+          expect(p.y).toBeGreaterThanOrEqual(room.top - 0.01)
+          for (const o of held) if (o !== p) expect(Math.hypot(o.x - p.x, o.y - p.y), `${W}x${H}`).toBeGreaterThanOrEqual(S * 1.1 - 0.01)
+          expect(behindFurniture(p, room)).toBe(false)
+        }
+      }
+    }
+  })
+
+  it('keep the band under the ceiling free for the lamps', () => {
+    for (const [W, H, S] of [[988, 484, 145], [370, 519, 81], [570, 252, 76]]) {
+      const room = makeRoom(W, H, S)
+      // a thing in the air, at its highest and bobbing up, stays below the lamp shades
+      expect(room.air[0] - S * 0.5 - S * 0.05).toBeGreaterThanOrEqual(ceilingOf(H, S))
+      expect(room.air[1]).toBeGreaterThan(room.air[0])
+    }
+  })
+
+  it('tip over only where the outline stays clear (animals), and not far', () => {
+    const top = levelConfig(10)
+    expect(top.tilt).toBeLessThanOrEqual(20)
+    for (const e of ['🚂', '🚗', '✈️', '🚀', '🍎', '🍊', '🥒', '🍌', '🎈']) expect(tiltOf(e, top), e).toBe(0)
+    for (const e of ['🐕', '🐄', '🦉']) expect(tiltOf(e, top), e).toBe(top.tilt)
+    expect(tiltOf('🐕', levelConfig(5))).toBe(0)
   })
 })

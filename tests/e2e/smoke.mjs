@@ -105,9 +105,10 @@ for (const [size, dim] of Object.entries(SIZES)) {
 }
 
 // Plays Schattenrätsel (Taschenlampen-Jagd) to the results: the mouse
-// shines on a shadow until it is caught, then its card is tapped and flies
-// to it. With `wrongOnce`, the first caught shadow gets a card that fits no
-// lit shadow first (it shakes its head, the card flies back). Everything is
+// shines on a shadow until it is caught, then the card of the shadow in
+// focus (data-focus, where a tapped card goes) is tapped and flies to it.
+// With `wrongOnce`, the first caught shadow gets a card that fits no lit
+// shadow first (it shakes its head, the card flies back). Everything is
 // read from data attributes and clicked by coordinates, never by waiting
 // for an element to hold still: the shadows and cards are always moving.
 async function playShadows(page, { wrongOnce = false } = {}) {
@@ -122,15 +123,16 @@ async function playShadows(page, { wrongOnce = false } = {}) {
       const mid = el => { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 } }
       return {
         phase: root.dataset.phase,
-        shadows: [...root.querySelectorAll('[data-shadow]')].map(el => ({ e: el.dataset.shadow, state: el.dataset.state, ...mid(el) })),
+        shadows: [...root.querySelectorAll('[data-shadow]')].map(el => ({ e: el.dataset.shadow, state: el.dataset.state, focus: el.dataset.focus === '1', ...mid(el) })),
         cards: [...root.querySelectorAll('[data-card]')].map(el => ({ e: el.dataset.card, ...mid(el) })),
       }
     }).catch(() => null)
     if (!s) break
     if (s.phase !== 'play') { await page.waitForTimeout(250); continue }
     const lit = s.shadows.filter(x => x.state === 'caught')
-    if (lit.length) {
-      let card = s.cards.find(c => c.e === lit[0].e)
+    const focus = lit.find(x => x.focus)
+    if (focus) {
+      let card = s.cards.find(c => c.e === focus.e)
       if (!wrong) {
         const other = s.cards.find(c => !lit.some(x => x.e === c.e))
         if (other) { wrong = true; card = other }

@@ -37,6 +37,12 @@ export const isAirborne = move => AIRBORNE.has(move)
  */
 export const floorOf = (W, H) => H * (W / H < 1 ? 0.46 : W / H < 1.4 ? 0.53 : 0.6)
 
+/** How far a lamp's cord hangs down from the ceiling, and how big its shade is. */
+export const lampDrop = H => Math.round(clamp(H * 0.06, 10, 36))
+export const lampSize = S => Math.round(clamp(S * 0.5, 34, 58))
+/** The band under the ceiling where the lamps of the found things hang: no shadow goes there. */
+export const ceilingOf = (H, S) => lampDrop(H) + Math.round(lampSize(S) * 0.68) + 4
+
 /**
  * The room as the shadows see it. W, H: its size; S: a shadow's size;
  * floor: where wall and floor meet (y); hides: the low furniture in front
@@ -44,14 +50,79 @@ export const floorOf = (W, H) => H * (W / H < 1 ? 0.46 : W / H < 1.4 ? 0.53 : 0.
  */
 export function makeRoom(W, H, S, hides = []) {
   const floor = Math.round(floorOf(W, H))
+  // things in the air keep below the lamps (their bobbing included)
+  const top = Math.max(S * 0.6, ceilingOf(H, S) + S * 0.55)
   return {
-    W, H, S, floor, hides,
+    W, H, S, floor, hides, top,
     x0: S * 0.55, x1: W - S * 0.55,
     // things on the floor: from just below the skirting to the front edge
     ground: [Math.min(floor + S * 0.05, H - S * 0.6), H - S * 0.55],
-    // things in the air: under the ceiling to above the floor
-    air: [S * 0.6, Math.max(S * 0.6, floor - S * 0.15)],
+    // things in the air: under the lamps to above the floor
+    air: [top, Math.max(top, floor - S * 0.15)],
   }
+}
+
+/** Would a thing at p crouch behind a piece of the furniture in front (only its top half showing)? */
+export const behindFurniture = (p, room) => room.hides.some(h => Math.abs(p.x - h.x) < h.w / 2 + room.S * 0.3 && p.y + room.S * 0.45 > h.top)
+
+/**
+ * Where a caught shadow holds still: at p, or the nearest place from
+ * which it stands at least `gap` (1.1 shadows) from every other held
+ * shadow (`others`: their places), in the room, under the lamps and not
+ * behind the furniture, so every outline shows on its own.
+ */
+export function placeApart(p, others, room, gap = room.S * 1.1) {
+  const lo = room.top, hi = room.H - room.S * 0.5
+  const inRoom = q => ({ x: clamp(q.x, room.x0, room.x1), y: clamp(q.y, lo, Math.max(lo, hi)) })
+  const nearest = q => others.reduce((m, o) => Math.min(m, Math.hypot(o.x - q.x, o.y - q.y)), Infinity)
+  const start = inRoom(p)
+  if (nearest(start) >= gap) return start
+  let best = null
+  for (let ring = 1; ring <= 8; ring++) {
+    let found = null
+    for (let k = 0; k < 24; k++) {
+      const a = (k / 24) * Math.PI * 2
+      const q = inRoom({ x: start.x + Math.cos(a) * gap * ring * 0.5, y: start.y + Math.sin(a) * gap * ring * 0.5 })
+      const far = nearest(q), dist = Math.hypot(q.x - start.x, q.y - start.y)
+      if (far >= gap && !behindFurniture(q, room)) { if (!found || dist < found.dist) found = { ...q, dist } }
+      if (!best || far > best.far) best = { ...q, far }
+    }
+    if (found) return { x: found.x, y: found.y }
+  }
+  // the room is full: the place farthest from the others
+  return { x: best.x, y: best.y }
+}
+
+/**
+ * Which shadow a tapped card flies to: the lit one in the torch light now
+ * (the nearest to its middle), else the lit one the child looked at last
+ * (caught or shone on with the torch: `seenAt`). Never the one the card
+ * fits: what goes where is the child's work. Shadows lit only by the light
+ * joker and not looked at since are no target. null: none.
+ */
+export function tapTarget(shadows, beam, S) {
+  const now = inBeam(shadows, beam, S)
+  if (now) return now
+  // a card on its way to the one looked at last keeps the focus there: a
+  // second quick tap waits, it does not go to another one
+  let best = null
+  for (const s of shadows) {
+    if ((s.state === 'caught' || s.state === 'flying') && s.seenAt != null && (!best || s.seenAt > best.seenAt)) best = s
+  }
+  return best?.state === 'caught' ? best : null
+}
+/** The caught shadow in the torch light now (the nearest to its middle), or null. */
+export function inBeam(shadows, beam, S) {
+  if (!(beam.a > 0.5)) return null
+  let best = null
+  for (const s of shadows) {
+    if (s.state !== 'caught') continue
+    const p = { x: s.slideTo ?? s.x, y: s.liftTo ?? s.y }
+    if (!inLight(p, { ...beam, r: beam.r * 1.15 }, S)) continue
+    const d = Math.hypot(p.x - beam.x, p.y - beam.y)
+    if (!best || d < best.d) best = { s, d }
+  }
+  return best?.s ?? null
 }
 
 function randomSpot(s, room, rnd, others = []) {

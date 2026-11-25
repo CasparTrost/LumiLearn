@@ -7,7 +7,8 @@
  *     top, the dark room in the middle, the cards in one or two rows below
  *   • side (a phone on its side, little height): the garland on top, the
  *     room on the left, the cards in one or two columns on the right
- * The star counter sits at the right end of the garland row.
+ * The star counter sits at the right end of the garland row, the light
+ * joker beside it (or under it, when the garland needs two rows).
  */
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
@@ -36,12 +37,27 @@ export function layoutFor(w, h, cards, slots) {
   const side = h < 500 && w / h > 1.45
   const hud = side || w < 560 ? 30 : 36
   const hudW = hud * 2.3 + 12
-  // the garland: a bulb and a friend per shadow
-  const gw = w - 2 * pad - hudW - GAP
-  const pic = clamp(Math.floor(gw / slots) - 6, 16, side ? 34 : 44)
-  const gh = pic + 24
-  const garland = { x: pad, y: Math.round(pad * 0.5), w: gw, h: gh, pic }
-  const hudBox = { x: w - pad - hudW, y: garland.y + Math.max(0, (gh - hud - 10) / 2), size: hud }
+  // the light joker sits outside the room, beside the star counter
+  const J = side || w < 560 ? 44 : 52
+  // the garland: a bulb and a friend per shadow; in two rows when one
+  // row would make the friends tiny (many shadows on a narrow screen),
+  // and then the joker goes under the star counter
+  const full = w - 2 * pad - hudW - GAP
+  const max = side ? 34 : 44
+  let rows = 1, gw = full - J - GAP
+  let pic = clamp(Math.floor(gw / slots) - 6, 16, max)
+  if (!side && slots >= 12 && pic < 24) {
+    rows = 2
+    gw = full
+    pic = clamp(Math.floor(gw / Math.ceil(slots / 2)) - 6, 16, max)
+  }
+  const rowH = pic + 24
+  const gh = rows === 1 ? Math.max(rowH, J + 6) : Math.max(rows * rowH - 4, hud + 24 + J)
+  const garland = { x: pad, y: Math.round(pad * 0.5), w: gw, h: gh, pic, rows, rowH }
+  const hudBox = { x: w - pad - hudW, y: garland.y + (rows === 1 ? Math.max(0, (gh - hud - 10) / 2) : 0), size: hud }
+  const joker = rows === 1
+    ? { x: w - pad - hudW - GAP - J, y: garland.y + (gh - J) / 2, size: J }
+    : { x: w - pad - hudW + (hudW - J) / 2, y: hudBox.y + hud + 12, size: J }
   const top = garland.y + gh + GAP
 
   if (side) {
@@ -50,14 +66,14 @@ export function layoutFor(w, h, cards, slots) {
     const cw = grid.w
     const room = { x: pad, y: top, w: w - 3 * pad - cw, h: bh }
     const cardBox = { x: w - pad - cw, y: top + Math.max(0, (bh - grid.h) / 2), ...grid }
-    return { side, pad, garland, hud: hudBox, room, cards: cardBox, ...sizes(room) }
+    return { side, pad, garland, hud: hudBox, joker, room, cards: cardBox, ...sizes(room) }
   }
   const maxCard = clamp(Math.round(h * 0.15), MIN_CARD + 8, 120)
   const grid = cardGrid(cards, w - 2 * pad, h * 0.3, maxCard, { maxLines: 2 })
   const roomH = h - top - grid.h - GAP - pad
   const room = { x: pad, y: top, w: w - 2 * pad, h: roomH }
   const cardBox = { x: (w - grid.w) / 2, y: top + roomH + GAP, ...grid }
-  return { side, pad, garland, hud: hudBox, room, cards: cardBox, ...sizes(room) }
+  return { side, pad, garland, hud: hudBox, joker, room, cards: cardBox, ...sizes(room) }
 }
 
 /** The size of a shadow and of the torch light in a room. */

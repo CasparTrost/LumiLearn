@@ -30,13 +30,14 @@ export const THINGS = {
   '🍊': { name: 'Orange', word: 'wort/orange', move: 'roll', group: 'round' },
   '🍅': { name: 'Tomate', word: 'wort/tomate', move: 'roll', group: 'round' },
   '🧅': { name: 'Zwiebel', word: 'wort/zwiebel', move: 'roll', group: 'round' },
-  '🍋': { name: 'Zitrone', word: 'wort/zitrone', move: 'roll', group: 'oval' },
+  // orange and lemon: a round body with a leaf on top, alike in outline
+  '🍋': { name: 'Zitrone', word: 'wort/zitrone', move: 'roll', group: 'round' },
   '🥚': { name: 'Ei', word: 'wort/ei', move: 'roll', group: 'oval' },
   '🍌': { name: 'Banane', word: 'wort/banane', move: 'hop', group: 'long' },
   '🥕': { name: 'Möhre', word: 'wort/moehre', move: 'hop', group: 'long' },
-  '🍆': { name: 'Aubergine', word: 'wort/aubergine', move: 'hop', group: 'long' },
+  '🌽': { name: 'Mais', word: 'wort/mais', move: 'hop', group: 'long' },
   '🥒': { name: 'Gurke', word: 'wort/gurke', move: 'hop', group: 'long' },
-  '🍄': { name: 'Pilz', word: 'wort/pilz', move: 'hop', group: 'pilz' },
+  '🥦': { name: 'Brokkoli', word: 'wort/brokkoli', move: 'hop', group: 'brokkoli' },
   '🍇': { name: 'Traube', word: 'wort/traube', move: 'hop', group: 'traube' },
   // Wohnzimmer: animals that sneaked in
   '🐕': { name: 'Hund', word: 'wort/hund', move: 'walk', group: 'dog' },
@@ -57,7 +58,8 @@ export const THINGS = {
   '🦉': { name: 'Eule', word: 'wort/eule', move: 'fly', group: 'eule' },
   '🕷️': { name: 'Spinne', word: 'wort/spinne', move: 'crawl', group: 'bugs' },
   '🐜': { name: 'Ameise', word: 'wort/ameise', move: 'crawl', group: 'bugs' },
-  '🐞': { name: 'Käfer', word: 'wort/kaefer', move: 'crawl', group: 'bugs' },
+  // `say`: a better word, said instead of `word` once it is recorded
+  '🐞': { name: 'Marienkäfer', word: 'wort/kaefer', say: 'wort/marienkaefer', move: 'crawl', group: 'bugs' },
   '🐛': { name: 'Raupe', word: 'wort/raupe', move: 'crawl', group: 'raupe' },
   // Stall: the farm animals' barn
   '🐄': { name: 'Kuh', word: 'wort/kuh', move: 'walk', group: 'horned' },
@@ -78,7 +80,7 @@ export const CAT = '🐱'
 /** The rooms; each has its own furniture (schatten/Room.jsx) and its own inhabitants. */
 export const ROOMS = {
   kinderzimmer: ['🧸', '🚗', '🚂', '🚀', '✈️', '🚁', '🎈', '🦕', '🦖', '🐉'],
-  kueche: ['🍎', '🍐', '🍊', '🍅', '🧅', '🍋', '🥚', '🍌', '🥕', '🍆', '🥒', '🍄', '🍇'],
+  kueche: ['🍎', '🍐', '🍊', '🍅', '🧅', '🍋', '🥚', '🍌', '🥕', '🌽', '🥒', '🥦', '🍇'],
   wohnzimmer: ['🐕', '🐺', '🦊', '🐇', '🐿️', '🐹', '🐭', '🐢', '🐌', '🦔', '🐸'],
   dachboden: ['🦇', '🦋', '🐝', '🦉', '🕷️', '🐜', '🐞', '🐛', '🐭'],
   stall: ['🐄', '🐐', '🐎', '🦄', '🐖', '🐑', '🐓', '🐔', '🦆', '🐤'],
@@ -105,9 +107,21 @@ export const LEVELS = [
   { n: 4, extra: 2, rooms: 3, beam: 0.78, speed: 1.05, eyes: 0.5, alike: 1, mirror: false, tilt: 0, cat: 0.6, hold: 5 },
   { n: 4, extra: 2, rooms: 4, beam: 0.74, speed: 1.15, eyes: 0.4, alike: 2, mirror: true, tilt: 0, cat: 0.6, hold: 5 },
   { n: 5, extra: 2, rooms: 3, beam: 0.7, speed: 1.25, eyes: 0.35, alike: 2, mirror: true, tilt: 0, cat: 0.6, hold: 4.5 },
-  { n: 5, extra: 2, rooms: 3, beam: 0.66, speed: 1.35, eyes: 0.3, alike: 2, mirror: true, tilt: 25, cat: 0.6, hold: 4.5 },
-  { n: 5, extra: 2, rooms: 4, beam: 0.62, speed: 1.45, eyes: 0.25, alike: 2, mirror: true, tilt: 35, cat: 0.6, hold: 4 },
+  { n: 5, extra: 2, rooms: 3, beam: 0.66, speed: 1.35, eyes: 0.3, alike: 2, mirror: true, tilt: 15, cat: 0.6, hold: 4.5 },
+  { n: 5, extra: 2, rooms: 4, beam: 0.62, speed: 1.45, eyes: 0.25, alike: 2, mirror: true, tilt: 20, cat: 0.6, hold: 4 },
 ]
+
+/**
+ * How far a caught shadow is tipped over (degrees, either way): only the
+ * animals, and the dinos and the teddy. Things like a car, a rocket, a
+ * cucumber or an apple turn into a blob when tipped (or look like
+ * another thing), so they stay upright.
+ */
+const UPRIGHT = new Set(['wheels', 'air', 'balloon'])
+export const tiltOf = (e, cfg) => (!cfg.tilt || !THINGS[e] || UPRIGHT.has(THINGS[e].group) || ROOMS.kueche.includes(e) ? 0 : cfg.tilt)
+
+/** Things that are not alive: in the dark they glint instead of looking out with eyes. */
+export const glints = e => ROOMS.kueche.includes(e)
 
 export const levelConfig = level => LEVELS[Math.max(1, Math.min(10, Math.round(level) || 1)) - 1]
 

@@ -9,9 +9,9 @@ import { playAnimal } from '../lib/animalSounds.js'
 import { Art, useBursts, useJuice, HintHand } from '../components/play/index.js'
 import { useLater } from './zahlen/stage.jsx'
 import { pxCard } from './px.js'
-import { THINGS, CAT, planLevel, levelConfig, tasksIn } from './schatten/data.js'
+import { THINGS, CAT, planLevel, levelConfig, tasksIn, tiltOf, glints } from './schatten/data.js'
 import { layoutFor } from './schatten/layout.js'
-import { makeRoom, spawn, step, flee, gait, inLight, lookOf, floorOf } from './schatten/sim.js'
+import { makeRoom, spawn, step, flee, gait, inLight, lookOf, floorOf, placeApart, tapTarget, inBeam, lampDrop, lampSize } from './schatten/sim.js'
 import { Backdrop, Furniture, hidesOf } from './schatten/Room.jsx'
 import { Garland, Eyes, CeilingLamp, Bunting, Joker, slotAt } from './schatten/parts.jsx'
 import { gasp, lampOn, wakeSound } from './schatten/sound.js'
@@ -29,12 +29,14 @@ import { gasp, lampOn, wakeSound } from './schatten/sound.js'
  * fetch a card.
  *
  * The cards below show the things in colour. Drag a card onto a lit
- * shadow, or just tap the card: it flies to the shadow that is lit.
+ * shadow, or just tap the card: it flies to the lit shadow the child is
+ * looking at (the one in the light now, else the one lit last), never to
+ * the one it happens to fit (schatten/sim.js tapTarget).
  *   • Right: a lamp comes down over it and clicks on, the thing turns
  *     colourful, Lumi says its name, it waves and climbs up the cord onto
  *     the garland of friends above the room (a star flies to the counter).
- *   • Wrong: the card's own outline shows over the shadow for a moment (it
- *     does not fit), the shadow shakes its head and the card flies back.
+ *   • Wrong: the card's own outline shows white over the shadow for a
+ *     moment (two outlines that do not fit), the shadow shakes its head and the card flies back.
  *     After two wrong cards on one shadow it stays lit and the hand shows
  *     the right card.
  * Every shadow found, the whole room lights up and its friends come down
@@ -57,7 +59,7 @@ import { gasp, lampOn, wakeSound } from './schatten/sound.js'
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 const optional = key => (LINES[key] ? line(key) : null)
-const wordOf = e => optional(THINGS[e]?.word)
+const wordOf = e => optional(THINGS[e]?.say) ?? optional(THINGS[e]?.word)
 const nameOf = e => THINGS[e]?.name ?? 'Katze'
 let seq = 0
 
@@ -116,6 +118,8 @@ export default function ShadowGame({ level = 1, onComplete }) {
   const [help, setHelp] = useState(null)            // a shadow missed twice: the hand shows its card
   const [caughtId, setCaughtId] = useState(null)    // the shadow caught last
   const [demo, setDemo] = useState(false)           // a finger shows the torch
+  // a mouse: the light sits on the pointer, so the demo shows no finger
+  const mouse = useRef(typeof matchMedia === 'function' && matchMedia('(hover: hover) and (pointer: fine)').matches)
   const [, setVer] = useState(0)
   const bump = useCallback(() => setVer(v => v + 1), [])
   const firstTry = useRef(0)
@@ -161,7 +165,9 @@ export default function ShadowGame({ level = 1, onComplete }) {
       roomIdx, geo, shadows, t: 0,
       // the torch lies ready at the front of the room until a finger picks it up
       beam: { on: false, a: 0, x: RW / 2, y: RH / 2 }, input: null, used: false,
-      lastInput: performance.now(), demo: null, flashUntil: -1, lamps: [], dragging: false, lastCaught: null,
+      lastInput: performance.now(), demo: null, flashUntil: -1, lamps: [], dragging: false,
+      // focus: the lit shadow a tapped card goes to · caughtOnce: the child caught one here (no more demo)
+      focus: null, caughtOnce: false,
     }
     bump()
   }, [L, roomIdx]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -183,9 +189,11 @@ export default function ShadowGame({ level = 1, onComplete }) {
 
   const lift = (s, geo) => {
     // caught while crouching behind the furniture: it pops up over it
+    let y = s.y
     for (const h of geo.hides) {
-      if (Math.abs(s.x - h.x) < h.w / 2 + geo.S * 0.3 && s.y + geo.S * 0.45 > h.top) s.liftTo = Math.min(s.y, h.top - geo.S * 0.42)
+      if (Math.abs(s.x - h.x) < h.w / 2 + geo.S * 0.3 && s.y + geo.S * 0.45 > h.top) y = Math.min(y, h.top - geo.S * 0.42)
     }
+    return y
   }
 
   const catRuns = s => {
@@ -205,22 +213,18 @@ export default function ShadowGame({ level = 1, onComplete }) {
     s.caughtAt = w.t
     s.litUntil = w.t + cfg.hold
     s.sxCaught = cfg.mirror ? (s.sx < 0 ? -1 : 1) : 1
-    s.tiltTo = cfg.tilt ? (Math.random() < 0.5 ? -1 : 1) * cfg.tilt : 0
-    lift(s, w.geo)
-    // caught on top of another lit one: it slips aside, so both outlines show
+    s.tiltTo = (Math.random() < 0.5 ? -1 : 1) * tiltOf(s.e, cfg)
+    // over the furniture, and apart from the other lit ones (both ways),
+    // so every outline shows on its own
     const held = w.shadows.filter(o => o !== s && (o.state === 'caught' || o.state === 'flying' || o.state === 'found'))
-    for (let k = 0; k < 4; k++) {
-      const o = held.find(o => Math.hypot(o.x - (s.slideTo ?? s.x), (o.liftTo ?? o.y) - (s.liftTo ?? s.y)) < w.geo.S * 0.95)
-      if (!o) break
-      const dir = (s.slideTo ?? s.x) >= o.x ? 1 : -1
-      let x = o.x + dir * w.geo.S
-      if (x < w.geo.x0 || x > w.geo.x1) x = o.x - dir * w.geo.S
-      s.slideTo = clamp(x, w.geo.x0, w.geo.x1)
-    }
+    const p = placeApart({ x: s.x, y: lift(s, w.geo) }, held.map(o => ({ x: o.slideTo ?? o.x, y: o.liftTo ?? o.y })), w.geo)
+    s.slideTo = p.x
+    s.liftTo = p.y
     s.hiding = false
-    w.lastCaught = s.id
+    w.caughtOnce = true
+    // the joker lights them all, but the child has not looked at them yet
+    s.seenAt = quiet ? null : w.t
     if (!quiet) gasp(s.move === 'crawl' || s.move === 'fly' ? 1.25 : 1)
-    setCaughtId(s.id)
     if (!saidCard.current && level <= 3) {
       saidCard.current = true
       const say = optional('schatten/welches-bild')
@@ -234,8 +238,8 @@ export default function ShadowGame({ level = 1, onComplete }) {
     flee(s, w.beam, w.geo)
     s.liftTo = null
     s.slideTo = null
+    s.seenAt = null
     sfx.giggle()
-    if (w.lastCaught === s.id) setCaughtId(null)
     bump()
   }
 
@@ -327,10 +331,10 @@ export default function ShadowGame({ level = 1, onComplete }) {
     setLamps(l => [...l, { id: s.id, x: lx }])
     w.lamps.push({ x: lx, t0: w.t })
     lampOn()
-    hit(innerEls.current[s.id] ?? shadowEls.current[s.id])
+    // a star only for a match with the first card: the counter and the results count the same
+    hit(innerEls.current[s.id] ?? shadowEls.current[s.id], { stars: first ? 1 : 0 })
     burst(shadowEls.current[s.id], 'stars', 10)
     sayRight(null, { lead: [wordOf(s.e)].filter(Boolean) })
-    if (w.lastCaught === s.id) setCaughtId(null)
     setHelp(h => (h === s.id ? null : h))
     bump()
     later(1250, () => { if (s.move !== 'roll' && s.move !== 'hop') playAnimal(s.e) })
@@ -379,6 +383,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
   }
   const onRoomDown = e => {
     wakeSound()
+    mouse.current = e.pointerType === 'mouse'
     const w = W.current
     if (!w || phaseRef.current !== 'play') return
     const touch = e.pointerType !== 'mouse'
@@ -413,12 +418,17 @@ export default function ShadowGame({ level = 1, onComplete }) {
     for (const s of w.shadows) {
       if (s.state === 'dark') { catchIt(s, { quiet: true }); if (s.state === 'caught') s.litUntil = w.flashUntil + cfg.hold }
     }
+    // a tapped card goes to the lit one nearest the torch, until the child shines on another
+    const lit = w.shadows.filter(s => s.state === 'caught')
+    if (!lit.some(s => s.seenAt != null)) {
+      const near = lit.reduce((m, s) => (!m || Math.hypot(s.x - w.beam.x, s.y - w.beam.y) < Math.hypot(m.x - w.beam.x, m.y - w.beam.y) ? s : m), null)
+      if (near) near.seenAt = w.t
+    }
   }
 
   // ── The cards: drag one onto a lit shadow, or tap it ──────────────────
 
   const press = useRef(null)
-  const caughtNow = () => (W.current?.shadows ?? []).filter(s => s.state === 'caught')
   const shadowAt = (cx, cy) => {
     const el = roomEl.current, w = W.current
     if (!el || !w) return null
@@ -434,6 +444,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
   }
   const onCardDown = (ev, e) => {
     wakeSound()
+    mouse.current = ev.pointerType === 'mouse'
     if (phaseRef.current !== 'play' || busy.includes(e) || !W.current) return
     try { ev.currentTarget.setPointerCapture(ev.pointerId) } catch { /* not capturable */ }
     press.current = { e, id: ev.pointerId, x0: ev.clientX, y0: ev.clientY, moved: false }
@@ -466,17 +477,16 @@ export default function ShadowGame({ level = 1, onComplete }) {
       else flyBack(p.e, from)
       return
     }
-    // a tap: the card flies to the lit shadow (to the one it fits, if several are lit)
-    const lit = caughtNow()
-    if (!lit.length) {
-      // nothing lit yet: the card hops, and the finger shows the torch
+    // a tap: the card flies to the lit shadow the child is looking at, and is judged there
+    const s = tapTarget(w.shadows, w.beam, w.geo.S)
+    if (!s) {
+      // nothing lit to go to: the card hops (before the first catch, the finger shows the torch)
       const el = cardEls.current[p.e]
       if (!reduce) el?.animate?.([{ translate: '0 0' }, { translate: '0 -14px' }, { translate: '0 0' }], { duration: 320 })
       sfx.boing()
       w.lastInput = 0
       return
     }
-    const s = lit.find(x => x.e === p.e) ?? lit.find(x => x.id === w.lastCaught) ?? lit[lit.length - 1]
     launch(p.e, cardPoint(p.e), s)
   }
 
@@ -492,18 +502,21 @@ export default function ShadowGame({ level = 1, onComplete }) {
     const play = phaseRef.current === 'play'
     const beam = w.beam
     beam.r = beamR
-    if (!w.used && !w.demo) { beam.x = geo.W / 2; beam.y = geo.H - torchSize * 0.65 - beamR * 0.75 }
+    // at rest the torch lies at the front of the room, all of it inside
+    if (!w.used && !w.demo) { beam.x = geo.W / 2; beam.y = geo.H - torchSize * 0.95 - beamR * 0.75 }
 
-    // A child who waits: a finger sweeps the torch through the room
+    // A child who has not found out how yet: a finger sweeps the torch
+    // through the room. Only before the first catch in a room; its light
+    // catches nothing (the child does that).
     const idleMs = roomIdx === 0 && level <= 2 ? 2500 : 7000
-    if (play && !w.demo && !w.input && !beam.on && performance.now() - w.lastInput > idleMs && !w.shadows.some(s => s.state === 'caught' || s.state === 'flying')) {
+    if (play && !w.demo && !w.caughtOnce && !w.input && !beam.on && performance.now() - w.lastInput > idleMs) {
       w.demo = { t0: w.t }
       setDemo(true)
     }
     let demoOn = false
     if (w.demo) {
       const k = (w.t - w.demo.t0) / 2.8
-      if (k > 2 || !play) { w.demo = null; w.lastInput = performance.now(); setDemo(false) }
+      if (k > 2 || !play || w.caughtOnce) { w.demo = null; w.lastInput = performance.now(); setDemo(false) }
       else {
         demoOn = true
         beam.x = geo.W * (0.5 - 0.36 * Math.cos(2 * Math.PI * k))
@@ -522,7 +535,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
     for (const s of w.shadows) {
       if (s.state === 'dark') {
         step(s, dt, geo, speed, Math.random, around.filter(o => o !== s))
-        if (play && beam.a > 0.5 && inLight(s, beam, RS)) catchIt(s)
+        if (play && !demoOn && beam.a > 0.5 && inLight(s, beam, RS)) catchIt(s)
       } else if (s.state === 'caught') {
         s.t += dt
         if (beam.a > 0.5 && inLight({ x: s.x, y: s.liftTo ?? s.y }, { ...beam, r: beam.r * 1.15 }, RS)) s.litUntil = Math.max(s.litUntil, w.t + cfg.hold)
@@ -534,6 +547,14 @@ export default function ShadowGame({ level = 1, onComplete }) {
         s.face = Math.sign(dx) || 1
         if (Math.abs(dx) < 2) { s.state = 'gone'; bump() }
       } else s.t += dt
+    }
+
+    // Where the child is looking: the lit one in the light now, else the one lit last
+    if (play) {
+      const now = inBeam(w.shadows, beam, RS)
+      if (now) now.seenAt = w.t
+      const id = tapTarget(w.shadows, beam, RS)?.id ?? null
+      if (id !== w.focus) { w.focus = id; setCaughtId(id) }
     }
 
     // Drawing them: place, gait, a tremble in the light, the turn to face like the card
@@ -572,6 +593,8 @@ export default function ShadowGame({ level = 1, onComplete }) {
       el.style.transform = `translate(${s.x - RS / 2 + jx}px, ${s.y - RS / 2 + dy}px) rotate(${rot.toFixed(1)}deg) scaleX(${sx.toFixed(3)})`
       el.style.zIndex = String(10 + Math.round(s.y))
       if (el.dataset.state !== s.state) el.dataset.state = s.state
+      const focus = w.focus === s.id ? '1' : '0'
+      if (el.dataset.focus !== focus) el.dataset.focus = focus
       // its eyes in the dark (now and then, more seldom on higher levels)
       const eye = eyeEls.current[s.id]
       if (eye) {
@@ -697,9 +720,10 @@ export default function ShadowGame({ level = 1, onComplete }) {
   const caughtEl = caughtId && { current: shadowEls.current[caughtId] }
   const helpS = help && shadows.find(s => s.id === help)
   const showCardHand = ready && phase === 'play' && !drag && !flights.length && caughtId && !help && shadows.some(s => s.id === caughtId && s.state === 'caught')
-  const dancers = lit ? found.filter(f => f.room === roomIdx) : []
+  // the friends down at the party; they fly back up before the next room shows
+  const dancers = lit ? found.filter(f => f.room === roomIdx && away.includes(f.slot)) : []
   const drop = L ? lampDrop(L.room.h) : 40
-  const lampSize = Math.round(clamp(S * 0.5, 34, 58))
+  const lampPx = lampSize(S)
 
   return (
     <div ref={rootRef} data-game="schatten" data-phase={phase} data-room={roomIdx}
@@ -749,13 +773,13 @@ export default function ShadowGame({ level = 1, onComplete }) {
                 </div>}
                 {lit && <Bunting w={L.room.w} />}
 
-                {/* a card that did not fit: its own outline, over the shadow */}
+                {/* a card that did not fit: its own outline in white over the black shadow, two shapes that differ */}
                 <AnimatePresence>
                   {nope && (
-                    <motion.div key={nope.k} aria-hidden="true" initial={{ opacity: 0, scale: 1.2 }} animate={{ opacity: 0.78, scale: 1, x: reduce ? 0 : [0, -8, 8, -4, 0] }} exit={{ opacity: 0 }}
+                    <motion.div key={nope.k} aria-hidden="true" initial={{ opacity: 0, scale: 1.2 }} animate={{ opacity: 0.88, scale: 1, x: reduce ? 0 : [0, -8, 8, -4, 0] }} exit={{ opacity: 0 }}
                       transition={{ duration: 0.35 }}
                       style={{ position: 'absolute', left: nope.x - S * 0.5, top: nope.y - S * 0.5, width: S, height: S, pointerEvents: 'none', zIndex: 2 }}>
-                      <Art art={nope.e} size={S} style={{ filter: 'drop-shadow(0 0 4px #ffffff) drop-shadow(0 0 2px #ff6b5b)' }} />
+                      <Art art={nope.e} size={S} style={{ filter: 'brightness(0) invert(1) drop-shadow(0 0 2px #ff3b2f) drop-shadow(0 0 5px #ff3b2f)' }} />
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -764,12 +788,12 @@ export default function ShadowGame({ level = 1, onComplete }) {
                 {!lit && shadows.filter(s => s.state !== 'gone').map((s, i) => (
                   <div key={s.id} ref={el => { eyeEls.current[s.id] = el }} aria-hidden="true"
                     style={{ position: 'absolute', left: 0, top: 0, opacity: 0, pointerEvents: 'none', zIndex: 3 }}>
-                    <Eyes size={Math.round(S * 0.42)} cat={s.e === CAT} delay={i * 0.9} />
+                    <Eyes size={Math.round(S * 0.42)} cat={s.e === CAT} glint={glints(s.e)} delay={i * 0.9} />
                   </div>
                 ))}
 
                 {/* the lamps that came down */}
-                {lamps.map(lp => <CeilingLamp key={lp.id} x={lp.x} drop={drop} size={lampSize} reduce={reduce} />)}
+                {lamps.map(lp => <CeilingLamp key={lp.id} x={lp.x} drop={drop} size={lampPx} reduce={reduce} />)}
 
                 {/* the friends, down from the garland, dancing in the lit room */}
                 <AnimatePresence>
@@ -795,7 +819,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
                   style={{ position: 'absolute', left: 0, top: 0, opacity: 0, pointerEvents: 'none', zIndex: 5, filter: 'drop-shadow(0 4px 4px rgba(0,0,0,0.5))' }}>
                   <Art art="🔦" size={torchSize} />
                 </div>
-                {demo && (
+                {demo && !mouse.current && (
                   <div ref={fingerRef} aria-hidden="true" style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none', zIndex: 6, filter: 'drop-shadow(0 4px 3px rgba(0,0,0,0.5))' }}>
                     <Art art="👆" size={58} />
                   </div>
@@ -805,10 +829,9 @@ export default function ShadowGame({ level = 1, onComplete }) {
               <motion.div key={`door-${roomIdx}`} aria-hidden="true" initial={{ opacity: 1 }} animate={{ opacity: 0 }} transition={{ duration: 0.6 }}
                 style={{ position: 'absolute', inset: 0, background: '#0a0518', pointerEvents: 'none', zIndex: 7 }} />
             </div>
-            <div style={{ position: 'absolute', left: 0, top: 0, zIndex: 8 }} onPointerDown={e => e.stopPropagation()}>
-              <Joker used={jokerUsed || phase !== 'play'} onClick={joker} size={L.side ? 52 : 58} />
-            </div>
           </div>
+          {/* the light joker, outside the room: it covers no shadow */}
+          <Joker used={jokerUsed || phase !== 'play'} onClick={joker} x={L.joker.x} y={L.joker.y} size={L.joker.size} />
 
           {/* The cards */}
           <Cards L={L} cards={room.cards} left={cardsLeft} busy={busy} drag={drag} help={helpS?.e} done={lit} boxRef={cardsBoxRef} cardEls={cardEls}
@@ -842,9 +865,11 @@ export default function ShadowGame({ level = 1, onComplete }) {
             </div>
           )}
 
-          {/* the hand: how to bring a card to a lit shadow; after two misses, which card */}
+          {/* the hand: how to bring a card to a lit shadow; after two misses, which card. One hand at a
+              time: none while the demo finger shows the torch. It comes well before a shadow lets go. */}
           <HintHand from={helpS ? { current: cardEls.current[helpS.e] } : cardsBoxRef} to={helpS ? { current: shadowEls.current[helpS.id] } : caughtEl}
-            active={!!(helpS || showCardHand) && phase === 'play' && !flights.length} delay={helpS ? 400 : level <= 2 ? 2500 : 4000} />
+            active={!!(helpS || showCardHand) && phase === 'play' && !flights.length && !demo}
+            delay={helpS ? 400 : level <= 2 ? 2500 : Math.min(4000, (cfg.hold - 1.5) * 1000)} />
         </>
       )}
       {juice.layer}
@@ -852,9 +877,6 @@ export default function ShadowGame({ level = 1, onComplete }) {
     </div>
   )
 }
-
-/** How far a lamp's cord hangs down. */
-const lampDrop = H => Math.round(clamp(H * 0.06, 10, 36))
 
 /**
  * The cards: the things in colour, in fixed places (a card that found its
