@@ -101,7 +101,7 @@ const FIGURES = [
   { name: 'Boot', icon: '⛵', word: 'boot', face: [50, 72, 0.18], alive: { move: 'sail', extra: '🌊', at: [50, 92] }, use: [30, 62, 'happy'], parts: [
     { shape: 'triangle',  x: 42, y: 16, w: 32, h: 46, color: '#FF9F43' },   // the sail stands on …
     { shape: 'rectangle', x: 16, y: 62, w: 68, h: 20, color: '#74B9FF' }] },// … the hull
-  { name: 'Stift', icon: '✏️', word: 'stift', face: [50, 34, 0.14], alive: { move: 'scribble' }, use: [84, 96, 'wow'], parts: [
+  { name: 'Stift', icon: '✏️', word: 'stift', face: [50, 34, 0.14], alive: { move: 'scribble' }, use: [84, 96, 'happy'], parts: [
     { shape: 'rectangle', x: 42, y: 8,  w: 16, h: 54, color: '#FFD93D' },   // the pencil and …
     { shape: 'triangle',  x: 42, y: 62, w: 16, h: 22, rot: 180, color: '#D9A066' }] }, // … its tip, down on the paper
   { name: 'Eis', icon: '🍦', word: 'eis', face: [50, 36, 0.24], alive: { move: 'wobble', extra: '✨', at: [70, 18] }, use: [76, 60, 'eat'], parts: [
@@ -129,7 +129,7 @@ const FIGURES = [
     // quarter turns on.
     { shape: 'rtriangle', x: 20, y: 54, w: 20, h: 20, rot: 270, color: '#4AA3FF' },
     { shape: 'rtriangle', x: 60, y: 54, w: 20, h: 20, color: '#4AA3FF' }] },
-  { name: 'Blume', icon: '🌸', word: 'blume', face: [50, 36, 0.12], alive: { move: 'bloom', extra: '🐝', at: [50, 36], orbit: true }, use: [78, 94, 'wow'], parts: [
+  { name: 'Blume', icon: '🌸', word: 'blume', face: [50, 36, 0.12], alive: { move: 'bloom', extra: '🐝', at: [50, 36], orbit: true }, use: [78, 94, 'happy'], parts: [
     // four big petals around a clearly smaller middle
     { shape: 'circle',    x: 38, y: 5,  w: 24, h: 24, color: '#FD79A8' },
     { shape: 'circle',    x: 19, y: 24, w: 24, h: 24, color: '#FD79A8' },
@@ -438,7 +438,7 @@ const FREE_SHAPES = [
   { shape: 'rectangle', w: 34, h: 14, color: '#4AA3FF' },
 ]
 const QUIET_MS = 9000        // with something built: this long without a touch, and it is done
-const QUIET_EMPTY_MS = 8000  // nothing built: the child does not want to
+const QUIET_EMPTY_MS = 7000  // nothing built: the child does not want to
 const HURRY_MS = 4000        // the ring runs for the last seconds
 
 function FreeBuild({ size, tile, row, onDone, hit, burst }) {
@@ -632,7 +632,7 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
     // size). Only a very small part is drawn larger than it is, so it stays
     // a shape you see: a wheel was a 12-unit dot.
     return shuffle(pieces.map(p => {
-      const k = Math.max(84 / maxDim, 30 / Math.max(p.w, p.h))
+      const k = Math.max(84 / maxDim, 38 / Math.max(p.w, p.h))
       return { ...p, dw: Math.max(9, p.w * k), dh: Math.max(9, p.h * k) }
     }))
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps

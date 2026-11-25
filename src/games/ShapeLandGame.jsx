@@ -647,7 +647,7 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
         </DragArea>
       )}
 
-      {r.mode === 'size' && <Photo r={r} room={[cw, ch]} big={flat ? 170 : 124} picked={picked} shake={shake} solved={solved} look={look} onPick={pickSize} rowRef={hint.to} />}
+      {r.mode === 'size' && <Photo r={r} room={[cw, ch]} big={flat ? 170 : 124} tap={flat ? 100 : 56} picked={picked} shake={shake} solved={solved} look={look} onPick={pickSize} rowRef={hint.to} />}
 
       {r.mode === 'pattern' && (
         <DragArea autoTarget="gap" disabled={solved}>
@@ -832,9 +832,10 @@ function Picture({ r, tall, width, found, shake, solved, blinkId, wink, onTap, a
     )
   }
 
-  // where the hint hand points: a shape of the kind that is still hidden
+  // where the hint hand points: a shape of the kind that is still hidden,
+  // at a spot of it where nothing else lies (not the diamond on the wagon)
   const hidden = r.pieces.find(p => p.type === r.answer && !found.includes(p.id))
-  const [hx, hy, hw, hh] = hidden ? boxOf(hidden) : [W / 2, H / 2, 0, 0]
+  const [hx, hy] = hidden ? faceSpot(hidden) : [W / 2, H / 2]
 
   return (
     <div style={{ position: 'relative', width, flexShrink: 0 }}>
@@ -870,7 +871,7 @@ function Picture({ r, tall, width, found, shake, solved, blinkId, wink, onTap, a
           <image href={artSrc(scene.critter ?? '🐞')} x={bug[0]} y={bug[1]} width="26" height="26" />
         </motion.g>
       </svg>
-      <div ref={anchorRef} aria-hidden="true" style={{ position: 'absolute', left: `${(hx + hw / 2) / W * 100}%`, top: `${(hy + hh / 2) / H * 100}%`, width: 2, height: 2, pointerEvents: 'none' }} />
+      <div ref={anchorRef} aria-hidden="true" style={{ position: 'absolute', left: `${hx / W * 100}%`, top: `${hy / H * 100}%`, width: 2, height: 2, pointerEvents: 'none' }} />
     </div>
   )
 }
@@ -879,9 +880,9 @@ function Picture({ r, tall, width, found, shake, solved, blinkId, wink, onTap, a
 // Each step shows a faint outline of the size that belongs there, so the
 // order is clear without words. Tapped shapes hop onto the steps in turn;
 // the camera flashes at the end. `room`: the width and height there is,
-// `big`: the biggest a shape may be. All of them always fit: five steps at
-// a fixed size were wider than an upright phone.
-function Photo({ r, room: [cw, ch], big, picked, shake, solved, look, onPick, rowRef }) {
+// `big`: the biggest a shape may be, `tap`: the least a finger needs. All
+// of them always fit: five steps at a fixed size were wider than an upright phone.
+function Photo({ r, room: [cw, ch], big, tap, picked, shake, solved, look, onPick, rowRef }) {
   const n = r.items.length
   const stepGap = 6
   const max = Math.floor(Math.min(big, ((cw - 16) / n - stepGap) / 0.9, (ch - 44 - (n - 1) * 14 - 24) / 2))
@@ -889,7 +890,7 @@ function Photo({ r, room: [cw, ch], big, picked, shake, solved, look, onPick, ro
   const order = picked.map(id => r.items.find(it => it.id === id))
   const wanted = [...r.sizes].sort((a, b) => (r.down ? b - a : a - b))
   const unit = s => Math.round(max * s)
-  const rowGap = Math.floor(clamp((cw - 16 - r.sizes.reduce((sum, s) => sum + Math.max(56, unit(s)), 0)) / Math.max(1, n - 1), 4, 24))
+  const rowGap = Math.floor(clamp((cw - 16 - r.sizes.reduce((sum, s) => sum + Math.max(tap, unit(s)), 0)) / Math.max(1, n - 1), 4, 24))
   return (
     <LayoutGroup>
       {/* the steps for the photo */}
@@ -935,7 +936,7 @@ function Photo({ r, room: [cw, ch], big, picked, shake, solved, look, onPick, ro
             onClick={e => onPick(it, e.currentTarget)}
             aria-label={`Form ${r.sizes.slice().sort((a, b) => a - b).indexOf(it.size) + 1} von ${r.sizes.length}`}
             whileTap={{ scale: 0.92 }}
-            style={{ all: 'unset', cursor: 'pointer', minWidth: 56, minHeight: 56, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+            style={{ all: 'unset', cursor: 'pointer', minWidth: tap, minHeight: tap, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
             <ShakeBox on={shake?.key === `s${it.id}`} k={shake?.n}>
               <div style={{ width: unit(it.size), height: unit(it.size) }}>
                 <Shape type={r.type} color={r.color} size="100%" face />
