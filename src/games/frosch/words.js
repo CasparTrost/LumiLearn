@@ -4,8 +4,15 @@ import { KEY } from '../woerter/voice.js'
 // Frosch-Hüpfer: the words, and what each level asks for.
 
 // 'HO-NIG 🍯': syllables in the right order and the picture. Every picture
-// shows exactly its word. Words with a syllable that starts with CH or CK
-// are left out: on their own those sound wrong ("Che" as "Tsche").
+// shows exactly its word, the word a five-year-old says when it sees it:
+// from level 5 the hops are silent, and a picture the child names with
+// another number of syllables (⚽ "Fußball", 🥕 "Karotte", 🦍 "Affe",
+// ☂️ "Schirm", 🫐 "Blaubeere", 🚒 "Feuerwehrauto", 🛒 "Einkaufswagen",
+// 🍊 "Orange") makes it hop wrong. So those are left out, and no picture is
+// used for two words (🐰 was both "Hase" and "Osterhase", 🎈 "Luftballon"
+// and, to most children, "Ballon"). Hard words with hard pictures
+// (Akkordeon, Butter) are out too. Words with a syllable that starts with
+// CH or CK are left out: on their own those sound wrong ("Che" as "Tsche").
 const parse = list => list.map(spec => {
   const [parts, emoji] = spec.split(' ')
   const syllables = parts.split('-')
@@ -19,7 +26,7 @@ const pool = list => parse(list).filter(recorded)
 
 // one syllable
 const ONE = pool([
-  'HUND 🐕', 'MAUS 🐭', 'FISCH 🐟', 'BAUM 🌳', 'KUH 🐄', 'BALL ⚽', 'STERN ⭐', 'BROT 🍞', 'BUCH 📖',
+  'HUND 🐕', 'MAUS 🐭', 'FISCH 🐟', 'BAUM 🌳', 'KUH 🐄', 'STERN ⭐', 'BROT 🍞', 'BUCH 📖',
   'ZUG 🚂', 'MOND 🌙', 'HUT 🎩', 'SCHAF 🐑', 'SCHUH 👟', 'EIS 🍦', 'HAUS 🏠', 'BUS 🚌',
 ])
 // two syllables, mostly open ones
@@ -27,13 +34,13 @@ const TWO_OPEN = pool([
   'HA-SE 🐰', 'NA-SE 👃', 'RO-SE 🌹', 'HO-SE 👖', 'E-SEL 🫏', 'I-GEL 🦔', 'TI-GER 🐯', 'LÖ-WE 🦁',
   'VO-GEL 🐦', 'RE-GEN 🌧️', 'HO-NIG 🍯', 'BIE-NE 🐝', 'EU-LE 🦉', 'ZIE-GE 🐐', 'KRO-NE 👑', 'BE-SEN 🧹',
   'FE-DER 🪶', 'AU-TO 🚗', 'BLU-ME 🌸', 'RAU-PE 🐛', 'KÄ-SE 🧀', 'SO-FA 🛋️', 'LA-MA 🦙', 'KI-WI 🥝',
-  'ZE-BRA 🦓', 'MÖH-RE 🥕', 'DO-SE 🥫',
+  'ZE-BRA 🦓', 'DO-SE 🥫',
 ])
 // two syllables with a closed first syllable (double consonants)
 const TWO_CLOSED = pool([
   'KAT-ZE 🐱', 'SON-NE ☀️', 'AF-FE 🐒', 'EN-TE 🦆', 'AP-FEL 🍎', 'TAS-SE ☕', 'BRIL-LE 👓', 'BIR-NE 🍐',
   'GUR-KE 🥒', 'SPIN-NE 🕷️', 'KER-ZE 🕯️', 'ROB-BE 🦭', 'PIN-SEL 🖌️', 'KOF-FER 🧳', 'TEL-LER 🍽️', 'TROM-MEL 🥁',
-  'PAN-DA 🐼', 'PIZ-ZA 🍕', 'WAF-FEL 🧇', 'KÜR-BIS 🎃', 'DEL-FIN 🐬', 'TRAK-TOR 🚜', 'BUT-TER 🧈', 'WOL-KE ☁️',
+  'PAN-DA 🐼', 'PIZ-ZA 🍕', 'WAF-FEL 🧇', 'KÜR-BIS 🎃', 'DEL-FIN 🐬', 'TRAK-TOR 🚜', 'BAL-LON 🎈', 'WOL-KE ☁️',
   'GEI-GE 🎻', 'PAL-ME 🌴', 'TOR-TE 🎂', 'KAK-TUS 🌵',
 ])
 // three syllables (no "ng" split across two syllables: KÄN-GU-RU sounds
@@ -41,20 +48,18 @@ const TWO_CLOSED = pool([
 const THREE = pool([
   'BA-NA-NE 🍌', 'E-LE-FANT 🐘', 'TO-MA-TE 🍅', 'ME-LO-NE 🍈', 'ZI-TRO-NE 🍋', 'KA-ME-RA 📷', 'GI-RAF-FE 🦒',
   'A-NA-NAS 🍍', 'RA-KE-TE 🚀', 'RO-BO-TER 🤖', 'PA-PRI-KA 🫑', 'PA-PA-GEI 🦜', 'KRO-KO-DIL 🐊', 'TROM-PE-TE 🎺',
-  'GI-TAR-RE 🎸', 'ERD-BEE-RE 🍓', 'SCHMET-TER-LING 🦋', 'SCHILD-KRÖ-TE 🐢', 'LA-TER-NE 🏮',
+  'GI-TAR-RE 🎸', 'ERD-BEE-RE 🍓', 'SCHMET-TER-LING 🦋', 'SCHILD-KRÖ-TE 🐢', 'LA-TER-NE 🏮', 'KO-A-LA 🐨',
 ])
 // three syllables, longer words and compounds
 const THREE_LONG = pool([
-  'FEU-ER-WEHR 🚒', 'ZAHN-BÜRS-TE 🪥', 'SU-PER-MARKT 🛒', 'TISCH-TEN-NIS 🏓', 'BRIEF-KAS-TEN 📬',
-  'LUFT-BAL-LON 🎈', 'RE-GEN-SCHIRM ☂️', 'AS-TRO-NAUT 👨‍🚀', 'KAR-TOF-FEL 🥔', 'HUB-SCHRAU-BER 🚁',
-  'PO-LI-ZIST 👮', 'WEIH-NACHTS-MANN 🎅', 'KA-RUS-SELL 🎠', 'HAM-BUR-GER 🍔', 'FLE-DER-MAUS 🦇',
-  'GO-RIL-LA 🦍', 'MI-KRO-FON 🎤', 'PRIN-ZES-SIN 👸', 'KO-KOS-NUSS 🥥', 'SPIN-NEN-NETZ 🕸️', 'BROK-KO-LI 🥦',
+  'ZAHN-BÜRS-TE 🪥', 'TISCH-TEN-NIS 🏓', 'BRIEF-KAS-TEN 📬', 'AS-TRO-NAUT 👨‍🚀', 'KAR-TOF-FEL 🥔',
+  'HUB-SCHRAU-BER 🚁', 'PO-LI-ZIST 👮', 'WEIH-NACHTS-MANN 🎅', 'KA-RUS-SELL 🎠', 'HAM-BUR-GER 🍔',
+  'FLE-DER-MAUS 🦇', 'MI-KRO-FON 🎤', 'PRIN-ZES-SIN 👸', 'KO-KOS-NUSS 🥥', 'SPIN-NEN-NETZ 🕸️', 'BROK-KO-LI 🥦',
 ])
 // four syllables (never more: five were out of reach at this age)
 const FOUR = pool([
   'TA-SCHEN-LAM-PE 🔦', 'SEI-FEN-BLA-SE 🫧', 'SCHO-KO-LA-DE 🍫', 'SON-NEN-BLU-ME 🌻', 'RE-GEN-BO-GEN 🌈',
-  'OS-TER-HA-SE 🐰', 'KRAN-KEN-WA-GEN 🚑', 'A-VO-CA-DO 🥑', 'KO-A-LA-BÄR 🐨', 'AK-KOR-DE-ON 🪗',
-  'BA-DE-WAN-NE 🛁', 'MAN-DA-RI-NE 🍊', 'HEI-DEL-BEE-RE 🫐',
+  'KRAN-KEN-WA-GEN 🚑', 'A-VO-CA-DO 🥑', 'BA-DE-WAN-NE 🛁', 'SON-NEN-BRIL-LE 🕶️',
 ])
 
 export const POOLS = { ONE, TWO_OPEN, TWO_CLOSED, THREE, THREE_LONG, FOUR }

@@ -32,7 +32,7 @@ export function stageLayout(w, h, scale = 1) {
       shelf: { cx: water.x + water.w / 2, cy: top / 2 - 1, max: water.w - 8 },
       hud: { right: m, top: Math.max(4, (top - slot) / 2 - 4) },
       hudSize: clamp(slot * 0.82, 28, 42),
-      stork: frog * 1.75,
+      duck: frog * 1.75,
     }
   }
   const slot = clamp((w - 2 * m) / 8 - 5, 30, 50)
@@ -50,7 +50,7 @@ export function stageLayout(w, h, scale = 1) {
     shelf: { cx, cy: m + slot / 2 + 2, max: w - 2 * m },
     hud: { right: m, bottom: m },
     hudSize: clamp(frog * 0.42, 28, 38),
-    stork: frog * 1.75,
+    duck: frog * 1.75,
   }
 }
 

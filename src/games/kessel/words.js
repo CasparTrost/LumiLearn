@@ -16,14 +16,15 @@ import { KEY, slug } from '../woerter/voice.js'
 // (a log), SALZ (a salt shaker), BURG (a Schloss to most children), SCHULE
 // (a house), ZIRKUS (a tent, next to ZELT), INSEL (a palm, next to PALME),
 // BRÜCKE (a city at night), PFANNE (a fried egg), KREBS (a Krabbe), KÄFER (a
-// Marienkäfer), KLAVIER (a row of keys) and MUSCHEL (a Schneckenhaus).
+// Marienkäfer), KLAVIER (a row of keys), MUSCHEL (a Schneckenhaus) and GANS
+// (looks like the ENTE).
 export const WORDS = {
   // 3 letters
   OMA:'👵', OPA:'👴', EIS:'🍦', ZUG:'🚂', BUS:'🚌', HUT:'🎩', FEE:'🧚', OHR:'👂',
   KUH:'🐄', HAI:'🦈', BÄR:'🐻', TOR:'🥅', WAL:'🐋', TÜR:'🚪', UFO:'🛸',
   // 4 letters
   HUND:'🐕', BALL:'⚽', BUCH:'📖', HAND:'✋', NASE:'👃', WOLF:'🐺', IGEL:'🦔', HERZ:'❤️',
-  BOOT:'⛵', GANS:'🪿', HAHN:'🐓', HASE:'🐰', KEKS:'🍪', MAUS:'🐭', MOND:'🌙', PILZ:'🍄',
+  BOOT:'⛵', HAHN:'🐓', HASE:'🐰', KEKS:'🍪', MAUS:'🐭', MOND:'🌙', PILZ:'🍄',
   ROSE:'🌹', SOFA:'🛋️', ZELT:'⛺', BEIN:'🦵', AFFE:'🐒', ESEL:'🫏', RING:'💍', BROT:'🍞',
   AUTO:'🚗', HAUS:'🏠', BAUM:'🌳', LÖWE:'🦁', KIWI:'🥝', LAMA:'🦙', ENTE:'🦆', EULE:'🦉',
   KÄSE:'🧀', MAIS:'🌽', DINO:'🦖', TAXI:'🚕', NEST:'🪺', ZAHN:'🦷', BETT:'🛏️', HOSE:'👖',
@@ -110,7 +111,7 @@ export const ANLAUT = {
 export const MOVE_OF = Object.fromEntries([
   ['drive', 'ZUG BUS AUTO TAXI TRAKTOR FAHRRAD ROLLER'],
   ['fly',   'VOGEL ADLER EULE BIENE RAKETE FLUGZEUG BALLON FEE DRACHE PAPAGEI FEDER WOLKE SCHWAN ZAUBERER UFO GEIST'],
-  ['swim',  'FISCH HAI DELFIN KRAKE ROBBE ENTE BOOT WAL QUALLE GANS SCHIFF'],
+  ['swim',  'FISCH HAI DELFIN KRAKE ROBBE ENTE BOOT WAL QUALLE SCHIFF'],
   ['crawl', 'SCHNECKE RAUPE SCHLANGE AMEISE SPINNE KROKODIL WURM'],
   ['spin',  'BALL STERN SONNE KRONE RING TELLER PIZZA KEKS MOND BREZEL WAFFEL DIAMANT ORANGE'],
   ['grow',  'HAUS BAUM ZELT KIRCHE PALME KAKTUS BLUME ROSE TULPE PILZ FENSTER SPIEGEL BETT SOFA TOR NEST TÜR STUHL TISCH LEITER VULKAN'],

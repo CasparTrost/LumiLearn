@@ -1,7 +1,7 @@
 import { memo, useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from 'react'
 import { motion, useMotionValue } from 'framer-motion'
 import { sfx } from '../sfx.js'
-import { afterNarration } from '../narrator.js'
+import { afterNarration, onNarrationChange } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
@@ -461,6 +461,21 @@ function useAdvance(go, paused) {
   return useCallback(() => afterNarration(() => setReady(true), { minMs: PAYOFF_MS }), [])
 }
 
+// A wrong key while Lumi still says the line for the one before: the cough
+// and the sound show it, and the line is not cut off by the next one.
+function useSayWrong() {
+  const talking = useRef(false)
+  useEffect(() => onNarrationChange(on => { if (!on) talking.current = false }), [])
+  return useCallback(() => {
+    if (talking.current) return
+    // set after the call: starting the line stops what ran before, and that
+    // stop reaches the listener above
+    let ended = false
+    sayWrong(null, { onEnd: () => { ended = true; talking.current = false } })
+    if (!ended) talking.current = true
+  }, [])
+}
+
 // A word starts: the task once per level, then the word
 function announce(word, task) {
   sayTask()
@@ -539,6 +554,7 @@ function FallingLettersGame({ level, onComplete }) {
   const [wIdx,     setWIdx]     = useState(0)
   const [typed,    setTyped]    = useState(0)
   const [misses,   setMisses]   = useState(0)   // wrong keys on the current letter
+  const wrongKey = useSayWrong()
   const [showHint, setShowHint] = useState(false)
   const [lives,    setLives]    = useState(3)
   const [drop,     setDrop]     = useState(null) // { id, char } while a leaf is out
@@ -703,7 +719,7 @@ function FallingLettersGame({ level, onComplete }) {
       setMisses(n)
       helpedRef.current = true
       if (n >= 2) setShowHint(true)
-      sayWrong()
+      wrongKey()
       return
     }
     // Lumi zaps the leaf into the cauldron: on its way down, or just in time
@@ -736,7 +752,7 @@ function FallingLettersGame({ level, onComplete }) {
       voice([KEY.letter(char)])
       later(() => release(n), 450)
     }
-  }, [paused, done, finale, targetChar, landed, misses, typed, word, duel, k, finishWord, later, release, run])
+  }, [paused, done, finale, targetChar, landed, misses, typed, word, duel, k, finishWord, later, release, run, wrongKey])
   usePhysicalKeys(handleChar, rootRef)
 
   useFinale(finale, k, stageRef, () => onComplete(result(cleanRef.current, FALLING_WORDS)))
@@ -817,6 +833,7 @@ function StaticTyperGame({ level, onComplete }) {
   const [wIdx,   setWIdx]   = useState(0)
   const [typed,  setTyped]  = useState('')
   const [misses, setMisses] = useState(0)
+  const wrongKey = useSayWrong()
   const [hintOn, setHintOn] = useState(false)
   const [finale, setFinale] = useState(false)
   // Words typed with no wrong key: the score. The spotlight that comes on
@@ -857,9 +874,9 @@ function StaticTyperGame({ level, onComplete }) {
       setMisses(n)
       wrongRef.current = true
       if (n >= 2) setHintOn(true)
-      sayWrong()
+      wrongKey()
     }
-  }, [finished, paused, finale, nextChar, typed, word, misses, k])
+  }, [finished, paused, finale, nextChar, typed, word, misses, k, wrongKey])
   usePhysicalKeys(handleKey, rootRef)
 
   // The task, at the start of every word

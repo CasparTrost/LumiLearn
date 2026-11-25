@@ -52,11 +52,14 @@ export function rimeOf(w) {
 // appears once. `v` is the rhyming vowel: groups with the same one sound
 // alike (Banane – Kanne differ only in vowel length) and are kept apart
 // until the "near" levels.
-// `said: true`: a picture a child may name differently (the pan with an egg
-// is a "Spiegelei", the lips a "Kussmund", the amphora a "Krug"). Such a
-// word is never the right answer that has to be found silently among the
-// balloons; it is used where Lumi says it (the word on the stage, Ja/Nein,
-// odd one out) or where the verse makes it clear.
+// `said: true`: a picture a child may name differently (the lips a
+// "Kussmund", the amphora a "Krug", the fir a "Baum", the sailing boat a
+// "Schiff", the flag a "Flagge"). A balloon's word is not spoken before the
+// child taps (only on hover or with the speaker), so such a word is never
+// the right answer that has to be found among the balloons; it is used
+// where Lumi says it (the word on the stage, Ja/Nein, odd one out) or where
+// the verse makes it clear. The pan is drawn empty: with an egg in it, it
+// was a "Spiegelei" and stood next to the Spiegel.
 export const RHYME_GROUPS = [
   { v: 'au', words: [['Maus', '🐭'], ['Haus', '🏠']] },
   { v: 'o',  words: [['Hose', '👖'], ['Rose', '🌹'], ['Dose', '🥫']] },
@@ -66,14 +69,14 @@ export const RHYME_GROUPS = [
   { v: 'u',  words: [['Kuh', '🐄'], ['Schuh', '👟']] },
   { v: 'i',  words: [['Igel', '🦔'], ['Spiegel', '🪞']] },
   { v: 'o',  words: [['Krone', '👑'], ['Zitrone', '🍋']] },
-  { v: 'a',  words: [['Kanne', '🫖'], ['Tanne', '🌲'], ['Pfanne', '🍳', true]] },
+  { v: 'a',  words: [['Kanne', '🫖'], ['Tanne', '🌲', true], ['Pfanne', ':px-pfanne:']] },
   { v: 'i',  words: [['Ziege', '🐐'], ['Fliege', '🪰']] },
   { v: 'e',  words: [['Rakete', '🚀'], ['Trompete', '🎺']] },
-  { v: 'a',  words: [['Banane', '🍌'], ['Fahne', '🚩']] },
+  { v: 'a',  words: [['Banane', '🍌'], ['Fahne', '🚩', true]] },
   { v: 'ei', words: [['Eis', '🍦'], ['Reis', '🍚']] },
   { v: 'ei', words: [['Bein', '🦵'], ['Schwein', '🐖'], ['Stein', '🪨']] },
   { v: 'a',  words: [['Hahn', '🐓'], ['Zahn', '🦷']] },
-  { v: 'o',  words: [['Boot', '⛵'], ['Brot', '🍞']] },
+  { v: 'o',  words: [['Boot', '⛵', true], ['Brot', '🍞']] },
   { v: 'a',  words: [['Hand', '✋'], ['Strand', '🏖️', true]] },
   { v: 'u',  words: [['Wurm', '🪱'], ['Turm', '🗼']] },
   { v: 'a',  words: [['Wal', '🐋'], ['Schal', '🧣']] },
@@ -97,6 +100,8 @@ export const wordOf  = w => groupOf(w).words.find(x => x.w === w)
 //   peek   goes in and looks out of a window (im Haus)
 //   front  stands in front; `mirror`: its reflection shows in the glass (vor)
 //   wear   is put on the seat or held by it (mit, trägt, hat)
+// `prop`: a third thing the line names, held by the mover (the ice cream in
+// the mouth): placed like `at`/`size`, but in parts of the mover's size.
 //   beside stands next to it (am, so … wie)
 // `act` is how it plays: bounce, wobble, sink, peek, grow, brush, wave, glow.
 const P = {
@@ -106,33 +111,33 @@ const P = {
   hoseInDose:   { how: 'in',     at: [0, -0.48], size: 0.58, rim: -0.36, act: 'sink' },
   roseGrows:    { how: 'in',     at: [0, -0.58], size: 0.66, rim: -0.36, act: 'grow' },
   grosserMund:  { how: 'wear',   at: [-0.2, -0.06], size: 0.4, act: 'grow' },
-  mundEis:      { how: 'wear',   at: [-0.2, -0.06], size: 0.34, act: 'bounce' },
+  mundEis:      { how: 'wear',   at: [-0.2, -0.06], size: 0.34, act: 'bounce', prop: { art: '🍦', at: [-0.62, -0.18], size: 0.9, rotate: -70 } },
   fischTisch:   { how: 'on',     at: [0, -0.5],  size: 0.62, act: 'bounce' },
   fischAmTisch: { how: 'beside', at: [0.66, -0.02], size: 0.6, act: 'bounce' },
-  langeNase:    { how: 'wear',   at: [-0.02, -0.1], size: 0.26, act: 'grow' },
-  roteNase:     { how: 'wear',   at: [-0.02, -0.12], size: 0.24, act: 'glow', red: true },
+  langeNase:    { how: 'wear',   at: [-0.17, -0.02], size: 0.24, act: 'grow' },
+  roteNase:     { how: 'wear',   at: [-0.17, -0.02], size: 0.22, act: 'glow', red: true },
   haseInVase:   { how: 'in',     at: [0, -0.62], size: 0.62, rim: -0.42, act: 'sink' },
-  vaseAufNase:  { how: 'on',     at: [0, -0.72], size: 0.5, act: 'wobble' },
+  vaseAufNase:  { how: 'on',     at: [0, -0.66], size: 0.5, act: 'wobble' },
   kuhImSchuh:   { how: 'in',     at: [0.06, -0.3], size: 0.56, rim: -0.1, act: 'sink' },
   schuhAnKuh:   { how: 'wear',   at: [-0.22, 0.36], size: 0.32, act: 'bounce' },
   igelSpiegel:  { how: 'front',  at: [0.3, 0.24], size: 0.56, mirror: [0, -0.16, 0.36], act: 'peek' },
   kroneAuf:     { how: 'wear',   at: [-0.06, -0.52], size: 0.5, act: 'bounce' },
   gelbWie:      { how: 'beside', at: [0.72, 0], size: 0.8, act: 'glow' },
-  aufTanne:     { how: 'on',     at: [0, -0.66], size: 0.46, act: 'wobble' },
+  aufTanne:     { how: 'on',     at: [0, -0.56], size: 0.46, act: 'wobble' },
   kanneInPfanne:{ how: 'in',     at: [-0.12, -0.14], size: 0.5, act: 'wobble', flat: true },
   fliegeAufZiege:{ how: 'on',    at: [0.08, -0.34], size: 0.34, act: 'bounce' },
   fliegeFangen: { how: 'wear',   at: [-0.34, -0.24], size: 0.3, act: 'brush' },
   aufRakete:    { how: 'on',     at: [0.18, -0.58], size: 0.5, act: 'bounce' },
-  fahneBanane:  { how: 'on',     at: [0.1, -0.58], size: 0.5, act: 'wave' },
+  fahneBanane:  { how: 'on',     at: [0.36, -0.6], size: 0.5, act: 'wave' },
   eisReis:      { how: 'on',     at: [0, -0.5],  size: 0.52, act: 'bounce' },
-  schweinBein:  { how: 'on',     at: [0.04, -0.66], size: 0.56, act: 'wobble' },
+  schweinBein:  { how: 'on',     at: [0.04, -0.6], size: 0.56, act: 'wobble' },
   beinStein:    { how: 'on',     at: [0, -0.48], size: 0.6, act: 'bounce' },
   schweinStein: { how: 'on',     at: [0, -0.44], size: 0.66, act: 'bounce' },
   hahnZahn:     { how: 'wear',   at: [-0.36, -0.22], size: 0.26, act: 'bounce' },
   zahnPutzen:   { how: 'wear',   at: [-0.36, -0.22], size: 0.26, act: 'brush' },
-  brotBoot:     { how: 'in',     at: [0.14, 0.02], size: 0.4, rim: 0.2, act: 'sink' },
+  brotBoot:     { how: 'in',     at: [0.22, 0.06], size: 0.36, rim: 0.15, act: 'sink' },
   handStrand:   { how: 'beside', at: [0.16, 0.3], size: 0.38, act: 'wave' },
-  wurmTurm:     { how: 'on',     at: [0, -0.62], size: 0.42, act: 'bounce' },
+  wurmTurm:     { how: 'on',     at: [0, -0.53], size: 0.42, act: 'bounce' },
   schalWal:     { how: 'wear',   at: [-0.12, 0.06], size: 0.5, act: 'wobble' },
 }
 
@@ -272,12 +277,14 @@ export function buildRounds(level, { count = 8, rnd = Math.random } = {}) {
   }
   // a group can carry a round once two of its words can be said
   const pairs = shuffle(groups.filter(g => g.words.length >= 2), rnd)
+  // Ja/Nein: exactly half of the pairs rhyme, in random order (a child who
+  // always says "Nein" must not win); the others are clearly different
+  const halves = shuffle(Array.from({ length: count }, (_, i) => i < count / 2), rnd)
   return Array.from({ length: count }, (_, i) => {
     const g = pairs[i % pairs.length]
     if (cfg.mode === 'yesno') {
       const [base, partner] = shuffle(g.words, rnd)
-      // half of them rhyme; the others are clearly different
-      const rhymes = rnd() < 0.5
+      const rhymes = halves[i]
       return { mode: 'yesno', base, other: rhymes ? partner : nonRhymes(g, 1, { first: base.w[0], groups, rnd })[0], rhymes }
     }
     if (cfg.mode === 'odd') {

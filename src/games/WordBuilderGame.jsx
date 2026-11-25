@@ -9,7 +9,7 @@ import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
 import { voice, KEY } from './woerter/voice.js'
 import Finale from './woerter/Finale.jsx'
-import { Water, Greenery, Pad, HopSpot, Ring, Splash, Drops, Tongue, Stork, STORK_PECK } from './frosch/Pond.jsx'
+import { Water, Greenery, Pad, HopSpot, Ring, Splash, Drops, Tongue, Duck, DUCK_PECK } from './frosch/Pond.jsx'
 import { buildRounds, levelConfig } from './frosch/words.js'
 import { clamp, stageLayout, hopSpots, padCells, shelfSlots } from './frosch/layout.js'
 import { useLater, useStage } from './frosch/hooks.js'
@@ -41,7 +41,7 @@ import { useLater, useStage } from './frosch/hooks.js'
  * What was reached collects on the far shore, a star for each flies to the
  * counter (components/play/Juice.jsx). Flies cross the pond: a frog in the
  * air near one snaps it, for a bonus star. A child who waits long hears the
- * word again; then a stork wades up and taps what comes next with its beak.
+ * word again; then a duck waddles up and taps what comes next with its bill.
  * After two splashes the pads of the word come up by themselves, each saying
  * its syllable, and stay.
  *
@@ -60,8 +60,8 @@ const LEAP_MS = 560
 const TRAVEL_MS = 330          // a hop off the stage, a hop onto it
 const SETTLE_MS = 170          // after a landing, before the next hop
 const REPEAT_MS = 6500         // waiting this long: Lumi says the word once more
-const STORK_MS = 10000         // waiting this long: the stork sets out
-const STORK_WALK_S = 4.5       // and takes this long to arrive
+const DUCK_MS = 10000         // waiting this long: the duck sets out
+const DUCK_WALK_S = 4.5       // and takes this long to arrive
 // Lines Lumi may get later; silent until they are recorded
 const TASK = { hop: 'frosch-huepfen', build: 'frosch-bauen', alone: 'frosch-allein' }
 let seq = 0
@@ -88,11 +88,11 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
   const [shown, setShown] = useState(0)              // … and how many of them show their syllable
   const [padFx, setPadFx] = useState({})             // per pad: { bump, dip, done }
   const [help, setHelp] = useState(false)            // after two misses: the way is shown
-  const [hint, setHint] = useState(null)             // what the stork points at: 'spot' | 'thing' | a pad's id
+  const [hint, setHint] = useState(null)             // what the duck points at: 'spot' | 'thing' | a pad's id
   const [frogMode, setFrogMode] = useState('sit')    // sit | under | swim
   const [tongue, setTongue] = useState(null)
   const [flyOn, setFlyOn] = useState(false)
-  const [stork, setStork] = useState(null)           // { flip, walking, peck }
+  const [duck, setDuck] = useState(null)           // { flip, walking, peck }
   const [shelf, setShelf] = useState([])             // what was reached, on the far shore
   const [flyer, setFlyer] = useState(null)           // the thing on its way there
   const [joy, setJoy] = useState(0)
@@ -113,7 +113,7 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
   // What the clock, the timers and the taps work on; the state above is its picture
   const g = useRef({
     phase: 'intro', hops: 0, next: 0, misses: 0, wrongRow: 0, heard: new Set(), done: new Set(), help: false,
-    air: false, lock: 0, queued: null, at: null, t: 0, idle: 0, repeated: false, fly: null, stork: null, firstTry: 0, started: -1,
+    air: false, lock: 0, queued: null, at: null, t: 0, idle: 0, repeated: false, fly: null, duck: null, firstTry: 0, started: -1,
   }).current
   const S = useRef({}).current
   Object.assign(S, { L, round, n, isHop, spots, cells, slots, drift, cfg, idx, paused, reduce, hand })
@@ -129,7 +129,7 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
   const bodyY = useTransform(lift, v => -v)
   const shade = useTransform(lift, v => Math.max(0.45, 1 - v / 240))
   const flyX = useMotionValue(-99), flyY = useMotionValue(-99)
-  const storkX = useMotionValue(-999), storkY = useMotionValue(-999)
+  const duckX = useMotionValue(-999), duckY = useMotionValue(-999)
 
   useEffect(() => leaveGame, [])
 
@@ -183,13 +183,13 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
   // ── A tap asks for a move; one tap made in the air is kept for the landing ──
   const act = () => {
     g.idle = 0
-    const st = g.stork
+    const st = g.duck
     if (st && st.state !== 'go') {
-      // the child is playing again: the stork turns round and wades off
+      // the child is playing again: the duck turns round and waddles off
       st.state = 'go'
       g.pinned = null
       setHint(null)
-      setStork({ flip: !st.flip, walking: true, peck: 0 })
+      setDuck({ flip: !st.flip, walking: true, peck: 0 })
     }
   }
   const run = q => (q === 'hop' ? hop() : q === 'leap' ? leap() : tapPad(q.pad))
@@ -381,7 +381,7 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
     g.started = idx
     Object.assign(g, { hops: 0, next: 0, misses: 0, wrongRow: 0, heard: new Set(), done: new Set(), help: false, queued: null, idle: 0, repeated: false, fly: null, pinned: null })
     setHops(0); setUp(0); setShown(0); setPadFx({}); setHelp(false); setHint(null); setFlyOn(false); setFrogMode('sit')
-    if (g.stork) { g.stork.state = 'go'; setStork({ flip: !g.stork.flip, walking: true, peck: 0 }) }
+    if (g.duck) { g.duck.state = 'go'; setDuck({ flip: !g.duck.flip, walking: true, peck: 0 }) }
     setPhase('intro')
     lockPreviews()
     // Lumi says the word (and, the first time, what to do)
@@ -422,7 +422,7 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
     }
   }
 
-  // ── What waits for the child: the fly, the stork ──
+  // ── What waits for the child: the fly, the duck ──
   const flyAt = f => {
     const { L: lay } = S
     const W = lay.water, q = S.reduce ? 0.5 : f.t / f.life, s = f.t / 1000
@@ -453,25 +453,25 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
     const p = S.round.pads.find(x => x.text === S.round.syllables[g.next] && !g.done.has(x.id))
     return p ? { id: p.id, pt: padMiddle(p.id) } : null
   }
-  const callStork = () => {
+  const callDuck = () => {
     const { L: lay } = S
     const t = nextTarget()
     if (!t) return
-    const s = lay.stork
+    const s = lay.duck
     // It stands so that its beak, bent down, is on the target: on the side
     // away from the frog, where there is room for it on the stage
-    const reach = STORK_PECK.x * s, frogX = fx.get()
+    const reach = DUCK_PECK.x * s, frogX = fx.get()
     let flip = Math.abs(frogX - t.pt.x) > 20 ? frogX < t.pt.x : t.pt.x < lay.w / 2
     if (flip && t.pt.x + reach > lay.w - s * 0.3) flip = false
     if (!flip && t.pt.x - reach < s * 0.3) flip = true
     const dir = flip ? -1 : 1
-    const stand = { x: t.pt.x - dir * STORK_PECK.x * s, y: Math.min(lay.h - 4, t.pt.y - STORK_PECK.y * s) }
+    const stand = { x: t.pt.x - dir * DUCK_PECK.x * s, y: Math.min(lay.h - 4, t.pt.y - DUCK_PECK.y * s) }
     const from = { x: flip ? lay.w + s * 0.7 : -s * 0.7, y: lay.h - 6 }
     if (t.id !== 'spot' && t.id !== 'thing') g.pinned = t.id   // the pad holds still for it
-    g.stork = { state: S.reduce ? 'peck' : 'come', x: S.reduce ? stand.x : from.x, y: S.reduce ? stand.y : from.y, tx: stand.x, ty: stand.y, ex: from.x, ey: from.y,
-      speed: Math.hypot(stand.x - from.x, stand.y - from.y) / STORK_WALK_S, flip, target: t.id, wait: 300, n: 0 }
-    storkX.set(g.stork.x); storkY.set(g.stork.y)
-    setStork({ flip, walking: !S.reduce, peck: 0 })
+    g.duck = { state: S.reduce ? 'peck' : 'come', x: S.reduce ? stand.x : from.x, y: S.reduce ? stand.y : from.y, tx: stand.x, ty: stand.y, ex: from.x, ey: from.y,
+      speed: Math.hypot(stand.x - from.x, stand.y - from.y) / DUCK_WALK_S, flip, target: t.id, wait: 300, n: 0 }
+    duckX.set(g.duck.x); duckY.set(g.duck.y)
+    setDuck({ flip, walking: !S.reduce, peck: 0 })
     if (S.reduce) setHint(t.id)
   }
 
@@ -508,7 +508,7 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
       }
     }
 
-    const st = g.stork
+    const st = g.duck
     if (st) {
       if (st.state === 'peck') {
         st.wait -= dt
@@ -516,7 +516,7 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
           st.wait = 1900
           st.n += 1
           sfx.flip()
-          setStork(v => v && { ...v, peck: st.n })
+          setDuck(v => v && { ...v, peck: st.n })
         }
       } else {
         const go = st.state === 'go'
@@ -525,10 +525,10 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
         const stepLen = (st.speed * (go ? 3 : 1) * dt) / 1000
         if (d <= stepLen || S.reduce) {
           st.x = tx; st.y = ty
-          if (go) { g.stork = null; setStork(null) }
-          else { st.state = 'peck'; st.wait = 250; setHint(st.target); setStork(v => v && { ...v, walking: false }) }
+          if (go) { g.duck = null; setDuck(null) }
+          else { st.state = 'peck'; st.wait = 250; setHint(st.target); setDuck(v => v && { ...v, walking: false }) }
         } else { st.x += (dx / d) * stepLen; st.y += (dy / d) * stepLen }
-        storkX.set(st.x); storkY.set(st.y)
+        duckX.set(st.x); duckY.set(st.y)
       }
     }
 
@@ -539,7 +539,7 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
         voice([KEY.word(r.name)])
         setJoy(j => j + 1)
       }
-      if (!g.stork && !S.hand && g.idle > STORK_MS) callStork()
+      if (!g.duck && !S.hand && g.idle > DUCK_MS) callDuck()
     }
   })
 
@@ -647,9 +647,9 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
             </motion.button>
           )}
 
-          {stork && (
-            <motion.div style={{ position: 'absolute', left: 0, top: 0, x: storkX, y: storkY, width: 0, height: 0, zIndex: 5, pointerEvents: 'none' }} data-stork={stork.walking ? 'walk' : 'peck'}>
-              <Stork size={L.stork} flip={stork.flip} walking={stork.walking} peck={stork.peck} reduce={reduce} />
+          {duck && (
+            <motion.div style={{ position: 'absolute', left: 0, top: 0, x: duckX, y: duckY, width: 0, height: 0, zIndex: 5, pointerEvents: 'none' }} data-duck={duck.walking ? 'walk' : 'peck'}>
+              <Duck size={L.duck} flip={duck.flip} walking={duck.walking} peck={duck.peck} reduce={reduce} />
             </motion.div>
           )}
 
