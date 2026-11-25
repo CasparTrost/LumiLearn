@@ -415,6 +415,138 @@ async function playShadows(page, { wrongOnce = false } = {}) {
   await page.context().close()
 }
 
+// 3i. Rechen-Rakete (Planeten-Hüpfer): level 1 flown with the thrust
+// button, a hop per number and then the landing button; in the second sum
+// one hop too many: someone else lives there, and the rocket flies back to
+// the start; to the results
+{
+  const page = await newPage(SIZES.phone, save)
+  await page.goto(URL); await page.waitForTimeout(1500)
+  await page.getByRole('button', { name: /^Rechen-Rakete, Level/ }).last().click()
+  const game = page.locator('[data-game="rakete"]')
+  await game.waitFor({ timeout: 10000 }).catch(() => problems.push('Planeten-Hüpfer: the game did not start'))
+  const state = () => game.evaluate(el => ({ ...el.dataset })).catch(() => null)
+  const until = async (ok, ms) => {
+    for (let t = 0; t < ms; t += 100) { const s = await state(); if (!s || ok(s)) return s; await page.waitForTimeout(100) }
+    return null
+  }
+  let round = -1, overshot = false
+  for (let i = 0; i < 40 && (await game.count()); i++) {
+    const s = await until(x => x.phase === 'play', 15000)
+    if (!s) break
+    if (+s.idx === round) { await page.waitForTimeout(200); continue }
+    const steps = Math.abs(+s.target - +s.from)
+    const over = !overshot && s.idx === '1' && +s.target < 10
+    for (let k = 0; k < steps + (over ? 1 : 0); k++) {
+      await page.getByRole('button', { name: 'Vorwärts hüpfen' }).click({ timeout: 3000 }).catch(() => {})
+      await page.waitForTimeout(520)
+    }
+    await page.getByRole('button', { name: 'Landen' }).click({ timeout: 3000 }).catch(() => {})
+    if (over) {
+      overshot = true
+      await page.waitForTimeout(600)
+      if (!(await page.locator('[data-creature="resident"]').count())) problems.push('Planeten-Hüpfer: nobody else answered on the wrong planet')
+      const back = await until(x => x.phase === 'play', 6000)
+      if (back?.pos !== s.from) problems.push('Planeten-Hüpfer: after a wrong landing the rocket is not back at the start')
+      continue
+    }
+    round = +s.idx
+    await page.waitForTimeout(400)
+  }
+  await page.waitForTimeout(6000)
+  const text = await page.evaluate(() => document.body.innerText)
+  if (!/5 von 6 gleich beim ersten Mal richtig/.test(text)) problems.push(`Planeten-Hüpfer: results not as expected: ${text.slice(0, 120).replace(/\n/g, ' | ')}`)
+  await check(page, 'Planeten-Hüpfer results')
+  problems.push(...page.errors.map(e => `Planeten-Hüpfer: ${e}`))
+  await page.context().close()
+}
+
+// 3j. Waage-Welt (Wippe-Katapult): level 1 to the results. The first throw
+// is the light thing: the mouse only hops, a mark stays on the tree. Then
+// the heavy one every time; six animals end up on the branch
+{
+  const page = await newPage(SIZES.phone, save)
+  await page.goto(URL); await page.waitForTimeout(1500)
+  await page.getByRole('button', { name: /^Waage-Welt, Level/ }).last().click()
+  const game = page.locator('[data-game="wippe"]')
+  await game.waitFor({ timeout: 10000 }).catch(() => problems.push('Wippe-Katapult: the game did not start'))
+  const phaseIs = async (p, ms) => {
+    for (let t = 0; t < ms; t += 100) {
+      const now = await game.getAttribute('data-phase').catch(() => null)
+      if (now === p || now === null) return now === p
+      await page.waitForTimeout(100)
+    }
+    return false
+  }
+  let missed = false, guests = 0
+  const t0 = Date.now()
+  while (Date.now() - t0 < 150000 && (await game.count())) {
+    if (!(await phaseIs('aim', 20000))) break
+    const target = await game.getAttribute('data-target')
+    const pick = missed ? `[data-item][data-where="ground"][data-w="${target}"]` : `[data-item][data-where="ground"]:not([data-w="${target}"])`
+    await page.locator(pick).first().click()
+    if (!missed) {
+      missed = true
+      if (!(await phaseIs('aim', 15000))) { problems.push('Wippe-Katapult: no new try after a light throw'); break }
+      if ((await page.locator('[data-mark]').count()) !== 1) problems.push('Wippe-Katapult: no mark on the tree after a throw')
+      if ((await game.getAttribute('data-task')) !== '0') problems.push('Wippe-Katapult: a light throw ended the task')
+      await check(page, 'Wippe-Katapult after a miss')
+      continue
+    }
+    guests = Math.max(guests, Number(await game.getAttribute('data-guests').catch(() => 0)))
+    await page.waitForTimeout(400)
+  }
+  await page.waitForTimeout(5000)
+  const text = await page.evaluate(() => document.body.innerText)
+  if (!/5 von 6 gleich beim ersten Mal richtig/.test(text)) problems.push(`Wippe-Katapult: results not as expected: ${text.slice(0, 120).replace(/\n/g, ' | ')}`)
+  if (guests < 5) problems.push(`Wippe-Katapult: only ${guests} animals on the branch`)
+  await check(page, 'Wippe-Katapult results')
+  problems.push(...page.errors.map(e => `Wippe-Katapult: ${e}`))
+  await page.context().close()
+}
+
+// 3k. Hörabenteuer (Hütchenspiel im Gebüsch): level 1 to the results: the
+// things hop into their bushes, Lumi calls one, its bush is tapped; at the
+// first call a wrong bush first (its thing pops out and goes back in)
+{
+  const page = await newPage(SIZES.phone, save)
+  await page.goto(URL); await page.waitForTimeout(1500)
+  await page.getByRole('button', { name: /^Hörabenteuer, Level/ }).last().click()
+  const game = page.locator('[data-game="huetchen"]')
+  await game.waitFor({ timeout: 10000 }).catch(() => problems.push('Hütchenspiel: the game did not start'))
+  let calls = 0, wrong = false
+  const t0 = Date.now()
+  while (Date.now() - t0 < 150000 && (await game.count())) {
+    const s = await page.evaluate(() => {
+      const root = document.querySelector('[data-game="huetchen"]')
+      if (!root) return null
+      const bushes = [...root.querySelectorAll('[data-bush]')].filter(b => b.dataset.gone !== '1').map(b => ({ id: b.dataset.bush, word: b.dataset.word }))
+      return { phase: root.dataset.phase, target: root.dataset.target, bushes }
+    })
+    if (!s) break
+    if (s.phase !== 'find' || !s.target) { await page.waitForTimeout(200); continue }
+    if (!wrong) {
+      wrong = true
+      const other = s.bushes.find(b => b.word !== s.target)
+      await page.locator(`[data-bush="${other.id}"]`).click()
+      await page.waitForTimeout(400)
+      if ((await game.getAttribute('data-phase')) !== 'oops') problems.push('Hütchenspiel: a wrong bush did not show its thing')
+      await page.waitForFunction(() => document.querySelector('[data-game="huetchen"]')?.dataset.phase === 'find', null, { timeout: 8000 }).catch(() => problems.push('Hütchenspiel: no new try after a miss'))
+      continue
+    }
+    await page.locator(`[data-bush="${s.bushes.find(b => b.word === s.target).id}"]`).click()
+    calls++
+    await page.waitForTimeout(1200)
+  }
+  await page.waitForTimeout(2500)
+  const text = await page.evaluate(() => document.body.innerText)
+  if (calls < 6) problems.push(`Hütchenspiel: only ${calls} things found`)
+  if (!/5 von 6 gleich beim ersten Mal richtig/.test(text)) problems.push(`Hütchenspiel: results not as expected: ${text.slice(0, 120).replace(/\n/g, ' | ')}`)
+  await check(page, 'Hütchenspiel results')
+  problems.push(...page.errors.map(e => `Hütchenspiel: ${e}`))
+  await page.context().close()
+}
+
 // 4. Lumi's ideas for today: the last idea from the home screen, the
 // movement break the results suggest, the sticker, the album
 {
