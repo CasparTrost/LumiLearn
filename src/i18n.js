@@ -75,7 +75,7 @@ export const translations = {
     'module.shape-build': 'Formen-Werkstatt',
     'module.empathy': 'Gefühlsdetektiv',
     'module.initial-sound': 'Anlaut-Detektiv',
-    'module.rhyme': 'Reim-Rallye',
+    'module.rhyme': 'Reim-Theater',
     'module.shapes-land': 'Formen-Land',
     'module.rocket-math': 'Rechen-Rakete',
     'module.coloring.sub': 'Ausmalen & Kreativ',
