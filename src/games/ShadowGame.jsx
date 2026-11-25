@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence, useAnimationFrame, useReducedMotion } from 'framer-motion'
-import { narrate, leaveGame, lockPreviews } from '../narrator.js'
+import { narrate, leaveGame, lockPreviews, afterNarration } from '../narrator.js'
 import { LINES, line } from '../lib/lumiLines.js'
 import { sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
@@ -11,7 +11,7 @@ import { useLater } from './zahlen/stage.jsx'
 import { pxCard } from './px.js'
 import { THINGS, CAT, planLevel, levelConfig, tasksIn, tiltOf, glints } from './schatten/data.js'
 import { layoutFor } from './schatten/layout.js'
-import { makeRoom, spawn, step, flee, gait, inLight, lookOf, floorOf, placeApart, tapTarget, inBeam, nextFocus, settleFocus, torchCatches, lampDrop, lampSize } from './schatten/sim.js'
+import { makeRoom, spawn, step, flee, gait, inLight, lookOf, floorOf, placeApart, tapTarget, inBeam, nextFocus, settleFocus, REST_SPEED, torchCatches, lampDrop, lampSize } from './schatten/sim.js'
 import { Backdrop, Furniture, hidesOf } from './schatten/Room.jsx'
 import { Garland, Eyes, CeilingLamp, Bunting, Joker, slotAt } from './schatten/parts.jsx'
 import { gasp, lampOn, wakeSound } from './schatten/sound.js'
@@ -355,7 +355,8 @@ export default function ShadowGame({ level = 1, onComplete }) {
     sayRight(null, { lead: [wordOf(s.e)].filter(Boolean) })
     setHelp(h => (h === s.id ? null : h))
     bump()
-    later(1250, () => { if (s.move !== 'roll' && s.move !== 'hop') playAnimal(s.e) })
+    // its own sound once Lumi has said its name and her praise, not over them
+    later(1250, () => afterNarration(() => { if (s.move !== 'roll' && s.move !== 'hop') playAnimal(s.e) }, { maxMs: 4000 }))
     later(reduce ? 1300 : 2300, () => climb(s))
   }
 
@@ -593,7 +594,12 @@ export default function ShadowGame({ level = 1, onComplete }) {
       const now = inBeam(w.shadows, beam, RS)
       if (now) now.seenAt = w.t
       // … and the light must rest on another lit one before that one takes over (sim.js settleFocus)
-      const next = settleFocus(w.focus, nextFocus(w.focus, w.shadows, beam, RS, w.pin?.id ?? null), w.shadows, w.dwell, w.t, !!w.pin)
+      // how fast the light travels (smoothed, in beam radii a second): only a resting light moves the focus
+      const at = w.beamAt ?? { x: beam.x, y: beam.y }
+      const v = dt > 0 ? Math.hypot(beam.x - at.x, beam.y - at.y) / dt / beamR : 0
+      w.beamSpeed = (w.beamSpeed ?? 0) + (v - (w.beamSpeed ?? 0)) * Math.min(1, dt * 12)
+      w.beamAt = { x: beam.x, y: beam.y }
+      const next = settleFocus(w.focus, nextFocus(w.focus, w.shadows, beam, RS, w.pin?.id ?? null), w.shadows, w.dwell, w.t, !!w.pin, w.beamSpeed < REST_SPEED)
       w.dwell = next.dwell
       setFocus(next.focus)
     }
@@ -761,7 +767,6 @@ export default function ShadowGame({ level = 1, onComplete }) {
   const ready = L && w && w.roomIdx === roomIdx
   const shadows = ready ? w.shadows : []
   const lit = phase === 'party'
-  const caughtEl = caughtId && { current: shadowEls.current[caughtId] }
   // the help (hand and pulsing card) while that shadow is the focus: a tapped card goes there
   const helpS = help && help === caughtId && shadows.find(s => s.id === help)
   const showCardHand = ready && phase === 'play' && !drag && !flights.length && caughtId && !help && shadows.some(s => s.id === caughtId && s.state === 'caught')
@@ -880,6 +885,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
 
           {/* The cards */}
           <Cards L={L} cards={room.cards} left={cardsLeft} busy={busy} drag={drag} help={helpS?.e} done={lit} boxRef={cardsBoxRef} cardEls={cardEls}
+            wave={showCardHand && !demo ? (level <= 2 ? 2.5 : Math.min(4, cfg.hold - 1.5)) : null}
             onDown={onCardDown} onMove={onCardMove} onUp={onCardUp} reduce={reduce} />
 
           {/* in the air: cards, the found ones climbing to the garland, the dragged card */}
@@ -912,9 +918,10 @@ export default function ShadowGame({ level = 1, onComplete }) {
 
           {/* the hand: how to bring a card to a lit shadow; after two misses, which card. One hand at a
               time: none while the demo finger shows the torch. It comes well before a shadow lets go. */}
-          <HintHand from={helpS ? { current: cardEls.current[helpS.e] } : cardsBoxRef} to={helpS ? { current: shadowEls.current[helpS.id] } : caughtEl}
-            active={!!(helpS || showCardHand) && phase === 'play' && !flights.length && !demo}
-            delay={helpS ? 400 : level <= 2 ? 2500 : Math.min(4000, (cfg.hold - 1.5) * 1000)} />
+          {helpS && (
+            <HintHand from={{ current: cardEls.current[helpS.e] }} to={{ current: shadowEls.current[helpS.id] }}
+              active={phase === 'play' && !flights.length && !demo} delay={400} />
+          )}
         </>
       )}
       {juice.layer}
@@ -927,7 +934,11 @@ export default function ShadowGame({ level = 1, onComplete }) {
  * The cards: the things in colour, in fixed places (a card that found its
  * shadow leaves an empty place). Press and drag, or tap.
  */
-function Cards({ L, cards, left, busy, drag, help, done, boxRef, cardEls, onDown, onMove, onUp, reduce }) {
+// `wave`: a shadow is lit and waits for its card. After that many seconds
+// the cards hop one after the other, all alike ("one of us"). A hand gliding
+// from the middle of the cards to the shadow started on one card, usually a
+// wrong one, and looked like the answer.
+function Cards({ L, cards, left, busy, drag, help, done, wave = null, boxRef, cardEls, onDown, onMove, onUp, reduce }) {
   const { size, cols: maxCols } = L.cards
   const cols = L.side ? L.cards.cols : Math.min(maxCols, cards.length)
   const rows = Math.ceil(cards.length / cols)
@@ -937,7 +948,7 @@ function Cards({ L, cards, left, busy, drag, help, done, boxRef, cardEls, onDown
       position: 'absolute', left: L.cards.x + (L.cards.w - gw) / 2, top: L.cards.y + (L.cards.h - gh) / 2, width: gw, height: gh,
       display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignContent: 'center', gap: 8,
     }}>
-      {cards.map(e => {
+      {cards.map((e, i) => {
         const here = left.includes(e)
         const away = busy.includes(e) || drag?.e === e
         if (!here) {
@@ -947,8 +958,11 @@ function Cards({ L, cards, left, busy, drag, help, done, boxRef, cardEls, onDown
           <motion.button key={e} type="button" data-card={e} aria-label={THINGS[e].name}
             ref={el => { cardEls.current[e] = el }}
             onPointerDown={ev => onDown(ev, e)} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
-            animate={help === e && !reduce ? { scale: [1, 1.1, 1], boxShadow: ['0 0 0 0px #ffc93c', '0 0 0 7px #ffc93c', '0 0 0 0px #ffc93c'] } : { scale: 1 }}
-            transition={help === e ? { duration: 0.9, repeat: Infinity } : { duration: 0.2 }}
+            data-wave={wave != null && help == null ? '1' : undefined}
+            animate={help === e && !reduce ? { scale: [1, 1.1, 1], boxShadow: ['0 0 0 0px #ffc93c', '0 0 0 7px #ffc93c', '0 0 0 0px #ffc93c'] }
+              : wave != null && help == null && !away && !reduce ? { scale: 1, y: [0, -size * 0.14, 0] } : { scale: 1, y: 0 }}
+            transition={help === e ? { duration: 0.9, repeat: Infinity }
+              : wave != null && help == null && !away && !reduce ? { y: { duration: 0.42, delay: wave + i * 0.13, repeat: Infinity, repeatDelay: 2.4 + cards.length * 0.13 } } : { duration: 0.2 }}
             style={{
               ...pxCard(), width: size, height: size, padding: 0, boxSizing: 'border-box', cursor: 'grab', touchAction: 'none',
               display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: away ? 0.25 : done ? 0.45 : 1, transition: 'opacity .4s',

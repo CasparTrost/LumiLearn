@@ -126,20 +126,30 @@ export function nextFocus(focus, shadows, beam, S, pin = null) {
   return best?.id ?? null
 }
 
-/** How long the light must rest on another lit shadow before it takes the focus (seconds). */
-export const FOCUS_DWELL = 0.4
+/**
+ * How long the light must rest on another lit shadow before it takes the
+ * focus (seconds). Short: a child shines on a shadow, looks, and goes for
+ * the card; with 0.4 s the focus had often not arrived when the pointer left.
+ * What keeps a crossed shadow from taking it is that the light must REST.
+ */
+export const FOCUS_DWELL = 0.12
+/** The light counts as resting while it moves slower than this many beam radii a second. */
+export const REST_SPEED = 0.45
 /**
  * The focus the child means. `want` is what nextFocus picks. It takes over
  * at once when the old focus is gone or a finger rests on a shadow (`pinned`).
  * While the old focus is still lit, another shadow takes it only after the
- * light has rested on it for FOCUS_DWELL: with a mouse the light follows the
- * pointer, and on its way to the cards it crosses other lit shadows (and
- * catches dark ones), which must not take the card that is about to be tapped.
+ * light has RESTED on it (`still`: the pointer hardly moves) for FOCUS_DWELL.
+ * A light that is travelling never moves the focus: with a mouse it follows
+ * the pointer, and on its way to the cards (however slowly) it crosses other
+ * lit shadows and catches dark ones; a finger sliding down to the cards does
+ * the same. None of them may take the card that is about to be tapped.
  * → { focus, dwell } (dwell: the shadow the light is resting on, and since when)
  */
-export function settleFocus(focus, want, shadows, dwell, t, pinned = false) {
+export function settleFocus(focus, want, shadows, dwell, t, pinned = false, still = true) {
   if (want === focus) return { focus, dwell: null }
   if (pinned || !held(shadows.find(s => s.id === focus))) return { focus: want, dwell: null }
+  if (!still) return { focus, dwell: null }
   if (!dwell || dwell.id !== want) return { focus, dwell: { id: want, t } }
   return t - dwell.t >= FOCUS_DWELL ? { focus: want, dwell: null } : { focus, dwell }
 }

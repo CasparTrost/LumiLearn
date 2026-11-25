@@ -154,7 +154,7 @@ function MoodMark({ mood, size, tickle }) {
       {mood === 'happy' || mood === 'dance' ? (
         <motion.div key={`h${tickle}`} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} exit={{ opacity: 0 }}>
           {[-0.3, 0, 0.3].map((dx, i) => (
-            <motion.svg key={i} viewBox="0 0 20 18" width={s * 0.18} height={s * 0.16}
+            <motion.svg key={i} viewBox="-2 -2.5 24 22" width={s * 0.18} height={s * 0.16}
               initial={{ x: s * 0.41 + dx * s, y: s * 0.3, opacity: 0, scale: 0.5 }}
               animate={{ y: s * (0.1 - i * 0.035), opacity: [0, 1, 0], scale: 1 }}
               transition={{ duration: 1.2, delay: i * 0.12 }}

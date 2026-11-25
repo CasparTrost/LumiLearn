@@ -516,7 +516,9 @@ function Play({ wide, level, onComplete }) {
     setTreatOn('gone')
     const big = hit(flyerRef.current, { stars: clean ? 2 : 1 }).milestone
     sayRight()
-    setFlyerMood(big ? 'dance' : 'happy', 1500)
+    // glad once Lumi has spoken: 'happy' and 'dance' play the animal's own
+    // sound (Critter), which started together with her praise in levels 9–10
+    afterNarration(() => setFlyerMood(big ? 'dance' : 'happy', 1500), { maxMs: 3500 })
     if (big) burst(flyerRef.current, 'confetti', 16)
     await wait(big ? 1300 : 800)
     // off to the branch
@@ -735,6 +737,14 @@ function Play({ wide, level, onComplete }) {
         tween(b.x, hb.x, { duration: 0.45, ease: 'easeInOut' })
         tween(b.y, [b.y.get(), Math.min(b.y.get(), hb.y) - 50, hb.y], { duration: 0.45 })
       }
+      // the stair has changed: the seesaw is cleared, so the next two to
+      // compare go onto free ends (one left lying there was weighed again
+      // against the next thing, a pair the child had seen already)
+      const rest = [S.pan.L, S.pan.R].filter(x => x && x !== id)
+      S.lastInput = Date.now()
+      await Promise.all([backToStep(id, true), ...rest.map(x => backToStep(x))])
+      weigh(0.5)
+      return
     }
     S.lastInput = Date.now()
     await backToStep(id, true)
@@ -1054,9 +1064,18 @@ function Play({ wide, level, onComplete }) {
       // it, the heavier one onto the other's step. Before, the hand stopped
       // here, and nothing ever showed that things change places on the stair.
       if (S.seen.has(pairKey(...pair))) return { from: pair[0], to: `step${S.steps.indexOf(pair[1])}` }
-      const [a, b] = S.weighed || S.misses >= 2 ? pair : S.steps.slice(0, 2)
-      if (!panSide(a)) return { from: a, to: panSide(b) < 0 ? 'panR' : 'panL' }
-      if (!panSide(b)) return { from: b, to: panSide(a) < 0 ? 'panR' : 'panL' }
+      // the first neighbours the wrong way round go onto the seesaw: onto
+      // a free end, and only when none is free onto the end that holds the
+      // third thing (never onto the partner's end, which sent the partner
+      // back before it was weighed)
+      const [a, b] = pair
+      const endFor = (id, partner) => {
+        const taken = panSide(partner)
+        if (taken) return taken < 0 ? 'panR' : 'panL'
+        return !S.pan.L ? 'panL' : !S.pan.R ? 'panR' : 'panL'
+      }
+      if (!panSide(a)) return { from: a, to: endFor(a, b) }
+      if (!panSide(b)) return { from: b, to: endFor(b, a) }
       return null
     }
     // balance: after two misses the next right move, never a wrong tick
