@@ -29,8 +29,8 @@ export function sheetSize(w, h) {
 // detail: 0 fewer lines, 1 normal, 2 more lines. Sizes are in sheet pixels
 // (a sheet has 1.5 million); they scale with the picture's area.
 const LEVELS = [
-  { t: 168, speck: 160, gap: 30, tiny: 700, k: 5, minRegion: 0.006,  merge: 20, edge: 22, out: 28 },
-  { t: 192, speck: 80,  gap: 40, tiny: 420, k: 7, minRegion: 0.0028, merge: 15, edge: 14, out: 20 },
+  { t: 168, speck: 160, gap: 30, tiny: 700, k: 5, minRegion: 0.006,  merge: 20, edge: 22, out: 28, ruled: true },
+  { t: 192, speck: 80,  gap: 40, tiny: 420, k: 7, minRegion: 0.0028, merge: 15, edge: 14, out: 20, ruled: true },
   { t: 214, speck: 40,  gap: 40, tiny: 260, k: 9, minRegion: 0.0013, merge: 10, edge: 10, out: 16 },
 ]
 export const LINE_WIDTH = 5          // the thinnest a line ends up (the pages' lines are 5–9)
@@ -200,9 +200,93 @@ export function evenLight(rgba, w, h) {
     v[i] = 255 - (255 - Math.min(rgba[p], rgba[p + 1], rgba[p + 2])) * a
   }
   const bg = paperLight(v, w, h)
+  softShadows(v, bg, w, h)
   const out = new Float32Array(w * h)
   for (let i = 0; i < v.length; i++) out[i] = Math.min(255, v[i] * 255 / Math.max(48, bg[i]))
   return out
+}
+
+// The shadow of a hand or of the phone across the page: darker than the
+// paper round it and too narrow for `paperLight` to follow (that takes the
+// brightest far around, so that lines don't count). What tells a shadow from
+// a coloured-in area or a bold line is its edge: a shadow fades out. Where a
+// dark patch has such a soft edge, the paper's light is taken from the patch
+// itself, with its lines closed over, and the shadow is gone while the lines
+// in it stay. Changes `bg` in place.
+function softShadows(v, bg, w, h) {
+  const B = 4
+  const bw = Math.ceil(w / B), bh = Math.ceil(h / B), n = bw * bh
+  // the brightest in each block, then closed (lines up to some 24 pixels wide go)
+  let top = new Float32Array(n)
+  for (let y = 0; y < h; y++) {
+    const row = ((y / B) | 0) * bw
+    for (let x = 0; x < w; x++) { const b = row + ((x / B) | 0); if (v[y * w + x] > top[b]) top[b] = v[y * w + x] }
+  }
+  const sweep = (src, pick) => {
+    const a = new Float32Array(n), out = new Float32Array(n)
+    for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) {
+      let m = src[y * bw + x]
+      for (let d = -3; d <= 3; d++) { const xx = x + d; if (xx >= 0 && xx < bw) m = pick(m, src[y * bw + xx]) }
+      a[y * bw + x] = m
+    }
+    for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) {
+      let m = a[y * bw + x]
+      for (let d = -3; d <= 3; d++) { const yy = y + d; if (yy >= 0 && yy < bh) m = pick(m, a[yy * bw + x]) }
+      out[y * bw + x] = m
+    }
+    return out
+  }
+  const closed = sweep(sweep(top, Math.max), Math.min)
+  // how dark against the paper far around
+  const ratio = new Float32Array(n)
+  const dark = new Uint8Array(n)
+  let any = false
+  for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) {
+    const b = y * bw + x
+    const paper = bg[Math.min(h - 1, y * B + 2) * w + Math.min(w - 1, x * B + 2)]
+    ratio[b] = closed[b] / Math.max(48, paper)
+    if (ratio[b] < 0.88) { dark[b] = 1; any = true }
+  }
+  if (!any) return
+  const cc = components(dark, bw, bh, 1, 4)
+  // each patch: how deep, and how much of that depth lies across its edge
+  const deepest = new Float32Array(cc.count).fill(1)
+  for (let b = 0; b < n; b++) if (dark[b] && ratio[b] < deepest[cc.labels[b]]) deepest[cc.labels[b]] = ratio[b]
+  const steps = Array.from({ length: cc.count }, () => [])
+  for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) {
+    const b = y * bw + x
+    if (!dark[b]) continue
+    if (!((x > 0 && !dark[b - 1]) || (x < bw - 1 && !dark[b + 1]) || (y > 0 && !dark[b - bw]) || (y < bh - 1 && !dark[b + bw]))) continue
+    let lo = 2, hi = 0
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const yy = y + dy, xx = x + dx
+      if (yy < 0 || yy >= bh || xx < 0 || xx >= bw) continue
+      const r = ratio[yy * bw + xx]
+      if (r < lo) lo = r
+      if (r > hi) hi = r
+    }
+    steps[cc.labels[b]].push(hi - lo)
+  }
+  const soft = new Uint8Array(n)
+  let found = false
+  for (let c = 0; c < cc.count; c++) {
+    if (cc.areas[c] < 40 || cc.border[c] || !steps[c].length) continue
+    const st = steps[c].sort((a, b) => a - b)
+    const depth = 1 - deepest[c]
+    if (st[st.length >> 1] < 0.55 * depth) { found = true; for (let b = 0; b < n; b++) if (dark[b] && cc.labels[b] === c) soft[b] = 1 }
+  }
+  if (!found) return
+  const wide = dilate(soft, bw, bh, 4)
+  const level = boxBlur(closed, bw, bh, 1)
+  for (let y = 0; y < h; y++) {
+    const fy = Math.min(bh - 1, Math.max(0, (y + 0.5) / B - 0.5)), y0 = fy | 0, y1 = Math.min(bh - 1, y0 + 1), ty = fy - y0
+    for (let x = 0; x < w; x++) {
+      const fx = Math.min(bw - 1, Math.max(0, (x + 0.5) / B - 0.5)), x0 = fx | 0, x1 = Math.min(bw - 1, x0 + 1), tx = fx - x0
+      if (!wide[y0 * bw + x0] && !wide[y1 * bw + x1]) continue
+      const l = (level[y0 * bw + x0] * (1 - tx) + level[y0 * bw + x1] * tx) * (1 - ty) + (level[y1 * bw + x0] * (1 - tx) + level[y1 * bw + x1] * tx) * ty
+      if (l < bg[y * w + x]) bg[y * w + x] = l
+    }
+  }
 }
 
 // ── line art ────────────────────────────────────────────────────────────────
@@ -389,9 +473,11 @@ export function joinEnds(skel, w, h, gap, avoid = null) {
         if (score < bestScore) { bestScore = score; best = q }
       }
     }
-    // the edge of the sheet, straight ahead (from a line end; a little further)
+    // the edge of the sheet, straight ahead (from a line end; a little
+    // further). Only for a line of some length, the horizon that stops short
+    // of the edge: a sun's ray near the edge was drawn on to it.
     let edge = null
-    if (src.end) {
+    if (src.end && steps >= reach) {
       for (const [ddist, tx, ty] of [[ex, 0, ey], [w - 1 - ex, w - 1, ey], [ey, ex, 0], [h - 1 - ey, ex, h - 1]]) {
         if (ddist > gap * 1.5) continue          // lines often stop short of the edge
         const dist = Math.max(1, ddist)
@@ -423,10 +509,20 @@ function removeSpecks(ink, w, h, min) {
 // What is drawn on the paper, from the evened light: hysteresis (faint
 // pixels count where they touch a clearly dark line), without the dark mass
 // around the paper.
-function inkOf(light, w, h, L, tableIsDark = false) {
+function inkOf(light, w, h, L, tableIsDark = false, rgba = null) {
   const norm = boxBlur(light, w, h, 1)
   const weak = new Uint8Array(w * h), strong = new Uint8Array(w * h)
   for (let i = 0; i < norm.length; i++) { weak[i] = norm[i] < L.t ? 1 : 0; strong[i] = norm[i] < L.t - 30 ? 1 : 0 }
+  // The pale blue squares of an exercise book are the paper's, not the
+  // drawing's: light and coloured (a pencil is grey, a felt pen dark). With
+  // "more lines" they come too.
+  if (rgba && L.ruled) {
+    for (let i = 0, p = 0; i < weak.length; i++, p += 4) {
+      if (!weak[i]) continue
+      const mx = Math.max(rgba[p], rgba[p + 1], rgba[p + 2]), mn = Math.min(rgba[p], rgba[p + 1], rgba[p + 2])
+      if (mn > 150 && mx - mn > 24) weak[i] = strong[i] = 0
+    }
+  }
   const wc = components(weak, w, h, 1, 8)
   const keep = new Uint8Array(wc.count)
   for (let i = 0; i < strong.length; i++) if (strong[i]) keep[wc.labels[i]] = 1
@@ -462,13 +558,27 @@ function inkOf(light, w, h, L, tableIsDark = false) {
 // seven pixels in, large, and somewhere thick. A bold line is no area: it is
 // thick all along but never deep (hollowed out, every stroke of a small
 // picture enlarged came back as two lines with a strip between them).
-function solidCores(ink, w, h) {
+//
+// And a bold line is black. A coloured mass that is not deep is a coloured-in
+// area all the same, in stripes (a striped dress: kept as "bold lines" it was
+// a black dress nobody could paint).
+function solidCores(ink, w, h, rgba = null) {
   const core = erode(ink, w, h, 7)
   const cc = components(core, w, h, 1, 8)
   const deep = erode(core, w, h, 14)
   const thick = new Uint8Array(cc.count)
   for (let i = 0; i < deep.length; i++) if (deep[i]) thick[cc.labels[i]] = 1
-  return { core, cc, solid: i => core[i] && thick[cc.labels[i]] && cc.areas[cc.labels[i]] >= 900 }
+  const black = new Float64Array(cc.count)
+  if (rgba) for (let i = 0, p = 0; i < core.length; i++, p += 4) if (core[i] && Math.max(rgba[p], rgba[p + 1], rgba[p + 2]) < 120) black[cc.labels[i]]++
+  const coloured = c => !!rgba && black[c] < 0.6 * cc.areas[c]
+  return {
+    core, cc,
+    solid: i => core[i] && cc.areas[cc.labels[i]] >= 900 && (thick[cc.labels[i]] || coloured(cc.labels[i])),
+    // any coloured mass, small ones too: no stroke
+    mass: i => core[i] && cc.areas[cc.labels[i]] >= 300 && coloured(cc.labels[i]),
+    // how much of the picture is coloured-in (not black) mass
+    colouredShare: () => { let a = 0; for (let c = 0; c < cc.count; c++) if (cc.areas[c] >= 900 && coloured(c)) a += cc.areas[c]; return a / (w * h) },
+  }
 }
 
 // From ink to lines: specks away, gaps closed, line ends joined, a line
@@ -491,10 +601,10 @@ function inkToLines(ink, w, h, L, s, avoid) {
 export function traceLines(rgba, w, h, detail = 1, light = evenLight(rgba, w, h)) {
   const L = LEVELS[detail] ?? LEVELS[1]
   const s = (w * h) / (SHEET_SHORT * SHEET_LONG)                 // area scale
-  const ink = inkOf(light, w, h, L)
+  const ink = inkOf(light, w, h, L, false, rgba)
   // solid areas become their outline; small ones (the dot of an eye) stay
   // solid, and no line is joined there
-  const { core, solid } = solidCores(ink, w, h)
+  const { core, solid } = solidCores(ink, w, h, rgba)
   const dots = new Uint8Array(w * h)
   for (let i = 0; i < ink.length; i++) {
     if (!core[i]) continue
@@ -507,15 +617,32 @@ export function traceLines(rgba, w, h, detail = 1, light = evenLight(rgba, w, h)
 
 // The strokes on a picture with paper and coloured-in areas: the ink
 // without its solid areas (their borders come from the colours).
-function strokesOf(light, w, h, L, s) {
-  const ink = inkOf(light, w, h, L, true)
-  const { core, solid } = solidCores(ink, w, h)
+function strokesOf(rgba, light, w, h, L, s) {
+  const ink = inkOf(light, w, h, L, true, rgba)
+  const { core, solid, mass } = solidCores(ink, w, h, rgba)
   const areas = new Uint8Array(w * h)
   let any = false
-  for (let i = 0; i < ink.length; i++) if (solid(i)) { areas[i] = 1; any = true }
+  for (let i = 0; i < ink.length; i++) if (solid(i) || mass(i)) { areas[i] = 1; any = true }
   if (any) {
-    const gone = dilate(areas, w, h, 10)
+    const gone = dilate(areas, w, h, 12)
     for (let i = 0; i < ink.length; i++) if (gone[i]) ink[i] = 0
+  }
+  // What is left and is no stroke: the pale skirt of a soft-shaded shape (a
+  // cat's fur), wide and coloured. A stroke is narrow, or black.
+  {
+    const ic = components(ink, w, h, 1, 8)
+    const skel = thin(ink, w, h)
+    const len = new Float64Array(ic.count), black = new Float64Array(ic.count)
+    for (let i = 0, p = 0; i < ink.length; i++, p += 4) {
+      if (!ink[i]) continue
+      if (skel[i]) len[ic.labels[i]]++
+      if (Math.max(rgba[p], rgba[p + 1], rgba[p + 2]) < 120) black[ic.labels[i]]++
+    }
+    for (let i = 0; i < ink.length; i++) {
+      if (!ink[i]) continue
+      const c = ic.labels[i]
+      if (ic.areas[c] > 14 * Math.max(1, len[c]) && black[c] < 0.6 * ic.areas[c]) ink[i] = 0
+    }
   }
   const dots = new Uint8Array(w * h)
   for (let i = 0; i < ink.length; i++) if (core[i] && ink[i]) dots[i] = 1
@@ -793,12 +920,15 @@ function mergeSmall(labels, lab, w, h, min, keep = min, standsOut = 20) {
 }
 const STROKE_STANDS_OUT = 20
 
+const THIN = 3
+
 // What is thin goes into what lies beside it: a cartoon's black outline, a
 // drawn line, the blend of two colours along their border, and the halo of
 // that blend round a dark shape (it has the colour of something else in the
 // picture and hangs on to it by a thread: the two halves of a background
 // were kept apart by the halo round a head between them). Thin is what is
-// up to four pixels wide, a whole region or a part of one. Its two sides
+// up to six pixels wide, a whole region or a part of one (smoothed, a drawn
+// line is that wide; left as a region it came back as a row of black pills). Its two sides
 // would be two lines with a strip between them that nobody can colour; one
 // line is left where it was.
 //
@@ -812,12 +942,12 @@ function simplifyRegions(reg, lab, w, h, maxDiff, soft = lab) {
   const n = w * h
   let count = 0
   for (let i = 0; i < n; i++) if (reg[i] + 1 > count) count = reg[i] + 1
-  // thin: what an opening takes away (two pixels in, two pixels out again)
+  // thin: what an opening takes away (three pixels in, three pixels out again)
   const core = new Uint8Array(n)
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const p = y * w + x, a = reg[p]
     let all = true
-    for (let dy = -2; dy <= 2 && all; dy++) for (let dx = -2; dx <= 2; dx++) {
+    for (let dy = -THIN; dy <= THIN && all; dy++) for (let dx = -THIN; dx <= THIN; dx++) {
       const yy = Math.min(h - 1, Math.max(0, y + dy)), xx = Math.min(w - 1, Math.max(0, x + dx))
       if (reg[yy * w + xx] !== a) { all = false; break }
     }
@@ -827,7 +957,7 @@ function simplifyRegions(reg, lab, w, h, maxDiff, soft = lab) {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const p = y * w + x, a = reg[p]
     let near = false
-    for (let dy = -2; dy <= 2 && !near; dy++) for (let dx = -2; dx <= 2; dx++) {
+    for (let dy = -THIN; dy <= THIN && !near; dy++) for (let dx = -THIN; dx <= THIN; dx++) {
       const yy = y + dy, xx = x + dx
       if (yy < 0 || yy >= h || xx < 0 || xx >= w) continue
       const q = yy * w + xx
@@ -941,6 +1071,9 @@ function simplifyRegions(reg, lab, w, h, maxDiff, soft = lab) {
     }
     if (!border) strokes[p] = 1
   }
+  // a scrap of a line (a piece of a whisker, of a streak) is a crumb
+  const sc = components(strokes, w, h, 1, 8)
+  for (let p = 0; p < n; p++) if (strokes[p] && sc.areas[sc.labels[p]] < 14) strokes[p] = 0
   return { reg: out, strokes }
 }
 
@@ -1036,7 +1169,7 @@ export function traceShapes(rgba, w, h, detail = 1, extra = null) {
 // the yellow wall were not there at all.
 export function traceMixed(rgba, w, h, detail = 1, light = evenLight(rgba, w, h)) {
   const L = LEVELS[detail] ?? LEVELS[1]
-  return traceShapes(rgba, w, h, detail, strokesOf(light, w, h, L, (w * h) / (SHEET_SHORT * SHEET_LONG)))
+  return traceShapes(rgba, w, h, detail, strokesOf(rgba, light, w, h, L, (w * h) / (SHEET_SHORT * SHEET_LONG)))
 }
 
 // ── both ────────────────────────────────────────────────────────────────────
@@ -1185,6 +1318,12 @@ export function surroundOf(rgba, w, h) {
 export function toColoringPage(rgba, w, h, detail = 1) {
   const picture = inverted(rgba) ?? rgba
   const light = evenLight(picture, w, h)
+  // Paper with coloured-in areas, or lines only? Coloured mass in the ink
+  // says so (not colour as such: an exercise book's squares are coloured,
+  // and so is yellow paper).
+  // (Judged at the normal setting, so that all three settings of one
+  // picture go the same way.)
+  const colouredIn = lt => solidCores(inkOf(lt, w, h, LEVELS[1], true, picture), w, h, picture).colouredShare() > 0.004
   // A drawing on a sheet that lies on a table: the sheet alone. The light
   // is evened first (against the table the paper is bright to its edge),
   // then the table counts as paper. Only for a drawing without coloured-in
@@ -1194,14 +1333,29 @@ export function toColoringPage(rgba, w, h, detail = 1) {
     const onSheet = Float32Array.from(light)
     const blank = new Uint8ClampedArray(picture)
     for (let i = 0; i < around.length; i++) if (around[i]) { onSheet[i] = 255; blank[i * 4] = blank[i * 4 + 1] = blank[i * 4 + 2] = 255 }
-    const { paper, colourful } = shares(onSheet, blank)
-    if (paper > 0.62 && colourful < 0.06) {
-      const res = traceLines(picture, w, h, detail, onSheet)
+    if (shares(onSheet, blank).paper > 0.62 && !colouredIn(onSheet)) {
+      const res = traceLines(picture, w, h, detail, darker(onSheet))
       if (res.ok) return res
     }
   }
-  const { paper, colourful } = shares(light, picture)
-  if (paper > 0.62 && colourful < 0.06) return traceLines(picture, w, h, detail, light)
-  if (paper > 0.45) return traceMixed(picture, w, h, detail, light)
+  const { paper } = shares(light, picture)
+  if (paper > 0.45 && colouredIn(light)) return traceMixed(picture, w, h, detail, light)
+  if (paper > 0.62) return traceLines(picture, w, h, detail, darker(light))
   return traceShapes(picture, w, h, detail)
+}
+
+// A very light pencil: the darkest lines on the page are still pale, and
+// half the drawing fell under the threshold. The whole page is made darker
+// until its darkest lines are as dark as a pencil's (the grain of the paper
+// stays well above the threshold). Changes `light` in place and returns it.
+function darker(light) {
+  const hist = new Uint32Array(256)
+  for (let i = 0; i < light.length; i++) hist[Math.max(0, Math.min(255, light[i] | 0))]++
+  // the darkest three in a thousand pixels: a line drawing has more ink than that
+  let seen = 0, darkest = 255
+  for (let v = 0; v < 256; v++) { seen += hist[v]; if (seen >= 0.003 * light.length) { darkest = v; break } }
+  if (darkest <= 150 || darkest > 222) return light
+  const k = Math.min(3.2, 135 / (255 - darkest))
+  for (let i = 0; i < light.length; i++) light[i] = Math.max(0, 255 - (255 - light[i]) * k)
+  return light
 }

@@ -1,6 +1,8 @@
 import { useState, useRef, useCallback, useEffect, useLayoutEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { createPortal } from 'react-dom'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
+import ParentGate from '../components/ParentGate.jsx'
 import LumiCharacter from '../components/LumiCharacter.jsx'
 import { useApp } from '../AppContext.jsx'
 import { narrate } from '../narrator.js'
@@ -1078,11 +1080,22 @@ export default function ColoringGame({ onComplete }) {
             refreshAlbum()
           }} />
       )}
-      {removing && (
-        <ConfirmDialog danger title="Dieses eigene Bild löschen?"
-          text="Die Vorlage verschwindet aus den Bildern. Was schon an der Wand hängt, bleibt."
-          yesLabel="Löschen" noLabel="Behalten"
-          onNo={() => setRemoving(null)} onYes={removeOwnPage} />
+      {/* Deleting an own picture is a grown-up's business, as bringing one
+          in is: behind the same question. It says what goes with it. */}
+      {removing && createPortal(
+        <div className="px-backdrop" onClick={() => setRemoving(null)} style={{ zIndex: 3000, padding: 'min(14px, 2.5vh) 10px' }}>
+          <div role="dialog" aria-modal="true" aria-label="Eigenes Bild löschen" onClick={e => e.stopPropagation()} className="px-panel"
+            style={{ width: '100%', maxWidth: window.innerHeight < 520 && window.innerWidth > window.innerHeight ? 600 : 360, maxHeight: '100%', overflowY: 'auto', padding: '14px 14px', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
+            <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 20, color: INK, textAlign: 'center' }}>🗑️ Dieses eigene Bild löschen?</div>
+            <div style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 14, color: INK, lineHeight: 1.35, textAlign: 'center' }}>
+              Die Vorlage verschwindet aus den Bildern{removing === curId && hasPainted ? ', und was gerade darauf gemalt ist, auch' : ''}. Was schon an der Wand hängt, bleibt.
+            </div>
+            <ParentGate quizOnly sideways={window.innerHeight < 520 && window.innerWidth > window.innerHeight}
+              pinIsDefault={state.settings?.pinIsDefault ?? true} correctPin={state.settings?.parentPin}
+              onUnlock={removeOwnPage} onCancel={() => setRemoving(null)} />
+          </div>
+        </div>,
+        document.body,
       )}
       {confirm === 'full' && (
         <ConfirmDialog kid title="Die Wand ist voll" say={lumi('atelier/wand-voll')}
