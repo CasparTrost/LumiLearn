@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, useAnimationControls } from 'framer-motion'
 import { PxStar } from './PixelUI.jsx'
-import { lumiArt } from '../lib/assets.js'
+import LumiFigure from './LumiFigure.jsx'
 
 const BASE = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '')
 
@@ -64,13 +64,12 @@ export default function LumiBuddy({ size = 48 }) {
     return () => { window.removeEventListener('lumi:feedback', onFeedback); clearTimeout(timer.current) }
   }, [controls, size])
 
-  const src = lumiArt(mood)
   return (
     <div aria-hidden="true" data-lumi-buddy={mood} style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
-      <motion.img
-        src={src} alt="" draggable={false} animate={controls}
-        style={{ width: size, height: size, display: 'block', objectFit: 'contain', filter: 'drop-shadow(0 3px 0 rgba(42,27,61,0.35))' }}
-      />
+      {/* Lumi wears what the child chose in the wardrobe */}
+      <motion.div animate={controls} style={{ width: size, height: size, filter: 'drop-shadow(0 3px 0 rgba(42,27,61,0.35))' }}>
+        <LumiFigure mood={mood} size={size} style={{ display: 'block' }} />
+      </motion.div>
       {bursts.map(b => <Burst key={b.id} big={b.big} size={size} onDone={() => setBursts(x => x.filter(y => y.id !== b.id))} />)}
     </div>
   )

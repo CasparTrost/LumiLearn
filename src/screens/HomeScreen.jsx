@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, Suspense } from 'react'
 import { motion } from 'framer-motion'
-import { useApp, MAX_LEVELS, hasLevels, todayMs } from '../AppContext.jsx'
+import { useApp, MAX_LEVELS, hasLevels, todayMs, profileWardrobeStars } from '../AppContext.jsx'
 import { useT } from '../i18n.js'
 import { PxStar, PxIcon, HudBar } from '../components/PixelUI.jsx'
 import TileArt from '../components/TileArt.jsx'
@@ -16,7 +16,8 @@ import { useFocusTrap } from '../hooks/useFocusTrap.js'
 import { narrate, stopNarration } from '../narrator.js'
 import { hearable } from '../lib/hearable.js'
 import { lazyWithReload } from '../lib/lazyWithReload.js'
-import { journeyArt } from '../lib/assets.js'
+import { journeyArt, asset } from '../lib/assets.js'
+import { unseenItems } from '../lib/wardrobe.js'
 import { WORLDS, MODULE_BY_ID, recommend, sortForAge, visibleModules } from '../modules.js'
 import { prefetchGame, isGameLoaded, ensureGame } from './GameScreen.jsx'
 import { line, gameLine } from '../lib/lumiLines.js'
@@ -129,6 +130,27 @@ function GameTile({ mod, p, index, onPlay, onLevels }) {
         </button>
       )}
     </motion.div>
+  )
+}
+
+// Lumis Kleiderschrank, next to the album. Something new in it: a sparkle
+// on the button and a little wiggle now and then — nothing more.
+function WardrobeButton({ fresh, onClick, small }) {
+  return (
+    <motion.button className="px-btn px-btn--parch px-btn--icon" onClick={onClick} data-wardrobe-new={fresh ? '1' : undefined}
+      aria-label={fresh ? 'Lumis Kleiderschrank, etwas Neues' : 'Lumis Kleiderschrank'} title="Lumis Kleiderschrank"
+      animate={fresh ? { rotate: [0, 0, 0, 0, -8, 8, -5, 0] } : { rotate: 0 }}
+      transition={fresh ? { duration: 2.6, repeat: Infinity } : { duration: 0.2 }}
+      style={{ flexShrink:0, width: small ? 48 : 56, height: small ? 48 : 56, padding:0, position:'relative', overflow:'visible' }}>
+      <img src={asset('sprites/emoji/custom/kleiderschrank.webp')} alt="" style={{ width: small ? 36 : 42, height: small ? 36 : 42 }} />
+      {fresh && (
+        <motion.span aria-hidden="true" animate={{ scale:[1, 1.25, 1] }} transition={{ duration:1.2, repeat:Infinity }}
+          style={{ position:'absolute', right:-8, top:-8, width:26, height:26, borderRadius:'50%', background:'#ff5b8a', border:'3px solid #fff',
+            boxShadow:'0 2px 0 rgba(42,27,61,0.4)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, lineHeight:1 }}>
+          ✨
+        </motion.span>
+      )}
+    </motion.button>
   )
 }
 
@@ -320,6 +342,9 @@ export default function HomeScreen() {
   const playIdea = () => idea && startModule(idea.mod, idea.stop.level, idea.idx)
   const openAlbum = () => { stopNarration(); dispatch({ type:'NAVIGATE', payload:'album' }) }
   const stickers = (activeProfile?.stickers ?? []).length
+  // Lumis Kleiderschrank: the one sign on its button when something new waits
+  const newWear = activeProfile ? unseenItems(activeProfile, profileWardrobeStars(activeProfile)).length : 0
+  const openWardrobe = () => { stopNarration(); dispatch({ type:'NAVIGATE', payload:'wardrobe' }) }
 
   return (
     // overflow-x clip, not hidden: hidden made this div a scroll container,
@@ -373,9 +398,10 @@ export default function HomeScreen() {
           </div>
         )}
         <button className="px-btn px-btn--parch px-btn--icon" onClick={openAlbum}
-          aria-label={`Mein Album, ${stickers} Sticker`} title="Mein Album" style={{ flexShrink:0, width:56, height:56, padding:0 }}>
-          <img src={journeyArt('album.png')} alt="" style={{ width:36, height:36, imageRendering:'pixelated' }} />
+          aria-label={`Mein Album, ${stickers} Sticker`} title="Mein Album" style={{ flexShrink:0, width: narrow ? 48 : 56, height: narrow ? 48 : 56, padding:0 }}>
+          <img src={journeyArt('album.png')} alt="" style={{ width: narrow ? 32 : 36, height: narrow ? 32 : 36, imageRendering:'pixelated' }} />
         </button>
+        <WardrobeButton fresh={newWear > 0} onClick={openWardrobe} small={narrow} />
         <MusicButton />
         <button
           className="px-btn px-btn--wood px-btn--icon"

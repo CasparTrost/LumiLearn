@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useApp, todayStr } from '../AppContext.jsx'
 import { HudBar, PxIcon } from '../components/PixelUI.jsx'
 import Confetti from '../components/Confetti.jsx'
-import { journeyArt, lumiArt } from '../lib/assets.js'
+import { journeyArt } from '../lib/assets.js'
+import LumiFigure from '../components/LumiFigure.jsx'
 import { narrate, stopNarration } from '../narrator.js'
 import { sayNumber } from '../tts.js'
 import { sfx } from '../sfx.js'
@@ -24,7 +25,6 @@ import { Art } from '../components/play/index.js'
  * Nothing is checked or scored — it is a break.
  */
 const BASE = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '')
-const LUMI = lumiArt('happy')
 
 // kind: how the picture moves; count: spoken numbers, one per move
 // say: the recording (lib/lumiLines.js); its text is shown too
@@ -71,9 +71,17 @@ function Figure({ pic, beat }) {
         <motion.div aria-hidden="true" animate={reduce ? {} : { scale: [0.7, 1.15, 0.7], opacity: [0.35, 0.7, 0.35] }} transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
           style={{ position: 'absolute', inset: '6%', borderRadius: '50%', background: 'radial-gradient(circle, #bfe9ff 0%, rgba(191,233,255,0) 70%)' }} />
       )}
-      <motion.img src={frog ? journeyArt('move.png') : LUMI} alt="" draggable={false}
-        animate={anim} transition={{ duration: dur, repeat: Infinity, ease: 'easeInOut' }}
-        style={{ width: '78%', height: '78%', imageRendering: frog ? 'pixelated' : undefined, filter: 'drop-shadow(0 6px 0 rgba(42,27,61,0.3))', transformOrigin: '50% 100%' }} />
+      {frog ? (
+        <motion.img src={journeyArt('move.png')} alt="" draggable={false}
+          animate={anim} transition={{ duration: dur, repeat: Infinity, ease: 'easeInOut' }}
+          style={{ width: '78%', height: '78%', imageRendering: 'pixelated', filter: 'drop-shadow(0 6px 0 rgba(42,27,61,0.3))', transformOrigin: '50% 100%' }} />
+      ) : (
+        // Lumi does the moves along, in what the child chose in the wardrobe
+        <motion.div animate={anim} transition={{ duration: dur, repeat: Infinity, ease: 'easeInOut' }}
+          style={{ width: '78%', height: '78%', filter: 'drop-shadow(0 6px 0 rgba(42,27,61,0.3))', transformOrigin: '50% 100%' }}>
+          <LumiFigure mood="happy" size="100%" style={{ display: 'block', height: '100%' }} />
+        </motion.div>
+      )}
       <div aria-hidden="true" style={{ position: 'absolute', bottom: -6, width: '50%', height: 14, borderRadius: '50%', background: 'rgba(42,27,61,0.18)' }} />
     </div>
   )

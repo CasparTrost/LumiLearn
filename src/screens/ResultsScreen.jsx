@@ -14,7 +14,10 @@ import { startStop } from '../lib/journeyNav.js'
 import { nextStopIndex } from '../lib/learning.js'
 import { STICKER_BY_EMOJI } from '../lib/stickers.js'
 import { MODULE_BY_ID } from '../modules.js'
-import { line } from '../lib/lumiLines.js'
+import { LINES, line } from '../lib/lumiLines.js'
+import { ITEM_BY_ID } from '../lib/wardrobe.js'
+import { asset } from '../lib/assets.js'
+import { ThingPic } from './WardrobeScreen.jsx'
 
 // One star means the level is done — the texts say so. Whether the next
 // level is announced is decided below (`opened`).
@@ -63,6 +66,8 @@ export default function ResultsScreen() {
   const masteredWell   = gameResult?.masteredWell   ?? false
   const isFirstPass    = gameResult?.isFirstPass    ?? false
   const streakCount    = gameResult?.streakCount ?? 0
+  // this round's stars unlocked something in Lumi's wardrobe (lib/wardrobe.js)
+  const newWear        = (gameResult?.newWear ?? []).map(id => ITEM_BY_ID[id]).filter(Boolean)
   // what Lumi suggests next (lib/learning.js): the next level, the same one
   // to practise, or the one before
   const suggested      = gameResult?.suggestedLevel ?? nextLevel ?? level
@@ -185,6 +190,8 @@ export default function ResultsScreen() {
       } else if (proposal === 'easier') news.push(line('ergebnis/leichter'))
       else if (proposal === 'practise') news.push(line('ergebnis/ueben'))
     }
+    // not recorded yet: skipped while missing
+    if (newWear.length && LINES['schrank/neu']) news.push(line('schrank/neu'))
     if (freshSticker) news.push(line('ergebnis/sticker-tag'))
     else if (main === moveBtn) news.push(line('ergebnis/bewegen'))
     else if (main === ideaBtn) news.push(line('ergebnis/noch-eine-idee'))
@@ -197,7 +204,7 @@ export default function ResultsScreen() {
     return () => { clearTimeout(tm); stop(); stopNarration() }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const lumiMood = stars >= 2 ? 'dance' : stars >= 1 ? 'happy' : 'idle'
+  const lumiMood = stars >= 2 || newWear.length ? 'dance' : stars >= 1 ? 'happy' : 'idle'
   const lumiSize = Math.min(150, Math.round((typeof window !== 'undefined' ? window.innerHeight : 800) * 0.16))
 
   // A phone held sideways is lower than the party and the card together:
@@ -280,6 +287,10 @@ export default function ResultsScreen() {
           {sticker && <StickerSurprise emoji={sticker} />}
         </AnimatePresence>
 
+        {newWear.length > 0 && (
+          <WearSurprise items={newWear} ready={showButtons} onOpen={() => { stopNarration(); dispatch({ type: 'NAVIGATE', payload: 'wardrobe' }) }} />
+        )}
+
         {/* Buttons — there from the start (the card stood empty for two
             seconds), but only tappable after a moment, so a tap meant for
             the game's last task doesn't land on one */}
@@ -313,6 +324,38 @@ function PartyFriend({ art, delay, flip, size }) {
     <motion.div initial={{ x: flip ? size : -size, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay, type: 'spring', stiffness: 200, damping: 14 }}>
       <Critter art={art} size={size} mood="dance" flip={flip} />
     </motion.div>
+  )
+}
+
+// A present for Lumi: it pops open and the new thing jumps out. One tap on
+// it (or on the wardrobe button) leads to the wardrobe to try it on.
+function WearSurprise({ items, ready, onOpen }) {
+  const item = items[items.length - 1]
+  useEffect(() => { const t = setTimeout(() => sfx.sparkle(), 900); return () => clearTimeout(t) }, [])
+  return (
+    <motion.button type="button" onClick={onOpen} disabled={!ready} data-wear-surprise={items.map(t => t.id).join(' ')}
+      aria-label={`Ein Geschenk für Lumi: ${items.map(t => t.name).join(', ')}. Zum Kleiderschrank`}
+      initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.5, type: 'spring', stiffness: 260, damping: 14 }}
+      whileTap={{ scale: 0.95 }}
+      style={{
+        all: 'unset', boxSizing: 'border-box', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px 6px 8px',
+        borderRadius: 16, background: '#ffe6f0', border: '3px solid var(--px-ink)', boxShadow: '0 4px 0 rgba(42,27,61,0.3)', minHeight: 72,
+      }}>
+      <div style={{ position: 'relative', width: 64, height: 64, flexShrink: 0 }}>
+        {/* the present, then what was in it */}
+        <motion.div initial={{ scale: 1, opacity: 1 }} animate={{ scale: [1, 1.15, 0], opacity: [1, 1, 0], rotate: [0, -10, 10, 0] }} transition={{ delay: 0.7, duration: 0.6 }}
+          style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Art art="🎁" size={56} />
+        </motion.div>
+        <motion.div initial={{ scale: 0, y: 10 }} animate={{ scale: [0, 1.25, 1], y: [10, -6, 0] }} transition={{ delay: 1.15, duration: 0.6 }}
+          style={{ position: 'absolute', inset: 0, borderRadius: 14, background: 'radial-gradient(circle, #fffdf5 0%, #fff1d0 100%)', border: '3px solid #ffc93c' }}>
+          <ThingPic item={item} size={58} />
+        </motion.div>
+      </div>
+      <span className="px-btn px-btn--gold px-btn--md" aria-hidden="true" style={{ pointerEvents: 'none', gap: 6, padding: '0 12px' }}>
+        <img src={asset('sprites/emoji/custom/kleiderschrank.webp')} alt="" style={{ width: 34, height: 34 }} /> Anziehen!
+      </span>
+    </motion.button>
   )
 }
 

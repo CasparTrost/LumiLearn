@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Lumi's wardrobe (src/lib/wardrobe.js): the crown. Gold, five round
+       points with little balls, a band with red and blue jewels. It sits on
+       top of Lumi's head; Lumi's feather tuft pokes up through it.
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-krone.svg public/sprites/wardrobe/krone.webp 256 -->
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff0a0"/>
+      <stop offset="0.45" stop-color="#ffcf3a"/>
+      <stop offset="1" stop-color="#e09a1c"/>
+    </linearGradient>
+    <linearGradient id="band" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd84d"/>
+      <stop offset="1" stop-color="#e3a020"/>
+    </linearGradient>
+    <radialGradient id="ruby" cx="0.35" cy="0.3" r="0.8"><stop offset="0" stop-color="#ff9a9a"/><stop offset="0.5" stop-color="#e5383f"/><stop offset="1" stop-color="#a51e2a"/></radialGradient>
+    <radialGradient id="sapph" cx="0.35" cy="0.3" r="0.8"><stop offset="0" stop-color="#a8dcff"/><stop offset="0.5" stop-color="#3f8ee8"/><stop offset="1" stop-color="#2058a8"/></radialGradient>
+    <radialGradient id="pearl" cx="0.35" cy="0.3" r="0.8"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#ffe08a"/></radialGradient>
+  </defs>
+  <g stroke="#7b4a1e" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+    <!-- the points: the middle one highest -->
+    <path d="M36 186 L28 100 L74 136 L92 82 L128 126 L164 82 L182 136 L228 100 L220 186 Z" fill="url(#gold)"/>
+    <!-- little balls on the tips -->
+    <circle cx="28" cy="96" r="11" fill="url(#pearl)"/>
+    <circle cx="92" cy="76" r="11" fill="url(#pearl)"/>
+    <circle cx="164" cy="76" r="11" fill="url(#pearl)"/>
+    <circle cx="228" cy="96" r="11" fill="url(#pearl)"/>
+    <!-- the band -->
+    <path d="M30 160 Q128 146 226 160 L224 200 Q128 214 32 200 Z" fill="url(#band)"/>
+    <!-- jewels -->
+    <ellipse cx="128" cy="180" rx="15" ry="13" fill="url(#ruby)" stroke-width="4"/>
+    <ellipse cx="78" cy="181" rx="10" ry="10" fill="url(#sapph)" stroke-width="4"/>
+    <ellipse cx="178" cy="181" rx="10" ry="10" fill="url(#sapph)" stroke-width="4"/>
+  </g>
+  <!-- shine -->
+  <path d="M40 152 L36 112" stroke="#fffbe0" stroke-width="6" stroke-linecap="round" opacity="0.8"/>
+  <path d="M96 116 L100 100" stroke="#fffbe0" stroke-width="5" stroke-linecap="round" opacity="0.8"/>
+  <path d="M44 170 Q90 162 110 162" stroke="#fffbe0" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.75"/>
+  <circle cx="123" cy="175" r="4" fill="#fff" opacity="0.85"/>
+  <circle cx="75" cy="178" r="3" fill="#fff" opacity="0.85"/>
+  <circle cx="175" cy="178" r="3" fill="#fff" opacity="0.85"/>
+  <path d="M216 192 Q220 160 214 128" stroke="#b87410" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.4"/>
+</svg>

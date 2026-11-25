@@ -4,6 +4,7 @@ import { MODULES, MODULE_BY_ID, visibleModules, sortForAge } from './modules.js'
 import { ENGLISH_ENABLED } from './i18n.js'
 import { updateSkill, nextLevel, ratioOf, journeyFor, nextStopIndex } from './lib/learning.js'
 import { stickerForDay } from './lib/stickers.js'
+import { ITEM_BY_ID, isUnlocked, unlockedBetween, unlockedItems, wardrobeStars, cleanOutfit } from './lib/wardrobe.js'
 
 export const AppContext = createContext(null)
 
@@ -147,6 +148,20 @@ export function totalStars(progress) {
 }
 export const farmPoints = profile => totalStars(profile?.progress) + (profile?.farmBonus ?? 0)
 
+// ── Lumis Kleiderschrank (lib/wardrobe.js) ───────────────────────────────────
+// The stars unlock things for Lumi to wear. Nothing is spent: the total
+// counts, and the highest total ever reached (`starsEver`), so a game the
+// parents start over again (RESET_MODULE) takes no hat away.
+export const profileWardrobeStars = profile => wardrobeStars(profile, totalStars(profile?.progress))
+const knownIds = list => (Array.isArray(list) ? Array.from(new Set(list.filter(id => ITEM_BY_ID[id]))) : [])
+// what is worn and also unlocked (a save from elsewhere may say otherwise)
+const wearable = p => {
+  const o = cleanOutfit(p.outfit), stars = profileWardrobeStars(p)
+  for (const k of Object.keys(o)) if (o[k] && !isUnlocked(ITEM_BY_ID[o[k]], stars)) o[k] = null
+  return o
+}
+const freshWardrobe = () => ({ outfit: { head: null, face: null, neck: null }, wardrobeSeen: [], wardrobeTried: [], starsEver: 0 })
+
 // ── Lumis Ideen für heute ────────────────────────────────────────────────────
 // Der Tagesplan (lib/learning.js): vier Spiele und eine Bewegungspause,
 // danach ein Sticker als Überraschung. Pro Kind und Tag einer.
@@ -187,6 +202,9 @@ function freshProfile(overrides = {}) {
     // today's journey (lib/learning.js) and the stickers from its treasure chests
     journey: null,
     stickers: [],
+    // Lumis Kleiderschrank: what Lumi wears, the things seen in the
+    // wardrobe and tried on once, the highest total of stars
+    ...freshWardrobe(),
     ...overrides,
   }
 }
@@ -241,6 +259,8 @@ export function reducer(state, action) {
       const id = action.payload?.id ?? action.payload
       return updateActiveProfile(state, p => ({
         ...p,
+        // the stars of this game stay counted for the wardrobe
+        starsEver: profileWardrobeStars(p),
         progress: { ...p.progress, [id]: freshProgress() },
         // a game started over explains itself again
         helpSeen: { ...(p.helpSeen ?? {}), [id]: false },
@@ -335,6 +355,7 @@ export function reducer(state, action) {
         journey: null,
         stickers: [],
         helpSeen: {},
+        ...freshWardrobe(),
       }
       reset.dailyMission = freshDay(todayStr(), reset)
       return { ...state, profiles: { ...state.profiles, [id]: reset } }
@@ -370,6 +391,33 @@ export function reducer(state, action) {
 
     case 'START_GAME':
       return { ...state, screen: 'game', currentGame: action.payload }
+
+    // Lumis Kleiderschrank: a tap on a thing puts it on, a second tap takes
+    // it off; one thing per place (head, face, neck). Locked things stay off.
+    case 'WARDROBE_WEAR': {
+      const item = ITEM_BY_ID[action.payload]
+      if (!item) return state
+      return updateActiveProfile(state, p => {
+        if (!isUnlocked(item, profileWardrobeStars(p))) return p
+        const outfit = cleanOutfit(p.outfit)
+        const on = outfit[item.slot] !== item.id
+        return {
+          ...p,
+          outfit: { ...outfit, [item.slot]: on ? item.id : null },
+          wardrobeTried: on ? knownIds([...(p.wardrobeTried ?? []), item.id]) : knownIds(p.wardrobeTried),
+          wardrobeSeen: knownIds([...(p.wardrobeSeen ?? []), item.id]),
+        }
+      })
+    }
+
+    // The wardrobe was opened: what is unlocked has been seen (the sign on
+    // the home screen's button goes)
+    case 'WARDROBE_SEEN':
+      return updateActiveProfile(state, p => {
+        const ids = unlockedItems(profileWardrobeStars(p)).map(t => t.id)
+        const seen = knownIds(p.wardrobeSeen)
+        return ids.every(id => seen.includes(id)) ? p : { ...p, wardrobeSeen: knownIds([...seen, ...ids]) }
+      })
 
     // The movement break of today's journey (screens/MoveBreakScreen.jsx)
     case 'START_MOVE':
@@ -518,6 +566,11 @@ export function reducer(state, action) {
         },
       }
 
+      // the new total may unlock things in Lumi's wardrobe
+      const wardrobeBefore = profileWardrobeStars(profile)
+      updatedProfile.starsEver = profileWardrobeStars(updatedProfile)
+      const newWear = unlockedBetween(wardrobeBefore, updatedProfile.starsEver).map(t => t.id)
+
       return {
         ...state,
         screen: leveled ? 'results' : 'home',
@@ -540,6 +593,7 @@ export function reducer(state, action) {
           newMissionsCompleted: newlyCompletedMissionIds,
           streakCount: streak.count,
           streakGrew: st.lastDate !== today,
+          newWear,
           farmBefore: farmPoints(profile),
           farmAfter:  farmPoints(updatedProfile),
         },
@@ -634,7 +688,13 @@ export function migrateToV2(data) {
         ...p,
         progress: { ...Object.fromEntries(ALL_MODULE_IDS.map(mid => [mid, freshProgress()])), ...migrateProgress(p.progress) },
         hiddenGames: cleanHidden(p.hiddenGames),
+        // the wardrobe: saves from before it start with Lumi wearing nothing
+        outfit: cleanOutfit(p.outfit),
+        wardrobeSeen: knownIds(p.wardrobeSeen),
+        wardrobeTried: knownIds(p.wardrobeTried),
+        starsEver: Number.isFinite(p.starsEver) ? Math.max(0, p.starsEver) : 0,
       })
+      profiles[id].outfit = wearable(profiles[id])
     }
     return {
       ...data,

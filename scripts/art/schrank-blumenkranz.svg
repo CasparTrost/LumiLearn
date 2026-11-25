@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Lumi's wardrobe (src/lib/wardrobe.js): the flower wreath. Seen from
+       the front: an arch of green leaves round the top of the head with
+       pink, white and yellow flowers on it. Lumi's tuft stands up in the
+       middle of it.
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-blumenkranz.svg public/sprites/wardrobe/blumenkranz.webp 256 -->
+  <defs>
+    <radialGradient id="pink" cx="0.4" cy="0.35" r="0.7"><stop offset="0" stop-color="#ffd0e2"/><stop offset="1" stop-color="#ff7aa8"/></radialGradient>
+    <radialGradient id="white" cx="0.4" cy="0.35" r="0.7"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#f0e6ff"/></radialGradient>
+    <radialGradient id="yellow" cx="0.4" cy="0.35" r="0.7"><stop offset="0" stop-color="#fff3a8"/><stop offset="1" stop-color="#ffc93c"/></radialGradient>
+    <radialGradient id="mid" cx="0.4" cy="0.35" r="0.7"><stop offset="0" stop-color="#ffe680"/><stop offset="1" stop-color="#f0a020"/></radialGradient>
+    <g id="flower5">
+      <circle cx="0" cy="-12" r="10"/><circle cx="11.4" cy="-3.7" r="10"/><circle cx="7" cy="9.7" r="10"/>
+      <circle cx="-7" cy="9.7" r="10"/><circle cx="-11.4" cy="-3.7" r="10"/>
+    </g>
+  </defs>
+  <!-- the green vine: an arch over the head -->
+  <path d="M24 196 C30 150 70 124 128 124 C186 124 226 150 232 196" stroke="#7b4a1e" stroke-width="16" fill="none" stroke-linecap="round"/>
+  <path d="M24 196 C30 150 70 124 128 124 C186 124 226 150 232 196" stroke="#5cb848" stroke-width="9" fill="none" stroke-linecap="round"/>
+  <!-- leaves along the vine -->
+  <g fill="#6cc455" stroke="#7b4a1e" stroke-width="3.5" stroke-linejoin="round">
+    <path d="M34 168 C20 160 16 146 20 136 C32 140 40 152 34 168 Z"/>
+    <path d="M58 140 C50 126 54 112 62 106 C70 116 70 130 58 140 Z"/>
+    <path d="M98 126 C92 110 98 98 108 94 C112 106 108 118 98 126 Z"/>
+    <path d="M158 126 C164 110 158 98 148 94 C144 106 148 118 158 126 Z"/>
+    <path d="M198 140 C206 126 202 112 194 106 C186 116 186 130 198 140 Z"/>
+    <path d="M222 168 C236 160 240 146 236 136 C224 140 216 152 222 168 Z"/>
+    <path d="M14 200 C10 188 14 176 22 172 C28 182 24 194 14 200 Z"/>
+    <path d="M242 200 C246 188 242 176 234 172 C228 182 232 194 242 200 Z"/>
+  </g>
+  <g stroke="#3f9a34" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.8">
+    <path d="M24 140 L32 160"/><path d="M62 110 L60 134"/><path d="M106 98 L100 120"/><path d="M150 98 L156 120"/><path d="M194 110 L196 134"/><path d="M232 140 L224 160"/>
+  </g>
+  <!-- flowers -->
+  <g stroke="#7b4a1e" stroke-width="3.5" stroke-linejoin="round">
+    <use href="#flower5" transform="translate(40 172) rotate(10)" fill="url(#pink)"/>
+    <use href="#flower5" transform="translate(76 136) rotate(-8) scale(0.85)" fill="url(#white)"/>
+    <use href="#flower5" transform="translate(128 124) rotate(0) scale(1.05)" fill="url(#pink)"/>
+    <use href="#flower5" transform="translate(180 136) rotate(8) scale(0.85)" fill="url(#yellow)"/>
+    <use href="#flower5" transform="translate(216 172) rotate(-10)" fill="url(#white)"/>
+  </g>
+  <g stroke="#7b4a1e" stroke-width="3">
+    <circle cx="40" cy="172" r="7" fill="url(#mid)"/>
+    <circle cx="76" cy="136" r="6" fill="url(#mid)"/>
+    <circle cx="128" cy="124" r="7.5" fill="url(#mid)"/>
+    <circle cx="180" cy="136" r="6" fill="#ff9a3c"/>
+    <circle cx="216" cy="172" r="7" fill="url(#mid)"/>
+  </g>
+  <!-- small berries between -->
+  <g fill="#ff6b8a" stroke="#7b4a1e" stroke-width="2.5">
+    <circle cx="102" cy="132" r="5"/><circle cx="154" cy="132" r="5"/><circle cx="58" cy="156" r="4.5"/><circle cx="198" cy="156" r="4.5"/>
+  </g>
+</svg>
