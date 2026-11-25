@@ -147,6 +147,45 @@ export function pointAt(stroke, s, cum = lengths(stroke)) {
   return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, angle: Math.atan2(b.y - a.y, b.x - a.x) }
 }
 
+// ─── What lies on a stroke ───────────────────────────────────────────────────
+const ARROW_GAP = 32
+
+/**
+ * Where the direction arrows sit on a stroke: lengths along it.
+ *   mode 'all' along the whole stroke · 'start' one at its beginning · 'none'
+ * The first one comes after the place where the snail waits (SNAIL_AT), so
+ * it is not hidden under it.
+ */
+export const SNAIL_AT = 20
+export function arrowsAt(stroke, mode) {
+  if (mode === 'none') return []
+  const len = lengths(stroke).at(-1)
+  const first = Math.min(SNAIL_AT + 18, len * 0.5)
+  if (mode === 'start') return [first]
+  const out = []
+  for (let s = first; s < len - 8; s += ARROW_GAP) out.push(s)
+  return out
+}
+
+/**
+ * The stars the snail collects on a stroke: [{ s, late }], `s` the length
+ * along the stroke, the last one always on its very end. They lie between
+ * the arrows, never more than six; a level that shows fewer arrows has fewer
+ * stars too, because a row of stars shows the way as well as arrows do.
+ * `late`: the stroke ends where it began (O, 0, 8) — that star would lie on
+ * the start dot, so it only appears once the snail is half way round.
+ */
+export function starsAt(stroke, mode) {
+  const len = lengths(stroke).at(-1)
+  const a = stroke[0], b = stroke[stroke.length - 1]
+  const end = { s: len, late: Math.hypot(a.x - b.x, a.y - b.y) < 16 }
+  if (mode === 'none') return [end]
+  if (mode === 'start') return len >= 70 ? [{ s: len / 2, late: false }, end] : [end]
+  const between = arrowsAt(stroke, 'all').map(s => s + ARROW_GAP / 2).filter(s => s < len - 20)
+  const every = Math.max(1, Math.ceil(between.length / 5))
+  return [...between.filter((_, i) => i % every === every - 1).map(s => ({ s, late: false })), end]
+}
+
 // ─── Level plan ──────────────────────────────────────────────────────────────
 // Straight lines first, then slants, the round ones, curves and lines mixed,
 // the digits; from level 7 on everything mixed, with less help each time.
