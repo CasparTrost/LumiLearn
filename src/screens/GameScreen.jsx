@@ -178,7 +178,7 @@ export default function GameScreen() {
           that moves and cheers along (components/play/Scene.jsx) */}
       {/* pl-game: the backdrop's birds, butterflies and fish stay away
           while a game is running (play.css) */}
-      <div className="pl-game" style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <div className="pl-game" data-game={moduleId} style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       <Scene theme={mod.scene} />
       {/* positioned, above the scene: games that lay themselves out
           (NO_SCALE) were painted underneath the absolutely placed scene */}

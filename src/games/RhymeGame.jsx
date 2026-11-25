@@ -43,6 +43,7 @@ import { pxButton, INK } from './px.js'
 
 const BALLOONS = ['#ff6b5b', '#4aa3ff', '#ffc93c', '#5cc45a', '#c77dff']
 const LAMPS = 5
+const FRAME = 4            // the theatre's frame, px
 // how long things take, ms
 const DROP_MS = 620       // a popped thing falls onto the stage
 const SCENE_MS = 3600     // the pair's scene, until the curtain closes
@@ -180,7 +181,9 @@ export default function RhymeGame({ level = 1, onComplete }) {
   const bz = yesno ? (sideBuzzers ? clamp(room.h * 0.34, 72, 110) : clamp(Math.min(room.w * 0.22, room.h * 0.15), 76, 110)) : 0
   const tw = Math.min(980, room.w - (sideBuzzers ? 2 * (bz + 16) : 0))
   const th = Math.min(room.h - (yesno && !sideBuzzers ? bz + 14 : 0), Math.max(300, tw * 1.9))
-  const lay = useMemo(() => stageLayout(tw, th, { verse: r.mode === 'verse', n: r.options?.length ?? 0, balloons: r.mode === 'pick' || r.mode === 'verse' }), [tw, th, r])
+  // the layout is for the inside of the frame: laid out for the outer box,
+  // the frame cut the footlights and the front row off at the bottom
+  const lay = useMemo(() => stageLayout(Math.max(0, tw - 2 * FRAME), Math.max(0, th - 2 * FRAME), { verse: r.mode === 'verse', n: r.options?.length ?? 0, balloons: r.mode === 'pick' || r.mode === 'verse' }), [tw, th, r])
 
   // ── state of the round ──
   const [popped, setPopped] = useState([])     // balloons popped this round
@@ -429,8 +432,8 @@ export default function RhymeGame({ level = 1, onComplete }) {
         {sideBuzzers && buzzers && buzzers[0]}
         {ready && (
           <div ref={juice.stage} data-stage={lay.row ? 'row' : 'corners'} style={{
-            position: 'relative', width: lay.W, height: lay.H, flexShrink: 0, overflow: 'hidden',
-            background: PURPLE, border: `4px solid ${INK}`, borderRadius: '18px 18px 10px 10px', boxSizing: 'border-box',
+            position: 'relative', width: lay.W + 2 * FRAME, height: lay.H + 2 * FRAME, flexShrink: 0, overflow: 'hidden',
+            background: PURPLE, border: `${FRAME}px solid ${INK}`, borderRadius: '18px 18px 10px 10px', boxSizing: 'border-box',
             boxShadow: '0 6px 0 rgba(42,27,61,0.35)',
           }}>
             {/* spotlight, boards */}

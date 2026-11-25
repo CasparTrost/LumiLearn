@@ -9,6 +9,9 @@
    off at the top, and of its window only the lower frame showed under the
    top bar, as a stray brown and blue strip. */
 @media (min-aspect-ratio: 17/9) { .pl-scene .pl-room-window { display: none; } }
+/* The Reim-Theater's stage fills the wall: of the window behind it only a
+   strip of frame stuck out beside the curtain. */
+.pl-game[data-game="rhyme"] .pl-room-window { display: none; }
 /* While a game is running nothing travels through its backdrop (Scene.jsx) */
 .pl-game .pl-ambient { display: none; }
 
