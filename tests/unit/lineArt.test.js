@@ -242,6 +242,97 @@ describe('what kind of picture', () => {
   })
 })
 
+describe('paper and light', () => {
+  it('the pale blue squares of an exercise book are not drawn; with more lines they are', () => {
+    const px = sheet(W, H, () => 250)
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (x % 30 < 3 || y % 30 < 3) put(px, W, x, y, [186, 208, 236])
+    ring(px, W, 300, 400, 150, 5, 0, [70, 70, 78])
+    const res = toColoringPage(px, W, H)
+    expect(res.kind).toBe('lines')
+    expect(res.regions).toBe(2)
+    expect(inkAt(res, 301, 15)).toBe(false)                      // on a grid line, away from the drawing
+    expect(inkAt(res, 15, 601)).toBe(false)
+    expect(toColoringPage(px, W, H, 2).regions).toBeGreaterThan(20)
+  })
+
+  it('a drawing in a pale blue crayon is a drawing, not a ruling', () => {
+    const px = sheet(W, H, () => 250)
+    ring(px, W, 300, 400, 150, 6, 0, [176, 208, 240]); ring(px, W, 300, 400, 40, 6, 0, [176, 208, 240])
+    const res = toColoringPage(px, W, H)
+    expect(res.ok).toBe(true)
+    expect(res.regions).toBe(3)
+  })
+
+  it('a red and an orange shape that overlap stay two areas', () => {
+    const px = sheet(W, H, () => 250)
+    disc(px, W, 230, 400, 140, [224, 62, 62]); rect(px, W, 260, 290, 520, 520, [232, 98, 56])
+    const res = toColoringPage(px, W, H)
+    expect(area(res, 150, 400)).not.toBe(area(res, 450, 400))
+    expect(area(res, 150, 400)).not.toBe(area(res, 20, 20))
+  })
+
+  it('a very light pencil is drawn whole at the normal setting', () => {
+    const px = sheet(W, H, () => 250)
+    ring(px, W, 220, 300, 120, 4, 0, [208, 208, 210]); ring(px, W, 420, 560, 90, 4, 0, [212, 212, 214])
+    const res = toColoringPage(px, W, H)
+    expect(res.ok).toBe(true)
+    expect(res.regions).toBe(3)
+    expect(area(res, 220, 300)).not.toBe(area(res, 20, 20))
+    expect(area(res, 420, 560)).not.toBe(area(res, 20, 20))
+  })
+
+  it('a blank page with a grain stays blank (it is not made darker until the grain shows)', () => {
+    let seed = 5
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647
+    const res = toColoringPage(sheet(W, H, () => 244 + rnd() * 10), W, H)
+    expect(res.ok).toBe(false)
+    expect(res.reason).toBe('empty')
+  })
+
+  it('the soft shadow of a hand across the page is no shape; the line under it stays', () => {
+    const px = sheet(W, H, () => 244)
+    ring(px, W, 300, 400, 150, 5, 0, [60, 60, 66])
+    // a shadow like a finger: half the light in its middle, fading out over 45 pixels
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const u = (x - 430) * 0.8 + (y - 470) * 0.6, v = -(x - 430) * 0.6 + (y - 470) * 0.8
+      const d = Math.hypot(u / 2.6, v) - 28                      // outside the finger's core
+      const k = d <= 0 ? 0.5 : d >= 45 ? 1 : 0.5 + 0.5 * (d / 45)
+      const p = (y * W + x) * 4
+      px[p] *= k; px[p + 1] *= k; px[p + 2] *= k
+    }
+    const res = toColoringPage(px, W, H)
+    expect(res.kind).toBe('lines')
+    expect(res.regions).toBe(2)                                  // inside the ring and outside: no third shape
+    expect(area(res, 300, 400)).not.toBe(area(res, 20, 20))      // the ring is whole under the shadow
+    expect(inkAt(res, 520, 560)).toBe(false)                     // in the shadow, off the ring
+  })
+
+  it('a coloured-in dress in stripes is an area to paint, not a black shape', () => {
+    const px = sheet(W, H, () => 250)
+    for (let y = 250; y < 600; y++) {
+      const half = Math.round((y - 250) * 0.45), stripe = Math.floor((y - 250) / 16) % 2
+      rect(px, W, 300 - half, y, 300 + half, y + 1, stripe ? [255, 105, 180] : [255, 150, 205])
+    }
+    ring(px, W, 300, 190, 55, 5, 0, [25, 25, 25])                // a head, black
+    const res = toColoringPage(px, W, H)
+    expect(res.kind).toBe('mixed')
+    expect(res.inkShare).toBeLessThan(0.08)
+    expect(inkAt(res, 300, 498)).toBe(false)                     // inside the dress, in the middle of a stripe
+    expect(area(res, 300, 498)).not.toBe(area(res, 20, 20))
+    expect(area(res, 300, 190)).not.toBe(area(res, 20, 20))      // the head
+  })
+
+  it('a sun\'s ray near the edge is not drawn on to the edge; a horizon that stops short of it is', () => {
+    const px = sheet(W, H, () => 250)
+    rect(px, W, 520, 100, 570, 105, [30, 30, 30])                // a short ray, 30 pixels from the right edge
+    rect(px, W, 0, 500, 575, 505, [30, 30, 30])                  // a horizon that stops 25 pixels short
+    const res = toColoringPage(px, W, H)
+    expect(inkAt(res, 590, 102)).toBe(false)
+    expect(inkAt(res, 590, 502)).toBe(true)
+    expect(area(res, 300, 300)).not.toBe(area(res, 300, 700))
+  })
+})
+
 describe('joining line ends', () => {
   it('joins an end to the line it points at, not to itself', () => {
     const w = 120, h = 80, m = new Uint8Array(w * h)
