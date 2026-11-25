@@ -79,7 +79,9 @@ export const ALL_WORDS = [...BANK, ...EXTRA]
 // Pairs that are never in one shuffle by chance: too alike in meaning
 // (a cake or a biscuit?) or in sound, outside the levels that ask for it
 const CLOSE = [['Fisch', 'Hai', 'Wal'], ['Kuchen', 'Keks'], ['Maus', 'Hase'], ['Löwe', 'Tiger'],
-  ['Rose', 'Blume'], ['Hund', 'Fuchs'], ['Schaf', 'Lama'], ['Mond', 'Stern'], ['Hut', 'Krone']]
+  ['Rose', 'Blume'], ['Hund', 'Fuchs'], ['Schaf', 'Lama'], ['Mond', 'Stern'], ['Hut', 'Krone'],
+  // alike in sound: "Bus" was called while "Buch" hid beside it in an easy level
+  ['Bus', 'Buch'], ['Schaf', 'Schal'], ['Ball', 'Wal'], ['Stein', 'Schwein'], ['Eis', 'Mais']]
 const soundAlike = (a, b) => [...SOUND_SETS, ...LOOK_SETS].some(s => s.includes(a) && s.includes(b))
 export const tooClose = (a, b) => a !== b && (CLOSE.some(g => g.includes(a) && g.includes(b)) || soundAlike(a, b))
 
