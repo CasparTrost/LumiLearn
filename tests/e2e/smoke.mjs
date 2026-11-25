@@ -86,11 +86,11 @@ for (const [size, dim] of Object.entries(SIZES)) {
   await page.goto(URL); await page.waitForTimeout(1500)
   await check(page, `${size} home`)
   const titles = await page.evaluate(() => [...new Set([...document.querySelectorAll('button[aria-label]')]
-    .map(b => b.getAttribute('aria-label').match(/^(.+?), Level/)?.[1]).filter(Boolean))])
+    .map(b => b.getAttribute('aria-label').match(/^(.+?)(?:, Level|\. Spielen$)/)?.[1]).filter(Boolean))])
   if (titles.length < 24) problems.push(`${size}: only ${titles.length} games on the home screen`)
   for (const t of titles) {
     try {
-      await page.getByRole('button', { name: new RegExp(`^${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}, Level`) }).last().click()
+      await page.getByRole('button', { name: new RegExp(`^${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:, Level|\\. Spielen$)`) }).last().click()
       await page.waitForTimeout(1800)
       await check(page, `${size} ${t}`)
       await page.getByRole('button', { name: 'Spiel verlassen' }).click(); await page.waitForTimeout(300)
@@ -389,7 +389,7 @@ async function playShadows(page) {
   await check(page, 'offline home')
   for (const t of ['Waage-Welt', 'Lumi-Labyrinth', 'Mal-Atelier', 'Formen-Land']) {
     try {
-      await page.getByRole('button', { name: new RegExp(`^${t}, Level`) }).last().click(); await page.waitForTimeout(1800)
+      await page.getByRole('button', { name: new RegExp(`^${t}(?:, Level|\\. Spielen$)`) }).last().click(); await page.waitForTimeout(1800)
       await check(page, `offline ${t}`)
       await page.getByRole('button', { name: 'Spiel verlassen' }).click(); await page.waitForTimeout(300)
       await page.getByRole('button', { name: /Aufhören/ }).click(); await page.waitForTimeout(800)

@@ -1,4 +1,17 @@
-/* Mal-Atelier (ColoringGame): a stamp drawn again over the sheet, in the
-   same emoji font the canvas used (an emoji written into JSX would become a
-   cartoon picture and not match the stamp underneath). */
-.co-stamp::after { content: attr(data-e); font-family: serif; line-height: 1; }
+/* Mal-Atelier (ColoringGame): the glitter brush's sparkles keep twinkling
+   over the sheet, each with its own delay and pace. */
+.co-twinkle {
+  position: absolute;
+  transform: translate(-50%, -50%) scale(0.2);
+  opacity: 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M10 0 L12.4 7.6 L20 10 L12.4 12.4 L10 20 L7.6 12.4 L0 10 L7.6 7.6Z' fill='%23fff' stroke='%23f5b800' stroke-width='1.1' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  filter: drop-shadow(0 0 3px rgba(255, 244, 170, 0.95));
+  animation: co-twinkle 1.6s ease-in-out infinite;
+}
+@keyframes co-twinkle {
+  0%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.2) rotate(0deg); }
+  50%      { opacity: 1; transform: translate(-50%, -50%) scale(1)   rotate(45deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .co-twinkle { animation: none; opacity: 0.9; transform: translate(-50%, -50%) scale(0.7); }
+}
