@@ -38,7 +38,7 @@ export const GROUPS = {
   fahrzeuge: group('Fahrzeuge', 'blue', [
     ['🚗', 'das Auto'], ['✈️', 'das Flugzeug'], ['🚂', 'die Lok'],
     ['🚕', 'das Taxi'], ['🚢', 'das Schiff'], ['🚁', 'der Hubschrauber'], ['🚌', 'der Bus'], ['🚒', 'die Feuerwehr'],
-    ['🚜', 'der Traktor'], ['⛵', 'das Segelboot'], ['🚑', 'der Krankenwagen'], ['🚤', 'das Boot']]),
+    ['⛵', 'das Segelboot'], ['🚑', 'der Krankenwagen'], ['🚤', 'das Boot']]),
   spielzeug: group('Spielzeug', 'lilac', [
     ['🧸', 'der Teddy'], ['🎲', 'der Würfel'], ['🪀', 'das Jo-Jo'],
     ['🪁', 'der Drachen'], ['⚽', 'der Ball'], ['🎈', 'der Luftballon'], ['🧩', 'das Puzzle'],

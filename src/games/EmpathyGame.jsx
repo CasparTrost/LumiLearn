@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence, MotionConfig, useAnimationControls } from 'framer-motion'
 import { Art, HintHand, useBursts } from '../components/play/index.js'
 import { narrate, afterNarration, leaveGame } from '../narrator.js'
-import { sayRight, sayWrong, announce } from '../lib/feedback.js'
+import { sayRight, sayWrong, announce, newQuestion } from '../lib/feedback.js'
 import { feelingWord } from '../lib/words.js'
 import { playAnimal } from '../lib/animalSounds.js'
 import { usePaused } from '../lib/pause.js'
@@ -494,7 +494,7 @@ export default function EmpathyGame({ level = 1, onComplete }) {
       // read: the miss sound first, the word of the face tapped, then the
       // usual "not this one" ("Nicht ganz.")
       sfx.mismatch()
-      sayWrong(null, { lead: [feelingWord(f)] })
+      sayWrong(null, { lead: [feelingWord(f)], always: true })
       c.react('no')
       clock.after(500, () => setMissFace(null))
       return
@@ -506,7 +506,8 @@ export default function EmpathyGame({ level = 1, onComplete }) {
       sfx.correct()
       burst(slotRef.current, 'stars', 8)
     })
-    clock.after(1500, () => whenQuiet(() => { setPhase('help'); narrate([say('detektiv/was-tut-gut')]) }))
+    // the cards are a new question: a first wrong card is a first miss again
+    clock.after(1500, () => whenQuiet(() => { newQuestion(); setPhase('help'); narrate([say('detektiv/was-tut-gut')]) }))
   }
 
   // 3. What is good now? Lumi does it, and the child sees what it does

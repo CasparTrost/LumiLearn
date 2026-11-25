@@ -92,11 +92,16 @@ export function sayRight(extra, { lead = [], ...opts } = {}) {
  * learning"; after that only the hint.
  * `close`: the game knows the answer was nearly right, so a first miss may
  * be "Fast!". `lead`: what belongs to the answer and so comes first (the
- * word of the face the child tapped: "Wütend. Nicht ganz.").
+ * word of the face the child tapped: "Wütend. Nicht ganz."). `always`: a
+ * "not this one" every time, also after the second miss (after a word that
+ * names what was tapped, silence sounded like a yes).
  */
-export function sayWrong(hint, { close = false, lead = [], ...opts } = {}) {
+/** A new question inside the same task (first the face, then what helps): misses count afresh. */
+export const newQuestion = () => { missed = 0 }
+
+export function sayWrong(hint, { close = false, always = false, lead = [], ...opts } = {}) {
   missed++
   announce('wrong')
-  const head = missed === 1 ? (close ? CLOSE : nextWrong()) : missed === 2 ? line('rueckmeldung/fehler-lernen') : null
+  const head = missed === 1 ? (close ? CLOSE : nextWrong()) : missed === 2 ? line('rueckmeldung/fehler-lernen') : always ? nextWrong() : null
   return narrate([...lead, head, hint && { text: hint }], opts)
 }

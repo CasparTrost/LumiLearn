@@ -80,7 +80,10 @@ export default function ResultsScreen() {
   const nextGame = (journey?.stops ?? []).findIndex((st, i) => st.moduleId && !done.includes(i) && st.moduleId !== moduleId)
   const moveIdx = (journey?.stops ?? []).findIndex((st, i) => st.kind === 'move' && !done.includes(i))
   const planDone = journey && nextStopIndex(journey) === -1
-  const moveNow = moveIdx !== -1 && (nextStopIndex(journey) === moveIdx || todayMs(profile) >= MOVE_AFTER_MS || nextGame === -1)
+  // The break is due after a long time playing, whoever chose the game; as
+  // the next idea of the day only for a child who is following the ideas
+  // (after a game picked from its tile the big button stays with that game)
+  const moveNow = moveIdx !== -1 && (todayMs(profile) >= MOVE_AFTER_MS || (onPlan && (nextStopIndex(journey) === moveIdx || nextGame === -1)))
   const nextMod = nextGame !== -1 ? MODULE_BY_ID[journey.stops[nextGame].moduleId] : null
 
   // All of today's ideas played: the sticker comes out of the chest, here
@@ -145,7 +148,7 @@ export default function ResultsScreen() {
     : proposal === 'easier' ? { label: `Leichter: Level ${suggested}`, icon: '🌱', onClick: () => go(suggested) }
     : proposal === 'practise' ? { label: 'Nochmal üben', icon: '💪', onClick: () => go(level) }
     : proposal === 'next' ? { label: `Weiter: Level ${upTo}`, play: true, onClick: () => go(upTo) }
-    : null
+    : { label: 'Nochmal', icon: '🔄', onClick: () => go(level) }   // the last level: once more
   // "…or play the easier level", Lumi says after a round without a star
   const easierToo = proposal === 'again' && level > 1
   const main = timeUp ? { label: 'Zur Startseite', icon: '🏠', onClick: home }

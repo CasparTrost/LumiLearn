@@ -512,6 +512,7 @@ export const CASES = [
     good: ['rebuild'], odd: ['light', 'blanket'], glad: happy },
 
   { id: 'gewitter', tier: 1, kind: 'maus', sound: '🐭', feeling: 'Ängstlich', face: 'scared', Scene: GewitterScene, ms: 3000,
+    notWith: ['Wütend'],   // the storm cloud scowls
     start: { feel: 'content' },
     event: c => [[900, () => { c.F({ feel: 'surprised' }); c.sfx('dragonNear'); c.sfx('bump') }], [1500, () => c.F({ feel: 'scared' })], [1850, () => { c.sfx('dragonNear'); c.sfx('bump') }]],
     good: ['hug'], odd: ['look', 'clap'], glad: happy },
@@ -529,6 +530,7 @@ export const CASES = [
     good: ['play', 'hug'], odd: ['light', 'blanket'], glad: happy },
 
   { id: 'bellen', tier: 1, kind: 'schwein', sound: '🐷', feeling: 'Ängstlich', face: 'scared', Scene: BellenScene, ms: 3000,
+    notWith: ['Wütend'],   // the barking dog on the stage looks angry
     start: { feel: 'content' },
     event: c => [[950, () => { c.animal('🐶') || c.sfx('bump'); c.F({ feel: 'surprised' }) }], [1500, () => c.F({ feel: 'scared' })], [1850, () => { c.sfx('bump'); c.sfx('drum') }]],
     good: ['hug'], odd: ['clap', 'look'], glad: happy },
