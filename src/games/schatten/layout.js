@@ -46,7 +46,7 @@ export function layoutFor(w, h, cards, slots) {
 
   if (side) {
     const bh = h - top - pad
-    const grid = cardGrid(cards, w * 0.3, bh, clamp(bh * 0.4, MIN_CARD, 104), { maxLines: 2, rows: false })
+    const grid = cardGrid(cards, w * 0.32, bh, clamp(bh * 0.4, MIN_CARD, 104), { maxLines: 3, rows: false })
     const cw = grid.w
     const room = { x: pad, y: top, w: w - 3 * pad - cw, h: bh }
     const cardBox = { x: w - pad - cw, y: top + Math.max(0, (bh - grid.h) / 2), ...grid }
@@ -62,7 +62,7 @@ export function layoutFor(w, h, cards, slots) {
 
 /** The size of a shadow and of the torch light in a room. */
 function sizes(room) {
-  const S = Math.round(clamp(Math.min(room.w * 0.19, room.h * 0.3), 60, 150))
+  const S = Math.round(clamp(Math.min(room.w * 0.22, room.h * 0.3), 60, 150))
   const beam = Math.round(clamp(Math.min(room.w, room.h) * 0.36, 84, 200))
   return { S, beam }
 }

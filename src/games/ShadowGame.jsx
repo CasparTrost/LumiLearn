@@ -159,7 +159,8 @@ export default function ShadowGame({ level = 1, onComplete }) {
     for (const s of shadows) { s.sx = lookOf(s.e) === 0 ? 1 : s.face * lookOf(s.e); s.eyePhase = Math.random() * 4 }
     W.current = {
       roomIdx, geo, shadows, t: 0,
-      beam: { on: false, a: 0, x: RW / 2, y: RH / 2 }, input: null,
+      // the torch lies ready at the front of the room until a finger picks it up
+      beam: { on: false, a: 0, x: RW / 2, y: RH / 2 }, input: null, used: false,
       lastInput: performance.now(), demo: null, flashUntil: -1, lamps: [], dragging: false, lastCaught: null,
     }
     bump()
@@ -356,6 +357,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
     w.beam.x = px
     w.beam.y = touch ? py - beamR * 0.75 : py
     w.beam.touch = touch
+    w.used = true
     w.lastInput = performance.now()
     if (w.demo) { w.demo = null; setDemo(false) }
   }
@@ -474,6 +476,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
     const play = phaseRef.current === 'play'
     const beam = w.beam
     beam.r = beamR
+    if (!w.used && !w.demo) { beam.x = geo.W / 2; beam.y = geo.H - torchSize * 0.65 - beamR * 0.75 }
 
     // A child who waits: a finger sweeps the torch through the room
     const idleMs = roomIdx === 0 && level <= 2 ? 2500 : 7000
@@ -499,10 +502,10 @@ export default function ShadowGame({ level = 1, onComplete }) {
 
     // The shadows
     const speed = cfg.speed * (reduce ? 0.7 : 1)
-    const free = w.shadows.filter(s => s.state === 'dark')
+    const around = w.shadows.filter(s => s.state !== 'gone' && s.state !== 'run')
     for (const s of w.shadows) {
       if (s.state === 'dark') {
-        step(s, dt, geo, speed, Math.random, free.filter(o => o !== s))
+        step(s, dt, geo, speed, Math.random, around.filter(o => o !== s))
         if (play && beam.a > 0.5 && inLight(s, beam, RS)) catchIt(s)
       } else if (s.state === 'caught') {
         s.t += dt
@@ -651,7 +654,8 @@ export default function ShadowGame({ level = 1, onComplete }) {
     // the torch
     const tr = torchRef.current
     if (tr) {
-      tr.style.opacity = beam.a.toFixed(2)
+      // in use it is bright; put down, it stays where it was, a little dimmer
+      tr.style.opacity = (play ? 0.7 + 0.3 * beam.a : 0).toFixed(2)
       // the picture's lamp head is up and to the right: turned, it points up
       const hx = beam.x, hy = beam.y + beamR * 0.75 - torchSize * 0.3
       tr.style.transform = `translate(${hx - torchSize / 2}px, ${hy - torchSize * 0.08}px) rotate(-45deg)`
@@ -731,10 +735,10 @@ export default function ShadowGame({ level = 1, onComplete }) {
                 {/* a card that did not fit: its own outline, over the shadow */}
                 <AnimatePresence>
                   {nope && (
-                    <motion.div key={nope.k} aria-hidden="true" initial={{ opacity: 0, scale: 1.2 }} animate={{ opacity: 0.85, scale: 1, x: reduce ? 0 : [0, -6, 6, -3, 0] }} exit={{ opacity: 0 }}
+                    <motion.div key={nope.k} aria-hidden="true" initial={{ opacity: 0, scale: 1.2 }} animate={{ opacity: 0.78, scale: 1, x: reduce ? 0 : [0, -8, 8, -4, 0] }} exit={{ opacity: 0 }}
                       transition={{ duration: 0.35 }}
                       style={{ position: 'absolute', left: nope.x - S * 0.5, top: nope.y - S * 0.5, width: S, height: S, pointerEvents: 'none', zIndex: 2 }}>
-                      <Art art={nope.e} size={S} style={{ filter: 'brightness(0) invert(1) drop-shadow(0 0 3px #ff6b5b)', opacity: 0.8 }} />
+                      <Art art={nope.e} size={S} style={{ filter: 'drop-shadow(0 0 4px #ffffff) drop-shadow(0 0 2px #ff6b5b)' }} />
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -833,7 +837,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
 }
 
 /** How far a lamp's cord hangs down. */
-const lampDrop = H => Math.round(clamp(H * 0.1, 14, 56))
+const lampDrop = H => Math.round(clamp(H * 0.06, 10, 36))
 
 /**
  * The cards: the things in colour, in fixed places (a card that found its
@@ -847,7 +851,7 @@ function Cards({ L, cards, left, busy, drag, help, boxRef, cardEls, onDown, onMo
   return (
     <div ref={boxRef} style={{
       position: 'absolute', left: L.cards.x + (L.cards.w - gw) / 2, top: L.cards.y + (L.cards.h - gh) / 2, width: gw, height: gh,
-      display: 'grid', gridTemplateColumns: `repeat(${cols}, ${size}px)`, gridAutoRows: size, gap: 8,
+      display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignContent: 'center', gap: 8,
     }}>
       {cards.map(e => {
         const here = left.includes(e)

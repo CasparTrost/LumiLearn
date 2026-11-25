@@ -335,14 +335,14 @@ const THEMES = {
     pieces: [
       { C: Window, x: 0.5, y: 0.25, h: 0.3, at: 'wall', maxW: 0.24 },
       { C: Bed, x: 0.2, h: 0.24, at: 'floor', maxW: 0.36 },
-      { C: Shelf, x: 0.86, h: 0.48, at: 'floor', maxW: 0.2 },
+      { C: Shelf, x: 0.86, h: 0.44, at: 'floor', maxW: 0.2 },
       { C: ToyBox, x: 0.62, h: 0.15, at: 'front', maxW: 0.24 },
     ],
   },
   kueche: {
     wall: '#fff2c2', paper: 'repeating-linear-gradient(0deg, #fff2c2 0 30px, #ffe9a8 30px 32px), repeating-linear-gradient(90deg, transparent 0 30px, #ffe9a8 30px 32px)', floor: '#d9c7a5',
     pieces: [
-      { C: Cupboard, x: 0.13, h: 0.5, at: 'floor', maxW: 0.22 },
+      { C: Cupboard, x: 0.13, h: 0.44, at: 'floor', maxW: 0.22 },
       { C: Window, x: 0.5, y: 0.24, h: 0.28, at: 'wall', maxW: 0.24 },
       { C: Stove, x: 0.84, h: 0.3, at: 'floor', maxW: 0.24 },
       { C: Basket, x: 0.36, h: 0.13, at: 'front', maxW: 0.22 },
@@ -355,7 +355,7 @@ const THEMES = {
       { C: Picture, x: 0.32, y: 0.22, h: 0.2, at: 'wall', maxW: 0.2 },
       { C: Plant, x: 0.08, h: 0.3, at: 'floor', maxW: 0.14 },
       { C: Sofa, x: 0.48, h: 0.24, at: 'floor', maxW: 0.42 },
-      { C: FloorLamp, x: 0.86, h: 0.55, at: 'floor', maxW: 0.14 },
+      { C: FloorLamp, x: 0.86, h: 0.44, at: 'floor', maxW: 0.14 },
       { C: Pouf, x: 0.7, h: 0.13, at: 'front', maxW: 0.2 },
     ],
   },
@@ -363,7 +363,7 @@ const THEMES = {
     wall: '#e8d3b0', paper: 'repeating-linear-gradient(90deg, #e8d3b0 0 46px, #dcc39a 46px 50px)', floor: '#8a6a4a',
     roof: true,
     pieces: [
-      { C: Web, x: 0, y: 0, h: 0.2, at: 'corner', maxW: 0.2 },
+      { C: Web, x: 1, y: 0, h: 0.2, at: 'corner', maxW: 0.2 },
       { C: RoundWindow, x: 0.5, y: 0.26, h: 0.22, at: 'wall', maxW: 0.2 },
       { C: Boxes, x: 0.84, h: 0.36, at: 'floor', maxW: 0.24 },
       { C: Chest, x: 0.3, h: 0.15, at: 'front', maxW: 0.26 },
@@ -373,7 +373,7 @@ const THEMES = {
     wall: '#e9b48a', paper: 'repeating-linear-gradient(0deg, #e9b48a 0 26px, #d89a6c 26px 29px)', floor: '#c9a35a',
     pieces: [
       { C: Lantern, x: 0.3, y: 0, h: 0.18, at: 'ceiling', maxW: 0.1 },
-      { C: BarnDoor, x: 0.62, h: 0.5, at: 'floor', maxW: 0.22 },
+      { C: BarnDoor, x: 0.62, h: 0.44, at: 'floor', maxW: 0.22 },
       { C: Trough, x: 0.2, h: 0.14, at: 'floor', maxW: 0.3 },
       { C: Hay, x: 0.85, h: 0.15, at: 'front', maxW: 0.26 },
       { C: Hay, x: 0.14, h: 0.13, at: 'front', maxW: 0.22 },
@@ -390,13 +390,13 @@ export function placePieces(theme, W, H) {
     let h = pc.h * H
     let w = h * pc.C.aspect
     if (w > pc.maxW * W) { w = pc.maxW * W; h = w / pc.C.aspect }
-    const x = pc.at === 'corner' ? 0 : pc.x * W - w / 2
+    const x = pc.at === 'corner' ? (pc.x ? W - w : 0) : pc.x * W - w / 2
     const y = pc.at === 'floor' ? floorY + H * 0.05 - h
       : pc.at === 'front' ? H - h
       : pc.at === 'ceiling' ? 0
       : pc.at === 'corner' ? 0
       : pc.y * H - h / 2
-    return { key: i, C: pc.C, at: pc.at, x, y, w, h }
+    return { key: i, C: pc.C, at: pc.at, x, y, w, h, flip: pc.at === 'corner' && pc.x > 0 }
   })
 }
 
@@ -409,7 +409,7 @@ function Piece({ pc, mode }) {
   const { C } = pc
   return (
     <div style={{ position: 'absolute', left: pc.x, top: pc.y, width: pc.w, height: pc.h, pointerEvents: 'none' }}>
-      <div style={{ width: '100%', height: '100%', display: 'flex' }}>
+      <div style={{ width: '100%', height: '100%', display: 'flex', transform: pc.flip ? 'scaleX(-1)' : undefined }}>
         <C p={pal(mode)} mode={mode} />
       </div>
     </div>

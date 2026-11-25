@@ -104,27 +104,57 @@ for (const [size, dim] of Object.entries(SIZES)) {
   await page.context().close()
 }
 
-// Plays the shadow riddle to the results, answering from the picture shown
-async function playShadows(page) {
-  for (let round = 0; round < 12; round++) {
-    const target = await page.evaluate(() => [...document.querySelectorAll('img.emo')]
-      .sort((a, b) => b.getBoundingClientRect().width - a.getBoundingClientRect().width)[0]?.src.split('/').pop())
-    if (!target || !(await page.getByRole('button', { name: 'Spiel verlassen' }).count())) break
-    await page.locator(`[role="button"]:has(img[src$="${target}"]), button:has(img[src$="${target}"])`).first().click(); await page.waitForTimeout(1200)
-    const next = page.getByRole('button', { name: /Weiter|Fertig/ })
-    if (await next.count()) { await next.first().click(); await page.waitForTimeout(1500) }
+// Plays Schattenrätsel (Taschenlampen-Jagd) to the results: the mouse
+// shines on a shadow until it is caught, then its card is tapped and flies
+// to it. With `wrongOnce`, the first caught shadow gets a card that fits no
+// lit shadow first (it shakes its head, the card flies back). Everything is
+// read from data attributes and clicked by coordinates, never by waiting
+// for an element to hold still: the shadows and cards are always moving.
+async function playShadows(page, { wrongOnce = false } = {}) {
+  const game = page.locator('[data-game="schatten"]')
+  await game.waitFor({ timeout: 10000 }).catch(() => problems.push('Schattenrätsel: the game did not start'))
+  let wrong = !wrongOnce
+  const t0 = Date.now()
+  while (Date.now() - t0 < 180000 && (await game.count())) {
+    const s = await page.evaluate(() => {
+      const root = document.querySelector('[data-game="schatten"]')
+      if (!root) return null
+      const mid = el => { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 } }
+      return {
+        phase: root.dataset.phase,
+        shadows: [...root.querySelectorAll('[data-shadow]')].map(el => ({ e: el.dataset.shadow, state: el.dataset.state, ...mid(el) })),
+        cards: [...root.querySelectorAll('[data-card]')].map(el => ({ e: el.dataset.card, ...mid(el) })),
+      }
+    }).catch(() => null)
+    if (!s) break
+    if (s.phase !== 'play') { await page.waitForTimeout(250); continue }
+    const lit = s.shadows.filter(x => x.state === 'caught')
+    if (lit.length) {
+      let card = s.cards.find(c => c.e === lit[0].e)
+      if (!wrong) {
+        const other = s.cards.find(c => !lit.some(x => x.e === c.e))
+        if (other) { wrong = true; card = other }
+      }
+      if (card) await page.mouse.click(card.x, card.y)
+      await page.waitForTimeout(card ? 900 : 250)
+      continue
+    }
+    const dark = s.shadows.find(x => x.state === 'dark' && x.e !== '🐱')
+    if (dark) await page.mouse.move(dark.x, dark.y, { steps: 2 })
+    await page.waitForTimeout(dark ? 120 : 250)
   }
   await page.waitForTimeout(2500)
 }
 
-// 3. One game to the end
+// 3. One game to the end: Schattenrätsel, level 1 (three rooms of three
+// shadows), one card first given to the wrong shadow
 {
   const page = await newPage(SIZES.phone, save)
   await page.goto(URL); await page.waitForTimeout(1500)
-  await page.getByRole('button', { name: /^Schattenrätsel, Level/ }).last().click(); await page.waitForTimeout(2000)
-  await playShadows(page)
+  await page.getByRole('button', { name: /^Schattenrätsel, Level/ }).last().click()
+  await playShadows(page, { wrongOnce: true })
   const text = await page.evaluate(() => document.body.innerText)
-  if (!/8 von 8 gleich beim ersten Mal richtig/.test(text)) problems.push(`full game: results not as expected: ${text.slice(0, 120).replace(/\n/g, ' | ')}`)
+  if (!/8 von 9 gleich beim ersten Mal richtig/.test(text)) problems.push(`full game: results not as expected: ${text.slice(0, 120).replace(/\n/g, ' | ')}`)
   await check(page, 'results')
   problems.push(...page.errors.map(e => `full game: ${e}`))
   await page.context().close()
@@ -398,7 +428,7 @@ async function playShadows(page) {
   try {
     await page.goto(URL); await page.waitForTimeout(1500)
     await check(page, 'ideas home')
-    await page.getByRole('button', { name: /^Lumis Idee: Schattenrätsel/ }).click(); await page.waitForTimeout(2000)
+    await page.getByRole('button', { name: /^Lumis Idee: Schattenrätsel/ }).click()
     await playShadows(page)
     await check(page, 'ideas results')
     await page.getByRole('button', { name: /Bewegungspause/ }).click(); await page.waitForTimeout(1200)

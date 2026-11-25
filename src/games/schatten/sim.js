@@ -123,7 +123,8 @@ export function step(s, dt, room, speed, rnd = Math.random, others = []) {
   // keep a little apart from the others
   for (const o of others) {
     const ox = s.x - o.x, oy = s.y - o.y, od = Math.hypot(ox, oy)
-    if (od > 0 && od < room.S * 0.7) { s.x += (ox / od) * 20 * dt; s.y += (oy / od) * 10 * dt }
+    const gap = room.S * 0.85
+    if (od > 0 && od < gap) { const push = (gap - od) * 4 * dt; s.x += (ox / od) * push; s.y += (oy / od) * push * 0.5 }
   }
   const [y0, y1] = isAirborne(s.move) ? room.air : room.ground
   s.x = clamp(s.x, room.x0, room.x1)

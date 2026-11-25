@@ -129,7 +129,12 @@ export function planRoom(theme, cfg, taken = new Set(), rnd = Math.random) {
   const pool = shuffle(ROOMS[theme].filter(e => !taken.has(e)), rnd)
   const byGroup = new Map()
   for (const e of pool) byGroup.set(groupOf(e), [...(byGroup.get(groupOf(e)) ?? []), e])
-  const groups = shuffle([...byGroup.keys()], rnd)
+  let groups = shuffle([...byGroup.keys()], rnd)
+  const size = g => byGroup.get(g).length
+  // with look-alikes wanted: the big groups first, so a partner is left
+  // over for the cards; with one wanted: one group that has a partner first
+  if (cfg.alike >= 2) groups = [...groups].sort((a, b) => size(b) - size(a))
+  else if (cfg.alike === 1) groups = [...groups.filter(g => size(g) >= 2).slice(0, 1), ...groups.filter(g => size(g) < 2), ...groups.filter(g => size(g) >= 2).slice(1)]
   const shadows = []
   const extras = []
   const used = new Set()          // groups among the shadows
@@ -145,8 +150,10 @@ export function planRoom(theme, cfg, taken = new Set(), rnd = Math.random) {
       if (shadows.length >= cfg.n) break
     }
   }
-  // the rest of the shadows: each from a group not used yet, as far as there are
-  for (const g of groups) {
+  // the rest of the shadows: each from a group not used yet, as far as there
+  // are (at the top from groups whose partner can lie among the cards)
+  const rest = cfg.alike >= 2 ? [...groups.filter(g => size(g) >= 2), ...groups.filter(g => size(g) < 2)] : groups
+  for (const g of rest) {
     if (shadows.length >= cfg.n) break
     if (!used.has(g)) add(shadows, byGroup.get(g).find(e => !shadows.includes(e)))
   }
