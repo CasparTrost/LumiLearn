@@ -103,8 +103,8 @@ export const levelConfig = level => LEVELS[Math.max(1, Math.min(LEVELS.length, M
 export const COLORS = ['#e8483b', '#f08a1c', '#3aa845', '#2f8fe0', '#8e5bd8', '#e0468c', '#17a79a', '#d9a514']
 const colorIndex = L => LETTERS.indexOf(L) % COLORS.length
 
-/** Bites until a monster is full: five, fewer for a letter with one or two words. */
-export const needOf = L => (WORDS[L].length >= 3 ? 5 : WORDS[L].length === 2 ? 4 : 3)
+/** Bites until a monster is full: five, fewer for a letter with one or two words (one word: twice is enough). */
+export const needOf = L => (WORDS[L].length >= 3 ? 5 : WORDS[L].length === 2 ? 4 : 2)
 
 export function shuffle(list, rnd = Math.random) {
   const a = [...list]

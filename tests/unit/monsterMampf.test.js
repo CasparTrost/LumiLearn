@@ -39,7 +39,9 @@ describe('Monster-Mampf: the words', () => {
   it('a monster is full after five bites, sooner where a letter has few words', () => {
     expect(needOf('B')).toBe(5)
     expect(needOf('I')).toBe(4)
-    expect(needOf('X')).toBe(3)
+    // one word only: twice the same thing is enough (it was the same Ufo three times)
+    expect(needOf('X')).toBe(2)
+    expect(needOf('U')).toBe(2)
   })
 })
 

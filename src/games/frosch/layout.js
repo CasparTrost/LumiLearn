@@ -85,7 +85,7 @@ export function hopSpots(L, n) {
 export function padCells(L, drift = 1) {
   const cols = L.wide ? 3 : 2, rows = L.wide ? 2 : 3
   // clear of the banks: the frog sits at the edge of one, the thing on the other
-  const inset = L.wide ? { l: L.frog * 0.2, r: L.frog * 0.5, t: L.frog * 0.5, b: 10 } : { l: 6, r: 6, t: L.frog * 0.7, b: L.frog * 0.25 }
+  const inset = L.wide ? { l: L.frog * 0.2, r: L.frog * 0.5, t: L.frog * 0.5, b: 10 } : { l: 18, r: 18, t: L.frog * 0.7, b: L.frog * 0.4 }
   const x0 = L.water.x + inset.l, y0 = L.water.y + inset.t
   const cw = (L.water.w - inset.l - inset.r) / cols, ch = (L.water.h - inset.t - inset.b) / rows
   const amp = clamp(5 + drift * 5, 0, Math.min(cw, ch) * 0.16)

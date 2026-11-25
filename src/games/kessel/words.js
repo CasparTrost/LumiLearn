@@ -86,10 +86,9 @@ export const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ'.split('')
 // Anlauttabelle for levels 1–3: every key shows a word that starts with its
 // sound, the key with the dog is the H of "Hund". The words are those of
 // the app's recorded alphabet (`abc/<letter>`: "A wie Affe.", the one
-// Buchstaben-Spuren and the ABC-Abenteuer use), with two exceptions:
+// Buchstaben-Spuren and the ABC-Abenteuer use), with one exception:
 //   • U is the Ufo, not the Uhu: the owl is the picture of the word EULE,
-//     and a child looking for the owl's key would press U for EULE;
-//   • J is the Jo-Jo: the jacket is drawn as a long coat.
+//     and a child looking for the owl's key would press U for EULE.
 // Y, Ä, Ö and Ü show only their letter: no word a child knows starts with
 // them and has a clear picture (Yoga was a sitting person, Ähre an unknown
 // word, the Ölkanne a watering can, "überrascht" a face next to the O).
@@ -97,7 +96,7 @@ export const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ'.split('')
 // (tests/unit/kessel.test.js).
 export const ANLAUT = {
   A:['Affe','🐒'],   B:['Bär','🐻'],     C:['Clown','🤡'],  D:['Dino','🦖'],    E:['Ente','🦆'],
-  F:['Fisch','🐟'],  G:['Giraffe','🦒'], H:['Hund','🐕'],   I:['Igel','🦔'],    J:['Jo-Jo','🪀'],
+  F:['Fisch','🐟'],  G:['Giraffe','🦒'], H:['Hund','🐕'],   I:['Igel','🦔'],    J:['Jacke',':px-jacke:'],
   K:['Katze','🐱'],  L:['Löwe','🦁'],    M:['Maus','🐭'],   N:['Nase','👃'],    O:['Oma','👵'],
   P:['Pinguin','🐧'], Q:['Qualle','🪼'], R:['Rakete','🚀'], S:['Sonne','☀️'],   T:['Tiger','🐯'],
   U:['Ufo','🛸'],    V:['Vogel','🐦'],   W:['Wal','🐋'],    X:['Xylofon',':px-xylofon:'],

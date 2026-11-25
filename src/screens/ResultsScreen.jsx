@@ -129,7 +129,8 @@ export default function ResultsScreen() {
   const msg = useMemo(() => {
     if (justCompleted) return masteredWell ? 'Du bist ein Meister!' : 'Alle Level geschafft!'
     if (opened) return `Level ${nextLevel} ist offen!`
-    const list = MESSAGES[Math.max(0, Math.min(3, stars))]
+    // "Perfekt!" stood over "7 von 8": only when everything was right
+    const list = MESSAGES[Math.max(0, Math.min(3, stars))].filter(m => m !== 'Perfekt!' || !(total > 0) || score >= total)
     return list[Math.floor(Math.random() * list.length)]
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const friends = useMemo(() => {
