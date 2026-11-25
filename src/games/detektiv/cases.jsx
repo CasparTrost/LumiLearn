@@ -488,18 +488,25 @@ function BuschScene() {
 // `ms` how long it takes. `good` are the cards that help (one of them is
 // offered), `gift` what "Teilen" hands over, `odd` kind things that do not
 // fit this case, `glad(card)` the friend once helped, `hurt` its face after
-// an unkind card where the feeling was a bright one.
+// an unkind card where the feeling was a bright one. `notWith`: feelings
+// never offered as a wrong face in this case, because a child could argue
+// for them (the tower fell over by itself: sad is as right as angry; the
+// friend visibly startles before it is glad about the present). The pairs
+// that hold for every case are ALIKE in EmpathyGame.jsx;
+// tests/unit/detektiv.test.js checks every case at every level it is in.
 const MEAN = ['laugh', 'leave', 'scold']
 const happy = () => ({ feel: 'happy', strength: 2 })
 
 export const CASES = [
   { id: 'eis', tier: 1, kind: 'hase', feeling: 'Traurig', face: 'sad', Scene: EisScene, ms: 2700,
+    notWith: ['Wütend', 'Überrascht'],
     start: { feel: 'content', hold: 'cone2' },
     event: c => [[0, () => c.F({ hold: 'cone' })], [650, () => { c.F({ feel: 'surprised' }); c.sfx('slideDown') }], [1480, () => c.sfx('splash')], [1800, () => c.F({ feel: 'sad' })]],
     good: ['share', 'hug'], gift: '🍦', odd: ['light', 'blanket'],
     glad: card => (card === 'share' ? { feel: 'happy', strength: 2, hold: '🍦' } : { ...happy(), hold: null }) },
 
   { id: 'turm', tier: 1, kind: 'baer', sound: '🐻', feeling: 'Wütend', face: 'angry', Scene: TurmScene, ms: 3000,
+    notWith: ['Traurig', 'Überrascht'],
     start: { feel: 'content', arms: 'work' },
     event: c => [[1100, () => { c.F({ feel: 'surprised', arms: undefined }); c.sfx('slideDown') }], [1500, () => c.sfx('drum')], [1700, () => c.sfx('drum', true)], [1900, () => c.sfx('bump')], [2100, () => c.F({ feel: 'angry' })]],
     good: ['rebuild'], odd: ['light', 'blanket'], glad: happy },
@@ -510,11 +517,13 @@ export const CASES = [
     good: ['hug'], odd: ['look', 'clap'], glad: happy },
 
   { id: 'geschenk', tier: 1, kind: 'katze', sound: '🐱', feeling: 'Glücklich', face: 'happy', bright: true, Scene: GeschenkScene, ms: 2900,
+    notWith: ['Überrascht', 'Neugierig'],
     start: { feel: 'content' },
     event: c => [[560, () => c.sfx('boing')], [800, () => c.F({ feel: 'surprised' })], [1700, () => { c.sfx('pop'); c.sfx('sparkle') }], [1950, () => c.F({ feel: 'happy' })]],
     good: ['cheer'], odd: ['blanket', 'light'], glad: happy },
 
   { id: 'allein', tier: 1, kind: 'hund', sound: '🐶', feeling: 'Traurig', face: 'sad', Scene: AlleinScene, ms: 3100,
+    notWith: ['Wütend', 'Überrascht'],
     start: { feel: 'content', arms: 'up' },
     event: c => [[900, () => c.sfx('whoosh')], [1200, () => c.F({ feel: 'surprised', arms: undefined })], [2200, () => c.F({ feel: 'sad' })]],
     good: ['play', 'hug'], odd: ['light', 'blanket'], glad: happy },
@@ -525,12 +534,14 @@ export const CASES = [
     good: ['hug'], odd: ['clap', 'look'], glad: happy },
 
   { id: 'stift', tier: 1, kind: 'fuchs', feeling: 'Wütend', face: 'angry', Scene: StiftScene, ms: 2900,
+    notWith: ['Traurig', 'Überrascht'],
     start: { feel: 'content', hold: 'crayon' },
     event: c => [[250, () => c.sfx('step')], [550, () => c.sfx('step')], [850, () => c.sfx('step')], [1200, () => { c.F({ feel: 'surprised', hold: 'stub' }); c.sfx('bump'); c.sfx('mismatch') }], [1950, () => c.F({ feel: 'angry', hold: null })]],
     good: ['share'], gift: '🖍', odd: ['light', 'blanket'],
     glad: () => ({ feel: 'happy', strength: 2, hold: 'crayon' }) },
 
   { id: 'ballon', tier: 1, kind: 'loewe', sound: '🦁', feeling: 'Glücklich', face: 'happy', bright: true, Scene: BallonScene, ms: 2600,
+    notWith: ['Überrascht'],
     start: { feel: 'content' },
     event: c => [[100, () => c.sfx('sparkle')], [600, () => c.F({ feel: 'surprised' })], [1500, () => { c.F({ feel: 'happy', hold: 'balloon' }); c.sfx('coin') }]],
     good: ['cheer'], odd: ['blanket', 'light'], glad: () => ({ feel: 'happy', strength: 2, hold: 'balloon' }) },
@@ -540,9 +551,11 @@ export const CASES = [
     event: c => [[600, () => c.sfx('flip')], [960, () => c.sfx('flip')], [1380, () => { c.sfx('mismatch'); c.F({ feel: 'surprised', dim: true }) }], [1950, () => c.F({ feel: 'scared' })]],
     good: ['light'], odd: ['share', 'clap'], glad: () => ({ ...happy(), dim: false }) },
 
-  { id: 'platzen', tier: 2, kind: 'schwein', sound: '🐷', feeling: 'Überrascht', face: 'surprised', Scene: PlatzenScene, ms: 2500,
+  // the bang startles; what stays is sadness, and comfort or a new balloon helps
+  { id: 'platzen', tier: 2, kind: 'schwein', sound: '🐷', feeling: 'Traurig', face: 'sad', Scene: PlatzenScene, ms: 2900,
+    notWith: ['Überrascht', 'Ängstlich', 'Wütend'],
     start: { feel: 'content', hold: 'balloon' },
-    event: c => [[0, () => { c.F({ hold: null, arms: 'holdR' }); c.sfx('slideUp') }], [400, () => c.sfx('slideUp')], [900, () => c.sfx('slideUp')], [1400, () => { c.sfx('pop'); c.sfx('bump'); c.F({ feel: 'surprised', strength: 2, arms: undefined, hold: 'popped' }) }]],
+    event: c => [[0, () => { c.F({ hold: null, arms: 'holdR' }); c.sfx('slideUp') }], [400, () => c.sfx('slideUp')], [900, () => c.sfx('slideUp')], [1400, () => { c.sfx('pop'); c.sfx('bump'); c.F({ feel: 'surprised', strength: 2, arms: undefined, hold: 'popped' }) }], [2250, () => c.F({ feel: 'sad', strength: 1 })]],
     good: ['share', 'hug'], gift: '🎈', odd: ['blanket', 'light'],
     glad: card => (card === 'share' ? { feel: 'happy', strength: 2, hold: 'balloon' } : { ...happy(), hold: null }) },
 
@@ -564,22 +577,26 @@ export const CASES = [
     glad: () => ({ feel: 'asleep', cover: true }) },
 
   { id: 'saft', tier: 3, kind: 'hund', sound: '🐶', feeling: 'Verlegen', face: 'shy', bg: 'room', Scene: SaftScene, ms: 3000,
+    notWith: ['Ängstlich', 'Überrascht'],
     start: { feel: 'content', arms: 'holdR' },
     event: c => [[700, () => c.sfx('bump')], [1150, () => { c.sfx('splash'); c.F({ feel: 'surprised', arms: undefined }) }], [2000, () => c.F({ feel: 'shy' })]],
     good: ['wipe'], odd: ['clap', 'cheer'], glad: happy },
 
   { id: 'regen', tier: 3, kind: 'baer', sound: '🐻', feeling: 'Gelangweilt', face: 'bored', bg: 'room', Scene: RegenScene, ms: 3100,
+    notWith: ['Wütend'],
     start: { feel: 'content' },
     event: c => [[400, () => c.sfx('whoosh')], [1100, () => c.F({ feel: 'neutral' })], [2100, () => c.F({ feel: 'bored' })]],
     good: ['play'], odd: ['blanket', 'light'], glad: happy },
 
   { id: 'geburtstag', tier: 3, kind: 'hase', feeling: 'Aufgeregt', face: 'excited', bright: true, bg: 'room', Scene: GeburtstagScene, ms: 3000,
+    notWith: ['Neugierig'],
     start: { feel: 'content' },
     event: c => [[300, () => c.sfx('slideUp')], [900, () => { c.F({ feel: 'surprised' }); c.sfx('tada') }], [1800, () => { c.F({ feel: 'excited' }); c.sfx('sparkle') }]],
     good: ['cheer'], odd: ['blanket', 'light'], glad: () => ({ feel: 'excited', strength: 2 }) },
 
   { id: 'busch', tier: 3, kind: 'fuchs', feeling: 'Neugierig', face: 'curious', bright: true, Scene: BuschScene, ms: 2900,
+    notWith: ['Ängstlich', 'Aufgeregt'],
     start: { feel: 'content' },
     event: c => [[450, () => c.sfx('whoosh')], [700, () => c.F({ feel: 'surprised' })], [1400, () => c.sfx('whoosh')], [1800, () => c.F({ feel: 'curious' })]],
     good: ['look'], odd: ['clap', 'blanket'], fixSound: '🦔', glad: happy },
-].map(k => ({ mean: MEAN, ...k }))
+].map(k => ({ mean: MEAN, notWith: [], ...k }))

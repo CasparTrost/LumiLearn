@@ -45,7 +45,10 @@ const FACES = {
   scared:    { eyes: 'wide',   mouth: 'wobble', arms: 'cross', brows: 'M38 48 Q45 42 52 47 M68 47 Q75 42 82 48' },
   excited:   { eyes: 'star',   mouth: 'grin',   arms: 'up',   cheeks: true, brows: 'M38 48 Q46 42 53 48 M67 48 Q74 42 82 48' },
   tired:     { eyes: 'half',   mouth: 'yawn',   arms: 'down', brows: 'M39 54 L52 54 M68 54 L81 54' },
-  shy:       { eyes: 'down',   mouth: 'wobble', arms: 'face', blush: true, brows: 'M39 51 L52 48 M81 51 L68 48' },
+  // embarrassed, as on the Verlegen face of Gefühlswelt: eyes down and away,
+  // a small crooked smile under a big blush, one paw at the cheek (the wavy
+  // mouth, the sweat drop and both hands at the cheeks read as worried)
+  shy:       { eyes: 'away',   mouth: 'sheepish', arms: 'cheek', blush: true, brows: 'M39 50 Q45 46 52 48 M81 50 Q75 46 68 48' },
   surprised: { eyes: 'wide',   mouth: 'O',      arms: 'up',   brows: 'M38 46 Q45 39 52 45 M68 45 Q75 39 82 46' },
   proud:     { eyes: 'closed', mouth: 'smug',   arms: 'hips', cheeks: true, brows: 'M39 50 Q46 46 52 49 M68 49 Q74 46 81 50' },
   bored:     { eyes: 'half',   mouth: 'flat',   arms: 'down', brows: 'M39 55 L52 55 M68 55 L81 55', look: 1 },
@@ -68,6 +71,7 @@ function Eye({ kind, cx, cy, look = 0, right, ink, glint }) {
     case 'wide':   return <g><circle cx={cx} cy={cy} r="8.5" fill="#fff" stroke={OUT} strokeWidth="2.4" /><circle cx={cx} cy={cy + 1} r="3.4" fill={OUT} /></g>
     case 'half':   return <g><path d={`M${cx - 7} ${cy} A7 7 0 0 0 ${cx + 7} ${cy} Z`} {...fill} /><path d={`M${cx - 8} ${cy} L${cx + 8} ${cy}`} {...line} /></g>
     case 'down':   return <g><ellipse cx={cx} cy={cy + 3} rx="5" ry="5.5" {...fill} /><path d={`M${cx - 7} ${cy - 2} Q${cx} ${cy - 4} ${cx + 7} ${cy - 2}`} {...line} strokeWidth="2.4" /></g>
+    case 'away':   return <g><ellipse cx={cx - 3} cy={cy + 3} rx="5" ry="5.5" {...fill} /><path d={`M${cx - 7} ${cy - 2} Q${cx} ${cy - 4} ${cx + 7} ${cy - 2}`} {...line} strokeWidth="2.4" /></g>
     case 'side':   return <g><ellipse cx={cx} cy={cy} rx="7.5" ry="6.5" fill="#fff" stroke={OUT} strokeWidth="2.4" /><circle cx={cx - 3.5} cy={cy + 1} r="3.4" fill={OUT} /></g>
     case 'star': {
       const p = Array.from({ length: 10 }, (_, i) => {
@@ -98,6 +102,7 @@ function Mouth({ kind }) {
     case 'o':      return <ellipse cx="62" cy="85" rx="3.6" ry="4.2" fill={OUT} />
     case 'yawn':   return <g><ellipse cx="60" cy="87" rx="6.5" ry="8.5" fill={OUT} /><ellipse cx="60" cy="91" rx="3.6" ry="3" fill="#ff6b7d" /></g>
     case 'flat':   return <path d="M53 84 L68 83" {...line} />
+    case 'sheepish': return <path d="M53 83 Q58 88 67 81" {...line} />
     case 'smug':   return <path d="M51 80 Q61 89 70 78" {...line} />
     default:       return <path d="M56 81 Q60 84 64 81" {...line} strokeWidth="2.8" />
   }
@@ -110,6 +115,7 @@ const ARMS = {
   up:     { l: [13, 50, -35], r: [107, 50, 35] },
   hips:   { l: [17, 84, -45], r: [103, 84, 45], front: true },
   face:   { l: [36, 80, 15],  r: [84, 80, -15], front: true },
+  cheek:  { l: [15, 84, 25],  r: [88, 76, -20], front: true },
   chest:  { l: [52, 98, 40],  r: [68, 98, -40], front: true },
   cross:  { l: [50, 98, 70],  r: [70, 100, -70], front: true },
   holdR:  { l: [15, 84, 25],  r: [108, 68, 50] },
@@ -254,7 +260,7 @@ function Marks({ feel, n, still }) {
   if (feel === 'shy' || feel === 'oops') return (
     <g stroke="#e8506e" strokeWidth="2" strokeLinecap="round">
       <path d="M26 66 l4 -5 M31 67 l4 -5 M85 66 l4 -5 M90 67 l4 -5" />
-      {n >= 2 && <path d="M100 34 q-6 10 0 13 q6 -3 0 -13" fill="#8fd3ff" stroke={OUT} strokeWidth="1.6" />}
+      {n >= 2 && feel === 'oops' && <path d="M100 34 q-6 10 0 13 q6 -3 0 -13" fill="#8fd3ff" stroke={OUT} strokeWidth="1.6" />}
     </g>
   )
   if (feel === 'laugh') return (

@@ -3,7 +3,9 @@ import './gefuehle.css'
 /**
  * The faces of the Gefühle-Haus: ten feelings, each drawn two ways, on ten
  * different heads (bear, rabbit, cat, mouse, pig, dog, fox, lion, koala and
- * a little monster) and on the plain round face of Lumi's sign.
+ * a little monster) and on the plain round face of Lumi's sign. The sign's
+ * faces are also the feeling chips of Gefühlsdetektiv (with Neugierig, which
+ * only that game asks), so one feeling has one face in both games.
  *
  * The game is about reading an expression, not about finding the same
  * picture twice. So the feeling is in what a face does (brows, eyes, mouth,
@@ -44,9 +46,11 @@ const LOOKS = {
     { eyes: 'wide', brows: 'high', mouth: 'O', pop: true },
     { eyes: 'wide', brows: 'high', mouth: 'gasp', pop: true },
   ],
+  // tired in the face itself, not only by the floating Zz (it can be out of
+  // sight): heavy lids and a big yawn in both
   'Müde': [
     { eyes: 'half', brows: 'flat', mouth: 'yawn', zzz: true },
-    { eyes: 'shut', brows: 'flat', mouth: 'o', zzz: true },
+    { eyes: 'heavy', brows: 'droop', mouth: 'gape', yawnTear: true, zzz: true },
   ],
   'Stolz': [
     { eyes: 'lid', brows: 'soft', mouth: 'smug', cheeks: true, medal: true, sparkle: 1 },
@@ -65,6 +69,12 @@ const LOOKS = {
   'Aufgeregt': [
     { eyes: 'star', brows: 'high', mouth: 'biggrin', cheeks: true, sparkle: 2 },
     { eyes: 'star', brows: 'soft', mouth: 'grin', cheeks: true, sparkle: 2 },
+  ],
+  // Only on the chips of Gefühlsdetektiv, where a story goes with it; the
+  // house leaves it out (gefuehle/rounds.js): one brow up, eyes to the side,
+  // a little "o", and a question mark
+  'Neugierig': [
+    { eyes: 'side', look: [5, -2], brows: 'quizzical', mouth: 'o', question: true },
   ],
 }
 
@@ -94,6 +104,16 @@ function Eye({ kind, cx, cy = 48, look = [0, 0], right }) {
           <circle cx={cx + lx * 1.5} cy={cy + ly + 3.5} r="2.4" fill="#fff" />
         </g>
       )
+    case 'heavy': return (
+      // nearly shut: a thick lid over a sliver of eye, and a bag below
+      <g>
+        <path d={`M${cx - 11} ${cy + 2} A11 8 0 0 0 ${cx + 11} ${cy + 2} Z`} fill="#fff" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+        <circle cx={cx} cy={cy + 6} r="3.6" fill={INK} />
+        <path d={`M${cx - 12.5} ${cy + 2} Q${cx} ${cy + 5} ${cx + 12.5} ${cy + 2}`} {...stroke(6.5)} />
+        <path d={`M${cx - 8} ${cy + 15} Q${cx} ${cy + 19} ${cx + 8} ${cy + 15}`} {...stroke(2.6)} opacity="0.55" />
+      </g>
+    )
+    case 'side': return <g><circle cx={cx} cy={cy} r="11" fill="#fff" stroke={INK} strokeWidth="3" /><circle cx={cx + lx} cy={cy + ly} r="5.5" fill={INK} /><circle cx={cx + lx - 2} cy={cy + ly - 2} r="1.8" fill="#fff" /></g>
     case 'half': return (
       <g>
         <path d={`M${cx - 11} ${cy} A11 10 0 0 0 ${cx + 11} ${cy} Z`} fill="#fff" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
@@ -124,9 +144,12 @@ const BROWS = {
   high:    ['M19 28 Q30 17 41 27', 5],
   flat:    ['M19 33 L41 34', 5],
   low:     ['M18 36 L42 37', 5.5],
+  droop:   ['M19 37 Q30 32 41 35', 5],
 }
 
 function Brows({ kind }) {
+  // curious: the left brow level, the right one raised
+  if (kind === 'quizzical') return <g><path d="M19 33 Q30 30 41 33" {...stroke(5)} /><path d="M59 26 Q70 13 82 22" {...stroke(5)} /></g>
   const b = BROWS[kind]
   if (!b) return null
   return <g><path d={b[0]} {...stroke(b[1])} /><path d={b[0]} {...stroke(b[1])} transform="translate(100 0) scale(-1 1)" /></g>
@@ -152,6 +175,7 @@ function Mouth({ kind }) {
     case 'O':      return <ellipse cx="50" cy="79" rx="10" ry="12" fill={DARK} stroke={INK} strokeWidth="4" />
     case 'gasp':   return <g><ellipse cx="50" cy="79" rx="13" ry="11" fill={DARK} stroke={INK} strokeWidth="4" /><ellipse cx="50" cy="85" rx="7" ry="3.5" fill={TONGUE} /></g>
     case 'o':      return <ellipse cx="50" cy="78" rx="6" ry="7" fill={DARK} stroke={INK} strokeWidth="3.5" />
+    case 'gape':   return <g><ellipse cx="50" cy="80" rx="10" ry="15" fill={DARK} stroke={INK} strokeWidth="4" /><ellipse cx="50" cy="89" rx="6" ry="4" fill={TONGUE} /></g>
     case 'yawn':   return <g><ellipse cx="50" cy="79" rx="12" ry="13.5" fill={DARK} stroke={INK} strokeWidth="4" /><ellipse cx="50" cy="87" rx="7" ry="4" fill={TONGUE} /></g>
     case 'flat':   return <path d="M36 79 L64 77" {...stroke(5.5)} />
     case 'pout':   return <path d="M38 81 Q50 73 62 81" {...stroke(5.5)} />
@@ -216,6 +240,10 @@ function Over({ L, fur }) {
             </g>
           ))}
         </g>
+      )}
+      {L.yawnTear && <Drop x={84} y={52} s={0.8} />}
+      {L.question && (
+        <text x="80" y="22" fontSize="34" fontFamily="var(--font-heading)" fontWeight="700" fill="#6b3fd6" stroke="#fff" strokeWidth="4" paintOrder="stroke" strokeLinejoin="round">?</text>
       )}
       {L.sweat >= 1 && <Drop x={90} y={22} />}
       {L.sweat >= 2 && <Drop x={9} y={30} s={0.85} />}

@@ -100,10 +100,22 @@ describe('Gefühle-Haus', () => {
     expect(watch(1, 'Traurig', 20000).log.every(t => t.up.every(c => c.variant === 0))).toBe(true)
   })
 
-  it('no face that can be argued for is a wrong answer: happy, proud and excited keep apart', () => {
-    expect(TOO_CLOSE['Glücklich']).toEqual(['Stolz', 'Aufgeregt'])
+  it('no face that can be argued for is a wrong answer', () => {
+    // for every asked feeling, the drawn faces a child could defend as it
+    // (logic check, round 2): they never come up in its rounds
+    const DEFENSIBLE = {
+      'Glücklich':   ['Stolz', 'Aufgeregt', 'Verlegen'],
+      'Traurig':     ['Gelangweilt'],
+      'Ängstlich':   ['Überrascht'],
+      'Überrascht':  ['Ängstlich', 'Aufgeregt'],
+      'Müde':        ['Gelangweilt'],
+      'Gelangweilt': ['Müde'],
+      'Stolz':       ['Glücklich', 'Aufgeregt'],
+      'Aufgeregt':   ['Glücklich', 'Stolz', 'Überrascht', 'Ängstlich'],
+    }
+    for (const [target, faces] of Object.entries(DEFENSIBLE)) expect(TOO_CLOSE[target], target).toEqual(expect.arrayContaining(faces))
     for (const [target, barred] of Object.entries(TOO_CLOSE)) {
-      for (const level of [5, 7, 10]) {
+      for (const level of [3, 5, 7, 10]) {
         if (!levelConfig(level).feelings.includes(target)) continue
         for (let seed = 1; seed <= 8; seed++) {
           const { log } = watch(level, target, 40000, seed)

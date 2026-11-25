@@ -460,11 +460,14 @@ function House({ box, fit: f, cfg, slots, target, phase, lit, helping, hinted, c
         {/* the cat on the roof */}
         {/* It dances here, by itself, and not through a happy mood: a happy
             Critter makes its animal sound, and a meow on top of Lumi's words
-            is one voice too many. (A child who taps the cat still hears it.) */}
-        <motion.div key={catDance.n} style={{ position: 'absolute', left: rl + ridge * 0.5 - f.cat * (f.c <= 3 ? 0.5 : 1.6), top: -f.catUp, zIndex: 3, transformOrigin: '50% 100%' }}
+            is one voice too many. It can be tapped only at the end party: in a
+            round a child looking for "every animal that is glad" tapped the
+            cat too, and it meowed back like an answer. */}
+        <motion.div key={catDance.n} style={{ position: 'absolute', left: rl + ridge * 0.5 - f.cat * (f.c <= 3 ? 0.5 : 1.6), top: -f.catUp, zIndex: 3, transformOrigin: '50% 100%',
+          pointerEvents: phase === 'finale' ? undefined : 'none' }}
           animate={catDance.n && !reduce ? { rotate: [0, -12, 12, -12, 12, 0], y: [0, -f.cat * 0.14, 0, -f.cat * 0.14, 0, 0] } : {}}
           transition={{ duration: 0.8, repeat: catDance.long ? 3 : 1 }}>
-          <Critter art="🐱" size={f.cat} label="Katze auf dem Dach" shadow={false} />
+          <Critter art="🐱" size={f.cat} label={phase === 'finale' ? 'Katze auf dem Dach' : undefined} shadow={false} />
         </motion.div>
         <svg width={roofW} height={f.roofH} viewBox={`0 0 ${roofW} ${f.roofH}`} aria-hidden="true" style={{ display: 'block', overflow: 'visible', position: 'relative', zIndex: 2, marginBottom: -4 }}>
           <defs>
