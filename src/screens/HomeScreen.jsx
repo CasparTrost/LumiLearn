@@ -133,7 +133,7 @@ function GameTile({ mod, p, index, onPlay, onLevels }) {
 }
 
 // The counters under the name on a narrow phone
-const SMALL_CHIP = { minHeight:26, fontSize:15, gap:4, padding:'1px 8px 1px 5px' }
+const SMALL_CHIP = { minHeight:26, fontSize:15, gap:3, padding:'1px 6px 1px 4px' }
 
 // A soft colour per world, so the rows are easy to tell apart
 const WORLD_TINT = { zahlen: '#fff0c4', buchstaben: '#dcefff', denken: '#ebe3ff', gefuehle: '#ffe1ec', malen: '#e2f5d6' }
@@ -351,7 +351,7 @@ export default function HomeScreen() {
               (the greeting and the stars were simply left out there): they
               sit under it, a little smaller. */}
           <div className="hud-only-sm">
-            <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginTop:4 }}>
+            <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginTop:4 }}>
               <div className="px-chip" aria-label={`${totalStarsCount} Sterne`} style={SMALL_CHIP}>
                 <PxStar size={16} /> {totalStarsCount}
               </div>

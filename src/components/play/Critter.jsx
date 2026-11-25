@@ -116,7 +116,8 @@ export default function Critter({
         </div>
         {accessory}
       </motion.button>
-      <MoodMark mood={shown} size={size} tickle={tickle} />
+      {/* Lumi's sleeping picture has its own Zzz: a second one sat on top of it */}
+      <MoodMark mood={art === 'lumi' && shown === 'sleep' ? 'idle' : shown} size={size} tickle={tickle} />
       {wish && <Wish side={wishSide} size={size}>{wish}</Wish>}
       {children}
     </div>
