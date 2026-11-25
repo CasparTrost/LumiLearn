@@ -445,19 +445,35 @@ async function playShadows(page, { wrongOnce = false } = {}) {
     if (+s.idx === round) { await page.waitForTimeout(200); continue }
     const steps = Math.abs(+s.target - +s.from)
     const over = !overshot && s.idx === '1' && +s.target < 10
-    if (s.idx === '3') {
-      // flown by hand: hold the rocket, move slowly to the planet, let go
+    if (s.idx === '3' || s.idx === '4' || s.idx === '5') {
+      // flown by hand: hold the rocket, move slowly to the planet, let go (3);
+      // a flame hop to the planet first, then picked up and set down there
+      // again: that is the answer too, no tick (4); a quick swipe, let go at
+      // once: it flies on to the planet under the finger, slowly, and lands
+      // there (5: "Wo du loslässt, landet sie")
       const box = async sel => { const b = await page.locator(sel).first().boundingBox(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 } }
+      if (s.idx === '4') {
+        for (let k = 0; k < steps; k++) {
+          await page.getByRole('button', { name: 'Vorwärts hüpfen' }).click({ timeout: 3000 }).catch(() => {})
+          await page.waitForTimeout(520)
+        }
+        await until(x => x.pos === s.target, 3000)
+        await page.waitForTimeout(400)
+      }
       const r = await box('[data-rocket]'), p = await box(`[data-planet="${s.target}"] svg`), q = await box('[data-planet="0"] svg')
       const upright = Math.abs(p.y - q.y) > Math.abs(p.x - q.x)
-      const to = upright ? { x: r.x, y: p.y } : { x: p.x, y: r.y }
+      const to = s.idx === '4' ? (upright ? { x: r.x + 30, y: p.y } : { x: p.x, y: r.y - 30 }) : upright ? { x: r.x, y: p.y } : { x: p.x, y: r.y }
       await page.mouse.move(r.x, r.y); await page.mouse.down()
-      for (let i = 1; i <= 20; i++) { await page.mouse.move(r.x + (to.x - r.x) * i / 20, r.y + (to.y - r.y) * i / 20); await page.waitForTimeout(30) }
-      await page.waitForTimeout(steps * 550 + 600)
+      const quick = s.idx === '5'
+      for (let i = 1; i <= (quick ? 6 : 20); i++) { await page.mouse.move(r.x + (to.x - r.x) * i / (quick ? 6 : 20), r.y + (to.y - r.y) * i / (quick ? 6 : 20)); await page.waitForTimeout(quick ? 50 : 30) }
+      if (quick) {
+        // let go at once: the rocket has not got there yet
+        if ((await state())?.pos === s.target) problems.push('Planeten-Hüpfer: the quick swipe did not outrun the rocket (the test proves nothing)')
+      } else await page.waitForTimeout(s.idx === '4' ? 900 : steps * 900 + 800)
       await page.mouse.up()
-      const set = await until(x => x.pos === s.target, 5000)
+      const set = await until(x => x.pos === s.target, 9000)
       for (let t = 0; t < 3000 && (await page.locator('[data-flying]').count()); t += 100) await page.waitForTimeout(100)
-      if (!set) problems.push('Planeten-Hüpfer: the rocket flown by hand did not come down on the planet')
+      if (!set) problems.push(`Planeten-Hüpfer: the rocket flown by hand did not come down on the planet (sum ${+s.idx + 1})`)
       // where it is set down is the answer: no tick needed
       if (!(await until(x => x.phase !== 'play' || +x.idx !== +s.idx, 6000))) problems.push('Planeten-Hüpfer: landing by hand was not taken as the answer')
       round = +s.idx

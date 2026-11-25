@@ -4,7 +4,8 @@ import { sfx } from '../sfx.js'
 import { lockPreviews, narrate, afterNarration, leaveGame } from '../narrator.js'
 import { feelingWord } from '../lib/words.js'
 import { LINES, line } from '../lib/lumiLines.js'
-import { sayRight, sayWrong, announce } from '../lib/feedback.js'
+import { sayRight, announce } from '../lib/feedback.js'
+import { newDeal, sayFeeling, sayMiss } from './gefuehle/speech.js'
 import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
 import { Critter, Art, useMood, RoundTrail, useBursts, HintHand, useIdle } from '../components/play/index.js'
@@ -135,7 +136,7 @@ export default function EmotionGame({ level = 1, onComplete }) {
   // What the clock and the taps work on; the state above is its picture
   // (lastAt / lastAnimal / prev: the window and animal of the last right
   // tap and the deal before, so the next deal puts everyone somewhere new)
-  const g = useRef({ now: 0, slots: [], caught: 0, misses: 0, dealMisses: 0, streak: 0, clean: 0, faceUntil: 0, faceUp: true,
+  const g = useRef({ now: 0, slots: [], caught: 0, misses: 0, dealMisses: 0, missSeq: 0, streak: 0, clean: 0, faceUntil: 0, faceUp: true,
     lastAt: null, lastAnimal: null, prev: null }).current
   const target = phase === 'finale' ? 'Glücklich' : rounds[roundIdx]
 
@@ -157,6 +158,8 @@ export default function EmotionGame({ level = 1, onComplete }) {
     const next = deal(cfg, rounds[g.round], { avoid: g.lastAt, lastAnimal: g.lastAnimal, before: g.prev })
     g.prev = next
     g.dealMisses = 0
+    // a new deal is a new task for what Lumi says after a miss, too
+    newDeal()
     setMisses(0)
     show(next)
     sfx.flip()
@@ -302,12 +305,14 @@ export default function EmotionGame({ level = 1, onComplete }) {
     show(g.slots.map((x, k) => (k === i ? { ...c, shake: (c.shake ?? 0) + 1 } : x)))
     sfx.boing()
     setLumi('oops', 900)
-    const round = roundIdx
-    sayWrong(null, { onEnd: () => later(250, () => {
-      if (g.round !== round || g.caught >= cfg.need) return
+    const round = roundIdx, mine = ++g.missSeq
+    sayMiss(() => later(250, () => {
+      // only after the last wrong tap, and once: a second wrong tap while
+      // the first one's word was still to come said it twice
+      if (g.round !== round || g.caught >= cfg.need || mine !== g.missSeq) return
       setPulse(p => p + 1)
-      narrate([feelingWord(target)])
-    }) })
+      sayFeeling(target)
+    }))
     // the word alone was not enough: the face comes back and stays
     if (cfg.hideFace && g.misses >= 2) { g.faceUp = true; setFaceUp(true) }
   }
