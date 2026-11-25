@@ -255,6 +255,22 @@ describe('paper and light', () => {
     expect(toColoringPage(px, W, H, 2).regions).toBeGreaterThan(20)
   })
 
+  it('a drawing in a pale blue crayon is a drawing, not a ruling', () => {
+    const px = sheet(W, H, () => 250)
+    ring(px, W, 300, 400, 150, 6, 0, [176, 208, 240]); ring(px, W, 300, 400, 40, 6, 0, [176, 208, 240])
+    const res = toColoringPage(px, W, H)
+    expect(res.ok).toBe(true)
+    expect(res.regions).toBe(3)
+  })
+
+  it('a red and an orange shape that overlap stay two areas', () => {
+    const px = sheet(W, H, () => 250)
+    disc(px, W, 230, 400, 140, [224, 62, 62]); rect(px, W, 260, 290, 520, 520, [232, 98, 56])
+    const res = toColoringPage(px, W, H)
+    expect(area(res, 150, 400)).not.toBe(area(res, 450, 400))
+    expect(area(res, 150, 400)).not.toBe(area(res, 20, 20))
+  })
+
   it('a very light pencil is drawn whole at the normal setting', () => {
     const px = sheet(W, H, () => 250)
     ring(px, W, 220, 300, 120, 4, 0, [208, 208, 210]); ring(px, W, 420, 560, 90, 4, 0, [212, 212, 214])

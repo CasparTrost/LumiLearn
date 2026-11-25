@@ -270,7 +270,7 @@ function softShadows(v, bg, w, h) {
   const soft = new Uint8Array(n)
   let found = false
   for (let c = 0; c < cc.count; c++) {
-    if (cc.areas[c] < 40 || cc.border[c] || !steps[c].length) continue
+    if (cc.areas[c] < 40 || !steps[c].length) continue
     const st = steps[c].sort((a, b) => a - b)
     const depth = 1 - deepest[c]
     if (st[st.length >> 1] < 0.55 * depth) { found = true; for (let b = 0; b < n; b++) if (dark[b] && cc.labels[b] === c) soft[b] = 1 }
@@ -516,12 +516,24 @@ function inkOf(light, w, h, L, tableIsDark = false, rgba = null) {
   // The pale blue squares of an exercise book are the paper's, not the
   // drawing's: light and coloured (a pencil is grey, a felt pen dark). With
   // "more lines" they come too.
+  // A ruling is all over the page; a drawing in a pale crayon is somewhere
+  // on it (taken for a ruling, the whole drawing was refused).
   if (rgba && L.ruled) {
-    for (let i = 0, p = 0; i < weak.length; i++, p += 4) {
-      if (!weak[i]) continue
-      const mx = Math.max(rgba[p], rgba[p + 1], rgba[p + 2]), mn = Math.min(rgba[p], rgba[p + 1], rgba[p + 2])
-      if (mn > 150 && mx - mn > 24) weak[i] = strong[i] = 0
+    const pale = new Uint8Array(w * h)
+    const G = 8, cells = new Float64Array(G * G)
+    for (let y = 0; y < h; y++) {
+      const gy = Math.min(G - 1, ((y * G) / h) | 0) * G
+      for (let x = 0; x < w; x++) {
+        const i = y * w + x
+        if (!weak[i]) continue
+        const p = i * 4, mx = Math.max(rgba[p], rgba[p + 1], rgba[p + 2]), mn = Math.min(rgba[p], rgba[p + 1], rgba[p + 2])
+        if (mn > 150 && mx - mn > 24) { pale[i] = 1; cells[gy + Math.min(G - 1, ((x * G) / w) | 0)]++ }
+      }
     }
+    const filled = Array.from(cells).filter(c => c > 0).sort((a, b) => a - b)
+    const typical = filled.length ? filled[filled.length >> 1] : 0
+    const even = filled.filter(c => c >= 0.3 * typical).length
+    if (even >= 0.8 * G * G) for (let i = 0; i < pale.length; i++) if (pale[i]) weak[i] = strong[i] = 0
   }
   const wc = components(weak, w, h, 1, 8)
   const keep = new Uint8Array(wc.count)
@@ -938,7 +950,7 @@ const THIN = 3
 // Returns the regions and the drawn lines among the thin parts (`strokes`):
 // with the same area on both sides no border is left of such a line, so its
 // middle is kept.
-function simplifyRegions(reg, lab, w, h, maxDiff, soft = lab) {
+function simplifyRegions(reg, lab, w, h, maxDiff, soft = lab, edge = maxDiff) {
   const n = w * h
   let count = 0
   for (let i = 0; i < n; i++) if (reg[i] + 1 > count) count = reg[i] + 1
@@ -1048,9 +1060,13 @@ function simplifyRegions(reg, lab, w, h, maxDiff, soft = lab) {
   // edge: one region if the colours are close too (a soft-edged eye in a
   // face keeps its outline, the two differ enough).
   const apart = (a, b) => Math.hypot(mean[a * 3] - mean[b * 3], mean[a * 3 + 1] - mean[b * 3 + 1], mean[a * 3 + 2] - mean[b * 3 + 2])
+  // (what is edge enough to cut an area in two is edge enough to keep two
+  // areas apart: a red and an orange shape that overlap were cut and then
+  // joined again)
+  const faintStep = Math.min(maxDiff, 0.8 * edge)
   for (const [key, [sum, k]] of steps) {
     const a = Math.floor(key / count), b = key % count, step = sum / k
-    if (!(step < 0.4 * maxDiff || (step < maxDiff && apart(a, b) < 1.2 * maxDiff))) continue
+    if (!(step < 0.4 * maxDiff || (step < faintStep && apart(a, b) < 1.2 * maxDiff))) continue
     const ra = find(a), rb = find(b)
     if (ra !== rb) parent[ra] = rb
   }
@@ -1114,7 +1130,7 @@ export function traceShapes(rgba, w, h, detail = 1, extra = null) {
     one = boxBlur(one, sw, sh, 2)
     for (let i = 0; i < one.length; i++) soft[i * 3 + c] = one[i]
   }
-  const simple = simplifyRegions(reg, lab, sw, sh, L.merge, soft)
+  const simple = simplifyRegions(reg, lab, sw, sh, L.merge, soft, L.edge)
   reg = simple.reg
   // the borders between regions, both sides, smoothed and back at full size
   const edge = new Float32Array(sw * sh)
@@ -1306,6 +1322,15 @@ export function surroundOf(rgba, w, h) {
   return out
 }
 
+// On how many of the picture's four sides the surround lies (along half
+// the side or more)
+function sidesOf(around, w, h) {
+  let top = 0, bottom = 0, left = 0, right = 0
+  for (let x = 0; x < w; x++) { top += around[x]; bottom += around[(h - 1) * w + x] }
+  for (let y = 0; y < h; y++) { left += around[y * w]; right += around[y * w + w - 1] }
+  return (top >= w / 2) + (bottom >= w / 2) + (left >= h / 2) + (right >= h / 2)
+}
+
 /**
  * The whole way from a picture to a colouring page.
  *   rgba    RGBA pixels at sheet size (sheetSize), Uint8ClampedArray
@@ -1323,7 +1348,8 @@ export function toColoringPage(rgba, w, h, detail = 1) {
   // and so is yellow paper).
   // (Judged at the normal setting, so that all three settings of one
   // picture go the same way.)
-  const colouredIn = lt => solidCores(inkOf(lt, w, h, LEVELS[1], true, picture), w, h, picture).colouredShare() > 0.004
+  const colouredIn2 = (lt, pic) => solidCores(inkOf(lt, w, h, LEVELS[1], true, pic), w, h, pic).colouredShare() > 0.004
+  const colouredIn = lt => colouredIn2(lt, picture)
   // A drawing on a sheet that lies on a table: the sheet alone. The light
   // is evened first (against the table the paper is bright to its edge),
   // then the table counts as paper. Only for a drawing without coloured-in
@@ -1336,6 +1362,20 @@ export function toColoringPage(rgba, w, h, detail = 1) {
     if (shares(onSheet, blank).paper > 0.62 && !colouredIn(onSheet)) {
       const res = traceLines(picture, w, h, detail, darker(onSheet))
       if (res.ok) return res
+    } else if (sidesOf(around, w, h) >= 3) {
+      // A coloured-in drawing with something dark round it on three sides
+      // or four: that is a table (drawn grass lies along one). The table
+      // takes the paper's colour and the picture goes its way without it.
+      let r = 0, g = 0, b = 0, k = 0
+      for (let i = 0; i < around.length; i += 7) if (!around[i] && light[i] > 228) { r += picture[i * 4]; g += picture[i * 4 + 1]; b += picture[i * 4 + 2]; k++ }
+      if (k) {
+        for (let i = 0; i < around.length; i++) if (around[i]) { blank[i * 4] = r / k; blank[i * 4 + 1] = g / k; blank[i * 4 + 2] = b / k }
+        const lt = evenLight(blank, w, h)
+        if (shares(lt, blank).paper > 0.45 && colouredIn2(lt, blank)) {
+          const res = traceMixed(blank, w, h, detail, lt)
+          if (res.ok) return res
+        }
+      }
     }
   }
   const { paper } = shares(light, picture)

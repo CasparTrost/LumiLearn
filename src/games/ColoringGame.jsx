@@ -1082,19 +1082,29 @@ export default function ColoringGame({ onComplete }) {
       )}
       {/* Deleting an own picture is a grown-up's business, as bringing one
           in is: behind the same question. It says what goes with it. */}
-      {removing && createPortal(
-        <div className="px-backdrop" onClick={() => setRemoving(null)} style={{ zIndex: 3000, padding: 'min(14px, 2.5vh) 10px' }}>
-          <div role="dialog" aria-modal="true" aria-label="Eigenes Bild löschen" onClick={e => e.stopPropagation()} className="px-panel"
-            style={{ width: '100%', maxWidth: window.innerHeight < 520 && window.innerWidth > window.innerHeight ? 600 : 360, maxHeight: '100%', overflowY: 'auto', padding: '14px 14px', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
-            <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 20, color: INK, textAlign: 'center' }}>🗑️ Dieses eigene Bild löschen?</div>
-            <div style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 14, color: INK, lineHeight: 1.35, textAlign: 'center' }}>
-              Die Vorlage verschwindet aus den Bildern{removing === curId && hasPainted ? ', und was gerade darauf gemalt ist, auch' : ''}. Was schon an der Wand hängt, bleibt.
+      {removing && createPortal((() => {
+        // a phone held sideways is low: one short line above the question
+        const low = window.innerHeight < 520 && window.innerWidth > window.innerHeight
+        const withPaint = removing === curId && hasPainted
+        return (
+          <div className="px-backdrop" onClick={() => setRemoving(null)} style={{ zIndex: 3000, padding: low ? 4 : 'min(14px, 2.5vh) 10px' }}>
+            <div role="dialog" aria-modal="true" aria-label="Eigenes Bild löschen" onClick={e => e.stopPropagation()} className="px-panel"
+              style={{ width: '100%', maxWidth: low ? 640 : 360, maxHeight: '100%', overflowY: 'auto', padding: low ? '6px 12px' : '14px 14px', display: 'flex', flexDirection: 'column', gap: low ? 2 : 8, alignItems: 'center' }}>
+              <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: low ? 15 : 20, color: INK, textAlign: 'center', lineHeight: 1.2 }}>
+                🗑️ Dieses eigene Bild löschen?{low && <span style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 12 }}> {withPaint ? 'Was gerade darauf gemalt ist, geht mit.' : 'Was an der Wand hängt, bleibt.'}</span>}
+              </div>
+              {!low && (
+                <div style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 14, color: INK, lineHeight: 1.35, textAlign: 'center' }}>
+                  Die Vorlage verschwindet aus den Bildern{withPaint ? ', und was gerade darauf gemalt ist, auch' : ''}. Was schon an der Wand hängt, bleibt.
+                </div>
+              )}
+              <ParentGate quizOnly sideways={low}
+                pinIsDefault={state.settings?.pinIsDefault ?? true} correctPin={state.settings?.parentPin}
+                onUnlock={removeOwnPage} onCancel={() => setRemoving(null)} />
             </div>
-            <ParentGate quizOnly sideways={window.innerHeight < 520 && window.innerWidth > window.innerHeight}
-              pinIsDefault={state.settings?.pinIsDefault ?? true} correctPin={state.settings?.parentPin}
-              onUnlock={removeOwnPage} onCancel={() => setRemoving(null)} />
           </div>
-        </div>,
+        )
+      })(),
         document.body,
       )}
       {confirm === 'full' && (
