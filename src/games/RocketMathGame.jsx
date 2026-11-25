@@ -118,7 +118,7 @@ export default function RocketMathGame({ level = 1, onComplete }) {
   const hue = ALIEN_HUES[idx % ALIEN_HUES.length]
 
   // What the timers and the taps work on; the state above is its picture
-  const g = useRef({ phase: 'enter', pos: null, air: false, queue: null, arcs: [], misses: 0, firstTry: 0, stars: [], idx: 0, done: false }).current
+  const g = useRef({ phase: 'enter', pos: null, air: false, queue: [], arcs: [], misses: 0, firstTry: 0, stars: [], idx: 0, done: false }).current
   const S = useRef({}).current
   Object.assign(S, { L, task, idx, plan, reduce, paused, hue })
   const setPhase = p => { g.phase = p; setPhaseState(p) }
@@ -244,21 +244,21 @@ export default function RocketMathGame({ level = 1, onComplete }) {
 
   const thrust = op => {
     if (g.phase !== 'play' || S.paused) return
-    if (g.air) { g.queue = op; return }
+    // presses in the air wait their turn: three quick presses are three hops
+    if (g.air) { if (g.queue.length < 6) g.queue.push(op); return }
     const b = g.pos + dirOf(op)
     if (b < 0 || b > TOP) { sfx.bonk(); nudge(); return }
     hopOnce(op, HOP_MS, n => {
       narrate([numberWord(n)])
-      const q = g.queue
-      g.queue = null
-      if (q === 'land') land()
+      const q = g.queue.shift()
+      if (q === 'land') { g.queue = []; land() }
       else if (q) thrust(q)
     })
   }
 
   const land = () => {
     if (g.phase !== 'play' || S.paused) return
-    if (g.air) { g.queue = 'land'; return }
+    if (g.air) { if (!g.queue.includes('land')) g.queue.push('land'); return }
     if (g.pos === S.task.from) { nudge(); return }
     settle(g.pos)
   }
@@ -382,7 +382,8 @@ export default function RocketMathGame({ level = 1, onComplete }) {
     afterSpeech(() => {
       const n = g.arcs.length
       for (let i = 0; i < n; i++) later(i * 650, () => { setCounting(i); narrate([numberWord(i + 1)]); sfx.note(i) })
-      later(n * 650 + 400, () => { setCounting(-1); setPhase('count') })
+      // the numbers stay now: that is the help
+      later(n * 650 + 400, () => { setCounting(99); setPhase('count') })
     }, 200)
   }
 
@@ -397,7 +398,7 @@ export default function RocketMathGame({ level = 1, onComplete }) {
   useEffect(() => {
     if (!L) return
     const t = tasks[idx]
-    g.arcs = []; g.misses = 0; g.queue = null; g.idx = idx
+    g.arcs = []; g.misses = 0; g.queue = []; g.idx = idx
     setArcs([]); setGhost(false); setBadge(null); setFilled(false); setTried([]); setBubbles(false); setCounting(-1)
     setPhase('enter')
     lockPreviews()
@@ -501,19 +502,20 @@ export default function RocketMathGame({ level = 1, onComplete }) {
             const p = L.P(n)
             const isStart = pos === task.from && n === task.from && phase !== 'finale'
             const tapCell = plan.mode === 'tap' && phase !== 'finale'
-            const hw = vertical ? L.pd + 30 : L.cell, hh = vertical ? L.cell : L.pd + 40
+            // a finger-wide cell, reaching out to the rocket's side (above, or to the right)
+            const box = vertical
+              ? { left: p.x - L.pr - 4, top: p.y - L.cell / 2, width: L.pd + 38, height: L.cell, paddingLeft: 4, justifyContent: 'flex-start', alignItems: 'center' }
+              : { left: p.x - L.cell / 2, top: p.y - L.pr - 40, width: L.cell, height: L.pd + 40, justifyContent: 'center', alignItems: 'flex-end' }
             const Cell = tapCell ? motion.button : 'div'
             const dim = plan.mode === 'tap' && tried.includes(n)
             return (
               <Cell key={n} data-planet={n}
                 {...(tapCell && { type: 'button', 'aria-label': `Planet ${n}`, onClick: () => tapPlanet(n), whileTap: playing ? { scale: 0.9 } : undefined })}
                 style={{
-                  all: tapCell ? 'unset' : undefined, position: 'absolute', boxSizing: 'border-box',
-                  left: p.x - hw / 2 - (vertical ? 15 : 0), top: p.y - hh / 2 - (vertical ? 0 : 20), width: hw, height: hh,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: tapCell && playing ? 'pointer' : 'default',
-                  WebkitTapHighlightColor: 'transparent',
+                  all: tapCell ? 'unset' : undefined, position: 'absolute', boxSizing: 'border-box', display: 'flex', ...box,
+                  cursor: tapCell && playing ? 'pointer' : 'default', WebkitTapHighlightColor: 'transparent',
                 }}>
-                <motion.div key={`${n}-${isStart ? glow : 0}`} style={{ marginTop: vertical ? 0 : 40, marginLeft: vertical ? 30 : 0, opacity: dim ? 0.55 : 1 }}
+                <motion.div key={`${n}-${isStart ? glow : 0}`} style={{ opacity: dim ? 0.55 : 1 }}
                   animate={isStart && !reduce ? { scale: [1, 1.22, 1, 1.12, 1] } : {}} transition={{ duration: 0.9 }}>
                   <Planet n={n} size={L.pd} glow={isStart} home={creature?.n === n} />
                 </motion.div>
@@ -544,6 +546,9 @@ export default function RocketMathGame({ level = 1, onComplete }) {
           {/* the count on the arcs */}
           <AnimatePresence>
             {arcs.map((h, i) => {
+              // level 9: the hops are counted by the child; the numbers come
+              // when the arcs count themselves (a wrong bubble) or it was right
+              if (plan.mode === 'count' && i > counting && phase !== 'won') return null
               const p = L.P((h.a + h.b) / 2, L.pr + L.arcH + 14)
               const s = vertical ? 24 : 28
               return (
