@@ -1,123 +1,70 @@
 import { useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { sfx } from '../sfx.js'
-import { afterNarration } from '../narrator.js'
+import { narrate } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { usePaused } from '../lib/pause.js'
-import { Art, HintHand, useBursts } from '../components/play/index.js'
+import { LINES, line } from '../lib/lumiLines.js'
+import { numberWord } from '../lib/words.js'
+import { useApp } from '../AppContext.jsx'
+import { Art, Critter, HintHand, useBursts, useJuice } from '../components/play/index.js'
 import { voice, KEY } from './woerter/voice.js'
 import Finale from './woerter/Finale.jsx'
+import { useLater, useSize, pointIn } from './gefuehle/hooks.js'
+import { levelConfig, buildCards, bestGrid, cellPos, starsFor } from './memo/layout.js'
+import { skillFor, viewOf, observe, forget, chooseFirst, chooseSecond } from './memo/lumi.js'
 import { INK, pxCard } from './px.js'
 
 /**
- * Memo-Welt: "Tierparty". The cards are little presents. Turned over, the
- * one inside jumps up. Two the same hug and dance off to the
- * party meadow at the top; the meadow shows from the start what makes a
- * pair (two the same). At the end the whole party
- * comes out and dances.
+ * Memo-Welt. The cards are little presents; turned over, the one inside
+ * jumps up. Two the same hug and fly to the pile of whoever found them.
+ *
+ *   Levels 1–2  alone, to learn the game (4 pairs).
+ *   Levels 3–10 against Lumi, taking turns as in the real game: whoever
+ *               finds a pair goes again. Lumi sits at the table edge with
+ *               its own pile and turns its cards with its wing, at a
+ *               child's pace. It remembers only what it has seen, and not
+ *               all of it (memo/lumi.js): at level 3 an attentive child
+ *               nearly always wins, at level 10 it is a fair match.
+ *   Levels 5–10 a joker card: whoever turns it sees all cards for a moment.
+ *
+ * Whose turn it is shows without a word: the active side is lit and the
+ * other one dimmed, a hand points from the child's side on its turn, and
+ * Lumi's wing is over the board on Lumi's.
+ *
+ * At the end the two piles are counted side by side, pair by pair, and
+ * whoever has more is celebrated (Lumi wins cheerfully, never meanly; the
+ * child's stars come from its own play, memo/layout.js `starsFor`).
+ *
  * Scientific basis:
- *   • Spacing Effect (Ebbinghaus, 1885) — repeated retrieval over time prevents forgetting.
  *   • Working Memory Training (Klingberg, 2010) — improving working memory capacity
  *     transfers to reading & math performance in children.
- *   • Episodic Memory (Tulving, 1972) — visual context (emoji) creates rich episodic traces.
+ *   • Episodic Memory (Tulving, 1972) — visual context creates rich episodic traces.
  */
 
 const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
-// Picture pairs by theme, one theme per level: before, the pool was simply
-// the first 8–26 entries of one long list, so the later 104 pictures never
-// appeared. Every picture has its name (said when the card is turned over,
-// once it is recorded).
-const ANIMALS = [
-  ['🐕','Hund'], ['🐱','Katze'], ['🐟','Fisch'], ['🦋','Schmetterling'],
-  ['🐸','Frosch'], ['🐮','Kuh'], ['🐷','Schwein'], ['🐑','Schaf'],
-  ['🐔','Huhn'], ['🐧','Pinguin'], ['🦉','Eule'], ['🐝','Biene'],
-  ['🐢','Schildkröte'], ['🐘','Elefant'], ['🦁','Löwe'], ['🐒','Affe'],
-  ['🐰','Hase'], ['🐭','Maus'], ['🦆','Ente'], ['🐌','Schnecke'],
-]
-const FOOD = [
-  ['🍎','Apfel'], ['🍌','Banane'], ['🍓','Erdbeere'], ['🍇','Traube'],
-  ['🍐','Birne'], ['🍒','Kirsche'], ['🥕','Möhre'], ['🍕','Pizza'],
-  ['🍦','Eis'], ['🍪','Keks'], ['🥨','Brezel'], ['🍋','Zitrone'],
-  ['🥒','Gurke'], ['🍅','Tomate'], ['🥚','Ei'], ['🍞','Brot'],
-]
-const THINGS = [
-  ['🚗','Auto'], ['🚂','Lok'], ['✈️','Flugzeug'], ['🚀','Rakete'],
-  ['🚁','Hubschrauber'], ['🚲','Fahrrad'], ['⛵','Segelboot'], ['🚜','Traktor'],
-  ['🚌','Bus'], ['🛴','Roller'], ['🎈','Luftballon'], ['⚽','Ball'],
-  ['🧸','Teddy'], ['🎁','Geschenk'], ['⭐','Stern'], ['🌙','Mond'],
-  ['☂️','Schirm'], ['🔑','Schlüssel'], ['🎸','Gitarre'], ['🥁','Trommel'],
-  ['👑','Krone'], ['🏠','Haus'],
-]
-// Every level has pairs of two the same: a pair must be seen at a glance.
-// (From level 5 the pairs once were "what goes with what", the cow and the
-// milk. Children and parents alike saw a board with no pairs on it.) The
-// higher levels get harder by more cards, and by one theme per board, whose
-// pictures look more alike than a mixed board's.
-const MIXED = [...ANIMALS, ...FOOD, ...THINGS]
-const PICTURE_POOLS = { 1: ANIMALS, 2: FOOD, 3: THINGS, 4: MIXED, 5: MIXED, 6: ANIMALS, 7: MIXED, 8: THINGS, 9: MIXED, 10: MIXED }
-
-const shuffle = a => [...a].sort(() => Math.random() - 0.5)
-
-// Two of the same at the party: leapfrog, a spin together, a hug
-const SAME_ACTS = ['jump', 'spin', 'hug']
-
-function buildCards(count, pool) {
-  const chosen = shuffle(pool).slice(0, count)
-  const flat = chosen.flatMap(([emoji, name], i) => [0, 1].map(() =>
-    ({ emoji, name, pairKey: `p${i}`, found: [emoji, emoji], act: SAME_ACTS[i % SAME_ACTS.length] })))
-  return shuffle(flat).map((c, id) => ({ id, ...c, flipped: false, matched: false }))
+// Lumi's recorded lines (lib/lumiLines.js). The ones not recorded yet are
+// skipped by voice(): record them under these keys and the game says them.
+const SAY = {
+  solo:      KEY.task('tierparty'),          // "Finde zwei gleiche Karten!"
+  versus:    KEY.task('memo-gegen-lumi'),    // "Wir spielen gegeneinander! …"
+  lumiTurn:  KEY.task('memo-ich-bin-dran'),  // "Jetzt bin ich dran!"
+  childTurn: KEY.task('memo-du-bist-dran'),  // "Du bist dran!"
+  joker:     KEY.task('memo-zauberblick'),   // "Der Zauberblick! Schau schnell!"
+  lumiJoker: KEY.task('memo-zauberblick-lumi'), // "Oh, der Zauberblick! Jetzt schaue ich."
+  childWins: KEY.task('memo-du-gewinnst'),   // "Du hast mehr Paare. Du hast gewonnen!"
+  lumiWins:  KEY.task('memo-lumi-gewinnt'),  // "Juhu, diesmal habe ich mehr! Du hast toll mitgespielt."
+  tie:       KEY.task('memo-gleich-viele'),  // "Gleich viele! Wir haben beide gewonnen!"
+}
+// what Lumi says at the start until its own sentence is recorded
+const START_FALLBACK = 'spielnamen/spiel-words'   // "Memo-Welt. Finde die Paare."
+const wordLine = name => {
+  const k = name && KEY.word(name)
+  return k && LINES[k] ? line(k) : null
 }
 
-/**
- * A pair at the party, doing its thing again and again: `a` on the left,
- * `b` on the right, `s` their size.
- */
-function PartyPair({ pics, act, s, i }) {
-  const d = s * 0.82
-  const still = reduceMotion()
-  const loop = (duration, times) => ({ duration, times, repeat: Infinity, repeatDelay: 1.4, delay: 0.6 + (i % 4) * 0.35 })
-  const moves = {
-    // b goes to a and is gobbled up; a chews
-    eat:   [{ scaleY: [1, 1, 1.18, 0.9, 1] }, { x: [0, -d * 0.7, -d * 0.7, 0, 0], scale: [1, 0.6, 0, 0, 1], opacity: [1, 1, 0, 0, 1] }],
-    // a flies a loop over b and back
-    fly:   [{ x: [0, d * 0.5, d * 1.2, d * 0.5, 0], y: [0, -s * 0.45, -s * 0.1, -s * 0.45, 0] }, {}],
-    // a hops onto (into) b, then back
-    onto:  [{ x: [0, d * 0.5, d, d, 0], y: [0, -s * 0.45, -s * 0.15, -s * 0.15, 0], scale: [1, 1, 0.8, 0.8, 1] }, { scaleY: [1, 1, 0.85, 1, 1] }],
-    // a scrubs back and forth over b
-    scrub: [{ x: [0, d * 0.7, d * 0.95, d * 0.7, d * 0.95, 0], y: [0, -s * 0.3, -s * 0.3, -s * 0.3, -s * 0.3, 0], rotate: [0, -20, 20, -20, 20, 0] }, {}],
-    // b floats up over a, like a note out of the violin
-    float: [{ rotate: [0, -8, 8, 0] }, { x: [0, -d * 0.4, -d * 0.4, 0], y: [0, -s * 0.45, -s * 0.3, 0] }],
-    // leapfrog: a jumps over b, b ducks
-    jump:  [{ x: [0, d * 0.5, d, d * 0.5, 0], y: [0, -s * 0.5, 0, -s * 0.5, 0] }, { scaleY: [1, 0.75, 1, 0.75, 1] }],
-    spin:  [{ rotate: [0, 360], y: [0, -s * 0.2, 0] }, { rotate: [0, -360], y: [0, -s * 0.2, 0] }],
-    hug:   [{ x: [0, d * 0.18, 0], rotate: [0, 12, 0] }, { x: [0, -d * 0.18, 0], rotate: [0, -12, 0] }],
-  }[act] ?? []
-  return (
-    <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-      {pics.map((p, k) => (
-        <motion.div key={k} animate={still ? {} : moves[k]} transition={loop(1.6)}
-          style={{ marginLeft: k ? -s * 0.18 : 0, transformOrigin: '50% 100%', position: 'relative', zIndex: k ? 1 : 2 }}>
-          <Art art={p} size={s} />
-        </motion.div>
-      ))}
-    </div>
-  )
-}
-
-function useSize(ref) {
-  const [size, setSize] = useState({ w: 0, h: 0 })
-  useLayoutEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const measure = () => setSize(s => (s.w === el.clientWidth && s.h === el.clientHeight ? s : { w: el.clientWidth, h: el.clientHeight }))
-    measure()
-    const ro = new ResizeObserver(measure)
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [ref])
-  return size
-}
+const LUMI_GOLD = '#ffc93c'
 
 /** The back of a card: a present with a ribbon and a bow. */
 function Present({ s }) {
@@ -135,369 +82,808 @@ function Present({ s }) {
   )
 }
 
-/** A string of party flags along the top of the party meadow. */
-function Bunting() {
-  const colors = ['#ff6b5b', '#ffc93c', '#4aa3ff', '#5cc45a', '#ff8fb8', '#8e6cf0']
+/** Lumi's wing, the "paw" that turns Lumi's cards. Its tip is at (14, 52). */
+function Wing({ s }) {
   return (
-    <svg viewBox="0 0 400 24" preserveAspectRatio="none" aria-hidden="true"
-      style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: 22, pointerEvents: 'none' }}>
-      <path d="M0 2 Q200 14 400 2" fill="none" stroke={INK} strokeWidth={2} />
-      {Array.from({ length: 16 }, (_, i) => {
-        const x = 6 + i * 25, y = 2 + Math.sin((x / 400) * Math.PI) * 12 * 0.8
-        return <path key={i} d={`M${x} ${y} L${x + 18} ${y} L${x + 9} ${y + 12} Z`} fill={colors[i % colors.length]} stroke={INK} strokeWidth={1.2} />
-      })}
+    <svg viewBox="0 0 60 60" width={s} height={s} aria-hidden="true" style={{ display: 'block', filter: 'drop-shadow(0 4px 0 rgba(42,27,61,0.3))' }}>
+      <path d="M52 5 C32 3 13 17 9 39 C7 47 10 54 15 55 C19 56 22 53 22 49 C25 53 30 53 31 48 C34 51 39 50 39 45 C44 46 48 41 45 37 C53 30 57 17 52 5Z"
+        fill="#ffd84a" stroke="#c98a12" strokeWidth={3} strokeLinejoin="round" />
+      <path d="M22 49 C23 42 26 36 30 31 M31 48 C32 42 35 37 39 33 M39 45 C40 41 42 38 45 37" fill="none" stroke="#e0a91c" strokeWidth={2.2} strokeLinecap="round" />
     </svg>
   )
 }
 
+/** "Two the same make a pair", drawn (no card picture): two cards with the same shape and a heart. */
+function PairExample({ s }) {
+  const card = (
+    <svg viewBox="0 0 40 40" width={s} height={s} aria-hidden="true">
+      <rect x={2} y={2} width={36} height={36} rx={7} fill="#fffdf7" stroke={INK} strokeWidth={2.5} />
+      <path d="M20 9 L31 30 H9 Z" fill="#4aa3ff" stroke={INK} strokeWidth={2} strokeLinejoin="round" />
+    </svg>
+  )
+  return (
+    <motion.div aria-hidden="true" animate={reduceMotion() ? {} : { y: [0, -4, 0] }} transition={{ duration: 1.2, repeat: Infinity }}
+      style={{ display: 'flex', alignItems: 'center', gap: 3, opacity: 0.7 }}>
+      {card}
+      <svg viewBox="0 0 20 18" width={s * 0.45} height={s * 0.4}><path d="M10 17 C2 11 0 7 0 4.5 A4.5 4.5 0 0 1 10 3 A4.5 4.5 0 0 1 20 4.5 C20 7 18 11 10 17Z" fill="#ff5b8a" stroke={INK} strokeWidth="1.5" /></svg>
+      {card}
+    </motion.div>
+  )
+}
+
+/** One found pair on a pile: two little cards, the second a bit to the right. */
+function Chip({ emoji, m }) {
+  const mini = k => (
+    <div style={{
+      position: 'absolute', left: k * m * 0.45, top: k * m * 0.06, width: m, height: m, boxSizing: 'border-box',
+      background: '#fffdf7', border: `2px solid ${INK}`, borderRadius: m * 0.18, boxShadow: '0 2px 0 rgba(42,27,61,0.25)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      <Art art={emoji} size={m * 0.74} />
+    </div>
+  )
+  return <div style={{ position: 'relative', width: m * 1.45, height: m * 1.06 }}>{mini(0)}{mini(1)}</div>
+}
+
+/**
+ * A pile of found pairs, laid out in `lanes` side by side along `dir`
+ * ('v' down, 'h' across). Sized for `max` pairs from the start, so it never
+ * reflows while it fills; if they cannot all fit, they overlap like a real
+ * pile. A new pair flies in from where it was found (`from`, in root
+ * coordinates), lands with a hop, and then rests.
+ */
+function Pile({ items, max, dir, rootRef, empty, length }) {
+  const ref = useRef(null)
+  const size = useSize(ref)
+  const g = useMemo(() => {
+    if (!size) return null
+    const { w, h } = size
+    const gap = 6
+    let best = null
+    for (let lanes = 1; lanes <= 3; lanes++) {
+      const k = Math.ceil(max / lanes)
+      const m = dir === 'v'
+        ? Math.min((w - (lanes - 1) * gap) / lanes / 1.45, (h - (k - 1) * gap) / k / 1.06)
+        : Math.min((h - (lanes - 1) * gap) / lanes / 1.06, (w - (k - 1) * gap) / k / 1.45)
+      if (!best || m > best.m) best = { lanes, k, m }
+    }
+    // never smaller than this: then they overlap instead
+    const cross = dir === 'v' ? w : h
+    const m = Math.floor(Math.max(best.m, Math.min(30, cross / 1.6)))
+    const mainLen = dir === 'v' ? h : w
+    const chipMain = dir === 'v' ? m * 1.06 : m * 1.45
+    const step = best.k > 1 ? Math.min(chipMain + gap, (mainLen - chipMain) / (best.k - 1)) : 0
+    const chipCross = dir === 'v' ? m * 1.45 : m * 1.06
+    const laneStep = chipCross + gap
+    const used = best.lanes * chipCross + (best.lanes - 1) * gap
+    return { lanes: best.lanes, m: Math.min(m, 64), step, laneStep, offset: Math.max(0, (cross - used) / 2) }
+  }, [size, max, dir])
+  return (
+    <div ref={ref} style={{ position: 'relative', minWidth: 0, minHeight: 0, alignSelf: 'stretch', ...(length ? { flex: '0 1 auto', height: length } : { flex: 1 }) }}>
+      {g && items.length === 0 && empty && (
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{empty}</div>
+      )}
+      {g && items.map((it, i) => {
+        const main = Math.floor(i / g.lanes) * g.step, lane = (i % g.lanes) * g.laneStep + g.offset
+        return (
+          <PileChip key={it.key} item={it} m={g.m} rootRef={rootRef}
+            style={{ position: 'absolute', left: dir === 'v' ? lane : main, top: dir === 'v' ? main : lane, zIndex: i + 1 }} />
+        )
+      })}
+    </div>
+  )
+}
+
+function PileChip({ item, m, rootRef, style }) {
+  const ref = useRef(null)
+  useLayoutEffect(() => {
+    const el = ref.current, root = rootRef.current
+    if (!el || !root || !item.from || reduceMotion() || !el.animate) return
+    const me = pointIn(root, el)
+    const dx = item.from.x - me.x, dy = item.from.y - me.y
+    try {
+      el.animate([
+        { translate: `${dx}px ${dy}px`, scale: '1.7' },
+        { translate: '0px 0px', scale: '1', offset: 0.75 },
+        { translate: `0px ${-m * 0.25}px`, scale: '1', offset: 0.88 },
+        { translate: '0px 0px', scale: '1' },
+      ], { duration: 900, easing: 'ease-out' })
+    } catch { /* an old browser: it is simply there */ }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  return <div ref={ref} aria-hidden="true" style={style}><Chip emoji={item.emoji} m={m} /></div>
+}
+
+/** A player's side of the table: lit while it is that player's turn. */
+function Side({ who, active, dim, style, children }) {
+  return (
+    <div data-side={who} data-active={active ? 'true' : 'false'} style={{
+      position: 'relative', boxSizing: 'border-box', borderRadius: 22, border: `3px solid ${INK}`,
+      background: who === 'lumi' ? 'linear-gradient(180deg, #fffdf7, #ffe7a0)' : 'linear-gradient(180deg, #fffdf7, #b7e893)',
+      boxShadow: active
+        ? `0 0 0 4px ${LUMI_GOLD}, 0 0 28px 10px rgba(255,214,70,0.85), 0 5px 0 rgba(42,27,61,0.25)`
+        : '0 5px 0 rgba(42,27,61,0.25)',
+      // the other side steps back a little (no grey: a greyed Lumi looked ill)
+      opacity: dim ? 0.7 : 1, zIndex: 2,
+      transition: 'box-shadow .35s, opacity .35s',
+      ...style,
+    }}>
+      {children}
+    </div>
+  )
+}
+
+/** The child on its side: its own picture, and a hand pointing at the board on its turn. */
+function ChildBadge({ avatar, s, pointing, toward }) {
+  const rot = toward === 'right' ? 90 : 0
+  return (
+    <div style={{ position: 'relative', width: s, height: s, flexShrink: 0 }}>
+      <div style={{
+        width: s, height: s, borderRadius: '50%', background: '#fffdf7', border: `3px solid ${INK}`, boxSizing: 'border-box',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 3px 0 rgba(42,27,61,0.25)',
+      }}>
+        <Art art={avatar} size={s * 0.72} />
+      </div>
+      <AnimatePresence>
+        {pointing && (
+          <motion.div key="hand" data-turn-hand="child" aria-hidden="true"
+            initial={{ opacity: 0, scale: 0.4 }} exit={{ opacity: 0, scale: 0.4 }}
+            animate={reduceMotion() ? { opacity: 1, scale: 1 } : {
+              opacity: 1, scale: 1,
+              x: toward === 'right' ? [0, s * 0.14, 0] : 0, y: toward === 'right' ? 0 : [0, -s * 0.14, 0],
+            }}
+            transition={{ x: { duration: 0.8, repeat: Infinity }, y: { duration: 0.8, repeat: Infinity } }}
+            style={{
+              position: 'absolute', pointerEvents: 'none',
+              ...(toward === 'right' ? { left: s * 0.82, top: s * 0.18 } : { left: s * 0.72, top: -s * 0.42 }),
+            }}>
+            <div style={{ transform: `rotate(${rot}deg)` }}><Art art="👆" size={s * 0.62} /></div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+/**
+ * Where the scene's sun is (the forest of components/play/Scene.jsx: sun
+ * at 860/90 in a 1000 × 600 picture, rays to a radius of 78, the picture
+ * scaled to cover and anchored at its bottom). Returns how far down from
+ * the top of `root` it reaches, in root pixels, or 0 if it is not there.
+ * Lumi's side keeps that corner free, so the sun is not half hidden.
+ */
+function sunReach(root) {
+  const scene = root?.closest('.pl-game')?.querySelector('.pl-scene')
+  if (!scene) return 0
+  const s = scene.getBoundingClientRect(), r = root.getBoundingClientRect()
+  if (!s.width || !s.height || !r.width) return 0
+  const k = Math.max(s.width / 1000, s.height / 600)
+  const left = s.left + (s.width - 1000 * k) / 2 + (860 - 78) * k
+  const bottom = s.top + (s.height - 600 * k) + (90 + 78) * k
+  if (bottom <= r.top || left >= r.right) return 0
+  return (bottom - r.top) / (r.width / (root.offsetWidth || r.width)) + 6
+}
+
 export default function MemoryGame({ level = 1, onComplete }) {
+  const cfg = useMemo(() => levelConfig(level), [level])
+  const skill = useMemo(() => skillFor(level), [level])
   const paused = usePaused()
+  const { later, afterSpeech } = useLater()
   const [bursts, burst] = useBursts()
-  // Scale difficulty across 10 levels
-  const pairCount   = level <= 2 ? 4 : level <= 4 ? 6 : level <= 6 ? 8 : level <= 8 ? 10 : 12
-  // On a phone six columns made 48-px cards; four columns keep them large.
-  // A landscape screen gets a wider board instead of a tall one.
-  const [screen]    = useState(() => ({
-    narrow:    window.matchMedia('(max-width: 600px)').matches,
-    landscape: window.innerWidth > window.innerHeight,
+  // The game screen shrinks a game to fit a low screen (a phone held
+  // sideways: to 0.6). The things on the sides grow back by `ui` there, so
+  // the child's picture, the counters and Lumi stay as large as on a tablet.
+  const [ui, setUi] = useState(1)
+  const juice = useJuice({ hudSize: Math.round(26 * ui) })
+  const { hit, miss } = juice
+  const app = useApp()
+  const avatar = app?.state?.profiles?.[app?.state?.activeProfileId]?.avatar || '😊'
+
+  // The game itself, also readable at once from timers (G.current)
+  const [game, setGame] = useState(() => ({
+    cards: buildCards(cfg), phase: 'preview', countdown: cfg.preview, turn: 'child',
+    open: [], busy: false, peek: null, piles: { child: [], lumi: [] }, tries: 0,
   }))
-  const gridCols    = screen.narrow ? 4
-    : screen.landscape ? { 4: 4, 6: 6, 8: 4, 10: 5, 12: 6 }[pairCount]
-    : pairCount <= 8 ? 4 : pairCount <= 10 ? 5 : 6
-  const gridRows    = Math.ceil((pairCount * 2) / gridCols)
-  // The preview scales with the number of cards, half a second per card:
-  // higher levels stay harder — there is more to hold — without being
-  // impossible (20 cards: 11 s).
-  const previewSecs = Math.round(Math.max(4, 1 + pairCount * 2 * 0.5))
-  // Association pairs (cow/milk) instead of identical ones from level 5 on.
+  const G = useRef(game)
+  const update = useCallback(patch => {
+    G.current = { ...G.current, ...(typeof patch === 'function' ? patch(G.current) : patch) }
+    setGame(G.current)
+  }, [])
 
-  const [cards,    setCards]    = useState(() =>
-    buildCards(pairCount, PICTURE_POOLS[level] ?? MIXED))
-  const [flipped,  setFlipped]  = useState([])
-  const [locked,   setLocked]   = useState(false)
-  const [moves,    setMoves]    = useState(0)
-  const [guests,   setGuests]   = useState([])            // pairs at the party: [{ key, pics }]
-  const [hug,      setHug]      = useState(null)          // { a, b, dx, dy } two cards meeting
-  const [puzzled,  setPuzzled]  = useState(null)          // { a, b, dir } two wrong ones look at each other
-  const [jumps,    setJumps]    = useState({})            // card id -> how often it was turned
-  const [streak,   setStreak]   = useState(0)             // pairs in a row without a wrong pair
-  const [mismatchCount, setMismatchCount] = useState(0)
-  const [cursor,   setCursor]   = useState(0)
+  const [hug, setHug] = useState(null)          // { a, b, dx, dy } two cards meeting
+  const [puzzled, setPuzzled] = useState(null)  // { a, b, dir, up } two wrong ones look at each other
+  const [jumps, setJumps] = useState({})        // card id -> how often it was turned
+  const [paw, setPaw] = useState(null)          // { id, press } Lumi's wing over a card
+  const [lumiMood, setLumiMood] = useState(cfg.versus ? 'sleep' : 'idle')
+  const [cursor, setCursor] = useState(0)
   const [usingKeys, setUsingKeys] = useState(false)
-  const [finale,   setFinale]   = useState(false)
-  // Preview phase: all cards face up, a sand timer runs down
-  const [phase,     setPhase]     = useState('preview') // 'preview' | 'playing'
-  const [countdown, setCountdown] = useState(previewSecs)
-  const resultRef = useRef(null)
-  // pairs one of whose cards was part of a wrong pair before it was found
-  const missedRef = useRef(new Set())
-  // cards the child has turned over at least once, for the hint hand
-  const seenRef   = useRef(new Set())
-  // pairs found so far, counted at once (the guests join the party later)
-  const foundRef  = useRef(0)
-  const cardRefs  = useRef({})
-  const partyRef  = useRef(null)
-  const boardRef  = useRef(null)
-  const board     = useSize(boardRef)
-  const party     = useSize(partyRef)
 
-  // The task: the face-up cards and the example on the party meadow show
-  // it; Lumi says it when it is recorded
+  const rootRef = useRef(null)
+  const boardRef = useRef(null)
+  const cardRefs = useRef({})
+  const root = useSize(rootRef)
+  const boardBox = useSize(boardRef)
+
+  const memRef = useRef(new Map())       // Lumi's memory: card id -> picture
+  const seenRef = useRef(new Set())      // cards the child has seen face up during play
+  const missedRef = useRef(new Set())    // pairs one of whose cards was part of the child's wrong try
+  const forgottenRef = useRef(0)         // the child's wrong tries whose partner had been face up
+  const missRowRef = useRef(0)           // the child's wrong tries in a row (alone: help after 4)
+  const toldRef = useRef({})             // turn lines said once per level
+  const lumiActing = useRef(false)
+  const resultRef = useRef(null)
+
+  // ── Layout ──────────────────────────────────────────────────────────
+  const wide = root ? root.w / root.h >= 1.2 : typeof window !== 'undefined' && innerWidth > innerHeight
+  const side = root ? Math.round(Math.max(140, Math.min(230, root.w * 0.16))) : 160
+  const gap = root && root.w < 600 ? 10 : 14
+  // On a tall screen the strips get the height the board cannot use (a
+  // narrow phone limits the cards by its width): room for larger pairs
+  const strip = (() => {
+    if (!root || wide) return 96
+    const n = cfg.versus ? 2 : 1
+    const h0 = root.h - 22 - 12 * n - 84 * n
+    const g0 = bestGrid(cfg.cards, root.w - 20, h0, gap, 170)
+    const spare = h0 - (g0.rows * g0.s + (g0.rows - 1) * gap)
+    return Math.round(Math.min(150, root.h * 0.2, 84 + Math.max(0, spare) / n))
+  })()
+  const grid = useMemo(() => {
+    if (!boardBox) return null
+    return bestGrid(cfg.cards, boardBox.w, boardBox.h, gap, 170)
+  }, [boardBox, cfg.cards, gap])
+  const pos = useCallback(id => (grid ? cellPos(id, cfg.cards, grid, gap) : { x: 0, y: 0 }), [grid, cfg.cards, gap])
+  const gridW = grid ? grid.cols * grid.s + (grid.cols - 1) * gap : 0
+  const gridH = grid ? grid.rows * grid.s + (grid.rows - 1) * gap : 0
+  const [sunTop, setSunTop] = useState(0)
+  useLayoutEffect(() => {
+    const el = rootRef.current
+    if (!root || !el) return
+    const k = el.getBoundingClientRect().width / (el.offsetWidth || 1)
+    setUi(k > 0 ? Math.max(1, Math.min(1.7, 1 / k)) : 1)
+    if (!wide || !cfg.versus) { setSunTop(0); return }
+    const reach = sunReach(el)
+    // only where enough room stays for Lumi and its pile
+    setSunTop(reach > 0 && root.h - reach >= 240 ? Math.round(reach) : 0)
+  }, [root, wide, cfg.versus])
+
+  // ── The start ───────────────────────────────────────────────────────
   useEffect(() => {
     sayTask()
-    voice([KEY.task('tierparty')])
-  }, [])  
+    if (!voice([cfg.versus ? SAY.versus : SAY.solo])) voice([START_FALLBACK])
+  }, [cfg.versus])
 
-  const flip = useCallback((id) => {
-    if (locked || phase !== 'playing') return
-    const card = cards[id]
-    if (!card || card.flipped || card.matched) return
-
-    sfx.flip()
-    const next = cards.map((c, i) => i === id ? { ...c, flipped: true } : c)
-    const newFlipped = [...flipped, id]
-    setCards(next)
-    setFlipped(newFlipped)
-    setJumps(j => ({ ...j, [id]: (j[id] ?? 0) + 1 }))
-    seenRef.current.add(id)
-    voice([KEY.word(card.name)])
-
-    if (newFlipped.length < 2) return
-
-    // Two cards flipped
-    setLocked(true)
-    const finalMoves = moves + 1
-    setMoves(finalMoves)
-
-    const [a, b] = newFlipped
-    const match  = next[a].pairKey === next[b].pairKey
-
-    setTimeout(() => {
-      if (match) {
-        sfx.match()
-        setMismatchCount(0)
-        const s = streak + 1
-        setStreak(s)
-        if (s >= 2) sfx.combo(s)
-        // the two run to each other and hug …
-        const ea = cardRefs.current[a], eb = cardRefs.current[b]
-        const dx = ea && eb ? (eb.offsetLeft - ea.offsetLeft) / 2 : 0
-        const dy = ea && eb ? (eb.offsetTop - ea.offsetTop) / 2 : 0
-        setHug({ a, b, dx, dy })
-        if (ea) burst(ea, 'hearts', s >= 3 ? 14 : 8)
-        if (eb) burst(eb, 'hearts', s >= 3 ? 14 : 8)
-        const found = next[a].found
-        const last = ++foundRef.current >= pairCount
-        // … then dance in their places on the board, and join the party
-        setTimeout(() => {
-          setCards(prev => prev.map(c => (c.id === a || c.id === b) ? { ...c, matched: true } : c))
-          setHug(null)
-          setGuests(g => [...g, { key: next[a].pairKey, pics: found, act: next[a].act }])
-          sfx.boing()
-          if (partyRef.current) burst(partyRef.current, 'confetti', s >= 3 ? 20 : 12)
-        }, reduceMotion() ? 0 : 900)
-        sayRight()
-        if (last) {
-          // Memo keeps its own rating, shown as the tries on the board: perfect
-          // play is exactly pairCount moves, so the slack grows with the board.
-          // The score is the pairs found without a wrong try on either card.
-          const stars = finalMoves <= Math.round(pairCount * 1.5) ? 3
-                      : finalMoves <= Math.round(pairCount * 2.5) ? 2 : 1
-          resultRef.current = { score: pairCount - missedRef.current.size, total: pairCount, stars }
-          afterNarration(() => setFinale(true), { minMs: 1400 })
-        }
-      } else {
-        sfx.mismatch()
-        setStreak(0)
-        missedRef.current.add(next[a].pairKey).add(next[b].pairKey)
-        const newCount = mismatchCount + 1
-        setMismatchCount(newCount)
-        if (newCount === 4) sayWrong()
-        // they look at each other, shrug, and duck back down
-        const ea = cardRefs.current[a], eb = cardRefs.current[b]
-        const dx = ea && eb ? eb.offsetLeft - ea.offsetLeft : 1
-        const dy = ea && eb ? eb.offsetTop - ea.offsetTop : 0
-        setPuzzled({ a, b, dir: Math.abs(dx) >= Math.abs(dy) ? Math.sign(dx) || 1 : 0, up: Math.sign(dy) })
-        setTimeout(() => {
-          setPuzzled(null)
-          sfx.slideDown()
-          setCards(prev => prev.map(c => (c.id === a || c.id === b) ? { ...c, flipped: false } : c))
-          setFlipped([])
-          setLocked(false)
-        }, reduceMotion() ? 600 : 1300)
-        return
-      }
-      setFlipped([])
-      setLocked(false)
-    }, match ? 520 : 600)
-  }, [locked, phase, cards, flipped, moves, streak, mismatchCount, pairCount, burst])
-
-  // Preview countdown (held while the help is open); the cards turn over
+  // The preview (held while the help is open); Lumi sleeps through it
   useEffect(() => {
-    if (phase !== 'preview' || paused) return
-    if (countdown <= 0) {
-      setCards(prev => prev.map(c => ({ ...c, flipped: false })))
-      setPhase('playing')
+    if (game.phase !== 'preview' || paused) return
+    if (game.countdown <= 0) {
+      update(g => ({ phase: 'play', cards: g.cards.map(c => ({ ...c, flipped: false })) }))
+      setLumiMood('idle')
       sfx.whoosh()
       return
     }
-    const t = setTimeout(() => setCountdown(n => n - 1), 1000)
+    const t = setTimeout(() => update(g => ({ countdown: g.countdown - 1 })), 1000)
     return () => clearTimeout(t)
-  }, [phase, countdown, paused])
+  }, [game.phase, game.countdown, paused, update])
 
-  // Arrow key navigation + Enter/Space to flip
+  // ── Turning cards ───────────────────────────────────────────────────
+  const finish = useCallback(() => {
+    const g = G.current
+    const child = g.piles.child.length
+    const stars = starsFor({ versus: cfg.versus, pairs: cfg.pairs, tries: g.tries, forgotten: forgottenRef.current })
+    // score: the child's pairs found without a wrong try on either card
+    const clean = g.piles.child.filter(p => !missedRef.current.has(p.key)).length
+    resultRef.current = cfg.versus
+      ? { score: clean, total: child, stars }
+      : { score: cfg.pairs - missedRef.current.size, total: cfg.pairs, stars }
+    afterSpeech(() => update({ phase: cfg.versus ? 'count' : 'finale' }), 1400)
+  }, [cfg, afterSpeech, update])
+
+  const pairFound = useCallback((a, b, who) => {
+    const g = G.current
+    const ca = g.cards[a]
+    const ea = cardRefs.current[a], eb = cardRefs.current[b]
+    const pa = pos(a), pb = pos(b)
+    setHug({ a, b, dx: (pb.x - pa.x) / 2, dy: (pb.y - pa.y) / 2 })
+    if (ea) burst(ea, 'hearts', 8)
+    if (eb) burst(eb, 'hearts', 8)
+    if (who === 'child') {
+      missRowRef.current = 0
+      hit(ea)                                    // a star flies to the counter, the streak grows
+    } else {
+      sfx.match()
+      setLumiMood('happy')
+    }
+    forget(memRef.current, [a, b])
+    const r = rootRef.current
+    const from = r && ea && eb ? (() => {
+      const p = pointIn(r, ea), q = pointIn(r, eb)
+      return { x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 }
+    })() : null
+    later(reduceMotion() ? 0 : 900, () => {
+      setHug(null)
+      sfx.boing()
+      const now = G.current
+      const cards = now.cards.map(c => (c.id === a || c.id === b) ? { ...c, matched: true, flipped: false } : c)
+      const piles = { ...now.piles, [who]: [...now.piles[who], { key: ca.pairKey, emoji: ca.emoji, from }] }
+      const left = cards.some(c => !c.matched && !c.joker)
+      update({ cards, piles, open: [], busy: !left })
+      if (who === 'lumi') later(700, () => setLumiMood('hmm'))
+      if (!left) finish()
+    })
+  }, [pos, burst, hit, later, update, finish])
+
+  const noPair = useCallback((a, b, who) => {
+    const ea = cardRefs.current[a], eb = cardRefs.current[b]
+    if (who === 'child') miss(eb)                // a soft bonk, the streak is over
+    else { sfx.mismatch(); setLumiMood('oops') }
+    const pa = pos(a), pb = pos(b)
+    const dx = ea && eb ? pb.x - pa.x : 1, dy = ea && eb ? pb.y - pa.y : 0
+    setPuzzled({ a, b, dir: Math.abs(dx) >= Math.abs(dy) ? Math.sign(dx) || 1 : 0, up: Math.sign(dy) })
+    later(reduceMotion() ? 600 : 1300, () => {
+      setPuzzled(null)
+      sfx.slideDown()
+      const now = G.current
+      const turn = cfg.versus ? (who === 'child' ? 'lumi' : 'child') : 'child'
+      update({ cards: now.cards.map(c => (c.id === a || c.id === b) ? { ...c, flipped: false } : c), open: [], busy: false, turn })
+      if (cfg.versus) {
+        setPaw(null)
+        setLumiMood(turn === 'lumi' ? 'hmm' : 'idle')
+        sfx.slideUp()
+        // the first change of turns is said once (until recorded: the light and the hand show it)
+        if (!toldRef.current[turn]) { toldRef.current[turn] = true; voice([turn === 'lumi' ? SAY.lumiTurn : SAY.childTurn]) }
+      }
+    })
+  }, [cfg.versus, pos, miss, later, update])
+
+  // The joker: all cards for a moment, for whoever turned it
+  const playJoker = useCallback((id, who) => {
+    const g = G.current
+    update({ cards: g.cards.map(c => c.id === id ? { ...c, flipped: true } : c), busy: true })
+    sfx.sparkle()
+    later(reduceMotion() ? 200 : 650, () => {
+      const el = cardRefs.current[id]
+      if (el) burst(el, 'stars', 14)
+      const now = G.current
+      const cards = now.cards.map(c => c.id === id ? { ...c, gone: true, flipped: false } : c)
+      const down = cards.filter(c => !c.matched && !c.gone && !c.flipped)
+      if (who === 'child') {
+        down.forEach(c => seenRef.current.add(c.id))
+        setLumiMood('sleep')                    // Lumi does not look
+        voice([SAY.joker])
+      } else {
+        const view = viewOf(cards)
+        down.forEach(c => observe(memRef.current, { id: c.id, pairKey: c.pairKey }, view, grid?.cols ?? 4, skill))
+        setLumiMood('wow')
+        voice([SAY.lumiJoker])
+      }
+      update({ cards, peek: who })
+      later(1500 + 70 * down.length, () => {
+        update({ peek: null, busy: false })
+        setLumiMood(G.current.turn === 'lumi' ? 'hmm' : 'idle')
+      })
+    })
+  }, [update, later, burst, grid, skill])
+
+  const reveal = useCallback((id, who) => {
+    const g = G.current
+    if (g.phase !== 'play' || g.busy || g.peek) return
+    if (who === 'child' && g.turn !== 'child') return
+    const card = g.cards[id]
+    if (!card || card.flipped || card.matched || card.gone) return
+    sfx.flip()
+    setJumps(j => ({ ...j, [id]: (j[id] ?? 0) + 1 }))
+    if (card.joker) { playJoker(id, who); return }
+
+    const cards = g.cards.map(c => c.id === id ? { ...c, flipped: true } : c)
+    const open = [...g.open, id]
+    const seenBefore = new Set(seenRef.current)
+    seenRef.current.add(id)
+    if (cfg.versus) observe(memRef.current, { id, pairKey: card.pairKey }, viewOf(cards), grid?.cols ?? 4, skill)
+    const word = wordLine(card.name)
+
+    if (open.length < 2) {
+      update({ cards, open })
+      narrate([word])
+      return
+    }
+
+    // Two cards are open
+    const [a, b] = open
+    const match = cards[a].pairKey === cards[b].pairKey
+    update({ cards, open, busy: true, tries: who === 'child' ? g.tries + 1 : g.tries })
+    if (match) {
+      // the name first, then the praise (it used to cut the name off)
+      // (not for the last pair against Lumi: the counting comes first, and
+      // the results screen praises at the end)
+      const last = !cards.some(c => !c.matched && !c.joker && c.pairKey !== card.pairKey)
+      if (who === 'child' && !(cfg.versus && last)) sayRight(undefined, { lead: [word] })
+      else narrate([word])
+    } else if (who === 'child') {
+      missedRef.current.add(cards[a].pairKey).add(cards[b].pairKey)
+      const partner = cards.find(c => c.pairKey === cards[a].pairKey && c.id !== a)
+      // a memory slip: the partner had been face up before, or the second
+      // card had (the child turned one it could know was not it)
+      if ((partner && seenBefore.has(partner.id)) || seenBefore.has(b)) forgottenRef.current++
+      missRowRef.current++
+      // alone, after the fourth wrong pair in a row: a kind word, after the name
+      if (!cfg.versus && missRowRef.current === 4) narrate([word], { onEnd: () => sayWrong() })
+      else narrate([word])
+    } else {
+      narrate([word])
+    }
+    later(match ? 520 : 600, () => (match ? pairFound(a, b, who) : noPair(a, b, who)))
+  }, [cfg.versus, grid, skill, update, later, playJoker, pairFound, noPair])
+
+  // ── Lumi's turn ─────────────────────────────────────────────────────
   useEffect(() => {
-    const COLS  = gridCols
-    const total = cards.length
+    if (!cfg.versus || game.phase !== 'play' || game.turn !== 'lumi' || game.busy || game.peek) return
+    if (lumiActing.current) return
+    lumiActing.current = true
+    const firstOfTurn = game.open.length === 0
+    const go = () => {
+      const g = G.current
+      if (g.phase !== 'play' || g.turn !== 'lumi' || g.busy || g.peek) { lumiActing.current = false; return }
+      const view = viewOf(g.cards)
+      const id = g.open.length === 0
+        ? chooseFirst(memRef.current, view)
+        : chooseSecond(memRef.current, view, { id: g.open[0], pairKey: g.cards[g.open[0]].pairKey })
+      if (id == null) { lumiActing.current = false; return }
+      setPaw({ id, press: false })
+      later(reduceMotion() ? 150 : 750, () => {
+        setPaw({ id, press: true })
+        later(200, () => {
+          // the wing goes back to Lumi's edge: the card must be seen
+          setPaw(null)
+          lumiActing.current = false
+          reveal(id, 'lumi')
+        })
+      })
+    }
+    // a first card after Lumi has finished speaking; a little "hm" before it
+    if (firstOfTurn) afterSpeech(() => later(300 + Math.random() * 500, go), 700)
+    else later(1100, go)
+  }, [cfg.versus, game.phase, game.turn, game.busy, game.peek, game.open.length, later, afterSpeech, reveal])
+
+  // ── Keys ────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const cols = grid?.cols ?? 4
+    const total = cfg.cards
     const onKey = (e) => {
-      const arrow = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: COLS, ArrowUp: -COLS }[e.key]
+      const arrow = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: cols, ArrowUp: -cols }[e.key]
       if (arrow) {
         e.preventDefault()
         setUsingKeys(true)
         setCursor(c => Math.min(total - 1, Math.max(0, c + arrow)))
-      } else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setUsingKeys(true); flip(cursor) }
+      } else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setUsingKeys(true); reveal(cursor, 'child') }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [cursor, flip, cards.length, gridCols])
+  }, [cursor, reveal, cfg.cards, grid])
 
-  // Card size from the room the board has, in both directions
-  const gap   = screen.narrow ? 10 : 16
-  const cardS = Math.max(40, Math.floor(Math.min(
-    (board.w - gap * (gridCols - 1)) / gridCols,
-    (board.h - gap * (gridRows - 1)) / gridRows,
-    170)))
-  // The party meadow has a fixed height from the start (it must not squeeze
-  // the board as it fills): as few rows as keep every guest at least 34 px
-  const partyW = party.w || board.w || 320
-  const sizeFor = rows => Math.min(48, (partyW - 16) / Math.ceil(pairCount / rows) / 1.65 - 6)
-  const partyRows = [1, 2, 3].find(r => sizeFor(r) >= 34) ?? 3
-  const guestS    = Math.max(24, sizeFor(partyRows))
-  const partyH    = 26 + partyRows * (guestS + 8)
-  // what makes a pair, shown before any is found
-  const example = ['🎈', '🎈']
-  // The hand taps a card worth turning: the partner of the open card, or a
-  // card of a pair the child has already seen both of; otherwise a card not
-  // seen yet (never the same one over and over)
+  // ── The hint hand ───────────────────────────────────────────────────
+  // Alone: with a card open it taps that card's partner (the preview showed
+  // it), otherwise a card of a pair seen in play or a card not seen yet.
+  // Against Lumi it only shows "turn a card" while no card is open: it
+  // never helps against Lumi.
   const handCard = useMemo(() => {
-    if (phase !== 'playing' || locked) return null
+    if (game.phase !== 'play' || game.busy || game.peek || game.turn !== 'child') return null
+    const cards = game.cards
+    const down = cards.filter(c => !c.matched && !c.gone && !c.flipped)
+    const open = cards.find(c => c.flipped && !c.matched && !c.gone)
     const seen = seenRef.current
-    const down = cards.filter(c => !c.matched && !c.flipped)
-    const open = cards.find(c => c.flipped && !c.matched)
     const partner = c => down.find(d => d.pairKey === c.pairKey && d.id !== c.id)
-    if (open) {
-      const p = partner(open)
-      if (p && seen.has(p.id)) return p
-    } else {
-      const known = down.find(c => seen.has(c.id) && seen.has(partner(c)?.id))
-      if (known) return known
-    }
+    if (cfg.versus) return open ? null : down[Math.floor(Math.random() * down.length)] ?? null
+    if (open) return partner(open) ?? null
+    const known = down.find(c => seen.has(c.id) && seen.has(partner(c)?.id))
+    if (known) return known
     const fresh = down.filter(c => !seen.has(c.id))
     const pool = fresh.length ? fresh : down
     return pool[Math.floor(Math.random() * pool.length)] ?? null
-  }, [phase, locked, cards])
+  }, [game.phase, game.busy, game.peek, game.turn, game.cards, cfg.versus])
+  const handDelay = game.tries === 0 && game.open.length === 0 ? 2000 : cfg.versus ? 8000 : 6000
 
-  return (
-    <div style={{
-      position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center',
-      padding: 'clamp(8px,1.6vw,18px) clamp(10px,3vw,32px)', gap: 'clamp(8px,1.4vw,14px)',
-    }}>
-      {/* The party meadow: every pair found dances here */}
-      <div style={{ position: 'relative', width: '100%', maxWidth: 1000, flexShrink: 0 }}>
-        <div ref={partyRef} aria-label={`${guests.length} von ${pairCount} Paaren auf der Party`}
-          style={{
-            position: 'relative', height: partyH, borderRadius: 22, border: `3px solid ${INK}`,
-            background: 'linear-gradient(180deg, #fffdf7, #a4e278)',
-            boxShadow: '0 5px 0 rgba(42,27,61,0.25)', padding: '20px 10px 4px', overflow: 'hidden',
-            display: 'flex', flexWrap: 'wrap', alignContent: 'space-evenly', alignItems: 'flex-end', justifyContent: 'center', gap: '0 6px', boxSizing: 'border-box',
-          }}>
-          <Bunting />
-          {guests.length === 0 && (
-            <motion.div aria-hidden="true" animate={reduceMotion() ? {} : { y: [0, -5, 0] }} transition={{ duration: 1, repeat: Infinity }}
-              style={{ display: 'flex', alignItems: 'center', gap: 4, opacity: 0.6 }}>
-              <Art art={example[0]} size={40} />
-              <svg viewBox="0 0 20 18" width={20} height={18}><path d="M10 17 C2 11 0 7 0 4.5 A4.5 4.5 0 0 1 10 3 A4.5 4.5 0 0 1 20 4.5 C20 7 18 11 10 17Z" fill="#ff5b8a" stroke={INK} strokeWidth="1.5" /></svg>
-              <Art art={example[1]} size={40} />
-            </motion.div>
-          )}
-          <AnimatePresence>
-            {guests.map((g, i) => (
-              <motion.div key={g.key}
-                initial={{ y: -60, scale: 0.3, opacity: 0 }} animate={{ y: 0, scale: 1, opacity: 1 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 14 }}
-                style={{ width: guestS * 1.65, display: 'flex', justifyContent: 'center' }}>
-                <PartyPair pics={g.pics} act={g.act} s={guestS} i={i} />
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
-        <div style={{ position: 'absolute', top: -12, right: 12, zIndex: 2 }}>
-          {/* the preview's sand timer, then the tries: Memo's own rating comes from them */}
-          {phase === 'preview' ? (
-            <motion.div key={countdown} aria-label={`noch ${countdown} Sekunden`}
-              initial={{ scale: 1.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 2,
-                fontFamily: 'var(--font-heading)', fontSize: 26, fontWeight: 800, color: INK, background: 'var(--px-gold)',
-                border: `3px solid ${INK}`, borderRadius: 14, padding: '0 8px', boxShadow: '0 4px 0 rgba(42,27,61,0.3)',
-              }}>
-              <Art art="⏳" size={24} />{countdown}
-            </motion.div>
-          ) : (
-            <div aria-label={`${moves} Versuche`} style={{ ...pxCard(), padding: '2px 10px', fontFamily: 'var(--font-heading)', fontSize: 17, color: INK, display: 'flex', alignItems: 'center', gap: 4 }}>
-              <Art art="👆" size={20} />{moves}
-            </div>
-          )}
-        </div>
+  // ── Drawing ─────────────────────────────────────────────────────────
+  const { cards, phase, turn, peek, piles } = game
+  const versus = cfg.versus
+  const childActive = phase === 'play' && turn === 'child'
+  const lumiActive = phase === 'play' && turn === 'lumi'
+  const s = grid?.s ?? 0
+  // Lumi's wing: over its card, or waiting at Lumi's edge of the board
+  const pawHome = wide ? { x: gridW + s * 0.2, y: gridH / 2 - s * 0.4 } : { x: gridW / 2, y: -s * 0.75 }
+  const pawSize = Math.max(40, s * 0.62)
+  const pawAt = paw && grid ? (() => {
+    const p = pos(paw.id)
+    // the wing's tip (14, 52 of 60) on the middle of the card
+    return { x: p.x + s / 2 - pawSize * (14 / 60), y: p.y + s / 2 - pawSize * (52 / 60) }
+  })() : pawHome
+
+  const stats = (
+    <div style={{ display: 'flex', flexDirection: wide ? 'row' : 'column', alignItems: 'center', justifyContent: 'center', gap: 6, flexWrap: 'wrap' }}>
+      {juice.hud}
+      {/* the child's tries: Memo's own rating comes from them */}
+      <div aria-label={`${game.tries} Versuche`} style={{ ...pxCard(), padding: `1px ${8 * ui}px`, fontFamily: 'var(--font-heading)', fontSize: 17 * ui, color: INK, display: 'flex', alignItems: 'center', gap: 3, borderRadius: 999 }}>
+        <Present s={18 * ui} />{game.tries}
       </div>
+    </div>
+  )
+  const timer = phase === 'preview' && (
+    <motion.div key={game.countdown} aria-label={`noch ${game.countdown} Sekunden`}
+      initial={{ scale: 1.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+      style={{
+        display: 'flex', flexShrink: 0, alignItems: 'center', gap: 2,
+        fontFamily: 'var(--font-heading)', fontSize: 26 * ui, fontWeight: 800, color: INK, background: 'var(--px-gold)',
+        border: `3px solid ${INK}`, borderRadius: 14, padding: '0 8px', boxShadow: '0 4px 0 rgba(42,27,61,0.3)',
+      }}>
+      <Art art="⏳" size={24 * ui} />{game.countdown}
+    </motion.div>
+  )
 
-      {/* The cards */}
-      <div ref={boardRef} style={{ position: 'relative', flex: 1, minHeight: 0, width: '100%', maxWidth: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {cardS > 0 && board.w > 0 && (
-          <div style={{ position: 'relative', display: 'grid', gridTemplateColumns: `repeat(${gridCols}, ${cardS}px)`, gap }}>
-            {cards.map(card => {
-              const face = card.flipped || phase === 'preview'
-              const inHug = hug && (hug.a === card.id || hug.b === card.id)
-              const sign = hug?.a === card.id ? 1 : -1
-              if (card.matched) {
-                // a found guest dances in its place
-                return (
-                  <div key={card.id} ref={el => { cardRefs.current[card.id] = el }} aria-hidden="true"
-                    style={{ position: 'relative', width: cardS, height: cardS, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-                    <div style={{ position: 'absolute', width: cardS * 0.6, height: cardS * 0.12, marginBottom: cardS * 0.06, borderRadius: '50%', background: 'rgba(42,27,61,0.15)' }} />
-                    <motion.div initial={{ scale: 0.4, y: -cardS * 0.3 }}
-                      animate={reduceMotion() ? { scale: 1, y: 0 } : { scale: 1, y: [0, -cardS * 0.16, 0], rotate: card.id % 2 ? [-10, 10, -10] : [10, -10, 10] }}
-                      transition={{ scale: { type: 'spring', stiffness: 300, damping: 12 }, y: { duration: 0.7, repeat: Infinity, delay: (card.id % 4) * 0.15 }, rotate: { duration: 1.4, repeat: Infinity } }}
-                      style={{ transformOrigin: '50% 100%', marginBottom: cardS * 0.1 }}>
-                      <Art art={card.emoji} size={cardS * 0.62} />
-                    </motion.div>
-                  </div>
-                )
-              }
-              const puz = puzzled && (puzzled.a === card.id || puzzled.b === card.id) ? (puzzled.a === card.id ? 1 : -1) : 0
-              return (
-                <motion.div key={card.id} ref={el => { cardRefs.current[card.id] = el }}
-                  role="button" tabIndex={-1} aria-label={face ? card.name : 'Karte'} data-pair={card.pairKey}
-                  onClick={() => flip(card.id)}
-                  whileHover={!face && phase === 'playing' ? { scale: 1.05, rotate: -2 } : {}}
-                  whileTap={!face && phase === 'playing' ? { scale: 0.9, rotate: 3 } : {}}
-                  animate={inHug && !reduceMotion()
-                    ? { x: [0, hug.dx * sign * 0.8, 0], y: [0, hug.dy * sign * 0.8 - 10, 0], rotate: [0, sign * 10, 0], scale: [1, 1.08, 1] }
-                    : { x: 0, y: 0, rotate: 0, scale: 1 }}
-                  transition={inHug ? { duration: 0.9, times: [0, 0.45, 1] } : { duration: 0.5 }}
-                  style={{
-                    position: 'relative', width: cardS, height: cardS, cursor: face ? 'default' : 'pointer', perspective: 700, zIndex: inHug ? 2 : 1,
-                    outline: usingKeys && card.id === cursor ? `4px solid ${INK}` : 'none', outlineOffset: 4, borderRadius: 16,
-                  }}>
-                  <motion.div
-                    animate={{ rotateY: face ? 0 : 180 }}
-                    transition={{ type: 'spring', stiffness: 260, damping: 22 }}
-                    style={{ position: 'relative', transformStyle: 'preserve-3d', width: '100%', height: '100%' }}>
-                    {/* Front: the guest inside, who jumps up when found */}
-                    <div style={{
-                      position: 'absolute', inset: 0, backfaceVisibility: 'hidden', ...pxCard(), borderRadius: 16,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      <motion.div key={jumps[card.id] ?? 0}
-                        animate={jumps[card.id] && !reduceMotion() ? { y: [0, -cardS * 0.18, 0, -cardS * 0.06, 0], rotate: [0, -10, 10, -4, 0], scale: [0.8, 1.1, 1] } : {}}
-                        transition={{ duration: 0.8, delay: 0.15 }}>
-                        {/* a wrong pair: lean toward the other one, look, shrug */}
-                        <motion.div
-                          animate={puz && !reduceMotion()
-                            ? { x: [0, puz * (puzzled.dir || 0) * cardS * 0.16, puz * (puzzled.dir || 0) * cardS * 0.16, 0], y: [0, puz * -(puzzled.up || 0) * cardS * 0.06, -cardS * 0.08, 0],
-                                rotate: [0, puz * (puzzled.dir || 1) * 18, puz * (puzzled.dir || 1) * -10, 0], scaleY: [1, 1, 1.12, 0.9] }
-                            : { x: 0, y: 0, rotate: 0, scaleY: 1 }}
-                          transition={{ duration: 1.2, times: [0, 0.3, 0.7, 1] }}
-                          style={{ transformOrigin: '50% 100%' }}>
-                          <Art art={card.emoji} size={cardS * 0.72} />
-                        </motion.div>
-                      </motion.div>
-                      {puz !== 0 && (
-                        <motion.div aria-hidden="true" initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.45, type: 'spring', stiffness: 400 }}
-                          style={{ position: 'absolute', top: cardS * 0.02, right: cardS * 0.08, fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: cardS * 0.26, color: '#6b3fd6', WebkitTextStroke: '1.5px #2a1b3d' }}>?</motion.div>
-                      )}
-                    </div>
-                    {/* Back: a present */}
-                    <div style={{ position: 'absolute', inset: 0, backfaceVisibility: 'hidden', transform: 'rotateY(180deg)', filter: 'drop-shadow(0 5px 0 rgba(42,27,61,0.3))' }}>
-                      <Present s={cardS} />
-                    </div>
-                  </motion.div>
-                </motion.div>
-              )
-            })}
+  const badgeS = wide ? Math.min(64 * ui, side * 0.5) : Math.min(56, strip * 0.58)
+  // In a side column the pile is as long as all pairs need, so the side
+  // is no taller than its content (an empty white column before)
+  const pileLength = (() => {
+    if (!wide) return undefined
+    const w = side - 22
+    const lanes = (w - 6) / 2 / 1.45 >= 36 ? 2 : 1
+    const m = Math.min(56, (w - (lanes - 1) * 6) / lanes / 1.45)
+    const rows = Math.ceil(cfg.pairs / lanes)
+    return Math.ceil(rows * m * 1.06 + (rows - 1) * 6)
+  })()
+  const childSide = (
+    <Side who="child" active={versus && childActive} dim={versus && lumiActive}
+      style={wide
+        ? { width: side, flexShrink: 0, alignSelf: 'flex-start', maxHeight: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '10px 8px' }
+        : { height: strip, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px' }}>
+      {wide || strip < 130
+        ? <ChildBadge avatar={avatar} s={badgeS} pointing={versus && childActive} toward={wide ? 'right' : 'up'} />
+        : (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            <ChildBadge avatar={avatar} s={badgeS} pointing={versus && childActive} toward="up" />
+            {timer || stats}
           </div>
         )}
-      </div>
+      {wide && (timer || stats)}
+      <Pile items={piles.child} max={cfg.pairs} dir={wide ? 'v' : 'h'} rootRef={rootRef} length={pileLength}
+        empty={!versus && <PairExample s={wide ? 34 : 30} />} />
+      {!wide && strip < 130 && (timer || stats)}
+    </Side>
+  )
+  const lumiS = wide ? Math.min(110 * ui, side * 0.8) : Math.min(84, strip * 0.86)
+  const lumiSide = versus && (
+    <Side who="lumi" active={lumiActive} dim={childActive}
+      style={wide
+        ? { width: side, flexShrink: 0, alignSelf: 'flex-end', maxHeight: `calc(100% - ${sunTop}px)`, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '10px 8px 6px' }
+        : { height: strip, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, padding: '4px 10px' }}>
+      {!wide && <Critter art="lumi" size={lumiS} mood={lumiMood} label="Lumi" shadow={false} />}
+      <Pile items={piles.lumi} max={cfg.pairs} dir={wide ? 'v' : 'h'} rootRef={rootRef} length={pileLength} />
+      {wide && <Critter art="lumi" size={lumiS} mood={lumiMood} label="Lumi" shadow={false} />}
+    </Side>
+  )
+
+  const board = (
+    <div ref={boardRef} style={{ position: 'relative', flex: 1, minWidth: 0, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {grid && (
+        <div data-board style={{ position: 'relative', width: gridW, height: gridH, cursor: lumiActive ? 'default' : undefined }}>
+          {cards.map(card => {
+            if (card.matched || card.gone) return null
+            const p = pos(card.id)
+            const face = card.flipped || phase === 'preview' || (peek === 'child' && !card.joker)
+            const canTap = !face && childActive && !game.busy && !peek
+            const inHug = hug && (hug.a === card.id || hug.b === card.id)
+            const sign = hug?.a === card.id ? 1 : -1
+            const puz = puzzled && (puzzled.a === card.id || puzzled.b === card.id) ? (puzzled.a === card.id ? 1 : -1) : 0
+            const lumiPeek = peek === 'lumi' && !face
+            return (
+              <motion.div key={card.id} ref={el => { cardRefs.current[card.id] = el }}
+                role="button" tabIndex={-1} aria-label={face ? (card.joker ? 'Joker' : card.name) : 'Karte'} data-pair={card.pairKey} data-card={card.id}
+                onClick={() => reveal(card.id, 'child')}
+                whileHover={canTap ? { scale: 1.05, rotate: -2 } : {}}
+                whileTap={canTap ? { scale: 0.9, rotate: 3 } : {}}
+                animate={inHug && !reduceMotion()
+                  ? { x: [0, hug.dx * sign * 0.8, 0], y: [0, hug.dy * sign * 0.8 - 10, 0], rotate: [0, sign * 10, 0], scale: [1, 1.08, 1] }
+                  : lumiPeek && !reduceMotion()
+                    ? { x: wide ? [0, 5, 0] : 0, y: wide ? 0 : [0, -5, 0], rotate: 0, scale: 1 }
+                    : { x: 0, y: 0, rotate: 0, scale: 1 }}
+                transition={inHug ? { duration: 0.9, times: [0, 0.45, 1] } : lumiPeek ? { duration: 0.7, repeat: Infinity } : { duration: 0.5 }}
+                style={{
+                  position: 'absolute', left: p.x, top: p.y, width: s, height: s, perspective: 700, zIndex: inHug ? 2 : 1,
+                  cursor: canTap ? 'pointer' : 'default',
+                  outline: usingKeys && card.id === cursor ? `4px solid ${INK}` : 'none', outlineOffset: 4, borderRadius: 16,
+                }}>
+                <motion.div
+                  animate={{ rotateY: face ? 0 : 180 }}
+                  transition={{ type: 'spring', stiffness: 260, damping: 22 }}
+                  style={{ position: 'relative', transformStyle: 'preserve-3d', width: '100%', height: '100%' }}>
+                  {/* Front: the guest inside, who jumps up when turned */}
+                  <div style={{
+                    position: 'absolute', inset: 0, backfaceVisibility: 'hidden', ...pxCard(), borderRadius: 16,
+                    ...(card.joker ? { background: 'radial-gradient(circle at 50% 40%, #fff7c2, #ffc93c 70%, #f0a020)' } : {}),
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <motion.div key={jumps[card.id] ?? 0}
+                      animate={jumps[card.id] && !reduceMotion() ? { y: [0, -s * 0.18, 0, -s * 0.06, 0], rotate: [0, -10, 10, -4, 0], scale: [0.8, 1.1, 1] } : {}}
+                      transition={{ duration: 0.8, delay: 0.15 }}>
+                      {/* a wrong pair: lean toward the other one, look, shrug (no sign over them) */}
+                      <motion.div
+                        animate={puz && !reduceMotion()
+                          ? { x: [0, puz * (puzzled.dir || 0) * s * 0.16, puz * (puzzled.dir || 0) * s * 0.16, 0], y: [0, puz * -(puzzled.up || 0) * s * 0.06, -s * 0.08, 0],
+                              rotate: [0, puz * (puzzled.dir || 1) * 18, puz * (puzzled.dir || 1) * -10, 0], scaleY: [1, 1, 1.12, 0.9] }
+                          : { x: 0, y: 0, rotate: 0, scaleY: 1 }}
+                        transition={{ duration: 1.2, times: [0, 0.3, 0.7, 1] }}
+                        style={{ transformOrigin: '50% 100%' }}>
+                        <Art art={card.emoji} size={s * 0.72} />
+                      </motion.div>
+                    </motion.div>
+                  </div>
+                  {/* Back: a present (golden glow while Lumi takes its joker peek) */}
+                  <div style={{
+                    position: 'absolute', inset: 0, backfaceVisibility: 'hidden', transform: 'rotateY(180deg)', borderRadius: 16,
+                    filter: 'drop-shadow(0 5px 0 rgba(42,27,61,0.3))',
+                    boxShadow: lumiPeek ? `0 0 0 4px ${LUMI_GOLD}, 0 0 22px 6px rgba(255,214,70,0.9)` : 'none',
+                    transition: 'box-shadow .3s',
+                  }}>
+                    <Present s={s} />
+                  </div>
+                </motion.div>
+              </motion.div>
+            )
+          })}
+          {/* Lumi's wing: over the board only on Lumi's turn */}
+          {versus && (
+            <motion.div data-paw aria-hidden="true"
+              initial={false}
+              animate={{ x: pawAt.x, y: pawAt.y, opacity: lumiActive ? 1 : 0, scale: paw?.press ? 0.82 : 1, rotate: paw?.press ? -8 : 0 }}
+              transition={{ x: { type: 'spring', stiffness: 120, damping: 18 }, y: { type: 'spring', stiffness: 120, damping: 18 }, opacity: { duration: 0.3 }, scale: { duration: 0.15 }, rotate: { duration: 0.15 } }}
+              style={{ position: 'absolute', left: 0, top: 0, zIndex: 5, pointerEvents: 'none', transformOrigin: '23% 87%' }}>
+              <Wing s={pawSize} />
+            </motion.div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+
+  return (
+    <div ref={rootRef} style={{
+      position: 'relative', flex: 1, minHeight: 0, minWidth: 0, display: 'flex', flexDirection: wide ? 'row' : 'column',
+      alignItems: 'stretch', gap: 12, padding: wide ? '12px 14px' : '10px 10px 12px', boxSizing: 'border-box',
+    }}>
+      {phase === 'count' ? null : wide ? (
+        <>
+          {childSide}
+          {board}
+          {versus ? lumiSide : <div style={{ width: side, flexShrink: 0 }} />}
+        </>
+      ) : (
+        <>
+          {lumiSide}
+          {board}
+          {childSide}
+        </>
+      )}
 
       {/* only for a child who plays with the keys */}
       {usingKeys && (
-        <p style={{ fontFamily: 'var(--font-heading)', fontSize: 14, color: '#2a1b3d', flexShrink: 0, margin: 0, opacity: 0.75 }}>
+        <p style={{ position: 'absolute', left: 0, right: 0, bottom: 0, textAlign: 'center', fontFamily: 'var(--font-heading)', fontSize: 14, color: '#2a1b3d', margin: 0, opacity: 0.75, pointerEvents: 'none' }}>
           ⌨️ Pfeiltasten: wählen · Enter oder Leertaste: umdrehen
         </p>
       )}
-      <HintHand key={handCard?.id ?? 'none'} to={handCard ? { current: cardRefs.current[handCard.id] } : null} active={!!handCard && !finale}
-        delay={moves === 0 ? 2000 : 6000} />
-      {finale && <Finale items={[...new Set(guests.flatMap(g => g.pics))].slice(0, 14)} hero="lumi" onDone={() => onComplete(resultRef.current)} />}
+      <HintHand key={handCard?.id ?? 'none'} to={handCard ? { current: cardRefs.current[handCard.id] } : null}
+        active={!!handCard && phase === 'play'} delay={handDelay} />
+      {phase === 'finale' && (
+        <Finale items={piles.child.map(p => p.emoji).slice(0, 14)} hero="lumi" onDone={() => onComplete(resultRef.current)} />
+      )}
+      {phase === 'count' && (
+        <Tally child={piles.child} lumi={piles.lumi} avatar={avatar} onDone={() => onComplete(resultRef.current)} />
+      )}
+      {bursts}
+      {juice.layer}
+    </div>
+  )
+}
+
+/**
+ * The end against Lumi: both piles are laid out side by side and counted
+ * together, pair by pair ("eins, zwei, drei …"), then whoever has more is
+ * celebrated. Lumi wins cheerfully and says nothing mean; at a draw both
+ * are winners.
+ */
+function Tally({ child, lumi, avatar, onDone }) {
+  const boxRef = useRef(null)
+  const box = useSize(boxRef)
+  const { later, afterSpeech } = useLater()
+  const [bursts, burst] = useBursts()
+  const [step, setStep] = useState(0)
+  const [done, setDone] = useState(false)
+  const colRefs = useRef({})
+  const n = Math.max(child.length, lumi.length)
+  const winner = child.length > lumi.length ? 'child' : lumi.length > child.length ? 'lumi' : 'both'
+  const end = useRef(onDone)
+  end.current = onDone
+
+  useEffect(() => {
+    const count = i => {
+      if (i > n) {
+        setDone(true)
+        sfx.tada()
+        ;['child', 'lumi'].forEach(w => {
+          const el = colRefs.current[w]
+          if (el && (winner === w || winner === 'both')) burst(el, 'confetti', 18)
+        })
+        voice([winner === 'child' ? SAY.childWins : winner === 'lumi' ? SAY.lumiWins : SAY.tie])
+        afterSpeech(() => later(reduceMotion() ? 1200 : 2400, () => end.current()), 600)
+        return
+      }
+      setStep(i)
+      sfx.pop()
+      narrate([numberWord(i)])
+      afterSpeech(() => count(i + 1), reduceMotion() ? 500 : 750)
+    }
+    later(600, () => count(1))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // the chips' size: as large as both columns allow for the longer pile
+  const W = box?.w ?? 600, H = box?.h ?? 500
+  const colW = (W - 24 - 19) / 2
+  // the picture and the number side by side must fit the column
+  const head = Math.min(170, H * 0.26, (colW - 34) / 1.3)
+  const colH = H - 32 - head - 8
+  let m = 30
+  for (let per = 1; per <= 6; per++) {
+    const rows = Math.ceil(Math.max(1, n) / per)
+    m = Math.max(m, Math.min((colW - (per - 1) * 8) / per / 1.45, (colH - (rows - 1) * 8) / rows / 1.06, 130))
+  }
+  m = Math.floor(m)
+
+  const column = (who, pile) => {
+    const win = done && (winner === who || winner === 'both')
+    const shown = Math.min(step, pile.length)
+    return (
+      <div ref={el => { colRefs.current[who] = el }} data-tally={who} style={{ width: colW, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+        <div style={{ position: 'relative', height: head, display: 'flex', alignItems: 'flex-end', gap: 10 }}>
+          <AnimatePresence>
+            {win && (
+              <motion.div key="crown" initial={{ y: -30, opacity: 0, scale: 0.4 }} animate={{ y: 0, opacity: 1, scale: 1 }}
+                style={{ position: 'absolute', left: head * 0.36 - head * 0.2, top: -head * 0.12, zIndex: 2 }}>
+                <Art art="👑" size={head * 0.4} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+          <motion.div animate={win && !reduceMotion() ? { y: [0, -head * 0.15, 0] } : { y: 0 }} transition={{ duration: 0.6, repeat: win ? Infinity : 0 }}>
+            {who === 'lumi'
+              ? <Critter art="lumi" size={head * 0.72} mood={done ? (winner === 'child' ? 'happy' : 'dance') : 'idle'} shadow={false} />
+              : <div style={{ width: head * 0.72, height: head * 0.72, borderRadius: '50%', background: '#fffdf7', border: `3px solid ${INK}`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' }}>
+                  <Art art={avatar} size={head * 0.52} />
+                </div>}
+          </motion.div>
+          <motion.div key={shown} data-count={who} initial={shown ? { scale: 1.6 } : false} animate={{ scale: 1 }}
+            style={{
+              minWidth: head * 0.5, textAlign: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: head * 0.42, lineHeight: 1.1,
+              color: INK, background: win ? LUMI_GOLD : '#fffdf7', border: `3px solid ${INK}`, borderRadius: 16, padding: '0 8px',
+              boxShadow: '0 4px 0 rgba(42,27,61,0.3)', transition: 'background .3s',
+            }}>{shown}</motion.div>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignContent: 'flex-start', gap: 8, width: '100%' }}>
+          {pile.slice(0, step).map(p => (
+            <motion.div key={p.key} initial={{ scale: 0.3, y: -20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 380, damping: 16 }}>
+              <Chip emoji={p.emoji} m={m} />
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div ref={boxRef} data-tally-board aria-hidden="true" style={{
+      position: 'absolute', inset: 8, zIndex: 20, display: 'flex', justifyContent: 'center', alignItems: 'center',
+      padding: '16px 12px', boxSizing: 'border-box',
+      background: 'radial-gradient(circle at 50% 40%, #fffdf2 0%, #fff4cc 70%, #ffeaa8 100%)', borderRadius: 22, border: `3px solid ${INK}`,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, maxHeight: '100%' }}>
+        {column('child', child)}
+        <div style={{ width: 3, alignSelf: 'stretch', background: 'rgba(42,27,61,0.15)', borderRadius: 2 }} />
+        {column('lumi', lumi)}
+      </div>
       {bursts}
     </div>
   )
