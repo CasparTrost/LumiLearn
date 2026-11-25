@@ -88,6 +88,19 @@ describe('Planeten-Hüpfer: the sums', () => {
     expect(freeGap(Array.from({ length: TOP }, (_, i) => i))).toBe(null)
   })
 
+  it('a new star hangs only where a sum still to come flies through', () => {
+    const ahead = [{ op: PLUS, from: 3, step: 2, target: 5 }, { op: PLUS, from: 6, step: 1, target: 7 }]
+    for (let i = 0; i < 200; i++) expect([3, 4, 6]).toContain(freeGap([], Math.random, ahead))
+    expect(freeGap([3, 4, 6], Math.random, ahead)).toBe(null)
+    for (let level = 1; level <= 10; level++) {
+      const tasks = buildTasks(level)
+      tasks.forEach((_, i) => {
+        const g = freeGap([], Math.random, tasks.slice(i))
+        expect(tasks.slice(i).some(t => gapsBetween(t.from, t.target).includes(g)), `level ${level}`).toBe(true)
+      })
+    }
+  })
+
   it('bonus stars count only on the flight of a right answer, and only those on its way', () => {
     const t = { op: PLUS, from: 4, step: 2, target: 6 }
     expect(starsWon([4, 8], t, 6)).toEqual([4])

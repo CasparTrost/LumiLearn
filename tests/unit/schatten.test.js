@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { THINGS, ROOMS, ROOM_IDS, LEVELS, CAT, planLevel, planRoom, levelConfig, tasksIn, tiltOf } from '../../src/games/schatten/data.js'
 import { layoutFor, MIN_CARD } from '../../src/games/schatten/layout.js'
-import { makeRoom, spawn, step, flee, inLight, lookOf, placeApart, tapTarget, nextFocus, torchCatches, keepAway, ceilingOf, behindFurniture } from '../../src/games/schatten/sim.js'
+import { makeRoom, spawn, step, flee, inLight, lookOf, placeApart, tapTarget, nextFocus, settleFocus, FOCUS_DWELL, torchCatches, keepAway, ceilingOf, behindFurniture } from '../../src/games/schatten/sim.js'
 import { hasEmojiArt } from '../../src/lib/emojiArt.jsx'
 import { LINES } from '../../src/lib/lumiLines.js'
 
@@ -322,5 +322,32 @@ describe('caught shadows', () => {
     for (const e of ['🚂', '🚗', '✈️', '🚀', '🍎', '🍊', '🥒', '🍌', '🎈']) expect(tiltOf(e, top), e).toBe(0)
     for (const e of ['🐕', '🐄', '🦉']) expect(tiltOf(e, top), e).toBe(top.tilt)
     expect(tiltOf('🐕', levelConfig(5))).toBe(0)
+  })
+})
+
+describe('Schattenrätsel: the light must rest on a shadow before it takes the focus', () => {
+  const lit = id => ({ id, state: 'caught' })
+  it('a lit shadow the light only crosses (the mouse on its way to the cards) does not take the focus', () => {
+    const shadows = [lit('a'), lit('b')]
+    let st = { focus: 'a', dwell: null }
+    // the light is over b for a quarter of a second, then gone
+    for (let t = 0; t < 0.25; t += 0.016) st = settleFocus(st.focus, 'b', shadows, st.dwell, t)
+    expect(st.focus).toBe('a')
+    st = settleFocus(st.focus, 'a', shadows, st.dwell, 0.3)
+    expect(st).toEqual({ focus: 'a', dwell: null })
+    // crossing it again later starts counting anew
+    st = settleFocus(st.focus, 'b', shadows, st.dwell, 5)
+    expect(st.focus).toBe('a')
+  })
+  it('resting on it takes the focus', () => {
+    const shadows = [lit('a'), lit('b')]
+    let st = { focus: 'a', dwell: null }
+    for (let t = 0; t <= FOCUS_DWELL + 0.05; t += 0.016) st = settleFocus(st.focus, 'b', shadows, st.dwell, t)
+    expect(st.focus).toBe('b')
+  })
+  it('at once when there is no lit focus, and when a finger rests on the shadow', () => {
+    expect(settleFocus(null, 'b', [lit('b')], null, 0).focus).toBe('b')
+    expect(settleFocus('a', 'b', [{ id: 'a', state: 'found' }, lit('b')], null, 0).focus).toBe('b')
+    expect(settleFocus('a', 'b', [lit('a'), lit('b')], null, 0, true).focus).toBe('b')
   })
 })

@@ -11,7 +11,7 @@ import { useLater } from './zahlen/stage.jsx'
 import { pxCard } from './px.js'
 import { THINGS, CAT, planLevel, levelConfig, tasksIn, tiltOf, glints } from './schatten/data.js'
 import { layoutFor } from './schatten/layout.js'
-import { makeRoom, spawn, step, flee, gait, inLight, lookOf, floorOf, placeApart, tapTarget, inBeam, nextFocus, torchCatches, lampDrop, lampSize } from './schatten/sim.js'
+import { makeRoom, spawn, step, flee, gait, inLight, lookOf, floorOf, placeApart, tapTarget, inBeam, nextFocus, settleFocus, torchCatches, lampDrop, lampSize } from './schatten/sim.js'
 import { Backdrop, Furniture, hidesOf } from './schatten/Room.jsx'
 import { Garland, Eyes, CeilingLamp, Bunting, Joker, slotAt } from './schatten/parts.jsx'
 import { gasp, lampOn, wakeSound } from './schatten/sound.js'
@@ -592,7 +592,10 @@ export default function ShadowGame({ level = 1, onComplete }) {
       if (w.pin && !w.input && beam.a < 0.5) w.pin = null
       const now = inBeam(w.shadows, beam, RS)
       if (now) now.seenAt = w.t
-      setFocus(nextFocus(w.focus, w.shadows, beam, RS, w.pin?.id ?? null))
+      // … and the light must rest on another lit one before that one takes over (sim.js settleFocus)
+      const next = settleFocus(w.focus, nextFocus(w.focus, w.shadows, beam, RS, w.pin?.id ?? null), w.shadows, w.dwell, w.t, !!w.pin)
+      w.dwell = next.dwell
+      setFocus(next.focus)
     }
 
     // Drawing them: place, gait, a tremble in the light, the turn to face like the card

@@ -117,7 +117,7 @@ export const LINES = {
   'hilfe/hilfe-sort': 'Sortier-Spaß. Auf dem Förderband kommen Sachen angefahren. Zieh jede Sache zu dem Korbmonster, das sie sammelt; sein Schild zeigt, was in seinen Korb gehört. Du kannst auch erst die Sache und dann das Monster antippen. Später kommt Müll in die Tonne.',
   'hilfe/hilfe-clock': 'Kuckucksuhr. Dreh die Zeiger, bis die Uhr die Zeit von der Karte zeigt. Bei zwei Zeigern drückst du danach auf den Haken. Stehen drei Zeiten zur Wahl, tippst du die an, die die Uhr zeigt.',
   'hilfe/hilfe-words2': 'Silben-Spaß. Sag das Wort und klatsch dazu: Jedes Klatschen ist ein Tipp ins Wasser, und der Frosch hüpft auf ein Seerosenblatt. Ist das Wort zu Ende, tippst du auf das Ding am Ufer, dann springt er hinüber. Manchmal legst du die Silben-Blätter der Reihe nach.',
-  'hilfe/hilfe-weight': 'Waage-Welt. Wirf etwas auf die Wippe: Je schwerer es ist, desto höher fliegt die Maus. Sie soll genau bis zum Käse kommen. Später zählst du Pakete zusammen, ordnest von leicht nach schwer und machst die Wippe gerade.',
+  'hilfe/hilfe-weight': 'Waage-Welt. Wirf etwas auf die Wippe: Je schwerer es ist, desto höher fliegt das Tier. Es soll genau bis zu seinem Futter kommen. Später zählst du Pakete zusammen. Dann vergleichst du zwei Sachen auf der Wippe und ordnest sie auf der Treppe von leicht nach schwer. Zum Schluss machst du die Wippe gerade.',
   'hilfe/hilfe-rocket-math': 'Rechen-Rakete. Jeder Druck auf die Flamme ist ein Hüpfer zum nächsten Planeten. Hüpf so oft, wie die Rechnung sagt, und lande mit dem grünen Haken. Auf dem richtigen Planeten wohnt der Außerirdische. Später tippst du gleich auf den Planeten, auf dem die Rakete landet. Zum Schluss zeigst du mit den Zahlenblasen, wie viele Hüpfer es sind.',
   'hilfe/hilfe-shapes-land': 'Formen-Land. Die Eule zeigt dir in ihrer Lupe eine Form. Tippe im Bild alle Formen an, die so aussehen. Manchmal stellst du Formen der Größe nach auf, setzt eine Parade fort oder legst die passende Form auf ein Ding.',
   'hilfe/hilfe-shape-build': 'Formen-Werkstatt. Ein Tier wünscht sich etwas. Zieh die Formen an ihren Platz, bis es fertig ist. Mit dem Pfeil drehst du eine Form, und manchmal ist ein Teil zu viel. Am Ende darfst du selbst bauen.',
@@ -1156,7 +1156,7 @@ export const LINES = {
   'wippe/zu-leicht': 'Zu leicht!',
   'wippe/zu-schwer': 'Zu schwer!',
   'wippe/pakete': 'Pack Pakete drauf, bis es genau passt.',
-  'wippe/ordnen': 'Von leicht nach schwer!',
+  'wippe/ordnen': 'Was ist schwerer? Leg zwei Sachen auf die Wippe. Dann ordne sie auf der Treppe: von leicht nach schwer!',
   'wippe/gerade': 'Mach beide Seiten gleich schwer!',
   'hoeren/pass-auf': 'Pass gut auf, wo sie sich verstecken!',
   'hoeren/lies': 'Lies, wen ich suche!',
@@ -1236,6 +1236,7 @@ export const LINES = {
   'silbe/schi': 'Schi.',
   'silbe/dier': 'Dier.',
   'silbe/kin': 'Kinn.',
+  'wippe/tauschen': 'Das Schwere gehört weiter nach oben. Tausch die beiden!',
 }
 
 /** The recording of a sentence, with its text for the browser voice. */

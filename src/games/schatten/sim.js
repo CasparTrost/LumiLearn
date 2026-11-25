@@ -126,6 +126,24 @@ export function nextFocus(focus, shadows, beam, S, pin = null) {
   return best?.id ?? null
 }
 
+/** How long the light must rest on another lit shadow before it takes the focus (seconds). */
+export const FOCUS_DWELL = 0.4
+/**
+ * The focus the child means. `want` is what nextFocus picks. It takes over
+ * at once when the old focus is gone or a finger rests on a shadow (`pinned`).
+ * While the old focus is still lit, another shadow takes it only after the
+ * light has rested on it for FOCUS_DWELL: with a mouse the light follows the
+ * pointer, and on its way to the cards it crosses other lit shadows (and
+ * catches dark ones), which must not take the card that is about to be tapped.
+ * → { focus, dwell } (dwell: the shadow the light is resting on, and since when)
+ */
+export function settleFocus(focus, want, shadows, dwell, t, pinned = false) {
+  if (want === focus) return { focus, dwell: null }
+  if (pinned || !held(shadows.find(s => s.id === focus))) return { focus: want, dwell: null }
+  if (!dwell || dwell.id !== want) return { focus, dwell: { id: want, t } }
+  return t - dwell.t >= FOCUS_DWELL ? { focus: want, dwell: null } : { focus, dwell }
+}
+
 /**
  * Which shadow a tapped card flies to: the focus, when it is lit and free
  * (a card on its way to it: a second quick tap waits). null: none.

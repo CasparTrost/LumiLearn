@@ -156,9 +156,16 @@ export function tapHelp(mode, ghost) {
   return ghost ? 'target' : 'wave'
 }
 
-/** A gap for a new bonus star: anywhere on the line, not where one is. */
-export function freeGap(taken, rnd = Math.random) {
-  const free = Array.from({ length: TOP }, (_, i) => i).filter(g => !taken.includes(g))
+/**
+ * A gap for a new bonus star, not where one is: on the way of a sum still to
+ * come (`ahead`), so a right flight can reach it. Since only right flights
+ * win stars, one over a gap no sum crosses (0–1 in a plus level) hung there
+ * for the whole level. Without `ahead`: anywhere on the line.
+ */
+export function freeGap(taken, rnd = Math.random, ahead = null) {
+  const all = Array.from({ length: TOP }, (_, i) => i)
+  const reach = ahead ? new Set(ahead.flatMap(t => gapsBetween(t.from, t.target))) : null
+  const free = all.filter(g => !taken.includes(g) && (!reach || reach.has(g)))
   return free.length ? free[Math.floor(rnd() * free.length)] : null
 }
 

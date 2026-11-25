@@ -69,6 +69,8 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 const BLK = 40                // a one-kilo block (level 10)
 const BRIDGE = 0.6            // the parcels of level 10, this far out along the plank (clear of the treat on the stump)
 const optional = key => (LINES[key] ? line(key) : null)
+// two things, whichever end each is on
+const pairKey = (a, b) => [a, b].sort().join('|')
 const INTRO = { throw: 'wippe/schwer-genug', sum: 'wippe/pakete', order: 'wippe/ordnen', balance: 'wippe/gerade' }
 
 export default function WeightGame({ level = 1, onComplete }) {
@@ -156,6 +158,7 @@ function Play({ wide, level, onComplete }) {
     return r
   }
   const panRefs = { L: useRef(null), R: useRef(null) }
+  const stepRefs = [useRef(null), useRef(null), useRef(null)]   // level 9: where the hand puts a thing on the stair
   const topBlockRef = useRef(null)
 
   useEffect(() => leaveGame, [])
@@ -271,7 +274,7 @@ function Play({ wide, level, onComplete }) {
   async function begin() {
     const gg = G.current
     go('enter')
-    S.misses = 0; S.stack = []; S.pan = { L: null, R: null }; S.panSeq = []; S.weighed = false; S.blocks = 0; S.firstMiss = true
+    S.misses = 0; S.stack = []; S.pan = { L: null, R: null }; S.panSeq = []; S.weighed = false; S.seen = new Set(); S.blocks = 0; S.firstMiss = true
     setMisses(0); setMarks([]); setBlink([]); setMarked([]); setBlocks(0); setChute(false); setTrail(false)
     attach.current.clear()
     holding.current = false
@@ -488,6 +491,11 @@ function Play({ wide, level, onComplete }) {
     setFlyerMood('oops', 1300)
     miss(flyerRef.current)
     sayWrong()
+    if (S.firstMiss && v === 'order') {
+      S.firstMiss = false
+      const said = optional('wippe/tauschen')
+      if (said) afterNarration(() => narrate([said]))
+    }
     if (S.firstMiss && (v === 'low' || v === 'high')) {
       S.firstMiss = false
       const said = optional(v === 'low' ? 'wippe/zu-leicht' : 'wippe/zu-schwer')
@@ -693,8 +701,10 @@ function Play({ wide, level, onComplete }) {
     await placeOnPan(id, side)
     go('aim')
     S.lastInput = Date.now()
-    weigh()
-    await off
+    const seen = S.pan.L && S.pan.R ? pairKey(S.pan.L, S.pan.R) : null
+    await Promise.all([weigh(), off])
+    // both ends taken and the seesaw has tipped: the child has seen which of the two is heavier
+    if (seen && S.pan.L && S.pan.R && pairKey(S.pan.L, S.pan.R) === seen) { S.seen.add(seen); S.lastInput = Date.now() }
   }
 
   async function takeOff(id) {
@@ -753,10 +763,12 @@ function Play({ wide, level, onComplete }) {
       await Promise.all([placeOnPan(p.a, -1), wait(160).then(() => placeOnPan(p.b, 1))])
       await wait(300)
       await weigh(1.4)
+      S.seen.add(pairKey(p.a, p.b))
       if (p.sinks > 0) {
         sfx.sparkle()
         burst(refOf(p.b).current, 'stars', 8)
-        setFlyerMood('happy', 900)
+        // looks on, quietly: the animal's own sound belongs to the treat ('happy' plays it)
+        setFlyerMood('wow', 900)
         await wait(800)
       } else {
         // the wrong way round: the pair's steps are marked, the two wiggle
@@ -794,7 +806,7 @@ function Play({ wide, level, onComplete }) {
     await Promise.all([tween(tx, fx.get() - gg.FS * 0.3, { duration: 0.35 }), tween(ty, fy.get() + gg.FS * 0.02, { duration: 0.35, ease: 'easeIn' })])
     holding.current = true
     burst(flyerRef.current, 'stars', 10)
-    setFlyerMood('happy', 1200)
+    setFlyerMood('wow', 1200)
     await wait(300)
     await feast()
   }
@@ -1037,6 +1049,11 @@ function Play({ wide, level, onComplete }) {
       // the first neighbours the wrong way round, onto the seesaw
       const pair = pairToCompare(S.steps.map(id => byId[id]))
       if (!pair) return { tap: 'done' }
+      // the seesaw has shown which of these two is the heavier (the child
+      // weighed them, or the tick did): now the hand shows what to do about
+      // it, the heavier one onto the other's step. Before, the hand stopped
+      // here, and nothing ever showed that things change places on the stair.
+      if (S.seen.has(pairKey(...pair))) return { from: pair[0], to: `step${S.steps.indexOf(pair[1])}` }
       const [a, b] = S.weighed || S.misses >= 2 ? pair : S.steps.slice(0, 2)
       if (!panSide(a)) return { from: a, to: panSide(b) < 0 ? 'panR' : 'panL' }
       if (!panSide(b)) return { from: b, to: panSide(a) < 0 ? 'panR' : 'panL' }
@@ -1051,7 +1068,7 @@ function Play({ wide, level, onComplete }) {
     return { tap: 'done' }
   }
 
-  const NAMED = { drop: dropRef, done: doneRef, crate: crateRef, stack: stackRef, top: topBlockRef, panL: panRefs.L, panR: panRefs.R }
+  const NAMED = { drop: dropRef, done: doneRef, crate: crateRef, stack: stackRef, top: topBlockRef, panL: panRefs.L, panR: panRefs.R, step0: stepRefs[0], step1: stepRefs[1], step2: stepRefs[2] }
   const refFor = key => NAMED[key] ?? refOf(key)
 
   // ── The picture ─────────────────────────────────────────────────────────
@@ -1099,6 +1116,7 @@ function Play({ wide, level, onComplete }) {
           {mode === 'order' && (
             <>
               <Stair steps={lay.stair} bottom={g.supply.y1 + 8} marked={marked} />
+              {lay.stair.map((t, k) => <div key={k} ref={stepRefs[k]} aria-hidden="true" style={{ position: 'absolute', left: t.x - 2, top: t.y - 2, width: 4, height: 4 }} />)}
               {/* the two ends of the balance, where the hand puts things */}
               {[['L', -1], ['R', 1]].map(([key, side]) => <PanSpot key={key} g={g} ang={ang} side={side} spot={panRefs[key]} />)}
             </>

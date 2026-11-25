@@ -432,7 +432,12 @@ export default function RocketMathGame({ level = 1, onComplete }) {
     lockPreviews()
     sayTask()
     // a star or two to fly through
-    while (g.stars.length < STAR_COUNT) g.stars = [...g.stars, freeGap(g.stars)]
+    // … where a sum still to come flies through
+    while (g.stars.length < STAR_COUNT) {
+      const gap = freeGap(g.stars, Math.random, tasks.slice(idx))
+      if (gap == null) break
+      g.stars = [...g.stars, gap]
+    }
     setStars(g.stars)
     const from = g.pos ?? -2.5
     if (g.pos == null) { const p = L.P(from, L.pr); rx.set(p.x); ry.set(p.y) }
