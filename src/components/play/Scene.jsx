@@ -330,7 +330,9 @@ function Space({ tap }) {
           <Face cx={6} cy={10} r={40} />
         </g>
       </g>
-      <g transform="translate(140 470)">
+      {/* low in the corner and faint: in the Rechen-Rakete (the only game in
+          space) it stood behind planets 0–2 and looked like part of the line */}
+      <g transform="translate(110 650)" opacity="0.4">
         <circle r="120" fill="#5b4bb0" />
         <circle cx="-40" cy="-50" r="18" fill="#4a3c98" />
         <circle cx="40" cy="-10" r="12" fill="#4a3c98" />
