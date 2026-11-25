@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, Suspense } from 'react'
 import { motion } from 'framer-motion'
-import { useApp, MAX_LEVELS, todayMs } from '../AppContext.jsx'
+import { useApp, MAX_LEVELS, hasLevels, todayMs } from '../AppContext.jsx'
 import { useT } from '../i18n.js'
 import { PxStar, PxIcon, HudBar } from '../components/PixelUI.jsx'
 import TileArt from '../components/TileArt.jsx'
@@ -104,7 +104,7 @@ function GameTile({ mod, p, index, onPlay, onLevels }) {
         onPointerEnter={() => prefetchGame(mod.id)}
         onFocus={() => prefetchGame(mod.id)}
         {...hearable(mod.say, { src: gameLine(mod.id)?.src })}
-        aria-label={`${mod.title}, Level ${curLevel} von ${maxLvl}, ${bestTotal} Sterne. Spielen`}
+        aria-label={hasLevels(mod.id) ? `${mod.title}, Level ${curLevel} von ${maxLvl}, ${bestTotal} Sterne. Spielen` : `${mod.title}. Spielen`}
         style={{ all:'unset', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:8, width:'100%' }}>
         <div style={{
           width:'min(84px, 100%)', aspectRatio:'1', borderRadius:'50%', flexShrink:0,

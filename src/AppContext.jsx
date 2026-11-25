@@ -24,7 +24,8 @@ export const MAX_LEVELS = {
   clock:          10,
   words2:         10,
   weight:         10,
-  coloring:        10,
+  // one level: a module without levels (see hasLevels)
+  coloring:        1,
   'rocket-math': 10,
   'shapes-land': 10,
   'rhyme': 10,
@@ -33,6 +34,14 @@ export const MAX_LEVELS = {
   'shape-build': 10,
   trace:         10,
 }
+
+/**
+ * A module with a single level has no levels to speak of (the Mal-Atelier,
+ * a free painting tool): no level chip, no level picker, no stars, no
+ * results screen. Finishing it counts as a game played, and the app goes
+ * back home; the module celebrates the end itself.
+ */
+export const hasLevels = id => (MAX_LEVELS[id] ?? 2) > 1
 
 function freshProgress() {
   return { currentLevel: 1, levelStars: {}, completed: false }
@@ -392,7 +401,10 @@ export function reducer(state, action) {
     }
 
     case 'FINISH_GAME': {
-      const { moduleId, level, stars, score, total } = action.payload
+      const { moduleId, level, score, total } = action.payload
+      // a module without levels earns no stars: nothing is right or wrong there
+      const leveled = hasLevels(moduleId)
+      const stars = leveled ? action.payload.stars : 0
       const maxLevel = MAX_LEVELS[moduleId] ?? 5
       const profile = state.profiles[state.activeProfileId]
       if (!profile) return state
@@ -415,10 +427,11 @@ export function reducer(state, action) {
         : stars >= 3 ? 1 : stars === 2 ? 0.7 : 0.45
       const sameLevelRatios = prev.levelRatios?.[level] ?? []
       const newCurrentLevel = nextLevel({ level, currentLevel: prev.currentLevel, maxLevel, ratio, sameLevelRatios })
-      const skill = updateSkill(prev.skill, { ratio, today })
+      // painting is no skill to review (lib/learning.js)
+      const skill = leveled ? updateSkill(prev.skill, { ratio, today }) : prev.skill
 
       const levels = Array.from({ length: maxLevel }, (_, i) => i + 1)
-      const completed = levels.every(l => (newLevelStars[l] ?? 0) >= 1)
+      const completed = leveled && levels.every(l => (newLevelStars[l] ?? 0) >= 1)
       // Celebrated once: masteredAt stays when the parent area moves the level
       const justCompleted = completed && !prev.masteredAt
       // "Meister" only with mostly two or three stars; otherwise all levels
@@ -479,7 +492,7 @@ export function reducer(state, action) {
             completed,
             ...(completed && !prev.masteredAt ? { masteredAt: new Date().toISOString() } : {}),
             plays:    (prev.plays ?? 0) + 1,
-            lastStars: stars,
+            lastStars: leveled ? stars : undefined,
             lastTs:   new Date().toISOString(),
             skill,
             levelRatios: { ...(prev.levelRatios ?? {}), [level]: [...sameLevelRatios, Math.round(ratio * 100) / 100].slice(-3) },
@@ -489,7 +502,7 @@ export function reducer(state, action) {
 
       return {
         ...state,
-        screen: 'results',
+        screen: leveled ? 'results' : 'home',
         profiles: { ...state.profiles, [state.activeProfileId]: updatedProfile },
         gameResult: {
           moduleId, level, stars, score, total,

@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useApp, MAX_LEVELS, liveStreak, todayStr, saveData } from '../AppContext.jsx'
+import { useApp, MAX_LEVELS, hasLevels, liveStreak, todayStr, saveData } from '../AppContext.jsx'
 import { PxIcon } from '../components/PixelUI.jsx'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
 import { useMusic } from '../components/MusicControls.jsx'
@@ -489,17 +489,19 @@ export default function ParentScreen({ onClose }) {
                         {title}{prog?.completed ? ' 🏆' : ''}
                       </div>
                       <div style={{ ...SMALL, fontSize:14, color: shown ? SMALL.color : 'var(--px-ink)' }}>
-                        {shown ? '' : 'Ausgeblendet · '}Level {curLv} von {maxLv} · {stars} ⭐
+                        {shown ? '' : 'Ausgeblendet · '}{hasLevels(id) ? `Level ${curLv} von ${maxLv} · ${stars} ⭐` : 'ohne Level'}
                       </div>
                     </div>
                     <div style={{ display:'flex', gap:8, marginLeft:'auto' }}>
                       {/* numbers only: "Level 1" options squeezed the game's name */}
-                      <select value={curLv} aria-label={`${title}: Start-Level`} title="Start-Level"
-                        onChange={e => setModuleLevel(id, parseInt(e.target.value, 10))} style={{ ...INPUT, minHeight:44, width:64 }}>
-                        {Array.from({length: maxLv}, (_,i) => i+1).map(l => (
-                          <option key={l} value={l}>{l}</option>
-                        ))}
-                      </select>
+                      {hasLevels(id) && (
+                        <select value={curLv} aria-label={`${title}: Start-Level`} title="Start-Level"
+                          onChange={e => setModuleLevel(id, parseInt(e.target.value, 10))} style={{ ...INPUT, minHeight:44, width:64 }}>
+                          {Array.from({length: maxLv}, (_,i) => i+1).map(l => (
+                            <option key={l} value={l}>{l}</option>
+                          ))}
+                        </select>
+                      )}
                       <button className="px-btn px-btn--parch px-btn--sm" onClick={() => resetModule(id)} aria-label={`${title} zurücksetzen`}>
                         🔄
                       </button>

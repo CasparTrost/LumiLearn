@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useRef, useState } from 'react'
-import { useApp, MAX_LEVELS } from '../AppContext.jsx'
+import { useApp, MAX_LEVELS, hasLevels } from '../AppContext.jsx'
 import { HudBar, PxIcon, PixelLumi } from '../components/PixelUI.jsx'
 import InfoButton from '../components/InfoButton.jsx'
 import ErrorBoundary from '../components/ErrorBoundary.jsx'
@@ -164,10 +164,12 @@ export default function GameScreen() {
         </span>
         <span className="hud-only-sm" style={{ flex: 1 }} />
         <LumiBuddy size={44} />
-        <span className="px-chip" style={{ fontFamily: 'var(--font-heading)', fontSize: 17, flexShrink: 0 }}
-          aria-label={`Level ${level} von ${maxLevel}`}>
-          <span className="hud-hide-sm">Level&nbsp;</span>{level}/{maxLevel}
-        </span>
+        {hasLevels(moduleId) && (
+          <span className="px-chip" style={{ fontFamily: 'var(--font-heading)', fontSize: 17, flexShrink: 0 }}
+            aria-label={`Level ${level} von ${maxLevel}`}>
+            <span className="hud-hide-sm">Level&nbsp;</span>{level}/{maxLevel}
+          </span>
+        )}
         <MusicButton />
         <InfoButton moduleId={moduleId} onOpenChange={setHelpOpen} />
       </HudBar>
