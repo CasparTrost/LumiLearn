@@ -47,6 +47,11 @@ export default function LevelPicker({ mod, title, progress, maxLevel, onPick, on
   // then ran into the game's first task — so no previews from here on.
   const pick = lv => { lockPreviews(); onPick(lv) }
 
+  // A phone held sideways: the sheet is tighter and wider, so that all ten
+  // levels stand in one row (the second row was below the edge, and
+  // nothing showed that the sheet scrolls).
+  const low = typeof window !== 'undefined' && window.innerHeight <= 480
+
   return createPortal(
     <AnimatePresence>
       <motion.div
@@ -79,16 +84,16 @@ export default function LevelPicker({ mod, title, progress, maxLevel, onPick, on
           borderTop: '4px solid var(--px-ink)',
           borderRadius: '14px 14px 0 0',
           boxShadow: 'inset 0 4px 0 var(--px-parch-light), 0 -6px 0 rgba(42,27,61,0.25)',
-          padding: 'clamp(20px,4vw,32px)',
-          paddingBottom: 'calc(clamp(20px,4vw,32px) + env(safe-area-inset-bottom, 0px))',
-          maxHeight: '85dvh',
+          padding: low ? '12px 20px' : 'clamp(20px,4vw,32px)',
+          paddingBottom: low ? 'calc(12px + env(safe-area-inset-bottom, 0px))' : 'calc(clamp(20px,4vw,32px) + env(safe-area-inset-bottom, 0px))',
+          maxHeight: low ? '96dvh' : '85dvh',
           overflowY: 'auto',
         }}
       >
-        <div style={{ maxWidth: 560, margin: '0 auto' }}>
+        <div style={{ maxWidth: low ? 760 : 560, margin: '0 auto' }}>
           {/* Kopfzeile */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-            <TileArt mod={mod} size={56} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: low ? 8 : 18 }}>
+            <TileArt mod={mod} size={low ? 44 : 56} />
             <div style={{
               flex: 1, minWidth: 0,
               fontFamily: 'var(--font-heading)', fontSize: 'clamp(18px,4vw,24px)',
@@ -111,7 +116,7 @@ export default function LevelPicker({ mod, title, progress, maxLevel, onPick, on
             className="px-btn px-btn--green px-btn--lg"
             onClick={() => pick(current)}
             {...hearable(`Weiter mit Level ${sayNumber(current)}`)}
-            style={{ width: '100%', marginBottom: 22 }}
+            style={{ width: '100%', marginBottom: low ? 10 : 22 }}
           >
             <PxIcon name="play" size={22} /> Weiter mit Level {current}
           </button>
@@ -119,7 +124,7 @@ export default function LevelPicker({ mod, title, progress, maxLevel, onPick, on
           {/* Alle Level */}
           <div style={{
             fontFamily: 'var(--font-heading)', fontSize: 17, fontWeight: 700, color: 'var(--text-secondary)',
-            marginBottom: 10,
+            marginBottom: low ? 6 : 10,
           }}>
             Oder ein anderes Level:
           </div>

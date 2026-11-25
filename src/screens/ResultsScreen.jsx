@@ -106,9 +106,11 @@ export default function ResultsScreen() {
   const proposal = stars === 0 ? 'again' : easier ? 'easier' : practise ? 'practise' : nextLevel ? 'next' : null
   const upTo = Math.max(suggested, level + 1)
   // "Level 3 ist offen!" is said and shown only when it is news (this level
-  // had no star before) and a button on this screen leads there. It used to
-  // stand over a lone "Nochmal üben".
-  const opened = isFirstPass && proposal === 'next' && upTo === nextLevel && !timeUp
+  // had no star before) and the big button leads there. It used to stand
+  // over a lone "Nochmal üben", and over a big button to another game when
+  // the day's plan went on elsewhere.
+  const planLeads = moveNow || (onPlan && !!nextMod)
+  const opened = isFirstPass && proposal === 'next' && upTo === nextLevel && !timeUp && !planLeads
 
   // "7 von 7 richtig" next to one star was a contradiction: the line counts
   // what the stars count (answers right on the first try) and is left out
