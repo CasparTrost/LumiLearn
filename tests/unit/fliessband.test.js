@@ -21,6 +21,21 @@ describe('what rides on the belt', () => {
     }
     for (const [art, name] of RUBBISH) expect(art.startsWith('rubbish:') || hasEmojiArt(art), name).toBe(true)
   })
+  it('has nothing with an "it depends": no corn, no matryoshka, no clothes as rubbish', () => {
+    const arts = Object.values(GROUPS).flatMap(g => g.things.map(t => t[0]))
+    expect(arts).not.toContain('🌽')
+    expect(arts).not.toContain('🪆')
+    for (const [art] of RUBBISH) expect(['🧦', '👟', 'rubbish:schuh']).not.toContain(art)
+    expect(RUBBISH.length).toBeGreaterThanOrEqual(Math.max(...LEVELS.map(l => l.rubbish ?? 0)))
+  })
+  it('draws big things big and small things small on the belt', () => {
+    for (let seed = 1; seed <= 30; seed++) {
+      const plan = planLevel(7, seeded(seed))
+      if (plan.targets[0].key !== 'gross') continue
+      for (const t of plan.things) expect(t.size).toBe(plan.targets[t.to].key === 'klein' ? 0.5 : 1)
+    }
+    expect(planLevel(1, seeded(1)).things.every(t => t.size === 1)).toBe(true)
+  })
   it('names nothing twice in a group', () => {
     for (const [key, g] of Object.entries(GROUPS)) expect(new Set(g.things.map(t => t[0])).size, key).toBe(g.things.length)
   })

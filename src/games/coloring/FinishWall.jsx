@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import Confetti from '../../components/Confetti.jsx'
 import { Art } from '../../components/play/index.js'
+import { PxIcon } from '../../components/PixelUI.jsx'
 
 const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
@@ -33,16 +34,18 @@ const frame = b => ({
 /**
  * "Fertig" in the Mal-Atelier: the picture flies from the easel onto the
  * wall of the child's pictures, a frame closes around it, the stamps come
- * alive, Lumi claps next to it (not on it) and confetti falls. Only the
- * picture: the sounds, Lumi's voice and the way on are the game's.
+ * alive, Lumi claps next to it (not on it) and confetti falls. The picture
+ * stays until the child taps the big green arrow (`onDone`), no reading
+ * needed. The sounds and Lumi's voice are the game's.
  *
  *   picture   the painted picture (a data URL)
  *   from      where the easel's sheet was on screen (DOMRect)
  *   sheet     { w, h } of the sheet in picture pixels
  *   stamps    [{ e, x, y, size }] in picture pixels
  *   earlier   up to four earlier pictures (URLs), hung beside it
+ *   onDone    the arrow was tapped: on to the home screen
  */
-export default function FinishWall({ picture, from, sheet, stamps = [], earlier = [] }) {
+export default function FinishWall({ picture, from, sheet, stamps = [], earlier = [], onDone }) {
   const ref = useRef(null)
   const picRef = useRef(null)
   const [box, setBox] = useState(null)
@@ -108,9 +111,10 @@ export default function FinishWall({ picture, from, sheet, stamps = [], earlier 
   }
   const k = pw / sheet.w
   const still = reduceMotion()
+  const btn = Math.round(Math.min(84, Math.max(64, box.h * 0.13)))
 
   return (
-    <div ref={ref} aria-hidden="true" style={{
+    <div ref={ref} style={{
       position: 'absolute', inset: 0, zIndex: 30, overflow: 'hidden',
       background: 'repeating-linear-gradient(90deg, #fbefd6 0 26px, #f4e2c0 26px 52px)',
     }}>
@@ -161,6 +165,17 @@ export default function FinishWall({ picture, from, sheet, stamps = [], earlier 
       </motion.div>
 
       {party && !still && <Confetti position="absolute" count={44} zIndex={2} yFrom="-5vh" yTo="105vh" />}
+
+      {/* on: a big green arrow on the floor, once the party is under way */}
+      {onDone && (
+        <motion.button type="button" className="px-btn px-btn--green" aria-label="Weiter" onClick={onDone}
+          initial={still ? false : { scale: 0, opacity: 0 }} animate={still ? { opacity: 1 } : { scale: [0, 1.15, 1, 1.08, 1], opacity: 1 }}
+          transition={{ delay: 1.6, duration: 0.9 }}
+          style={{ position: 'absolute', left: wide ? 16 : 12, bottom: Math.max(10, floor * 0.25), zIndex: 3,
+            width: btn, height: btn, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <PxIcon name="play" size={Math.round(btn * 0.5)} />
+        </motion.button>
+      )}
     </div>
   )
 }

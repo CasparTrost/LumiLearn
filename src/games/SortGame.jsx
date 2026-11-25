@@ -12,35 +12,39 @@ import { planLevel, wordOf, groupWord, gameLine } from './sort/data.js'
 import { layoutFor, aimAt, throwArc, arcAt, freeSpot, SIGN_H, AIM_MIN } from './sort/layout.js'
 
 /**
- * Sortier-Spaß: "Fließband-Füttern" — grouping things, later by a property.
+ * Sortier-Spaß: the sorting belt — grouping things, later by a property.
+ *
+ * The story: the basket monsters are collectors. Nobody eats anything;
+ * every thing hops into the right basket and peeks out of it.
  *
  * The belt never stops: things come out of the pipe on the left and ride to
  * the right, several at once. Each basket monster shows on its sign what it
- * eats (two or three pictures of its group). The child flings every thing
- * to the monster that eats it: drag it and let go in the monster's
- * direction (the monster that would get it opens its mouth while the finger
- * moves), or tap the thing and then the monster. The thing flies in a bow,
- * the monster munches, gets a little fatter, and the bar on its rim fills.
+ * collects (two or three pictures of its group). The child flings every
+ * thing to the monster that collects it: drag it and let go in the
+ * monster's direction (the monster that would get it looks up, wide-eyed,
+ * while the finger moves), or tap the thing and then the monster. The
+ * thing flies in a bow and plops into the basket, the monster beams, gets
+ * a little rounder, and the bar on its rim fills.
  *
- *   • The wrong monster spits the thing back onto the belt ("Bäh!") and the
- *     right one waves. After two wrong throws of one thing its monster
- *     keeps waving until it is fed.
+ *   • The wrong monster shakes its head and hands the thing back onto the
+ *     belt, and the right one waves. After two wrong throws of one thing
+ *     its monster keeps waving until it has it.
  *   • A thing that reaches the end of the belt falls into the pipe and
  *     comes out again at the start (a bump travels back through the pipe):
  *     nothing is lost, only the streak ends.
- *   • The belt gets a little faster with every thing fed at the first
+ *   • The belt gets a little faster with every thing sorted at the first
  *     throw, and slower after a wrong throw or when something falls into
  *     the pipe. Never more things ride than the level allows (two at
  *     level 1).
  *   • A child who waits: the belt stands still and a hand shows the throw.
- *   • A golden thing now and then: fed, it gives a shower of stars.
+ *   • A golden thing now and then: sorted, it gives a shower of stars.
  *
- * The level is done when every monster is full; then they burp one after
- * the other and dance. Levels (sort/data.js): two monsters with groups far
+ * The level is done when every basket is full; then the monsters cheer one
+ * after the other and dance. Levels (sort/data.js): two monsters with groups far
  * apart, then three, then four with groups close together (fruit and
  * vegetables), then a property instead of a group (round / with corners,
  * big / small, lives / does not live), and at the end a bin for rubbish
- * that belongs to nobody. Score: things fed at the first throw.
+ * that belongs to nobody. Score: things sorted at the first throw.
  *
  * The stars, the streak and its notes come from the game-feel kit
  * (components/play/Juice.jsx). A small loop moves the things through
@@ -88,13 +92,13 @@ export default function SortGame({ level = 1, onComplete }) {
   LRef.current = L
 
   const juice = useJuice({ hudSize: L?.hud.size ?? 40 })
-  const { hit, miss, shake } = juice   // these three never change
+  const { hit, miss } = juice   // these never change
 
   // What moves, between two renders: every thing's place and what it is
   // doing — pipe (waiting in the pipe) · rise (coming out) · belt · held
   // (in the hand) · picked (tapped, held up) · fly (to a target) · stuck
-  // (in the wrong basket for a moment) · back (to the belt) · drop (into
-  // the pipe) · gone (eaten)
+  // (at the wrong basket for a moment) · back (to the belt) · drop (into
+  // the pipe) · gone (in its basket)
   const sim = useRef(null)
   if (!sim.current) {
     sim.current = {
@@ -142,10 +146,14 @@ export default function SortGame({ level = 1, onComplete }) {
   }, [later])
 
   // Lumi names the monsters once the recordings exist (silent until then):
-  // each hops as its word is said. Picking up a thing ends it.
+  // each hops as its word is said. Picking up a thing ends it. The first
+  // levels start with "Ab in den richtigen Korb!" once it is recorded, and
+  // "Schau auf die Schilder!" until then (the old recording 'start' says
+  // "Füttere die Monster!", and nobody eats here).
   useEffect(() => {
     lockPreviews()
-    const first = gameLine(plan.targets.some(t => t.kind === 'bin') ? 'tonne' : plan.level >= 7 ? 'schilder' : 'start')
+    const first = plan.targets.some(t => t.kind === 'bin') ? gameLine('tonne')
+      : plan.level >= 7 ? gameLine('schilder') : gameLine('korb') ?? gameLine('schilder')
     const words = plan.targets.map((t, i) => ({ i, w: groupWord(t.key) })).filter(x => x.w)
     const say = k => {
       if (k >= words.length) return
@@ -217,12 +225,12 @@ export default function SortGame({ level = 1, onComplete }) {
     bump()
   }
 
-  // The wrong monster spits it back onto the belt
-  const spit = id => {
+  // The wrong monster hands it back onto the belt: a gentle, low hop
+  const handBack = id => {
     const p = sim.current.th[id], L = LRef.current
     if (!L || p.mode !== 'stuck') return
     const to = { x: freeSpot(L, p.x, ridingAt()), y: L.belt.rideY }
-    flight(p, to, throwArc(L, p, to), 0.6, -360, 1)
+    flight(p, to, { x: (p.x + to.x) / 2, y: Math.min(p.y, to.y) - L.S * 0.6 }, 0.7, 0, 1)
     p.mode = 'back'
     sfx.pop()
     bump()
@@ -233,8 +241,8 @@ export default function SortGame({ level = 1, onComplete }) {
     setPhase('finale')
     setHint(null)
     const mid = () => { const r = rootRef.current.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height * 0.4 } }
-    // one burp after the other, then everybody dances
-    plan.targets.forEach((t, i) => later(800 + i * 340, () => { setMood(i, 'burp', 0); sfx.burp(); shake(0.5) }))
+    // one cheer after the other, then everybody dances
+    plan.targets.forEach((t, i) => later(800 + i * 340, () => { setMood(i, 'cheer', 0); sfx.note(2 + i * 2) }))
     const t0 = 800 + n * 340 + 300
     later(t0, () => { sfx.tada(); plan.targets.forEach((t, i) => setMood(i, 'dance', 0)); burst(mid(), 'confetti', 24) })
     later(t0 + 900, () => { burst(mid(), 'stars', 14); sfx.combo(6) })
@@ -251,18 +259,18 @@ export default function SortGame({ level = 1, onComplete }) {
     const s = sim.current, p = s.th[t.id], i = p.target
     const el = targetEls.current[i]
     if (t.to !== i) {
-      // Not for this one: it pulls a face and spits the thing back onto the
-      // belt; the monster it belongs to waves. No longer right at the first throw.
+      // Not for this one: it shakes its head and hands the thing back onto
+      // the belt; the monster it belongs to waves. No longer right at the first throw.
       p.missed = true
       p.wrongs += 1
       p.mode = 'stuck'
       s.factor = Math.max(0.7, s.factor - 0.18)
-      setMood(i, 'bah', 1100)
-      sfx.boing()
+      setMood(i, 'nope', 1100)
+      sfx.bonk()
       miss(el)
       // (the thing's name, said when it was picked up, is not cut off)
       afterSpeech(() => sayWrong())
-      later(reduce ? 80 : 340, () => spit(t.id))
+      later(reduce ? 80 : 420, () => handBack(t.id))
       later(450, () => setMood(t.to, 'point', 1700))
       return
     }
@@ -273,8 +281,9 @@ export default function SortGame({ level = 1, onComplete }) {
     fedRef.current = list
     setFed(list)
     const { milestone } = hit(el, { stars: t.golden ? 5 : 1 })
-    setMood(i, 'chomp', 700)
-    if (plan.targets[i].kind === 'bin') { sfx.drum(true); sfx.bump() } else sfx.chomp()
+    // plop, into the basket (the bin's lid claps shut)
+    setMood(i, 'catch', 700)
+    if (plan.targets[i].kind === 'bin') { sfx.drum(true); sfx.bump() } else { sfx.drum(true); sfx.pop() }
     if (t.golden) {
       sfx.sparkle()
       burst(el, 'stars', 16)
@@ -284,7 +293,8 @@ export default function SortGame({ level = 1, onComplete }) {
     if (milestone) plan.targets.forEach((x, j) => j !== i && setMood(j, 'happy', 800))
     afterSpeech(() => sayRight())
     if (fedCount.current >= total) { finale(); return }
-    if (list[i].length >= plan.targets[i].need) later(750, () => { setMood(i, 'burp', 800); sfx.burp(); shake(0.4) })
+    // a full basket: it hops for joy
+    if (list[i].length >= plan.targets[i].need) later(750, () => { setMood(i, 'cheer', 800); sfx.slideUp() })
   }
 
   // It rode off the end of the belt: into the pipe and round again
@@ -571,12 +581,12 @@ export default function SortGame({ level = 1, onComplete }) {
   for (const t of plan.things) {
     const p = s.th[t.id]
     if (p.mode === 'fly') flyingTo.add(p.target)
-    // after two wrong throws its monster waves until it is fed
+    // after two wrong throws its monster waves until it has it
     if (p.wrongs >= 2 && !AWAY.has(p.mode) && p.mode !== 'fly') helping.add(t.to)
   }
   const moodOf = i => (moods[i] !== 'idle' ? moods[i]
     : phase !== 'play' ? 'idle'
-    : aim === i || flyingTo.has(i) ? 'hungry'
+    : aim === i || flyingTo.has(i) ? 'eager'
     : helping.has(i) ? 'point'
     : picked ? 'ready'
     : fed[i].length >= plan.targets[i].need ? 'full' : 'idle')
@@ -633,7 +643,7 @@ export default function SortGame({ level = 1, onComplete }) {
             })}
           </>
         )}
-        {/* the hand: the thing nearest the end to the monster that eats it,
+        {/* the hand: the thing nearest the end to the monster that collects it,
             or a tap on that monster when the thing is held up already */}
         <HintHand key={hint ? `${hint.id}-${hint.tap}` : 'none'} from={hint && !hint.tap ? hintFrom : undefined} to={hintTo} active={!!hint && phase === 'play'} delay={0} />
         {bursts}

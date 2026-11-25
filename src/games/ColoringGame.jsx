@@ -89,7 +89,9 @@ const STAMP_BY = Object.fromEntries(STAMPS.map(s => [s.e, s]))
 
 const TOOLS = [
   { id: 'brush',   icon: '🖌️', label: 'Pinsel' },
-  { id: 'rainbow', icon: '🖌️', label: 'Bunt',    rainbow: true, say: 'atelier/regenbogen' },
+  // (the same name as in the help and Lumi's sentence; a soft hyphen lets
+  // it break where the button is narrow)
+  { id: 'rainbow', icon: '🖌️', label: 'Regen\u00ADbogen', rainbow: true, say: 'atelier/regenbogen' },
   { id: 'glitter', icon: '✨', label: 'Glitzer', say: 'atelier/glitzer' },
   { id: 'fill',    icon: '🪣', label: 'Eimer',   say: 'atelier/eimer' },
   { id: 'stamp',   icon: '⭐', label: 'Stempel' },
@@ -707,8 +709,9 @@ export default function ColoringGame({ onComplete }) {
   }, [album, profile, currentImage, refreshAlbum, showNote])
 
   // "Fertig": the picture flies onto the wall, a frame closes around it,
-  // Lumi claps and praises it once, confetti. Then back home: there are no
-  // levels and no stars here (AppContext hasLevels), the child made a picture.
+  // Lumi claps and praises it once, confetti. The picture stays on the wall
+  // until the child taps the big "go on" arrow; then back home: there are
+  // no levels and no stars here (AppContext hasLevels), the child made a picture.
   const finish = async ({ makeRoom = false } = {}) => {
     if (!hasPainted || finished.current) return
     flushStamps()
@@ -734,8 +737,8 @@ export default function ColoringGame({ onComplete }) {
     at(850, () => sfx.tada())
     at(950, () => narrate([line(PRAISE[Math.floor(Math.random() * PRAISE.length)]), { ...lumi('atelier/an-der-wand'), gap: 250 }]))
     ;[1100, 1450, 1800].forEach(ms => at(ms, () => sfx.drum(true)))   // Lumi claps
-    at(4300, () => onComplete?.(result(1, 1)))
   }
+  const leaveWall = () => onComplete?.(result(1, 1))
 
   const continueFromAlbum = (entry) => {
     const idx = IMAGES.findIndex(i => i.id === entry.imgId)
@@ -965,7 +968,7 @@ export default function ColoringGame({ onComplete }) {
         </div>
       )}
 
-      {hanging && <FinishWall {...hanging} />}
+      {hanging && <FinishWall {...hanging} onDone={leaveWall} />}
 
       {panelOpen && (
         <PicturePanel images={IMAGES} current={imgIdx} sheetRatio={SHEET_W / SHEET_H} album={album} urls={urls}
