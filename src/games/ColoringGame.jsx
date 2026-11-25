@@ -14,6 +14,7 @@ import { pxButton, pxBubble, INK } from './px.js'
 import { HintHand, Art, useBursts } from '../components/play/index.js'
 import FinishWall from './coloring/FinishWall.jsx'
 import PicturePanel from './coloring/PicturePanel.jsx'
+import OwnPictureDialog from './coloring/OwnPictureDialog.jsx'
 import './coloring/coloring.css'
 
 // The Mal-Atelier is a free painting tool, not a game with tasks: nothing is
@@ -110,6 +111,11 @@ const ATELIER = {
   'atelier/an-der-wand': 'Dein Bild hängt jetzt an der Wand!',
   'atelier/wegwischen':  'Alles wegwischen?',
   'atelier/wand-voll':   'Die Wand ist voll. Soll das älteste Bild Platz machen?',
+  // an own picture (with a grown-up)
+  'atelier/eigenes-bild':  'Dein eigenes Bild! Hol einen Erwachsenen, der dir hilft.',
+  'atelier/zeichnet':      'Ich zeichne die Linien. Einen Moment!',
+  'atelier/eigenes-da':    'Fertig! Jetzt kannst du dein Bild ausmalen.',
+  'atelier/geht-nicht':    'Aus diesem Bild kann ich leider kein Malbild machen. Probier ein anderes!',
 }
 const lumi = key => (LINES[key] ? line(key) : { text: ATELIER[key] })
 const word = w => (LINES[`wort/${w}`] ? line(`wort/${w}`) : null)
@@ -125,22 +131,30 @@ const ALBUM_MAX = 30
 const NO_MARKS = { stamps: [], twinkles: [] }
 
 // ── Album (the wall): one per profile, full size, in IndexedDB ───────────────
-const DB_NAME = 'lumilearn-album', STORE = 'pictures'
+// Own pages (a picture from the device, traced into lines) live there too,
+// as PNGs of black lines (some 50–200 KB each), at most OWN_MAX per child:
+// nothing of it goes to localStorage, nothing leaves the device.
+const DB_NAME = 'lumilearn-album', STORE = 'pictures', PAGES = 'pages'
+const OWN_MAX = 12
 
 function openDb() {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1)
-    req.onupgradeneeded = () => req.result.createObjectStore(STORE, { keyPath: 'id' }).createIndex('profile', 'profile')
+    const req = indexedDB.open(DB_NAME, 2)
+    req.onupgradeneeded = () => {
+      const db = req.result
+      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: 'id' }).createIndex('profile', 'profile')
+      if (!db.objectStoreNames.contains(PAGES)) db.createObjectStore(PAGES, { keyPath: 'id' }).createIndex('profile', 'profile')
+    }
     req.onsuccess = () => resolve(req.result)
     req.onerror = () => reject(req.error)
   })
 }
 
-async function albumTx(mode, fn) {
+async function albumTx(mode, fn, store = STORE) {
   const db = await openDb()
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, mode)
-    const out = fn(tx.objectStore(STORE))
+    const tx = db.transaction(store, mode)
+    const out = fn(tx.objectStore(store))
     tx.oncomplete = () => { db.close(); resolve(out?.result ?? out) }
     tx.onerror = () => { db.close(); reject(tx.error) }
   })
@@ -150,6 +164,11 @@ const albumList   = profile => albumTx('readonly', s => s.index('profile').getAl
   .then(list => list.sort((a, b) => b.id - a.id))
 const albumPut    = entry => albumTx('readwrite', s => s.put(entry))
 const albumDelete = ids => albumTx('readwrite', s => ids.forEach(id => s.delete(id)))
+const pagesList   = profile => albumTx('readonly', s => s.index('profile').getAll(profile), PAGES)
+  .then(list => list.sort((a, b) => a.id - b.id))
+const pagesPut    = entry => albumTx('readwrite', s => s.put(entry), PAGES)
+const pagesDelete = ids => albumTx('readwrite', s => ids.forEach(id => s.delete(id)), PAGES)
+const ownId = id => `own-${id}`
 
 const toBlob = (canvas, type, q) => new Promise(res => canvas.toBlob(res, type, q))
 
@@ -303,7 +322,7 @@ export default function ColoringGame({ onComplete }) {
   const profile = state.activeProfileId ?? 'default'
   // a picture to fill first: on the empty sheet the first tap of the paint
   // bucket flooded everything
-  const [imgIdx, setImgIdx]       = useState(1)
+  const [imgId, setImgId]         = useState(IMAGES[1].id)
   const [color, setColor]         = useState(COLORS[0].value)
   const [brushIdx, setBrushIdx]   = useState(1)
   const [tool, setTool]           = useState('fill')
@@ -322,6 +341,8 @@ export default function ColoringGame({ onComplete }) {
   const [landing, setLanding]     = useState([])      // stamps in the air
   const [marks, setMarks]         = useState(NO_MARKS) // the stamps and twinkles on this sheet
   const [hanging, setHanging]     = useState(null)    // "Fertig": the picture on the wall
+  const [ownPages, setOwnPages]   = useState([])      // own pictures, traced into lines
+  const [ownOpen, setOwnOpen]     = useState(false)   // bringing in an own picture
   const [bursts, burst]           = useBursts()
 
   const rootRef     = useRef(null)
@@ -350,7 +371,21 @@ export default function ColoringGame({ onComplete }) {
   const landingRef  = useRef([])
   useEffect(() => () => timers.current.forEach(clearTimeout), [])
 
-  const currentImage = IMAGES[imgIdx]
+  // the pages: the empty sheet, Lumi's, then the child's own (object URLs
+  // made once per page, so a page keeps its URL while the game is open)
+  const ownUrls = useRef(new Map())
+  const images = useMemo(() => {
+    const keep = new Set(ownPages.map(p => p.id))
+    ownUrls.current.forEach((u, id) => { if (!keep.has(id)) { URL.revokeObjectURL(u); ownUrls.current.delete(id) } })
+    return [...IMAGES, ...ownPages.map(p => {
+      if (!ownUrls.current.has(p.id)) ownUrls.current.set(p.id, URL.createObjectURL(p.blob))
+      return { id: ownId(p.id), src: ownUrls.current.get(p.id), label: 'Eigenes Bild', emoji: '📷', own: true }
+    })]
+  }, [ownPages])
+  useEffect(() => () => ownUrls.current.forEach(u => URL.revokeObjectURL(u)), [])
+  const imgIdx = Math.max(0, images.findIndex(i => i.id === imgId))
+  const currentImage = images[imgIdx]
+  const curId = currentImage.id, curSrc = currentImage.src, curFree = !!currentImage.free
   const brush = BRUSHES[brushIdx]
   const wide = box.w > box.h
   const ui = uiSizes(box, wide)
@@ -379,6 +414,7 @@ export default function ColoringGame({ onComplete }) {
 
   const refreshAlbum = useCallback(() => albumList(profile).then(setAlbum).catch(() => setAlbum([])), [profile])
   useEffect(() => { migrateOldGallery(profile).catch(() => {}).finally(refreshAlbum) }, [profile, refreshAlbum])
+  useEffect(() => { pagesList(profile).then(setOwnPages).catch(() => setOwnPages([])) }, [profile])
 
   // object URLs for the album pictures
   const urls = useMemo(() => new Map(album.map(e => [e.id, URL.createObjectURL(e.picture)])), [album])
@@ -422,7 +458,7 @@ export default function ColoringGame({ onComplete }) {
       pc.width = W; pc.height = H
       const pctx = pc.getContext('2d')
       pctx.clearRect(0, 0, W, H)
-      const kept = sheets.current.get(currentImage.id)
+      const kept = sheets.current.get(curId)
       if (kept?.data) pctx.putImageData(kept.data, 0, 0)
       albumIdRef.current = kept?.albumId ?? null
       setHasPainted(!!kept?.painted)
@@ -446,7 +482,7 @@ export default function ColoringGame({ onComplete }) {
       redraw()
       setReady(true)
     }
-    if (currentImage.free) {
+    if (curFree) {
       // No outline to load — just a white sheet the child owns entirely.
       const blank = document.createElement('canvas')
       blank.width = SHEET_W; blank.height = SHEET_H
@@ -458,10 +494,11 @@ export default function ColoringGame({ onComplete }) {
       const img = new Image()
       img.crossOrigin = 'anonymous'
       img.onload = () => setup(img, img.naturalWidth, img.naturalHeight)
-      img.src = currentImage.src
+      img.onerror = () => { if (!cancelled) setImgId(IMAGES[1].id) }
+      img.src = curSrc
     }
     return () => { cancelled = true }
-  }, [currentImage, redraw, setMarksBoth])
+  }, [curId, curSrc, curFree, redraw, setMarksBoth])
 
   // Fit the sheet into the room left beside or above the tools
   useLayoutEffect(() => {
@@ -502,21 +539,50 @@ export default function ColoringGame({ onComplete }) {
     flushStamps()
     const pc = paintRef.current
     if (!pc.width) return
-    sheets.current.set(currentImage.id, {
+    sheets.current.set(curId, {
       data: pc.getContext('2d').getImageData(0, 0, pc.width, pc.height),
       albumId: albumIdRef.current, painted: hasPainted, marks: marksRef.current,
     })
-  }, [currentImage, hasPainted, flushStamps])
+  }, [curId, hasPainted, flushStamps])
 
   const goToImage = (idx) => {
     setPanelOpen(false)
     if (idx === imgIdx) return
     keepSheet()
     // on the empty sheet the bucket would flood the whole page: draw instead
-    if (IMAGES[idx].free && tool === 'fill') setTool('brush')
+    if (images[idx].free && tool === 'fill') setTool('brush')
     sfx.flip?.()
-    setImgIdx(idx)
+    setImgId(images[idx].id)
   }
+
+  // An own picture was traced and taken: it becomes a page and opens at
+  // once, with the paint bucket. The oldest own page makes room past OWN_MAX.
+  const takeOwnPage = async (blob, w, h) => {
+    setOwnOpen(false)
+    const entry = { id: Date.now(), profile, blob, w, h }
+    try {
+      const drop = ownPages.slice(0, Math.max(0, ownPages.length + 1 - OWN_MAX))
+      if (drop.length) await pagesDelete(drop.map(p => p.id))
+      await pagesPut(entry)
+    } catch {
+      showNote('Das Bild passt leider nicht mehr auf dieses Gerät.')
+    }
+    keepSheet()
+    setOwnPages(list => [...list.slice(Math.max(0, list.length + 1 - OWN_MAX)), entry])
+    setTool('fill')
+    setImgId(ownId(entry.id))
+    sfx.tada?.()
+    narrate([lumi('atelier/eigenes-da')])
+  }
+  const openOwn = () => {
+    flushStamps()
+    setPanelOpen(false)
+    setOwnOpen(true)
+    narrate([lumi('atelier/eigenes-bild')])
+  }
+
+  // the page without paint, for printing "only the lines" (not the empty sheet)
+  const linesOf = id => images.find(i => i.id === id)?.src ?? null
 
   // Coords: map CSS pixels on display canvas → image pixels
   const getPos = (e) => {
@@ -698,7 +764,7 @@ export default function ColoringGame({ onComplete }) {
       if (!replacing && album.length >= ALBUM_MAX && makeRoom) await albumDelete(album.slice(ALBUM_MAX - 1).map(e => e.id))
       const [picture, paint] = await Promise.all([toBlob(dc, 'image/jpeg', 0.88), toBlob(paintRef.current, 'image/png')])
       const id = replacing ? albumIdRef.current : Date.now()
-      await albumPut({ id, profile, imgId: currentImage.id, picture, paint, marks: marksRef.current })
+      await albumPut({ id, profile, imgId: curId, picture, paint, marks: marksRef.current })
       albumIdRef.current = id
       await refreshAlbum()
       return true
@@ -706,7 +772,7 @@ export default function ColoringGame({ onComplete }) {
       showNote('Das Bild passt leider nicht mehr an die Wand.')
       return false
     }
-  }, [album, profile, currentImage, refreshAlbum, showNote])
+  }, [album, profile, curId, refreshAlbum, showNote])
 
   // "Fertig": the picture flies onto the wall, a frame closes around it,
   // Lumi claps and praises it once, confetti. The picture stays on the wall
@@ -725,6 +791,8 @@ export default function ColoringGame({ onComplete }) {
     const { w, h } = canvasSize.current
     setHanging({
       picture: dc.toDataURL('image/jpeg', 0.9),
+      png: dc.toDataURL('image/png'),
+      linesSrc: linesOf(curId),
       from: dc.getBoundingClientRect(),
       sheet: { w, h },
       stamps: marksRef.current.stamps,
@@ -741,7 +809,7 @@ export default function ColoringGame({ onComplete }) {
   const leaveWall = () => onComplete?.(result(1, 1))
 
   const continueFromAlbum = (entry) => {
-    const idx = IMAGES.findIndex(i => i.id === entry.imgId)
+    const idx = images.findIndex(i => i.id === entry.imgId)
     if (idx < 0 || !entry.paint) return
     keepSheet()
     sheets.current.delete(entry.imgId)
@@ -760,7 +828,7 @@ export default function ColoringGame({ onComplete }) {
         setHasPainted(true)
         redraw()
       }).catch(() => {})
-    } else setImgIdx(idx)
+    } else setImgId(images[idx].id)
   }
 
   const chooseColor = (c) => {
@@ -971,8 +1039,14 @@ export default function ColoringGame({ onComplete }) {
       {hanging && <FinishWall {...hanging} onDone={leaveWall} />}
 
       {panelOpen && (
-        <PicturePanel images={IMAGES} current={imgIdx} sheetRatio={SHEET_W / SHEET_H} album={album} urls={urls}
+        <PicturePanel images={images} current={imgIdx} sheetRatio={SHEET_W / SHEET_H} album={album} urls={urls}
+          linesOf={linesOf} onAdd={openOwn}
           onPick={goToImage} onContinue={continueFromAlbum} onEmpty={() => setConfirm('empty')} onClose={() => setPanelOpen(false)} />
+      )}
+
+      {ownOpen && (
+        <OwnPictureDialog settings={state.settings} say={key => narrate([lumi(key)])}
+          onTake={takeOwnPage} onClose={() => setOwnOpen(false)} />
       )}
 
       {confirm === 'clear' && (
