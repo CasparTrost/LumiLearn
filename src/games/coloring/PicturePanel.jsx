@@ -25,7 +25,7 @@ const heading = { fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 
  * A picture from the wall can be saved and printed again (`linesOf(imgId)`:
  * its page without paint, to print only the lines).
  */
-export default function PicturePanel({ images, current, sheetRatio, album, urls, linesOf, onPick, onAdd, onContinue, onEmpty, onClose }) {
+export default function PicturePanel({ images, current, sheetRatio, album, urls, linesOf, onPick, onAdd, onRemove, onContinue, onEmpty, onClose }) {
   const [viewing, setViewing] = useState(null)
   const canContinue = viewing?.paint && images.some(i => i.id === viewing.imgId)
   // Sideways the pages stand in a block of three by three beside the wall:
@@ -37,6 +37,12 @@ export default function PicturePanel({ images, current, sheetRatio, album, urls,
     return () => window.removeEventListener('resize', on)
   }, [])
   const wide = vp.w > vp.h
+  const order = [
+    ...images.map((_, i) => i).filter(i => !images[i].own).slice(0, 1),
+    ...(onAdd ? ['add'] : []),
+    ...images.map((_, i) => i).filter(i => images[i].own).reverse(),
+    ...images.map((_, i) => i).filter(i => !images[i].own).slice(1),
+  ]
   const thumbH = Math.floor(Math.min(160, (Math.min(vp.h, 900) - 2 * Math.min(16, vp.h * 0.03) - 20 - 56 - 2 * 8) / 3))
   const thumbW = Math.floor(thumbH * sheetRatio)
 
@@ -72,19 +78,11 @@ export default function PicturePanel({ images, current, sheetRatio, album, urls,
               ...(wide ? { overflow: 'auto', maxHeight: '100%', padding: 6, gridAutoRows: thumbH } : null),
               gridTemplateColumns: wide ? `repeat(3, ${thumbW}px)` : 'repeat(auto-fill, minmax(clamp(58px, 10.5vw, 96px), 1fr))',
             }}>
-              {images.map((img, i) => (
-                <button key={img.id} onClick={() => onPick(i)} aria-label={img.label} aria-pressed={i === current} style={{
-                  padding: 0, cursor: 'pointer', overflow: 'hidden', aspectRatio: `${sheetRatio}`, background: '#fff', borderRadius: 8,
-                  border: `3px solid ${INK}`, outline: i === current ? '4px solid var(--px-gold)' : 'none', outlineOffset: 1,
-                  boxShadow: '0 3px 0 rgba(42,27,61,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  {img.src
-                    ? <img src={img.src} alt="" style={{ width: '100%', height: '100%', objectFit: img.own ? 'contain' : 'cover', display: 'block' }} />
-                    : <Art art={img.emoji} size={40} />}
-                </button>
-              ))}
-              {onAdd && (
-                <button onClick={onAdd} aria-label="Eigenes Bild, mit einem Erwachsenen" style={{
+              {/* the empty sheet, the way to an own picture, the child's own
+                  pictures, then Lumi's pages: on a phone held sideways the
+                  camera and the own pictures were below the edge, unseen */}
+              {order.map(i => (i === 'add' ? (
+                <button key="add" onClick={onAdd} aria-label="Eigenes Bild, mit einem Erwachsenen" style={{
                   padding: 0, cursor: 'pointer', aspectRatio: `${sheetRatio}`, borderRadius: 8, position: 'relative',
                   border: `3px dashed ${INK}`, background: 'var(--px-parch-light)',
                   display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
@@ -93,7 +91,27 @@ export default function PicturePanel({ images, current, sheetRatio, album, urls,
                   <Art art="➕" size={22} />
                   <span style={{ position: 'absolute', right: 3, top: 3 }}><Art art="🔒" size={20} /></span>
                 </button>
-              )}
+              ) : (
+                <div key={images[i].id} style={{ position: 'relative', aspectRatio: `${sheetRatio}` }}>
+                  <button onClick={() => onPick(i)} aria-label={images[i].label} aria-pressed={i === current} style={{
+                    padding: 0, cursor: 'pointer', overflow: 'hidden', width: '100%', height: '100%', background: '#fff', borderRadius: 8,
+                    border: `3px solid ${INK}`, outline: i === current ? '4px solid var(--px-gold)' : 'none', outlineOffset: 1,
+                    boxShadow: '0 3px 0 rgba(42,27,61,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {images[i].src
+                      ? <img src={images[i].src} alt="" style={{ width: '100%', height: '100%', objectFit: images[i].own ? 'contain' : 'cover', display: 'block' }} />
+                      : <Art art={images[i].emoji} size={40} />}
+                  </button>
+                  {/* an own picture can go again (asked first) */}
+                  {images[i].own && onRemove && (
+                    <button onClick={() => onRemove(images[i].id)} aria-label="Eigenes Bild löschen" style={{
+                      position: 'absolute', right: -4, top: -4, width: 30, height: 30, padding: 0, cursor: 'pointer', borderRadius: '50%',
+                      border: `2px solid ${INK}`, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 13, lineHeight: 1, boxShadow: '0 2px 0 rgba(42,27,61,0.35)',
+                    }}>❌</button>
+                  )}
+                </div>
+              )))}
             </div>
 
             {/* the wall */}

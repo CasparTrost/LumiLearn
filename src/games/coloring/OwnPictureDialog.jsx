@@ -44,9 +44,12 @@ export default function OwnPictureDialog({ settings, say, onTake, onClose }) {
     return () => window.removeEventListener('resize', on)
   }, [])
 
-  useEffect(() => () => {
-    Object.values(pages).forEach(p => p.url && URL.revokeObjectURL(p.url))
-  }, [pages])
+  // The pages' URLs live as long as their picture is in the dialog: all
+  // three line settings stay on show (released on every change, a setting
+  // seen before came back as a broken image)
+  const made = useRef([])
+  const release = () => { made.current.forEach(u => URL.revokeObjectURL(u)); made.current = [] }
+  useEffect(() => release, [])
 
   const trace = async (d) => {
     const id = ++run.current
@@ -59,7 +62,9 @@ export default function OwnPictureDialog({ settings, say, onTake, onClose }) {
       // Lumi draws for a moment at least: a page that pops up at once looks like nothing happened
       await new Promise(r => setTimeout(r, Math.max(0, 900 - (Date.now() - started))))
       if (id !== run.current) return
-      const page = { ok: res.ok, reason: res.reason, w: res.w, h: res.h, blob, url: blob ? URL.createObjectURL(blob) : null }
+      const url = blob ? URL.createObjectURL(blob) : null
+      if (url) made.current.push(url)
+      const page = { ok: res.ok, reason: res.reason, w: res.w, h: res.h, blob, url }
       setPages(p => ({ ...p, [d]: page }))
       setStep(page.ok ? 'preview' : 'fail')
       if (!page.ok) say('atelier/geht-nicht')
@@ -73,6 +78,7 @@ export default function OwnPictureDialog({ settings, say, onTake, onClose }) {
   const picked = async (file) => {
     if (!file) return
     setPages({}); setDetail(1)
+    release()
     setStep('working')
     try {
       const img = await readPicture(file)
@@ -186,7 +192,9 @@ export default function OwnPictureDialog({ settings, say, onTake, onClose }) {
               {page?.reason === 'mess'
                 ? 'Es wären zu viele Linien. Versuch es mit „Weniger Linien“ oder einem Bild mit weniger Einzelheiten.'
                 : page?.reason === 'empty'
-                  ? 'Lumi findet darin keine Linien. Versuch es mit „Mehr Linien“ oder einem Foto mit mehr Licht.'
+                  ? (detail < 2
+                    ? 'Lumi findet darin keine Linien. Versuch es mit „Mehr Linien“ oder einem Foto mit mehr Licht.'
+                    : 'Lumi findet darin keine Linien. Nimm ein Bild mit kräftigen Linien oder ein Foto mit mehr Licht.')
                   : 'Das Bild ließ sich nicht öffnen. Bitte wähle ein anderes.'}
             </div>
             {page && (

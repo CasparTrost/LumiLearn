@@ -124,6 +124,20 @@ export function hopPath(L, a, b, high = 1) {
 }
 
 /**
+ * Where the rocket's feet go (its turning point, the bottom middle) so that
+ * the middle of its body is over place n, `off` px from the line at its
+ * bottom, turned by `deg` in all (the layout's base and its lean). Flown by
+ * hand the body stands across the line, as on the planet, and what the child
+ * sees over a planet is the planet that counts, whichever way the line runs
+ * and however the rocket leans.
+ */
+export function feetFor(L, n, off, deg) {
+  const c = L.P(n, off + L.rh / 2), a = (deg * Math.PI) / 180, r = L.rh / 2
+  // the body's middle is r from the feet, along the rocket's nose
+  return { x: c.x - r * Math.sin(a), y: c.y + r * Math.cos(a) }
+}
+
+/**
  * Where on the line a point of the screen is, as a place n (planet 3 is 3,
  * half way to 4 is 3.5), whichever way the line runs: the finger's place
  * when the child flies the rocket by hand.

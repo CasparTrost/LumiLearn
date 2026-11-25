@@ -574,6 +574,19 @@ export default function ColoringGame({ onComplete }) {
     sfx.tada?.()
     narrate([lumi('atelier/eigenes-da')])
   }
+  // An own picture goes for good (asked first). What was painted on it and
+  // hangs on the wall stays there.
+  const [removing, setRemoving] = useState(null)
+  const removeOwnPage = async () => {
+    const id = removing
+    setRemoving(null)
+    const page = ownPages.find(p => ownId(p.id) === id)
+    if (!page) return
+    await pagesDelete([page.id]).catch(() => {})
+    sheets.current.delete(id)
+    if (curId === id) { flushStamps(); setImgId(images[1]?.id ?? images[0].id) }
+    setOwnPages(list => list.filter(p => p.id !== page.id))
+  }
   const openOwn = () => {
     flushStamps()
     setPanelOpen(false)
@@ -1002,7 +1015,7 @@ export default function ColoringGame({ onComplete }) {
         </div>
         {bursts}
         {/* until the child has painted: a hand taps the picture */}
-        <HintHand to={displayRef} active={ready && !hasPainted && !panelOpen && !hanging} delay={3000} />
+        <HintHand to={displayRef} active={ready && !hasPainted && !panelOpen && !ownOpen && !hanging} delay={3000} />
         {!ready && <div style={{ position: 'absolute', fontSize: 32 }}>⏳</div>}
         {filling && <div style={{ position: 'absolute', fontSize: 40, pointerEvents: 'none' }}>🎨</div>}
         <AnimatePresence>
@@ -1040,7 +1053,7 @@ export default function ColoringGame({ onComplete }) {
 
       {panelOpen && (
         <PicturePanel images={images} current={imgIdx} sheetRatio={SHEET_W / SHEET_H} album={album} urls={urls}
-          linesOf={linesOf} onAdd={openOwn}
+          linesOf={linesOf} onAdd={openOwn} onRemove={id => setRemoving(id)}
           onPick={goToImage} onContinue={continueFromAlbum} onEmpty={() => setConfirm('empty')} onClose={() => setPanelOpen(false)} />
       )}
 
@@ -1064,6 +1077,12 @@ export default function ColoringGame({ onComplete }) {
             albumIdRef.current = null
             refreshAlbum()
           }} />
+      )}
+      {removing && (
+        <ConfirmDialog danger title="Dieses eigene Bild löschen?"
+          text="Die Vorlage verschwindet aus den Bildern. Was schon an der Wand hängt, bleibt."
+          yesLabel="Löschen" noLabel="Behalten"
+          onNo={() => setRemoving(null)} onYes={removeOwnPage} />
       )}
       {confirm === 'full' && (
         <ConfirmDialog kid title="Die Wand ist voll" say={lumi('atelier/wand-voll')}

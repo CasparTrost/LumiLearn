@@ -156,6 +156,92 @@ describe('line art', () => {
   })
 })
 
+describe('what kind of picture', () => {
+  it('a bold line stays one line (hollowed out it was two, with a strip between)', () => {
+    const px = sheet(); ring(px, W, 300, 400, 150, 22); rect(px, W, 60, 700, 540, 720, [20, 20, 20])
+    const res = toColoringPage(px, W, H)
+    expect(res.kind).toBe('lines')
+    expect(inkAt(res, 450, 400)).toBe(true)                      // the middle of the stroke
+    expect(inkAt(res, 300, 710)).toBe(true)
+    expect(res.regions).toBe(2)                                  // inside the ring, and the rest
+  })
+
+  it('white lines on a dark ground are a drawing like any other', () => {
+    const px = sheet(W, H, () => 22); ring(px, W, 300, 400, 150, 5, 0, [240, 240, 240])
+    const res = toColoringPage(px, W, H)
+    expect(res.kind).toBe('lines')
+    expect(res.ok).toBe(true)
+    expect(res.regions).toBe(2)
+    expect(area(res, 300, 400)).not.toBe(area(res, 20, 20))
+  })
+
+  it('a sheet on a brown table, at an angle: the table and the sheet\'s edge are gone, the drawing stays', () => {
+    const px = sheet(W, H, () => 0)
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      // the table, with a grain; the sheet, turned a little and darker towards one corner
+      const u = (x - 300) * 0.97 + (y - 400) * 0.24, v = -(x - 300) * 0.24 + (y - 400) * 0.97
+      const on = Math.abs(u) < 210 && Math.abs(v) < 300
+      put(px, W, x, y, on ? [235 - 40 * (x / W), 232 - 40 * (x / W), 222 - 40 * (x / W)] : [92 + (y % 9 === 0 ? -18 : 0), 60, 34])
+    }
+    ring(px, W, 300, 380, 110, 4, 0, [70, 70, 80])               // a pencil circle
+    ring(px, W, 265, 350, 9, 3, 0, [70, 70, 80]); ring(px, W, 335, 350, 9, 3, 0, [70, 70, 80])   // two eyes
+    const res = toColoringPage(px, W, H)
+    expect(res.kind).toBe('lines')
+    expect(res.ok).toBe(true)
+    expect(area(res, 300, 420)).not.toBe(area(res, 300, 200))    // the circle is closed
+    expect(area(res, 8, 8)).toBe(area(res, 300, 200))            // table and paper: one white ground, no frame
+    expect(area(res, 590, 790)).toBe(area(res, 300, 200))
+    expect(inkAt(res, 265, 350) || inkAt(res, 265, 341)).toBe(true)   // the eyes are there
+    expect(res.regions).toBeLessThan(5)
+  })
+
+  it('a felt-pen picture with coloured-in areas: roof and wall are two areas, the window drawn on the wall is one', () => {
+    const px = sheet(W, H, () => 248)
+    rect(px, W, 150, 380, 450, 640, [250, 214, 70])              // the wall, yellow
+    for (let y = 250; y < 380; y++) rect(px, W, Math.round(300 - (y - 250) * 1.3), y, Math.round(300 + (y - 250) * 1.3), y + 1, [222, 70, 70])   // the roof, red
+    // a window: a blue line on the yellow wall
+    rect(px, W, 200, 430, 290, 438, [40, 80, 200]); rect(px, W, 200, 512, 290, 520, [40, 80, 200])
+    rect(px, W, 200, 430, 208, 520, [40, 80, 200]); rect(px, W, 282, 430, 290, 520, [40, 80, 200])
+    // a stick: a purple line on the paper, and the ground, a green line that runs off the paper
+    rect(px, W, 520, 500, 528, 640, [130, 60, 190]); rect(px, W, 0, 640, W, 650, [60, 160, 70])
+    const res = toColoringPage(px, W, H)
+    expect(res.kind).toBe('mixed')
+    expect(res.ok).toBe(true)
+    const paper = area(res, 60, 100), roof = area(res, 300, 330), wall = area(res, 400, 580), win = area(res, 245, 475)
+    expect(new Set([paper, roof, wall, win]).size).toBe(4)
+    expect(inkAt(res, 524, 570)).toBe(true)                      // the stick is a line
+    expect(area(res, 60, 720)).not.toBe(paper)                   // the ground line parts above from below
+  })
+
+  it('a head in front of a grainy gradient: the background is one area, the head has one outline', () => {
+    let seed = 11
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647
+    const px = sheet()
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) put(px, W, x, y, [196 - 60 * (y / H), 206 - 60 * (y / H), 216 - 56 * (y / H)])
+    disc(px, W, 300, 400, 170, [92, 54, 28])                     // dark hair
+    disc(px, W, 300, 440, 120, [232, 186, 150])                  // the face
+    disc(px, W, 255, 420, 20, [250, 250, 250]); disc(px, W, 345, 420, 20, [250, 250, 250])   // the eyes
+    for (let pass = 0; pass < 2; pass++) {                       // a photo is never sharp
+      const src = px.slice()
+      for (let y = 2; y < H - 2; y++) for (let x = 2; x < W - 2; x++) for (let c = 0; c < 3; c++) {
+        let sum = 0
+        for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) sum += src[((y + dy) * W + x + dx) * 4 + c]
+        px[(y * W + x) * 4 + c] = sum / 25
+      }
+    }
+    for (let i = 0; i < px.length; i += 4) { const n = (rnd() - 0.5) * 34; px[i] += n; px[i + 1] += n; px[i + 2] += n }
+    const res = toColoringPage(px, W, H)
+    expect(res.kind).toBe('photo')
+    expect(area(res, 30, 30)).toBe(area(res, 30, 770))           // no seam across the background
+    expect(area(res, 570, 400)).toBe(area(res, 30, 30))
+    const hair = area(res, 300, 260), face = area(res, 300, 500)
+    expect(new Set([area(res, 30, 30), hair, face]).size).toBe(3)
+    expect(area(res, 255, 420)).not.toBe(face)                   // both eyes are there
+    expect(area(res, 345, 420)).not.toBe(face)
+    expect(res.regions).toBeLessThan(9)                          // no strip along the hair
+  })
+})
+
 describe('joining line ends', () => {
   it('joins an end to the line it points at, not to itself', () => {
     const w = 120, h = 80, m = new Uint8Array(w * h)
@@ -213,7 +299,7 @@ describe('photos and cartoons', () => {
     }
     disc(px, w, 655, 105, 55, [255, 220, 80])                      // the sun
     rect(px, w, 260, 260, 450, 430, [214, 160, 110])               // the house
-    for (let y = 165; y < 260; y++) rect(px, w, 355 - (y - 165) * 1.2, y, 355 + (y - 165) * 1.2, y + 1, [170, 60, 50])
+    for (let y = 165; y < 260; y++) rect(px, w, Math.round(355 - (y - 165) * 1.2), y, Math.round(355 + (y - 165) * 1.2), y + 1, [170, 60, 50])
     rect(px, w, 330, 340, 380, 430, [110, 70, 40])
     rect(px, w, 280, 290, 320, 330, [170, 215, 240]); rect(px, w, 395, 290, 435, 330, [170, 215, 240])
     rect(px, w, 565, 320, 590, 450, [105, 70, 40])                 // the trunk

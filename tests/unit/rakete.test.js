@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { TOP, PLUS, MINUS, levelPlan, buildTasks, countChoices, judge, gapsBetween, freeGap, RESIDENTS, dirOf, starsWon, landingLead, tapHelp } from '../../src/games/rakete/tasks.js'
-import { layout, hopPath, bow, clamp, moonFlight, lineAt } from '../../src/games/rakete/layout.js'
-import { FLY_MAX, flyStep, flyHeight, flyDown, crossings, releaseAt, reachOf, hopArcs } from '../../src/games/rakete/fly.js'
+import { layout, hopPath, bow, clamp, moonFlight, lineAt, feetFor } from '../../src/games/rakete/layout.js'
+import { FLY_MAX, REST_S, flyStep, flyHeight, flyDown, crossings, releaseAt, reachOf, hopArcs, hushed, holdTarget, setDownAnswers } from '../../src/games/rakete/fly.js'
 import { windowSpots, ThrustButton } from '../../src/games/rakete/parts.jsx'
 import { hasEmojiArt } from '../../src/lib/emojiArt.jsx'
 
@@ -244,26 +244,35 @@ describe('Planeten-Hüpfer: the layout', () => {
 
 describe('Planeten-Hüpfer: flying by hand, and hopping back', () => {
   // the frame loop of RocketMathGame (flyFrame), without the drawing: the
-  // finger at `finger(t)`, 60 frames a second; returns what the buttons
-  // would have made of it (arcs, where the rocket is, the planets said)
-  const fly = ({ start, finger, seconds, reach = { lo: 0, hi: TOP }, arcs = [], release = true }) => {
-    let x = start, cell = start, id = 0
-    const said = [], dt = 1 / 60
-    const pass = target => {
+  // finger at `finger(t)`, 60 frames a second, let go after `seconds` where
+  // the finger is then; `clip`: how long each planet's number plays. Returns
+  // what the buttons would have made of it (arcs, where the rocket is, the
+  // planets said and when, where it was when the finger let go)
+  const fly = ({ start, finger, seconds, reach = { lo: 0, hi: TOP }, arcs = [], release = true, clip = 0 }) => {
+    let x = start, cell = start, id = 0, t = 0, still = 0, ft = null, hush = -1
+    const said = [], when = [], dt = 1 / 60
+    const pass = (target, glide) => {
       let nx = flyStep(x, target, dt)
-      if (release && target === goal && Math.abs(nx - goal) < 0.04) nx = goal
+      if (glide && Math.abs(nx - target) < 0.04) nx = target
+      nx = hushed(nx, cell, hush > t)
       const c = crossings(cell, nx)
       let from = cell
-      for (const m of c.passed) { arcs = hopArcs(arcs, from, m, ++id); said.push(m); from = m }
-      cell = c.cell; x = nx
+      for (const m of c.passed) { arcs = hopArcs(arcs, from, m, ++id); said.push(m); when.push(t); hush = t + clip; from = m }
+      cell = c.cell; x = nx; t += dt
     }
+    while (t < seconds) {
+      const want = clamp(finger(t), reach.lo, reach.hi)
+      still = ft != null && Math.abs(want - ft) < 0.03 ? still + dt : 0
+      ft = want
+      pass(holdTarget(want, still), false)
+    }
+    const atRelease = { x, cell, said: [...said] }
     let goal = null
-    for (let t = 0; t < seconds; t += dt) pass(clamp(finger(t), reach.lo, reach.hi))
     if (release) {
-      goal = releaseAt(x, reach)
-      for (let i = 0; i < 600 && x !== goal; i++) pass(goal)
+      goal = releaseAt(finger(t), reach)
+      for (let i = 0; i < 1200 && x !== goal; i++) pass(goal, true)
     }
-    return { x, cell, arcs, said, goal }
+    return { x, cell, arcs, said, when, goal, atRelease }
   }
 
   it('follows the finger with a lag, and never faster than the top speed', () => {
@@ -281,12 +290,14 @@ describe('Planeten-Hüpfer: flying by hand, and hopping back', () => {
     expect(flyStep(3, 3.5, 1 / 60)).toBeLessThan(3.5)
     expect(flyStep(3, 3.5, 1 / 60)).toBeGreaterThan(3)
     // and it gets there
-    expect(fly({ start: 3, finger: () => 3.5, seconds: 3, release: false }).x).toBe(3.5)
+    let y = 3
+    for (let i = 0; i < 180; i++) y = flyStep(y, 3.5, 1 / 60)
+    expect(y).toBe(3.5)
   })
 
   it('every planet on the way is a hop, in order, said and counted as the buttons do', () => {
-    const r = fly({ start: 2, finger: () => 9, seconds: 2.4, release: false })
-    // 2.4 s at two planets a second: over 3, 4, 5, 6 (and close to 7), none skipped
+    const r = fly({ start: 2, finger: () => 9, seconds: 3.3, release: false })
+    // 3.3 s at 1.25 planets a second: over 3, 4, 5, 6 (and on to 7), none skipped
     expect(r.said).toEqual([3, 4, 5, 6])
     expect(r.arcs.map(h => [h.a, h.b])).toEqual([[2, 3], [3, 4], [4, 5], [5, 6]])
     // a planet counts when the rocket is over it, not half way there
@@ -315,13 +326,65 @@ describe('Planeten-Hüpfer: flying by hand, and hopping back', () => {
     expect(s.arcs.map(h => h.b)).toEqual([4, 5])
   })
 
+  it('a quick swipe lands where the finger let go, not where the lagging rocket was (R1)', () => {
+    // from 3, the finger at 7 at once and lifted there after 0.3 s
+    const r = fly({ start: 3, finger: () => 7, seconds: 0.3 })
+    expect(r.atRelease.x).toBeLessThan(4)          // the rocket had not even reached 4
+    expect(r.goal).toBe(7)
+    expect(r.x).toBe(7)
+    // it flew on there, counting each planet on the way
+    expect(r.said).toEqual([4, 5, 6, 7])
+    expect(r.arcs.map(h => h.b)).toEqual([4, 5, 6, 7])
+    expect(judge({ op: PLUS, from: 3, step: 4, target: 7 }, r.x)).toBe('right')
+    // lifted past the end of what it may reach: the last planet it may
+    expect(fly({ start: 3, finger: () => 14, seconds: 0.2 }).x).toBe(TOP)
+    expect(fly({ start: 3, finger: () => -3, seconds: 0.2, reach: reachOf(levelPlan(1), { op: PLUS, from: 3 }) }).x).toBe(3)
+  })
+
+  it('held still over a planet, the rocket settles onto it and counts it before it is let go (R3)', () => {
+    expect(holdTarget(6.8, 0)).toBe(6.8)
+    expect(holdTarget(6.8, REST_S)).toBe(7)
+    expect(holdTarget(6.3, REST_S + 1)).toBe(6)
+    // the finger rests a little short of 7: 7 is counted while it is held
+    const r = fly({ start: 3, finger: () => 6.8, seconds: 5, release: false })
+    expect(r.x).toBe(7)
+    expect(r.said).toEqual([4, 5, 6, 7])
+    // held over the start: nothing to count
+    expect(fly({ start: 3, finger: () => 3.2, seconds: 3, release: false }).said).toEqual([])
+  })
+
+  it('every planet number is heard to its end, however fast the finger (R5)', () => {
+    // the clips are up to 0.8 s long; the finger at 0 at once, from 9
+    const r = fly({ start: 9, finger: () => 0, seconds: 12, release: false, clip: 0.8 })
+    expect(r.said).toEqual([8, 7, 6, 5, 4, 3, 2, 1, 0])
+    for (let i = 1; i < r.when.length; i++) expect(r.when[i] - r.when[i - 1]).toBeGreaterThanOrEqual(0.8)
+    // the same after letting go: the glide waits for the numbers too
+    const s = fly({ start: 2, finger: () => 8, seconds: 0.2, clip: 0.8 })
+    expect(s.said).toEqual([3, 4, 5, 6, 7, 8])
+    for (let i = 1; i < s.when.length; i++) expect(s.when[i] - s.when[i - 1]).toBeGreaterThanOrEqual(0.8)
+    // and the top speed alone is slow: one planet takes longer than a short number
+    expect(1 / FLY_MAX).toBeGreaterThanOrEqual(0.75)
+    // the wait: just short of the next planet, never on to it
+    expect(hushed(4.99, 4, true)).toBeCloseTo(4.97, 6)
+    expect(hushed(3.01, 4, true)).toBeCloseTo(3.03, 6)
+    expect(hushed(4.5, 4, true)).toBe(4.5)
+    expect(hushed(5, 4, false)).toBe(5)
+  })
+
+  it('set down by hand is the answer anywhere but the start of the sum, also after a flame hop (R4)', () => {
+    const t = { op: PLUS, from: 1, step: 1, target: 2 }
+    expect(setDownAnswers(t, 2)).toBe(true)        // hopped to 2 with the flame, picked up and set down there
+    expect(setDownAnswers(t, 3)).toBe(true)
+    expect(setDownAnswers(t, 1)).toBe(false)       // back on the start: nothing was done
+  })
+
   it('going back takes a hop off the count, by hand and with the buttons alike', () => {
     // with the buttons: 3 → 4 → 5 → 6, one too far, back to 5
     let arcs = []
     for (const [a, b] of [[3, 4], [4, 5], [5, 6], [6, 5]]) arcs = hopArcs(arcs, a, b, arcs.length + 1)
     expect(arcs.map(h => [h.a, h.b])).toEqual([[3, 4], [4, 5]])
     // by hand: on to 6, then back to 5 before letting go
-    const r = fly({ start: 3, finger: t => (t < 2.5 ? 6 : 5), seconds: 4.5 })
+    const r = fly({ start: 3, finger: t => (t < 3.2 ? 6 : 5), seconds: 5.5 })
     expect(r.x).toBe(5)
     expect(r.said).toEqual([4, 5, 6, 5])
     expect(r.arcs.map(h => [h.a, h.b])).toEqual([[3, 4], [4, 5]])
@@ -371,6 +434,35 @@ describe('Planeten-Hüpfer: flying by hand, and hopping back', () => {
         } else {
           expect(f.y - L.rh, `${w}x${h} nose at ${n}`).toBeGreaterThanOrEqual(L.short ? 0 : L.card.y + L.card.h)
         }
+      }
+    }
+  })
+
+  it('flown by hand, the body is over the planet that counts, at every size and lean, and on the screen (R2)', () => {
+    for (const [w, h] of [[1024, 692], [390, 772], [844, 314]]) {
+      const L = layout(w, h)
+      const hover = (L.arcH + 24) * 0.55
+      for (const n of [0, 2.5, 4, 10]) {
+        for (const lean of [-22, 0, 22]) {
+          const deg = L.base + L.lean * lean
+          const f = feetFor(L, n, L.pr + hover, deg)
+          const a = (deg * Math.PI) / 180
+          // the middle of the body, from the feet along the nose
+          const mid = { x: f.x + (L.rh / 2) * Math.sin(a), y: f.y - (L.rh / 2) * Math.cos(a) }
+          expect(lineAt(L, mid), `${w}x${h} n=${n} lean=${lean}`).toBeCloseTo(n, 6)
+          // the four corners of the rocket stay on the screen
+          for (const [u, v] of [[-L.rw / 2, 0], [L.rw / 2, 0], [-L.rw / 2, -L.rh], [L.rw / 2, -L.rh]]) {
+            const cx = f.x + u * Math.cos(a) - v * Math.sin(a), cy = f.y + u * Math.sin(a) + v * Math.cos(a)
+            expect(cx, `${w}x${h} n=${n} lean=${lean}`).toBeGreaterThanOrEqual(0)
+            expect(cx).toBeLessThanOrEqual(w)
+            expect(cy, `${w}x${h} n=${n} lean=${lean}`).toBeGreaterThanOrEqual(0)
+            expect(cy).toBeLessThanOrEqual(h)
+          }
+        }
+        // upright (no lean) the feet are where they stand on the planet, only higher
+        const f = feetFor(L, n, L.pr, L.base)
+        expect(f.x).toBeCloseTo(L.P(n, L.pr).x, 6)
+        expect(f.y).toBeCloseTo(L.P(n, L.pr).y, 6)
       }
     }
   })
