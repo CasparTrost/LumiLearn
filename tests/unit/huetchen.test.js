@@ -49,9 +49,9 @@ describe('Hütchenspiel: the levels', () => {
     }
   })
 
-  it('five bushes only on a wide screen', () => {
+  it('five bushes only on a wide screen, three on a phone held upright', () => {
     expect(bushesFor(LEVELS[6], 1024)).toBe(5)
-    expect(bushesFor(LEVELS[6], 390)).toBe(4)
+    expect(bushesFor(LEVELS[6], 390)).toBe(3)
     expect(bushesFor(LEVELS[0], 390)).toBe(3)
   })
 })
@@ -164,6 +164,24 @@ describe('Hütchenspiel: the layout', () => {
         expect(L.bubble.ax + 14 + L.bubble.maxW).toBeLessThanOrEqual(W)
         expect(L.lumi.y + L.lumi.s).toBeLessThanOrEqual(L.ground - L.bh + thingY(L.bh, L.T).top)
       }
+    }
+  })
+
+  it('on a phone held upright the bushes are raised and bigger than Lumi', () => {
+    const L = layoutFor(390, 770, 3, 10)
+    expect(L.ground).toBeLessThan(770 * 0.85)
+    expect(L.meadow).toBeLessThan(L.ground)
+    expect(L.B).toBeGreaterThan(110)
+    expect(L.lumi.s).toBeLessThan(L.B * 1.1)
+    expect(layoutFor(1024, 690, 4, 10).meadow).toBe(null)
+  })
+
+  it('the stump stands between the things on the first two bushes', () => {
+    for (const [W, H, n] of SIZES) {
+      const L = layoutFor(W, H, n, 10)
+      if (!L.stump) continue
+      expect(L.stump.x - L.stump.w / 2, `${W}x${H}`).toBeGreaterThanOrEqual(L.slots[0] + L.T / 2)
+      expect(L.stump.x + L.stump.w / 2, `${W}x${H}`).toBeLessThanOrEqual(L.slots[1] - L.T / 2)
     }
   })
 

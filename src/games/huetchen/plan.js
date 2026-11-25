@@ -11,7 +11,10 @@
 
 // Every word has Lumi's recording (woerter/<slug>) and an illustrated
 // picture; a test checks both. One picture, one name: nothing a child might
-// call by another word.
+// call by another word. (Left out for that reason: Socke, drawn as a pair;
+// Kanne, a teapot; Vase, an amphora; Wolf, which looks like a husky; Zug, a
+// steam engine a child calls Lok. No body parts either: a nose or a mouth
+// hiding in a bush is odd.)
 const W = (word, emoji, cat) => ({ word, emoji, cat })
 export const BANK = [
   // animals
@@ -21,21 +24,21 @@ export const BANK = [
   W('Frosch', '🐸', 'tier'), W('Schildkröte', '🐢', 'tier'), W('Biene', '🐝', 'tier'), W('Schmetterling', '🦋', 'tier'),
   W('Schnecke', '🐌', 'tier'), W('Krokodil', '🐊', 'tier'), W('Igel', '🦔', 'tier'), W('Maus', '🐭', 'tier'), W('Hase', '🐰', 'tier'),
   W('Ente', '🦆', 'tier'), W('Hahn', '🐓', 'tier'), W('Zebra', '🦓', 'tier'), W('Panda', '🐼', 'tier'), W('Koala', '🐨', 'tier'),
-  W('Wolf', '🐺', 'tier'), W('Lama', '🦙', 'tier'), W('Papagei', '🦜', 'tier'), W('Dino', '🦕', 'tier'), W('Fisch', '🐟', 'tier'),
+  W('Lama', '🦙', 'tier'), W('Papagei', '🦜', 'tier'), W('Dino', '🦕', 'tier'), W('Fisch', '🐟', 'tier'),
   W('Wal', '🐋', 'tier'), W('Hai', '🦈', 'tier'),
   // food
-  W('Apfel', '🍎', 'essen'), W('Banane', '🍌', 'essen'), W('Erdbeere', '🍓', 'essen'), W('Pizza', '🍕', 'essen'), W('Kuchen', '🎂', 'essen'),
+  W('Apfel', '🍎', 'essen'), W('Banane', '🍌', 'essen'), W('Erdbeere', '🍓', 'essen'), W('Pizza', '🍕', 'essen'), W('Kuchen', '🍰', 'essen'),
   W('Eis', '🍦', 'essen'), W('Brot', '🍞', 'essen'), W('Keks', '🍪', 'essen'), W('Karotte', '🥕', 'essen'), W('Käse', '🧀', 'essen'),
   W('Ananas', '🍍', 'essen'), W('Zitrone', '🍋', 'essen'), W('Gurke', '🥒', 'essen'), W('Mais', '🌽', 'essen'), W('Tomate', '🍅', 'essen'),
   // things
   W('Ball', '⚽', 'ding'), W('Buch', '📖', 'ding'), W('Schere', '✂️', 'ding'), W('Krone', '👑', 'ding'), W('Geschenk', '🎁', 'ding'),
   W('Brille', '👓', 'ding'), W('Gitarre', '🎸', 'ding'), W('Koffer', '🧳', 'ding'), W('Kerze', '🕯️', 'ding'), W('Schlüssel', '🔑', 'ding'),
   W('Trommel', '🥁', 'ding'), W('Anker', '⚓', 'ding'), W('Zauberstab', '🪄', 'ding'), W('Hut', '🎩', 'ding'), W('Eimer', '🪣', 'ding'),
-  W('Schuh', '👟', 'ding'), W('Socke', '🧦', 'ding'), W('Hose', '👖', 'ding'), W('Roboter', '🤖', 'ding'), W('Tasse', '☕', 'ding'),
-  W('Tasche', '👜', 'ding'), W('Schal', '🧣', 'ding'), W('Dose', '🥫', 'ding'), W('Vase', '🏺', 'ding'), W('Kanne', '🫖', 'ding'),
+  W('Schuh', '👟', 'ding'), W('Hose', '👖', 'ding'), W('Roboter', '🤖', 'ding'), W('Tasse', '☕', 'ding'),
+  W('Tasche', '👜', 'ding'), W('Schal', '🧣', 'ding'), W('Dose', '🥫', 'ding'),
   W('Stein', '🪨', 'ding'), W('Feder', '🪶', 'ding'),
   // vehicles
-  W('Rakete', '🚀', 'fahrt'), W('Zug', '🚂', 'fahrt'), W('Auto', '🚗', 'fahrt'), W('Flugzeug', '✈️', 'fahrt'), W('Schiff', '🚢', 'fahrt'),
+  W('Rakete', '🚀', 'fahrt'), W('Auto', '🚗', 'fahrt'), W('Flugzeug', '✈️', 'fahrt'), W('Schiff', '🚢', 'fahrt'),
   W('Fahrrad', '🚲', 'fahrt'), W('Traktor', '🚜', 'fahrt'), W('Hubschrauber', '🚁', 'fahrt'), W('Bus', '🚌', 'fahrt'), W('Ufo', '🛸', 'fahrt'),
   // nature
   W('Sonne', '☀️', 'natur'), W('Mond', '🌙', 'natur'), W('Stern', '⭐', 'natur'), W('Regenbogen', '🌈', 'natur'), W('Blume', '🌸', 'natur'),
@@ -46,38 +49,37 @@ export const wordOf = word => byWord[word]
 
 // The first levels: words every four-year-old knows, from different areas
 const EASY = ['Hund', 'Katze', 'Kuh', 'Schwein', 'Löwe', 'Bär', 'Elefant', 'Affe', 'Frosch', 'Maus', 'Ente', 'Fisch', 'Hase',
-  'Apfel', 'Banane', 'Eis', 'Kuchen', 'Pizza', 'Karotte', 'Ball', 'Buch', 'Auto', 'Zug', 'Schuh', 'Hut', 'Geschenk', 'Krone',
+  'Apfel', 'Banane', 'Eis', 'Kuchen', 'Pizza', 'Karotte', 'Ball', 'Buch', 'Auto', 'Schuh', 'Hut', 'Geschenk', 'Krone',
   'Sonne', 'Mond', 'Stern', 'Blume', 'Rakete', 'Bus', 'Schiff', 'Trommel', 'Brille', 'Tiger', 'Giraffe', 'Pinguin']
 
 // Words that sound alike (one sound apart): in levels 6 and 7 one such set
 // hides in every shuffle, and one of it is called. Here a child has to
 // listen to the whole word, not only guess from what it means.
 export const SOUND_SETS = [
-  ['Maus', 'Haus', 'Mais'], ['Hase', 'Vase', 'Hose'], ['Rose', 'Hose', 'Dose'], ['Kanne', 'Tanne'],
-  ['Mond', 'Hund'], ['Schwein', 'Stein'], ['Kuh', 'Schuh'], ['Fisch', 'Tisch'],
+  ['Maus', 'Haus', 'Mais'], ['Hase', 'Hose'], ['Rose', 'Hose', 'Dose'], ['Kuh', 'Schuh'], ['Fisch', 'Tisch'],
   ['Tasse', 'Tasche'], ['Wal', 'Schal'],
 ]
 
-// Reading: short words that are read the way they are written
-const READ_SHORT = ['Hund', 'Maus', 'Ball', 'Eis', 'Bus', 'Hut', 'Kuh', 'Hai', 'Zug', 'Mond', 'Auto', 'Igel', 'Ente', 'Hase',
-  'Rose', 'Hose', 'Wal', 'Buch', 'Brot', 'Pilz', 'Lama', 'Ufo', 'Affe', 'Haus', 'Dose', 'Vase', 'Wolf', 'Stern', 'Dino', 'Keks']
-const READ_MID = [...READ_SHORT, 'Sonne', 'Tiger', 'Zebra', 'Panda', 'Fisch', 'Tasse', 'Wolke', 'Apfel', 'Pizza', 'Kerze',
+// Reading: short words that are read the way they are written (no final
+// d or g said as t or k, no silent h, no v said as f, no st said as scht)
+const READ_SHORT = ['Maus', 'Ball', 'Eis', 'Bus', 'Hut', 'Auto', 'Igel', 'Ente', 'Hase', 'Rose', 'Hose', 'Wal', 'Buch',
+  'Brot', 'Pilz', 'Lama', 'Ufo', 'Affe', 'Haus', 'Dose', 'Dino', 'Keks']
+const READ_MID = [...READ_SHORT, 'Hund', 'Mond', 'Kuh', 'Hai', 'Stern', 'Sonne', 'Tiger', 'Zebra', 'Panda', 'Fisch', 'Tasse', 'Wolke', 'Apfel', 'Pizza', 'Kerze',
   'Krone', 'Banane', 'Tomate', 'Rakete', 'Gurke', 'Eule', 'Biene', 'Katze', 'Schaf', 'Schuh', 'Hahn', 'Koala']
-// Look-alike words for the last level: the first letter decides
+// Look-alike words for the last level: one letter decides
 export const LOOK_SETS = [
-  ['Maus', 'Haus'], ['Hase', 'Vase', 'Nase'], ['Rose', 'Hose', 'Dose'], ['Hund', 'Mund'], ['Fisch', 'Tisch'],
-  ['Tasse', 'Tasche'], ['Wal', 'Schal'], ['Kanne', 'Tanne'], ['Hahn', 'Zahn'],
+  ['Maus', 'Haus'], ['Maus', 'Mais'], ['Hase', 'Hose'], ['Rose', 'Hose', 'Dose'], ['Fisch', 'Tisch'],
+  ['Tasse', 'Tasche'], ['Wal', 'Schal'],
 ]
 // Words only the sets above use (pictures that do not stand alone well)
-const EXTRA = [W('Tisch', ':px-tisch:', 'ding'), W('Nase', '👃', 'ding'), W('Mund', '👄', 'ding'), W('Tanne', '🌲', 'natur'),
-  W('Zahn', '🦷', 'ding')]
+const EXTRA = [W('Tisch', ':px-tisch:', 'ding')]
 for (const w of EXTRA) byWord[w.word] = w
 export const ALL_WORDS = [...BANK, ...EXTRA]
 
 // Pairs that are never in one shuffle by chance: too alike in meaning
 // (a cake or a biscuit?) or in sound, outside the levels that ask for it
-const CLOSE = [['Fisch', 'Hai', 'Wal'], ['Kuchen', 'Keks'], ['Maus', 'Hase'], ['Tasse', 'Kanne'], ['Löwe', 'Tiger'],
-  ['Rose', 'Blume'], ['Hund', 'Wolf', 'Fuchs'], ['Schaf', 'Lama'], ['Mond', 'Stern'], ['Hut', 'Krone']]
+const CLOSE = [['Fisch', 'Hai', 'Wal'], ['Kuchen', 'Keks'], ['Maus', 'Hase'], ['Löwe', 'Tiger'],
+  ['Rose', 'Blume'], ['Hund', 'Fuchs'], ['Schaf', 'Lama'], ['Mond', 'Stern'], ['Hut', 'Krone']]
 const soundAlike = (a, b) => [...SOUND_SETS, ...LOOK_SETS].some(s => s.includes(a) && s.includes(b))
 export const tooClose = (a, b) => a !== b && (CLOSE.some(g => g.includes(a) && g.includes(b)) || soundAlike(a, b))
 
@@ -110,8 +112,11 @@ export const levelConfig = level => LEVELS[Math.max(0, Math.min(LEVELS.length - 
 /** What a level counts: every find, once */
 export const findsIn = cfg => cfg.shuffles * cfg.finds
 
-/** Five bushes need a wide screen; on a phone held upright four stay big enough to hit. */
-export const bushesFor = (cfg, width) => Math.min(cfg.bushes, width < 600 ? 4 : 5)
+/**
+ * Five bushes need a wide screen. On a phone held upright three: with four
+ * they were a thin strip, too small to follow the swaps.
+ */
+export const bushesFor = (cfg, width) => Math.min(cfg.bushes, width < 600 ? 3 : 5)
 
 const shuffled = (a, rnd) => {
   const b = [...a]

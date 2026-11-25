@@ -65,6 +65,20 @@ export const MOMENT = Object.fromEntries(MOMENTS.map(m => [m.id, m]))
 /** The time the clock shows when a level begins: six in the morning, Lumi still asleep. */
 export const DAWN = 6 * 60
 
+/**
+ * A face that is hard to read for a child who just learnt it: the hour hand
+ * almost on the next hour (from :45 on, 12:55 looked like 1:55), or the two
+ * hands on top of each other (4:25). Level 9 leaves these out of its
+ * reading rounds; level 10 keeps them.
+ */
+export function hardToRead(time) {
+  const m = minuteOf(time)
+  if (m >= 45) return true
+  const hourAngle = faceOf(time) * 0.5, minuteAngle = m * 6
+  const d = mod(hourAngle - minuteAngle, 360)
+  return Math.min(d, 360 - d) < 20
+}
+
 const isNewStep = (minute, step) => {
   if (step >= 60) return true
   if (step === 5) return minute % 15 !== 0
@@ -93,7 +107,8 @@ export function planDay(level, rnd = Math.random) {
     for (const m of picked) {
       const lo = Math.max(m.from, prev + gap)
       const options = []
-      for (let t = Math.ceil(lo / step) * step; t <= m.to; t += step) options.push(t)
+      const easy = level === 9 && reading.includes(out.length)
+      for (let t = Math.ceil(lo / step) * step; t <= m.to; t += step) if (!easy || !hardToRead(t)) options.push(t)
       if (!options.length) { ok = false; break }
       const fresh = options.filter(t => isNewStep(t % 60, step))
       const pool = fresh.length && rnd() < 0.7 ? fresh : options

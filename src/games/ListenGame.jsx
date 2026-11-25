@@ -4,7 +4,6 @@ import { sfx } from '../sfx.js'
 import { narrate, lockPreviews, leaveGame } from '../narrator.js'
 import { sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
-import { usePaused } from '../lib/pause.js'
 import { Critter, Art, HintHand, useBursts, useJuice, useMood } from '../components/play/index.js'
 import { useLater } from './zahlen/stage.jsx'
 import { rec, wordRec } from './buchstaben/voice.js'
@@ -33,15 +32,16 @@ import { Bush, Stump, Bubble, Speaker, SwapArrows, Rings } from './huetchen/part
  *     says its name again. After two misses that bush wiggles and the
  *     wanted thing peeks out of it; the hand points there.
  *   • At the end of a shuffle the others hop out and show where they were.
- * Now and then, while the child thinks, a squirrel pokes its head out from
- * behind a bush and sticks out its tongue. Only a joke: it is never asked for.
+ * Nothing else comes out of a bush while the child looks for one: a
+ * squirrel that popped out of one, giggling, read as "it's in here".
  *
  * Levels (huetchen/plan.js): three bushes and no swap, then one slow swap,
  * four bushes and two swaps, three swaps and two finds per shuffle, words
  * that sound alike side by side (Maus, Haus, Mais), five bushes and four
  * swaps; levels 8 to 10 are for reading: Lumi holds up a sign with the
- * word instead of saying it (a tap on the sign reads it; after a miss it
- * is read by itself), at the end with words that look alike (Hose, Rose).
+ * word instead of saying it, the things hop in without saying their names,
+ * and the sign is read aloud only after a miss (then a tap on it reads it
+ * again), at the end with words that look alike (Hose, Rose).
  * The swaps get a little quicker when a shuffle goes without a miss and
  * slower after one. Score: the finds at the first tap.
  *
@@ -66,7 +66,6 @@ function drumRoll(ms) {
 export default function ListenGame({ level = 1, onComplete }) {
   const cfg = useMemo(() => levelConfig(level), [level])
   const total = findsIn(cfg)
-  const paused = usePaused()
   const reduce = !!useReducedMotion()
   const { later, afterSpeech } = useLater()
   const juice = useJuice({ hudSize: 30 })
@@ -87,7 +86,6 @@ export default function ListenGame({ level = 1, onComplete }) {
   const [found, setFound] = useState([])        // the row at the top
   const [flyers, setFlyers] = useState([])
   const [arrows, setArrows] = useState(null)    // reduced motion: which two swap next
-  const [cheeky, setCheeky] = useState({ id: null, n: 0 })
   const [signPulse, setSignPulse] = useState(0)
 
   // What the timers work on; the state above is its picture
@@ -152,18 +150,20 @@ export default function ListenGame({ level = 1, onComplete }) {
     else later(950 + nn * 110, () => hideNext(0))
   }
 
-  // one after the other they say their word and hop into their bush
+  // one after the other they say their word and hop into their bush (in the
+  // reading levels they hop in silently: a heard name would make the sign
+  // something to match by ear, not to read)
   const hideNext = i => {
     const sh = g.sh
     if (i >= sh.things.length) { later(450, () => swapNext(0)); return }
     go('hide')
     const b = atSlot(i)
-    narrate([wordRec(b.word)])
+    if (!cfg.read) narrate([wordRec(b.word)])
     later(reduce ? 150 : 380, () => {
       patch(b.id, { thing: 'in' })
       later(reduce ? 80 : 330, () => rustle(b.id))
     })
-    afterSpeech(() => hideNext(i + 1), cfg.gap)
+    afterSpeech(() => hideNext(i + 1), cfg.read ? Math.max(cfg.gap, 1100) : cfg.gap)
   }
 
   // two bushes swap places: one passes behind (up and smaller), one in front
@@ -214,8 +214,10 @@ export default function ListenGame({ level = 1, onComplete }) {
     else narrate([wordRec(t.word)])
   }
 
+  // the word again; in the reading levels only after a miss (before it,
+  // the sign is to be read, not heard)
   const say = () => {
-    if (!g.target) return
+    if (!g.target || (cfg.read && g.misses === 0)) return
     narrate([wordRec(g.target.word)])
     setSignPulse(p => p + 1)
   }
@@ -330,16 +332,6 @@ export default function ListenGame({ level = 1, onComplete }) {
     later(400, () => startShuffle(0))
   }, [size]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // the squirrel: while the child thinks, once per call
-  useEffect(() => {
-    if (phase !== 'find' || paused || reduce) return
-    const t = setTimeout(() => {
-      const alive = g.bushes.filter(b => !b.gone)
-      if (alive.length) setCheeky(c => ({ id: alive[Math.floor(Math.random() * alive.length)].id, n: c.n + 1 }))
-    }, 5000 + Math.random() * 3000)
-    return () => clearTimeout(t)
-  }, [phase, paused, reduce, target, g])
-
   // ── The picture ────────────────────────────────────────────────────────
 
   const calling = !!target && (phase === 'find' || phase === 'oops' || phase === 'found')
@@ -373,10 +365,10 @@ export default function ListenGame({ level = 1, onComplete }) {
       const fs = Math.max(20, Math.min(clamp(bs * 0.36, 28, 50), (L.bubble.maxW - 52 - (phase === 'found' ? picS + 8 : 0)) / (0.64 * target.word.length + 0.5)))
       bubble = (
         <Bubble L={L} k={`sign-${target.word}`} wood>
-          <motion.button type="button" ref={speakerRef} onClick={say} aria-label={`${target.word}. Vorlesen`}
+          <motion.button type="button" ref={speakerRef} onClick={say} aria-label={misses ? `${target.word}. Vorlesen` : target.word}
             key={signPulse} initial={signPulse && !reduce ? { scale: 1.12 } : false} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 10 }}
             style={{
-              all: 'unset', cursor: 'pointer', minHeight: 64, minWidth: 64, boxSizing: 'border-box', padding: '4px 14px',
+              all: 'unset', cursor: misses ? 'pointer' : 'default', minHeight: 64, minWidth: 64, boxSizing: 'border-box', padding: '4px 14px',
               display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff3d6', border: '3px solid #2a1b3d', borderRadius: 10,
               fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: fs, color: '#2a1b3d', letterSpacing: 1, whiteSpace: 'nowrap',
             }}>{target.word}</motion.button>
@@ -414,6 +406,13 @@ export default function ListenGame({ level = 1, onComplete }) {
             <Rings L={L} found={found} finale={phase === 'finale'} reduce={reduce} setEl={(k, el) => { ringEls.current[k] = el }} />
             <div style={{ position: 'absolute', right: L.strip.x + 4, top: L.strip.y + L.strip.h / 2, transform: 'translateY(-50%)', zIndex: 4 }}>{juice.hud}</div>
 
+            {/* on a tall screen the meadow comes up to the raised bushes */}
+            {L.meadow != null && (
+              <div aria-hidden="true" style={{
+                position: 'absolute', left: 0, right: 0, top: L.meadow, bottom: 0,
+                background: 'linear-gradient(#6cb352, #5c9e45 48px)', borderTop: '4px solid rgba(42,27,61,0.16)',
+              }} />
+            )}
             <Stump s={L.stump} />
             <div style={{ position: 'absolute', left: L.lumi.x, top: L.lumi.y, zIndex: 6 }}>
               <Critter art="lumi" size={L.lumi.s} mood={mood} talks label="Lumi" shadow={!L.stump} />
@@ -423,7 +422,6 @@ export default function ListenGame({ level = 1, onComplete }) {
             {bushes.map(b => (
               <Bush key={b.id} L={L} b={b} reduce={reduce}
                 mode={phase === 'drum' ? 'drum' : phase === 'find' ? 'find' : 'still'}
-                cheeky={cheeky.id === b.id && phase === 'find' ? cheeky.n : 0}
                 setEl={el => { bushEls.current[b.id] = el }}
                 onTap={tap} />
             ))}
@@ -448,11 +446,12 @@ export default function ListenGame({ level = 1, onComplete }) {
         )}
       </div>
 
-      {/* a child who waits: the hand shows the loudspeaker (or the sign), to
-          hear the word again; after two misses it points at the right bush.
+      {/* a child who waits: the hand shows the loudspeaker, to hear the word
+          again (not the sign in the reading levels: that is to be read);
+          after two misses it points at the right bush.
           (A hand between two bushes, to say "tap a bush", looked like it
           pointed at one of them: a hint at a guess.) */}
-      <HintHand key={`say-${g.k}-${g.call}`} to={speakerRef} active={phase === 'find' && misses === 0} delay={firstCall && level <= 2 ? 5000 : 8000} />
+      <HintHand key={`say-${g.k}-${g.call}`} to={speakerRef} active={phase === 'find' && misses === 0 && !cfg.read} delay={firstCall && level <= 2 ? 5000 : 8000} />
       <HintHand key={`help-${g.k}-${g.call}`} to={helpRef} active={phase === 'find' && misses >= 2 && !!helpBush} delay={600} />
       {bursts}
       {juice.layer}
