@@ -475,6 +475,48 @@ async function playShadows(page) {
   await page.context().close()
 }
 
+// 3k. Hörabenteuer (Hütchenspiel im Gebüsch): level 1 to the results: the
+// things hop into their bushes, Lumi calls one, its bush is tapped; at the
+// first call a wrong bush first (its thing pops out and goes back in)
+{
+  const page = await newPage(SIZES.phone, save)
+  await page.goto(URL); await page.waitForTimeout(1500)
+  await page.getByRole('button', { name: /^Hörabenteuer, Level/ }).last().click()
+  const game = page.locator('[data-game="huetchen"]')
+  await game.waitFor({ timeout: 10000 }).catch(() => problems.push('Hütchenspiel: the game did not start'))
+  let calls = 0, wrong = false
+  const t0 = Date.now()
+  while (Date.now() - t0 < 150000 && (await game.count())) {
+    const s = await page.evaluate(() => {
+      const root = document.querySelector('[data-game="huetchen"]')
+      if (!root) return null
+      const bushes = [...root.querySelectorAll('[data-bush]')].filter(b => b.dataset.gone !== '1').map(b => ({ id: b.dataset.bush, word: b.dataset.word }))
+      return { phase: root.dataset.phase, target: root.dataset.target, bushes }
+    })
+    if (!s) break
+    if (s.phase !== 'find' || !s.target) { await page.waitForTimeout(200); continue }
+    if (!wrong) {
+      wrong = true
+      const other = s.bushes.find(b => b.word !== s.target)
+      await page.locator(`[data-bush="${other.id}"]`).click()
+      await page.waitForTimeout(400)
+      if ((await game.getAttribute('data-phase')) !== 'oops') problems.push('Hütchenspiel: a wrong bush did not show its thing')
+      await page.waitForFunction(() => document.querySelector('[data-game="huetchen"]')?.dataset.phase === 'find', null, { timeout: 8000 }).catch(() => problems.push('Hütchenspiel: no new try after a miss'))
+      continue
+    }
+    await page.locator(`[data-bush="${s.bushes.find(b => b.word === s.target).id}"]`).click()
+    calls++
+    await page.waitForTimeout(1200)
+  }
+  await page.waitForTimeout(2500)
+  const text = await page.evaluate(() => document.body.innerText)
+  if (calls < 6) problems.push(`Hütchenspiel: only ${calls} things found`)
+  if (!/5 von 6 gleich beim ersten Mal richtig/.test(text)) problems.push(`Hütchenspiel: results not as expected: ${text.slice(0, 120).replace(/\n/g, ' | ')}`)
+  await check(page, 'Hütchenspiel results')
+  problems.push(...page.errors.map(e => `Hütchenspiel: ${e}`))
+  await page.context().close()
+}
+
 // 4. Lumi's ideas for today: the last idea from the home screen, the
 // movement break the results suggest, the sticker, the album
 {
