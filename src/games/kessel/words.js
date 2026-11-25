@@ -20,13 +20,14 @@ import { KEY, slug } from '../woerter/voice.js'
 export const WORDS = {
   // 3 letters
   OMA:'👵', OPA:'👴', EIS:'🍦', ZUG:'🚂', BUS:'🚌', HUT:'🎩', FEE:'🧚', OHR:'👂',
-  KUH:'🐄', HAI:'🦈', BÄR:'🐻', TOR:'🥅', WAL:'🐋',
+  KUH:'🐄', HAI:'🦈', BÄR:'🐻', TOR:'🥅', WAL:'🐋', TÜR:'🚪', UFO:'🛸',
   // 4 letters
   HUND:'🐕', BALL:'⚽', BUCH:'📖', HAND:'✋', NASE:'👃', WOLF:'🐺', IGEL:'🦔', HERZ:'❤️',
   BOOT:'⛵', GANS:'🪿', HAHN:'🐓', HASE:'🐰', KEKS:'🍪', MAUS:'🐭', MOND:'🌙', PILZ:'🍄',
   ROSE:'🌹', SOFA:'🛋️', ZELT:'⛺', BEIN:'🦵', AFFE:'🐒', ESEL:'🫏', RING:'💍', BROT:'🍞',
   AUTO:'🚗', HAUS:'🏠', BAUM:'🌳', LÖWE:'🦁', KIWI:'🥝', LAMA:'🦙', ENTE:'🦆', EULE:'🦉',
   KÄSE:'🧀', MAIS:'🌽', DINO:'🦖', TAXI:'🚕', NEST:'🪺', ZAHN:'🦷', BETT:'🛏️', HOSE:'👖',
+  WURM:'🪱',
   // 5 letters
   KATZE:'🐱', VOGEL:'🐦', STERN:'⭐', APFEL:'🍎', SCHUH:'👟', PIZZA:'🍕', FEUER:'🔥',
   TASSE:'☕', KERZE:'🕯️', ADLER:'🦅', BIRNE:'🍐', SEIFE:'🧼', KRONE:'👑', ZIEGE:'🐐',
@@ -34,18 +35,19 @@ export const WORDS = {
   ANKER:'⚓', FISCH:'🐟', WOLKE:'☁️', EIMER:'🪣', ZEBRA:'🦓', PANDA:'🐼', KOALA:'🐨',
   HONIG:'🍯', MILCH:'🥛', MÖHRE:'🥕', KÜKEN:'🐤', SONNE:'☀️', BLUME:'🌸', ROBBE:'🦭',
   RAUPE:'🐛', KRAKE:'🐙', PALME:'🌴', FEDER:'🪶', BESEN:'🧹', TEDDY:'🧸', BLITZ:'⚡',
-  TULPE:'🌷',
+  TULPE:'🌷', FUCHS:'🦊', GEIST:'👻', CLOWN:'🤡', STUHL:'🪑', TISCH:':px-tisch:', SCHAL:'🧣',
+  STEIN:'🪨', SALAT:'🥗',
   // 6 letters
   TRAUBE:'🍇', RAKETE:'🚀', AMEISE:'🐜', SPINNE:'🕷️', PINSEL:'🖌️', TASCHE:'👜',
   SCHERE:'✂️', BREZEL:'🥨', KIRCHE:'⛪', KOFFER:'🧳', TELLER:'🍽️', BANANE:'🍌',
   TOMATE:'🍅', MELONE:'🍈', KAMERA:'📷', BRILLE:'👓', KÜRBIS:'🎃', DELFIN:'🐬',
   DRACHE:'🐉', ROLLER:'🛴', KAKTUS:'🌵', FROSCH:'🐸', SCHWAN:'🦢', BALLON:'🎈',
-  ANANAS:'🍍', WAFFEL:'🧇', QUALLE:'🪼',
+  ANANAS:'🍍', WAFFEL:'🧇', QUALLE:'🪼', ORANGE:'🍊', SCHIFF:'🚢', VULKAN:'🌋', LEITER:'🪜',
   // 7 letters
   ROBOTER:'🤖', ELEFANT:'🐘', ZITRONE:'🍋', GITARRE:'🎸', PINGUIN:'🐧', KÄNGURU:'🦘',
   HAMSTER:'🐹', TROMMEL:'🥁', PAPAGEI:'🦜', TRAKTOR:'🚜', GIRAFFE:'🦒',
   SPIEGEL:'🪞', FENSTER:'🪟', EINHORN:'🦄', FAHRRAD:'🚲', ZWIEBEL:'🧅', PAPRIKA:'🫑',
-  SCHWEIN:'🐷', KNOCHEN:'🦴', DIAMANT:'💎', TROPFEN:'💧',
+  SCHWEIN:'🐷', KNOCHEN:'🦴', DIAMANT:'💎', TROPFEN:'💧', XYLOFON:':px-xylofon:',
   // 8 letters
   KROKODIL:'🐊', FLUGZEUG:'✈️', SCHNECKE:'🐌', ZAUBERER:'🧙', ERDBEERE:'🍓',
   GESCHENK:'🎁', SCHLANGE:'🐍', TROMPETE:'🎺', BROKKOLI:'🥦', MIKROFON:'🎤',
@@ -56,7 +58,8 @@ export const nameOf = w => w[0] + w.slice(1).toLowerCase()
 
 /**
  * The recording of a word: "Banane." (`wort/…`), else the same word from
- * the word games' list (`woerter/…`, where QUALLE is), else null.
+ * the word games' list (`woerter/…`: QUALLE, FUCHS, TÜR, XYLOFON and the
+ * others that came in for the words taken out), else null.
  */
 export function wordKey(word) {
   const k = KEY.word(nameOf(word))
@@ -106,11 +109,11 @@ export const ANLAUT = {
 // spin; the rest bounces in place.
 export const MOVE_OF = Object.fromEntries([
   ['drive', 'ZUG BUS AUTO TAXI TRAKTOR FAHRRAD ROLLER'],
-  ['fly',   'VOGEL ADLER EULE BIENE RAKETE FLUGZEUG BALLON FEE DRACHE PAPAGEI FEDER WOLKE SCHWAN ZAUBERER'],
-  ['swim',  'FISCH HAI DELFIN KRAKE ROBBE ENTE BOOT WAL QUALLE GANS'],
-  ['crawl', 'SCHNECKE RAUPE SCHLANGE AMEISE SPINNE KROKODIL'],
-  ['spin',  'BALL STERN SONNE KRONE RING TELLER PIZZA KEKS MOND BREZEL WAFFEL DIAMANT'],
-  ['grow',  'HAUS BAUM ZELT KIRCHE PALME KAKTUS BLUME ROSE TULPE PILZ FENSTER SPIEGEL BETT SOFA TOR NEST'],
-  ['hop',   'OMA OPA KUH BÄR HUND WOLF IGEL HAHN HASE MAUS AFFE ESEL LÖWE LAMA DINO KATZE KAMEL PFERD TIGER SCHAF ZEBRA PANDA KOALA KÜKEN ZIEGE ELEFANT PINGUIN KÄNGURU HAMSTER SCHWEIN FROSCH ROBOTER EINHORN TEDDY'],
+  ['fly',   'VOGEL ADLER EULE BIENE RAKETE FLUGZEUG BALLON FEE DRACHE PAPAGEI FEDER WOLKE SCHWAN ZAUBERER UFO GEIST'],
+  ['swim',  'FISCH HAI DELFIN KRAKE ROBBE ENTE BOOT WAL QUALLE GANS SCHIFF'],
+  ['crawl', 'SCHNECKE RAUPE SCHLANGE AMEISE SPINNE KROKODIL WURM'],
+  ['spin',  'BALL STERN SONNE KRONE RING TELLER PIZZA KEKS MOND BREZEL WAFFEL DIAMANT ORANGE'],
+  ['grow',  'HAUS BAUM ZELT KIRCHE PALME KAKTUS BLUME ROSE TULPE PILZ FENSTER SPIEGEL BETT SOFA TOR NEST TÜR STUHL TISCH LEITER VULKAN'],
+  ['hop',   'OMA OPA KUH BÄR HUND WOLF IGEL HAHN HASE MAUS AFFE ESEL LÖWE LAMA DINO KATZE KAMEL PFERD TIGER SCHAF ZEBRA PANDA KOALA KÜKEN ZIEGE ELEFANT PINGUIN KÄNGURU HAMSTER SCHWEIN FROSCH ROBOTER EINHORN TEDDY FUCHS CLOWN'],
 ].flatMap(([move, words]) => words.split(' ').map(w => [w, move])))
 export const moveOf = word => MOVE_OF[word] ?? 'bounce'
