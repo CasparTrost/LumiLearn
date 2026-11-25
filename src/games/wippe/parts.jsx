@@ -87,8 +87,8 @@ export function Stand({ g }) {
   )
 }
 
-/** The plank, turned by the motion value `ang` about the pivot. */
-export function Plank({ g, ang, seat = true }) {
+/** The plank, turned by the motion value `ang` about the pivot. `pans`: a plate on both ends (level 9, a balance). */
+export function Plank({ g, ang, seat = true, pans = false }) {
   return (
     <motion.div aria-hidden="true" style={{
       position: 'absolute', left: g.px - g.L, top: g.py - THICK / 2, width: g.L * 2, height: THICK,
@@ -97,8 +97,9 @@ export function Plank({ g, ang, seat = true }) {
     }}>
       {/* a little seat on the flyer's end, a landing pad on the other */}
       {/* the landing plate on the raised end: where things go */}
-      {seat && <div style={{ position: 'absolute', left: g.L + g.load - 30, top: -9, width: 60, height: 9, borderRadius: '8px 8px 0 0', background: '#ffc93c', border: `3px solid ${INK}`, borderBottom: 'none', boxSizing: 'border-box' }} />}
-      {seat && <div style={{ position: 'absolute', left: g.L + g.seat - 26, top: -10, width: 52, height: 10, borderRadius: '8px 8px 0 0', background: '#ff6b5b', border: `3px solid ${INK}`, borderBottom: 'none', boxSizing: 'border-box' }} />}
+      {(seat || pans) && <div style={{ position: 'absolute', left: g.L + g.load - 30, top: -9, width: 60, height: 9, borderRadius: '8px 8px 0 0', background: '#ffc93c', border: `3px solid ${INK}`, borderBottom: 'none', boxSizing: 'border-box' }} />}
+      {pans && <div style={{ position: 'absolute', left: g.L - g.load - 30, top: -9, width: 60, height: 9, borderRadius: '8px 8px 0 0', background: '#ffc93c', border: `3px solid ${INK}`, borderBottom: 'none', boxSizing: 'border-box' }} />}
+      {seat && !pans && <div style={{ position: 'absolute', left: g.L + g.seat - 26, top: -10, width: 52, height: 10, borderRadius: '8px 8px 0 0', background: '#ff6b5b', border: `3px solid ${INK}`, borderBottom: 'none', boxSizing: 'border-box' }} />}
     </motion.div>
   )
 }
@@ -184,15 +185,16 @@ export function Crate({ size }) {
   )
 }
 
-/** The stair of level 9: three wooden steps, low to high. */
-export function Stair({ steps, bottom }) {
+/** The stair of level 9: three wooden steps, low to high. `marked`: the steps of a pair the tick found in the wrong order. */
+export function Stair({ steps, bottom, marked = [] }) {
   return (
     <>
       {steps.map((s, i) => (
-        <div key={i} aria-hidden="true" style={{
+        <div key={i} aria-hidden="true" data-marked={marked.includes(i) ? 1 : undefined} style={{
           position: 'absolute', left: s.x - s.w / 2, top: s.top, width: s.w, height: bottom - s.top, boxSizing: 'border-box',
           background: `linear-gradient(180deg, ${WOOD_L} 0 10px, ${WOOD} 10px)`, border: `4px solid ${INK}`, borderRadius: '8px 8px 0 0',
           marginLeft: i ? -2 : 0, boxShadow: 'inset 0 -6px 0 rgba(42,27,61,0.15)',
+          outline: marked.includes(i) ? '5px dashed #e8453c' : 'none', outlineOffset: 3,
         }}>
           {/* little dots like on a die: one, two, three — the steps' order, not a number to read */}
           <div style={{ position: 'absolute', left: 0, right: 0, bottom: 6, display: 'flex', justifyContent: 'center', gap: 4 }}>
@@ -219,6 +221,23 @@ export function Stump({ x, top, bottom, w }) {
 // The crown the seat branch grows out of, round its right end: [x, y, r]
 // from the branch's end, scaled by the branch's `crown`
 const CROWN = [[-4, -52, 54], [-48, -78, 34], [-40, -20, 30], [10, 4, 42], [-14, 30, 26]]
+
+/**
+ * The trunk of the tree the seat branch grows from: at the right edge of the
+ * picture, from under its crown down to the grass, mostly off the screen.
+ * Drawn first, so everything of the game stands in front of it.
+ */
+export function BranchTrunk({ g }) {
+  const { x1, y, crown = 1 } = g.branch
+  const x = x1 - 26 * crown, top = y - 10, bottom = g.ground + 6, w = 64 * crown
+  return (
+    <svg aria-hidden="true" width={g.W} height={g.H} style={{ position: 'absolute', left: 0, top: 0, overflow: 'visible', pointerEvents: 'none' }}>
+      <path d={`M${x - 14} ${bottom} Q${x + 2} ${bottom - 12} ${x + 4} ${bottom - 44} L${x + 10} ${top} L${x + w} ${top} L${x + w} ${bottom} Z`}
+        fill={BARK} stroke={BARK_D} strokeWidth="3.5" strokeLinejoin="round" />
+      <path d={`M${x + 16} ${top + 60} v26 M${x + 14} ${(top + bottom) / 2} v22`} stroke={BARK_D} strokeWidth="3" strokeLinecap="round" opacity="0.55" />
+    </svg>
+  )
+}
 
 /** The branch at the top where every animal that got its treat sits. */
 export function Branch({ g, guests, seats }) {

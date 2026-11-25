@@ -10,10 +10,10 @@ import { usePaused } from '../lib/pause.js'
 import { playAnimal } from '../lib/animalSounds.js'
 import { Critter, Art, useMood, useBursts, useJuice, HintHand } from '../components/play/index.js'
 import { Stage, DoneButton, Finale } from './zahlen/stage.jsx'
-import { tasksFor, modeFor, verdict, sumSolution, isOrdered, pileHeights, lean, TOP, TASKS, FULL, STACK_MAX } from './wippe/levels.js'
-import { layoutFor, onPlank, supplyLayout, stairLayout, nearDrop, A, THICK } from './wippe/geometry.js'
+import { tasksFor, modeFor, verdict, sumSolution, proveOrder, pairToCompare, sinks, balanceHint, lean, TOP, TASKS, FULL, STACK_MAX } from './wippe/levels.js'
+import { layoutFor, onPlank, supplyLayout, stairLayout, nearDrop, nearPan, A, THICK } from './wippe/geometry.js'
 import { useDirector } from './wippe/director.js'
-import { Tree, TreatBranch, Stand, Plank, Prop, Parachute, Parcel, Glow, Block, Crate, Stair, Stump, Branch, Mark } from './wippe/parts.jsx'
+import { Tree, TreatBranch, Stand, Plank, Prop, Parachute, Parcel, Glow, Block, Crate, Stair, Stump, Branch, BranchTrunk, Mark } from './wippe/parts.jsx'
 
 /**
  * Waage-Welt — "Wippe-Katapult": heavier and lighter, ordering by weight,
@@ -43,12 +43,14 @@ import { Tree, TreatBranch, Stand, Plank, Prop, Parachute, Parcel, Glow, Block, 
  *     treat hangs at a numbered step; parcels go on (several are allowed)
  *     until their numbers make that step, then the green tick knocks the
  *     prop away. The first sums.
- *   • Level 9: three things on a stair, three treats in the tree. Tap one
- *     to try it (it hops back to its step), drag them to other steps, tick:
- *     they are thrown onto the plank one after the other from the lowest
- *     step up and stay there, so every throw sends the animal as high as the
- *     whole pile weighs. The treats hang where the pile from light to heavy
- *     sends it: only that order gets all three.
+ *   • Level 9: the seesaw is a balance, the animal watches from the grass.
+ *     Three things of three weights on a stair. Put any two on the two ends
+ *     of the seesaw (tap or drag), as often as you like: the heavier end
+ *     goes down, slowly. Lay them on the stair from light (lowest step) to
+ *     heavy (highest), tick: the seesaw weighs them again, neighbour against
+ *     neighbour (lower step's on the left). The right end sinks each time:
+ *     right, the animal gets its treat. It tips the wrong way: that pair's
+ *     steps are marked, a miss. Nothing is thrown, nothing flies.
  *   • Level 10: the plank is a bridge between two stumps, held level by
  *     props. A parcel on each side; put one-kilo blocks on the right one
  *     until both sides weigh the same, tick: the props fall, and if the
@@ -56,9 +58,11 @@ import { Tree, TreatBranch, Stand, Plank, Prop, Parachute, Parcel, Glow, Block, 
  *
  * Six tasks a level; every animal that got its treat sits on the branch at
  * the top. Score: tasks solved with the first throw (the first release, the
- * first order, the first check). After two misses the game helps (the right
- * thing glows, the blocks needed are drawn in dashes). A miss is never more
- * than a funny flight and a mark on the tree.
+ * first order, the first check). After two misses the game helps: the right
+ * thing glows, the hand shows the next right move (level 9: the pair to
+ * weigh against each other; level 10: put a block on, take one off, or the
+ * tick), the blocks still missing are drawn in dashes. A miss is never more
+ * than a funny flight, a mark on the tree, or a seesaw tipped the wrong way.
  */
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
@@ -113,10 +117,9 @@ function Play({ wide, level, onComplete }) {
   const [chute, setChute] = useState(false)
   const [trail, setTrail] = useState(false)
   const [treatOn, setTreatOn] = useState('hang')  // hang | held | gone
-  const [caught, setCaught] = useState([])        // level 9: the treats got so far (their heights)
   const [, setSteps] = useState(null)            // level 9: the item id on each step
+  const [marked, setMarked] = useState([])        // level 9: the steps of the pair the tick found the wrong way round
   const [blocks, setBlocks] = useState(0)         // level 10
-  const [, setLive] = useState(false)             // level 10, after a miss: the plank shows the weights
   const [wiggle, setWiggle] = useState(0)
   const [flyerMood, setFlyerMood] = useMood()
   const [showFlyer, setShowFlyer] = useState(true)
@@ -128,7 +131,8 @@ function Play({ wide, level, onComplete }) {
   const byId = useMemo(() => Object.fromEntries(items.map(i => [i.id, i])), [items])
 
   // ── What moves (motion values) ──────────────────────────────────────────
-  const ang = useMotionValue(mode === 'balance' ? 0 : -A)
+  const level0 = mode === 'balance' || mode === 'order'   // the plank starts level (a bridge, a balance)
+  const ang = useMotionValue(level0 ? 0 : -A)
   const fx = useMotionValue(-200), fy = useMotionValue(0), fr = useMotionValue(0), fs = useMotionValue(1)
   const tx = useMotionValue(0), ty = useMotionValue(0), ts = useMotionValue(0)
   const propR = useMotionValue(0)                 // the prop(s): 0 standing, 90 knocked over
@@ -141,7 +145,7 @@ function Play({ wide, level, onComplete }) {
   const holding = useRef(false)                   // the treat is in the flyer's paws
 
   // Live values the scripts read
-  const S = useRef({ phase: 'enter', misses: 0, firstTry: 0, stack: [], steps: null, blocks: 0, live: false, fired: new Set(), done: false, lastInput: Date.now(), firstMiss: true }).current
+  const S = useRef({ phase: 'enter', misses: 0, firstTry: 0, stack: [], steps: null, pan: { L: null, R: null }, panSeq: [], weighed: false, blocks: 0, done: false, lastInput: Date.now(), firstMiss: true }).current
   const go = p => { S.phase = p; setPhase(p) }
 
   const flyerRef = useRef(null), dropRef = useRef(null), doneRef = useRef(null), crateRef = useRef(null), stackRef = useRef(null)
@@ -151,7 +155,8 @@ function Play({ wide, level, onComplete }) {
     if (!r) { r = { current: null }; itemRefs.current.set(id, r) }
     return r
   }
-  const stepRefs = [useRef(null), useRef(null), useRef(null)]
+  const panRefs = { L: useRef(null), R: useRef(null) }
+  const topBlockRef = useRef(null)
 
   useEffect(() => leaveGame, [])
 
@@ -165,8 +170,11 @@ function Play({ wide, level, onComplete }) {
       const b = g.supply
       const s = Math.min(g.thing, Math.floor((b.x1 - b.x0 - (wide ? 24 : 120)) / 3 - 12))
       const stair = stairLayout(g, s)
-      // the tick: above the thing on the highest step (wide), beside the stair (tall)
-      return { stair, k: s / g.thing, button: wide ? { x: stair[2].x, y: stair[2].top - s - 58 } : { x: b.x1 - 44, y: b.y1 - 46 } }
+      // the tick: beside the stair where there is room, else above the thing
+      // on the highest step (wide); beside the stair (tall)
+      const right = stair[2].x + stair[2].w / 2 + 18 + 42
+      const button = !wide ? { x: b.x1 - 44, y: b.y1 - 46 } : right + 42 <= b.x1 ? { x: right, y: b.y1 - 46 } : { x: stair[2].x, y: stair[2].top - s - 58 }
+      return { stair, k: s / g.thing, button }
     }
     if (mode === 'balance') {
       const { spots, button } = supplyLayout(g, [120], true)
@@ -225,11 +233,13 @@ function Play({ wide, level, onComplete }) {
   const treatHome = () => {
     const gg = G.current
     if (task.mode === 'balance') return { x: gg.stumps[1].x, y: gg.stumps[1].top - gg.treat / 2 + 2 }
+    if (task.mode === 'order') return { x: gg.watch.x, y: gg.watch.y - gg.FS * 1.5 }
     return { x: gg.treatX, y: gg.yAt(task.target) }
   }
   const flyerHome = () => {
     const gg = G.current
     if (task.mode === 'balance') return { x: gg.stumps[0].x, y: gg.stumps[0].top - gg.FS / 2 + gg.sink }
+    if (task.mode === 'order') return gg.watch
     return gg.seatAt(ang.get())
   }
 
@@ -243,15 +253,12 @@ function Play({ wide, level, onComplete }) {
     }
     follow()
     if (S.phase !== 'busy' && S.phase !== 'enter') {
-      if (!seated.current && task.mode === 'balance') { const h = flyerHome(); fx.set(h.x); fy.set(h.y) }
+      if (!seated.current && (task.mode === 'balance' || task.mode === 'order')) { const h = flyerHome(); fx.set(h.x); fy.set(h.y) }
       if (treatOn === 'hang') { const h = treatHome(); tx.set(h.x); ty.set(h.y) }
     }
   }, [g, lay]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const setPlace = (id, w) => { S.where = { ...S.where, [id]: w }; setWhere(S.where) }
-  // level 9: the pile stands on the end of the plank (a little further in on
-  // a phone held upright, so it stays on the screen)
-  const pileAlong = () => G.current.load - (wide ? 0 : 24)
 
   // ── A task begins ──────────────────────────────────────────────────────
   const started = useRef(-1)
@@ -264,15 +271,15 @@ function Play({ wide, level, onComplete }) {
   async function begin() {
     const gg = G.current
     go('enter')
-    S.misses = 0; S.stack = []; S.fired = new Set(); S.blocks = 0; S.live = false; S.firstMiss = true
-    setMisses(0); setMarks([]); setBlink([]); setBlocks(0); setLive(false); setChute(false); setTrail(false); setCaught([])
+    S.misses = 0; S.stack = []; S.pan = { L: null, R: null }; S.panSeq = []; S.weighed = false; S.blocks = 0; S.firstMiss = true
+    setMisses(0); setMarks([]); setBlink([]); setMarked([]); setBlocks(0); setChute(false); setTrail(false)
     attach.current.clear()
     holding.current = false
     S.where = Object.fromEntries(items.map(i => [i.id, 'ground']))
     setWhere(S.where)
     if (task.mode === 'order') { S.steps = [...task.steps]; setSteps(S.steps) }
     // the plank and its props
-    ang.jump(task.mode === 'balance' ? 0 : -A)
+    ang.jump(level0 ? 0 : -A)
     propR.jump(0)
     // the things pop up on the grass, one after the other
     items.forEach((it, i) => {
@@ -293,7 +300,7 @@ function Play({ wide, level, onComplete }) {
       attach.current.set('blocks', { along: BRIDGE * gg.L, lift: gg.parcel - 6 })
     }
     follow()
-    // the treat appears where it hangs (level 9: its three treats are drawn on their own)
+    // the treat appears where it hangs (level 9: it comes at the end)
     setTreatOn(task.mode === 'order' ? 'gone' : 'hang')
     const th = treatHome()
     tx.jump(th.x); ty.jump(th.y); ts.jump(0)
@@ -309,7 +316,7 @@ function Play({ wide, level, onComplete }) {
       tween(fx, home.x, { duration: 0.9, ease: 'easeOut' }),
       tween(fy, [home.y, home.y - 60, home.y, home.y - 34, home.y], { duration: 0.9, times: [0, 0.3, 0.6, 0.8, 1] }),
     ])
-    if (task.mode !== 'balance') { seated.current = true; follow() }
+    if (!level0) { seated.current = true; follow() }
     sfx.step()
     // Lumi: the first time, what to do; with parcels, the number of the step
     lockPreviews()
@@ -328,9 +335,9 @@ function Play({ wide, level, onComplete }) {
 
   // ── The flight ─────────────────────────────────────────────────────────
   // The flyer goes up `h` steps and comes down again. → the verdict
-  async function flight(h, { test = false, label, goal, onCatch } = {}) {
+  async function flight(h, { label } = {}) {
     const gg = G.current
-    const v = test ? 'test' : verdict(h, goal ?? task.target)
+    const v = verdict(h, task.target)
     seated.current = false
     playAnimal(flyer.art, { volume: 0.7 })
     sfx.whoosh()
@@ -345,14 +352,7 @@ function Play({ wide, level, onComplete }) {
     if (task.mode === 'sum') addMark(h, null, h)
     else if (label) addMark(h, label)
     if (task.mode === 'sum') { const w = numberWord(h); if (w) narrate([w]) }
-    if (v === 'right' && onCatch) {
-      // level 9: a treat of the tree, eaten in the air
-      sfx.sparkle()
-      sfx.chomp()
-      burst(flyerRef.current, 'stars', 10)
-      onCatch()
-      setFlyerMood('happy', 1400)
-    } else if (v === 'right') {
+    if (v === 'right') {
       // got it: the treat jumps into its paws
       sfx.sparkle()
       burst(flyerRef.current, 'stars', 10)
@@ -360,7 +360,7 @@ function Play({ wide, level, onComplete }) {
       setTreatOn('held')
       await Promise.all([tween(tx, fx.get() - gg.FS * 0.3, { duration: 0.18 }), tween(ty, fy.get() + gg.FS * 0.02, { duration: 0.18 })])
       setFlyerMood('happy', 1400)
-    } else if (v === 'low' || (v === 'test' && h < TOP)) {
+    } else if (v === 'low') {
       // so close: a look up at the treat, a shrug
       setFlyerMood('oops', 1200)
       await wait(260)
@@ -501,12 +501,9 @@ function Play({ wide, level, onComplete }) {
     const clean = S.misses === 0
     if (clean) S.firstTry += 1
     setFlyerMood('eat', 1000)
-    // level 9: the treats were eaten in the air
-    if (task.mode !== 'order') {
-      sfx.chomp()
-      wait(330).then(() => sfx.chomp())
-      await tween(ts, 0, { duration: 0.7, ease: 'easeIn' })
-    }
+    sfx.chomp()
+    wait(330).then(() => sfx.chomp())
+    await tween(ts, 0, { duration: 0.7, ease: 'easeIn' })
     holding.current = false
     setTreatOn('gone')
     const big = hit(flyerRef.current, { stars: clean ? 2 : 1 }).milestone
@@ -633,121 +630,179 @@ function Play({ wide, level, onComplete }) {
     S.lastInput = Date.now()
   }
 
-  // ── Level 9: the stair ──────────────────────────────────────────────────
-  async function testFire(id) {
-    const gg = G.current
-    const it = byId[id], m = M(id), s = sizeOf(it)
-    go('busy')
-    setPlace(id, 'air')
-    S.lastInput = Date.now()
-    S.fired.add(id)
-    const rest = gg.dropAt(s)
-    const above = rest.y - Math.max(110, gg.unit * 3.2)
-    await Promise.all([
-      tween(m.x, rest.x, { duration: 0.5, ease: 'easeInOut' }),
-      tween(m.y, [m.y.get(), Math.min(m.y.get(), above) - 40, above], { duration: 0.5, times: [0, 0.6, 1], ease: 'easeOut' }),
-    ])
-    await tween(m.y, rest.y, { duration: 0.3, ease: 'easeIn' })
-    attach.current.set(id, { along: gg.load, lift: s / 2 }); follow()
-    await slam(it.w)
-    const flying = flight(it.w, { test: true, label: it.e })
-    // it hops back to its step
-    await wait(420)
+  // ── Level 9: the stair and the balance ─────────────────────────────────
+  // Nothing counts while the child weighs: any two things on the two ends,
+  // as often as it likes, and the heavier end goes down, slowly enough to see
+  const panSide = id => (S.pan.L === id ? -1 : S.pan.R === id ? 1 : 0)
+  const panKey = side => (side < 0 ? 'L' : 'R')
+
+  // the plank turns to the heavier end (level with nothing on it, or the same)
+  function weigh(duration = 1.2) {
+    const to = sinks(byId[S.pan.L], byId[S.pan.R]) * A
+    if (Math.abs(ang.get() - to) < 0.3) return Promise.resolve()
+    if (to !== 0) sfx.slideDown()
+    return tween(ang, to, { duration, ease: 'easeInOut' })
+  }
+
+  // a thing in a bow onto an end of the seesaw, where it stays and rides along
+  async function placeOnPan(id, side) {
+    const gg = G.current, m = M(id), s = sizeOf(byId[id])
+    S.pan[panKey(side)] = id
+    S.panSeq = [...S.panSeq.filter(x => x !== id), id]
     attach.current.delete(id)
-    const h = homeOf(id)
+    setPlace(id, 'air')
+    const to = pileAt(gg, ang.get(), { along: side * gg.load, lift: s / 2 })
     await Promise.all([
-      tween(m.x, h.x, { duration: 0.6, ease: 'easeInOut' }),
-      tween(m.y, [m.y.get(), Math.min(m.y.get(), h.y) - 90, h.y], { duration: 0.6, times: [0, 0.45, 1] }),
-      tween(m.r, 0, { duration: 0.4 }),
+      tween(m.x, to.x, { duration: 0.45, ease: 'easeInOut' }),
+      tween(m.y, [m.y.get(), Math.min(m.y.get(), to.y) - 70, to.y], { duration: 0.45, times: [0, 0.55, 1] }),
+      tween(m.r, ang.get(), { duration: 0.3 }),
+    ])
+    attach.current.set(id, { along: side * gg.load, lift: s / 2 })
+    follow()
+    setPlace(id, 'pan')
+    sfx.drum(true)
+  }
+
+  // off the seesaw (if it is on it) and back to its step
+  async function backToStep(id, fast = false) {
+    const side = panSide(id)
+    if (side) S.pan[panKey(side)] = null
+    S.panSeq = S.panSeq.filter(x => x !== id)
+    attach.current.delete(id)
+    setPlace(id, 'air')
+    const m = M(id), h = homeOf(id), d = fast ? 0.3 : 0.45
+    await Promise.all([
+      tween(m.x, h.x, { duration: d, ease: 'easeInOut' }),
+      tween(m.y, fast ? h.y : [m.y.get(), Math.min(m.y.get(), h.y) - 60, h.y], { duration: d, ...(fast ? {} : { times: [0, 0.5, 1] }) }),
+      tween(m.r, 0, { duration: 0.3 }),
     ])
     setPlace(id, 'ground')
-    await flying
-    await plankBack()
+  }
+
+  // the child puts a thing on the seesaw: on the end it is dropped on, or
+  // (a tap) on a free end; with both taken, the one that went on first goes back
+  async function toPan(id, side = 0) {
+    go('busy')
+    S.lastInput = Date.now()
+    S.weighed = true
+    if (!side) side = !S.pan.L ? -1 : !S.pan.R ? 1 : panSide(S.panSeq[0]) || 1
+    const from = panSide(id)
+    if (from && from !== side) S.pan[panKey(from)] = null
+    const other = S.pan[panKey(side)]
+    const off = other && other !== id ? backToStep(other) : null
+    await placeOnPan(id, side)
+    go('aim')
+    S.lastInput = Date.now()
+    weigh()
+    await off
+  }
+
+  async function takeOff(id) {
+    go('busy')
+    S.lastInput = Date.now()
+    const off = backToStep(id)
+    weigh()
+    await off
     go('aim')
     S.lastInput = Date.now()
   }
 
   // a thing dragged onto another step changes places with the one there
+  // (one on the seesaw stays there and only gets its new step)
   async function swapTo(id, k) {
     const from = S.steps.indexOf(id)
-    if (from === k || k < 0) { await backHome(id); return }
-    const other = S.steps[k]
-    const next = [...S.steps]
-    next[k] = id; next[from] = other
-    S.steps = next
-    setSteps(next)
-    setBlink([])
-    sfx.pop()
+    if (k >= 0 && k !== from) {
+      const other = S.steps[k]
+      const next = [...S.steps]
+      next[k] = id; next[from] = other
+      S.steps = next
+      setSteps(next)
+      setMarked([])
+      setBlink([])
+      sfx.pop()
+      if (!panSide(other)) {
+        const b = M(other), hb = homeOf(other)
+        tween(b.x, hb.x, { duration: 0.45, ease: 'easeInOut' })
+        tween(b.y, [b.y.get(), Math.min(b.y.get(), hb.y) - 50, hb.y], { duration: 0.45 })
+      }
+    }
     S.lastInput = Date.now()
-    const a = M(id), b = M(other)
-    const ha = homeOf(id), hb = homeOf(other)
-    await Promise.all([
-      tween(a.x, ha.x, { duration: 0.3 }), tween(a.y, ha.y, { duration: 0.3 }),
-      tween(b.x, hb.x, { duration: 0.45, ease: 'easeInOut' }), tween(b.y, [b.y.get(), Math.min(b.y.get(), hb.y) - 50, hb.y], { duration: 0.45 }),
-    ])
+    await backToStep(id, true)
   }
 
-  // The tick: from the lowest step up, one after the other onto the plank,
-  // where they stay. Every throw sends the flyer as high as the whole pile
-  // weighs; a treat hangs at each height the pile from light to heavy
-  // reaches, so only that order gets all three
+  // The tick: the seesaw weighs the stair, neighbour against neighbour, the
+  // lower step's thing on the left end, the higher step's on the right. The
+  // right end sinks each time: in order. It tips the wrong way: that pair is
+  // marked, and that is the miss
   async function checkOrder() {
-    const gg = G.current
     go('busy')
     S.lastInput = Date.now()
+    setMarked([])
     setBlink([])
-    const order = [...S.steps]
-    const heights = pileHeights(order.map(id => byId[id]))
-    const got = []
-    let up = 0
-    for (let i = 0; i < order.length; i++) {
-      const id = order[i], m = M(id), s = sizeOf(byId[id])
-      const at = { along: pileAlong(), lift: s / 2, up }
-      up += s - 8
-      setPlace(id, 'air')
-      sfx.note(i * 2, 0.22)
-      const rest = pileAt(gg, ang.get(), at)
-      await Promise.all([
-        tween(m.x, rest.x, { duration: 0.5, ease: 'easeInOut' }),
-        tween(m.y, [m.y.get(), Math.min(m.y.get(), rest.y) - 110, rest.y], { duration: 0.5, times: [0, 0.55, 1], ease: 'easeIn' }),
-        tween(m.r, [0, -12, 0], { duration: 0.5 }),
-      ])
-      attach.current.set(id, at)
-      follow()
-      setPlace(id, 'plank')
-      const h = heights[i]
-      const hit = task.treats.includes(h)
-      await slam(h)
-      await flight(h, { goal: hit ? h : task.treats.find(t => !got.includes(t)) ?? TOP, onCatch: () => { got.push(h); setCaught([...got]) } })
-      if (i < order.length - 1) { await plankBack(); await wait(250) }
+    // what is on the seesaw goes back first
+    const on = [S.pan.L, S.pan.R].filter(Boolean)
+    if (on.length) {
+      const back = Promise.all(on.map(id => backToStep(id)))
+      weigh(0.5)
+      await back
     }
-    if (got.length === task.treats.length) { await afterFlight('right', order); return }
-    // a treat is still hanging: the pile goes back onto the stair, the
-    // treats grow again, and the things on a wrong step wiggle
-    const list = order.map(id => byId[id])
-    const sorted = [...list].sort((a, b) => a.w - b.w)
-    const wrong = list.filter((t, i) => sorted[i].id !== t.id)
-    await plankBack()
-    await Promise.all(order.map((id, i) => {
-      attach.current.delete(id)
-      const m = M(id), h = homeOf(id)
-      setPlace(id, 'air')
-      return wait(i * 140).then(() => Promise.all([
-        tween(m.x, h.x, { duration: 0.6, ease: 'easeInOut' }),
-        tween(m.y, [m.y.get(), Math.min(m.y.get(), h.y) - 90, h.y], { duration: 0.6, times: [0, 0.45, 1] }),
-        tween(m.r, 0, { duration: 0.4 }),
-      ])).then(() => setPlace(id, 'ground'))
-    }))
-    setCaught([])
-    setBlink(wrong.map(t => t.e))
-    setWiggle(w => w + 1)
-    missed('order')
-    await wait(800)
-    go('aim')
-    S.lastInput = Date.now()
+    if (Math.abs(ang.get()) > 0.3) await tween(ang, 0, { duration: 0.4 })
+    await wait(250)
+    const proof = proveOrder(S.steps.map(id => byId[id]))
+    for (const p of proof.pairs) {
+      await Promise.all([placeOnPan(p.a, -1), wait(160).then(() => placeOnPan(p.b, 1))])
+      await wait(300)
+      await weigh(1.4)
+      if (p.sinks > 0) {
+        sfx.sparkle()
+        burst(refOf(p.b).current, 'stars', 8)
+        setFlyerMood('happy', 900)
+        await wait(800)
+      } else {
+        // the wrong way round: the pair's steps are marked, the two wiggle
+        const k = S.steps.indexOf(p.a)
+        setMarked([k, k + 1])
+        setBlink([byId[p.a].e, byId[p.b].e])
+        setWiggle(w => w + 1)
+        missed('order')
+        await wait(1500)
+      }
+      const back = Promise.all([backToStep(p.a), wait(120).then(() => backToStep(p.b))])
+      weigh(0.6)
+      await back
+      if (Math.abs(ang.get()) > 0.3) await tween(ang, 0, { duration: 0.3 })
+      if (p.sinks <= 0) {
+        go('aim')
+        S.lastInput = Date.now()
+        return
+      }
+      await wait(200)
+    }
+    await treatComes()
+  }
+
+  // Level 9, in order: the treat comes down to the animal, and it eats it
+  async function treatComes() {
+    const gg = G.current
+    const th = treatHome()
+    tx.jump(th.x); ty.jump(th.y); ts.jump(0)
+    setTreatOn('hang')
+    sfx.sparkle()
+    await tween(ts, 1, { type: 'spring', stiffness: 380, damping: 12 })
+    await wait(250)
+    setTreatOn('held')
+    await Promise.all([tween(tx, fx.get() - gg.FS * 0.3, { duration: 0.35 }), tween(ty, fy.get() + gg.FS * 0.02, { duration: 0.35, ease: 'easeIn' })])
+    holding.current = true
+    burst(flyerRef.current, 'stars', 10)
+    setFlyerMood('happy', 1200)
+    await wait(300)
+    await feast()
   }
 
   // ── Level 10: the bridge ────────────────────────────────────────────────
+  // The props hold the plank level while blocks go on and off; the tick
+  // knocks them away. After a miss the plank is put level again and the
+  // props stand up, so the next try starts from a clear picture
   const leanNow = n => lean(task.left, task.right + n) * A * 0.8
   async function addBlock() {
     if (S.phase !== 'aim' || S.blocks >= 9) return
@@ -765,8 +820,7 @@ function Play({ wide, level, onComplete }) {
     flyBlock.o.jump(0)
     setBlocks(S.blocks)
     sfx.drum(true)
-    if (S.live) tween(ang, leanNow(S.blocks), { type: 'spring', stiffness: 160, damping: 11 })
-    else tween(ang, [0, 1.2, 0], { duration: 0.22 })
+    tween(ang, [0, 1.2, 0], { duration: 0.22 })
     void gg
   }
   function takeBlock() {
@@ -775,7 +829,6 @@ function Play({ wide, level, onComplete }) {
     S.blocks -= 1
     setBlocks(S.blocks)
     sfx.slideUp()
-    if (S.live) tween(ang, leanNow(S.blocks), { type: 'spring', stiffness: 160, damping: 11 })
   }
   // where the next block lands (two columns, bottom up; one alone in its
   // row sits in the middle, so the stack stays a neat tower on its parcel)
@@ -791,18 +844,18 @@ function Play({ wide, level, onComplete }) {
     go('busy')
     S.lastInput = Date.now()
     const level0 = lean(task.left, task.right + S.blocks) === 0
-    if (!S.live) {
-      sfx.bump()
-      await tween(propR, 90, { duration: 0.3, ease: 'easeIn' })
-    }
+    sfx.bump()
+    await tween(propR, 90, { duration: 0.3, ease: 'easeIn' })
     if (!level0) {
       sfx.slideDown()
       await tween(ang, leanNow(S.blocks), { type: 'spring', stiffness: 150, damping: 9, restDelta: 0.2 })
       shake(0.6)
-      S.live = true
-      setLive(true)
       missed('balance')
-      await wait(700)
+      await wait(1100)
+      // level again, the props up: a clear picture for the next try
+      for (let i = 0; i < 3; i++) wait(i * 170).then(() => sfx.step())
+      await tween(ang, 0, { duration: 0.6, ease: 'easeInOut' })
+      await tween(propR, 0, { duration: 0.3, ease: 'easeOut' })
       go('aim')
       S.lastInput = Date.now()
       return
@@ -860,7 +913,7 @@ function Play({ wide, level, onComplete }) {
     const el = fieldRef.current, r = el.getBoundingClientRect()
     return { x: ((e.clientX - r.left) / r.width) * el.clientWidth, y: ((e.clientY - r.top) / r.height) * el.clientHeight }
   }
-  const canTouch = id => S.phase === 'aim' && !paused && (S.where?.[id] === 'ground' || (mode === 'sum' && S.where?.[id] === 'plank'))
+  const canTouch = id => S.phase === 'aim' && !paused && (S.where?.[id] === 'ground' || (mode === 'sum' && S.where?.[id] === 'plank') || (mode === 'order' && S.where?.[id] === 'pan'))
 
   const tap = id => {
     if (!canTouch(id)) return
@@ -868,7 +921,7 @@ function Play({ wide, level, onComplete }) {
     setAim(null)
     if (mode === 'throw') throwThing(id)
     else if (mode === 'sum') (S.where[id] === 'plank' ? unloadParcel(id) : loadParcel(id))
-    else if (mode === 'order') testFire(id)
+    else if (mode === 'order') (S.where[id] === 'pan' ? takeOff(id) : toPan(id))
   }
 
   const onDown = e => {
@@ -887,7 +940,19 @@ function Play({ wide, level, onComplete }) {
     if (!d || d.pid !== e.pointerId) return
     const p = toField(e)
     if (!d.moved && Math.hypot(p.x - d.x0, p.y - d.y0) < 12) return
-    if (!d.moved) { d.moved = true; setPlace(d.id, 'held'); sfx.pop() }
+    if (!d.moved) {
+      d.moved = true
+      // level 9: lifted off the seesaw, which swings at once
+      if (mode === 'order' && panSide(d.id)) {
+        S.pan[panKey(panSide(d.id))] = null
+        S.panSeq = S.panSeq.filter(x => x !== d.id)
+        attach.current.delete(d.id)
+        M(d.id).r.set(0)
+        weigh()
+      }
+      setPlace(d.id, 'held')
+      sfx.pop()
+    }
     const m = M(d.id)
     m.x.set(p.x + d.dx); m.y.set(p.y + d.dy - 10)
   }
@@ -899,12 +964,13 @@ function Play({ wide, level, onComplete }) {
     const gg = G.current, m = M(d.id), it = byId[d.id], s = sizeOf(it)
     const x = m.x.get(), y = m.y.get()
     if (mode === 'order') {
-      // onto a step: change places; onto the seesaw: try it
+      // onto an end of the seesaw: weigh it; onto a step: change places
+      // (close to a step, the step wins: the lowest step can stand near the seesaw's end)
       const st = L.current.stair
       let best = -1, bd = Infinity
       st.forEach((t, k) => { const dd = Math.hypot(x - t.x, y - (t.top - s / 2)); if (dd < bd) { bd = dd; best = k } })
-      if (nearDrop(gg, x, y, s)) { setPlace(d.id, 'ground'); testFire(d.id); return }
-      setPlace(d.id, 'ground')
+      const side = bd < s * 0.6 ? 0 : nearPan(gg, ang.get(), x, y, s)
+      if (side) { toPan(d.id, side); return }
       swapTo(d.id, bd < s * 1.1 ? best : -1)
       return
     }
@@ -966,22 +1032,27 @@ function Play({ wide, level, onComplete }) {
       return { tap: 'done' }
     }
     if (mode === 'order') {
-      const unfired = S.steps.find(id => !S.fired.has(id))
-      if (unfired && S.misses < 2) return { tap: unfired }
-      const list = S.steps.map(id => byId[id])
-      if (!isOrdered(list)) {
-        const sorted = [...list].sort((a, b) => a.w - b.w)
-        const k = list.findIndex((t, i) => sorted[i].id !== t.id)
-        if (S.misses >= 1 || !unfired) return { from: sorted[k].id, toStep: k }
-      }
-      return { tap: 'done' }
+      // in order: the tick. Else the comparison to make, never the answer:
+      // first how to weigh (the two lowest), after weighing or two misses
+      // the first neighbours the wrong way round, onto the seesaw
+      const pair = pairToCompare(S.steps.map(id => byId[id]))
+      if (!pair) return { tap: 'done' }
+      const [a, b] = S.weighed || S.misses >= 2 ? pair : S.steps.slice(0, 2)
+      if (!panSide(a)) return { from: a, to: panSide(b) < 0 ? 'panR' : 'panL' }
+      if (!panSide(b)) return { from: b, to: panSide(a) < 0 ? 'panR' : 'panL' }
+      return null
     }
-    // balance
+    // balance: after two misses the next right move, never a wrong tick
+    if (S.misses >= 2) {
+      const next = balanceHint(S.blocks, task.need)
+      return next === 'add' ? { from: 'crate', to: 'stack' } : next === 'take' ? { tap: 'top' } : { tap: 'done' }
+    }
     if (S.blocks === 0) return { from: 'crate', to: 'stack' }
     return { tap: 'done' }
   }
 
-  const refFor = key => (key === 'drop' ? dropRef : key === 'done' ? doneRef : key === 'crate' ? crateRef : key === 'stack' ? stackRef : refOf(key))
+  const NAMED = { drop: dropRef, done: doneRef, crate: crateRef, stack: stackRef, top: topBlockRef, panL: panRefs.L, panR: panRefs.R }
+  const refFor = key => NAMED[key] ?? refOf(key)
 
   // ── The picture ─────────────────────────────────────────────────────────
   const finished = useRef(false)
@@ -996,22 +1067,11 @@ function Play({ wide, level, onComplete }) {
     <div ref={fieldRef} data-field="1" style={{ position: 'absolute', inset: 0 }}>
       {g && lay && (
         <>
-          {mode !== 'balance' && <Tree g={g} numbers={mode === 'sum'} target={mode === 'sum' ? task.target : null} />}
-          {mode !== 'balance' && treatOn === 'hang' && <TreatBranch g={g} step={task.target} />}
-          {/* level 9: three treats, at the heights the pile from light to heavy reaches */}
-          {mode === 'order' && task.treats.map(h => <TreatBranch key={`b${idx}-${h}`} g={g} step={h} />)}
-          {mode === 'order' && (
-            <AnimatePresence>
-              {task.treats.filter(h => !caught.includes(h)).map(h => (
-                <motion.div key={`t${idx}-${h}`} aria-hidden="true" data-treat={h} initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0, opacity: 0 }}
-                  transition={{ type: 'spring', stiffness: 380, damping: 12 }}
-                  style={{ position: 'absolute', left: g.treatX - g.treat / 2, top: g.yAt(h) - g.treat / 2, width: g.treat, height: g.treat, zIndex: 4, pointerEvents: 'none' }}>
-                  <Art art={flyer.treat} size={g.treat} />
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          )}
-          {mode !== 'balance' && marks.map(mk => <Mark key={mk.key} g={g} step={mk.step} art={mk.art} n={mk.n} blink={blink.includes(mk.art)} />)}
+          <BranchTrunk g={g} />
+          {/* the tree with its ruler and the treat: only where the animal flies (levels 1–8) */}
+          {level0 || <Tree g={g} numbers={mode === 'sum'} target={mode === 'sum' ? task.target : null} />}
+          {!level0 && treatOn === 'hang' && <TreatBranch g={g} step={task.target} />}
+          {!level0 && marks.map(mk => <Mark key={mk.key} g={g} step={mk.step} art={mk.art} n={mk.n} blink={blink.includes(mk.art)} />)}
           {mode === 'balance' && g.stumps.map((s, i) => <Stump key={i} x={s.x} top={s.top} bottom={g.ground + 4} w={s.w} />)}
           <Branch g={g} guests={guests} seats={TASKS} />
           <div style={{ position: 'absolute', right: 12, top: 8, zIndex: 8 }}>{juice.hud}</div>
@@ -1027,7 +1087,7 @@ function Play({ wide, level, onComplete }) {
             const foot = g.ground + 2
             return <Prop key={side} x={g.px + side * 0.55 * g.L} foot={foot} height={foot - (g.py + THICK / 2)} rot={side < 0 ? propL : propR} />
           })}
-          <Plank g={g} ang={ang} seat={mode !== 'balance'} />
+          <Plank g={g} ang={ang} seat={!level0} pans={mode === 'order'} />
 
           {/* where things are dropped: the raised end */}
           {(() => {
@@ -1038,8 +1098,9 @@ function Play({ wide, level, onComplete }) {
           {/* the stair (level 9) */}
           {mode === 'order' && (
             <>
-              <Stair steps={lay.stair} bottom={g.supply.y1 + 8} />
-              {lay.stair.map((s, k) => <div key={k} ref={stepRefs[k]} aria-hidden="true" style={{ position: 'absolute', left: s.x - 2, top: s.top - g.thing / 2, width: 4, height: 4 }} />)}
+              <Stair steps={lay.stair} bottom={g.supply.y1 + 8} marked={marked} />
+              {/* the two ends of the balance, where the hand puts things */}
+              {[['L', -1], ['R', 1]].map(([key, side]) => <PanSpot key={key} g={g} ang={ang} side={side} spot={panRefs[key]} />)}
             </>
           )}
 
@@ -1119,7 +1180,7 @@ function Play({ wide, level, onComplete }) {
                 style={{ all: 'unset', position: 'absolute', left: -(BLK + 2), top: -BLK * 5, width: BLK * 2 + 4, height: BLK * 5, x: stackMv.x, y: stackMv.y, rotate: stackMv.r, zIndex: 5, cursor: 'pointer', transformOrigin: '50% 100%' }}>
                 <div style={{ position: 'absolute', left: 0, bottom: 0, width: '100%', display: 'flex', flexWrap: 'wrap-reverse', gap: 2, alignContent: 'flex-start', justifyContent: 'center' }}>
                   {Array.from({ length: Math.max(blocks, misses >= 2 ? task.need : 0) }, (_, i) => (
-                    <motion.div key={i} initial={i < blocks ? { scale: 1.3 } : false} animate={{ scale: 1 }}>
+                    <motion.div key={i} ref={i === blocks - 1 ? topBlockRef : undefined} initial={i < blocks ? { scale: 1.3 } : false} animate={{ scale: 1 }}>
                       <Block size={BLK} ghost={i >= blocks} />
                     </motion.div>
                   ))}
@@ -1155,7 +1216,7 @@ function Play({ wide, level, onComplete }) {
       {field}
       {aim && (aim.tap
         ? <HintHand key={`t${idx}-${aim.tap}`} to={refFor(aim.tap)} active delay={0} repeat={2} />
-        : <HintHand key={`d${idx}-${aim.from}-${aim.to ?? aim.toStep}`} from={refFor(aim.from)} to={aim.toStep != null ? stepRefs[aim.toStep] : refFor(aim.to)} active delay={0} repeat={2} />)}
+        : <HintHand key={`d${idx}-${aim.from}-${aim.to}`} from={refFor(aim.from)} to={refFor(aim.to)} active delay={0} repeat={2} />)}
       {phase === 'finale' && (
         <Finale cast={[...new Set(tasks.map(t => t.flyer.art))]} size={wide ? 104 : 84}
           onDone={() => { if (!finished.current) { finished.current = true; onComplete(result(S.firstTry, TASKS)) } }} />
@@ -1184,6 +1245,14 @@ function Trail({ fy, size }) {
 function pileAt(g, deg, at) {
   const p = onPlank(g, deg, at.along, at.lift)
   return at.up ? { x: p.x, y: p.y - at.up } : p
+}
+
+// Level 9: a point just above an end of the balance, riding with the plank
+// (where the hand puts things)
+function PanSpot({ g, ang, side, spot }) {
+  const x = useTransform(ang, a => onPlank(g, a, side * g.load, g.thing * 0.4).x - 2)
+  const y = useTransform(ang, a => onPlank(g, a, side * g.load, g.thing * 0.4).y - 2)
+  return <motion.div ref={spot} aria-hidden="true" style={{ position: 'absolute', left: 0, top: 0, x, y, width: 4, height: 4 }} />
 }
 
 // motion values made outside a hook, for the items of a task
