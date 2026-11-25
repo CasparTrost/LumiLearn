@@ -2,6 +2,8 @@
    pond. It all rests for prefers-reduced-motion. */
 
 @keyframes fr-wave   { 0%,100% { transform: translateX(0); } 50% { transform: translateX(-40px); } }
+@keyframes fr-fish   { from { transform: translateX(-70px); } to { transform: translateX(calc(100cqw + 10px)); } }
+@keyframes fr-fishb  { from { transform: translateX(calc(100cqw + 10px)); } to { transform: translateX(-70px); } }
 @keyframes fr-ripple { 0% { transform: scale(.45); opacity: .85; } 100% { transform: scale(1.15); opacity: 0; } }
 @keyframes fr-bob    { 0%,100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-6px) rotate(2deg); } }
 @keyframes fr-buzz   { 0%,100% { transform: translate(0, 0) rotate(-8deg); } 25% { transform: translate(3px, -3px) rotate(6deg); } 50% { transform: translate(-2px, 2px) rotate(-4deg); } 75% { transform: translate(2px, 3px) rotate(8deg); } }
@@ -12,6 +14,8 @@
 @keyframes fr-glow   { 0%,100% { filter: drop-shadow(0 0 0 rgba(255,201,60,0)); transform: scale(1); } 50% { filter: drop-shadow(0 0 10px rgba(255,201,60,1)); transform: scale(1.08); } }
 
 .fr-wave   { animation: fr-wave 7s ease-in-out infinite; }
+.fr-fish   { animation: fr-fish 30s linear infinite; }
+.fr-fish-back { animation-name: fr-fishb; }
 .fr-ripple { animation: fr-ripple 2.6s ease-out infinite; }
 .fr-bob    { animation: fr-bob 2.8s ease-in-out infinite; }
 .fr-buzz   { animation: fr-buzz .28s linear infinite; }
@@ -23,6 +27,9 @@
 
 @media (prefers-reduced-motion: reduce) {
   .fr-wave, .fr-bob, .fr-buzz, .fr-sway, .fr-leg-a, .fr-leg-b, .fr-strut { animation: none !important; }
+  /* the fish rest where they are, one here, one there */
+  .fr-fish { animation: none !important; transform: translateX(30cqw); }
+  .fr-fish-back { transform: translateX(62cqw); }
   /* the next spot stays visible as a still ring, the glow as a still halo */
   .fr-ripple { animation: none !important; transform: scale(.8); opacity: .7; }
   .fr-glow   { animation: none !important; filter: drop-shadow(0 0 8px rgba(255,201,60,1)); }

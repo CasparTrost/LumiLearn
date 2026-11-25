@@ -57,7 +57,7 @@ import { useLater, useStage } from './frosch/hooks.js'
 
 const HOP_MS = 360
 const LEAP_MS = 560
-const HOME_MS = 720
+const TRAVEL_MS = 330          // a hop off the stage, a hop onto it
 const SETTLE_MS = 170          // after a landing, before the next hop
 const REPEAT_MS = 6500         // waiting this long: Lumi says the word once more
 const STORK_MS = 10000         // waiting this long: the stork sets out
@@ -113,7 +113,7 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
   // What the clock, the timers and the taps work on; the state above is its picture
   const g = useRef({
     phase: 'intro', hops: 0, next: 0, misses: 0, wrongRow: 0, heard: new Set(), done: new Set(), help: false,
-    air: false, lock: 0, queued: null, at: 'home', t: 0, idle: 0, repeated: false, fly: null, stork: null, firstTry: 0, started: -1,
+    air: false, lock: 0, queued: null, at: null, t: 0, idle: 0, repeated: false, fly: null, stork: null, firstTry: 0, started: -1,
   }).current
   const S = useRef({}).current
   Object.assign(S, { L, round, n, isHop, spots, cells, slots, drift, cfg, idx, paused, reduce, hand })
@@ -152,7 +152,7 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
     return at
   }
   useLayoutEffect(() => {
-    if (!L || g.air) return
+    if (!L || g.air || !g.at) return
     const p = pointOf(g.at)
     fx.set(p.x); fy.set(p.y)
   }, [L]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -217,6 +217,7 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
       return
     }
     setUp(u => Math.max(u, k))
+    if (!g.help) sfx.pop()   // the pad pops up out of the water
     if (S.cfg.speak || g.help) later(HOP_MS * 0.4, () => voice([KEY.syllable(S.round.syllables[k - 1])]))
     jump({ spot: k }, { h: S.spots.lift, onLand: () => {
       g.hops = k
@@ -383,22 +384,30 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
     if (g.stork) { g.stork.state = 'go'; setStork({ flip: !g.stork.flip, walking: true, peck: 0 }) }
     setPhase('intro')
     lockPreviews()
-    const begin = () => {
+    // Lumi says the word (and, the first time, what to do)
+    const say = () => {
       const task = firstOfKind ? KEY.task(isHop ? (cfg.speak ? TASK.hop : TASK.alone) : TASK.build) : null
       voice([task, KEY.word(round.name)])
-      afterSpeech(() => { if (g.phase === 'intro') setPhase('play') }, 350, 4000)
       // a fly for the frog to snap, in most rounds
       g.fly = (idx === 0 && level <= 2) || Math.random() > 0.62 ? null : { t: -(900 + Math.random() * 2200), life: isHop ? 10000 : 13000, seed: Math.random() * 6, on: false, gone: false }
     }
+    // the pond is open once the word has been said
+    const open = () => afterSpeech(() => { if (g.phase === 'intro') setPhase('play') }, 300, 4000)
+    // The frog travels on: it hops off the stage beyond the far bank and
+    // comes in again at the near bank of the next pond (no leap back over
+    // the water, which it could not do), while Lumi says the next word.
+    const f = S.L.frog
+    const enter = () => {
+      const from = S.L.wide ? { x: -f, y: S.L.home.y } : { x: S.L.home.x, y: S.L.h + f * 1.1 }
+      fx.set(from.x); fy.set(from.y)
+      jump('home', { h: f * 0.5, ms: TRAVEL_MS, onLand: open })
+    }
     if (idx === 0) {
-      g.at = 'home'
-      fx.set(S.L.home.x); fy.set(S.L.home.y)
-      later(450, begin)
+      later(250, () => { enter(); later(200, say) })
     } else {
-      // back over the pond in one great leap
       sfx.whoosh()
-      const far = Math.hypot(S.L.home.x - fx.get(), S.L.home.y - fy.get())
-      jump('home', { h: S.L.wide ? clamp(far * 0.3, S.L.frog, S.L.h * 0.32) : S.L.frog * 0.9, ms: HOME_MS, onLand: begin })
+      later(280, say)
+      jump(S.L.wide ? { x: S.L.w + f, y: S.L.goal.y } : { x: S.L.goal.x, y: -f * 0.3 }, { h: f * 0.5, ms: TRAVEL_MS, onLand: enter })
     }
   }, [idx, ready]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -427,7 +436,7 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
   const snap = (p, mx, my) => {
     g.fly.gone = true
     setFlyOn(false)
-    setTongue({ id: ++seq, dx: p.x - mx, dy: p.y - my, up: lift.get() })
+    setTongue({ id: ++seq, dx: p.x - mx, dy: p.y - my })
     later(250, () => {
       // a bonus star, nothing to do with the task
       sfx.chomp()
@@ -449,8 +458,12 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
     const t = nextTarget()
     if (!t) return
     const s = lay.stork
-    // it stands so that its beak, bent down, is on the target; from the right where the left has no room
-    const flip = t.pt.x - STORK_PECK.x * s < s * 0.32
+    // It stands so that its beak, bent down, is on the target: on the side
+    // away from the frog, where there is room for it on the stage
+    const reach = STORK_PECK.x * s, frogX = fx.get()
+    let flip = Math.abs(frogX - t.pt.x) > 20 ? frogX < t.pt.x : t.pt.x < lay.w / 2
+    if (flip && t.pt.x + reach > lay.w - s * 0.3) flip = false
+    if (!flip && t.pt.x - reach < s * 0.3) flip = true
     const dir = flip ? -1 : 1
     const stand = { x: t.pt.x - dir * STORK_PECK.x * s, y: Math.min(lay.h - 4, t.pt.y - STORK_PECK.y * s) }
     const from = { x: flip ? lay.w + s * 0.7 : -s * 0.7, y: lay.h - 6 }
@@ -463,10 +476,12 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
   }
 
   // The game's clock. It stands still while the help is open.
-  useAnimationFrame((_, delta) => {
+  useAnimationFrame(() => {
     const { L: lay, round: r, cells: C } = S
+    // real time, also on a slow tablet (the frame loop's own delta is capped at 40 ms)
+    const now = performance.now(), dt = Math.min(now - (g.seen ?? now), 250)
+    g.seen = now
     if (!lay || S.paused) return
-    const dt = Math.min(delta, 60)
     g.t += dt
 
     if (!S.isHop && !S.reduce) {
@@ -646,26 +661,29 @@ export default function WordBuilderGame({ level = 1, onComplete }) {
             {frogMode === 'swim' && (
               <div className="fr-ripple" style={{ position: 'absolute', left: -F * 0.5, top: -F * 0.22, width: F, height: F * 0.4, borderRadius: '50%', border: '3.5px solid #fff' }} />
             )}
-            <motion.div style={{ position: 'absolute', left: -F / 2, top: -F * 0.93, width: F, height: F, y: bodyY, rotate: rot, scale: zoom }}>
-              <motion.div ref={bodyRef} style={{ position: 'relative', width: F, height: F, scaleX: sx, scaleY: sy, transformOrigin: '50% 94%' }}>
-                {frogMode === 'swim'
-                  // only its head out of the water
-                  ? <div style={{ position: 'absolute', left: 0, top: F * 0.5, width: F, height: F * 0.45, overflow: 'hidden' }}><Art art="🐸" size={F} style={{ display: 'block' }} /></div>
-                  : <motion.div animate={frogMode === 'under' ? { opacity: 0, y: F * 0.3, scale: 0.8 } : { opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.2 }}>
-                      <Art art="🐸" size={F} style={{ display: 'block' }} />
-                    </motion.div>}
+            <motion.div style={{ position: 'absolute', left: -F / 2, top: -F * 0.93, width: F, height: F, y: bodyY }}>
+              <motion.div style={{ width: F, height: F, rotate: rot, scale: zoom }}>
+                <motion.div ref={bodyRef} style={{ position: 'relative', width: F, height: F, scaleX: sx, scaleY: sy, transformOrigin: '50% 94%' }}>
+                  {frogMode === 'swim'
+                    // only its head out of the water
+                    ? <div style={{ position: 'absolute', left: 0, top: F * 0.5, width: F, height: F * 0.45, overflow: 'hidden' }}><Art art="🐸" size={F} style={{ display: 'block' }} /></div>
+                    : <motion.div animate={frogMode === 'under' ? { opacity: 0, y: F * 0.3, scale: 0.8 } : { opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.2 }}>
+                        <Art art="🐸" size={F} style={{ display: 'block' }} />
+                      </motion.div>}
+                </motion.div>
               </motion.div>
+              {/* the tongue comes out of its mouth, wherever the jump has carried it */}
+              {tongue && (
+                <div data-tongue style={{ position: 'absolute', left: F / 2, top: F * 0.43 }}>
+                  <Tongue key={tongue.id} dx={tongue.dx} dy={tongue.dy} fly={F * 0.4} onDone={() => setTongue(null)} />
+                </div>
+              )}
             </motion.div>
-            {tongue && (
-              <div style={{ position: 'absolute', left: 0, top: -tongue.up - F * 0.5 }}>
-                <Tongue key={tongue.id} dx={tongue.dx} dy={tongue.dy} fly={F * 0.4} onDone={() => setTongue(null)} />
-              </div>
-            )}
           </motion.div>
 
           {/* A fly crossing the pond */}
           <AnimatePresence>
-            {flyOn && (
+            {flyOn && phase !== 'finale' && (
               <motion.div key="fly" aria-hidden="true" data-fly initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.12 } }}
                 style={{ position: 'absolute', left: 0, top: 0, x: flyX, y: flyY, width: 0, height: 0, zIndex: 7, pointerEvents: 'none' }}>
                 <div className="fr-buzz" style={{ position: 'absolute', left: -F * 0.2, top: -F * 0.2 }}><Art art="🪰" size={F * 0.4} /></div>

@@ -17,8 +17,8 @@ export function stageLayout(w, h, scale = 1) {
   if (wide) {
     const top = clamp(h * 0.14, 58, 88)
     const bottom = clamp(h * 0.08, 30, 54)
-    const frog = clamp(h * 0.19, Math.max(66, tap * 0.95), Math.min(112, w * 0.105))
-    const thing = clamp(h * 0.23, Math.max(96, tap * 1.3), 156)
+    const frog = clamp(h * 0.24, Math.max(66, tap * 0.95), Math.min(132, w * 0.105))
+    const thing = clamp(h * 0.28, Math.max(96, tap * 1.3), 160)
     const left = clamp(w * 0.13, frog * 1.35, 190)
     const right = clamp(w * 0.19, thing * 1.45, 290)
     const water = { x: left, y: top, w: w - left - right, h: h - top - bottom }
@@ -68,7 +68,7 @@ export function hopSpots(L, n) {
     const u = (e - a) / (n + 1)
     const pw = Math.min(u - 12, f * 1.4, 160)
     const at = k => ({ x: a + k * u, y: L.rowY })
-    return { n, u, at, short: k => at(Math.min(k + 1.5, n + 0.6)), pad: { w: pw, h: pw * 0.6 }, lift: Math.min(u * 0.5, f * 1.05) }
+    return { n, u, at, short: k => at(Math.min(k + 1.5, n + 0.6)), pad: { w: pw, h: pw * 0.6 }, lift: Math.min(u * 0.5, f * 0.9) }
   }
   const a = L.home.y, e = L.water.y + f * 0.8
   const u = (a - e) / (n + 1)

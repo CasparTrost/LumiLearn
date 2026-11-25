@@ -11,10 +11,12 @@ const INK = '#2a1b3d'
 /** The pond: water with gentle waves and a sandy shore, grass all around. */
 export function Water({ box, wide }) {
   const r = wide ? Math.min(box.h * 0.2, 110) : 34
+  // a pond, not a pool: no two corners alike
+  const round = `${r * 1.25}px ${r * 0.9}px ${r * 1.15}px ${r}px / ${r}px ${r * 1.2}px ${r * 0.9}px ${r * 1.3}px`
   return (
     <div aria-hidden="true" style={{
       position: 'absolute', left: box.x, top: box.y, width: box.w, height: box.h, boxSizing: 'border-box',
-      borderRadius: r, border: `4px solid ${INK}`, overflow: 'hidden',
+      borderRadius: round, border: `4px solid ${INK}`, overflow: 'hidden', containerType: 'inline-size',
       background: 'linear-gradient(180deg, #6fd0f5 0%, #3fa6de 100%)',
       boxShadow: 'inset 0 10px 0 rgba(255,255,255,0.22), 0 0 0 7px #ecd791, 0 0 0 10px rgba(42,27,61,0.14)',
     }}>
@@ -27,6 +29,14 @@ export function Water({ box, wide }) {
         </defs>
         <rect width="100%" height="100%" fill="url(#fr-waves)" />
       </svg>
+      {/* fish, deep down: only their shadows glide by */}
+      {[[0.22, 26, 0, 1], [0.8, 34, -13, -1], [0.5, 30, -22, 1]].map(([y, dur, delay, dir], i) => (
+        <div key={i} className={dir > 0 ? 'fr-fish' : 'fr-fish fr-fish-back'} style={{ position: 'absolute', left: 0, top: `${y * 100}%`, animationDuration: `${dur}s`, animationDelay: `${delay}s` }}>
+          <svg viewBox="0 0 60 26" width={wide ? 58 : 46} height={wide ? 25 : 20} style={{ display: 'block', transform: dir > 0 ? undefined : 'scaleX(-1)' }}>
+            <path d="M2 13 L14 4 L14 9 Q30 -2 50 8 Q58 12 58 13 Q58 14 50 18 Q30 28 14 17 L14 22 Z" fill="#1c5f9e" opacity="0.2" />
+          </svg>
+        </div>
+      ))}
     </div>
   )
 }
@@ -87,7 +97,7 @@ export function Pad({ w, h, text, lit = false, glow = false, bump = 0, dip = 0, 
       ? { opacity: [1, 0.35, 1], transition: { duration: 0.8 } }
       : { y: [0, h * 0.34, h * 0.34, 0], scale: [1, 0.78, 0.78, 1], opacity: [1, 0.3, 0.3, 1], transition: { duration: 1, times: [0, 0.22, 0.6, 1] } })
   }, [dip]) // eslint-disable-line react-hooks/exhaustive-deps
-  const size = text ? Math.min(h * 0.4, (w * 1.28) / Math.max(2.6, text.length)) : 0
+  const size = text ? Math.min(h * 0.4, (w * 1.08) / Math.max(2.4, text.length)) : 0
   return (
     <div style={{ position: 'relative', width: w, height: h }}>
       {dip > 0 && !reduce && <Bubbles key={dip} w={w} h={h} />}
@@ -103,7 +113,7 @@ export function Pad({ w, h, text, lit = false, glow = false, bump = 0, dip = 0, 
         </svg>
         {text && (
           <span style={{
-            position: 'absolute', left: 0, right: 0, bottom: h * 0.07, textAlign: 'center',
+            position: 'absolute', left: 0, right: 0, bottom: h * 0.09, textAlign: 'center',
             fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: size, lineHeight: 1, letterSpacing: 0.5,
             color: INK, textShadow: '0 2px 0 rgba(255,255,255,0.55)', whiteSpace: 'nowrap',
           }}>{text}</span>
@@ -131,6 +141,7 @@ export function HopSpot({ pt, w, hint = false }) {
   const h = w * 0.5
   return (
     <div aria-hidden="true" style={{ position: 'absolute', left: pt.x - w / 2, top: pt.y - h / 2, width: w, height: h, pointerEvents: 'none' }}>
+      {hint && <div className="fr-glow" style={{ position: 'absolute', inset: '14%', borderRadius: '50%', border: '5px solid #ffc93c', background: 'rgba(255,201,60,0.3)' }} />}
       {[0, 1.3].map(d => (
         <div key={d} className="fr-ripple" style={{
           position: 'absolute', inset: 0, borderRadius: '50%', animationDelay: `-${d}s`,

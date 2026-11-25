@@ -160,6 +160,39 @@ async function playShadows(page) {
   await page.context().close()
 }
 
+// 3c. Silben-Spaß (Frosch-Hüpfer): a level hopped through, a hop per
+// syllable and then ashore; one hop too many on the way, to the results
+{
+  const page = await newPage(SIZES.phone, save)
+  await page.goto(URL); await page.waitForTimeout(1500)
+  await page.getByRole('button', { name: /^Silben-Spaß, Level/ }).last().click()
+  const game = page.locator('[data-game="frosch"]')
+  await game.waitFor({ timeout: 10000 }).catch(() => problems.push('Frosch-Hüpfer: no pond'))
+  let splashed = false
+  for (let i = 0; i < 600 && (await game.count()); i++) {
+    const s = await game.evaluate(el => ({ ...el.dataset })).catch(() => null)
+    if (!s || s.phase !== 'play') { await page.waitForTimeout(200); continue }
+    const n = s.word.split('-').length, hops = Number(s.hops)
+    // once, in the second word: no syllable is left, no pad comes, the frog
+    // lands in the water and starts again from its bank
+    const over = !splashed && s.round === '1' && hops === n
+    if (over) splashed = true
+    if (hops < n || over) await page.getByRole('button', { name: 'Hüpfen' }).click({ timeout: 3000 }).catch(() => {})
+    else await page.locator('[data-thing]').click({ timeout: 3000 }).catch(() => {})
+    await page.waitForTimeout(650)
+    if (over) {
+      await page.waitForTimeout(3500)
+      if ((await game.getAttribute('data-hops').catch(() => null)) !== '0') problems.push('Frosch-Hüpfer: after a splash the frog is not back on its bank')
+    }
+  }
+  await page.waitForTimeout(2500)
+  const text = await page.evaluate(() => document.body.innerText)
+  if (!/5 von 6 gleich beim ersten Mal richtig/.test(text)) problems.push(`Frosch-Hüpfer: results not as expected: ${text.slice(0, 120).replace(/\n/g, ' | ')}`)
+  await check(page, 'Frosch-Hüpfer results')
+  problems.push(...page.errors.map(e => `Frosch-Hüpfer: ${e}`))
+  await page.context().close()
+}
+
 // 4. Lumi's ideas for today: the last idea from the home screen, the
 // movement break the results suggest, the sticker, the album
 {
