@@ -4,12 +4,16 @@
 // Heights are counted in steps of the tree's ruler: 0 is the flyer sitting
 // on the seesaw, TOP the highest step on the screen. A thing that lands on
 // the seesaw sends the flyer exactly as many steps up as it weighs, so the
-// weight of a thing and the height it reaches are the same number.
+// weight of a thing and the height it reaches are the same number. One
+// physics for everything: what lands pushes the plank down, a light thing a
+// little way, from FULL on right down to the grass.
 
 export const TOP = 10
 export const TASKS = 6
-/** Up to this much, a thing is too light to push the seesaw down: it bounces off. */
-export const BOUNCES = 2
+/** The weight of the light things (the lightest class). */
+export const LIGHT_W = 2
+/** From this weight on, a thing pushes the plank right down to the grass. */
+export const FULL = 5
 /** At most this many parcels fit on the end of the plank (levels 7–8). */
 export const STACK_MAX = 3
 
@@ -23,30 +27,21 @@ export const FLYERS = [
 
 // Things to throw: [picture, name, weight in steps]. Every thing weighs the
 // same in every level: light things send the flyer two steps up, small ones
-// three (only in level 9), middle ones five, heavy ones eight.
-const LIGHT = [['🪶', 'Feder', 2], ['🍃', 'Blatt', 2], ['🎈', 'Luftballon', 2], ['🧽', 'Schwamm', 2]]
-const SMALL = [['🧸', 'Teddy', 3], ['🧦', 'Socken', 3], ['🍌', 'Banane', 3], ['🍓', 'Erdbeere', 3]]
-const MIDDLE = [['🍎', 'Apfel', 5], ['🍐', 'Birne', 5], ['🥔', 'Kartoffel', 5], ['⚽', 'Ball', 5], ['🥥', 'Kokosnuss', 5]]
-const HEAVY = [['🪨', 'Stein', 8], ['🧱', 'Ziegelstein', 8], ['🔨', 'Hammer', 8], ['🪵', 'Holzklotz', 8], ['🎃', 'Kürbis', 8], ['📚', 'Bücherstapel', 8]]
+// three (only in level 9), middle ones five, heavy ones eight. Read with a
+// parent's eyes: the things of a class weigh about the same in real life
+// (light: a few grams; small: an egg; middle: an apple; heavy: kilos), and
+// the classes are clearly apart. Nothing that floats (no balloon, feather or
+// leaf): everything here falls when it is dropped.
+const LIGHT = [['🍓', 'Erdbeere', 2], ['🧽', 'Schwamm', 2], ['🥜', 'Erdnüsse', 2], ['🔑', 'Schlüssel', 2], ['🐚', 'Muschel', 2]]
+const SMALL = [['🥚', 'Ei', 3], ['🍋', 'Zitrone', 3], ['🥝', 'Kiwi', 3], ['🍅', 'Tomate', 3]]
+const MIDDLE = [['🍎', 'Apfel', 5], ['🍐', 'Birne', 5], ['🥔', 'Kartoffel', 5], ['🍊', 'Orange', 5]]
+const HEAVY = [['🪨', 'Stein', 8], ['🧱', 'Ziegelstein', 8], ['🪵', 'Holzklotz', 8], ['🎃', 'Kürbis', 8], ['📚', 'Bücherstapel', 8]]
 
-// Levels 5–6: drawn the same size, and in each set two that look alike but
-// do not weigh the same (a sponge and a brick, a balloon and an apple, a
-// potato and a stone). The size of a picture tells nothing any more.
-const LOOKALIKE = [
-  ['🧽', '🥔', '🧱'],
-  ['🎈', '🍎', '🪨'],
-  ['🎈', '⚽', '🎃'],
-  ['🪶', '🥔', '🪨'],
-  ['🧽', '⚽', '🧱'],
-  ['🍃', '🍐', '🪵'],
-  ['🎈', '🥥', '📚'],
-]
-
+/** The things by class, lightest first (tests/unit/wippe.test.js checks them). */
+export const CLASSES = { light: LIGHT, small: SMALL, middle: MIDDLE, heavy: HEAVY }
 /** Every thing that can be thrown: [picture, name, weight in steps]. */
 export const THINGS = [...LIGHT, ...SMALL, ...MIDDLE, ...HEAVY]
-const ALL = THINGS
-const byArt = e => ALL.find(t => t[0] === e)
-const CLASS = { light: LIGHT, small: SMALL, middle: MIDDLE, heavy: HEAVY }
+const CLASS = CLASSES
 
 export function modeFor(level) {
   if (level <= 6) return 'throw'
@@ -74,10 +69,11 @@ const between = (a, b, rnd) => a + Math.floor(rnd() * (b - a + 1))
 let seq = 0
 const thing = ([e, label, w], extra = {}) => ({ id: `t${++seq}`, e, label, w, ...extra })
 
-// Pictures drawn bigger the heavier the thing is (levels 1–4: the size is a
-// fair clue there); from level 5 all are drawn the same.
-const SCALE = { light: 0.82, middle: 0.94, heavy: 1.08 }
-const classOf = w => (w <= BOUNCES ? 'light' : w <= 3 ? 'small' : w <= 5 ? 'middle' : 'heavy')
+// Pictures drawn bigger the heavier the thing is, in sizes that fit (an
+// apple clearly smaller than a pumpkin): levels 1–4, the size is a fair clue
+// there; from level 5 all are drawn the same.
+export const SCALE = { light: 0.6, small: 0.7, middle: 0.78, heavy: 1.12 }
+export const classOf = w => (w <= LIGHT_W ? 'light' : w <= 3 ? 'small' : w <= 5 ? 'middle' : 'heavy')
 
 // Each set of the level once (in a mixed order), no picture twice in a row
 function pool(rnd) {
@@ -116,13 +112,16 @@ function throwTasks(level, rnd) {
       return { mode: 'throw', flyer: FLYERS[i % FLYERS.length], target, things }
     })
   }
-  // levels 5–6: look-alike sets, the same size; level 6 wants the light and
-  // the middle one more often (the heavy one looks right and overshoots)
-  const sets = shuffle(LOOKALIKE, rnd).slice(0, TASKS)
-  const wants = level === 5 ? shuffle([0, 1, 2, 0, 1, 2], rnd) : shuffle([0, 0, 1, 1, 1, 2], rnd)
-  return sets.map((set, i) => {
-    const things = shuffle(set.map(e => thing(byArt(e), { scale: 1 })), rnd)
-    const target = byArt(set[wants[i]])[2]
+  // levels 5–6: a light, a middle and a heavy thing, all drawn the same
+  // size: the picture's size tells nothing any more, what the child knows of
+  // the things does (a strawberry as big as a pumpkin). Level 6 wants the
+  // light and the middle one more often (the heavy one overshoots)
+  const wants = level === 5
+    ? shuffle(['light', 'middle', 'heavy', 'light', 'middle', 'heavy'], rnd)
+    : shuffle(['light', 'light', 'middle', 'middle', 'middle', 'heavy'], rnd)
+  return wants.map((want, i) => {
+    const things = shuffle(['light', 'middle', 'heavy'].map(cls => thing(next(cls), { scale: 1 })), rnd)
+    const target = things.find(t => classOf(t.w) === want).w
     return { mode: 'throw', flyer: FLYERS[i % FLYERS.length], target, things }
   })
 }
@@ -185,18 +184,33 @@ export function sumSolution(parcels, target) {
 
 // ── Level 9: light to heavy ──────────────────────────────────────────────
 
-// A light, a small and a middle thing: 2 + 3 + 5 steps. Each alone stays
-// below the treat at the top; all three at once reach it exactly.
+// A light, a small and a middle thing (2, 3 and 5 steps) on a stair. The
+// green tick throws them onto the plank one after the other, from the
+// lowest step up, and they stay there: the pile grows, and every throw
+// sends the flyer as high as the whole pile weighs. Three treats hang where
+// the pile from light to heavy sends it (2, 2 + 3, 2 + 3 + 5 = TOP): only
+// that order gets all three; in any other order a treat is missed, so the
+// order is what makes it work.
 export function orderTask(rnd, flyer, next = pool(rnd)) {
   const things = ['light', 'small', 'middle'].map(cls => thing(next(cls), { scale: 1 }))
+  const treats = pileHeights([...things].sort((a, b) => a.w - b.w))
   // never already in order
   let steps
   do { steps = shuffle(things, rnd) } while (isOrdered(steps))
-  return { mode: 'order', flyer, target: TOP, things, steps: steps.map(t => t.id) }
+  return { mode: 'order', flyer, target: TOP, treats, things, steps: steps.map(t => t.id) }
 }
 
 /** Light on the lowest step, heavy on the highest. */
 export const isOrdered = steps => steps.every((t, i) => i === 0 || steps[i - 1].w < t.w)
+
+/** The heights a pile thrown in this order reaches, one throw after the other. */
+export const pileHeights = steps => {
+  let sum = 0
+  return steps.map(t => (sum += t.w))
+}
+
+/** Which treats (their heights) a pile thrown in this order gets. */
+export const treatsCaught = (steps, treats) => pileHeights(steps).filter(h => treats.includes(h))
 
 // ── Level 10: make it level ──────────────────────────────────────────────
 

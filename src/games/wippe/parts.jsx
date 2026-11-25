@@ -216,15 +216,27 @@ export function Stump({ x, top, bottom, w }) {
   )
 }
 
+// The crown the seat branch grows out of, round its right end: [x, y, r]
+// from the branch's end, scaled by the branch's `crown`
+const CROWN = [[-4, -52, 54], [-48, -78, 34], [-40, -20, 30], [10, 4, 42], [-14, 30, 26]]
+
 /** The branch at the top where every animal that got its treat sits. */
 export function Branch({ g, guests, seats }) {
-  const { x0, x1, y, seat } = g.branch
+  const { x0, x1, y, seat, crown = 1 } = g.branch
+  const w = x1 - x0
+  const blobs = CROWN.map(([dx, dy, r]) => [w + dx * crown, seat + 9 + dy * crown, r * crown])
   return (
-    <div aria-hidden="true" style={{ position: 'absolute', left: x0, top: y - seat - 4, width: x1 - x0, height: seat + 22, zIndex: 2, pointerEvents: 'none' }}>
-      <svg width={x1 - x0} height={22} style={{ position: 'absolute', left: 0, top: seat - 2, overflow: 'visible' }}>
-        <path d={`M4 12 Q${(x1 - x0) / 2} 2 ${x1 - x0 + 8} 9`} fill="none" stroke={BARK_D} strokeWidth="13" strokeLinecap="round" />
-        <path d={`M4 12 Q${(x1 - x0) / 2} 2 ${x1 - x0 + 8} 9`} fill="none" stroke={BARK} strokeWidth="8" strokeLinecap="round" />
+    <div aria-hidden="true" style={{ position: 'absolute', left: x0, top: y - seat - 4, width: w, height: seat + 22, zIndex: 2, pointerEvents: 'none' }}>
+      <svg width={w} height={22} style={{ position: 'absolute', left: 0, top: seat - 2, overflow: 'visible' }}>
+        <path d={`M4 12 Q${w / 2} 2 ${w + 8} 9`} fill="none" stroke={BARK_D} strokeWidth="13" strokeLinecap="round" />
+        <path d={`M4 12 Q${w / 2} 2 ${w + 8} 9`} fill="none" stroke={BARK} strokeWidth="8" strokeLinecap="round" />
         <ellipse cx={18} cy={4} rx={10} ry={5} fill="#4caf50" stroke="#1f5c2c" strokeWidth="2.5" transform="rotate(-20 18 4)" />
+      </svg>
+      {/* the leaves of its tree, just off the right edge of the picture */}
+      <svg width={w} height={seat + 22} style={{ position: 'absolute', left: 0, top: 0, overflow: 'visible' }}>
+        {blobs.map(([x, cy, r], i) => <circle key={`o${i}`} cx={x} cy={cy} r={r + 4} fill="#1f5c2c" />)}
+        {blobs.map(([x, cy, r], i) => <circle key={`f${i}`} cx={x} cy={cy} r={r} fill="#4caf50" />)}
+        {blobs.map(([x, cy, r], i) => <circle key={`l${i}`} cx={x - r * 0.25} cy={cy - r * 0.3} r={r * 0.42} fill="#6cc763" opacity="0.85" />)}
       </svg>
       {Array.from({ length: seats }, (_, i) => {
         const who = guests[i]

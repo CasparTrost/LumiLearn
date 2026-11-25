@@ -134,7 +134,7 @@ export default function RocketMathGame({ level = 1, onComplete }) {
 
   const rocketRef = useRef(null)
   const plusRef = useRef(null), minusRef = useRef(null), landRef = useRef(null)
-  const bubbleRef = useRef(null), gapRef = useRef(null)
+  const bubbleRef = useRef(null), startRef = useRef(null), targetRef = useRef(null)
 
   // ── The size of the play area ──
   useLayoutEffect(() => {
@@ -181,7 +181,10 @@ export default function RocketMathGame({ level = 1, onComplete }) {
       onUpdate: t => {
         const p = bow(path.a, path.c, path.b, t)
         rx.set(p.x); ry.set(p.y)
-        rot.set(a === b ? 0 : Lx.lean * dir * 22 * Math.sin(2 * Math.PI * t))
+        // on a phone held upright the rocket lies on its side on the planet;
+        // in the air it turns its nose the way it flies (up for plus)
+        if (Lx.vertical) rot.set(a === b ? 0 : -dir * 90 * Math.min(1, 2.5 * Math.sin(Math.PI * t)))
+        else rot.set(a === b ? 0 : Lx.lean * dir * 22 * Math.sin(2 * Math.PI * t))
       },
     }))
     later(ms, () => {
@@ -344,10 +347,14 @@ export default function RocketMathGame({ level = 1, onComplete }) {
     const hint = rec(SAY[verdict])
     if (hint) afterSpeech(() => narrate([hint]), 0)
     setCreature({ n, kind: 'resident', art: residentOf(n), key: ++seq })
+    // how many hops it was, beside the number it should have been; not in
+    // levels 9–10: there that number is the empty box, and counting the hops
+    // is the child's task
+    const badgeHere = S.plan.mode === 'hop' || S.plan.mode === 'tap'
     if (verdict === 'wrongway') {
       setOpPulse(p => p + 1)
       if (S.plan.mode === 'hop') setThrustPulse(p => ({ op: t.op, k: p.k + 1 }))
-    } else setBadge({ count: Math.abs(n - t.from), key: seq })
+    } else if (badgeHere) setBadge({ count: Math.abs(n - t.from), key: seq })
     if (S.plan.mode === 'pick') setTried(l => [...l, g.picked])
     if (S.plan.mode === 'tap') setTried(l => [...l, n])
     later(1900, () => {
@@ -475,9 +482,13 @@ export default function RocketMathGame({ level = 1, onComplete }) {
   const showControls = hopMode && !bubbles && phase !== 'finale' && phase !== 'count' && counting < 0
   // the hint hand: the first sum of a level shows the move soon, later only a long wait
   const handDelay = idx === 0 && level <= 7 ? 2500 : 7000
+  // the tap levels: at the first sum the hand shows the move once, from the
+  // rocket along the line to the planet it lands on; after two misses it
+  // taps the end of the dashed way
+  const tapDemo = plan.mode === 'tap' && idx === 0 && !ghost
   const handTo = !ready || phase === 'finale' ? null
     : bubbles ? bubbleRef
-    : plan.mode === 'tap' ? gapRef
+    : plan.mode === 'tap' ? (ghost || tapDemo ? targetRef : null)
     : ghost && pos === task.target ? landRef
     : ghost ? (task.target > pos ? plusRef : minusRef)
     // the right button only where there is one sign: the sign is the lesson of the mixed levels
@@ -522,8 +533,9 @@ export default function RocketMathGame({ level = 1, onComplete }) {
               </Cell>
             )
           })}
-          {/* the hint hand of the tap levels points between two planets, never at one */}
-          <span ref={gapRef} aria-hidden="true" style={{ position: 'absolute', left: L.gapHand.x, top: L.gapHand.y, width: 2, height: 2 }} />
+          {/* where the hint hand of the tap levels starts and taps: the start and the alien's planet */}
+          <span ref={startRef} aria-hidden="true" style={{ position: 'absolute', left: L.P(task.from).x, top: L.P(task.from).y, width: 2, height: 2 }} />
+          <span ref={targetRef} aria-hidden="true" style={{ position: 'absolute', left: L.P(task.target).x, top: L.P(task.target).y, width: 2, height: 2 }} />
 
           {/* the arcs: the way flown, numbered; after two misses the way to fly, dashed */}
           <svg aria-hidden="true" width={L.w} height={L.h} style={{ position: 'absolute', left: 0, top: 0, overflow: 'visible', pointerEvents: 'none' }}>
@@ -616,7 +628,7 @@ export default function RocketMathGame({ level = 1, onComplete }) {
           </AnimatePresence>
 
           {/* the star counter */}
-          <div style={{ position: 'absolute', top: L.hud.y, ...(L.hud.align === 'right' ? { right: L.w - L.hud.x } : { left: L.hud.x, transform: 'translateX(-50%)' }), zIndex: 6 }}>
+          <div style={{ position: 'absolute', top: L.hud.y, ...(L.hud.align === 'right' ? { right: L.w - L.hud.x } : L.hud.align === 'left' ? { left: L.hud.x } : { left: L.hud.x, transform: 'translateX(-50%)' }), zIndex: 6 }}>
             {juice.hud}
           </div>
 
@@ -658,7 +670,7 @@ export default function RocketMathGame({ level = 1, onComplete }) {
                 }}>
                 <div style={{ position: 'relative', display: 'flex', flexDirection: vertical ? 'column' : 'row', gap: vertical ? 6 : 18 }}>
                   {/* the hint hand taps beside the row, never on a bubble */}
-                  <span ref={bubbleRef} aria-hidden="true" style={{ position: 'absolute', ...(vertical ? { left: '-18%', top: '50%' } : { left: '50%', top: '108%' }), width: 2, height: 2 }} />
+                  <span ref={bubbleRef} aria-hidden="true" style={{ position: 'absolute', ...(vertical ? { left: '-18%', top: '50%' } : { left: -40, top: '50%' }), width: 2, height: 2 }} />
                   {choices.map(k => (
                     <CountBubble key={k} k={k} size={L.btn} state={tried.includes(k) ? 'tried' : null}
                       onPress={(kk) => (plan.mode === 'pick' ? pick(kk) : confirm(kk, document.querySelector(`[data-count="${kk}"]`)))} />
@@ -680,7 +692,8 @@ export default function RocketMathGame({ level = 1, onComplete }) {
           </AnimatePresence>
           {finale?.landed && <MoonParty L={L} riders={riders} reduce={reduce} />}
 
-          {handTo && <HintHand to={handTo} delay={ghost ? 1500 : handDelay} active={(playing || phase === 'count') && !paused} />}
+          {handTo && <HintHand key={tapDemo ? 'demo' : 'tap'} from={tapDemo ? startRef : undefined} to={handTo} delay={ghost ? 1500 : handDelay}
+            active={(playing || phase === 'count') && !paused} />}
           {juice.layer}
           {bursts}
         </>
@@ -715,8 +728,10 @@ function NumBlock({ n, size, bg, pulse, glowKey, empty, children, dataAttr }) {
 
 function SumCard({ L, task, idx, missing, guide, filled, glow, badge, opPulse, hue, showAlien, reduce }) {
   const nb = L.nb
-  const sign = (s, pulse, color) => (
-    <motion.span key={pulse || 'still'} animate={pulse && !reduce ? { scale: [1, 1.6, 1, 1.4, 1] } : {}} transition={{ duration: 1 }}
+  // the two signs need keys of their own: with one key for both, a pulse
+  // of the operator left a stale copy of it behind ("5 + + 4 =")
+  const sign = (key, s, pulse, color) => (
+    <motion.span key={key} animate={pulse && !reduce ? { scale: [1, 1.6, 1, 1.4, 1] } : {}} transition={{ duration: 1 }}
       style={{ display: 'inline-block', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: nb * 0.95, lineHeight: 1, color: color ?? '#fff', WebkitTextStroke: `2px ${INK}`, padding: '0 2px' }}>{s}</motion.span>
   )
   const stepBlock = (
@@ -748,9 +763,9 @@ function SumCard({ L, task, idx, missing, guide, filled, glow, badge, opPulse, h
     <div aria-label={`${task.from} ${task.op} ${missing ? (filled ? task.step : 'wie viel') : task.step} = ${missing || filled ? task.target : 'wie viel'}`}
       style={{ display: 'flex', alignItems: 'center', gap: Math.max(3, nb * 0.1), paddingBottom: !missing && guide ? nb * 0.36 : 0 }}>
       <NumBlock n={task.from} size={nb} bg="#d9ccff" glowKey={glow ? `g${glow}` : null} dataAttr={{ 'data-sum': 'from' }} />
-      {sign(task.op, opPulse, SIGN_COLOR[task.op])}
+      {sign(`op${opPulse}`, task.op, opPulse, SIGN_COLOR[task.op])}
       {stepBlock}
-      {sign('=', 0)}
+      {sign('eq', '=', 0)}
       <NumBlock n={task.target} size={nb} bg="#c8f0c0" empty={!missing && !filled} dataAttr={{ 'data-sum': 'result' }} />
     </div>
   )
@@ -795,10 +810,14 @@ function Creature({ c, L, hue, seat, seats, reduce, rx, ry }) {
   const p = L.P(c.n, -L.pd * 0.08)
   const box = { position: 'absolute', left: p.x - size / 2, top: p.y - size / 2, width: size, height: size, zIndex: 7, pointerEvents: 'none' }
   if (c.kind === 'resident') {
+    // smaller, peeking out of the door low on the right of the planet: the
+    // planet's number stays in sight (where the rocket landed is the news)
+    const rs = L.pd * 0.6, q = L.P(c.n)
     return (
-      <motion.div data-creature="resident" initial={reduce ? false : { scale: 0, y: size * 0.3 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0, y: size * 0.3, opacity: 0 }}
-        transition={{ type: 'spring', stiffness: 380, damping: 16 }} style={box}>
-        <Critter art={c.art} size={size} mood="oops" shadow={false} />
+      <motion.div data-creature="resident" initial={reduce ? false : { scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0, opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 380, damping: 16 }}
+        style={{ ...box, left: q.x + L.pd * 0.46 - rs / 2, top: q.y + L.pd * 0.4 - rs / 2, width: rs, height: rs, transformOrigin: '15% 20%' }}>
+        <Critter art={c.art} size={rs} mood="oops" shadow={false} />
       </motion.div>
     )
   }

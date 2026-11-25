@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { THINGS, FLYERS, TOP, TASKS, BOUNCES, STACK_MAX, tasksFor, modeFor, verdict, sumSolution, isOrdered, lean } from '../../src/games/wippe/levels.js'
+import { THINGS, CLASSES, SCALE, FLYERS, TOP, TASKS, LIGHT_W, FULL, STACK_MAX, tasksFor, modeFor, verdict, sumSolution, isOrdered, pileHeights, treatsCaught, classOf, lean } from '../../src/games/wippe/levels.js'
 import { layoutFor, supplyLayout, stairLayout, onPlank, nearDrop, A } from '../../src/games/wippe/geometry.js'
 import { hasEmojiArt } from '../../src/lib/emojiArt.jsx'
 import { animalSound } from '../../src/lib/animalSounds.js'
@@ -46,6 +46,48 @@ describe('Wippe-Katapult: what is thrown, who flies', () => {
     for (let l = 1; l <= 10; l++) expect(tasksFor(l, seeded(l))[0].flyer.art).toBe('🐭')
   })
 
+  it('keeps the weight classes believable: one weight per class, the classes apart, nothing that floats', () => {
+    const order = ['light', 'small', 'middle', 'heavy']
+    expect(Object.keys(CLASSES)).toEqual(order)
+    const weights = order.map(cls => {
+      const ws = new Set(CLASSES[cls].map(t => t[2]))
+      // every thing of a class weighs the same, and the class knows its own things
+      expect(ws.size, cls).toBe(1)
+      for (const t of CLASSES[cls]) expect(classOf(t[2]), t[1]).toBe(cls)
+      return [...ws][0]
+    })
+    // lighter class, smaller weight; the light ones are LIGHT_W
+    for (let i = 1; i < weights.length; i++) expect(weights[i]).toBeGreaterThan(weights[i - 1])
+    expect(weights[0]).toBe(LIGHT_W)
+    // the classes clearly apart: each at least half as heavy again as the one before
+    for (let i = 1; i < weights.length; i++) expect(weights[i] / weights[i - 1]).toBeGreaterThanOrEqual(1.5)
+    // middle and heavy push the plank right down, light and small only part of the way
+    expect(weights[0]).toBeLessThan(FULL)
+    expect(weights[2]).toBeGreaterThanOrEqual(FULL)
+    // every thing once, and nothing that floats or flutters instead of falling
+    expect(new Set(THINGS.map(t => t[0])).size).toBe(THINGS.length)
+    for (const e of ['🎈', '🪶', '🍃', '🫧', '🪁', '☁️']) expect(THINGS.some(t => t[0] === e), e).toBe(false)
+    // the disputed ones of the second logic check are gone from where they were
+    const named = name => THINGS.find(t => t[1] === name)
+    for (const gone of ['Kokosnuss', 'Teddy', 'Banane', 'Hammer']) expect(named(gone), gone).toBeUndefined()
+    expect(named('Erdbeere')[2]).toBeLessThan(named('Apfel')[2])
+  })
+
+  it('draws the things bigger the heavier they are in levels 1–4, an apple clearly smaller than a pumpkin', () => {
+    expect(SCALE.light).toBeLessThan(SCALE.small)
+    expect(SCALE.small).toBeLessThan(SCALE.middle)
+    expect(SCALE.middle).toBeLessThan(SCALE.heavy)
+    expect(SCALE.middle / SCALE.heavy).toBeLessThanOrEqual(0.75)
+    for (let l = 1; l <= 4; l++) {
+      for (const seed of SEEDS) {
+        for (const t of tasksFor(l, seeded(seed))) {
+          const bySize = [...t.things].sort((a, b) => a.scale - b.scale).map(th => th.w)
+          expect(bySize).toEqual([...bySize].sort((a, b) => a - b))
+        }
+      }
+    }
+  })
+
   it('picks the mode by level', () => {
     expect([1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(modeFor)).toEqual(['throw', 'throw', 'throw', 'throw', 'throw', 'throw', 'sum', 'sum', 'order', 'balance'])
   })
@@ -77,11 +119,18 @@ describe('Wippe-Katapult: levels 1–6, one thing reaches the treat', () => {
       expect(notHeaviest.length, `level ${l}`).toBeGreaterThan(0)
     }
     // level 4 also wants the light one: the others overshoot
-    expect(SEEDS.flatMap(seed => tasksFor(4, seeded(seed))).some(t => t.target <= BOUNCES)).toBe(true)
+    expect(SEEDS.flatMap(seed => tasksFor(4, seeded(seed))).some(t => t.target <= LIGHT_W)).toBe(true)
   })
 
-  it('draws the things the same size from level 5', () => {
-    for (const l of [5, 6]) for (const t of tasksFor(l, seeded(3))) for (const th of t.things) expect(th.scale).toBe(1)
+  it('draws a light, a middle and a heavy thing the same size from level 5', () => {
+    for (const l of [5, 6]) {
+      for (const seed of SEEDS) {
+        for (const t of tasksFor(l, seeded(seed))) {
+          for (const th of t.things) expect(th.scale).toBe(1)
+          expect(t.things.map(th => classOf(th.w)).sort()).toEqual(['heavy', 'light', 'middle'])
+        }
+      }
+    }
   })
 
   it('judges a throw by the height it reaches', () => {
@@ -112,17 +161,35 @@ describe('Wippe-Katapult: levels 7–8, parcels add up', () => {
 })
 
 describe('Wippe-Katapult: level 9, light to heavy', () => {
-  it('puts three different weights on the stair, never already in order, that together reach the top', () => {
+  it('puts a light, a small and a middle thing on the stair, never already in order, that together reach the top', () => {
     for (const seed of SEEDS) {
       for (const t of tasksFor(9, seeded(seed))) {
         const ws = t.things.map(th => th.w)
-        expect(new Set(ws).size).toBe(3)
+        expect(t.things.map(th => classOf(th.w)).sort()).toEqual(['light', 'middle', 'small'])
         expect(ws.reduce((a, b) => a + b, 0)).toBe(TOP)
-        expect(ws.every(w => w < TOP)).toBe(true)
         expect(t.target).toBe(TOP)
         const steps = t.steps.map(id => t.things.find(th => th.id === id))
         expect(isOrdered(steps)).toBe(false)
         expect(isOrdered([...steps].sort((a, b) => a.w - b.w))).toBe(true)
+      }
+    }
+  })
+
+  it('makes the order matter: only the pile from light to heavy gets all three treats', () => {
+    const perms = l => (l.length <= 1 ? [l] : l.flatMap((x, i) => perms([...l.slice(0, i), ...l.slice(i + 1)]).map(p => [x, ...p])))
+    for (const seed of SEEDS) {
+      for (const t of tasksFor(9, seeded(seed))) {
+        const sorted = [...t.things].sort((a, b) => a.w - b.w)
+        // the treats hang where the pile from light to heavy sends the flyer, the last at the top
+        expect(t.treats).toEqual(pileHeights(sorted))
+        expect(t.treats.at(-1)).toBe(TOP)
+        for (const p of perms(t.things)) {
+          const all = treatsCaught(p, t.treats).length === 3
+          expect(all, p.map(th => th.label).join(' ')).toBe(isOrdered(p))
+          // every throw sends the flyer higher than the one before
+          const hs = pileHeights(p)
+          expect(hs.every((h, i) => i === 0 || h > hs[i - 1])).toBe(true)
+        }
       }
     }
   })

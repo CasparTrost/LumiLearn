@@ -34,7 +34,8 @@ function wide(w, h, m) {
     band = btn + 12
     card = { x: m, y: 6, w: w * 0.5 - m, h: band - 6 }
     controls = { x: w * 0.5, y: 6, w: w * 0.5 - m, h: band - 6, justify: 'flex-end' }
-    hud = { x: w * 0.5 - 4, y: 10, size: 30, align: 'right' }
+    // the star counter at the start of the buttons' half, never over the sum
+    hud = { x: w * 0.5 + 6, y: 10, size: 30, align: 'left' }
     lineY = h - m - pr - 2
   } else {
     const cardH = clamp(h * 0.2, 104, 150)
@@ -52,8 +53,6 @@ function wide(w, h, m) {
     card, controls, hud,
     nb: short ? clamp(card.h * 0.56, 40, 52) : clamp(card.h * 0.48, 50, 70),
     alien: short ? card.h * 0.9 : clamp(card.h * 0.95, 96, 140),
-    // where the tap-mode hint hand points: between two planets, never on one
-    gapHand: { x: x0 + 5 * cell, y: lineY + pr * 0.6 },
     // the moon of the finale, high enough for the rocket to stand on it
     moon: short
       ? { x: w * 0.6, y: rh + 54 + 12, r: 54 }
@@ -77,14 +76,17 @@ function tall(w, h, m) {
   const card = { x: px, y: 10, w: pw, h: cardH, column: true }
   const controls = { x: px, y: h - 2 * btn - 34, w: pw, h: 2 * btn + 24, justify: 'center' }
   const P = (n, off = 0) => ({ x: lineX + off, y: y0 - (n + 0.5) * cell })
+  const hud = { x: px + pw / 2, y: card.y + card.h + 10, size: 32, align: 'center' }
+  // the moon of the finale below the star counter: the rocket and the
+  // dancers stand on its top, the counter stays above them
+  const moonR = Math.min(80, pw * 0.36)
   return {
     vertical: true, short: false, w, h, m, cell, pd, pr, rw, rh, arcH, btn, P, base: 90, lean: -1,
-    card, controls,
-    hud: { x: px + pw / 2, y: card.y + card.h + 10, size: 32, align: 'center' },
-    nb: clamp(pw / 5.2, 36, 46),
+    card, controls, hud,
+    // the longest sum ("10 − 3 = ▢", about five numbers wide) fits the card
+    nb: clamp((pw - 40) / 5, 32, 46),
     alien: clamp(cardH * 0.5, 64, 116),
-    gapHand: { x: lineX - pr * 0.3, y: y0 - 5 * cell },
-    moon: { x: px + pw / 2, y: Math.max(card.y + rh + Math.min(80, pw * 0.36) + 10, h * 0.36), r: Math.min(80, pw * 0.36) },
+    moon: { x: px + pw / 2, y: Math.max(hud.y + 70 + rh + moonR * 0.8, h * 0.36), r: moonR },
   }
 }
 

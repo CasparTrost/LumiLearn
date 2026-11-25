@@ -97,12 +97,16 @@ export function layoutFor(W, H, wide, mode = 'throw') {
     ? { x0: tipX + 26, x1: W - 14, y0: 128, y1: g.ground - 2 }
     : { x0: 12, x1: W - 12, y0: g.ground + 16, y1: H - 12 }
 
-  // The branch where everyone who got its treat sits, under the star counter
+  // The branch where everyone who got its treat sits, under the star counter:
+  // it grows out of the crown of a tree standing just right of the picture
+  // (`crown`: the crown's size), the seats left of the leaves. On a phone
+  // held upright it starts right of where the flyer flies up.
   g.hud = { x: W - 12, y: 8 }
-  const seatW = wide ? 48 : 38
+  const seatW = wide ? 48 : 33
+  const crown = wide ? 1 : 0.7
   g.branch = wide
-    ? { x0: W - 12 - seatW * 6 - 14, x1: W - 4, y: 112, seat: seatW }
-    : { x0: W - 8 - seatW * 6 - 10, x1: W - 2, y: 108, seat: seatW }
+    ? { x0: W - 12 - seatW * 6 - 74, x1: W + 6, y: 112, seat: seatW, crown }
+    : { x0: g.cx + g.FS / 2 + 4, x1: W + 6, y: 108, seat: seatW, crown }
 
   // Level 10: two stumps, the plank between them is a bridge when level
   if (balance) {
