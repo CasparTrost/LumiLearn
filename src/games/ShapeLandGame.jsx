@@ -9,7 +9,7 @@ import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
 import { Critter, Art, artSrc, useMood, DragArea, Draggable, DropZone, RoundTrail, HintHand, useBursts, useJuice } from '../components/play/index.js'
 import { INK } from './px.js'
-import { SCENES, Spokes, sceneDeck, sceneShown, timesShown } from './shapeScenes.jsx'
+import { SCENES, Spokes, Twinkles, sceneDeck, sceneShown, timesShown } from './shapeScenes.jsx'
 import { SHAPE_IDS, OBJECTS, defensible, objectOptions, shapeBag, pieceAt, onPiece } from './shapeRules.js'
 import { useBox, isUpright, isFlat } from './useBox.js'
 
@@ -112,6 +112,20 @@ function Shape({ type, color, size = 72, rotate = 0, face = false, dashed = fals
   )
 }
 
+// A shape laid onto a thing's outline in its picture (see OBJECTS)
+function Outline({ type, outline, color }) {
+  const [x, y, w, h] = type === 'triangle' ? [] : outline
+  return (
+    <svg width="100%" height="100%" viewBox="0 0 100 100" style={{ display: 'block', overflow: 'visible' }} aria-hidden="true">
+      <g fill={color} stroke={INK} strokeWidth="3" strokeLinejoin="round">
+        {type === 'triangle' ? <polygon points={outline.map(p => p.join(',')).join(' ')} />
+          : type === 'circle' || type === 'oval' ? <ellipse cx={x + w / 2} cy={y + h / 2} rx={w / 2} ry={h / 2} />
+          : <rect x={x} y={y} width={w} height={h} rx="3" />}
+      </g>
+    </svg>
+  )
+}
+
 // The owl's magnifying glass with the shape to look for in it. It is not
 // one of the places of the collection: the sample used to stand in a row
 // with them, and two triangles to find read as three.
@@ -172,6 +186,8 @@ const LOOKS = [
   { mirror: false, sky: '#33407A', shift: 4, night: true },
   { mirror: true,  sky: '#D3F0C4', shift: 1 },
 ]
+// The stars of a night look: crosses like the sparkles in space, never dots
+// that could be taken for little circles
 const NIGHT_STARS = [[30, 20], [90, 50], [150, 16], [210, 60], [270, 26], [330, 52], [380, 14], [440, 40], [60, 80], [250, 90]]
 
 function lookOf(scene, k) {
@@ -186,7 +202,7 @@ function lookOf(scene, k) {
   }
   const flip = (W, x, w) => (look.mirror ? W - x - w : x)
   const mirrored = (W, node) => (look.mirror && node ? <g transform={`translate(${W} 0) scale(-1 1)`}>{node}</g> : node)
-  const stars = W => look.night && !scene.ownSky && NIGHT_STARS.map(([x, y], i) => <circle key={i} cx={x * W / 480} cy={y} r={i % 3 ? 2 : 3} fill="#FFF3B0" />)
+  const stars = W => look.night && !scene.ownSky && <Twinkles at={NIGHT_STARS.map(([x, y]) => [x * W / 480, y])} />
   const point = (W, p) => p && [flip(W, p[0], 0), p[1]]
   return {
     ...scene,
@@ -260,10 +276,10 @@ function buildRound(level, idx, used) {
     const types  = pool.filter(t => OBJECTS[t])
     const fresh  = types.filter(t => !used.object.has(t))
     const type   = shuffle(fresh.length ? fresh : types)[0]
-    const [emoji, name] = shuffle(OBJECTS[type])[0]
+    const [emoji, name, outline] = shuffle(OBJECTS[type])[0]
     used.object.add(type)
     return {
-      mode, thing: { type, emoji, name }, answer: type,
+      mode, thing: { type, emoji, name, outline }, answer: type,
       options: objectOptions(type, pool, shuffle),
       color: COLORS[rand(0, COLORS.length - 1)],
     }
@@ -619,9 +635,10 @@ export default function ShapeLandGame({ level = 1, onComplete }) {
                   }}>
                   <Art art={r.thing.emoji} size={thingSize * 0.68} />
                   {solved && (
+                    // the shape, laid exactly onto the thing's outline in its picture
                     <motion.div initial={{ scale: 1.6, opacity: 0 }} animate={{ scale: 1, opacity: 0.55 }}
-                      style={{ position: 'absolute', inset: thingSize * 0.1 }}>
-                      <Shape type={r.answer} color={r.color} size="100%" />
+                      style={{ position: 'absolute', inset: thingSize * 0.16 - 4 }}>
+                      <Outline type={r.answer} outline={r.thing.outline} color={r.color} />
                     </motion.div>
                   )}
                 </motion.div>
@@ -922,7 +939,8 @@ function Photo({ r, room: [cw, ch], big, tap, picked, shake, solved, look, onPic
                 )}
               </div>
               <div style={{
-                width: Math.round(max * 0.9), height: 20 + i * 14, marginTop: 4, background: '#C98A52', border: `3px solid ${INK}`, borderRadius: 6,
+                // the steps go the way of the order: up from small to big, down from big to small
+                width: Math.round(max * 0.9), height: 20 + (r.down ? n - 1 - i : i) * 14, marginTop: 4, background: '#C98A52', border: `3px solid ${INK}`, borderRadius: 6,
                 boxSizing: 'border-box', boxShadow: 'inset 0 4px 0 rgba(255,255,255,0.25)',
               }} />
             </div>

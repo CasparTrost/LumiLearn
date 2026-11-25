@@ -344,7 +344,8 @@ function Room({ tap }) {
     <g>
       <rect width="1000" height="600" fill="#ffe8c4" />
       {Array.from({ length: 21 }, (_, i) => <rect key={i} x={i * 50} y="0" width="22" height="470" fill="#ffdcae" />)}
-      <g transform="translate(720 70)">
+      {/* hidden on a screen held sideways, where only its lower edge showed (play.css) */}
+      <g className="pl-room-window" transform="translate(720 70)">
         <clipPath id="pl-room-window"><rect width="220" height="170" rx="10" /></clipPath>
         <rect width="220" height="170" rx="10" fill="#9fdcff" stroke="#8a4f22" strokeWidth="12" />
         <g {...tapProps(tap, 'giggle')}><circle cx="160" cy="55" r="28" fill="#ffd84a" className="pl-cheerable" /></g>
