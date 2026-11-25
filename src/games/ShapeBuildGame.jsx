@@ -187,6 +187,9 @@ export function buildRounds(level, count = 6, random = Math.random) {
     return out
   }
   const pool = FIGURES.filter(f => f.parts.length <= maxParts && f.parts.length >= minParts)
+  // the last level only has the big figures: as many rounds as there are of
+  // them, so that none comes twice (the bus was wished for twice)
+  if (minParts > 1) count = Math.min(count, pool.length)
   const picks = []
   while (picks.length < count) {
     // the level's new figures first, so they are among the rounds
@@ -431,9 +434,17 @@ function Board({ fig, customer, rules, filled, wrongSlot, stuck, complete, held,
 // A finished figure, small: for the workshop shelf, and as the customer's
 // wish. `whole`: one outline around it all, no lines between the parts (the
 // wish on the silhouette levels, which must not show the parts' borders).
-function MiniFigure({ fig, size, whole = false, face = true }) {
+function MiniFigure({ fig, size, whole = false, face = true, fit = false }) {
+  // fit: the picture is cut to the figure's own box (the wish bubble)
+  let box = '-4 -4 108 108'
+  if (fit) {
+    const x0 = Math.min(...fig.parts.map(p => p.x)), y0 = Math.min(...fig.parts.map(p => p.y))
+    const x1 = Math.max(...fig.parts.map(p => p.x + p.w)), y1 = Math.max(...fig.parts.map(p => p.y + p.h))
+    const side = Math.max(x1 - x0, y1 - y0) + 10
+    box = `${(x0 + x1 - side) / 2} ${(y0 + y1 - side) / 2} ${side} ${side}`
+  }
   return (
-    <svg viewBox="-4 -4 108 108" width={size} height={size} aria-hidden="true" style={{ display: 'block', overflow: 'visible' }}>
+    <svg viewBox={box} width={size} height={size} aria-hidden="true" style={{ display: 'block', overflow: 'visible' }}>
       {whole && fig.parts.map((p, i) => <ShapePath key={`o${i}`} {...p} fill="none" stroke={INK} strokeWidth={6} strokeLinejoin="round" />)}
       {fig.parts.map((p, i) => <ShapePath key={i} {...p} fill={p.color} stroke={whole ? p.color : INK} strokeWidth={whole ? 0.5 : 3} strokeLinejoin="round" />)}
       {face && <Face x={fig.face[0]} y={fig.face[1]} s={fig.face[2]} />}
@@ -837,7 +848,7 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
         style={upright ? { paddingRight: custSize * 0.9, paddingTop: wishRise } : { paddingTop: custSize * 0.62 }}>
         <motion.div animate={noNo} style={{ transformOrigin: '50% 90%' }}>
           <Critter art={fig.customer} size={custSize} mood={mood} label="Kunde" style={{ opacity: complete ? 0 : 1, transition: 'opacity .4s .8s' }}
-            wishSide={upright ? 'right' : 'top'} wish={<MiniFigure fig={fig} size={wishSize} whole={rules.silhouette} face={false} />} />
+            wishSide={upright ? 'right' : 'top'} wish={<MiniFigure fig={fig} size={wishSize} whole={rules.silhouette} face={false} fit />} />
         </motion.div>
       </motion.div>
     </AnimatePresence>

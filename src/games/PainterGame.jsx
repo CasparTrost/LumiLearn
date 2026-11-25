@@ -195,7 +195,7 @@ export default function PainterGame({ level = 1, onComplete }) {
       setPhase('happy')
       FUNNY[idx % FUNNY.length]()
       burst(onScreen(L.mon.x + L.mon.size / 2, L.mon.y + L.mon.size / 2), 'stars', 12)
-      afterSpeech(() => sayRight(), 450)
+      afterSpeech(() => { lastWord.current = null; sayRight() }, 450)
       later(reduce ? 900 : 1700, hop)
       return
     }
@@ -205,7 +205,7 @@ export default function PainterGame({ level = 1, onComplete }) {
     setLook('down')
     setPhase('compare')
     sfx.boing()
-    afterSpeech(() => sayWrong(), 450)
+    afterSpeech(() => { lastWord.current = null; sayWrong() }, 450)
     later(650, () => setLook('side'))
     later(1350, () => { setLook('no'); sfx.mismatch() })
     later(reduce ? 2000 : 2500, wash)

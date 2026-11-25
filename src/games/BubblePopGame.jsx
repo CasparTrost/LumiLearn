@@ -374,8 +374,10 @@ export default function BubblePopGame({ level = 1, onComplete }) {
       if (remaining === 0) {
         shake(0.7)   // the last one of the round lands a little harder
         setPhase('roundWin')
-        later(500, () => { setMood('dance', 2600); burst(octoRef.current, 'stars', 14) })
-        sayRight()
+        // the octopus dances (and makes its sound) first, Lumi praises
+        // after it: both at once covered each other
+        setMood('dance', 2600); burst(octoRef.current, 'stars', 14)
+        later(1150, () => sayRight())
         endRound(mistakesRef.current === 0 ? 'clean' : 'won')
       }
       return

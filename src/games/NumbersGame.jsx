@@ -423,7 +423,6 @@ function Sternbilder({ level = 1, onComplete }) {
   const lumiSize = lay?.lumi ?? 50
   const lumiAt = lay?.seats[Math.max(0, reached - 1)] ?? { x: 0, y: 0 }
   const drift = o && DRIFT[o.pic]
-  const far = size ? Math.max(size.w, size.h) + (lay?.img.size ?? 300) : 600
   // the way a finished picture takes off: a rocket along its nose, the rest straight up
   const away = (() => {
     if (!o || !size) return { x: 0, y: -600 }
@@ -608,7 +607,7 @@ function Sternbilder({ level = 1, onComplete }) {
               animate={
                 phase === 'reveal' ? (reduce ? { opacity: 1, scale: 1 } : { opacity: 1, scale: [0.94, 1.07, 1], y: [0, -lay.img.size * 0.07, 0, -lay.img.size * 0.03, 0], rotate: [0, -4, 4, -2, 0] })
                 : phase === 'launch' ? { opacity: 1, scale: 1, rotate: 0, x: [0, -4, 4, -4, 4, 0, away.x], y: [0, 3, -3, 3, -3, 0, away.y] }
-                : phase === 'drift' && drift ? { opacity: [1, 1, 1, 1, 0], x: drift.x.map(v => v * far), y: drift.y.map(v => v * far), rotate: drift.rotate, scale: drift.scale ?? 1, scaleY: drift.scaleY ?? 1 }
+                : phase === 'drift' && drift ? { opacity: [1, 1, 1, 0.6, 0], x: drift.x.map(v => v * lay.img.size * 1.2), y: drift.y.map(v => v * (lay.img.top + lay.img.size * 0.6)), rotate: drift.rotate, scale: drift.scale ?? 1, scaleY: drift.scaleY ?? 1 }
                 : phase === 'fly' && flight ? { opacity: [1, 1, 0], scale: flight.s, x: flight.dx, y: flight.dy, rotate: 0 }
                 : phase === 'fly' ? { opacity: 0 }
                 : { opacity: 0, scale: 0.94 }

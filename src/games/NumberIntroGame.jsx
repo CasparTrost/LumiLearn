@@ -161,7 +161,9 @@ function Play({ wide, level, onComplete }) {
   const boardCell = pair ? 40 : wide ? 46 : 44
   // two kinds, two trees: which tree each kind (want 0, want 1 or other) falls from
   const kinds = task.wants.length + (task.other ? 1 : 0)
-  const sides = useMemo(() => (Math.random() < 0.5 ? [0, 1] : [1, 0]), [idx]) // eslint-disable-line react-hooks/exhaustive-deps
+  // (two kinds wanted: each tree stands over its half of the basket; a
+  // kind that is not wanted may fall from either side)
+  const sides = useMemo(() => (task.wants.length > 1 || Math.random() < 0.5 ? [0, 1] : [1, 0]), [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const go = p => { g.phase = p; setPhase(p) }
 
@@ -272,7 +274,8 @@ function Play({ wide, level, onComplete }) {
     bad(mampfRef.current)
     // "Noch nicht ganz.", then what was wrong ("Das war zu viel."): one after the other
     const said = optional(SAY[verdict === 'few' ? 'few' : 'many'])
-    sayWrong(undefined, said ? { onEnd: () => narrate([said]) } : {})
+    // (after the count word of a catch made just before: it was cut off)
+    afterNarration(() => sayWrong(undefined, said ? { onEnd: () => narrate([said]) } : {}), { minMs: 0, maxMs: 1200 })
     const counts = [...g.counts]
     const most = Math.max(...counts)
     const L = boardLayout(task.wants, counts, boardCell)

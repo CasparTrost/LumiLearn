@@ -21,7 +21,10 @@ describe('Formen-Werkstatt levels', () => {
     for (let level = 1; level <= 10; level++) {
       for (let run = 0; run < 40; run++) {
         const r = buildRounds(level)
-        expect(r).toHaveLength(6)
+        // six wishes; the last level has one for each of its big figures, none twice
+        if (level < 10) expect(r).toHaveLength(6)
+        else expect(new Set(r.map(f => f.name)).size, 'level 10').toBe(r.length)
+        expect(r.length).toBeGreaterThanOrEqual(5)
         r.forEach((f, i) => { if (i) expect(f.name, `level ${level}`).not.toBe(r[i - 1].name) })
       }
     }
