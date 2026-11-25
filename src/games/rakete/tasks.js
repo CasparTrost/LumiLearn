@@ -49,7 +49,7 @@ export const dirOf = op => (op === MINUS ? -1 : 1)
 /**
  * The sums of a level: { op, from, step, target }. Every step of the range
  * comes up, the signs of a mixed level are shuffled half and half (never a
- * pattern to guess), no sum twice and never the same start twice in a row.
+ * pattern to guess), no sum twice and never the same start or result twice in a row.
  */
 export function buildTasks(level) {
   const p = levelPlan(level)
@@ -73,7 +73,8 @@ export function buildTasks(level) {
       if ((p.mode === 'count' || p.mode === 'pick') && (target < 1 || target > TOP - 1)) continue
       const key = `${from}${op}${step}`
       if (seen.has(key) && guard < 150) continue
-      if (out.length && out[out.length - 1].from === from && guard < 150) continue
+      // never the same start or the same landing twice in a row
+      if (out.length && (out[out.length - 1].from === from || out[out.length - 1].target === target) && guard < 150) continue
       seen.add(key)
       task = { op, from, step, target }
     }
