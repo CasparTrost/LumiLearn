@@ -431,6 +431,50 @@ async function playShadows(page) {
   await page.context().close()
 }
 
+// 3j. Waage-Welt (Wippe-Katapult): level 1 to the results. The first throw
+// is the light thing: the mouse only hops, a mark stays on the tree. Then
+// the heavy one every time; six animals end up on the branch
+{
+  const page = await newPage(SIZES.phone, save)
+  await page.goto(URL); await page.waitForTimeout(1500)
+  await page.getByRole('button', { name: /^Waage-Welt, Level/ }).last().click()
+  const game = page.locator('[data-game="wippe"]')
+  await game.waitFor({ timeout: 10000 }).catch(() => problems.push('Wippe-Katapult: the game did not start'))
+  const phaseIs = async (p, ms) => {
+    for (let t = 0; t < ms; t += 100) {
+      const now = await game.getAttribute('data-phase').catch(() => null)
+      if (now === p || now === null) return now === p
+      await page.waitForTimeout(100)
+    }
+    return false
+  }
+  let missed = false, guests = 0
+  const t0 = Date.now()
+  while (Date.now() - t0 < 150000 && (await game.count())) {
+    if (!(await phaseIs('aim', 20000))) break
+    const target = await game.getAttribute('data-target')
+    const pick = missed ? `[data-item][data-where="ground"][data-w="${target}"]` : `[data-item][data-where="ground"]:not([data-w="${target}"])`
+    await page.locator(pick).first().click()
+    if (!missed) {
+      missed = true
+      if (!(await phaseIs('aim', 15000))) { problems.push('Wippe-Katapult: no new try after a light throw'); break }
+      if ((await page.locator('[data-mark]').count()) !== 1) problems.push('Wippe-Katapult: no mark on the tree after a throw')
+      if ((await game.getAttribute('data-task')) !== '0') problems.push('Wippe-Katapult: a light throw ended the task')
+      await check(page, 'Wippe-Katapult after a miss')
+      continue
+    }
+    guests = Math.max(guests, Number(await game.getAttribute('data-guests').catch(() => 0)))
+    await page.waitForTimeout(400)
+  }
+  await page.waitForTimeout(5000)
+  const text = await page.evaluate(() => document.body.innerText)
+  if (!/5 von 6 gleich beim ersten Mal richtig/.test(text)) problems.push(`Wippe-Katapult: results not as expected: ${text.slice(0, 120).replace(/\n/g, ' | ')}`)
+  if (guests < 5) problems.push(`Wippe-Katapult: only ${guests} animals on the branch`)
+  await check(page, 'Wippe-Katapult results')
+  problems.push(...page.errors.map(e => `Wippe-Katapult: ${e}`))
+  await page.context().close()
+}
+
 // 4. Lumi's ideas for today: the last idea from the home screen, the
 // movement break the results suggest, the sticker, the album
 {
