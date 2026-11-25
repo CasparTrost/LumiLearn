@@ -11,15 +11,15 @@ import { helpLine } from '../lib/lumiLines.js'
 // no "lies", no keyboard talk, nothing that depends on seeing the words.
 // fresh: rewritten for the rebuilt game (docs/spielideen.md), not recorded yet.
 const INFO = {
-  'number-intro':  { emoji: '🔢', title: 'Zahlen entdecken', text: 'Ein Tier hat Hunger und zeigt dir auf einem Schild eine Zahl. Leg genau so viele Sachen auf seinen Teller und tippe dann auf den grünen Haken.', fresh: true },
-  'letter-intro':  { emoji: '🔡', title: 'ABC-Abenteuer', text: 'Das Buchstaben-Monster hat Hunger. In seiner Sprechblase siehst du seinen Buchstaben und ein Bild, das genauso anfängt. Füttere es mit Sachen, die auch so anfangen: ziehen oder antippen.', fresh: true },
+  'number-intro':  { emoji: '🔢', title: 'Zahlen entdecken', text: 'Zieh das Tier mit dem Finger unter das Obst und fang genau so viele, wie auf dem Schild stehen. Hast du genug, drück auf den gelben Mund. Dann wird gegessen.' },
+  'letter-intro':  { emoji: '🔡', title: 'ABC-Abenteuer', text: 'Das Monster frisst nur Sachen, die mit seinem Buchstaben anfangen. Tippe sie an, wenn sie vorbeifliegen. Sind zwei Monster da, zieh jede Sache zu ihrem Monster.' },
   'initial-sound': { emoji: '🕵️', title: 'Anlaut-Detektiv', text: 'Lumi angelt lustige Sachen aus dem Teich. Womit fängt das Wort an? Bring den Fang in den Eimer mit dem richtigen Buchstaben. Tippst du einen Frosch an, quakt er seinen Buchstaben.', fresh: true },
   rhyme:           { emoji: '🎵', title: 'Reim-Rallye', text: 'Im Reim-Theater sucht jede Figur einen Reimpartner. Zieh den passenden Ballon auf die Bühne, dann spielen die beiden eine lustige Szene.', fresh: true },
   numbers:         { emoji: '⭐', title: 'Zahlenland', text: 'Am Himmel verstecken sich Bilder. Tippe die Sterne der Reihe nach an oder fahre mit dem Finger von Stern zu Stern. Beim letzten Stern erscheint das Bild.' },
   letters:         { emoji: '⌨️', title: 'Buchstabenwald', text: 'Lumi will etwas zaubern: Tipp die Buchstaben des Wortes, dann fliegen sie in den Kessel. Ist das Wort fertig, macht es Puff, und das Ding springt heraus.', fresh: true },
   listen:          { emoji: '👂', title: 'Hörabenteuer', text: 'Hinter den Büschen hat sich etwas versteckt. Hör genau hin, oder schau in Lumis Sprechblase, und tippe auf den richtigen Busch.', fresh: true },
   words:           { emoji: '🃏', title: 'Memo-Welt', text: 'Merk dir, wo die Bilder liegen, und mach zwei Geschenke auf. Was zusammengehört, umarmt sich und darf zur Party.', fresh: true },
-  patterns:        { emoji: '🔮', title: 'Musterpark', text: 'In der Tierparade ist ein Platz frei. Zieh das passende Bild in die Lücke, dann marschiert die Parade weiter.', fresh: true },
+  patterns:        { emoji: '🔮', title: 'Musterpark', text: 'Die Tiere spielen der Reihe nach, ein Hocker ist leer. Hör gut zu: Wer fehlt? Setz das passende Tier auf den Hocker.' },
   shapes:          { emoji: '🎨', title: 'Farbenreich', text: 'Das Monster zeigt in seiner Denkblase, welche Farbe es haben möchte. Tippe auf die Farbflaschen, bis der Tank diese Farbe hat, und zieh dann am Hebel. Am Rad am Tank lässt du die Farbe wieder ab.' },
   emotions:        { emoji: '😊', title: 'Gefühlswelt', text: 'Lumi zeigt dir ein Gesicht und sagt das Gefühl. Tippe alle Tiere an, die sich genauso fühlen. Tippst du auf das Schild, sagt Lumi das Gefühl noch einmal.' },
   empathy:         { emoji: '🕵️‍♀️', title: 'Gefühlsdetektiv', text: 'Tippe auf die Lupe und schau, was passiert. Dann tippe auf das Gesicht, das passt. Und such aus, was dem Tier jetzt gut tut. Du siehst gleich, ob es hilft.' },
@@ -31,9 +31,9 @@ const INFO = {
   words2:          { emoji: '🔤', title: 'Silben-Spaß', text: 'Sag das Wort und klatsch dazu: Jedes Klatschen legt ein Seerosenblatt ins Wasser, dann hüpft der Frosch hinüber. Manchmal legst du die Silben-Blätter der Reihe nach.', fresh: true },
   weight:          { emoji: '⚖️', title: 'Waage-Welt', text: 'Zwei Dinge wollen wippen. Tipp an, wer nach unten geht, und schau, ob die Wippe es auch so macht.', fresh: true },
   'rocket-math':   { emoji: '🚀', title: 'Rechen-Rakete', text: 'Ein Alien wartet und zeigt dir eine Rechnung. Tippe auf den Planeten, wo die Rakete landet, dann hüpft sie hin und holt es ab.', fresh: true },
-  'shapes-land':   { emoji: '🔷', title: 'Formen-Land', text: 'Die Eule zeigt dir eine Form: Tippe im Bild alle an, die so aussehen. Manchmal stellst du Formen der Größe nach zum Foto auf, setzt eine Parade fort oder legst die passende Form auf ein Ding.', fresh: true },
-  'shape-build':   { emoji: '🧩', title: 'Formen-Werkstatt', text: 'Ein Tier wünscht sich etwas: Zieh die Formen in das Bild, bis es fertig ist, dann wird es lebendig. Mit dem Pfeil drehst du eine Form, und manchmal ist ein Teil zu viel.', fresh: true },
-  trace:           { emoji: '📝', title: 'Buchstaben-Spuren', text: 'Fahre den Buchstaben mit dem Finger nach, vom grünen Punkt in Pfeilrichtung. Dann wird er lebendig.', fresh: true },
+  'shapes-land':   { emoji: '🔷', title: 'Formen-Land', text: 'Die Eule zeigt dir in ihrer Lupe eine Form. Tippe im Bild alle Formen an, die so aussehen. Manchmal stellst du Formen der Größe nach auf, setzt eine Parade fort oder legst die passende Form auf ein Ding.' },
+  'shape-build':   { emoji: '🧩', title: 'Formen-Werkstatt', text: 'Ein Tier wünscht sich etwas. Zieh die Formen an ihren Platz, bis es fertig ist. Mit dem Pfeil drehst du eine Form, und manchmal ist ein Teil zu viel. Am Ende darfst du selbst bauen.' },
+  trace:           { emoji: '📝', title: 'Buchstaben-Spuren', text: 'Leg den Finger auf den grünen Punkt und fahre den Weg nach. Die Schnecke fährt mit und sammelt die Sterne. Fertige Buchstaben und Zahlen werden lebendig.' },
   coloring:        { emoji: '🖍️', title: 'Mal-Atelier', text: 'Hier darfst du frei malen. Wähle eine Farbe und male mit dem Pinsel, oder fülle eine ganze Fläche mit dem Farbeimer. Mit dem Pfeil machst du den letzten Schritt rückgängig.' },
 }
 

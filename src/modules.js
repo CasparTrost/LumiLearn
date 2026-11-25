@@ -21,7 +21,7 @@ export const WORLDS = [
 
 // Flat colours from the pixel palette (styles/pixel.css) for the tile heads.
 export const MODULES = [
-  { id: 'number-intro',  title: 'Zahlen entdecken', sub: 'Fang genau so viele',    emoji: '🧮', world: 'zahlen', scene: 'meadow',     minAge: 4, color: 'var(--px-gold)',   say: 'Zahlen entdecken. Zähle Dinge und lerne die Zahlen.' },
+  { id: 'number-intro',  title: 'Zahlen entdecken', sub: 'Fang genau so viele',    emoji: '🧮', world: 'zahlen', scene: 'meadow',     minAge: 4, color: 'var(--px-gold)',   say: 'Zahlen entdecken. Fang genau so viele, wie das Schild zeigt.' },
   { id: 'letter-intro',  title: 'ABC-Abenteuer',    sub: 'Monster füttern',        emoji: '🔡', world: 'buchstaben', scene: 'meadow', minAge: 4, color: 'var(--px-sky)',    say: 'ABC-Abenteuer. Lerne die Buchstaben kennen.' },
   { id: 'emotions',      title: 'Gefühlswelt',      sub: 'Gesichter lesen',        emoji: '😊', world: 'gefuehle', scene: 'meadow-calm', minAge: 4, color: 'var(--px-pink)',   say: 'Gefühlswelt. Finde alle, die sich so fühlen.' },
   { id: 'listen',        title: 'Hörabenteuer',     sub: 'Hören und finden',       emoji: '🔊', world: 'buchstaben', scene: 'forest', minAge: 4, color: 'var(--px-orange)', say: 'Hörabenteuer. Hör genau hin und finde das Bild.' },
@@ -32,7 +32,7 @@ export const MODULES = [
   { id: 'words2',        title: 'Silben-Spaß',      sub: 'Von Silbe zu Silbe',     emoji: '🔤', world: 'buchstaben', scene: 'pond',   minAge: 5, color: 'var(--px-green)',  say: 'Silben-Spaß. Baue Wörter aus Silben.' },
   { id: 'bubbles',       title: 'Blasen-Blitz',     sub: 'Blasen antippen',        emoji: '🫧', world: 'zahlen', scene: 'sea',     minAge: 5, color: 'var(--px-sky)',    say: 'Blasen-Blitz. Tippe die richtigen Blasen an.' },
   { id: 'words',         title: 'Memo-Welt',        sub: 'Paare finden',           emoji: '🃏', world: 'denken', scene: 'forest',     minAge: 4, color: 'var(--px-pink)',   say: 'Memo-Welt. Finde die Paare.' },
-  { id: 'patterns',      title: 'Musterpark',       sub: 'Wer fehlt in der Band?', emoji: '🔮', world: 'denken', scene: 'night-sky', minAge: 4, color: 'var(--px-orange)', say: 'Musterpark. Was kommt als Nächstes?' },
+  { id: 'patterns',      title: 'Musterpark',       sub: 'Wer fehlt in der Band?', emoji: '🔮', world: 'denken', scene: 'night-sky', minAge: 4, color: 'var(--px-orange)', say: 'Musterpark. Wer fehlt in der Band?' },
   { id: 'sort',          title: 'Sortier-Spaß',     sub: 'Füttere die Monster',  emoji: '🧺', world: 'denken', scene: 'room',     minAge: 4, color: 'var(--px-wood-light)', say: 'Sortier-Spaß. Räume alles an den richtigen Platz.' },
   { id: 'weight',        title: 'Waage-Welt',       sub: 'Was ist schwerer?',      emoji: '⚖️', world: 'zahlen', scene: 'meadow',     minAge: 5, color: 'var(--px-parch-dark)', say: 'Waage-Welt. Was ist schwerer?' },
   { id: 'clock',         title: 'Kuckucksuhr',      sub: 'Die Uhr lesen',          emoji: '🕐', world: 'zahlen', scene: 'room',     minAge: 6, color: 'var(--px-red)',    say: 'Kuckucksuhr. Lerne die Uhr lesen.' },
@@ -43,7 +43,7 @@ export const MODULES = [
   { id: 'initial-sound', title: 'Anlaut-Detektiv',  sub: 'Der erste Laut',         emoji: '🕵️', world: 'buchstaben', scene: 'pond', minAge: 5, color: 'var(--px-gold)',   say: 'Anlaut-Detektiv. Mit welchem Laut fängt das Wort an?' },
   { id: 'empathy',       title: 'Gefühlsdetektiv',  sub: 'Was ist passiert? Was hilft?', emoji: '🕵️‍♀️', world: 'gefuehle', scene: 'meadow', minAge: 5, color: 'var(--px-red)',    say: 'Gefühlsdetektiv. Was ist passiert, und was tut jetzt gut?' },
   { id: 'shape-build',   title: 'Formen-Werkstatt', sub: 'Aus Formen bauen',       emoji: '🧩', world: 'denken', scene: 'room',     minAge: 5, color: 'var(--px-orange)', say: 'Formen-Werkstatt. Baue Bilder aus Formen.' },
-  { id: 'trace',         title: 'Buchstaben-Spuren', sub: 'Mit dem Finger schreiben', emoji: '📝', world: 'buchstaben', scene: 'room', minAge: 4, color: 'var(--px-sky)', say: 'Buchstaben-Spuren. Fahre die Buchstaben mit dem Finger nach.' },
+  { id: 'trace',         title: 'Buchstaben-Spuren', sub: 'Mit dem Finger schreiben', emoji: '📝', world: 'buchstaben', scene: 'room', minAge: 4, color: 'var(--px-sky)', say: 'Buchstaben-Spuren. Fahre Buchstaben und Zahlen mit dem Finger nach.' },
   { id: 'coloring',      title: 'Mal-Atelier',      sub: 'Frei malen',             emoji: '🖍️', world: 'malen', scene: 'room',      minAge: 4, color: 'var(--px-purple)', say: 'Mal-Atelier. Male, was du möchtest.' },
 ]
 
