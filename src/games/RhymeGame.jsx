@@ -71,6 +71,9 @@ const hearIt = (w, enabled = true) => {
   return v ? hearable(v.text, { src: v.src, enabled }) : {}
 }
 
+// footlights d high and 2d wide: never touching, on the narrowest phone too
+const lampGap = (W, d) => clamp(W * 0.07, 2 * d + 6, 70)
+
 /**
  * Where everything goes in a theatre of w × h px. Tall enough: the audience
  * sits in a row below the stage. Short (a phone held sideways): it sits in
@@ -84,9 +87,12 @@ export function stageLayout(w, h, { verse = false, n = 0, balloons = true } = {}
   const open = { left: W * 0.08, right: W * 0.92 }
   // Short: four heads in each front corner, between the open curtain and the
   // footlights, so nobody sits on the curtain or on a lamp.
-  const lampHalf = ((LAMPS - 1) / 2) * clamp(W * 0.07, 24, 70) + (row ? 14 : 12)
+  const lampHalf = ((LAMPS - 1) / 2) * lampGap(W, row ? 14 : 12) + (row ? 14 : 12)
   const corner = W / 2 - lampHalf - 8 - (open.left + 6)
-  const head = row ? audH * 0.74 : clamp(Math.min(H * 0.17, corner / 4.08), 22, 46)
+  // In a row: the eight sit between the open curtains, shoulder to shoulder
+  // at most (a fifth of a head hidden), never on the curtain.
+  const rowW = open.right - open.left - 8
+  const head = row ? Math.min(audH * 0.74, rowW / 6.6) : clamp(Math.min(H * 0.17, corner / 4.08), 22, 46)
   const labelH = row ? 24 : 20
   const lampH = row ? 14 : 12
   const floorH = labelH + lampH + 8
@@ -863,7 +869,7 @@ function Buzzer({ yes, size, pulse, off, onPress, btnRef }) {
 function Footlights({ lay, lit }) {
   const still = reduceMotion()
   const d = lay.lampH
-  const gap = clamp(lay.W * 0.07, 24, 70)
+  const gap = lampGap(lay.W, d)
   const y = lay.floorBottom - d - 3
   return Array.from({ length: LAMPS }, (_, i) => {
     const on = i < lit
@@ -949,7 +955,7 @@ function Audience({ lay, crowd, lit }) {
   const h = lay.head
   const pos = i => {
     if (lay.row) {
-      const gap = Math.min(h * 1.25, (lay.W - 24) / AUDIENCE.length)
+      const gap = Math.min(h * 1.25, (lay.open.right - lay.open.left - 8 - h) / (AUDIENCE.length - 1))
       return { left: lay.cx + (i - (AUDIENCE.length - 1) / 2) * gap - h / 2, top: lay.H - lay.audH + (lay.audH - h) * 0.55 }
     }
     const k = i % 4, right = i >= 4
