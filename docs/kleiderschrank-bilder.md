@@ -7,7 +7,7 @@ Chrome des Nutzers). Ziel: für jedes Ding unten EIN Bild erzeugen und unter dem
 
 - **Nur das Ding allein:** niemand trägt es, kein Kopf, keine Puppe. Es wird später auf Lumi gesetzt.
 - **Genau von vorn**, auf Augenhöhe, gerade und symmetrisch.
-- **Stil wie Lumi** (): weiche Cartoon-Optik mit sanften Glanzlichtern,
+- **Stil wie Lumi** (`public/sprites/emoji/custom/lumi-idle.webp`): weiche Cartoon-Optik mit sanften Glanzlichtern,
   dünne, etwas dunklere Kontur, runde freundliche Formen. Nimmt Tripo ein Vorbild-Bild an, Lumi als Stil-Vorbild geben.
 - **Format:** PNG mit transparentem Hintergrund, quadratisch, mindestens 512 × 512 Pixel, das Ding mittig und groß.
 - Kein Bodenschatten, kein Text.
@@ -15,16 +15,16 @@ Chrome des Nutzers). Ziel: für jedes Ding unten EIN Bild erzeugen und unter dem
 
 ## Ablage
 
-- Speichern unter  (Ordner anlegen).
+- Speichern unter `tripo-in/wardrobe/<name>.png` (Ordner anlegen).
 - Bei mehreren Ergebnissen das nehmen, das am besten von vorn, vollständig und im Stil ist; schlechte neu erzeugen.
 - Nichts kaufen und kein Abo abschließen. Reicht das Guthaben nicht, aufhören und dem Nutzer sagen, wie viele fehlen.
-- Am Ende: neuen Zweig  anlegen, nur den Ordner  committen und pushen.
+- Am Ende: neuen Zweig `tripo-kleiderschrank` anlegen, nur den Ordner `tripo-in/wardrobe` committen und pushen.
   Keinen Pull Request öffnen. Eingebaut und auf Lumi angepasst werden die Bilder in der Cloud-Sitzung.
 
 ## Die Dinge
 
 Die Liste wächst noch auf über 50 Dinge (weitere Hüte, Brillen, Halsteile, Dinge für den Rücken und für die Hand).
-Vor dem Start Already up to date. ausführen und diese Datei neu lesen.
+Vor dem Start `git pull` ausführen und diese Datei neu lesen.
 
 ### 1. Bommelmütze (Kopf) → `tripo-in/wardrobe/muetze.png`
 
