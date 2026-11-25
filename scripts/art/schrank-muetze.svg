@@ -3,7 +3,7 @@
        hat with two cream stripes, a ribbed cuff and a fluffy bobble.
        Drawn in the soft style of Lumi's pictures: warm brown outline,
        light from the upper left.
-       Render: node scripts/art/render-svg.mjs scripts/art/schrank-muetze.svg public/sprites/wardrobe/muetze.webp 256 -->
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-muetze.svg public/sprites/wardrobe/muetze.webp 384 -->
   <defs>
     <linearGradient id="knit" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#ff7a68"/>

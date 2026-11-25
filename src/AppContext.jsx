@@ -396,9 +396,9 @@ export function reducer(state, action) {
     // it off; one thing per place (head, face, neck). Locked things stay off.
     case 'WARDROBE_WEAR': {
       const item = ITEM_BY_ID[action.payload]
-      if (!item) return state
+      const p0 = state.profiles[state.activeProfileId]
+      if (!item || !p0 || !isUnlocked(item, profileWardrobeStars(p0))) return state
       return updateActiveProfile(state, p => {
-        if (!isUnlocked(item, profileWardrobeStars(p))) return p
         const outfit = cleanOutfit(p.outfit)
         const on = outfit[item.slot] !== item.id
         return {
@@ -412,12 +412,14 @@ export function reducer(state, action) {
 
     // The wardrobe was opened: what is unlocked has been seen (the sign on
     // the home screen's button goes)
-    case 'WARDROBE_SEEN':
-      return updateActiveProfile(state, p => {
-        const ids = unlockedItems(profileWardrobeStars(p)).map(t => t.id)
-        const seen = knownIds(p.wardrobeSeen)
-        return ids.every(id => seen.includes(id)) ? p : { ...p, wardrobeSeen: knownIds([...seen, ...ids]) }
-      })
+    case 'WARDROBE_SEEN': {
+      const p = state.profiles[state.activeProfileId]
+      if (!p) return state
+      const ids = unlockedItems(profileWardrobeStars(p)).map(t => t.id)
+      const seen = knownIds(p.wardrobeSeen)
+      if (ids.every(id => seen.includes(id))) return state
+      return updateActiveProfile(state, q => ({ ...q, wardrobeSeen: knownIds([...seen, ...ids]) }))
+    }
 
     // The movement break of today's journey (screens/MoveBreakScreen.jsx)
     case 'START_MOVE':

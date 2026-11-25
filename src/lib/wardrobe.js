@@ -108,7 +108,7 @@ export const WARDROBE = [
   { id: 'fliege',       name: 'Fliege',       slot: 'neck', stars: 21, src: pic('fliege'),       at: [0.5, 0.44], size: 0.6,  box: [0.08, 0.31, 0.92, 0.7] },
   { id: 'piratenhut',   name: 'Piratenhut',   slot: 'head', stars: 28, src: pic('piratenhut'),   at: [0.5, 0.53], size: 1.1,  box: [0.04, 0.15, 0.99, 0.84], tuft: 'hide' },
   { id: 'rundbrille',   name: 'Runde Brille', slot: 'face', stars: 36, src: pic('rundbrille'),   at: [0.5, 0.5],  size: 2.1,  box: [0, 0.31, 1, 0.69], say: 'wort/brille' },
-  { id: 'zauberhut',    name: 'Zauberhut',    slot: 'head', stars: 45, src: pic('zauberhut'),    at: [0.5, 0.74], size: 1.2,  box: [0.05, 0.05, 0.95, 0.9], tuft: 'hide' },
+  { id: 'zauberhut',    name: 'Zauberhut',    slot: 'head', stars: 45, src: pic('zauberhut'),    at: [0.5, 0.8],  size: 1.06, box: [0.05, 0.05, 0.95, 0.9], tuft: 'hide' },
   { id: 'medaille',     name: 'Medaille',     slot: 'neck', stars: 55, src: pic('medaille'),     at: [0.5, 0.13], size: 0.8,  box: [0.15, 0.1, 0.85, 0.77] },
   { id: 'krone',        name: 'Krone',        slot: 'head', stars: 66, src: pic('krone'),        at: [0.5, 0.66], size: 0.82, box: [0.08, 0.27, 0.93, 0.8], tuft: 'front', say: 'wort/krone' },
 ]

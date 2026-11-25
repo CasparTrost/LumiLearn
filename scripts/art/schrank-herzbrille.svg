@@ -2,7 +2,7 @@
   <!-- Lumi's wardrobe (src/lib/wardrobe.js): heart glasses. Two hearts
        with a pink frame and rosy lenses that let Lumi's eyes shine through.
        The middle of the bridge is the middle of the picture.
-       Render: node scripts/art/render-svg.mjs scripts/art/schrank-herzbrille.svg public/sprites/wardrobe/herzbrille.webp 256 -->
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-herzbrille.svg public/sprites/wardrobe/herzbrille.webp 384 -->
   <defs>
     <linearGradient id="lens" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#ff8fbf" stop-opacity="0.5"/>

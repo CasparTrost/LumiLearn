@@ -2,7 +2,7 @@
   <!-- Lumi's wardrobe (src/lib/wardrobe.js): sunglasses. Big round dark
        lenses with a bright reflection, an orange frame. The middle of the
        bridge is the middle of the picture.
-       Render: node scripts/art/render-svg.mjs scripts/art/schrank-sonnenbrille.svg public/sprites/wardrobe/sonnenbrille.webp 256 -->
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-sonnenbrille.svg public/sprites/wardrobe/sonnenbrille.webp 384 -->
   <defs>
     <linearGradient id="lens" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#4a3f66"/>

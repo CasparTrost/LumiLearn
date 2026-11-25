@@ -29,6 +29,8 @@ const MESSAGES = {
 }
 // Lumi's recorded praise (lib/lumiLines.js); after a round without a star
 // the encouragement below says enough
+// a sentence not recorded yet is left out (Lumi's wardrobe)
+const optional = key => (LINES[key] ? line(key) : null)
 const praise = s => (s >= 1 ? line(`rueckmeldung/richtig-${1 + Math.floor(Math.random() * 9)}`) : null)
 // A level's end is praised once. Some games praise the last answer or the
 // win themselves ("Klasse!"), and a few seconds later this screen said
@@ -191,7 +193,8 @@ export default function ResultsScreen() {
       else if (proposal === 'practise') news.push(line('ergebnis/ueben'))
     }
     // not recorded yet: skipped while missing
-    if (newWear.length && LINES['schrank/neu']) news.push(line('schrank/neu'))
+    const wearNews = newWear.length ? optional('schrank/neu') : null
+    if (wearNews) news.push(wearNews)
     if (freshSticker) news.push(line('ergebnis/sticker-tag'))
     else if (main === moveBtn) news.push(line('ergebnis/bewegen'))
     else if (main === ideaBtn) news.push(line('ergebnis/noch-eine-idee'))

@@ -2,7 +2,7 @@
   <!-- Lumi's wardrobe (src/lib/wardrobe.js): the bow tie. Red with white
        polka dots, a knot in the middle. The knot is the middle of the
        picture.
-       Render: node scripts/art/render-svg.mjs scripts/art/schrank-fliege.svg public/sprites/wardrobe/fliege.webp 256 -->
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-fliege.svg public/sprites/wardrobe/fliege.webp 384 -->
   <defs>
     <linearGradient id="red" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#ff6b5b"/>

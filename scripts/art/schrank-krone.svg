@@ -2,7 +2,7 @@
   <!-- Lumi's wardrobe (src/lib/wardrobe.js): the crown. Gold, five round
        points with little balls, a band with red and blue jewels. It sits on
        top of Lumi's head; Lumi's feather tuft pokes up through it.
-       Render: node scripts/art/render-svg.mjs scripts/art/schrank-krone.svg public/sprites/wardrobe/krone.webp 256 -->
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-krone.svg public/sprites/wardrobe/krone.webp 384 -->
   <defs>
     <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#fff0a0"/>

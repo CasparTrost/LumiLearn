@@ -2,7 +2,7 @@
   <!-- Lumi's wardrobe (src/lib/wardrobe.js): the pirate hat. A friendly
        black tricorn with a gold edge and a smiling white skull, a red
        feather tucked in on the side. Seen from the front.
-       Render: node scripts/art/render-svg.mjs scripts/art/schrank-piratenhut.svg public/sprites/wardrobe/piratenhut.webp 256 -->
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-piratenhut.svg public/sprites/wardrobe/piratenhut.webp 384 -->
   <defs>
     <linearGradient id="felt" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#4a4058"/>

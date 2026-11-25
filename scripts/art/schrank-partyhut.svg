@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
   <!-- Lumi's wardrobe (src/lib/wardrobe.js): the party hat. A short cone
        with coloured dots and a zigzag edge, a fluffy pompom on the tip.
-       Render: node scripts/art/render-svg.mjs scripts/art/schrank-partyhut.svg public/sprites/wardrobe/partyhut.webp 256 -->
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-partyhut.svg public/sprites/wardrobe/partyhut.webp 384 -->
   <defs>
     <linearGradient id="cone" x1="0" y1="0" x2="1" y2="0">
       <stop offset="0" stop-color="#7fd8ff"/>

@@ -3,7 +3,7 @@
        the front: an arch of green leaves round the top of the head with
        pink, white and yellow flowers on it. Lumi's tuft stands up in the
        middle of it.
-       Render: node scripts/art/render-svg.mjs scripts/art/schrank-blumenkranz.svg public/sprites/wardrobe/blumenkranz.webp 256 -->
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-blumenkranz.svg public/sprites/wardrobe/blumenkranz.webp 384 -->
   <defs>
     <radialGradient id="pink" cx="0.4" cy="0.35" r="0.7"><stop offset="0" stop-color="#ffd0e2"/><stop offset="1" stop-color="#ff7aa8"/></radialGradient>
     <radialGradient id="white" cx="0.4" cy="0.35" r="0.7"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#f0e6ff"/></radialGradient>

@@ -2,7 +2,7 @@
   <!-- Lumi's wardrobe (src/lib/wardrobe.js): the wizard hat. A deep blue
        cone whose tip flops over to the side, gold stars and a moon, a wide
        brim and a yellow band.
-       Render: node scripts/art/render-svg.mjs scripts/art/schrank-zauberhut.svg public/sprites/wardrobe/zauberhut.webp 256 -->
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-zauberhut.svg public/sprites/wardrobe/zauberhut.webp 384 -->
   <defs>
     <linearGradient id="cone" x1="0" y1="0" x2="1" y2="0">
       <stop offset="0" stop-color="#7d6bff"/>
