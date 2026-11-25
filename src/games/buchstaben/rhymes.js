@@ -135,7 +135,7 @@ const P = {
   schweinStein: { how: 'on',     at: [0, -0.44], size: 0.66, act: 'bounce' },
   hahnZahn:     { how: 'wear',   at: [-0.36, -0.22], size: 0.26, act: 'bounce' },
   zahnPutzen:   { how: 'wear',   at: [-0.36, -0.22], size: 0.26, act: 'brush' },
-  brotBoot:     { how: 'in',     at: [0.22, 0.06], size: 0.36, rim: 0.15, act: 'sink' },
+  brotBoot:     { how: 'in',     at: [0.18, 0.18], size: 0.38, rim: 0.25, act: 'sink' },
   handStrand:   { how: 'beside', at: [0.16, 0.3], size: 0.38, act: 'wave' },
   wurmTurm:     { how: 'on',     at: [0, -0.53], size: 0.42, act: 'bounce' },
   schalWal:     { how: 'wear',   at: [-0.12, 0.06], size: 0.5, act: 'wobble' },

@@ -796,6 +796,7 @@ export const LINES = {
   'woerter/trommel': 'Trommel',
   'woerter/tuer': 'Tür',
   'woerter/ufo': 'Ufo',
+  'woerter/uhr': 'Uhr',
   'woerter/uhu': 'Uhu',
   'woerter/vase': 'Vase',
   'woerter/vogel': 'Vogel',

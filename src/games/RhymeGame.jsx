@@ -80,7 +80,12 @@ export function stageLayout(w, h, { verse = false, n = 0, balloons = true } = {}
   const W = w, H = h
   const valH = row ? clamp(H * 0.07, 28, 40) + (verse ? 16 : 0) : clamp(H * 0.1, 26, 34) + (verse ? 8 : 0)
   const audH = row ? clamp(H * 0.12, 46, 74) : 0
-  const head = row ? audH * 0.74 : clamp(H * 0.17, 30, 46)
+  const open = { left: W * 0.08, right: W * 0.92 }
+  // Short: four heads in each front corner, between the open curtain and the
+  // footlights, so nobody sits on the curtain or on a lamp.
+  const lampHalf = ((LAMPS - 1) / 2) * clamp(W * 0.07, 24, 70) + (row ? 14 : 12)
+  const corner = W / 2 - lampHalf - 8 - (open.left + 6)
+  const head = row ? audH * 0.74 : clamp(Math.min(H * 0.17, corner / 4.08), 22, 46)
   const labelH = row ? 24 : 20
   const lampH = row ? 14 : 12
   const floorH = labelH + lampH + 8
@@ -89,7 +94,6 @@ export function stageLayout(w, h, { verse = false, n = 0, balloons = true } = {}
   // the figures leave room above them for the balloons; without balloons
   // (Ja/Nein, odd one out) they take the stage
   const S = clamp(Math.min((H - valH - audH - floorH) * (!balloons ? 0.62 : row ? 0.4 : 0.42), W * 0.3), 56, 170)
-  const open = { left: W * 0.08, right: W * 0.92 }
   const flyTop = valH + 6, flyBottom = floorTop - S - 6
   const flyH = Math.max(0, flyBottom - flyTop)
   const nameH = row ? 22 : 0
@@ -934,7 +938,8 @@ const AUDIENCE = ['🐻', '🐰', '🐱', '🐸', '🦊', '🐶', '🐼', '🐨'
 /**
  * The audience: dark until won (one per right answer). It claps for a
  * rhyme found, laughs at the scene, and cheers at the shower and the end.
- * In a row below the stage, or in the two front corners when the screen is low.
+ * In a row below the stage, or in the two front corners (inside the open
+ * curtains) when the screen is low.
  */
 function Audience({ lay, crowd, lit }) {
   const still = reduceMotion()
@@ -945,7 +950,8 @@ function Audience({ lay, crowd, lit }) {
       return { left: lay.cx + (i - (AUDIENCE.length - 1) / 2) * gap - h / 2, top: lay.H - lay.audH + (lay.audH - h) * 0.55 }
     }
     const k = i % 4, right = i >= 4
-    return { left: right ? lay.W - 6 - (4 - k) * h * 1.02 : 6 + k * h * 1.02, top: lay.H - h * 0.92 }
+    const edge = lay.open.left + 6
+    return { left: right ? lay.W - edge - (4 - k) * h * 1.02 : edge + k * h * 1.02, top: lay.H - h * 0.92 }
   }
   const { kind, n } = crowd
   return AUDIENCE.map((a, i) => {

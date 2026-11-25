@@ -8,13 +8,14 @@ import { shuffle } from './useRounds.js'
 // picture that shows just that word: no Vogel under V (that is an F sound),
 // no Pferd (pf), no chair for "Tisch", no light bulb for "Lampe", no Eule
 // or Eis (eu, ei), no cup that could be "Kaffee". The owl is "Eule" in the
-// whole app, so it is no "Uhu" here: U has only the Ufo, too few for a bucket.
+// whole app, so it is no "Uhu" here: U has the Ufo and the Uhr, just enough
+// for a bucket, so the vowel level has all five vowels.
 export const WORDS = [
   ['A','Apfel','🍎'], ['A','Affe','🐒'], ['A','Ameise','🐜'], ['A','Ananas','🍍'], ['A','Anker','⚓'],
   ['E','Ente','🦆'],  ['E','Elefant','🐘'], ['E','Esel','🫏'],
   ['I','Igel','🦔'],  ['I','Insel','🏝️'],
   ['O','Ohr','👂'],   ['O','Oma','👵'], ['O','Orange','🍊'],
-  ['U','Ufo','🛸'],
+  ['U','Ufo','🛸'], ['U','Uhr','🕐'],
   ['M','Maus','🐭'],  ['M','Mond','🌙'], ['M','Milch','🥛'], ['M','Möhre','🥕'], ['M','Mais','🌽'],
   ['S','Sonne','☀️'], ['S','Socke','🧦'], ['S','Sofa','🛋️'], ['S','Seife','🧼'],
   ['F','Fisch','🐟'], ['F','Fuchs','🦊'], ['F','Feder','🪶'], ['F','Fuß','🦶'],
@@ -87,7 +88,7 @@ export const levelConfig = level => LEVELS[Math.max(0, Math.min(LEVELS.length - 
 
 /**
  * The letters on the buckets for a level, left to right. A letter needs two
- * words at least (U has only the Ufo), and the buckets together need a word
+ * words at least, and the buckets together need a word
  * for every catch of the level (the game sends in no more words than that),
  * so no thing comes twice; partners are kept apart unless the level is about
  * them, and then they stand side by side.
