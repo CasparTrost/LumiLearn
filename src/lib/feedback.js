@@ -29,8 +29,13 @@ const recorded = (prefix, n) => Array.from({ length: n }, (_, i) => line(`rueckm
 const RIGHT = recorded('richtig', 9)
 // a right answer after a miss: the child kept going
 const PERSIST = recorded('drangeblieben', 4)
-// No "try again" here: some games move on to the next task after a miss
-const WRONG = recorded('noch-nicht', 5)
+// No "try again" here: some games move on to the next task after a miss.
+// "Fast!" (noch-nicht-2) is not among them: said after a giraffe thrown to
+// the food monster or after laughing at a sad friend, it told the child
+// that this was almost right. It is only said where a game knows that the
+// answer was close (sayWrong(hint, { close: true })).
+const WRONG = recorded('noch-nicht', 5).filter((_, i) => i !== 1)
+const CLOSE = line('rueckmeldung/noch-nicht-2')
 
 // misses in a row since the last right answer
 let missed = 0
@@ -54,7 +59,7 @@ function bag(list) {
   }
 }
 const nextRight = bag(RIGHT), nextPersist = bag(PERSIST), nextWrong = bag(WRONG)
-preloadVoice([...RIGHT, ...PERSIST, ...WRONG, line('rueckmeldung/fehler-lernen')].map(l => l.src))
+preloadVoice([...RIGHT, ...PERSIST, ...WRONG, CLOSE, line('rueckmeldung/fehler-lernen')].map(l => l.src))
 
 /** The task of a round. Interrupts whatever was still being said. */
 export function sayTask(text, opts = {}) {
@@ -85,10 +90,13 @@ export function sayRight(extra, { lead = [], ...opts } = {}) {
  * Gentle correction, optionally with the hint or the right answer. Spoken
  * for the first miss of a task, and the second gets "mistakes are part of
  * learning"; after that only the hint.
+ * `close`: the game knows the answer was nearly right, so a first miss may
+ * be "Fast!". `lead`: what belongs to the answer and so comes first (the
+ * word of the face the child tapped: "Wütend. Nicht ganz.").
  */
-export function sayWrong(hint, opts = {}) {
+export function sayWrong(hint, { close = false, lead = [], ...opts } = {}) {
   missed++
   announce('wrong')
-  const head = missed === 1 ? nextWrong() : missed === 2 ? line('rueckmeldung/fehler-lernen') : null
-  return narrate([head, hint && { text: hint }], opts)
+  const head = missed === 1 ? (close ? CLOSE : nextWrong()) : missed === 2 ? line('rueckmeldung/fehler-lernen') : null
+  return narrate([...lead, head, hint && { text: hint }], opts)
 }

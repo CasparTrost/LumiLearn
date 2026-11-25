@@ -29,15 +29,32 @@ const LOOKALIKE = {
   'Verlegen':    ['Traurig', 'Stolz'],
 }
 
-// Feelings a child may rightly take for the one on the sign: someone proud
-// or excited is beaming, and beaming is "glücklich"; and a beaming face
-// under the proud sign differs from it only by a medal, which is no
-// expression. While the sign shows the key, these stay away from the
-// windows, so that no tap that can be argued for is called wrong.
+// Faces a child may rightly call by the word on the sign. While that word
+// is asked, these stay away from the windows, so that no tap that can be
+// argued for is called wrong. Every asked feeling, against every face:
+// - Glücklich: the proud, the excited and the shy face all smile, and a
+//   smile is "glücklich" (the shy one with a big blush reads happiest).
+// - Traurig: the bored face's pout (variant 2) is a small frown.
+// - Wütend: no other face has angry brows or a red forehead.
+// - Ängstlich / Überrascht: wide eyes and an open mouth are "erschrocken",
+//   both at once; the two are the pair grown-ups mix up most, too.
+// - Überrascht / Aufgeregt: a star-eyed open grin is a happy surprise.
+// - Müde / Gelangweilt: both have heavy lids; a yawn is bored, a head
+//   propped on a paw is tired.
+// - Stolz / Aufgeregt: both beam as Glücklich does (Gefühlsdetektiv keeps
+//   the three apart as well).
+// - Aufgeregt: "aufgeregt" is also the jittery feeling before a show, which
+//   is the sweating, teeth-chattering Ängstlich face.
+// - Verlegen: no other face looks down and away under a blush.
 export const TOO_CLOSE = {
-  'Glücklich': ['Stolz', 'Aufgeregt'],
-  'Stolz':     ['Glücklich'],
-  'Aufgeregt': ['Glücklich'],
+  'Glücklich':   ['Stolz', 'Aufgeregt', 'Verlegen'],
+  'Traurig':     ['Gelangweilt'],
+  'Ängstlich':   ['Überrascht'],
+  'Überrascht':  ['Ängstlich', 'Aufgeregt'],
+  'Müde':        ['Gelangweilt'],
+  'Gelangweilt': ['Müde'],
+  'Stolz':       ['Glücklich', 'Aufgeregt'],
+  'Aufgeregt':   ['Glücklich', 'Stolz', 'Überrascht', 'Ängstlich'],
 }
 
 const STAY_MS = [5500, 5000, 4500, 4000, 3400, 3000, 2800, 2500, 2300, 2000]

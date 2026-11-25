@@ -9,7 +9,8 @@ import { playAnimal } from '../lib/animalSounds.js'
 import { usePaused } from '../lib/pause.js'
 import { result } from '../lib/score.js'
 import { sfx } from '../sfx.js'
-import { FEELING_ICON, FEELING_BADGE, BRIGHT, shuffle } from './feelings.js'
+import { BRIGHT, shuffle } from './feelings.js'
+import { SignFace } from './gefuehle/faces.jsx'
 import { INK, pxCard } from './px.js'
 import Pal, { reduceMotion } from './detektiv/Pal.jsx'
 import { CASES, StageCtx, SH, GROUND, FRIEND, holdNode, squeeze, squeezeFor } from './detektiv/cases.jsx'
@@ -42,11 +43,12 @@ import { say } from './detektiv/script.js'
 
 // ── Levels ────────────────────────────────────────────────────────────────
 // `cases` how many of each tier (1: glücklich, traurig, wütend, ängstlich;
-// 2: überrascht, stolz, müde; 3: verlegen, gelangweilt, aufgeregt,
-// neugierig), `chips` faces to choose from, `cards` picture cards.
+// 2: traurig, stolz, müde, with überrascht among the faces; 3: verlegen,
+// gelangweilt, aufgeregt, neugierig), `chips` faces to choose from, `cards`
+// picture cards.
 // `contrast`: the other face is the opposite kind of feeling. `odd`: one
 // card is kind but does not fit this case.
-const LEVELS = [
+export const LEVELS = [
   { cases: [4, 0, 0], chips: 2, cards: 2, contrast: true, each: true },
   { cases: [4, 0, 0], chips: 2, cards: 2 },
   { cases: [4, 0, 0], chips: 3, cards: 3 },
@@ -64,8 +66,12 @@ const TIER_FEELINGS = [
   ['Verlegen', 'Gelangweilt', 'Aufgeregt', 'Neugierig'],
 ]
 // Never offered next to each other: both could be said of the same friend
-// (proud is glad, too; a burst balloon startles and frightens).
-const ALIKE = [['Glücklich', 'Stolz', 'Aufgeregt'], ['Ängstlich', 'Überrascht'], ['Traurig', 'Verlegen'], ['Traurig', 'Gelangweilt'], ['Überrascht', 'Neugierig']]
+// (proud is glad, too; a burst balloon startles and frightens; the shy face
+// smiles; "aufgeregt" is also the jitters). The same pairs as TOO_CLOSE in
+// gefuehle/rounds.js, as the faces are the same. What holds for one case
+// only is its `notWith` (detektiv/cases.jsx).
+const ALIKE = [['Glücklich', 'Stolz', 'Aufgeregt'], ['Ängstlich', 'Überrascht'], ['Traurig', 'Verlegen'], ['Traurig', 'Gelangweilt'], ['Überrascht', 'Neugierig'],
+  ['Glücklich', 'Verlegen'], ['Ängstlich', 'Aufgeregt'], ['Überrascht', 'Aufgeregt'], ['Müde', 'Gelangweilt']]
 const alike = (a, b) => ALIKE.some(g => g.includes(a) && g.includes(b))
 
 // Which cases were played last, so a level played again brings other ones
@@ -101,9 +107,9 @@ function pickCases(cfg) {
 }
 
 /** A case with its faces and cards for this level. */
-function buildRound(k, cfg, level) {
+export function buildRound(k, cfg, level) {
   const tiers = level <= 3 ? 1 : level <= 6 ? 2 : 3
-  const others = TIER_FEELINGS.slice(0, tiers).flat().filter(f => f !== k.feeling && !alike(f, k.feeling))
+  const others = TIER_FEELINGS.slice(0, tiers).flat().filter(f => f !== k.feeling && !alike(f, k.feeling) && !k.notWith.includes(f))
   const opposite = others.filter(f => BRIGHT.has(f) !== BRIGHT.has(k.feeling))
   const wrong = shuffle(cfg.contrast && opposite.length ? opposite : others).slice(0, cfg.chips - 1)
   const good = shuffle(k.good)[0]
@@ -260,7 +266,7 @@ function Stage({ k, sw, scale, pv, friend, react, helper, gift, phase, named, ta
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               background: named ? '#fffdf7' : 'rgba(255,253,247,.7)', border: named ? `3px solid ${INK}` : `4px dashed ${INK}`,
               boxShadow: named ? '0 0 0 4px #ffc93c, 0 5px 0 rgba(42,27,61,.3)' : 'none' }}>
-            {named && <Face feeling={k.feeling} size={50} />}
+            {named && <Face feeling={k.feeling} size={58} />}
           </motion.div>
         )}
 
@@ -311,13 +317,15 @@ function Stage({ k, sw, scale, pv, friend, react, helper, gift, phase, named, ta
   )
 }
 
-/** The face of a feeling, with its badge where it has one (Stolz: a medal). */
+/**
+ * The face of a feeling: the face of Lumi's sign in Gefühlswelt, so that a
+ * feeling looks the same in both games (the emoji read differently: 😳 as
+ * shocked, 🤔 as thinking). Stolz wears its medal.
+ */
 function Face({ feeling, size }) {
-  const badge = FEELING_BADGE[feeling]
   return (
-    <span style={{ position: 'relative', display: 'inline-flex', width: size, height: size, flexShrink: 0 }}>
-      <Art art={FEELING_ICON[feeling]} size={size} />
-      {badge && <Art art={badge} size={size * 0.5} style={{ position: 'absolute', right: -size * 0.12, bottom: -size * 0.1 }} />}
+    <span style={{ display: 'inline-flex', width: size, height: size, flexShrink: 0 }}>
+      <SignFace feeling={feeling} size={size} />
     </span>
   )
 }
@@ -338,7 +346,7 @@ function FeelChip({ feeling, size, state, hint, onPick, delay, fits }) {
         style={{ width: size, height: size, boxSizing: 'border-box', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
           background: state === 'tried' ? TRIED.background : '#fffdf7', border: `3px solid ${state === 'tried' ? TRIED.frame : INK}`,
           boxShadow: hint ? '0 0 0 5px #ffc93c, 0 5px 0 rgba(42,27,61,.3)' : state === 'tried' ? 'none' : '0 5px 0 rgba(42,27,61,.3)' }}>
-        <span style={{ display: 'flex', ...(state === 'tried' ? TRIED.inside : null) }}><Face feeling={feeling} size={size * 0.78} /></span>
+        <span style={{ display: 'flex', ...(state === 'tried' ? TRIED.inside : null) }}><Face feeling={feeling} size={size * 0.96} /></span>
       </motion.span>
       <span style={{ ...LABEL, fontSize: Math.max(13, Math.min(17, size * 0.19)), opacity: state === 'tried' ? 0.4 : 1 }}>{feeling}</span>
     </motion.button>
@@ -482,16 +490,18 @@ export default function EmpathyGame({ level = 1, onComplete }) {
       game.current.missed = true
       setMissFace(f)
       setTriedFaces(t => [...t, f])
-      announce('wrong')
+      // The word alone ("Wütend.") sounded like a yes to a child who cannot
+      // read: the miss sound first, the word of the face tapped, then the
+      // usual "not this one" ("Nicht ganz.")
       sfx.mismatch()
-      narrate([feelingWord(f)])
+      sayWrong(null, { lead: [feelingWord(f)] })
       c.react('no')
       clock.after(500, () => setMissFace(null))
       return
     }
     setPhase('named')
     narrate([feelingWord(f)])
-    fly(el?.querySelector('[data-face]') ?? el, slotRef.current, <Face feeling={f} size={(el?.querySelector('[data-face]')?.getBoundingClientRect().width ?? 60) * 0.78} />, () => {
+    fly(el?.querySelector('[data-face]') ?? el, slotRef.current, <Face feeling={f} size={(el?.querySelector('[data-face]')?.getBoundingClientRect().width ?? 60) * 0.96} />, () => {
       setNamed(true)
       sfx.correct()
       burst(slotRef.current, 'stars', 8)
@@ -541,11 +551,15 @@ export default function EmpathyGame({ level = 1, onComplete }) {
     game.current.missed = true
     if (ACTIONS[id].mean) {
       // an unkind card: the friend feels worse, and a glad one is not glad any more
+      // That is the answer: no "Hm, noch nicht" and no "mistakes are part of
+      // learning" after laughing at a friend
       setFriend(f => ({ ...f, feel: k.bright ? 'sad' : k.face, strength: 2, arms: undefined, hold: k.hurtHold ?? f.hold }))
       c.react('sink')
-    } else {
-      c.react('no')
+      sfx.mismatch()
+      announce('wrong')
+      return
     }
+    c.react('no')
     sfx.mismatch()
     sayWrong()
   }
