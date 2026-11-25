@@ -1,513 +1,667 @@
-import { useState, useEffect, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { DragArea, Draggable, RoundTrail, Art, HintHand, useBursts } from '../components/play/index.js'
-import { leaveGame } from '../narrator.js'
-import { sayRight, sayWrong } from '../lib/feedback.js'
-import { sfx } from '../sfx.js'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { motion, AnimatePresence, MotionConfig, useAnimationControls } from 'framer-motion'
+import { Art, HintHand, useBursts } from '../components/play/index.js'
+import { narrate, afterNarration, leaveGame } from '../narrator.js'
+import { sayRight, sayWrong, announce } from '../lib/feedback.js'
+import { feelingWord } from '../lib/words.js'
+import { playAnimal } from '../lib/animalSounds.js'
+import { usePaused } from '../lib/pause.js'
 import { result } from '../lib/score.js'
-import { shuffle } from './feelings.js'
-import { Stage, FeelLumi, FaceChip, FeelingFace, AskFace, FEEL, sceneLength, useAfter, useTrayStart } from './feelingStage.jsx'
-import { INK, pxButton } from './px.js'
+import { sfx } from '../sfx.js'
+import { FEELING_ICON, FEELING_BADGE, BRIGHT, shuffle } from './feelings.js'
+import { INK, pxCard } from './px.js'
+import Pal, { reduceMotion } from './detektiv/Pal.jsx'
+import { CASES, StageCtx, SH, GROUND, FRIEND, holdNode, squeeze, squeezeFor } from './detektiv/cases.jsx'
+import { ACTIONS, CardArt, Haha, Zig } from './detektiv/actions.jsx'
+import { say } from './detektiv/script.js'
 
 /**
- * Gefühlsdetektiv — „Freunde trösten“
+ * Gefühlsdetektiv — little cases, told and played.
  *
- * A friend is sad, angry, scared … and what happened plays on the stage:
- * the ice cream drops, the tower tumbles, the dog barks. The child first
- * hands the friend the face that fits — read from posture and face — and
- * then drags over a way to help: a hug, a question, the light switched on.
- * The right help brings the colour back into the friend, who thanks the
- * child. Kind help that is not what is needed most is never "wrong".
+ * Something happens to an animal friend, in front of the child: the ice
+ * cream falls off the cone, the tower tumbles, it thunders, a present
+ * arrives. Then two questions, always the same two:
  *
- * Gefühlswelt asks how Lumi feels; here it is *someone else*, read from the
- * body, and the second step asks what to actually do about it.
+ *   1. How does the friend feel?  The child taps the face that fits.
+ *   2. What is good now?          The child taps a picture card, and Lumi
+ *      does it. Every card plays out: the helpful one makes the friend glad
+ *      again, an unkind one visibly makes it worse, one that does not fit
+ *      changes nothing — and the child chooses again.
  *
- * Scientific basis:
- *   • Theory of mind / perspective taking (Wellman) — attributing a feeling
- *     to another person, not oneself, is the developmental step this age is
- *     working on.
- *   • Bodily emotion recognition (de Gelder) — posture carries emotion
- *     independently of facial expression, and children read it earlier and
- *     more reliably than they read subtle faces.
- *   • Prosocial response — naming a feeling is only half of empathy; the
- *     second question asks what to actually do about it.
+ * Each solved case puts a heart into the detective's case book. A case
+ * counts when both the feeling and the help were right at the first try.
+ *
+ * Gefühlswelt is about spotting a face quickly; here it is the reason for
+ * a feeling and what to do about it (perspective taking and the prosocial
+ * answer: Wellman's theory of mind; Eisenberg on prosocial behaviour).
+ *
+ * The cases are in detektiv/cases.jsx, the cards in detektiv/actions.jsx,
+ * what Lumi says in detektiv/script.js.
  */
 
-// ── Friends whose feeling you can see ──────────────────────────────────────
-// The first version were stick figures without faces, then stick figures
-// with faces: next to the cartoon world they looked thin and grey, and a few
-// degrees of arm angle were hard to tell apart. Now the friends are drawn
-// like Lumi (feelingStage.jsx), each with its own colour and ears, and carry
-// the feeling in face, arms and the whole body: arms up and a big laugh,
-// hanging arms and tears, fists and steam, holding itself and trembling.
-const LOOKS = [
-  { body: '#ff9fc4', shade: '#ee6fa2', ears: 'bunny' },
-  { body: '#8fd0ff', shade: '#4fa3e8', ears: 'bear' },
-  { body: '#9be38a', shade: '#5cbf52', ears: 'cat' },
-  { body: '#c9a6ff', shade: '#9a6ee8', ears: 'antenna' },
-  { body: '#ffbf6e', shade: '#f08c2e', ears: 'bear' },
-  { body: '#8ff0d6', shade: '#3fc1a8', ears: 'bunny' },
-  { body: '#ff9a8a', shade: '#e8604e', ears: 'cat' },
-]
-
-// The same words and faces as in Gefühlswelt (feelings.js)
-const FEELINGS = ['Glücklich', 'Traurig', 'Wütend', 'Ängstlich', 'Einsam', 'Stolz', 'Müde']
-
-// Never offered next to each other: they look alike and often both fit.
-// "Tim hat es ganz nach oben geschafft" was graded fröhlich, and the child
-// who said stolz heard the error buzz.
-const NEAR = {
-  'Glücklich': ['Stolz'],
-  'Stolz':     ['Glücklich'],
-  'Traurig':   ['Einsam', 'Müde'],
-  'Einsam':    ['Traurig', 'Müde'],
-  'Müde':      ['Traurig', 'Einsam'],
-}
-
-// Each scene: who, what the posture shows, what happened, and three ways to
-// respond. `best` fits this feeling best; `kind` ones are friendly but not
-// what is needed most (taken gladly, no point lost); the unkind ones fly
-// back. The sentences are labels; `i` is the picture the child drags,
-// `props` what happened (feelingStage.jsx; the friend stands at x 300),
-// `then` how it looks once helped (the teddy is back, the light is on).
-const t = (a, x, act, o) => ({ a, x, act, ...o })
-const pal = (a, x, act, o) => ({ a, x, act, char: true, s: 90, ...o })
-const SCENES = [
-  { feeling: 'Traurig', name: 'Mia',
-    situation: 'Mias Bild ist zerrissen. Mia weint.',
-    props: [t('🖼️', 430, 'topple', { s: 90, d: 0.4 })],
-    best: 'Ich setze mich zu Mia und tröste sie.', bi: ['🤗'],
-    other: [
-      { t: 'Ich hole schnell einen Ball zum Spielen.', i: ['⚽'], kind: true },
-      { t: 'Ich sage ihr, sie soll nicht traurig sein.', i: ['🗣️', '😠'] },
-    ] },
-  { feeling: 'Einsam', name: 'Ben',
-    situation: 'Ben sitzt allein am Rand und schaut den anderen beim Spielen zu.',
-    props: [pal('🐰', 470, 'hop', { flip: true }), pal('🐻', 550, 'hop', { d: 0.3, flip: true }), t('⚽', 510, 'bob', { s: 50, y: 90 })],
-    best: 'Ich frage Ben, ob er mitspielen will.', bi: ['🤝', '⚽'],
-    other: [
-      { t: 'Ich spiele einfach weiter.', i: ['🙈'] },
-      { t: 'Ich winke Ben kurz zu.', i: ['👋'], kind: true },
-    ] },
-  { feeling: 'Wütend', name: 'Leo',
-    situation: 'Jemand hat Leos Turm umgeworfen. Leo ballt die Fäuste.',
-    props: [t('🧱', 420, 'drop', { s: 50 }), t('🧱', 470, 'drop', { s: 50, d: 0.2 }), t('🧱', 520, 'drop', { s: 50, d: 0.4 })],
-    best: 'Ich warte kurz und frage dann, was passiert ist.', bi: ['⏳', '👂'],
-    other: [
-      { t: 'Ich baue den Turm schnell neu.', i: ['🧱'], kind: true },
-      { t: 'Ich sage ihm, er soll sich nicht so anstellen.', i: ['🗣️', '😠'] },
-    ] },
-  { feeling: 'Ängstlich', name: 'Nele',
-    situation: 'Es donnert laut, und Nele macht sich ganz klein.',
-    props: [t('🌧️', 440, 'bob', { s: 110, y: 170 }), t('⚡', 470, 'bang', { s: 70, y: 100, d: 0.6 })],
-    best: 'Ich bleibe bei Nele und sage, dass ich da bin.', bi: ['🤗'],
-    other: [
-      { t: 'Ich mache das Fenster zu.', i: ['🪟'], kind: true },
-      { t: 'Ich lache, weil Gewitter doch nicht schlimm ist.', i: ['🤡'] },
-    ] },
-  { feeling: 'Glücklich', name: 'Tim',
-    situation: 'Tim bekommt einen großen Luftballon geschenkt und hüpft vor Freude.',
-    props: [t('🎈', 370, 'bob', { s: 80, y: 150 })],
-    best: 'Ich freue mich mit Tim.', bi: ['🎉'],
-    other: [
-      { t: 'Ich will den Luftballon auch haben.', i: ['✋', '🎈'] },
-      { t: 'Ich schaue kurz hin und spiele weiter.', i: ['👀', '⚽'], kind: true },
-    ] },
-  { feeling: 'Stolz', name: 'Ida',
-    situation: 'Ida zeigt ihr fertiges Bild und stellt sich ganz gerade hin.',
-    props: [t('🖼️', 410, 'pop', { s: 90, y: 40 })],
-    best: 'Ich schaue mir das Bild an und sage, was mir gefällt.', bi: ['👀', '👏'],
-    other: [
-      { t: 'Ich male auch schnell ein Bild.', i: ['🖍️'], kind: true },
-      { t: 'Ich sage, dass meins schöner ist.', i: ['🗣️', '😠'] },
-    ] },
-  { feeling: 'Traurig', name: 'Jonas',
-    situation: 'Jonas hat sein Kuscheltier verloren. Jonas weint.',
-    props: [t('🌳', 500, 'pop', { s: 150 }), t('🧸', 470, 'pop', { s: 40, y: 20, d: 1, z: 0 })],
-    then: [t('🌳', 500, 'pop', { s: 150 }), t('🧸', 470, 'give', { s: 60, to: 380, d: 0.3 })],
-    best: 'Ich helfe Jonas beim Suchen.', bi: ['🔍', '🧸'],
-    other: [
-      { t: 'Ich leihe ihm mein Kuscheltier.', i: ['🧸', '➡️'], kind: true },
-      { t: 'Ich sage, dass Kuscheltiere nur für Babys sind.', i: ['🗣️', '😠'] },
-    ] },
-  { feeling: 'Einsam', name: 'Anna',
-    situation: 'Anna ist neu im Kindergarten und kennt noch niemanden. Anna sitzt ganz allein.',
-    props: [t('🏫', 480, 'pop', { s: 150 })],
-    best: 'Ich sage Hallo und zeige Anna alles.', bi: ['🤝', '🏫'],
-    other: [
-      { t: 'Ich winke ihr von Weitem zu.', i: ['👋'], kind: true },
-      { t: 'Ich warte, bis sie zu mir kommt.', i: ['⏳'], kind: true },
-    ] },
-  { feeling: 'Wütend', name: 'Paul',
-    situation: 'Ein Kind hat Paul das Spielauto weggenommen. Paul stampft mit dem Fuß.',
-    props: [t('🚗', 400, 'grab', { s: 56, to: 420, d: 0.3 }), pal('🐒', 450, 'visit', { flip: true, d: 0.3 })],
-    best: 'Ich frage Paul, was los ist, und höre zu.', bi: ['👂'],
-    other: [
-      { t: 'Ich lache über Paul.', i: ['🤡'] },
-      { t: 'Ich gebe Paul mein Auto.', i: ['🚗', '➡️'], kind: true },
-    ] },
-  { feeling: 'Ängstlich', name: 'Emil',
-    situation: 'Ein großer Hund bellt laut. Emil hält sich ganz fest.',
-    props: [pal('🐕', 470, 'shake', { s: 130, flip: true })],
-    best: 'Ich nehme Emils Hand, und wir holen einen Erwachsenen.', bi: ['🤝', '👩'],
-    other: [
-      { t: 'Ich laufe schnell weg.', i: ['🏃', '💨'] },
-      { t: 'Ich sage, dass er keine Angst haben muss.', i: ['🗣️', '💛'], kind: true },
-    ] },
-  { feeling: 'Glücklich', name: 'Lea',
-    situation: 'Heute hat Lea Geburtstag! Lea lacht und tanzt.',
-    props: [t('🎂', 430, 'pop', { s: 90 }), t('🎈', 500, 'bob', { s: 70, y: 120 })],
-    best: 'Ich gratuliere Lea und freue mich mit ihr.', bi: ['🎁', '🎂'],
-    other: [
-      { t: 'Ich frage, ob ich auch ein Geschenk bekomme.', i: ['✋', '🎁'] },
-      { t: 'Ich sage einfach Hallo.', i: ['👋'], kind: true },
-    ] },
-  { feeling: 'Stolz', name: 'Max',
-    situation: 'Max hat zum ersten Mal die Schuhe allein zugebunden.',
-    props: [t('👟', 390, 'pop', { s: 60 }), t('✨', 410, 'bob', { s: 44, y: 60, d: 0.5 })],
-    best: 'Ich sage: Toll, das hast du allein geschafft!', bi: ['👏'],
-    other: [
-      { t: 'Ich binde meine Schuhe auch zu.', i: ['👟'], kind: true },
-      { t: 'Ich sage, das ist doch ganz leicht.', i: ['🗣️', '😠'] },
-    ] },
-  { feeling: 'Müde', name: 'Ella',
-    situation: 'Nach dem langen Ausflug gähnt Ella. Ihre Augen fallen zu.',
-    props: [t('🎒', 400, 'drop', { s: 70 }), t('🌙', 470, 'bob', { s: 70, y: 190 })],
-    best: 'Ich frage Ella, ob sie sich ausruhen möchte.', bi: ['🛏️'],
-    other: [
-      { t: 'Ich will mit Ella Fangen spielen.', i: ['⚽'], kind: true },
-      { t: 'Ich rufe ganz laut ihren Namen.', i: ['🔊'] },
-    ] },
-  { feeling: 'Müde', name: 'Finn',
-    situation: 'Finn hat heute ganz viel getobt. Jetzt gähnt Finn.',
-    props: [t('⚽', 410, 'pop', { s: 60 }), t('🛝', 500, 'pop', { s: 130 })],
-    best: 'Ich bringe Finn eine Decke und bin leise.', bi: ['🛏️', '🤫'],
-    other: [
-      { t: 'Ich mache laute Musik an.', i: ['🎸', '🔊'] },
-      { t: 'Ich erzähle Finn eine lange Geschichte.', i: ['📖'], kind: true },
-    ] },
-  { feeling: 'Traurig', name: 'Lina',
-    situation: 'Linas Eis ist auf den Boden gefallen. Lina weint.',
-    props: [t('🍦', 370, 'fall', { s: 60, y: 70, d: 0.6 })],
-    best: 'Ich tröste Lina.', bi: ['🤗'],
-    other: [
-      { t: 'Ich esse schnell mein Eis auf.', i: ['😋', '🍦'] },
-      { t: 'Ich sage: Das ist doch nur ein Eis.', i: ['🗣️', '😠'] },
-    ] },
-  { feeling: 'Einsam', name: 'Mo',
-    situation: 'Alle Kinder spielen Fangen. Mo sitzt allein auf der Treppe.',
-    props: [pal('🐰', 450, 'hop', { flip: true }), pal('🐒', 540, 'hop', { d: 0.25, flip: true })],
-    best: 'Ich frage Mo, ob er mit mir spielt.', bi: ['🤝', '⚽'],
-    other: [
-      { t: 'Ich schaue weg.', i: ['🙈'] },
-      { t: 'Ich bringe Mo ein Bilderbuch.', i: ['📖'], kind: true },
-    ] },
-  { feeling: 'Ängstlich', name: 'Clara',
-    situation: 'Im Zimmer ist es plötzlich dunkel. Clara hält sich ganz fest.', fx: 'night',
-    props: [t('💡', 420, 'flicker', { s: 60, y: 200 })],
-    then: [t('💡', 420, 'bang', { s: 70, y: 200 })],
-    best: 'Ich mache das Licht an und bleibe bei Clara.', bi: ['💡', '🤗'],
-    other: [
-      { t: 'Ich erschrecke Clara zum Spaß.', i: ['👻'] },
-      { t: 'Ich sage „Gute Nacht“ und gehe.', i: ['🌙', '🚪'], kind: true },
-    ] },
-  { feeling: 'Wütend', name: 'Sara',
-    situation: 'Sara hat beim Spiel verloren. Sara stampft auf.',
-    props: [t('🎲', 410, 'shake', { s: 60 }), pal('🐻', 500, 'hop', { s: 100, flip: true }), t('🏆', 500, 'pop', { s: 50, y: 110 })],
-    best: 'Ich sage: Das ärgert dich. Wollen wir nochmal spielen?', bi: ['🔁', '🎲'],
-    other: [
-      { t: 'Ich jubele laut, weil ich gewonnen habe.', i: ['🏆', '🔊'] },
-      { t: 'Ich räume das Spiel schnell weg.', i: ['🧺'], kind: true },
-    ] },
-  { feeling: 'Glücklich', name: 'Noah',
-    situation: 'Noahs Oma ist zu Besuch gekommen. Noah strahlt.',
-    props: [pal('👵', 520, 'in', { s: 118, flip: true })],
-    best: 'Ich sage: Schön, dass deine Oma da ist!', bi: ['🗣️', '💛'],
-    other: [
-      { t: 'Ich sage, dass meine Oma netter ist.', i: ['🗣️', '😠'] },
-      { t: 'Ich spiele allein weiter.', i: ['🧸'], kind: true },
-    ] },
-  { feeling: 'Stolz', name: 'Emma',
-    situation: 'Emma hat einen hohen Turm gebaut und zeigt ihn allen.',
-    props: [t('🧱', 420, 'drop', { s: 54 }), t('🧱', 420, 'drop', { s: 54, y: 44, d: 0.3 }), t('🧱', 420, 'drop', { s: 54, y: 88, d: 0.6 }), t('🧱', 420, 'drop', { s: 54, y: 132, d: 0.9 })],
-    best: 'Ich sage: Wow, dein Turm ist so hoch!', bi: ['👏'],
-    other: [
-      { t: 'Ich puste den Turm um.', i: ['💨'] },
-      { t: 'Ich baue gleich daneben.', i: ['🧱'], kind: true },
-    ] },
-]
-
-// Levels 4-10 used to be the same eight scenes with four choices. Now:
-// 1-3 two feelings to choose from, 4-6 three, and from 7 on four — and the
-// child has to read the feeling from the figure alone, before seeing and
-// hearing what happened (the "posture alone" the docstring promises).
+// ── Levels ────────────────────────────────────────────────────────────────
+// `cases` how many of each tier (1: glücklich, traurig, wütend, ängstlich;
+// 2: überrascht, stolz, müde; 3: verlegen, gelangweilt, aufgeregt,
+// neugierig), `chips` faces to choose from, `cards` picture cards.
+// `contrast`: the other face is the opposite kind of feeling. `odd`: one
+// card is kind but does not fit this case.
 const LEVELS = [
-  { options: 2, rounds: 6 }, { options: 2, rounds: 6 }, { options: 2, rounds: 7 },
-  { options: 3, rounds: 7 }, { options: 3, rounds: 8 }, { options: 3, rounds: 8 },
-  { options: 4, rounds: 8, postureOnly: true }, { options: 4, rounds: 9, postureOnly: true },
-  { options: 4, rounds: 10, postureOnly: true }, { options: 4, rounds: 10, postureOnly: true },
+  { cases: [4, 0, 0], chips: 2, cards: 2, contrast: true, each: true },
+  { cases: [4, 0, 0], chips: 2, cards: 2 },
+  { cases: [4, 0, 0], chips: 3, cards: 3 },
+  { cases: [3, 2, 0], chips: 3, cards: 3 },
+  { cases: [2, 3, 0], chips: 3, cards: 3 },
+  { cases: [2, 3, 0], chips: 4, cards: 3 },
+  { cases: [2, 2, 2], chips: 4, cards: 3, odd: true },
+  { cases: [1, 2, 3], chips: 4, cards: 3, odd: true },
+  { cases: [1, 2, 3], chips: 4, cards: 3, odd: true },
+  { cases: [0, 2, 4], chips: 4, cards: 3, odd: true },
 ]
+const TIER_FEELINGS = [
+  ['Glücklich', 'Traurig', 'Wütend', 'Ängstlich'],
+  ['Überrascht', 'Stolz', 'Müde'],
+  ['Verlegen', 'Gelangweilt', 'Aufgeregt', 'Neugierig'],
+]
+// Never offered next to each other: both could be said of the same friend
+// (proud is glad, too; a burst balloon startles and frightens).
+const ALIKE = [['Glücklich', 'Stolz', 'Aufgeregt'], ['Ängstlich', 'Überrascht'], ['Traurig', 'Verlegen'], ['Traurig', 'Gelangweilt'], ['Überrascht', 'Neugierig']]
+const alike = (a, b) => ALIKE.some(g => g.includes(a) && g.includes(b))
 
-// Shuffled, but the same feeling never twice in a row
-function pickScenes(rounds) {
-  const s = shuffle(SCENES).slice(0, rounds)
-  for (let i = 1; i < s.length; i++) {
-    if (s[i].feeling !== s[i - 1].feeling) continue
-    const j = s.findIndex((x, k) => k > i && x.feeling !== s[i - 1].feeling)
-    if (j > -1) [s[i], s[j]] = [s[j], s[i]]
+// Which cases were played last, so a level played again brings other ones
+const RECENT_KEY = 'lumilearn_detektiv_recent'
+const readRecent = () => { try { const r = JSON.parse(localStorage.getItem(RECENT_KEY)); return Array.isArray(r) ? r : [] } catch { return [] } }
+/** Remember the cases of the level that is being played now. */
+function remember(ids) {
+  try { localStorage.setItem(RECENT_KEY, JSON.stringify([...readRecent().filter(id => !ids.includes(id)), ...ids].slice(-11))) } catch { /* private mode */ }
+}
+
+/** The cases of a level: none twice, longest-not-played first, animals and feelings mixed. */
+function pickCases(cfg) {
+  const recent = readRecent()
+  const age = k => recent.lastIndexOf(k.id)                  // -1: not played lately
+  const chosen = []
+  cfg.cases.forEach((n, t) => {
+    const pool = shuffle(CASES.filter(k => k.tier === t + 1)).sort((a, b) => age(a) - age(b))
+    for (let i = 0; i < n && pool.length; i++) {
+      // at first one case of each feeling; later rather an animal not yet seen in this level
+      const fresh = pool.findIndex(k => !chosen.some(c => c.kind === k.kind) && !(cfg.each && chosen.some(c => c.feeling === k.feeling)))
+      const byFeeling = cfg.each ? pool.findIndex(k => !chosen.some(c => c.feeling === k.feeling)) : -1
+      chosen.push(pool.splice(fresh > -1 ? fresh : byFeeling > -1 ? byFeeling : 0, 1)[0])
+    }
+  })
+  // easier cases first, never the same feeling twice in a row
+  const order = shuffle(chosen).sort((a, b) => a.tier - b.tier)
+  for (let i = 1; i < order.length; i++) {
+    if (order[i].feeling !== order[i - 1].feeling) continue
+    const j = order.findIndex((x, n) => n > i && x.feeling !== order[i - 1].feeling)
+    if (j > -1) [order[i], order[j]] = [order[j], order[i]]
   }
-  return s
+  return order
 }
 
-// The heavy feelings start pale; help brings the colour back
-const GREY = new Set(['Traurig', 'Einsam', 'Wütend', 'Ängstlich', 'Müde'])
-const FRIEND_X = 300
-// How each kind of help plays out once it is given: where Lumi stands
-// (`dx` left of the friend), what moves between them, what bursts out.
-// Lumi stands at `lx`; things fly between Lumi and the friend.
-const ACTS = {
-  hug:    { dx: 95, burst: 'hearts', items: lx => [t('❤️', (lx + FRIEND_X) / 2, 'bang', { s: 50, y: 170, d: 1.2 }), t('❤️', (lx + FRIEND_X) / 2 + 30, 'bang', { s: 40, y: 200, d: 1.5 })] },
-  play:   { dx: 190, burst: 'stars', items: lx => [t('⚽', lx + 50, 'pass', { s: 44, to: FRIEND_X - 50, d: 1.2 })] },
-  dice:   { dx: 190, burst: 'stars', items: lx => [t('🎲', lx + 50, 'pass', { s: 44, to: FRIEND_X - 50, d: 1.2 })] },
-  words:  { dx: 150, burst: 'hearts', items: lx => [t('💛', lx + 40, 'give', { s: 44, y: 120, to: FRIEND_X - 20, d: 1.2 }), t('💛', lx + 40, 'give', { s: 36, y: 140, to: FRIEND_X - 10, d: 1.6 })] },
-  listen: { dx: 100, burst: 'hearts', items: () => [t('🗣️', FRIEND_X - 50, 'bang', { s: 40, y: 190, d: 1.2 })] },
-  clap:   { dx: 150, burst: 'stars', items: lx => [t('👏', lx + 30, 'shake', { s: 50, y: 150, d: 1.1 })] },
-  light:  { dx: 150, burst: 'stars', fx: 'glow', items: () => [] },
-  rest:   { dx: 160, burst: null, items: () => [t('🛏️', FRIEND_X + 20, 'drop', { s: 90, d: 1.1, z: 1 }), t('💤', FRIEND_X + 50, 'bob', { s: 40, y: 170, d: 1.6 })] },
-  party:  { dx: 150, burst: 'confetti', items: lx => [t('🎉', lx + 30, 'shake', { s: 50, y: 150, d: 1.1 })] },
-  walk:   { dx: 95, burst: 'hearts', items: () => [] },
-  search: { dx: 150, burst: 'stars', items: () => [] },
+/** A case with its faces and cards for this level. */
+function buildRound(k, cfg, level) {
+  const tiers = level <= 3 ? 1 : level <= 6 ? 2 : 3
+  const others = TIER_FEELINGS.slice(0, tiers).flat().filter(f => f !== k.feeling && !alike(f, k.feeling))
+  const opposite = others.filter(f => BRIGHT.has(f) !== BRIGHT.has(k.feeling))
+  const wrong = shuffle(cfg.contrast && opposite.length ? opposite : others).slice(0, cfg.chips - 1)
+  const good = shuffle(k.good)[0]
+  const mean = shuffle(k.mean), odd = shuffle(k.odd)
+  const bad = (cfg.odd ? [mean[0], odd[0]] : mean).slice(0, cfg.cards - 1)
+  return { ...k, chips: shuffle([k.feeling, ...wrong]), good1: good, cards: shuffle([good, ...bad]) }
 }
-const actOf = arts => ACTS[
-  arts.includes('⚽') ? 'play' : arts.includes('🎲') ? 'dice' : arts.includes('💡') ? 'light'
-  : arts[0] === '🤗' ? 'hug' : arts[0] === '🗣️' ? 'words' : arts.includes('👂') ? 'listen'
-  : arts[0] === '👏' || arts[0] === '👀' ? 'clap' : arts[0] === '🛏️' ? 'rest'
-  : arts[0] === '🎉' || arts[0] === '🎁' ? 'party' : arts[0] === '🔍' ? 'search' : 'walk']
-// where the friends helped earlier stand at the back
-const BACK_X = [60, 545, 120, 485, 20, 590]
 
-// once helped, the friend is visibly glad; glad friends get gladder
-const GLAD = { 'Stolz': 'proud', 'Müde': 'calm', 'Glücklich': 'excited' }
+// ── Time that stands still while the game is paused ───────────────────────
+function useClock() {
+  const paused = usePaused()
+  const pausedRef = useRef(paused)
+  pausedRef.current = paused
+  const [clock] = useState(() => {
+    let now = 0, queue = [], last = 0, timer = null
+    const tick = () => {
+      const t = performance.now()
+      if (!pausedRef.current) now += t - last
+      last = t
+      const due = queue.filter(q => q.at <= now).sort((a, b) => a.at - b.at)
+      queue = queue.filter(q => q.at > now)
+      due.forEach(q => q.fn())
+      if (!queue.length) { clearInterval(timer); timer = null }
+    }
+    return {
+      after(ms, fn) {
+        if (!timer) { last = performance.now(); timer = setInterval(tick, 40) }
+        queue.push({ at: now + ms, fn })
+      },
+      clear() { queue = []; clearInterval(timer); timer = null },
+    }
+  })
+  useEffect(() => () => clock.clear(), [clock])
+  return clock
+}
 
-export default function EmpathyGame({ level = 1, onComplete }) {
-  const cfg = LEVELS[Math.min(Math.max(level, 1), LEVELS.length) - 1]
-  const [scenes] = useState(() => pickScenes(cfg.rounds).map((sc, n) => ({
-    ...sc,
-    look: LOOKS[n % LOOKS.length],
-    feelings: shuffle([sc.feeling, ...shuffle(FEELINGS.filter(f => f !== sc.feeling && !NEAR[sc.feeling]?.includes(f)))
-      .slice(0, cfg.options - 1)]),
-    helps: shuffle([{ t: sc.best, i: sc.bi, best: true }, ...sc.other]),
-  })))
+function useSize(ref) {
+  const [size, setSize] = useState({ w: 0, h: 0 })
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const fit = () => setSize(s => (s.w === el.clientWidth && s.h === el.clientHeight ? s : { w: el.clientWidth, h: el.clientHeight }))
+    fit()
+    const ro = new ResizeObserver(fit)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [ref])
+  return size
+}
 
-  const [idx,      setIdx]      = useState(0)
-  // watch (what happened plays) → feeling → named (the face sits) → help → done → end
-  const [phase,    setPhase]    = useState('watch')
-  const [tried,    setTried]    = useState([])         // faces or helps that did not fit
-  const [given,    setGiven]    = useState([])         // kind helps the friend got
-  const [missed,   setMissed]   = useState(false)      // this scene no longer counts as first try
-  const [react,    setReact]    = useState(null)
-  const [cheering, setCheering] = useState([])         // friends helped so far, waving at the back       // a short reaction: 'more' (the feeling, stronger), 'smile', 'away'
-  // a ref: the round ends from a callback scheduled before the last point is counted
-  const firstTry = useRef(0)
-  const [after] = useAfter()
-  const [later] = useAfter()
-  const [bursts, burst] = useBursts()
-  const trayRef = useRef(null)
-  const trayStart = useTrayStart(trayRef)
-  const [friendRef] = useState(() => ({ get current() { return document.querySelector('[data-empathy-stage] .pl-drop') } }))
-  // the best help counts once, even from a second tap before the screen caught up
-  const helpedRef = useRef(-1)
-  const doneRef = useRef(false)
+// the stage is never narrower than this (in its own measure); below 480 the scene is squeezed
+const MIN_SW = 400
 
-  const sc = scenes[idx]
-  const narrow = typeof window !== 'undefined' && window.innerWidth < 600
-  const friendAt = () => document.querySelector('[data-friend]') ?? undefined
+// Stage beside the cards on a screen that is wide and low (a phone held
+// sideways), above them everywhere else
+function layout(w, h, chips, cards) {
+  const small = w < 500
+  const pad = small ? 8 : 14
+  if (w / h > 1.9) {
+    const trayW = Math.min(520, Math.max(400, w * 0.36))
+    const stW = w - trayW - pad * 3, stH = h - pad * 2
+    const scale = Math.min(stH / SH, stW / MIN_SW)
+    return { wide: true, pad, bookH: 64, trayW, scale, sw: Math.min(760, stW / scale),
+      card: Math.min(190, Math.floor((trayW - (cards - 1) * 10) / cards - 4)), chip: Math.min(140, Math.floor((trayW - (chips - 1) * 10) / chips - 2)) }
+  }
+  const bookH = small ? 54 : 62
+  const stW = w - pad * 2, stH = h - bookH - 176 - pad * 4
+  const scale = Math.max(0.4, Math.min(stH / SH, stW / MIN_SW, 1.5))
+  const trayH = Math.min(300, h - bookH - SH * scale - pad * 4)
+  return { wide: false, pad, bookH, trayH, scale, sw: Math.min(760, stW / scale),
+    card: Math.floor(Math.min(trayH - 44, (stW - (cards - 1) * 10) / cards - 2, 170)), chip: Math.floor(Math.min(trayH - 60, (stW - (chips - 1) * 8) / chips - 2, 116)) }
+}
 
-  useEffect(() => () => leaveGame(), [])
+// ── Things that fly across the screen: a face to the friend, a heart into the book
+function useFlies() {
+  const [list, setList] = useState([])
+  const fly = useCallback((from, to, node, onDone) => {
+    const a = from?.getBoundingClientRect?.(), b = to?.getBoundingClientRect?.()
+    if (!a || !b || reduceMotion()) { onDone?.(); return }
+    const id = Math.random()
+    const done = () => { setList(l => l.filter(f => f.id !== id)); onDone?.() }
+    setList(l => [...l, { id, node, done, x0: a.left + a.width / 2, y0: a.top + a.height / 2, x1: b.left + b.width / 2, y1: b.top + b.height / 2, s0: a.width, s1: b.width }])
+  }, [])
+  const layer = typeof document === 'undefined' ? null : createPortal(list.map(f => (
+    <motion.div key={f.id} aria-hidden="true" initial={{ x: f.x0, y: f.y0, scale: 1 }} animate={{ x: f.x1, y: [f.y0, Math.min(f.y0, f.y1) - 50, f.y1], scale: f.s1 / f.s0 }}
+      transition={{ duration: 0.55, ease: 'easeInOut' }} onAnimationComplete={f.done}
+      style={{ position: 'fixed', left: 0, top: 0, width: 0, height: 0, zIndex: 9996, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ flexShrink: 0, width: f.s0, height: f.s0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{f.node}</div>
+    </motion.div>
+  )), document.body)
+  return [layer, fly]
+}
 
-  // A new friend: what happened plays (from level 7 only the friend, alone)
+// A short move of the whole body on top of the feeling: a hop, a shake of
+// the head, leaning over. `react.n` counts up for each one.
+const MOVES = {
+  hop:   [{ y: [0, -36, 0, -18, 0] }, { duration: 0.75 }],
+  no:    [{ rotate: [0, -10, 10, -8, 8, 0] }, { duration: 0.75 }],
+  sink:  [{ y: [0, 8, 3], scale: [1, 0.92, 0.96] }, { duration: 0.6 }],
+  lean:  [{ rotate: [0, -8, -8, 0], x: [0, -8, -8, 0] }, { duration: 1.5, times: [0, 0.15, 0.85, 1] }],
+  reach: [{ rotate: [0, -9, -9, 0], x: [0, -14, -14, 0] }, { duration: 1.4, times: [0, 0.2, 0.8, 1] }],
+}
+function Mover({ react, children }) {
+  const controls = useAnimationControls()
   useEffect(() => {
-    if (!sc) return
-    setPhase('watch'); setTried([]); setGiven([]); setMissed(false); setReact(null)
-    after(() => setPhase('feeling'), cfg.postureOnly ? 900 : sceneLength(sc.props), { quiet: false })
-  }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const flash = (r, ms) => { setReact(r); later(() => setReact(null), ms, { quiet: false }) }
-
-  // A face that does not fit flies back, and the friend shows the feeling
-  // even more clearly: the tears, the fists, the yawn.
-  const giveFace = (f) => {
-    if (f !== sc.feeling) {
-      setTried(t => [...t, f])
-      setMissed(true)
-      sayWrong()
-      flash('more', 1800)
-      return false
-    }
-    setTried([])
-    setPhase('named')
-    sayRight()
-    burst(friendAt(), 'stars')
-    // from level 7 the friend stood alone: now what happened plays
-    after(() => setPhase('help'), cfg.postureOnly ? Math.max(1500, sceneLength(sc.props)) : 1500, { quiet: false })
-    return true
-  }
-
-  // Kindness is never wrong: a kind-but-not-best way to help is taken
-  // gladly and costs nothing. Only an unkind one flies back and costs the
-  // scene its first-try point.
-  const giveHelp = (h) => {
-    if (helpedRef.current === idx) return false
-    if (h.best) {
-      helpedRef.current = idx
-      setPhase('done')
-      if (!missed) firstTry.current++
-      sfx.tada()
-      sayRight()
-      burst(friendAt(), 'hearts', 14)
-      // the help plays out (Lumi walks over, then hugs, plays, listens …)
-      const kind = actOf(h.i)
-      if (kind.burst) later(() => burst(friendAt(), kind.burst, 16), 1500, { quiet: false })
-      after(next, 3400, { quiet: false })
-      return true
-    }
-    setTried(t => [...t, h.t])
-    if (h.kind) {
-      setGiven(g => [...g, h])
-      sfx.sparkle()
-      flash('smile', 1300)
-      return true
-    }
-    setMissed(true)
-    sayWrong()
-    flash('away', 1500)
-    return false
-  }
-
-  const next = () => {
-    setCheering(c => [...c, sc.look].slice(-6))
-    if (idx + 1 >= scenes.length) setPhase('end')
-    else setIdx(i => i + 1)
-  }
-
-  const onDrop = (d) => {
-    if (d.kind === 'face' && phase === 'feeling') return giveFace(d.feeling)
-    if (d.kind === 'help' && phase === 'help') return giveHelp(d.help)
-    return false
-  }
-
-  if (!sc) return null
-  if (phase === 'end') return <Thanks scenes={scenes} narrow={narrow} onDone={() => { if (!doneRef.current) { doneRef.current = true; onComplete(result(firstTry.current, scenes.length)) } }} />
-
-  const helped = phase === 'done'
-  const feel = helped ? GLAD[sc.feeling] ?? 'happy' : react === 'smile' ? 'calm' : FEEL[sc.feeling]
-  const sat = !GREY.has(sc.feeling) || helped ? 1 : Math.min(1, 0.3 + given.length * 0.25 + (react === 'smile' ? 0.15 : 0))
-  const showProps = !cfg.postureOnly || (phase !== 'watch' && phase !== 'feeling')
-  const friend = {
-    x: FRIEND_X, s: 150, act: 'none', z: 2,
-    node: (
-      <motion.div data-friend animate={react === 'away' ? { rotate: [0, -12, 12, -8, 0], x: [0, 10, -10, 0] } : react === 'smile' ? { y: [0, -18, 0] } : { rotate: 0, x: 0, y: 0 }}
-        transition={{ duration: 0.7 }}
-        style={{ width: 150, height: 150, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', transformOrigin: '50% 100%' }}>
-        <FeelLumi feel={feel} look={sc.look} size={140} strength={helped || react === 'more' || react === 'away' ? 2 : 1} />
-      </motion.div>
-    ),
-    say: helped ? ['💛'] : undefined,
-  }
-  const props = helped && sc.then ? sc.then : showProps ? sc.props : []
-  // the best help: Lumi comes and does it with the friend
-  const best = sc.helps.find(h => h.best)
-  const doing = actOf(best.i)
-  const helper = helped ? { x: FRIEND_X - doing.dx, size: 120, act: 'in', feel: 'happy', say: best.i } : undefined
-  // friends helped earlier wave from the back of the meadow
-  const back = cheering.map((look, n) => ({ x: BACK_X[n], y: 70, s: 60, act: 'none', z: 0,
-    node: <motion.div animate={{ y: [0, -10, 0], rotate: [0, -6, 6, 0] }} transition={{ duration: 1.2, repeat: Infinity, delay: n * 0.2 }}><FeelLumi feel="happy" look={look} size={58} /></motion.div> }))
-  const cast = [friend, ...props, ...(helped ? doing.items(FRIEND_X - doing.dx) : []), ...back]
-
-  const step = phase === 'help' || phase === 'done' ? 'help' : 'feeling'
-  const trayOn = phase === 'feeling' || phase === 'help'
-  const tray = step === 'feeling'
-    ? sc.feelings.map(f => ({ id: f, label: f, data: { kind: 'face', feeling: f }, off: tried.includes(f),
-        node: <FaceChip feeling={f} size={narrow ? (sc.feelings.length > 3 ? 48 : 56) : 70} dim={tried.includes(f)} glow={phase === 'named' && f === sc.feeling} /> }))
-    : sc.helps.filter(h => !given.includes(h)).map(h => ({ id: h.t, label: h.t, data: { kind: 'help', help: h }, off: tried.includes(h.t) || helped,
-        node: <HelpChip arts={h.i} size={narrow ? 40 : 58} dim={(tried.includes(h.t) && !h.kind) || (helped && !h.best)} glow={helped && h.best} /> }))
-  // over the friend: which face? then the face, and "what helps?"
-  const bubble = phase === 'feeling' ? <AskFace />
-    : phase === 'watch' || helped ? null
-    : <><FeelingFace feeling={sc.feeling} size={44} />
-        {/* what the friend got already (kind, but not what helps most) */}
-        {given.map(h => <Art key={h.t} art={h.i[0]} size={30} />)}
-        {phase === 'help' && <AskFace size={38} art="💛" />}</>
-
-  return (
-    <DragArea autoTarget="friend" disabled={!trayOn}>
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px clamp(10px,3vw,28px) 14px', gap: 8, minHeight: 0 }}>
-        {/* kept clear of the sun in the backdrop's top right */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', maxWidth: 820, paddingRight: narrow ? 64 : 150, boxSizing: 'border-box' }}>
-          <div style={{ flex: 1, minWidth: 0 }}><RoundTrail total={scenes.length} done={idx + (helped ? 1 : 0)} walker="lumi" goal="💛" size={narrow ? 34 : 42} /></div>
-        </div>
-
-        <div data-empathy-stage role="img" aria-label={sc.situation} style={{ flex: 1, width: '100%', maxWidth: 980, display: 'flex', minHeight: 0 }}>
-          <Stage key={idx} playKey={idx} cast={cast} lumi={helper} fx={helped ? doing.fx ?? (sc.then ? undefined : sc.fx) : showProps ? sc.fx : undefined}
-            drop={{ who: 0, id: 'friend', onDrop, label: sc.name }}
-            tint={{ 0: sat }}
-            bubbles={bubble ? { 0: bubble } : {}} />
-        </div>
-
-        {/* clipped: the tray sliding in must not count as content height
-            for the FitBox around the game */}
-        <div style={{ overflow: 'clip', overflowClipMargin: 12, paddingTop: 10, width: '100%', display: 'flex', justifyContent: 'center', minHeight: narrow ? 112 : 136 }}>
-          <AnimatePresence mode="wait">
-            {phase !== 'watch' && (
-              <motion.div key={`${idx}-${step}`} ref={trayRef}
-                initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }} transition={{ type: 'spring', stiffness: 260, damping: 22 }}
-                style={{ display: 'flex', gap: narrow ? 8 : 18, justifyContent: 'center', alignItems: 'flex-end',
-                  padding: '10px 14px', borderRadius: 28, background: 'rgba(255,253,247,.55)' }}>
-                {tray.map(it => (
-                  <Draggable key={it.id} id={it.id} data={it.data} label={it.label} disabled={it.off || !trayOn}>{it.node}</Draggable>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
-      <HintHand from={trayStart} to={friendRef} active={trayOn && !react} delay={idx === 0 && step === 'feeling' ? 2000 : 6000} />
-      {bursts}
-    </DragArea>
-  )
+    if (!react?.n || reduceMotion()) return
+    const [to, transition] = MOVES[react.type] ?? MOVES.hop
+    controls.start({ ...to, transition })
+  }, [react?.n]) // eslint-disable-line react-hooks/exhaustive-deps
+  return <motion.div animate={controls} style={{ transformOrigin: '50% 100%' }}>{children}</motion.div>
 }
 
-// The end of the level: every friend of the round, glad again, dancing
-function Thanks({ scenes, narrow, onDone }) {
-  useEffect(() => { sfx.tada() }, [])
-  const size = narrow ? 64 : 92
+const heldBy = hold => (hold ? { node: holdNode(Array.isArray(hold) ? hold[0] : hold), at: Array.isArray(hold) ? hold[1] : 'holdR' } : undefined)
+// the heavy feelings take the colour out of a friend; help brings it back
+const PALE = new Set(['sad', 'scared', 'tired', 'shy', 'bored'])
+const HELPER = 112
+
+// ── The stage ─────────────────────────────────────────────────────────────
+function Stage({ k, sw, scale, pv, friend, react, helper, gift, phase, named, tag, onLook, onPoke, friendRef, slotRef, lookRef }) {
+  const fx = sw / 2
+  const q = squeezeFor(sw)
+  const ctx = useMemo(() => ({ fx, pv, q }), [fx, pv, q])
+  const X = dx => fx + squeeze(dx, q)
+  // Lumi stays on the stage while it is doing something (further out it is walking in or away)
+  const lumiX = dx => (Math.abs(dx) > 300 ? X(dx) : Math.max(HELPER / 2 + 2, Math.min(sw - HELPER / 2 - 2, X(dx))))
+  const room = k.bg === 'room'
+  const sat = PALE.has(friend.feel) ? (friend.strength >= 2 ? 0.35 : 0.6) : 1
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20, padding: 16 }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: narrow ? 4 : 10, justifyContent: 'center', alignItems: 'flex-end', maxWidth: 760 }}>
-        {scenes.map((sc, i) => (
-          <motion.div key={i} initial={{ y: -260, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-            transition={{ type: 'spring', stiffness: 200, damping: 13, delay: 0.15 * i }}>
-            <FeelLumi feel={GLAD[sc.feeling] ?? 'happy'} look={sc.look} size={size} strength={2} />
+    <div style={{ width: sw * scale, height: SH * scale, flexShrink: 0, position: 'relative', borderRadius: 26, overflow: 'hidden', boxSizing: 'border-box',
+      boxShadow: `0 0 0 4px ${INK}, 0 8px 0 3px rgba(42,27,61,.28)` }}>
+      <div style={{ position: 'absolute', left: 0, top: 0, width: sw, height: SH, transform: `scale(${scale})`, transformOrigin: '0 0',
+        background: room ? 'repeating-linear-gradient(90deg, #ffe9c6 0 34px, #ffe1b3 34px 68px)' : 'linear-gradient(#a9deff, #e6f7ff 78%)' }}>
+        {!room && <>
+          <div style={{ position: 'absolute', left: '-12%', width: '70%', height: 150, bottom: GROUND - 40, borderRadius: '50%', background: '#b5e49a' }} />
+          <div style={{ position: 'absolute', right: '-18%', width: '80%', height: 170, bottom: GROUND - 70, borderRadius: '50%', background: '#a4dc8a' }} />
+        </>}
+        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: GROUND + 16, zIndex: 2, boxSizing: 'border-box',
+          background: room ? '#d99e62' : '#7fcb5c', borderTop: `6px solid ${room ? '#b87a42' : '#62b545'}` }} />
+
+        <StageCtx.Provider value={ctx}><k.Scene /></StageCtx.Provider>
+
+        {/* the friend */}
+        <div ref={friendRef} onClick={onPoke} style={{ position: 'absolute', left: fx - FRIEND / 2, bottom: GROUND - 6, width: FRIEND, zIndex: 5, cursor: 'pointer',
+          filter: `saturate(${sat}) brightness(${friend.dim ? 0.5 : 1})`, transition: 'filter .8s' }}>
+          <Mover react={react}>
+            <Pal kind={k.kind} feel={friend.feel} strength={friend.strength} size={FRIEND} arms={friend.arms} hold={heldBy(friend.hold)} cover={friend.cover} />
+          </Mover>
+        </div>
+
+        {/* the face the child found for it */}
+        {tag && (
+          <motion.div ref={slotRef} initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 16 }}
+            style={{ position: 'absolute', left: fx + (k.tag?.[0] ?? 0) - 31, bottom: GROUND + (k.tag?.[1] ?? 190), width: 62, height: 62, zIndex: 8, borderRadius: '50%', boxSizing: 'border-box',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: named ? '#fffdf7' : 'rgba(255,253,247,.7)', border: named ? `3px solid ${INK}` : `4px dashed ${INK}`,
+              boxShadow: named ? '0 0 0 4px #ffc93c, 0 5px 0 rgba(42,27,61,.3)' : 'none' }}>
+            {named && <Face feeling={k.feeling} size={50} />}
           </motion.div>
-        ))}
+        )}
+
+        {/* Lumi, doing what the child chose */}
+        {helper.on && (
+          <motion.div initial={false} animate={{ x: lumiX(helper.dx) - HELPER / 2 }} transition={{ duration: helper.slow ? 1.5 : 0.8, ease: 'easeInOut' }}
+            style={{ position: 'absolute', left: 0, bottom: GROUND - 8, width: HELPER, zIndex: helper.back ? 3 : 6 }}>
+            <motion.div animate={helper.walk && !reduceMotion() ? { y: [0, -9, 0], rotate: [0, -3, 3, 0] } : { y: 0, rotate: 0 }}
+              transition={helper.walk ? { duration: 0.34, repeat: Infinity } : { duration: 0.15 }} style={{ transformOrigin: '50% 100%' }}>
+              <Mover react={{ type: 'hop', n: helper.hop }}>
+                <Pal kind="lumi" hat feel={helper.feel} arms={helper.arms} flip={helper.flip} size={HELPER} hold={heldBy(helper.hold)} />
+              </Mover>
+            </motion.div>
+            {helper.extra === 'haha' && <motion.div animate={{ scale: [0.8, 1.15, 0.8], rotate: [-6, 6, -6] }} transition={{ duration: 0.5, repeat: Infinity }} style={{ position: 'absolute', left: HELPER - 24, top: -34 }}><Haha u={1.25} /></motion.div>}
+            {helper.extra === 'zig' && <motion.div animate={{ scale: [0.85, 1.15, 0.85] }} transition={{ duration: 0.35, repeat: Infinity }} style={{ position: 'absolute', left: HELPER - 20, top: -30 }}><Zig u={1.25} /></motion.div>}
+            {helper.extra === 'bye' && <div style={{ position: 'absolute', left: HELPER - 30, top: 0 }}><Art art="👋" size={44} /></div>}
+          </motion.div>
+        )}
+
+        {/* what flies between the two: an ice cream, a ball, a blanket */}
+        {gift && (
+          <motion.div key={gift.n} initial={{ x: X(gift.from[0]), y: -gift.from[1] }}
+            animate={{ x: X(gift.to[0]), y: [-gift.from[1], -(Math.max(gift.from[1], gift.to[1]) + (gift.low ? 34 : 56)), -gift.to[1]] }}
+            transition={{ duration: 0.45, ease: 'easeInOut' }}
+            style={{ position: 'absolute', left: 0, bottom: GROUND, width: 0, height: 0, zIndex: 8, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+            <div style={{ flexShrink: 0 }}>{holdNode(gift.item)}</div>
+          </motion.div>
+        )}
+
+        {/* the magnifying glass: look closely, and the case begins */}
+        <AnimatePresence>
+          {phase === 'look' && (
+            <motion.button key="look" ref={lookRef} type="button" onClick={onLook} aria-label="Genau hinschauen"
+              initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 2.2, opacity: 0 }} transition={{ type: 'spring', stiffness: 260, damping: 18 }}
+              style={{ all: 'unset', position: 'absolute', left: fx - 176, bottom: GROUND + 34, width: 124, height: 124, zIndex: 9, cursor: 'pointer', borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <motion.span aria-hidden="true" animate={reduceMotion() ? {} : { scale: [1, 1.35], opacity: [0.9, 0] }} transition={{ duration: 1.1, repeat: Infinity }}
+                style={{ position: 'absolute', inset: 6, borderRadius: '50%', border: '6px solid #ffc93c' }} />
+              <motion.span animate={reduceMotion() ? {} : { rotate: [-8, 8, -8], y: [0, -5, 0] }} transition={{ duration: 1.5, repeat: Infinity }}
+                style={{ display: 'flex', filter: 'drop-shadow(0 5px 0 rgba(42,27,61,.3))' }}>
+                <Art art="🔍" size={112} style={{ transform: 'scaleX(-1)' }} />
+              </motion.span>
+            </motion.button>
+          )}
+        </AnimatePresence>
       </div>
-      <motion.button whileTap={{ scale: 0.94 }} onClick={onDone} aria-label="Fertig"
-        initial={{ scale: 0 }} animate={{ scale: [1, 1.07, 1] }} transition={{ scale: { duration: 1.2, repeat: Infinity, delay: 0.15 * scenes.length + 0.6 } }}
-        style={{ ...pxButton('green'), color: INK, padding: '14px 48px', fontSize: 22, minHeight: 64 }}>Fertig! 💛</motion.button>
     </div>
   )
 }
 
-// A way to help as pictures: what you do, and with what or how (🗣️💛 kind
-// words, 🗣️😠 mean words, ✋🎈 wanting it, 🤝⚽ playing together). The same
-// pictures mean the same thing in every scene.
-function HelpChip({ arts, size, dim, glow }) {
+/** The face of a feeling, with its badge where it has one (Stolz: a medal). */
+function Face({ feeling, size }) {
+  const badge = FEELING_BADGE[feeling]
   return (
-    <motion.div animate={glow ? { scale: 1.1 } : { scale: 1 }}
-      style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '8px 10px', borderRadius: 999, background: '#fffdf7', border: '3px solid #2a1b3d',
-        boxShadow: glow ? '0 0 0 5px #ffc93c, 0 5px 0 rgba(42,27,61,.3)' : '0 5px 0 rgba(42,27,61,.3)', opacity: dim ? 0.35 : 1, transition: 'opacity .3s',
-        minHeight: size + 16, minWidth: size + 16, justifyContent: 'center', boxSizing: 'border-box' }}>
-      {arts.map((a, i) => <Art key={i} art={a} size={arts.length > 1 ? size * 0.85 : size} />)}
-    </motion.div>
+    <span style={{ position: 'relative', display: 'inline-flex', width: size, height: size, flexShrink: 0 }}>
+      <Art art={FEELING_ICON[feeling]} size={size} />
+      {badge && <Art art={badge} size={size * 0.5} style={{ position: 'absolute', right: -size * 0.12, bottom: -size * 0.1 }} />}
+    </span>
+  )
+}
+
+// a face or card that did not fit: greyed out, still there
+const TRIED = { background: '#d6d1dc', frame: '#8f889b', inside: { opacity: 0.4, filter: 'grayscale(1)' } }
+const LABEL = { fontFamily: 'var(--font-heading)', fontWeight: 700, color: INK, lineHeight: 1.05, textAlign: 'center', textShadow: '0 1px 0 #fff, 0 0 6px #fff' }
+
+/** A face to choose: says its word when tapped. */
+function FeelChip({ feeling, size, state, hint, onPick, delay, fits }) {
+  const off = state === 'tried' || state === 'locked'
+  return (
+    <motion.button type="button" onClick={off ? undefined : onPick} disabled={off} aria-label={feeling} data-chip={feeling} data-fits={fits ? '1' : undefined} data-hint={hint ? '' : undefined}
+      initial={{ y: 40, opacity: 0, scale: 0.6 }} animate={state === 'miss' ? { y: 0, opacity: 1, scale: 1, x: [0, -9, 9, -7, 7, 0] } : { y: 0, opacity: state === 'gone' ? 0 : 1, scale: 1, x: 0 }}
+      transition={{ type: 'spring', stiffness: 320, damping: 20, delay, x: { duration: 0.45 } }} whileTap={off ? undefined : { scale: 0.9 }}
+      style={{ all: 'unset', cursor: off ? 'default' : 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, WebkitTapHighlightColor: 'transparent' }}>
+      <motion.span data-face="" animate={hint && !reduceMotion() ? { scale: [1, 1.1, 1] } : { scale: 1 }} transition={hint ? { duration: 0.8, repeat: Infinity } : { duration: 0.2 }}
+        style={{ width: size, height: size, boxSizing: 'border-box', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: state === 'tried' ? TRIED.background : '#fffdf7', border: `3px solid ${state === 'tried' ? TRIED.frame : INK}`,
+          boxShadow: hint ? '0 0 0 5px #ffc93c, 0 5px 0 rgba(42,27,61,.3)' : state === 'tried' ? 'none' : '0 5px 0 rgba(42,27,61,.3)' }}>
+        <span style={{ display: 'flex', ...(state === 'tried' ? TRIED.inside : null) }}><Face feeling={feeling} size={size * 0.78} /></span>
+      </motion.span>
+      <span style={{ ...LABEL, fontSize: Math.max(13, Math.min(17, size * 0.19)), opacity: state === 'tried' ? 0.4 : 1 }}>{feeling}</span>
+    </motion.button>
+  )
+}
+
+/** A picture card: what Lumi could do now. */
+function HelpCard({ id, k, size, state, hint, onPick, delay }) {
+  const off = state !== 'idle'
+  const art = Math.round(size * 0.66)
+  return (
+    <motion.button type="button" onClick={off ? undefined : onPick} disabled={off} aria-label={ACTIONS[id].label} data-card={id} data-fits={id === k.good1 ? '1' : undefined} data-hint={hint ? '' : undefined}
+      initial={{ y: 50, opacity: 0, scale: 0.6 }} animate={{ y: state === 'chosen' || state === 'good' ? -8 : 0, opacity: 1, scale: 1 }}
+      transition={{ type: 'spring', stiffness: 320, damping: 20, delay }} whileTap={off ? undefined : { scale: 0.93 }}
+      style={{ all: 'unset', cursor: off ? 'default' : 'pointer', WebkitTapHighlightColor: 'transparent' }}>
+      <motion.div animate={hint && !reduceMotion() ? { scale: [1, 1.06, 1] } : { scale: 1 }} transition={hint ? { duration: 0.8, repeat: Infinity } : { duration: 0.2 }}
+        style={{ ...pxCard(state === 'good' ? 'right' : state === 'chosen' ? 'selected' : undefined), width: size, height: size, boxSizing: 'border-box', borderRadius: 18,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', padding: `${Math.round(size * 0.03)}px 2px ${Math.round(size * 0.05)}px`,
+          ...(state === 'tried' ? { background: TRIED.background, border: `3px solid ${TRIED.frame}`, boxShadow: 'none' } : null),
+          ...(hint ? { boxShadow: '0 0 0 5px #ffc93c, 0 5px 0 rgba(42,27,61,.35)' } : null) }}>
+        <div style={state === 'tried' ? TRIED.inside : undefined}><CardArt id={id} k={k} size={art} /></div>
+        <span style={{ ...LABEL, textShadow: 'none', opacity: state === 'tried' ? 0.5 : 1, fontSize: Math.max(11, Math.min(15, size * 0.1)), maxWidth: size - 12, minHeight: '2.1em', display: 'flex', alignItems: 'center' }}>{ACTIONS[id].label}</span>
+      </motion.div>
+    </motion.button>
+  )
+}
+
+const HEART = 'M10 17 C2 11 0 7 0 4.5 A4.5 4.5 0 0 1 10 3 A4.5 4.5 0 0 1 20 4.5 C20 7 18 11 10 17Z'
+const Heart = ({ size, star }) => (
+  <svg viewBox="-2 -2 24 22" width={size} height={size * 0.92} style={{ display: 'block', overflow: 'visible' }} aria-hidden="true">
+    <path d={HEART} fill="#ff5b8a" stroke="#2a1b3d" strokeWidth="1.8" strokeLinejoin="round" />
+    <ellipse cx="5.4" cy="5" rx="2.4" ry="1.5" fill="#fff" opacity="0.7" transform="rotate(-30 5.4 5)" />
+    {star && <path d="M15.5 10 l1.3 2.7 3 .4 -2.2 2 .6 3 -2.7 -1.5 -2.7 1.5 .6 -3 -2.2 -2 3 -.4 z" fill="#ffc93c" stroke="#2a1b3d" strokeWidth="1" strokeLinejoin="round" />}
+  </svg>
+)
+
+/** The detective's case book: one heart for every friend helped. */
+function CaseBook({ total, badges, slotRefs, height }) {
+  const s = Math.min(40, height - 20)
+  return (
+    <div role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={badges.length} aria-label={`${badges.length} von ${total} Fällen gelöst`}
+      style={{ height, boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: Math.max(4, s * 0.2), padding: `0 ${s * 0.4}px 0 ${s * 0.25}px`, flexShrink: 0,
+        background: '#fff6dd', border: `3px solid ${INK}`, borderRadius: 16, boxShadow: 'inset 0 -5px 0 #f0d9a8, 0 4px 0 rgba(42,27,61,.3)' }}>
+      <svg viewBox="0 0 40 40" width={s * 1.05} height={s * 1.05} style={{ flexShrink: 0, marginRight: s * 0.1 }} aria-hidden="true">
+        <rect x="6" y="3" width="29" height="34" rx="4" fill="#b7814a" stroke="#2a1b3d" strokeWidth="2.6" />
+        <rect x="11" y="3" width="24" height="34" rx="3" fill="#d9a05a" stroke="#2a1b3d" strokeWidth="2.6" />
+        <path d="M6 10 H3 M6 20 H3 M6 30 H3" stroke="#2a1b3d" strokeWidth="2.6" strokeLinecap="round" />
+        <circle cx="22" cy="18" r="6.5" fill="#dff3ff" stroke="#2a1b3d" strokeWidth="2.6" /><path d="M26.5 23 L31 29" stroke="#2a1b3d" strokeWidth="3.4" strokeLinecap="round" />
+      </svg>
+      {Array.from({ length: total }, (_, i) => (
+        <div key={i} ref={el => { slotRefs.current[i] = el }} style={{ width: s, height: s, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {badges[i]
+            ? <motion.div initial={{ scale: 1.6 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 400, damping: 12 }}><Heart size={s} star={badges[i].first} /></motion.div>
+            : <svg viewBox="-2 -2 24 22" width={s} height={s * 0.92} aria-hidden="true"><path d={HEART} fill="rgba(42,27,61,.08)" stroke="rgba(42,27,61,.4)" strokeWidth="1.6" strokeDasharray="3 2.4" /></svg>}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+const START_FRIEND = { feel: 'neutral', strength: 1, arms: undefined, hold: null, dim: false, cover: false }
+const NO_HELPER = { on: false, dx: -470, feel: 'kind', hop: 0 }
+
+export default function EmpathyGame({ level = 1, onComplete }) {
+  const lv = Math.min(Math.max(level, 1), LEVELS.length)
+  const cfg = LEVELS[lv - 1]
+  const [rounds] = useState(() => pickCases(cfg).map(k => buildRound(k, cfg, lv)))
+  const total = rounds.length
+
+  const [idx, setIdx] = useState(0)
+  // look → event → feel → named → help → act → thanks, and at last: end
+  const [phase, setPhaseState] = useState('look')
+  const [pv, setPv] = useState('before')
+  const [friend, setFriend] = useState({ ...START_FRIEND, ...rounds[0].start })
+  const [react, setReact] = useState({ type: 'hop', n: 0 })
+  const [helper, setHelper] = useState(NO_HELPER)
+  const [gift, setGift] = useState(null)
+  const [named, setNamed] = useState(false)
+  const [triedFaces, setTriedFaces] = useState([])
+  const [missFace, setMissFace] = useState(null)       // the face that is shaking its head right now
+  const [triedCards, setTriedCards] = useState([])
+  const [chosen, setChosen] = useState(null)
+  const [badges, setBadges] = useState([])
+
+  const k = rounds[idx]
+  const game = useRef({ phase: 'look', missed: false, firstTry: 0, gifts: 0, done: false, wait: null })
+  // the phase is also kept where a second tap sees it at once, before the screen has caught up
+  const setPhase = p => { game.current.phase = p; setPhaseState(p) }
+  const now = () => game.current.phase
+  const clock = useClock()
+  const [bursts, burst] = useBursts()
+  const [flies, fly] = useFlies()
+
+  const rootRef = useRef(null), friendRef = useRef(null), slotRef = useRef(null), lookRef = useRef(null), trayRef = useRef(null)
+  const bookRefs = useRef([])
+  const { w, h } = useSize(rootRef)
+  const L = w && h ? layout(w, h, cfg.chips, cfg.cards) : null
+
+  // (not while choosing them: React may run that twice before the game is on screen)
+  useEffect(() => { remember(rounds.map(r => r.id)) }, [rounds])
+  useEffect(() => () => { game.current.wait?.(); leaveGame() }, [])
+
+  // what the scenes and cards move on the stage
+  const c = useMemo(() => ({
+    F: p => setFriend(f => ({ ...f, ...p })),
+    H: p => setHelper(s => ({ ...s, ...p, hop: p.hop ? s.hop + 1 : s.hop })),
+    P: setPv,
+    react: type => setReact(r => ({ type, n: r.n + 1 })),
+    gift: g => setGift(g && { ...g, n: ++game.current.gifts }),
+    sfx: (name, ...a) => sfx[name]?.(...a),
+    animal: art => playAnimal(art, { volume: 0.6 }),
+    burst: (kind, n) => burst(friendRef.current, kind, n),
+  }), [burst])
+  const run = steps => steps.forEach(([t, fn]) => clock.after(t, fn))
+  // once Lumi has finished the sentence (at once while nothing is recorded)
+  const whenQuiet = fn => { game.current.wait?.(); game.current.wait = afterNarration(() => clock.after(0, fn), { minMs: 0, maxMs: 7000 }) }
+
+  // 1. The child looks closely: what happened plays, and Lumi tells it
+  const look = () => {
+    if (now() !== 'look') return
+    setPhase('event')
+    sfx.sparkle()
+    narrate([say(`detektiv/${k.id}`)])
+    clock.after(350, () => setPv('event'))
+    run(k.event(c).map(([t, fn]) => [t + 350, fn]))
+    clock.after(k.ms + 350, () => whenQuiet(() => { setPhase('feel'); narrate([say('detektiv/wie-fuehlt')]) }))
+  }
+
+  // Tapping the friend: it starts the case too, and later it answers with its voice
+  const poke = () => {
+    if (now() === 'look') { look(); return }
+    if (now() !== 'feel' && now() !== 'help') return
+    if (!(k.sound && playAnimal(k.sound, { volume: 0.5 }))) sfx.boing()
+    c.react('hop')
+  }
+
+  // 2. How does the friend feel?
+  const pickFace = (f, el) => {
+    if (now() !== 'feel' || triedFaces.includes(f)) return
+    if (f !== k.feeling) {
+      game.current.missed = true
+      setMissFace(f)
+      setTriedFaces(t => [...t, f])
+      announce('wrong')
+      sfx.mismatch()
+      narrate([feelingWord(f)])
+      c.react('no')
+      clock.after(500, () => setMissFace(null))
+      return
+    }
+    setPhase('named')
+    narrate([feelingWord(f)])
+    fly(el?.querySelector('[data-face]') ?? el, slotRef.current, <Face feeling={f} size={(el?.querySelector('[data-face]')?.getBoundingClientRect().width ?? 60) * 0.78} />, () => {
+      setNamed(true)
+      sfx.correct()
+      burst(slotRef.current, 'stars', 8)
+    })
+    clock.after(1500, () => whenQuiet(() => { setPhase('help'); narrate([say('detektiv/was-tut-gut')]) }))
+  }
+
+  // 3. What is good now? Lumi does it, and the child sees what it does
+  const pickCard = id => {
+    if (now() !== 'help') return
+    const ok = id === k.good1
+    const act = ACTIONS[id]
+    setPhase('act')
+    setChosen(id)
+    setHelper(NO_HELPER)
+    narrate([say(act.say)])
+    const { steps, hit, end } = act.play(c, k, ok)
+    run(steps)
+    clock.after(hit, () => (ok ? helped(id) : notHelped(id)))
+    clock.after(end, () => {
+      if (ok) { thanks(); return }
+      setTriedCards(t => [...t, id])
+      setChosen(null)
+      setPhase('help')
+    })
+  }
+
+  const helped = id => {
+    const glad = k.glad(id)
+    setPv('fixed')
+    if (id === 'hug') {
+      c.F({ feel: 'calm', strength: 1, arms: 'hugL', dim: false })
+      clock.after(1200, () => { c.F({ arms: undefined, cover: false, ...glad }); c.H({ arms: undefined, feel: 'happy', dx: -128 }) })
+    } else {
+      c.F({ arms: undefined, strength: 1, cover: false, dim: false, ...glad })
+      if (!glad.cover) c.react('hop')
+    }
+    // the praise first: Lumi in the top bar counts the sound after it as the same answer
+    sayRight()
+    sfx.correct()
+    c.burst('hearts', 12)
+    const voice = k.fixSound ?? (k.quiet ? null : k.sound)
+    if (voice) clock.after(650, () => c.animal(voice))
+  }
+
+  const notHelped = id => {
+    game.current.missed = true
+    if (ACTIONS[id].mean) {
+      // an unkind card: the friend feels worse, and a glad one is not glad any more
+      setFriend(f => ({ ...f, feel: k.bright ? 'sad' : k.face, strength: 2, arms: undefined, hold: k.hurtHold ?? f.hold }))
+      c.react('sink')
+    } else {
+      c.react('no')
+    }
+    sfx.mismatch()
+    sayWrong()
+  }
+
+  // 4. The friend says thank you: a heart for the case book
+  const thanks = () => {
+    setPhase('thanks')
+    const first = !game.current.missed
+    if (first) game.current.firstTry++
+    const at = idx
+    c.react('hop')
+    fly(friendRef.current, bookRefs.current[at], <Heart size={Math.min(70, friendRef.current?.getBoundingClientRect().width ?? 60)} star={first} />, () => {
+      sfx.coin()
+      setBadges(b => { const n = [...b]; n[at] = { first }; return n })
+      burst(bookRefs.current[at], 'stars', 6)
+    })
+    clock.after(2300, () => whenQuiet(next))
+  }
+
+  const next = () => {
+    clock.clear()
+    if (idx + 1 >= total) { setPhase('end'); return }
+    const n = rounds[idx + 1]
+    game.current.missed = false
+    setIdx(idx + 1); setPhase('look'); setPv('before'); setFriend({ ...START_FRIEND, ...n.start }); setHelper(NO_HELPER); setGift(null)
+    setNamed(false); setTriedFaces([]); setTriedCards([]); setChosen(null); setMissFace(null)
+  }
+
+  // The level is done: every friend of it, glad
+  useEffect(() => {
+    if (phase !== 'end') return
+    sfx.complete()
+    burst(rootRef.current, 'confetti', 26)
+    clock.after(900, () => burst(rootRef.current, 'hearts', 14))
+    clock.after(3200, () => whenQuiet(() => {
+      if (game.current.done) return
+      game.current.done = true
+      onComplete(result(game.current.firstTry, total))
+    }))
+  }, [phase]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // After two misses the game helps: the face or card that fits lights up
+  const helpFace = phase === 'feel' && triedFaces.length >= 2
+  const helpCard = phase === 'help' && triedCards.length >= 2
+  // where the hint hand taps: the magnifying glass, then a face or a card
+  // (the one that fits only after two misses, otherwise a different one each time)
+  const [hintAt] = useState(() => ({
+    get current() {
+      const fits = trayRef.current?.querySelector('[data-hint]')
+      if (fits) return fits
+      const items = trayRef.current?.querySelectorAll('button:not([disabled])')
+      return items?.length ? items[Math.floor(Date.now() / 7000) % items.length] : null
+    },
+  }))
+
+  const faces = phase === 'feel' || phase === 'named'
+  const cards = phase === 'help' || phase === 'act' || phase === 'thanks'
+
+  return (
+    <MotionConfig reducedMotion="user">
+      <div ref={rootRef} data-detektiv={phase} data-case={k.id} style={{ flex: 1, minHeight: 0, minWidth: 0, position: 'relative', overflow: 'hidden' }}>
+        {L && (
+          <div style={{ position: 'absolute', inset: 0, boxSizing: 'border-box', padding: L.pad, display: 'flex', gap: L.pad,
+            flexDirection: L.wide ? 'row' : 'column', alignItems: 'center', justifyContent: L.wide ? 'center' : 'space-evenly' }}>
+            {!L.wide && <CaseBook total={total} badges={badges} slotRefs={bookRefs} height={L.bookH} />}
+
+            {phase === 'end'
+              ? <Finale rounds={rounds} L={L} />
+              : <motion.div key={idx} initial={reduceMotion() ? false : { opacity: 0, x: 60 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.35 }} style={{ flexShrink: 0 }}>
+                  <Stage k={k} sw={L.sw} scale={L.scale} pv={pv} friend={friend} react={react} helper={helper} gift={gift} phase={phase} named={named}
+                    tag={phase === 'feel' || phase === 'named' || (phase === 'help' && !triedCards.length)} onPoke={poke} onLook={look} friendRef={friendRef} slotRef={slotRef} lookRef={lookRef} />
+                </motion.div>}
+
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: L.pad, flexShrink: 0,
+              ...(L.wide ? { width: L.trayW, alignSelf: 'stretch' } : { width: '100%', height: L.trayH }) }}>
+              {L.wide && <CaseBook total={total} badges={badges} slotRefs={bookRefs} height={L.bookH} />}
+              <div ref={trayRef} style={{ flex: L.wide ? 1 : undefined, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: faces ? (L.chip < 90 ? 8 : 14) : 10, minHeight: L.card + 6 }}>
+                {phase !== 'end' && faces && k.chips.map((f, i) => (
+                  <FeelChip key={`${idx}-${f}`} feeling={f} size={L.chip} delay={i * 0.07} fits={f === k.feeling}
+                    state={missFace === f ? 'miss' : triedFaces.includes(f) ? 'tried' : phase === 'named' ? (f === k.feeling ? 'gone' : 'locked') : 'idle'}
+                    hint={helpFace && f === k.feeling} onPick={e => pickFace(f, e.currentTarget)} />
+                ))}
+                {phase !== 'end' && cards && k.cards.map((id, i) => (
+                  <HelpCard key={`${idx}-${id}`} id={id} k={k} size={L.card} delay={i * 0.08}
+                    state={triedCards.includes(id) ? 'tried' : chosen === id ? (phase === 'thanks' ? 'good' : 'chosen') : phase === 'help' ? 'idle' : 'wait'}
+                    hint={helpCard && id === k.good1} onPick={() => pickCard(id)} />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+        <HintHand to={lookRef} active={phase === 'look'} delay={idx === 0 ? 2500 : 5000} />
+        <HintHand to={hintAt} active={phase === 'feel' || phase === 'help'} delay={helpFace || helpCard ? 900 : 6500} />
+        {bursts}
+        {flies}
+      </div>
+    </MotionConfig>
+  )
+}
+
+/** The end of the level: every friend of it, glad, around Lumi the detective. */
+function Finale({ rounds, L }) {
+  const width = L.sw * L.scale
+  const size = Math.min(120, (width - 20) / (rounds.length + 1.2))
+  return (
+    <div style={{ width, height: SH * L.scale, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+        {rounds.map((k, i) => {
+          const pal = <motion.div key={k.id} initial={{ y: -300, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 200, damping: 13, delay: 0.12 * i }}>
+            <Pal kind={k.kind} feel={i % 2 ? 'excited' : 'happy'} strength={2} size={size} />
+          </motion.div>
+          return i === Math.floor(rounds.length / 2)
+            ? [<motion.div key="lumi" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 200, damping: 12, delay: 0.5 }}><Pal kind="lumi" hat feel="happy" strength={2} size={size * 1.15} hold={{ node: <Heart size={size * 0.4} star />, at: 'holdR' }} /></motion.div>, pal]
+            : pal
+        })}
+      </div>
+    </div>
   )
 }
