@@ -227,6 +227,41 @@ async function playShadows(page) {
   await page.context().close()
 }
 
+// 3e. Zahlen entdecken (Bruno fängt): level 1 to the results, the basket
+// steered under every falling fruit; five animals end up at the picnic
+{
+  const page = await newPage(SIZES.phone, save)
+  await page.goto(URL); await page.waitForTimeout(1500)
+  await page.getByRole('button', { name: /^Zahlen entdecken, Level/ }).last().click()
+  const game = page.locator('[data-game="bruno"]')
+  await game.waitFor({ timeout: 10000 }).catch(() => problems.push('Bruno fängt: the game did not start'))
+  let fed = 0
+  const t0 = Date.now()
+  while (Date.now() - t0 < 180000 && (await game.count())) {
+    const s = await page.evaluate(() => {
+      const root = document.querySelector('[data-game="bruno"]')
+      if (!root) return null
+      const mid = el => { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, bottom: r.bottom } }
+      return {
+        phase: root.dataset.phase, field: mid(root.querySelector('[data-field]')), fed: Number(root.querySelector('[data-picnic]')?.dataset.picnic ?? 0),
+        drops: [...root.querySelectorAll('[data-drop^="want"]')].map(mid),
+      }
+    })
+    if (!s) break
+    fed = Math.max(fed, s.fed)
+    const lowest = s.drops.sort((a, b) => b.y - a.y)[0]
+    if (s.phase === 'play' && lowest) await page.mouse.move(lowest.x, s.field.bottom - 30)
+    await page.waitForTimeout(60)
+  }
+  await page.waitForTimeout(2500)
+  const text = await page.evaluate(() => document.body.innerText)
+  if (fed < 4) problems.push(`Bruno fängt: only ${fed} animals at the picnic`)
+  if (!/5 von 5 gleich beim ersten Mal richtig/.test(text)) problems.push(`Bruno fängt: results not as expected: ${text.slice(0, 120).replace(/\n/g, ' | ')}`)
+  await check(page, 'Bruno fängt results')
+  problems.push(...page.errors.map(e => `Bruno fängt: ${e}`))
+  await page.context().close()
+}
+
 // 4. Lumi's ideas for today: the last idea from the home screen, the
 // movement break the results suggest, the sticker, the album
 {

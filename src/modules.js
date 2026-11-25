@@ -21,7 +21,7 @@ export const WORLDS = [
 
 // Flat colours from the pixel palette (styles/pixel.css) for the tile heads.
 export const MODULES = [
-  { id: 'number-intro',  title: 'Zahlen entdecken', sub: 'Zahlen 1 bis 10',        emoji: '🧮', world: 'zahlen', scene: 'meadow',     minAge: 4, color: 'var(--px-gold)',   say: 'Zahlen entdecken. Zähle Dinge und lerne die Zahlen.' },
+  { id: 'number-intro',  title: 'Zahlen entdecken', sub: 'Fang genau so viele',    emoji: '🧮', world: 'zahlen', scene: 'meadow',     minAge: 4, color: 'var(--px-gold)',   say: 'Zahlen entdecken. Zähle Dinge und lerne die Zahlen.' },
   { id: 'letter-intro',  title: 'ABC-Abenteuer',    sub: 'Das Alphabet',           emoji: '🔡', world: 'buchstaben', scene: 'forest', minAge: 4, color: 'var(--px-sky)',    say: 'ABC-Abenteuer. Lerne die Buchstaben kennen.' },
   { id: 'emotions',      title: 'Gefühlswelt',      sub: 'Gesichter lesen',        emoji: '😊', world: 'gefuehle', scene: 'meadow',   minAge: 4, color: 'var(--px-pink)',   say: 'Gefühlswelt. Finde alle, die sich so fühlen.' },
   { id: 'listen',        title: 'Hörabenteuer',     sub: 'Hören und finden',       emoji: '🔊', world: 'buchstaben', scene: 'forest', minAge: 4, color: 'var(--px-orange)', say: 'Hörabenteuer. Hör genau hin und finde das Bild.' },
