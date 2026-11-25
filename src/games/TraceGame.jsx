@@ -126,6 +126,7 @@ export default function TraceGame({ level = 1, onComplete }) {
   const [slipAt,    setSlipAt]    = useState(null)   // { s, id }: the snail waits where the finger left
   const [hop,       setHop]       = useState(0)      // the snail hops at the end of a stroke
   const [flow,      setFlow]      = useState(0)      // 0 … 1: how fast and smooth the ride is
+  const [soon,      setSoon]      = useState(false)  // Lumi is about to show the stroke again
   const [bursts, burst] = useBursts()
 
   const rootRef   = useRef(null)
@@ -163,7 +164,7 @@ export default function TraceGame({ level = 1, onComplete }) {
   const curCum = useMemo(() => (cur ? lengths(cur) : [0]), [cur])
   const curLen = curCum[curCum.length - 1]
   const stars = useMemo(() => (cur ? starsAt(cur, guide.arrows).map((st, k) => ({ ...st, k, ...pointAt(cur, st.s) })) : []), [cur, guide.arrows])
-  const canTrace = !done && !demo && !paused && !finale
+  const canTrace = !done && !demo && !soon && !paused && !finale
 
   useEffect(() => { lockPreviews(); return () => leaveGame() }, [])
 
@@ -310,7 +311,8 @@ export default function TraceGame({ level = 1, onComplete }) {
     if (++strokeMissRef.current >= 2) {
       // twice on the same stroke: show it again instead of letting it fail on
       strokeMissRef.current = 0
-      later(() => startDemo(strokeIdx), 500)
+      setSoon(true)
+      later(() => { setSoon(false); startDemo(strokeIdx) }, 500)
       return
     }
     sayWrong()
@@ -484,7 +486,7 @@ export default function TraceGame({ level = 1, onComplete }) {
   const riding = fingerS != null
   const snailS = riding ? Math.min(curLen, fingerS + LEAD) : null
   const snail = !cur || done ? null
-    : !riding && guide.arrows === 'none' ? { x: cur[0].x, y: cur[0].y - 13, angle: 0, small: true }
+    : !riding && guide.arrows === 'none' ? { x: cur[0].x, y: cur[0].y - 11, angle: 0, small: true }
     : pointAt(cur, snailS ?? Math.min(LEAD, curLen * 0.5), curCum)
 
   const shown = isDigit(g)
@@ -806,7 +808,7 @@ function Snail({ at, riding, upright, pose, poseKey, still }) {
   else if (!flipped.current && Math.abs(deg) > 102) flipped.current = true
   const flip = flipped.current
   const rot = flip ? (deg > 0 ? deg - 180 : deg + 180) : deg
-  const s = upright ? SNAIL * 0.85 : SNAIL
+  const s = upright ? SNAIL * 0.8 : SNAIL
   return (
     <g pointerEvents="none" style={{
       transform: `translate(${at.x}px, ${at.y}px) rotate(${rot}deg) scaleX(${flip ? -1 : 1})`,
