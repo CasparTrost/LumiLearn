@@ -67,7 +67,7 @@ const GLITTER = ['#ffd34d', '#ffffff', '#ffb3d9', '#9be7ff']
 const SIDE = {
   flexShrink: 0, alignSelf: 'center', boxSizing: 'border-box', display: 'flex', flexDirection: 'column',
   alignItems: 'center', justifyContent: 'center', padding: '12px 10px', borderRadius: 18,
-  background: 'rgba(255,249,236,0.88)', boxShadow: '0 0 0 2px rgba(42,27,61,0.1)',
+  background: 'rgba(255,249,236,0.97)', boxShadow: '0 0 0 2px rgba(42,27,61,0.1)',
 }
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
