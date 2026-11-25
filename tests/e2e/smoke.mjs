@@ -1,6 +1,7 @@
 // Browser smoke test against a production build (npm run build; npx vite preview).
 // Fresh child on a phone through onboarding; every game opened at phone,
-// tablet and desktop size; one game played to the results; Lumi's ideas to the sticker; the app and
+// tablet and desktop size; one game played to the results; Lumi's ideas to the sticker; Lumi's
+// wardrobe and Lumi dressed in a game; the app and
 // unopened games started again without a network. Fails on page
 // errors, pictures that don't load, sideways scrolling and buttons off the
 // screen.
@@ -695,6 +696,44 @@ async function playShadows(page, { wrongOnce = false } = {}) {
     if (await box.count()) problems.push('first help: the box came a second time')
   } catch (e) { problems.push(`first help: ${String(e).split('\n')[0]}`) }
   problems.push(...page.errors.map(e => `first help: ${e}`))
+  await page.context().close()
+}
+
+// 7. Lumis Kleiderschrank: a child with enough stars opens the wardrobe from
+// the home screen, puts on a hat and glasses, and Lumi wears them in a game's
+// top bar; a child without stars finds the two free things and wrapped
+// presents, the next one with its bar.
+for (const [size, stars] of [[SIZES.phone, 0], [SIZES.tablet, 16]]) {
+  const kid = structuredClone(save)
+  if (stars) kid.profiles.p1.progress = { 'shapes-land': { currentLevel: 7, levelStars: { 1: 3, 2: 3, 3: 3, 4: 3, 5: 2, 6: 2 }, plays: 6 } }
+  const page = await newPage(size, kid)
+  const where = `wardrobe (${stars} stars)`
+  try {
+    await page.goto(URL); await page.waitForTimeout(1500)
+    if (!(await page.locator('[data-wardrobe-new]').count())) problems.push(`${where}: no sign on the wardrobe button`)
+    await page.getByRole('button', { name: /^Lumis Kleiderschrank/ }).click(); await page.waitForTimeout(1500)
+    await check(page, where)
+    const states = Object.fromEntries(await page.$$eval('[data-thing]', b => b.map(x => [x.dataset.thing, x.dataset.state])))
+    const free = Object.entries(states).filter(([, st]) => st === 'new').map(([id]) => id)
+    if (stars === 0) {
+      if (free.length !== 2) problems.push(`${where}: free things ${free.join(',')}`)
+      if (Object.values(states).filter(st => st === 'next').length !== 1) problems.push(`${where}: no next present`)
+      if (Object.values(states).filter(st => st === 'locked').length < 8) problems.push(`${where}: presents missing`)
+    } else {
+      await page.locator('[data-thing="blumenkranz"]').click(); await page.waitForTimeout(1600)
+      await page.locator('[data-thing="herzbrille"]').click(); await page.waitForTimeout(1600)
+      if ((await page.locator('[data-thing="blumenkranz"]').getAttribute('data-state')) !== 'worn') problems.push(`${where}: the wreath is not on`)
+      if (!(await page.locator('.pl-critter [data-wear="blumenkranz"]').count())) problems.push(`${where}: Lumi does not wear the wreath`)
+      await page.getByRole('button', { name: 'Zur Startseite' }).click(); await page.waitForTimeout(1200)
+      if (await page.locator('[data-wardrobe-new]').count()) problems.push(`${where}: the sign stayed after the visit`)
+      await page.getByRole('button', { name: /^Zahlenland(?:, Level|\. Spielen$)/ }).last().click(); await page.waitForTimeout(2000)
+      for (const id of ['blumenkranz', 'herzbrille']) {
+        if (!(await page.locator(`[data-lumi-buddy] [data-wear="${id}"]`).count())) problems.push(`${where}: Lumi in the game bar does not wear ${id}`)
+      }
+      await check(page, `${where} → game`)
+    }
+  } catch (e) { problems.push(`${where}: ${String(e).split('\n')[0]}`) }
+  problems.push(...page.errors.map(e => `${where}: ${e}`))
   await page.context().close()
 }
 
