@@ -9,18 +9,14 @@ import { bfsDistance } from './mazeGen.js'
 // patrolling enemy to work.
 //
 // Fairness rule (verified with an automated Playwright bot, see PR
-// notes): collision is checked ONLY when the PLAYER moves (the MOVE
-// case), never when the dragon takes its own step (DRAGON_STEP). A
-// first version checked collision on both, matching "it doesn't matter
-// who moved onto whom" — that sounds fair but isn't: a player who
-// stops right at the patrol's edge to wait for an opening can have the
-// dragon walk onto their stationary cell with no way to react. The bot
-// died 12/12 times that way. Making the dragon unable to "catch" a
-// stationary player fixes this completely: standing still (not
-// pressing anything) is unconditionally safe, so the player can watch
-// the dragon for as long as they like with zero time pressure, and the
-// only thing that ever matters is not pressing a direction that would
-// step onto the dragon's cell as it visibly is right now.
+// notes): a hit happens ONLY when the PLAYER moves onto the dragon (the
+// MOVE case). A first version also counted the dragon's own step, and a
+// player who stopped at the patrol's edge to wait for an opening was
+// caught with no way to react (the bot died 12/12 times). Now the dragon
+// never steps onto Lumi at all (DRAGON_STEP): it is a guard that turns
+// round in front of a Lumi who stands still. Standing still is always
+// safe, and the only thing that matters is not walking into the dragon,
+// which is what the help says.
 
 export function initState(maze, hasDragon = true) {
   return {
@@ -137,22 +133,17 @@ export function mazeReducer(s, a) {
     // Dragon's own independent patrol step, dispatched by a setInterval
     // in MazeGame.jsx — not tied to player input at all.
     //
-    // IMPORTANT — deliberately does NOT call checkCollision. Verified by
-    // an automated Playwright bot (see PR notes) that a real-time dragon
-    // checked for collision on EVERY step — including its own — makes
-    // the patrol genuinely unavoidable: a player who stops and waits
-    // right at the edge of the patrol can still have the dragon walk
-    // onto them while stationary, with no way to react (12/12 bot runs
-    // died this way). The fix: collision only ever happens as a result
-    // of the PLAYER's own MOVE (below) — never from the dragon's own
-    // step. This makes standing still unconditionally safe, so the
-    // player can watch the dragon for as long as they want (no timing
-    // pressure) and only needs to avoid pressing a direction that walks
-    // them onto the dragon's currently visible cell. The dragon still
-    // moves entirely on its own in real time — it just can't "walk into
-    // you" the way you can walk into it.
+    // The story: the dragon guards its path. It never walks into Lumi;
+    // only Lumi walking into it costs a heart (the MOVE case). So a step
+    // onto the cell where Lumi stands is refused: the dragon stays where it
+    // is (MazeGame.jsx turns it round instead of sending that step). This
+    // keeps standing still unconditionally safe (a bot that stopped at the
+    // edge of the patrol used to be caught 12/12 times when the dragon's
+    // own step counted as a hit), and the two never share a cell without
+    // the hit the child was warned about.
     case 'DRAGON_STEP': {
       if (s.won || s.dead) return s
+      if (a.pos.x === s.pos.x && a.pos.y === s.pos.y) return s
       return { ...s, dragon: a.pos, dangerLevel: computeDanger(s.maze.g, s.pos, a.pos) }
     }
 
