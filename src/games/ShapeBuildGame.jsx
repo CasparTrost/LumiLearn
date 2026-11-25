@@ -741,7 +741,11 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
     if (move === 'launch') later(() => { sfx.whoosh(); shake(1.6) }, go + ALIVE.launch.dur * 280)
     if (move === 'scribble') [0, 1, 2, 3, 4].forEach(i => later(() => sfx.step(), go + 400 + i * 240))
     sayRight()
-    afterNarration(() => later(() => (last ? setFreeMode(true) : setIdx(i => i + 1)), 0), { minMs: Math.max(3000, aliveMs(move) + 700) })
+    // The next figure is rendered without this one's pieces from the start:
+    // with them it counted as complete for a moment, and its customer, who
+    // rides along, made the new customer's animal sound
+    const advance = () => { if (last) { setFreeMode(true); return } setPlaced([]); setTurns({}); setIdx(i => i + 1) }
+    afterNarration(() => later(advance, 0), { minMs: Math.max(3000, aliveMs(move) + 700) })
     return true
   }, [fig, idx, placed, tray, turns, last, stuck, burst, later, bonk, hit, shake, noNo]) // eslint-disable-line react-hooks/exhaustive-deps
 
