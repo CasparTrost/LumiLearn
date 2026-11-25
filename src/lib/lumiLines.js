@@ -112,7 +112,7 @@ export const LINES = {
   'hilfe/hilfe-emotions': 'Gefühlswelt. Lumi zeigt dir ein Gesicht und sagt das Gefühl. Tippe alle Tiere an, die sich genauso fühlen.',
   'hilfe/hilfe-empathy': 'Gefühlsdetektiv. Tippe auf die Lupe und schau, was passiert. Dann tippe auf das Gesicht, das passt. Und such aus, was dem Tier jetzt gut tut.',
   'hilfe/hilfe-maze': 'Lumi-Labyrinth. Sammle alle Zaubertränke, dann geht das Tor auf. Der Drache bewacht seinen Weg: Lauf nicht in ihn hinein, sonst kostet es ein Herz. Ab Level 3 liegen drei Münzen versteckt; findest du alle, öffnet sich am Tor die Schatztruhe.',
-  'hilfe/hilfe-shadows': 'Schattenrätsel. Im Dunkeln versteckt sich etwas. Fahre mit der Taschenlampe über das Bild. Was ist es? Tippe auf das richtige Bild. Tippe auf den Tipp-Knopf, dann verrät Lumi dir etwas über das Versteckte.',
+  'hilfe/hilfe-shadows': 'Schattenrätsel. Leuchte mit der Taschenlampe ins dunkle Zimmer. Ein Schatten im Licht bleibt stehen: Zieh das passende Bild darauf oder tippe es an. Die Glühbirne macht kurz alles hell, und die Katze läuft nur weg.',
   'hilfe/hilfe-bubbles': 'Blasen-Blitz. Der Krake wünscht sich Blasen mit einer Zahl. Tippe alle Blasen an, die so viele Punkte oder diese Zahl zeigen. Kommt eine Riesenblase vorbei und passt, regnet es Sterne.',
   'hilfe/hilfe-sort': 'Sortier-Spaß. Auf dem Förderband kommen Sachen angefahren. Zieh jede Sache zu dem Korbmonster, das sie sammelt; sein Schild zeigt, was in seinen Korb gehört. Du kannst auch erst die Sache und dann das Monster antippen. Später kommt Müll in die Tonne.',
   'hilfe/hilfe-clock': 'Kuckucksuhr. Dreh die Zeiger, bis die Uhr die Zeit von der Karte zeigt. Bei zwei Zeigern drückst du danach auf den Haken. Stehen drei Zeiten zur Wahl, tippst du die an, die die Uhr zeigt.',
@@ -1208,6 +1208,7 @@ export const LINES = {
   'atelier/an-der-wand': 'Dein Bild hängt jetzt an der Wand!',
   'atelier/wegwischen': 'Alles wegwischen?',
   'atelier/wand-voll': 'Die Wand ist voll. Soll das älteste Bild Platz machen?',
+  'wort/marienkaefer': 'Marienkäfer.',
 }
 
 /** The recording of a sentence, with its text for the browser voice. */
