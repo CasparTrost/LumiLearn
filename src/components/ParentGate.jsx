@@ -63,7 +63,7 @@ function makeQuestion(hard) {
   return { text: `${a} × ${b}`, answer: String(a * b) }
 }
 
-export default function Gate({ pinIsDefault, correctPin, onUnlock, onCancel, onNewPin, quizOnly = false }) {
+export default function Gate({ pinIsDefault, correctPin, onUnlock, onCancel, onNewPin, quizOnly = false, sideways = false }) {
   // 'pin' → enter the PIN; 'quiz' → parent question; 'set' → choose a PIN
   const [mode, setMode] = useState(pinIsDefault ? 'quiz' : 'pin')
   const [q, setQ] = useState(() => makeQuestion(!pinIsDefault))
@@ -105,9 +105,12 @@ export default function Gate({ pinIsDefault, correctPin, onUnlock, onCancel, onN
     : mode === 'quiz' ? `Wie viel ist ${q.text}?`
     : first ? 'Bitte die neue PIN noch einmal eingeben.' : 'Lege eine PIN mit vier Ziffern fest. Sie schützt den Elternbereich.'
 
+  // sideways (a phone held sideways): the number pad beside the question
+  const pad = <NumberPad value={value} onChange={change} length={length} onEnter={() => submit()} />
   return (
-    <div style={{ textAlign:'center', display:'flex', flexDirection:'column', gap:14 }}>
-      <div style={{ fontSize:42 }}>🔐</div>
+    <div style={{ display:'flex', flexDirection: sideways ? 'row' : 'column', alignItems: sideways ? 'center' : undefined, gap: sideways ? 20 : 0, justifyContent:'center' }}>
+    <div style={{ textAlign:'center', display:'flex', flexDirection:'column', gap: sideways ? 10 : 14 }}>
+      <div style={{ fontSize: sideways ? 30 : 42 }}>🔐</div>
       <div style={{ fontFamily:'var(--font-heading)', fontSize:23, fontWeight:700, color:'var(--px-ink)' }}>{title}</div>
       <div style={{ ...SMALL, fontSize: mode === 'quiz' ? 20 : 15, color: mode === 'quiz' ? 'var(--px-ink)' : SMALL.color }}>{hint}</div>
       <motion.div animate={shake ? { x:[-8,8,-6,6,-4,4,0] } : {}} transition={{ duration:0.4 }}>
@@ -116,7 +119,7 @@ export default function Gate({ pinIsDefault, correctPin, onUnlock, onCancel, onN
           : <Dots count={4} filled={value.length} />}
       </motion.div>
       {error && <div role="alert" style={{ ...SMALL, color:'#a02c1f' }}>{error}</div>}
-      <NumberPad value={value} onChange={change} length={length} onEnter={() => submit()} />
+      {!sideways && pad}
       {mode === 'quiz' && (
         <button className="px-btn px-btn--green px-btn--md" onClick={() => submit()} disabled={!value} style={{ alignSelf:'center' }}>
           OK
@@ -133,6 +136,8 @@ export default function Gate({ pinIsDefault, correctPin, onUnlock, onCancel, onN
           <button className="px-btn px-btn--parch px-btn--sm" onClick={onUnlock}>Später</button>
         )}
       </div>
+    </div>
+    {sideways && pad}
     </div>
   )
 }

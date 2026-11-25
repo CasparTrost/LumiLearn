@@ -65,9 +65,11 @@ export default function PicturePanel({ images, current, sheetRatio, album, urls,
           </>
         ) : (
           <div style={{ overflowY: wide ? 'hidden' : 'auto', minHeight: 0, flex: wide ? 1 : undefined, display: 'flex', flexDirection: wide ? 'row' : 'column', gap: 10, padding: 2 }}>
-            {/* a new picture */}
+            {/* a new picture (sideways the pages scroll: with own pictures
+                and the camera tile there are more than three rows) */}
             <div style={{
               display: 'grid', gap: 8, flexShrink: 0, alignContent: 'start',
+              ...(wide ? { overflow: 'auto', maxHeight: '100%', padding: 6, gridAutoRows: thumbH } : null),
               gridTemplateColumns: wide ? `repeat(3, ${thumbW}px)` : 'repeat(auto-fill, minmax(clamp(58px, 10.5vw, 96px), 1fr))',
             }}>
               {images.map((img, i) => (
@@ -116,7 +118,7 @@ export default function PicturePanel({ images, current, sheetRatio, album, urls,
                       border: '6px solid #b8773f', borderColor: '#c98a4e #9c602c #8a5426 #b8773f', borderRadius: 4,
                       boxShadow: `0 0 0 2px ${INK}, 0 4px 0 2px rgba(42,27,61,0.28)`,
                     }}>
-                      <img src={urls.get(e.id)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                      <img src={urls.get(e.id)} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
                     </button>
                   ))}
                 </div>

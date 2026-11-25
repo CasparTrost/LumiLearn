@@ -36,6 +36,13 @@ export default function OwnPictureDialog({ settings, say, onTake, onClose }) {
   const inputRef = useRef(null)
   const run = useRef(0)
   const trapRef = useFocusTrap(true, { onEscape: onClose })
+  // a phone held sideways: the gate's number pad goes beside the question
+  const [sideways, setSideways] = useState(() => window.innerHeight < 520 && window.innerWidth > window.innerHeight)
+  useEffect(() => {
+    const on = () => setSideways(window.innerHeight < 520 && window.innerWidth > window.innerHeight)
+    window.addEventListener('resize', on)
+    return () => window.removeEventListener('resize', on)
+  }, [])
 
   useEffect(() => () => {
     Object.values(pages).forEach(p => p.url && URL.revokeObjectURL(p.url))
@@ -101,14 +108,14 @@ export default function OwnPictureDialog({ settings, say, onTake, onClose }) {
       <motion.div ref={trapRef} role="dialog" aria-modal="true" aria-label="Eigenes Bild"
         initial={{ scale: 0.9, y: 16 }} animate={{ scale: 1, y: 0 }}
         onClick={e => e.stopPropagation()} className="px-panel"
-        style={{ width: '100%', maxWidth: step === 'gate' ? 360 : 640, maxHeight: '100%', overflowY: 'auto', padding: '16px 14px', display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
+        style={{ width: '100%', maxWidth: step === 'gate' ? (sideways ? 600 : 360) : 640, maxHeight: '100%', overflowY: 'auto', padding: '16px 14px', display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
 
         {/* one input for both: the file picker, and the camera on a phone */}
         <input ref={inputRef} type="file" accept="image/*" hidden data-testid="own-picture-input"
           onChange={e => picked(e.target.files?.[0])} />
 
         {step === 'gate' && (
-          <ParentGate quizOnly pinIsDefault={settings?.pinIsDefault ?? true} correctPin={settings?.parentPin}
+          <ParentGate quizOnly sideways={sideways} pinIsDefault={settings?.pinIsDefault ?? true} correctPin={settings?.parentPin}
             onUnlock={() => setStep('pick')} onCancel={onClose} />
         )}
 
@@ -141,22 +148,24 @@ export default function OwnPictureDialog({ settings, say, onTake, onClose }) {
 
         {step === 'preview' && page && (
           <>
-            <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', minHeight: 0 }}>
-              <img src={page.url} alt="Das neue Malbild" style={{
-                maxWidth: '100%', maxHeight: 'min(56vh, 620px)', objectFit: 'contain', display: 'block',
-                background: '#fff', border: `3px solid ${INK}`, borderRadius: 6,
-              }} />
+            {/* the picture, small, and what Lumi made of it, large: nothing covers the page */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 0, width: '100%' }}>
               {original && (
                 <img src={original} alt="Das Foto" style={{
-                  position: 'absolute', left: 6, bottom: 6, width: 'min(22%, 110px)', border: `2px solid ${INK}`, borderRadius: 4,
+                  width: 'min(20%, 110px)', flexShrink: 0, border: `2px solid ${INK}`, borderRadius: 4,
                   boxShadow: '0 2px 0 rgba(42,27,61,0.35)', background: '#fff',
                 }} />
               )}
+              {original && <span aria-hidden="true" style={{ fontSize: 22, color: INK, flexShrink: 0 }}>➜</span>}
+              <img src={page.url} alt="Das neue Malbild" style={{
+                minWidth: 0, maxWidth: original ? '72%' : '100%', maxHeight: 'min(56vh, 620px)', objectFit: 'contain', display: 'block',
+                background: '#fff', border: `3px solid ${INK}`, borderRadius: 6,
+              }} />
             </div>
             {/* the one choice: fewer or more lines */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
               <button type="button" onClick={() => changeDetail(detail - 1)} disabled={detail === 0} aria-label="Weniger Linien"
-                style={btn('parch', { opacity: detail === 0 ? 0.45 : 1, fontSize: 15 })}>➖ Weniger Linien</button>
+                style={btn('parch', { opacity: detail === 0 ? 0.45 : 1, fontSize: 15 })}><b style={{ fontSize: 22, lineHeight: 1 }}>−</b> Weniger Linien</button>
               <button type="button" onClick={() => changeDetail(detail + 1)} disabled={detail === 2} aria-label="Mehr Linien"
                 style={btn('parch', { opacity: detail === 2 ? 0.45 : 1, fontSize: 15 })}>➕ Mehr Linien</button>
             </div>
@@ -182,7 +191,7 @@ export default function OwnPictureDialog({ settings, say, onTake, onClose }) {
             </div>
             {page && (
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
-                {page.reason === 'mess' && detail > 0 && <button type="button" onClick={() => changeDetail(detail - 1)} style={btn('parch', { fontSize: 15 })}>➖ Weniger Linien</button>}
+                {page.reason === 'mess' && detail > 0 && <button type="button" onClick={() => changeDetail(detail - 1)} style={btn('parch', { fontSize: 15 })}><b style={{ fontSize: 22, lineHeight: 1 }}>−</b> Weniger Linien</button>}
                 {page.reason === 'empty' && detail < 2 && <button type="button" onClick={() => changeDetail(detail + 1)} style={btn('parch', { fontSize: 15 })}>➕ Mehr Linien</button>}
               </div>
             )}

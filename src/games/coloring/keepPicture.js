@@ -3,9 +3,9 @@
 // is), or on paper — one page, the picture large and centred, nothing of
 // the app around it. Both stay on the device; nothing is uploaded.
 
-export const pictureName = (lines = false) => {
+export const pictureName = () => {
   const d = new Date(), pad = n => String(n).padStart(2, '0')
-  return `Mal-Atelier-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${lines ? '-Linien' : ''}.png`
+  return `Mal-Atelier-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.png`
 }
 
 // Any picture (a Blob or a URL) as a PNG blob

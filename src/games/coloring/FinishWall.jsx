@@ -83,8 +83,13 @@ export default function FinishWall({ picture, png, linesSrc, from, sheet, stamps
   let pw = ph * ratio
   if (pw > box.w * 0.62) { pw = box.w * 0.62; ph = pw / ratio }
   const b = Math.max(7, Math.round(pw * 0.06))                 // frame width
-  const px = (box.w - pw) / 2
+  const keepSize = Math.round(Math.min(60, Math.max(48, floor * 0.75)))
   const py = wide ? (box.h - floor - ph) / 2 + 6 : box.h * 0.2 + b
+  // on a low screen the save and print buttons on the floor would cover
+  // the frame: the picture is a little smaller then
+  const over = png && wide ? py + ph + b - (box.h - Math.max(8, (floor - keepSize) / 2) - keepSize - 8) : 0
+  if (over > 0) { ph -= over; pw = ph * ratio }
+  const px = (box.w - pw) / 2
   // Lumi stands on the floor beside the picture, never on it
   const lumi = Math.round(Math.min(wide ? box.h * 0.4 : box.w * 0.3, 160, wide ? (box.w - pw) / 2 - b - 16 : 999))
   const lumiX = wide ? px + pw + b + Math.max(8, ((box.w - px - pw - b) - lumi) / 2) : box.w - lumi - 10
@@ -115,7 +120,6 @@ export default function FinishWall({ picture, png, linesSrc, from, sheet, stamps
   const k = pw / sheet.w
   const still = reduceMotion()
   const btn = Math.round(Math.min(84, Math.max(64, box.h * 0.13)))
-  const keepSize = Math.round(Math.min(60, Math.max(48, floor * 0.75)))
 
   return (
     <div ref={ref} style={{
