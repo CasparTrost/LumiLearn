@@ -148,6 +148,46 @@ describe('following a stroke', () => {
     }
   })
 
+  it('B: the two bowls are one stroke, into the stem at the waist and out again', () => {
+    expect(GLYPHS.B).toHaveLength(2)
+    const s = GLYPHS.B[1]
+    // it comes back to the stem in the middle and ends on it at the bottom
+    const turn = s.findIndex(p => Math.abs(p.y - 66) < 0.01 && p.x < 24 + STEP)
+    expect(turn).toBeGreaterThan(0)
+    expect(s[s.length - 1]).toEqual({ x: 24, y: 130 })
+    // any wobble on the way in and out of the waist is fine
+    for (let phase = 0; phase < 12; phase++) {
+      for (const amp of [0.3, 0.6, 0.85]) {
+        const r = trace(s, along(s, { step: 2, wobble: x => Math.sin(x / 6 + phase) * TOL * amp }))
+        expect(r, `phase ${phase}, wobble ${amp}`).toBe('done')
+      }
+    }
+    // a finger that turns round a little before the stem, or runs over it
+    const cum = lengths(s)
+    const waist = cum[turn]
+    const len = cum[cum.length - 1]
+    const cut = [...along(s, { to: (waist - 6) / len }), ...along(s, { from: (waist + 6) / len })]
+    expect(trace(s, cut)).toBe('done')
+    // only the upper bowl is not a B
+    expect(trace(s, along(s, { to: waist / len }))).toBe('short')
+    // the upper bowl and then straight down the stem is not one either
+    const down = Array.from({ length: 22 }, (_, i) => ({ x: 24, y: 66 + (i + 1) * 3 }))
+    expect(trace(s, [...along(s, { to: waist / len }), ...down])).not.toBe('done')
+  })
+
+  it('7: has its cross stroke, written last from left to right', () => {
+    expect(GLYPHS[7]).toHaveLength(2)
+    const [body, cross] = GLYPHS[7]
+    expect(cross[0].y).toBe(cross[cross.length - 1].y)
+    expect(cross[cross.length - 1].x).toBeGreaterThan(cross[0].x)
+    // it crosses the slanted line, about in its middle
+    const hit = body.find(p => Math.abs(p.y - cross[0].y) < 1.5)
+    expect(hit.x).toBeGreaterThan(cross[0].x + 8)
+    expect(hit.x).toBeLessThan(cross[cross.length - 1].x - 8)
+    expect(cross[0].y).toBeGreaterThan(55)
+    expect(cross[0].y).toBeLessThan(85)
+  })
+
   it('rejects starting at the wrong end', () => {
     for (const g of ALL) {
       for (const s of GLYPHS[g]) {
