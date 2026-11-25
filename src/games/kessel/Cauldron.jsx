@@ -15,10 +15,13 @@ const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.(
 /**
  * The cauldron. `brew` is the colour of the potion, `cough` turns the steam
  * purple (a wrong letter), `splash` changes with every letter that lands.
- * `mouthRef` marks where letters fly in.
+ * `fill` (0 … 1) is how far the word is: the potion foams up over the rim
+ * and its bubbles jump higher with every right letter, until the last one
+ * makes it boil over. `mouthRef` marks where letters fly in.
  */
-export function Cauldron({ width = 220, brew = '#7be36b', cough = false, splash = 0, mouthRef, onTap }) {
+export function Cauldron({ width = 220, brew = '#7be36b', cough = false, splash = 0, fill = 0, mouthRef, onTap }) {
   const steam = cough ? '#b27cff' : '#ffffff'
+  const f = Math.max(0, Math.min(1, fill))
   return (
     <motion.div
       onPointerDown={onTap}
@@ -48,9 +51,20 @@ export function Cauldron({ width = 220, brew = '#7be36b', cough = false, splash 
         <ellipse cx={120} cy={90} rx={104} ry={24} fill="#4a4168" stroke={INK} strokeWidth={5} />
         <ellipse cx={120} cy={92} rx={86} ry={15} fill={brew} style={{ transition: 'fill .5s' }} />
         <ellipse cx={104} cy={88} rx={40} ry={5} fill="#fff" opacity={0.35} />
+        {/* the foam: it rises over the rim with every right letter */}
+        <motion.g initial={false} animate={{ scaleY: f, scaleX: 0.55 + 0.45 * f, opacity: f > 0 ? 1 : 0 }}
+          transition={{ type: 'spring', stiffness: 180, damping: 11 }}
+          style={{ transformBox: 'fill-box', transformOrigin: '50% 100%' }}>
+          {[[78, 80, 20], [104, 70, 26], [136, 72, 24], [162, 82, 18], [120, 58, 22]].map(([x, y, r]) => (
+            <circle key={x} cx={x} cy={y} r={r} fill={brew} stroke={INK} strokeWidth={3} style={{ transition: 'fill .5s' }} />
+          ))}
+          <ellipse cx={120} cy={92} rx={70} ry={10} fill={brew} style={{ transition: 'fill .5s' }} />
+          <circle cx={98} cy={60} r={6} fill="#fff" opacity={0.55} />
+          <circle cx={126} cy={46} r={4} fill="#fff" opacity={0.5} />
+        </motion.g>
         {[[80, 0], [118, 0.5], [150, 1.1], [100, 0.8], [136, 0.3]].map(([x, d]) => (
-          <circle key={x} className="ks-bubble" cx={x} cy={92} r={6} fill={brew} stroke={INK} strokeWidth={2}
-            style={{ animationDelay: `${d}s`, transition: 'fill .5s' }} />
+          <circle key={x} className="ks-bubble" cx={x} cy={92 - f * 30} r={6 + f * 3} fill={brew} stroke={INK} strokeWidth={2}
+            style={{ animationDelay: `${d}s`, transition: 'fill .5s, cy .4s', '--ks-rise': `${-22 - f * 50}px` }} />
         ))}
       </svg>
       {/* where letters fly in */}
@@ -118,7 +132,8 @@ export function WitchLumi({ size = 110, act = 'idle', beat = 0, wish, onTap, wan
   return (
     <motion.button type="button" onClick={onTap} aria-label="Lumi"
       animate={controls}
-      style={{ all: 'unset', position: 'relative', width: size, height: size * 1.35, flexShrink: 0, cursor: 'pointer', transformOrigin: '50% 100%' }}>
+      // (it turns about its middle: about its feet, a spin swung it under the floor)
+      style={{ all: 'unset', position: 'relative', width: size, height: size * 1.35, flexShrink: 0, cursor: 'pointer', transformOrigin: '50% 62%' }}>
       <div aria-hidden="true" style={{ position: 'absolute', bottom: -4, left: '20%', width: '60%', height: size * 0.08, borderRadius: '50%', background: 'rgba(42,27,61,0.2)' }} />
       <img src={artSrc('lumi', happy ? 'happy' : 'idle')} alt="" draggable={false}
         style={{ position: 'absolute', bottom: 0, left: 0, width: size, height: size, imageRendering: 'pixelated' }} />
@@ -166,11 +181,17 @@ export function Puff({ size = 220 }) {
  *   move: hop · drive · fly · swim · spin
  */
 const MOVES = {
-  hop:   { y: [0, -50, 0, -30, 0], scaleY: [1, 1.1, 0.85, 1.05, 1], transition: { duration: 1.2, delay: 0.3 } },
-  drive: { x: [0, -40, 40, 0], rotate: [0, -4, 4, 0], transition: { duration: 1.4, delay: 0.3, ease: 'easeInOut' } },
-  fly:   { y: [0, -60, -30, -70, 0], x: [0, 30, -30, 20, 0], rotate: [0, 10, -10, 6, 0], transition: { duration: 1.6, delay: 0.3 } },
-  swim:  { x: [0, -30, 30, -20, 0], rotate: [0, -12, 12, -8, 0], transition: { duration: 1.4, delay: 0.3 } },
-  spin:  { rotate: [0, 360], y: [0, -40, 0], transition: { duration: 1.1, delay: 0.3 } },
+  hop:    { y: [0, -50, 0, -30, 0], scaleY: [1, 1.1, 0.85, 1.05, 1], transition: { duration: 1.2, delay: 0.3 } },
+  drive:  { x: [0, -40, 40, 0], rotate: [0, -4, 4, 0], transition: { duration: 1.4, delay: 0.3, ease: 'easeInOut' } },
+  fly:    { y: [0, -60, -30, -70, 0], x: [0, 30, -30, 20, 0], rotate: [0, 10, -10, 6, 0], transition: { duration: 1.6, delay: 0.3 } },
+  swim:   { x: [0, -30, 30, -20, 0], rotate: [0, -12, 12, -8, 0], transition: { duration: 1.4, delay: 0.3 } },
+  spin:   { rotate: [0, 360], y: [0, -40, 0], transition: { duration: 1.1, delay: 0.3 } },
+  // a snail or a snake slides along, slowly
+  crawl:  { x: [0, -34, -34, 30, 0], scaleX: [1, 1.12, 0.92, 1.1, 1], transition: { duration: 1.8, delay: 0.3, ease: 'easeInOut' } },
+  // a house or a tree grows out of the ground and sways once
+  grow:   { scaleY: [0.2, 1.15, 0.95, 1], rotate: [0, 0, -4, 4, 0], transition: { duration: 1.2, delay: 0.2 } },
+  // a thing bounces in place
+  bounce: { y: [0, -36, 0, -14, 0], scaleX: [1, 0.92, 1.12, 0.96, 1], transition: { duration: 1.1, delay: 0.3 } },
 }
 export function Alive({ art, size = 150, move = 'hop' }) {
   const still = reduceMotion()
@@ -180,7 +201,7 @@ export function Alive({ art, size = 150, move = 'hop' }) {
       animate={{ scale: 1, y: 0, opacity: 1 }}
       transition={{ type: 'spring', stiffness: 260, damping: 14 }}
       style={{ position: 'absolute', left: '50%', bottom: '62%', marginLeft: -size / 2, width: size, height: size, zIndex: 5, pointerEvents: 'none' }}>
-      <motion.div animate={still ? {} : MOVES[move] ?? MOVES.hop} style={{ width: size, height: size, filter: 'drop-shadow(0 6px 0 rgba(42,27,61,0.25))' }}>
+      <motion.div animate={still ? {} : MOVES[move] ?? MOVES.bounce} style={{ width: size, height: size, transformOrigin: '50% 100%', filter: 'drop-shadow(0 6px 0 rgba(42,27,61,0.25))' }}>
         <Art art={art} size={size} />
       </motion.div>
     </motion.div>
@@ -264,40 +285,41 @@ export function Firefly({ size = 44 }) {
   )
 }
 
-// What the things on the hill do all the time, small (the same kinds of
-// move as when they came out of the cauldron)
+// What the conjured things on the forest floor do all the time, small (the
+// same kinds of move as when they came out of the cauldron)
 const IDLE = {
-  hop:   { y: [0, -7, 0] },
-  drive: { x: [-5, 5, -5] },
-  fly:   { y: [0, -9, 0], rotate: [-8, 8, -8] },
-  swim:  { rotate: [-10, 10, -10] },
-  spin:  { rotate: [0, 360] },
+  hop:    { y: [0, -7, 0] },
+  drive:  { x: [-5, 5, -5] },
+  fly:    { y: [0, -9, 0], rotate: [-8, 8, -8] },
+  swim:   { rotate: [-10, 10, -10] },
+  spin:   { rotate: [0, 360] },
+  crawl:  { x: [-3, 3, -3], scaleX: [1, 1.08, 1] },
+  grow:   { rotate: [-2, 2, -2] },
+  bounce: { y: [0, -5, 0] },
 }
 
 /**
- * The night hill next to the cauldron: everything conjured in this level
- * stays here and moves about. When a new word is done (`cheer` changes),
- * they all jump.
+ * Everything conjured in this level stands on the forest floor and moves
+ * about. When a new word is done (`cheer` changes) they all jump; at the
+ * end of the level (`party`) they keep jumping.
  */
-export function Hill({ items, cheer, size = 38, height = 56 }) {
+export function Hill({ items, cheer, party = false, size = 38, style }) {
   const still = reduceMotion()
   return (
-    <div aria-hidden="true" style={{ position: 'relative', width: '100%', maxWidth: 560, height, flexShrink: 0 }}>
-      <div style={{ position: 'absolute', left: '4%', right: '4%', bottom: 0, height: height * 0.55, borderRadius: '50% 50% 0 0 / 100% 100% 0 0', background: 'linear-gradient(180deg, #3e3a73, #2a2552)', opacity: 0.85 }} />
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: size * 0.3, paddingBottom: height * 0.18 }}>
-        {items.map(({ art, move }, i) => (
-          <motion.div key={i} initial={{ scale: 0, y: -40 }} animate={{ scale: 1, y: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 12 }}>
-            <motion.div key={`c${cheer}`} animate={cheer && !still ? { y: [0, -size * 0.7, 0], rotate: [0, i % 2 ? 15 : -15, 0] } : {}}
-              transition={{ duration: 0.5, delay: i * 0.06 }}>
-              <motion.div animate={still ? {} : IDLE[move] ?? IDLE.hop}
-                transition={{ duration: move === 'spin' ? 2.4 : 1.4, repeat: Infinity, ease: move === 'spin' ? 'linear' : 'easeInOut', delay: i * 0.2 }}
-                style={{ transformOrigin: move === 'spin' ? '50% 50%' : '50% 100%', filter: 'drop-shadow(0 3px 0 rgba(0,0,0,0.3))' }}>
-                <Art art={art} size={size} />
-              </motion.div>
+    <div aria-hidden="true" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: size * 0.22, pointerEvents: 'none', ...style }}>
+      {items.map(({ art, move }, i) => (
+        <motion.div key={i} initial={{ scale: 0, y: -40 }} animate={{ scale: 1, y: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 12 }}>
+          <motion.div key={`c${cheer}-${party}`}
+            animate={still ? {} : party ? { y: [0, -size * 0.9, 0], rotate: [0, i % 2 ? 18 : -18, 0] } : cheer ? { y: [0, -size * 0.7, 0], rotate: [0, i % 2 ? 15 : -15, 0] } : {}}
+            transition={party ? { duration: 0.55, delay: i * 0.08, repeat: Infinity, repeatDelay: 0.15 } : { duration: 0.5, delay: i * 0.06 }}>
+            <motion.div animate={still ? {} : IDLE[move] ?? IDLE.bounce}
+              transition={{ duration: move === 'spin' ? 2.4 : 1.4, repeat: Infinity, ease: move === 'spin' ? 'linear' : 'easeInOut', delay: i * 0.2 }}
+              style={{ transformOrigin: move === 'spin' ? '50% 50%' : '50% 100%', filter: 'drop-shadow(0 3px 0 rgba(0,0,0,0.3))' }}>
+              <Art art={art} size={size} />
             </motion.div>
           </motion.div>
-        ))}
-      </div>
+        </motion.div>
+      ))}
     </div>
   )
 }
