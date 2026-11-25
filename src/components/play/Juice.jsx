@@ -37,8 +37,8 @@ import { Art } from './Critter.jsx'
  *       for the game's own extra (a dance, a cheer).
  *   miss(at?)
  *       The streak is over: a soft bonk, and `at`, if it is an element,
- *       wiggles. If the streak was 3 or more its flame goes out in a puff.
- *       Nothing else: no red, no buzzer, nothing is taken away.
+ *       wiggles. Nothing else: no red, no buzzer, no banner, nothing is
+ *       taken away.
  *   shake(strength = 1)
  *       A short shake of the element that carries `ref={juice.stage}`, for
  *       something heavy landing. 0.5 is a nudge, 2 an earthquake.
@@ -55,6 +55,9 @@ import { Art } from './Critter.jsx'
  *   • hit, miss and shake never change. In a useCallback take them out
  *     first — `const { hit, miss, shake } = juice` — and list those; the
  *     `juice` object itself is new on every render.
+ *   • The banner carries no number: in a game about numbers a second
+ *     number beside the task's would be wrong. One flame at 3, two at 5,
+ *     three at 8.
  *   • The streak ends only with miss(). It runs on from task to task and
  *     round to round; what counts as a miss is the game's decision.
  *   • The wiggle and the shake move the CSS property `translate`, so they
@@ -86,8 +89,8 @@ export const NOTE_STEPS = 8
 /** The step of sfx.pluck for the hit that made the streak `streak` long (1 = the first). */
 export const noteStepFor = streak => Math.max(0, Math.min(NOTE_STEPS - 1, Math.floor(streak) - 1))
 
-/** A miss shows the flame going out only if there was a flame to see. */
-export const losesFlame = streak => streak >= STREAK_MILESTONES[0]
+/** How many flames the banner shows for a milestone streak: 1, 2, 3. */
+export const flamesFor = streak => Math.max(1, STREAK_MILESTONES.filter(m => m <= streak).length)
 
 export const MAX_FLYING = 6
 
@@ -138,11 +141,15 @@ const elementOf = at => {
 // Somewhere to start from when the game names no place
 const middleOf = stage => pointOf(stage) ?? { x: innerWidth / 2, y: innerHeight * 0.4 }
 
-// The banner pops up just above the finger; near the top edge, below it
+// The banner pops up just above the finger; near the top, below it. Never
+// under the top bar: it floats up 40 px as it goes, so its middle stays
+// 90 px below where the game begins (.pl-game, screens/GameScreen.jsx).
 function bannerSpot(p) {
   const x = clamp(p.x, 104, Math.max(104, innerWidth - 104))
-  const y = p.y - 104 < 60 ? p.y + 104 : p.y - 104
-  return { x, y: clamp(y, 60, Math.max(60, innerHeight - 60)) }
+  const top = (typeof document !== 'undefined' && document.querySelector('.pl-game')?.getBoundingClientRect().top) || 0
+  const ceil = top + 90
+  const y = p.y - 104 < ceil ? p.y + 104 : p.y - 104
+  return { x, y: clamp(y, ceil, Math.max(ceil, innerHeight - 60)) }
 }
 
 export function useJuice({ hudSize = 40 } = {}) {
@@ -198,17 +205,14 @@ export function useJuice({ hudSize = 40 } = {}) {
       ))])
     }
     const milestone = isStreakMilestone(L.streak)
-    if (milestone) setBanner({ id: ++seq, n: L.streak, out: false, ...bannerSpot(from) })
+    if (milestone) setBanner({ id: ++seq, flames: flamesFor(L.streak), ...bannerSpot(from) })
     return { streak: L.streak, milestone }
   }, [])
 
   const miss = useCallback((at) => {
-    const L = live.current
-    const lost = L.streak
-    L.streak = 0
+    live.current.streak = 0
     setStreak(0)
     sfx.bonk()
-    if (losesFlame(lost)) setBanner({ id: ++seq, n: lost, out: true, ...bannerSpot(pointOf(at) ?? middleOf(stage)) })
     move(elementOf(at), ['0 0', '-8px 0', '7px 0', '-5px 0', '3px 0', '0 0'], 340)
   }, [move])
 
@@ -306,47 +310,38 @@ function FlyingStar({ id, from, to, delay, bend, size, onLand }) {
   )
 }
 
-// "🔥 5": read without reading. Up in a pop, gone within a second. When
-// the streak ends, the same sign once more, smaller, as its flame goes out.
-function Banner({ id, n, x, y, out, reduce, onDone }) {
+// 🔥, 🔥🔥, 🔥🔥🔥: read without reading, and no number. Up in a pop, gone
+// within a second.
+function Banner({ id, flames, x, y, reduce, onDone }) {
   // a little smaller on a phone, where it would hide half the stage
-  const s = (out ? 0.76 : 1) * clamp(Math.min(innerWidth, innerHeight) / 420, 0.7, 1)
+  const s = clamp(Math.min(innerWidth, innerHeight) / 420, 0.7, 1)
   const flame = 68 * s
-  const D = out ? 0.85 : 0.9
+  const D = 0.9
   const show = reduce
     ? { opacity: [0, 1, 1, 0], transition: { duration: D, times: [0, 0.1, 0.75, 1] } }
-    : out
-      ? { opacity: [0, 1, 1, 0], scale: [0.7, 1, 1, 0.9], y: [0, 0, 0, 14], rotate: 0, transition: { duration: D, times: [0, 0.12, 0.7, 1] } }
-      : { opacity: [0, 1, 1, 1, 0], scale: [0.2, 1.3, 1, 1, 0.9], y: [16, 0, 0, 0, -40], rotate: [-14, -5, -5, -5, -5], transition: { duration: D, times: [0, 0.18, 0.32, 0.72, 1] } }
+    : { opacity: [0, 1, 1, 1, 0], scale: [0.2, 1.3, 1, 1, 0.9], y: [16, 0, 0, 0, -40], rotate: [-14, -5, -5, -5, -5], transition: { duration: D, times: [0, 0.18, 0.32, 0.72, 1] } }
   return (
     <div style={{ position: 'absolute', left: x, top: y, width: 0, height: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <motion.div initial={{ opacity: 0 }} animate={show} onAnimationComplete={() => onDone(id)}
         style={{
-          flexShrink: 0, display: 'flex', alignItems: 'center', gap: 2 * s,
-          padding: `${4 * s}px ${22 * s}px ${4 * s}px ${10 * s}px`, borderRadius: 999,
-          background: out ? PARCH : GOLD, border: `${out ? 3 : 4}px solid ${INK}`,
+          flexShrink: 0, display: 'flex', alignItems: 'flex-end', gap: 0,
+          padding: `${4 * s}px ${14 * s}px`, borderRadius: 999,
+          background: GOLD, border: `4px solid ${INK}`,
           boxShadow: `inset 0 ${-6 * s}px 0 rgba(42,27,61,0.12), 0 ${6 * s}px 0 rgba(42,27,61,0.35)`,
         }}>
-        <div style={{ position: 'relative', width: flame, height: flame, marginTop: -flame * 0.22 }}>
-          <motion.div
-            animate={out
-              ? (reduce ? { opacity: 0.35, filter: 'grayscale(1)' } : { opacity: [1, 1, 0.35], scale: [1, 1.1, 0.6], filter: ['grayscale(0)', 'grayscale(0)', 'grayscale(1)'], transition: { duration: D * 0.6, times: [0, 0.3, 1] } })
-              : (reduce ? {} : { scale: [1, 1.12, 0.96, 1.08, 1], transition: { duration: D * 0.7, delay: D * 0.2 } })}
-            style={{ display: 'flex', transformOrigin: '50% 90%' }}>
-            <Art art="🔥" size={flame} />
-          </motion.div>
-          {out && (
-            <motion.div initial={{ opacity: reduce ? 1 : 0 }}
-              animate={reduce ? {} : { opacity: [0, 0, 1, 1, 0], y: [0, 0, -flame * 0.3, -flame * 0.55, -flame * 0.8], scale: [0.5, 0.5, 1, 1.15, 1.3], transition: { duration: D * 0.95, times: [0, 0.22, 0.42, 0.75, 1] } }}
-              style={{ position: 'absolute', left: flame * 0.08, top: -flame * 0.15, display: 'flex' }}>
-              <Art art="💨" size={flame * 0.85} />
-            </motion.div>
-          )}
-        </div>
-        <span style={{
-          fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 60 * s, lineHeight: 1,
-          color: out ? 'rgba(42,27,61,0.45)' : INK, fontVariantNumeric: 'tabular-nums',
-        }}>{n}</span>
+        {Array.from({ length: flames }, (_, i) => {
+          // the middle flame of three is the tallest
+          const f = flame * (flames === 3 && i === 1 ? 1.12 : flames > 1 ? 0.88 : 1)
+          return (
+            <div key={i} style={{ width: f * 0.82, height: f, marginTop: -f * 0.22, display: 'flex', justifyContent: 'center' }}>
+              <motion.div
+                animate={reduce ? {} : { scale: [1, 1.12, 0.96, 1.08, 1], transition: { duration: D * 0.7, delay: D * 0.2 + i * 0.06 } }}
+                style={{ display: 'flex', transformOrigin: '50% 90%' }}>
+                <Art art="🔥" size={f} />
+              </motion.div>
+            </div>
+          )
+        })}
       </motion.div>
     </div>
   )

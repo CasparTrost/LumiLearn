@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { Critter, Art, useMood, artSrc } from '../../components/play/index.js'
 import { Pips } from './stage.jsx'
-import { FRUITS, slotOf } from './fangen.js'
+import { FRUITS } from './fangen.js'
 
 /**
  * The drawn pieces of "Bruno fängt" (NumberIntroGame.jsx): the basket you
@@ -117,34 +117,57 @@ function seeded(seed) {
 
 /**
  * The crown of the tree across the top of the field, with a few fruit of
- * the round still hanging in it. The trunk stands behind everything.
+ * the round still hanging in it. The trunk stands behind everything. Two
+ * kinds grow on two trees (`fruits[0]` on the left, `fruits[1]` on the
+ * right, see treeSpans): one tree never carries two kinds.
  */
 export function Crown({ width, height, fruits }) {
+  const spans = treeSpans(width, fruits.length)
   const blobs = useMemo(() => {
-    const rnd = seeded(7), n = Math.max(5, Math.round(width / 62))
-    return Array.from({ length: n + 1 }, (_, i) => ({ x: (width / n) * i + (rnd() - 0.5) * 16, y: height * (0.42 + rnd() * 0.14), r: height * (0.5 + rnd() * 0.16) }))
-  }, [width, height])
+    const rnd = seeded(7)
+    return spans.flatMap(([a, b]) => {
+      const w = b - a, inset = spans.length > 1 ? height * 0.42 : 0
+      const n = Math.max(spans.length > 1 ? 3 : 5, Math.round(w / 62))
+      return Array.from({ length: n + 1 }, (_, i) => ({ x: a + inset + ((w - 2 * inset) / n) * i + (rnd() - 0.5) * 16, y: height * (0.42 + rnd() * 0.14), r: height * (0.5 + rnd() * 0.16) }))
+    })
+  }, [width, height]) // eslint-disable-line react-hooks/exhaustive-deps
   const hung = useMemo(() => {
-    const rnd = seeded(23), n = Math.max(3, Math.round(width / 150))
-    return Array.from({ length: n }, (_, i) => ({ x: (width / n) * (i + 0.5) + (rnd() - 0.5) * 50, y: height * (0.2 + rnd() * 0.22), rot: (rnd() - 0.5) * 40 }))
-  }, [width, height])
+    const rnd = seeded(23)
+    return spans.flatMap(([a, b], k) => {
+      const w = b - a, n = Math.max(spans.length > 1 ? 2 : 3, Math.round(w / 150))
+      return Array.from({ length: n }, (_, i) => ({ k, x: a + (w / n) * (i + 0.5) + (rnd() - 0.5) * Math.min(50, w / n - 30), y: height * (0.2 + rnd() * 0.22), rot: (rnd() - 0.5) * 40 }))
+    })
+  }, [width, height]) // eslint-disable-line react-hooks/exhaustive-deps
   const size = height * 0.38
+  const two = spans.length > 1
+  // one canopy: the leaves run off both sides · two: each a rounded crown
+  const band = (a, b, h) => <rect key={`${a}-${h}`} x={two ? a : -20} y={-40} width={two ? b - a : width + 40} height={h + 40} rx={two ? height * 0.4 : 0} />
   return (
     <div aria-hidden="true" style={{ position: 'absolute', left: 0, top: 0, width, height, pointerEvents: 'none' }}>
       <svg viewBox={`0 0 ${width} ${height}`} width={width} height={height} style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>
-        <rect x={-20} y={-40} width={width + 40} height={height * 0.5 + 40} fill="#2f7d3a" />
+        <g fill="#2f7d3a">{spans.map(([a, b]) => band(a - 4, b + 4, height * 0.5))}</g>
         {blobs.map((b, i) => <circle key={`o${i}`} cx={b.x} cy={b.y} r={b.r + 4} fill="#1f5c2c" />)}
-        <rect x={-20} y={-40} width={width + 40} height={height * 0.45 + 40} fill="#4caf50" />
+        <g fill="#4caf50">{spans.map(([a, b]) => band(a, b, height * 0.45))}</g>
         {blobs.map((b, i) => <circle key={`f${i}`} cx={b.x} cy={b.y} r={b.r} fill="#4caf50" />)}
         {blobs.map((b, i) => <circle key={`l${i}`} cx={b.x - b.r * 0.25} cy={b.y - b.r * 0.3} r={b.r * 0.45} fill="#6cc763" opacity="0.8" />)}
       </svg>
       {hung.map((h, i) => (
         <span key={i} style={{ position: 'absolute', left: h.x - size / 2, top: h.y, transform: `rotate(${h.rot}deg)`, display: 'flex' }}>
-          <Art art={FRUITS[fruits[i % fruits.length]].art} size={size} />
+          <Art art={FRUITS[fruits[Math.min(h.k, fruits.length - 1)]].art} size={size} />
         </span>
       ))}
     </div>
   )
+}
+
+/**
+ * Where the trees stand across a field `width` wide: one over all of it, or
+ * for two kinds two, with sky between. → [[left, right], …]
+ */
+export function treeSpans(width, kinds = 1) {
+  if (kinds < 2) return [[0, width]]
+  const gap = Math.max(24, width * 0.07)
+  return [[0, width / 2 - gap / 2], [width / 2 + gap / 2, width]]
 }
 
 export function Trunk({ x, top, bottom, width = 46 }) {
@@ -305,19 +328,52 @@ function Guest({ art, label, size }) {
   )
 }
 
-/** The size of the board for a basket (see CompareBoard). */
+// The sign's dice patterns (zahlen/stage.jsx, DICE) on a grid of cells:
+// [column, row] of each dot, rows from the top
+const DICE_CELLS = [
+  [],
+  [[0, 0]],
+  [[0, 0], [1, 1]],
+  [[0, 0], [1, 1], [2, 2]],
+  [[0, 0], [1, 0], [0, 1], [1, 1]],
+  [[0, 0], [2, 0], [1, 1], [0, 2], [2, 2]],
+  [[0, 0], [1, 0], [0, 1], [1, 1], [0, 2], [1, 2]],
+]
+
+/**
+ * The size of the board for a basket (see CompareBoard), and where each
+ * thing lies on it. Up to six the dots are the sign's dice picture and the
+ * ones too many lie beside it, apart; from seven on it is the sign's ten
+ * frame, rows of five, the ones too many after the last dot.
+ * → { blocks: [{ cells, width, height, slots: [{ x, y }] }], width, height, pad, gap }
+ *   slots: centre of thing i inside its block (i < n: on a dot)
+ */
 export function boardLayout(wants, counts, cell) {
-  const cols = wants.length > 1 ? 3 : 5
   const blocks = wants.map((w, k) => {
-    const cells = Math.max(w.n, counts[k] ?? 0)
-    return { cols: Math.min(cols, Math.max(cells, 1)), rows: Math.ceil(cells / cols), cells }
+    const have = counts[k] ?? 0
+    const cells = Math.max(w.n, have)
+    const at = (c, r, dx = 0) => ({ x: dx + (c + 0.5) * cell, y: (r + 0.5) * cell })
+    if (w.n > 6) {
+      const cols = Math.min(5, cells)
+      const slots = Array.from({ length: cells }, (_, i) => at(i % 5, Math.floor(i / 5)))
+      return { cells, slots, width: cols * cell, height: Math.ceil(cells / 5) * cell }
+    }
+    const dice = DICE_CELLS[w.n]
+    const dcols = Math.max(...dice.map(d => d[0])) + 1, drows = Math.max(...dice.map(d => d[1])) + 1
+    const extra = cells - w.n
+    const erows = Math.max(drows, 2), ecols = Math.ceil(extra / erows)
+    const apart = extra ? cell * 0.4 : 0
+    const slots = Array.from({ length: cells }, (_, i) => (i < w.n
+      ? at(dice[i][0], dice[i][1])
+      : at(Math.floor((i - w.n) / erows), (i - w.n) % erows, dcols * cell + apart)))
+    return { cells, slots, width: (dcols + ecols) * cell + apart, height: Math.max(drows, Math.min(extra, erows)) * cell }
   })
   const pad = 12, gap = 18
-  const rows = Math.max(...blocks.map(b => b.rows))
-  const widths = blocks.map(b => Math.max(b.cols * cell, cell * 2))
+  const widths = blocks.map(b => Math.max(b.width, cell * 2))
   const width = widths.reduce((a, b) => a + b, 0) + gap * (blocks.length - 1) + pad * 2 + 10
-  const height = rows * cell + pad * 2 + 10
-  return { cols, blocks, widths, rows, width, height, pad: pad + 5, gap }
+  const inner = Math.max(...blocks.map(b => b.height))
+  const height = inner + pad * 2 + 10
+  return { blocks, widths, inner, width, height, pad: pad + 5, gap }
 }
 
 /**
@@ -335,16 +391,17 @@ export function CompareBoard({ wants, counts, cell, from, rolled, show }) {
       transition={{ type: 'spring', stiffness: 420, damping: 24 }}
       style={{ ...board, position: 'relative', width: L.width, height: L.height }}>
       {wants.map((w, k) => {
-        const b = L.blocks[k], x0 = left + L.widths[k] / 2
+        const b = L.blocks[k]
+        const bx = left + (L.widths[k] - b.width) / 2, by = L.pad + (L.inner - b.height) / 2
+        const x0 = left + L.widths[k] / 2
         left += L.widths[k] + L.gap
         const have = counts[k] ?? 0
         return (
           <div key={k}>
             {k > 0 && <span style={{ position: 'absolute', left: x0 - L.widths[k] / 2 - L.gap / 2 - 1.5, top: 10, bottom: 10, width: 3, borderRadius: 2, background: 'rgba(138,79,34,0.35)' }} />}
             {Array.from({ length: b.cells }, (_, i) => {
-              const s = slotOf(i, L.cols)
-              // rows from the top here, like the dots on the sign
-              const cx = x0 + (s.x + (L.cols - b.cols) / 2) * cell, cy = L.pad + s.row * cell + cell / 2
+              // like the dots on the sign
+              const cx = bx + b.slots[i].x, cy = by + b.slots[i].y
               const dot = i < w.n, thing = i < have
               const gone = i >= w.n && i >= have - (rolled[k] ?? 0)
               const missing = dot && !thing
