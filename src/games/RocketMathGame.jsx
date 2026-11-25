@@ -1,635 +1,859 @@
-import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react'
-import { customArtSrc } from '../lib/emojiArt.jsx'
-import { motion, AnimatePresence, useAnimationControls } from 'framer-motion'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion, useTransform } from 'framer-motion'
+import { Critter, HintHand, useBursts, useJuice } from '../components/play/index.js'
 import { sfx } from '../sfx.js'
-import { afterNarration, lockPreviews } from '../narrator.js'
-import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
+import { leaveGame, lockPreviews, narrate } from '../narrator.js'
+import { LINES, line } from '../lib/lumiLines.js'
+import { numberWord } from '../lib/words.js'
+import { sayRight, sayTask, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
-import { Art, RoundTrail, HintHand, useBursts } from '../components/play/index.js'
-import { INK } from './px.js'
+import { useLater } from './zahlen/stage.jsx'
+import { ALIEN_HUES, MINUS, PLUS, TOP, buildTasks, countChoices, dirOf, freeGap, judge, levelPlan, residentOf } from './rakete/tasks.js'
+import { bow, clamp, hopPath, layout } from './rakete/layout.js'
+import {
+  AlienPic, BonusStar, CountBubble, GOLD, HopArcs, INK, LandButton, Moon, Planet, Rocket, SIGN_COLOR, ThrustButton, windowSpots,
+} from './rakete/parts.jsx'
 
 /**
- * Planeten-Taxi — Addieren und Subtrahieren am Zahlenstrahl
+ * Rechen-Rakete — "Planeten-Hüpfer": plus and minus as counting on and
+ * counting back on the number line
  *
- * A little alien calls the space taxi; its speech bubble holds the sum
- * ("4 + 2 = ?"). The planets in a row are the number line. The child taps
- * the planet, the rocket starts and hops planet by planet, each hop drawn
- * as a gold arc with its number, and the alien climbs in and cheers. Minus
- * flies backwards. In the top levels the alien waves from its planet and
- * the child picks how many hops the rocket needs. At the end of the level
- * the taxi takes all its passengers to the moon.
+ * The planets 0 … 10 are the number line. An alien shows a sum ("4 + 2");
+ * the rocket lands on planet 4 by itself, and the 4 of the sum lights up
+ * with it. The child flies the rocket:
  *
- * Everything is shown, nothing needs listening: a wrong planet has someone
- * else living on it, the number to count pulses, and an arrow points the
- * way when the rocket would fly the wrong way.
+ *   • Levels 1–6 (hop). Every press on the flame button is one hop to the
+ *     next planet: a gold arc is drawn, numbered (1, 2 …), and Lumi says
+ *     the planet the rocket touches down on. When it has hopped far enough
+ *     the child presses the green tick (or taps the rocket) and it lands.
+ *     Right: the alien pops out of its planet, cheers and climbs in. Wrong:
+ *     someone else lives there and shakes its head; the arcs stay, the
+ *     sum's second number pulses with the number of arcs beside it (one hop
+ *     too many), and the rocket flies back to the start. Minus has a
+ *     backward button; from level 5 both come mixed, each marked with its
+ *     sign, and a hop back along the last arc takes that arc back.
+ *   • Levels 7–8 (tap). No buttons: the child taps the planet where the
+ *     rocket will land and it flies there in one go, drawing the arcs as
+ *     proof. Worked out in the head.
+ *   • Level 9 (count). "4 + ▢ = 7": the alien waves from planet 7. The
+ *     child hops there, lands, and then says how many hops it took with one
+ *     of three number bubbles. A wrong bubble: the arcs count themselves.
+ *   • Level 10 (pick). The same with minus too, and the other way round:
+ *     the child picks the number of hops first and the rocket proves it.
  *
- * Scientific basis:
- *   • Mental number line (Siegler & Ramani, 2009) — board-game-like movement
- *     along a left-to-right number line measurably improves later arithmetic;
- *     the rocket hops one field per unit so the operation is a movement, not
- *     a memorised fact.
- *   • Concrete-Pictorial-Abstract (Bruner) — the ten frame carries the early
- *     levels and is withdrawn once the line alone suffices.
- *   • Missing-addend problems (Carpenter & Moser) — "3 + ? = 5" demands a
- *     different, harder mental action than "3 + 2 = ?" and comes last.
+ * The alien's planet is never marked before the rocket lands right (every
+ * planet has a door, the alien comes out of the right one). After two
+ * misses the way is drawn as a dashed path. Bonus stars hang between some
+ * planets and are collected by flying through them. Everyone picked up
+ * looks out of one of the rocket's windows; at the end of the level the
+ * rocket takes them all to the moon.
+ *
+ * Why this: moving a token one field per unit along a linear number line
+ * builds the mental number line and measurably helps later arithmetic
+ * (Siegler & Ramani 2009); counting on and counting back are the first
+ * strategies for adding and taking away (Carpenter & Moser 1984), and the
+ * missing addend ("4 + ? = 7") is the harder, later step.
+ *
+ * Score: sums solved on the first landing (and, in level 9, the first
+ * bubble).
  */
 
-function rand(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a }
+const HOP_MS = 430           // one hop of the thrust button
+const FAST_MS = 240          // one hop of a flight in one go
+const BACK_MS = 700          // back to the start after a miss
+const ENTER_MS = 850         // to the start of a new sum
+const STAR_COUNT = 2         // bonus stars on the line at a time
+let seq = 0
 
-// L1-3  plus, ten frame (steps 2, 3, 5)  L4  plus, no ten frame
-// L5    minus                            L6  plus and minus mixed
-// L7    plus up to 20 (across the ten)   L8  minus up to 20 (across the ten)
-// L9    missing addend up to 10          L10 missing addend up to 20
-// The range of twenty used to arrive together with the missing addend; now
-// it comes with plain plus and minus first.
-function levelPlan(level) {
-  if (level <= 1)  return { max: 10, kind: 'add',     maxStep: 2, frame: true }
-  if (level <= 2)  return { max: 10, kind: 'add',     maxStep: 3, frame: true }
-  if (level <= 3)  return { max: 10, kind: 'add',     maxStep: 5, frame: true }
-  if (level <= 4)  return { max: 10, kind: 'add',     maxStep: 5, frame: false }
-  if (level <= 5)  return { max: 10, kind: 'sub',     maxStep: 5, frame: false }
-  if (level <= 6)  return { max: 10, kind: 'mixed',   maxStep: 5, frame: false }
-  if (level <= 7)  return { max: 20, kind: 'add',     maxStep: 5, frame: false, cross: true }
-  if (level <= 8)  return { max: 20, kind: 'sub',     maxStep: 5, frame: false, cross: true }
-  if (level <= 9)  return { max: 10, kind: 'missing', maxStep: 5, frame: false }
-  return             { max: 20, kind: 'missing', maxStep: 6, frame: false }
+const rec = key => (LINES[key] ? line(key) : null)
+// Lumi's lines for this game; silent until they are recorded
+const SAY = {
+  [PLUS]: 'rakete/plus', [MINUS]: 'rakete/minus', equals: 'rakete/gleich',
+  hop: 'rakete/huepf', back: 'rakete/zurueck', tap: 'rakete/tippen', howMany: 'rakete/wie-viele',
+  far: 'rakete/zu-weit', short: 'rakete/zu-kurz', wrongway: 'rakete/andersrum',
 }
-
-function makeTask(p, i) {
-  const kind = p.kind === 'mixed' ? (i % 2 ? 'sub' : 'add') : p.kind
-  // Every other task crosses the ten (8 + 5, 13 − 5) where the range allows it.
-  const cross = p.cross && i % 2 === 0
-  if (kind === 'sub') {
-    const step = rand(cross ? 2 : 1, p.maxStep)
-    const from = cross ? rand(11, Math.min(p.max, 9 + step)) : rand(step + (p.max > 10 ? 10 : 0), p.max)
-    return { from, step, target: from - step, op: '−', kind }
-  }
-  if (kind === 'missing') {
-    const from = rand(p.max > 10 ? 4 : 0, p.max - 2)
-    const room = Math.min(p.maxStep, p.max - from)
-    const step = rand(Math.min(2, room), room)
-    return { from, step, target: from + step, op: '+', kind }
-  }
-  const step = rand(cross ? 2 : 1, p.maxStep)
-  const from = cross ? rand(Math.max(4, 11 - step), 9) : rand(p.max > 10 ? 10 : 0, p.max - step)
-  return { from, step, target: from + step, op: '+', kind }
-}
-
-// Each alien has its own colour, and each planet someone else at home
-const ALIEN_COLORS = ['#5CC45A', '#FF8FB8', '#4AA3FF', '#FFA94D', '#B78CF2', '#3FC1A8']
-// The alien picture is green; each task's alien is tinted by turning its hue
-const ALIEN_HUE = { '#5CC45A': 0, '#FF8FB8': 230, '#4AA3FF': 105, '#FFA94D': 290, '#B78CF2': 160, '#3FC1A8': 55 }
-const RESIDENTS = ['🐙', '🤖', '🐌', '🐢', '🦀', '🐸']
-const PLANET_COLORS = ['#FF8A65', '#4FC3F7', '#FFD54F', '#AED581', '#CE93D8', '#F48FB1', '#80CBC4']
-
-function buildTasks(level, count = 8) {
-  const p = levelPlan(level)
-  const out = [], seen = new Set()
-  let guard = 0
-  while (out.length < count && guard++ < 400) {
-    const t = makeTask(p, out.length)
-    const key = `${t.from}${t.op}${t.step}`
-    // No task twice in one level ("8 + 1" came up twice in a row).
-    if (seen.has(key) && guard < 300) continue
-    seen.add(key)
-    // r places the visible part of the number line (see below), fixed per task
-    out.push({ ...t, r: Math.random(), color: ALIEN_COLORS[out.length % ALIEN_COLORS.length] })
-  }
-  return out
-}
-
-const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-
-// ── The alien ────────────────────────────────────────────────────────────────
-// Drawn here: no picture in the emoji set shows one. A round little body,
-// two antennae, big eyes and an arm that waves; it jumps when it is happy
-// and tilts its head when something went wrong.
-function Alien({ size = 110, color = '#5CC45A', mood = 'idle', onTap, label }) {
-  const anim = reduceMotion() ? {}
-    : mood === 'happy' ? { y: [0, -size * 0.35, 0, -size * 0.15, 0], rotate: [0, -8, 8, 0, 0], transition: { duration: 1 } }
-    : mood === 'oops'  ? { rotate: [0, -12, 9, -5, 0], y: 0, transition: { duration: 0.8 } }
-    : { y: [0, -size * 0.03, 0], rotate: 0, transition: { duration: 2.2, repeat: Infinity } }
-  return (
-    <motion.button type="button" onClick={onTap} aria-label={label} tabIndex={label ? 0 : -1} animate={anim}
-      style={{ all: 'unset', cursor: onTap ? 'pointer' : 'default', width: size, height: size, display: 'block', transformOrigin: '50% 100%', flexShrink: 0 }}>
-      <img src={customArtSrc('alien')} alt="" draggable={false}
-        style={{ width: size, height: size, display: 'block', objectFit: 'contain', filter: `hue-rotate(${ALIEN_HUE[color] ?? 0}deg) drop-shadow(0 4px 0 rgba(42,27,61,0.25))` }} />
-    </motion.button>
-  )
-}
-
-// ── The passenger tower ─────────────────────────────────────────────────────
-// Everyone picked up rides on the roof of the taxi, three to a row, the
-// newest climbing on top. The tower sways at every hop.
-function Tower({ riders, rocketPx, hop, ending }) {
-  const reduce = reduceMotion()
-  const s = rocketPx * 0.5
-  const n = riders.length
-  const sway = useAnimationControls()
-  useEffect(() => {
-    if (reduce || (!hop && !ending)) return
-    sway.start(ending ? { rotate: [0, -12, 9, -7, 4, 0], transition: { duration: 1.6 } } : { rotate: [0, -7, 6, -3, 0], transition: { duration: 0.6 } })
-  }, [hop, ending, sway, reduce])
-  if (!n) return null
-  return (
-    <motion.div aria-hidden="true" animate={sway}
-      style={{ position: 'absolute', left: rocketPx / 2, bottom: rocketPx * 0.72, width: 0, height: 0, transformOrigin: '0 100%', pointerEvents: 'none', zIndex: 3 }}>
-      {riders.map((c, i) => {
-        const row = Math.floor(i / 3), col = i % 3
-        const inRow = Math.min(3, n - row * 3)
-        const x = (col - (inRow - 1) / 2) * s * 0.78 + (row % 2 ? s * 0.08 : -s * 0.08)
-        return (
-          <motion.div key={i} initial={reduce ? false : { y: rocketPx * 1.2, scale: 0, opacity: 0 }}
-            animate={{ x: x - s / 2, y: -s - row * s * 0.62, scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', stiffness: 260, damping: 13 }}
-            style={{ position: 'absolute', left: 0, top: 0, width: s, height: s, zIndex: 1 + row }}>
-            <Alien size={s} color={c} mood="idle" />
-          </motion.div>
-        )
-      })}
-    </motion.div>
-  )
-}
-
-// ── Ten frame ────────────────────────────────────────────────────────────────
-// The sum as blocks: the start in purple, what is added in gold.
-function TenFrame({ filled, added }) {
-  return (
-    <div aria-hidden="true" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 4, width: 'clamp(130px,26vw,190px)' }}>
-      {Array.from({ length: 10 }, (_, i) => {
-        const isBase  = i < filled
-        const isAdded = i >= filled && i < filled + added
-        return (
-          <motion.div key={i} initial={false} animate={{ scale: isAdded ? [1, 1.25, 1] : 1 }} transition={{ delay: (i - filled) * 0.08 }}
-            style={{
-              aspectRatio: '1', borderRadius: 5, border: `2px solid ${INK}`,
-              background: isBase ? 'var(--px-purple)' : isAdded ? 'var(--px-gold)' : '#FFFDF7',
-              boxShadow: 'inset 0 -3px 0 rgba(42,27,61,0.18)',
-            }} />
-        )
-      })}
-    </div>
-  )
-}
-
-// One number of the sum, on a block
-function NumBlock({ children, color = '#FFFDF7', small, plain, pulse }) {
-  return (
-    <motion.span key={pulse || 'still'} animate={pulse && !reduceMotion() ? { scale: [1, 1.3, 1, 1.3, 1] } : {}} transition={{ duration: 1.2 }}
-      style={{
-      minWidth: plain ? 0 : small ? 42 : 54, height: small ? 48 : 58, padding: plain ? 0 : '0 6px', boxSizing: 'border-box', borderRadius: 12,
-      background: plain ? 'none' : color, border: plain ? 'none' : `3px solid ${INK}`, boxShadow: plain ? 'none' : '0 4px 0 rgba(42,27,61,0.35)',
-      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: small ? 30 : 38, color: INK,
-    }}>{children}</motion.span>
-  )
-}
-
-// A planet of the number line: a ball with its number, a ring on some
-function Planet({ n, size, state }) {
-  const c = PLANET_COLORS[n % PLANET_COLORS.length]
-  const ring = n % 3 === 1
-  return (
-    <svg viewBox="0 0 100 100" width={size} height={size} aria-hidden="true" style={{ display: 'block', overflow: 'visible' }}>
-      {state === 'right' && <circle cx="50" cy="50" r="58" fill="#FFC93C" opacity="0.45" />}
-      {ring && <ellipse cx="50" cy="56" rx="60" ry="14" fill="none" stroke={INK} strokeWidth="9" transform="rotate(-14 50 56)" />}
-      {ring && <ellipse cx="50" cy="56" rx="60" ry="14" fill="none" stroke="#FFE08A" strokeWidth="5" transform="rotate(-14 50 56)" />}
-      <circle cx="50" cy="50" r="44" fill={state === 'tried' ? '#9A8FB0' : c} stroke={INK} strokeWidth="5" />
-      <circle cx="34" cy="34" r="10" fill="#fff" opacity="0.35" />
-      <circle cx="66" cy="70" r="6" fill="#000" opacity="0.1" />
-      <text x="50" y="65" textAnchor="middle" fontSize="44" fontWeight="800" fill={INK}
-        stroke="#fff" strokeWidth="6" paintOrder="stroke" fontFamily="var(--font-heading, system-ui)">{n}</text>
-    </svg>
-  )
-}
-
-const MIN_CELL = 46, GAP = 2   // smallest field and gap on the number line
-const SIDE = 12                 // room at both ends, so the turned rocket is never cut off
-const HOP_MS = 520              // one hop of the rocket
+const INTRO = { 1: 'hop', 4: 'back', 5: 'back', 7: 'tap', 9: 'hop', 10: 'howMany' }
 
 export default function RocketMathGame({ level = 1, onComplete }) {
-  const plan  = useMemo(() => levelPlan(level), [level])
-  const tasks = useState(() => buildTasks(level))[0]
+  const plan = useMemo(() => levelPlan(level), [level])
+  const [tasks] = useState(() => buildTasks(level))
+  const total = tasks.length
+  const reduce = useReducedMotion()
   const paused = usePaused()
-  const pausedRef = useRef(paused)
-  pausedRef.current = paused
-
-  const [idx,     setIdx]     = useState(0)
-  const [pos,     setPos]     = useState(() => tasks[0]?.from ?? 0)
-  const [picked,  setPicked]  = useState(null)
-  const [wrong,   setWrong]   = useState([])
-  const [misses,  setMisses]  = useState(0)      // on the current task
-  const [shown,   setShown]   = useState(false)  // the rocket already flew ahead
-  const [mood,    setMood]    = useState('idle')
-  const [hopping, setHopping] = useState(false)
-  const [launching, setLaunching] = useState(false)
-  const [trail,   setTrail]   = useState([])     // the hops so far: [{ from, to }]
-  const [ghost,   setGhost]   = useState(null)   // a wrong number of hops, shown dashed
-  const [aboard,  setAboard]  = useState(false)  // the alien got in
-  const [resident, setResident] = useState(null) // { n, art } peeking out of a wrong planet
-  const [arrow,   setArrow]   = useState(null)   // 1 / -1: the way the rocket has to fly
-  const [pulse,   setPulse]   = useState(null)   // the number block to look at again
-  const [streak,  setStreak]  = useState(0)      // right on the first try in a row
-  const [riders,  setRiders]  = useState([])     // the aliens picked up so far
-  const [ending,  setEnding]  = useState(false)
-  const [lineW,   setLineW]   = useState(0)
-  const [puffs,   setPuffs]   = useState([])     // flame puffs: a tap on the rocket mid-flight
+  const { later, afterSpeech } = useLater()
+  const juice = useJuice({ hudSize: 36 })
+  const { hit, miss, shake } = juice
   const [bursts, burst] = useBursts()
-  const firstTry = useRef(0)                     // tasks right on the first try
-  const timers   = useRef([])
-  const lineRef  = useRef(null)
-  const rowRef   = useRef(null)
-  const jumpsRef = useRef(null)
 
-  const t = tasks[idx]
-  const missing = t?.kind === 'missing'
+  const rootRef = useRef(null)
+  const [size, setSize] = useState(null)
+  const L = useMemo(() => (size ? layout(size.w, size.h) : null), [size])
 
-  // Timers of the task: they wait while the help is open and end with it
-  const later = useCallback((fn, ms) => {
-    const run = () => { if (pausedRef.current) timers.current.push(setTimeout(run, 250)); else fn() }
-    timers.current.push(setTimeout(run, ms))
-  }, [])
-  useEffect(() => () => timers.current.forEach(clearTimeout), [])
+  const [idx, setIdx] = useState(0)
+  const [phase, setPhaseState] = useState('enter')  // enter | play | fly | land | count | won | finale
+  const [pos, setPos] = useState(null)              // the planet the rocket stands on
+  const [arcs, setArcs] = useState([])              // the hops of this try: [{ id, a, b }]
+  const [glow, setGlow] = useState(0)               // the start lights up (planet and number together)
+  const [ghost, setGhost] = useState(false)         // after two misses: the way, dashed
+  const [badge, setBadge] = useState(null)          // after a miss: how many arcs it was
+  const [opPulse, setOpPulse] = useState(0)         // the wrong way: look at the sign
+  const [thrustPulse, setThrustPulse] = useState({ op: null, k: 0 })
+  const [creature, setCreature] = useState(null)    // who comes out of a planet: { n, kind, art, key, boarding }
+  const [waiting, setWaiting] = useState(false)     // levels 9–10: the alien waves from its planet
+  const [cheer, setCheer] = useState(0)
+  const [filled, setFilled] = useState(false)       // the empty box of the sum is filled
+  const [riders, setRiders] = useState([])          // the passengers' colours
+  const [stars, setStars] = useState([])            // bonus stars: the gaps they hang over
+  const [flame, setFlame] = useState(0)
+  const [bubbles, setBubbles] = useState(false)     // "how many hops?"
+  const [choices, setChoices] = useState([])
+  const [tried, setTried] = useState([])            // bubbles or planets that were wrong
+  const [counting, setCounting] = useState(-1)      // a wrong bubble: the arcs count themselves
+  const [finale, setFinale] = useState(null)        // { landed }
 
-  // The number line fits the width it has. It used to be one scrolling row:
-  // on a phone the outer fields were cut off and unreachable, and every field
-  // was only 26 px wide.
+  const task = tasks[idx]
+  const d = dirOf(task.op)
+  const missing = plan.mode === 'count' || plan.mode === 'pick'
+  const hue = ALIEN_HUES[idx % ALIEN_HUES.length]
+
+  // What the timers and the taps work on; the state above is its picture
+  const g = useRef({ phase: 'enter', pos: null, air: false, queue: null, arcs: [], misses: 0, firstTry: 0, stars: [], idx: 0, done: false }).current
+  const S = useRef({}).current
+  Object.assign(S, { L, task, idx, plan, reduce, paused, hue })
+  const setPhase = p => { g.phase = p; setPhaseState(p) }
+
+  // The rocket: where its feet are, how it leans, how squashed it is
+  const rx = useMotionValue(-999), ry = useMotionValue(-999), rot = useMotionValue(0), sq = useMotionValue(1)
+  const rocketX = useTransform(rx, v => v - (L?.rw ?? 0) / 2)
+  const rocketY = useTransform(ry, v => v - (L?.rh ?? 0))
+  const rocketRot = useTransform(rot, v => (L?.base ?? 0) + v)
+  const anims = useRef(new Set())
+  const run = a => { anims.current.add(a); a.then?.(() => anims.current.delete(a)); return a }
+  useEffect(() => () => { anims.current.forEach(a => a.stop?.()); leaveGame() }, [])
+
+  const rocketRef = useRef(null)
+  const plusRef = useRef(null), minusRef = useRef(null), landRef = useRef(null)
+  const bubbleRef = useRef(null), gapRef = useRef(null)
+
+  // ── The size of the play area ──
   useLayoutEffect(() => {
-    const el = lineRef.current
-    if (!el) return
-    const measure = () => setLineW(el.clientWidth)
+    const el = rootRef.current
+    const measure = () => {
+      const w = el.clientWidth, h = el.clientHeight
+      if (w && h) setSize(s => (s && s.w === w && s.h === h ? s : { w, h }))
+    }
     measure()
     const ro = new ResizeObserver(measure)
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
-
-  // Which fields to show: all of them if they fit, otherwise a stretch that
-  // holds the start and the landing field with at least one field beyond
-  // it — the landing field is never simply the last one.
-  const span = useMemo(() => {
-    if (!t) return [0, 0]
-    const total = plan.max + 1
-    const fit = Math.max(1, Math.floor((lineW + GAP) / (MIN_CELL + GAP)))
-    if (!lineW || fit >= total) return [0, plan.max]
-    const lo = Math.min(t.from, t.target), hi = Math.max(t.from, t.target)
-    const need = hi - lo + 1
-    const len = Math.max(need, Math.min(fit, total))
-    const spare = len - need
-    const beyond = spare > 0 ? 1 + Math.floor(t.r * spare) : 0
-    let start = t.target >= t.from ? lo - (spare - beyond) : lo - beyond
-    start = Math.max(0, Math.min(start, plan.max - len + 1))
-    return [start, start + len - 1]
-  }, [t, lineW, plan.max])
-
-  // New task: everything back, the taxi whooshes to the starting planet.
-  // A layout effect, so the new task is never painted with the last one's
-  // state (the new alien used to play the last one's boarding).
+  // a new size: the rocket stands where it stood
   useLayoutEffect(() => {
-    if (!t) return
-    timers.current.forEach(clearTimeout); timers.current = []
-    setPos(t.from)
-    setPicked(null); setWrong([]); setMisses(0); setShown(false)
-    setAboard(false); setResident(null); setArrow(null); setPulse(null)
-    setTrail([]); setGhost(null); setHopping(false); setLaunching(false)
-    setMood('idle')
-    if (idx > 0) sfx.whoosh()
-    lockPreviews()
-    sayTask()
-  }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (!L || g.air || g.pos == null || g.phase === 'finale') return
+    const p = L.P(g.pos, L.pr)
+    rx.set(p.x); ry.set(p.y)
+  }, [L]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fly the rocket field by field: the engine roars first (a short shake),
-  // then one hop after the other, each drawn as an arc with its number —
-  // counting on is what the number line is for.
-  const hopTo = useCallback((from, to, done) => {
-    setHopping(true)
-    setLaunching(true)
-    setTrail([])
-    sfx.whoosh()
-    const dir = to > from ? 1 : -1
-    let cur = from
-    const stepOnce = () => {
-      setLaunching(false)
-      if (cur === to) { setHopping(false); done?.(); return }
-      const prev = cur
-      cur += dir
-      setPos(cur)
-      setTrail(tr => [...tr, { from: prev, to: cur }])
-      sfx.boing()
-      later(stepOnce, HOP_MS)
-    }
-    later(stepOnce, 650)
-  }, [later])
+  // ── Flying ──────────────────────────────────────────────────────────────
 
-  // A tap on the rocket while it flies: a puff of flame and a whoosh. Only
-  // for fun — the flight takes as long as before.
-  const boost = () => {
-    if (!hopping) return
-    sfx.whoosh()
-    const id = Date.now() + Math.random()
-    setPuffs(p => [...p.slice(-3), id])
-    later(() => setPuffs(p => p.filter(x => x !== id)), 700)
+  const squash = (k = 1) => {
+    if (S.reduce) return
+    run(animate(sq, [1, 1 - 0.22 * k, 1 + 0.08 * k, 1], { duration: 0.32 }))
   }
 
-  const nextTask = useCallback(() => {
-    if (idx + 1 < tasks.length) { setIdx(i => i + 1); return }
-    // the end of the level: the taxi takes everybody to the moon
-    setEnding(true)
-    sfx.slideUp()
-    later(() => {
-      sfx.complete()
-      afterNarration(() => onComplete(result(firstTry.current, tasks.length)), { minMs: 600 })
-    }, 2000)
-  }, [idx, tasks.length, onComplete, later])
-
-  // The alien climbs in and cheers, then the next call comes by itself
-  // once the pick-up was seen
-  const finishTask = useCallback((alreadyThere) => {
-    setPicked(missing ? t.step : t.target)
-    setArrow(null); setPulse(null)
-    const first = misses === 0
-    if (first) firstTry.current++
-    const s = first ? streak + 1 : 0
-    setStreak(s)
-    const end = () => {
-      setAboard(true)
-      setMood('happy')
-      setRiders(r => [...r, t.color])
-      sfx.correct()
-      sfx.slideUp()
-      const r = lineRef.current.getBoundingClientRect()
-      burst({ x: r.left + r.width * (t.target - span[0] + 0.5) / (span[1] - span[0] + 1), y: r.top + r.height * 0.6 }, s >= 3 ? 'confetti' : 'stars', s >= 3 ? 18 : 10)
-      sayRight()
-      afterNarration(() => later(nextTask, 0), { minMs: s >= 3 ? 2300 : 1900 })
+  // One bow from planet a to planet b (a === b: straight up and down)
+  const flight = (a, b, { ms, high = 1, onDone }) => {
+    const Lx = S.L
+    const path = hopPath(Lx, a, b, high)
+    const dir = Math.sign(b - a) || 1
+    g.air = true
+    setFlame(1)
+    if (S.reduce) {
+      rx.set(path.b.x); ry.set(path.b.y); rot.set(0)
+      later(140, () => { g.air = false; setFlame(0); onDone?.() })
+      return
     }
-    if (alreadyThere) end()
-    else hopTo(t.from, t.target, end)
-  }, [t, missing, misses, streak, span, hopTo, burst, later, nextTask])
+    run(animate(sq, [1, 0.8, 1.12, 1], { duration: Math.min(0.34, ms / 1000) }))
+    // leaning into the hop, then back for the landing, upright at both ends
+    const fly = run(animate(0, 1, {
+      duration: ms / 1000, ease: [0.4, 0, 0.5, 1],
+      onUpdate: t => {
+        const p = bow(path.a, path.c, path.b, t)
+        rx.set(p.x); ry.set(p.y)
+        rot.set(a === b ? 0 : Lx.lean * dir * 22 * Math.sin(2 * Math.PI * t))
+      },
+    }))
+    later(ms, () => {
+      fly.stop()
+      rx.set(path.b.x); ry.set(path.b.y); rot.set(0)
+      g.air = false
+      setFlame(0)
+      squash(0.8)
+      onDone?.()
+    })
+  }
 
-  // After two misses the rocket flies ahead with its arcs, then waits there
-  // for the child to answer — tapping every field in turn taught nothing.
-  const showTheWay = useCallback(() => {
-    setShown(true)
-    setPos(t.from)
-    later(() => hopTo(t.from, t.target), 900)
-  }, [t, hopTo, later])
+  // A star over the gap a hop flies through goes to the counter
+  const collect = gap => {
+    if (!g.stars.includes(gap)) return
+    g.stars = g.stars.filter(x => x !== gap)
+    setStars(g.stars)
+    const r = rootRef.current.getBoundingClientRect(), p = S.L.P(gap + 0.5, starOff(S.L))
+    hit({ x: r.left + p.x, y: r.top + p.y }, { silent: true })
+    sfx.sparkle()
+  }
 
-  const miss = useCallback((n) => {
-    setWrong(w => w.includes(n) ? w : [...w, n])
-    const m = misses + 1
-    setMisses(m)
-    setStreak(0)
-    setMood('oops')
-    sfx.boing()
+  // One hop to the next planet; the arc goes with it (or, back along the
+  // last arc, that arc is taken back)
+  const hopOnce = (op, ms, onDone) => {
+    const a = g.pos, b = a + dirOf(op)
+    const last = g.arcs[g.arcs.length - 1]
+    if (last && last.b === a && last.a === b) g.arcs = g.arcs.slice(0, -1)
+    else g.arcs = [...g.arcs, { id: ++seq, a, b }]
+    setArcs(g.arcs)
+    sfx.whoosh()
+    later(ms * 0.5, () => collect(Math.min(a, b)))
+    flight(a, b, {
+      ms,
+      onDone: () => {
+        g.pos = b
+        setPos(b)
+        sfx.bump()
+        onDone?.(b)
+      },
+    })
+  }
+
+  // Many hops in a row, quickly: the flight in one go (levels 7, 8, 10)
+  const flyTo = (n, onDone) => {
+    const op = n > g.pos ? PLUS : MINUS
+    const step = () => {
+      if (g.pos === n) { onDone(); return }
+      hopOnce(op, FAST_MS, step)
+    }
+    step()
+  }
+
+  // ── The child's moves ───────────────────────────────────────────────────
+
+  const nudge = () => {
+    if (S.reduce) return
+    run(animate(rot, [0, -8, 8, -4, 0], { duration: 0.4 }))
+  }
+
+  const thrust = op => {
+    if (g.phase !== 'play' || S.paused) return
+    if (g.air) { g.queue = op; return }
+    const b = g.pos + dirOf(op)
+    if (b < 0 || b > TOP) { sfx.bonk(); nudge(); return }
+    hopOnce(op, HOP_MS, n => {
+      narrate([numberWord(n)])
+      const q = g.queue
+      g.queue = null
+      if (q === 'land') land()
+      else if (q) thrust(q)
+    })
+  }
+
+  const land = () => {
+    if (g.phase !== 'play' || S.paused) return
+    if (g.air) { g.queue = 'land'; return }
+    if (g.pos === S.task.from) { nudge(); return }
+    settle(g.pos)
+  }
+
+  const tapPlanet = n => {
+    if (g.phase !== 'play' || S.paused || g.air) return
+    if (n === g.pos) { nudge(); sfx.boing(); return }
+    setPhase('fly')
+    flyTo(n, () => settle(n))
+  }
+
+  const pick = k => {
+    if (g.phase !== 'play' || S.paused || g.air) return
+    setPhase('fly')
+    setBubbles(false)
+    g.picked = k
+    flyTo(S.task.from + dirOf(S.task.op) * k, () => settle(g.pos))
+  }
+
+  // ── Landing: who lives here? ────────────────────────────────────────────
+
+  const settle = n => {
+    setPhase('land')
+    shake(0.35)
+    if (S.plan.mode !== 'hop') narrate([numberWord(n)])
+    const verdict = judge(S.task, n)
+    if (verdict === 'right') { right(); return }
+    wrong(verdict, n)
+  }
+
+  const right = () => {
+    if (S.plan.mode === 'count') {
+      // at the alien's planet: now how many hops was it?
+      setCheer(c => c + 1)
+      sfx.slideUp()
+      later(700, () => {
+        setPhase('count')
+        setChoices(countChoices(S.task))
+        setBubbles(true)
+        afterSpeech(() => narrate([rec(SAY.howMany)]), 200)
+      })
+      return
+    }
+    won()
+  }
+
+  const won = () => {
+    const first = g.misses === 0
+    if (first) g.firstTry += 1
+    setPhase('won')
+    setFilled(true)
+    setBadge(null)
+    setGhost(false)
+    setBubbles(false)
+    const { milestone } = hit(rocketRef.current, { stars: first ? 2 : 1 })
+    sayRight()
+    const t = S.task
+    if (!missing) setCreature({ n: t.target, kind: 'alien', key: ++seq })
+    else setCheer(c => c + 1)
+    sfx.sparkle()
+    if (milestone) burst(rocketRef.current, 'confetti', 16)
+    // the alien jumps in, then the next sum
+    later(1000, () => {
+      setWaiting(false)
+      setCreature({ n: t.target, kind: 'alien', key: seq, boarding: true })
+      later(S.reduce ? 50 : 520, () => {
+        setCreature(null)
+        setRiders(r => [...r, S.hue])
+        sfx.pop()
+        squash(0.6)
+        afterSpeech(next, 650)
+      })
+    })
+  }
+
+  const wrong = (verdict, n) => {
+    g.misses += 1
+    const t = S.task
+    miss(rocketRef.current)
     sayWrong()
-    later(() => setMood('idle'), 900)
-    if (m >= 2 && !shown) showTheWay()
-  }, [misses, shown, showTheWay, later])
+    const hint = rec(SAY[verdict])
+    if (hint) afterSpeech(() => narrate([hint]), 0)
+    setCreature({ n, kind: 'resident', art: residentOf(n), key: ++seq })
+    if (verdict === 'wrongway') {
+      setOpPulse(p => p + 1)
+      if (S.plan.mode === 'hop') setThrustPulse(p => ({ op: t.op, k: p.k + 1 }))
+    } else setBadge({ count: Math.abs(n - t.from), key: seq })
+    if (S.plan.mode === 'pick') setTried(l => [...l, g.picked])
+    if (S.plan.mode === 'tap') setTried(l => [...l, n])
+    later(1900, () => {
+      setCreature(null)
+      sfx.whoosh()
+      flight(n, t.from, {
+        ms: BACK_MS, high: 1 + Math.abs(n - t.from) * 0.2,
+        onDone: () => {
+          g.pos = t.from
+          setPos(t.from)
+          g.arcs = []
+          setArcs([])
+          setBadge(null)
+          if (g.misses >= 2) setGhost(true)
+          if (S.plan.mode === 'pick') setBubbles(true)
+          setPhase('play')
+        },
+      })
+    })
+  }
 
-  // Tap on a planet: where does the rocket land? Someone else lives on a
-  // wrong one and peeks out, puzzled; the way to fly or the number to count
-  // is pointed out.
-  const pickField = useCallback((n) => {
-    if (picked !== null || hopping || !t || missing) return
-    if (n === t.target) { finishTask(pos === t.target); return }
-    // Which way is "too far" depends on the direction: at minus the rocket
-    // flies left, and a field above the result is not far enough.
-    const dir = t.op === '+' ? 1 : -1
-    setResident({ n, art: RESIDENTS[n % RESIDENTS.length], k: Date.now() })
-    later(() => setResident(r => (r?.n === n ? null : r)), 1600)
-    if ((n - t.from) * dir <= 0) { setArrow(dir); later(() => setArrow(null), 2200) }
-    else setPulse(Date.now())
-    miss(n)
-  }, [picked, hopping, t, missing, pos, finishTask, miss, later])
+  // Level 9: how many hops was it?
+  const confirm = (k, el) => {
+    if (g.phase !== 'count' || S.paused) return
+    if (k === S.task.step) { won(); return }
+    g.misses += 1
+    setTried(l => [...l, k])
+    miss(el)
+    sayWrong()
+    // the arcs count themselves, one after the other
+    setPhase('land')
+    afterSpeech(() => {
+      const n = g.arcs.length
+      for (let i = 0; i < n; i++) later(i * 650, () => { setCounting(i); narrate([numberWord(i + 1)]); sfx.note(i) })
+      later(n * 650 + 400, () => { setCounting(-1); setPhase('count') })
+    }, 200)
+  }
 
-  // Missing addend: how many jumps from the start to the alien? A wrong
-  // number shows its hops dashed, landing short of the alien or past it.
-  const pickJumps = useCallback((k) => {
-    if (picked !== null || hopping || !t || !missing) return
-    if (k === t.step) { finishTask(pos === t.target); return }
-    setGhost({ k, at: Date.now() })
-    later(() => setGhost(g => (g?.k === k ? null : g)), 1800)
-    miss(k)
-  }, [picked, hopping, t, missing, pos, finishTask, miss, later])
+  // ── Sums one after the other ────────────────────────────────────────────
 
-  if (!t) return null
-  const line = Array.from({ length: span[1] - span[0] + 1 }, (_, i) => span[0] + i)
-  const done = picked !== null
-  const narrow = lineW > 0 && lineW < 520
-  const cellW = lineW ? (lineW - GAP * (line.length - 1)) / line.length : MIN_CELL
-  const planetPx = Math.max(MIN_CELL - 2, Math.min(cellW - 2, 80))
-  const rocketPx = Math.max(44, Math.min(cellW * (narrow ? 1 : 1.15), 86))
-  const frac = n => (n - span[0] + 0.5) / line.length
-  const at = n => `${frac(n) * 100}%`
-  // The rocket points the way it is going, up while it waits (the picture
-  // points up and to the right; mirrored it flies left)
-  const back = (hopping || done) && t.target < t.from
-  const heading = !hopping && !done ? -45 : 45
-  // waves around the row, so it looks like a path through space
-  const lift = n => (n % 2 ? -10 : 8)
-  const top = rocketPx + 30           // where the planets start in the line box
-  // the hops to draw: the flight so far, or a wrong number of hops dashed
-  const ghostHops = ghost ? Array.from({ length: ghost.k }, (_, i) => ({ from: t.from + i, to: t.from + i + 1 })).filter(h => h.to <= span[1]) : []
+  const next = () => {
+    if (S.idx + 1 >= total) { toTheMoon(); return }
+    setIdx(i => i + 1)
+  }
+
+  // A new sum: the rocket flies to its start, the start lights up
+  useEffect(() => {
+    if (!L) return
+    const t = tasks[idx]
+    g.arcs = []; g.misses = 0; g.queue = null; g.idx = idx
+    setArcs([]); setGhost(false); setBadge(null); setFilled(false); setTried([]); setBubbles(false); setCounting(-1)
+    setPhase('enter')
+    lockPreviews()
+    sayTask()
+    // a star or two to fly through
+    while (g.stars.length < STAR_COUNT) g.stars = [...g.stars, freeGap(g.stars)]
+    setStars(g.stars)
+    const from = g.pos ?? -2.5
+    if (g.pos == null) { const p = L.P(from, L.pr); rx.set(p.x); ry.set(p.y) }
+    sfx.whoosh()
+    later(idx === 0 ? 350 : 0, () => flight(from, t.from, {
+      ms: g.pos == null ? ENTER_MS + 200 : ENTER_MS, high: g.pos === t.from ? 1.2 : 1 + Math.min(4, Math.abs(t.from - from)) * 0.25,
+      onDone: () => {
+        g.pos = t.from
+        setPos(t.from)
+        setGlow(k => k + 1)
+        sfx.bump()
+        if (plan.mode === 'count' || plan.mode === 'pick') setWaiting(true)
+        const intro = idx === 0 && INTRO[level] ? rec(SAY[INTRO[level]]) : null
+        const op = rec(SAY[t.op]), eq = rec(SAY.equals)
+        const sum = !missing
+          ? (op ? [numberWord(t.from), op, numberWord(t.step)] : [numberWord(t.from)])
+          : (op && eq ? [numberWord(t.from), op, { ...eq, gap: 350 }, numberWord(t.target)] : [numberWord(t.from)])
+        afterSpeech(() => narrate([intro, ...sum]), 0)
+        later(250, () => {
+          setPhase('play')
+          if (plan.mode === 'pick') { setChoices(countChoices(t)); setBubbles(true) }
+        })
+      },
+    }))
+  }, [idx, L == null]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── The end of the level: everybody to the moon ──
+  const toTheMoon = () => {
+    setPhase('finale')
+    setFinale({ landed: false })
+    g.arcs = []
+    setArcs([])
+    g.stars = []
+    setStars([])
+    sfx.slideUp()
+    const Lx = S.L
+    const from = { x: rx.get(), y: ry.get() }
+    const to = { x: Lx.moon.x, y: Lx.moon.y - Lx.moon.r * 0.8 }
+    const c = { x: (from.x + to.x) / 2, y: Math.max(Lx.rh * 0.9, Math.min(from.y, to.y) - Lx.rh * 1.2) }
+    later(500, () => {
+      setFlame(1)
+      sfx.whoosh()
+      if (S.reduce) { rx.set(to.x); ry.set(to.y); rot.set(-Lx.base) }
+      else run(animate(0, 1, {
+        duration: 1.5, ease: [0.45, 0, 0.4, 1],
+        onUpdate: t => { const p = bow(from, c, to, t); rx.set(p.x); ry.set(p.y); rot.set(-Lx.base * Math.min(1, t * 1.4) + 18 * Math.sin(Math.PI * t)) },
+      }))
+      later(S.reduce ? 200 : 1550, () => {
+        setFlame(0)
+        squash(1.2)
+        shake(0.6)
+        sfx.tada()
+        setFinale({ landed: true })
+        const r = rootRef.current.getBoundingClientRect()
+        burst({ x: r.left + to.x, y: r.top + Lx.moon.y }, 'confetti', 26)
+        later(800, () => burst({ x: r.left + to.x, y: r.top + Lx.moon.y }, 'stars', 14))
+        later(2700, () => afterSpeech(() => { if (!g.done) { g.done = true; onComplete(result(g.firstTry, total)) } }, 0))
+      })
+    })
+  }
+
+  // ── Drawing ─────────────────────────────────────────────────────────────
+
+  const ready = !!L
+  const vertical = L?.vertical
+  const playing = phase === 'play'
+  const hopMode = plan.mode === 'hop' || plan.mode === 'count'
+  const showControls = hopMode && !bubbles && phase !== 'finale' && phase !== 'count' && counting < 0
+  // the hint hand: the first sum of a level shows the move soon, later only a long wait
+  const handDelay = idx === 0 && level <= 7 ? 2500 : 7000
+  const handTo = !ready || phase === 'finale' ? null
+    : bubbles ? bubbleRef
+    : plan.mode === 'tap' ? gapRef
+    : ghost && pos === task.target ? landRef
+    : ghost ? (task.target > pos ? plusRef : minusRef)
+    // the right button only where there is one sign: the sign is the lesson of the mixed levels
+    : arcs.length === 0 && plan.ops.length === 1 ? (task.op === PLUS ? plusRef : minusRef)
+    : null
+  const ghostHops = ghost && L ? Array.from({ length: task.step }, (_, i) => ({ a: task.from + d * i, b: task.from + d * (i + 1) })) : []
 
   return (
-    <div style={{
-      flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-      padding: 'clamp(10px,2vw,22px) clamp(8px,3vw,28px)', gap: 'clamp(10px,2vw,20px)',
-    }}>
-      {bursts}
-      {!ending && (missing
-        ? <HintHand to={jumpsRef} delay={idx === 0 ? 2000 : 6000} active={!done && !hopping} />
-        : <HintHand to={rowRef} delay={idx === 0 ? 2000 : 6000} active={!done && !hopping} />)}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', maxWidth: 720 }}>
-        <RoundTrail total={tasks.length} done={idx + (done ? 1 : 0)} walker="🚀" goal="🌕" style={{ flex: 1 }} />
-      </div>
+    <div ref={el => { rootRef.current = el; juice.stage.current = el }}
+      data-game="rakete" data-phase={phase} data-mode={plan.mode} data-idx={idx} data-pos={pos ?? ''}
+      data-from={task.from} data-target={task.target} data-step={task.step} data-op={task.op === PLUS ? 'plus' : 'minus'}
+      style={{ position: 'relative', flex: 1, minHeight: 0, width: '100%', overflow: 'hidden', userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'manipulation' }}>
+      {ready && (
+        <>
+          {/* the flight path along the planets */}
+          <svg aria-hidden="true" width={L.w} height={L.h} style={{ position: 'absolute', left: 0, top: 0, overflow: 'visible', pointerEvents: 'none' }}>
+            <line x1={L.P(0).x} y1={L.P(0).y} x2={L.P(TOP).x} y2={L.P(TOP).y} stroke="rgba(255,255,255,0.35)" strokeWidth="4" strokeDasharray="2 10" strokeLinecap="round" />
+          </svg>
 
-      {/* The alien calls the taxi; its speech bubble holds the sum */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: narrow ? 'column' : 'row', alignItems: 'center', justifyContent: 'center', gap: narrow ? 18 : 'clamp(8px,2vw,20px)', width: '100%', maxWidth: 720 }}>
-        <AnimatePresence mode="wait">
-          {/* once picked up, the alien jumps out of the call and rides the taxi */}
-          <motion.div key={idx} initial={{ x: -60, opacity: 0, rotate: -20 }}
-            animate={aboard && !reduceMotion() ? { y: [0, -40, 160], scale: [1, 1.1, 0.2], opacity: [1, 1, 0], rotate: 0 } : { x: 0, y: 0, scale: 1, opacity: aboard ? 0 : 1, rotate: 0 }}
-            exit={{ y: -80, opacity: 0 }}
-            transition={aboard ? { duration: 0.7, ease: 'easeIn' } : { type: 'spring', stiffness: 220, damping: 16 }}>
-            <Alien size={narrow ? 100 : 130} color={t.color} mood={mood} label="Alien" onTap={() => { sfx.giggle(); setMood('happy'); later(() => setMood('idle'), 1000) }} />
-          </motion.div>
-        </AnimatePresence>
-        <motion.div key={`b${idx}`} initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: 'spring', stiffness: 320, damping: 18, delay: 0.2 }}
-          style={{
-            position: 'relative', background: '#FFFDF7', border: `3px solid ${INK}`, borderRadius: 22,
-            boxShadow: '0 6px 0 rgba(0,0,0,0.3)', padding: 'clamp(10px,2vw,16px) clamp(12px,2.4vw,22px)',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
-          }}>
-          <span aria-hidden="true" style={narrow
-            ? { position: 'absolute', top: -15, left: '50%', marginLeft: -11, borderStyle: 'solid', borderWidth: '0 11px 15px 11px', borderColor: `transparent transparent ${INK} transparent` }
-            : { position: 'absolute', left: -15, top: '50%', marginTop: -11, borderStyle: 'solid', borderWidth: '11px 15px 11px 0', borderColor: `transparent ${INK} transparent transparent` }} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(4px,1.2vw,10px)' }}
-            aria-label={`${t.from} ${t.op} ${missing ? '?' : t.step} = ${missing ? t.target : '?'}`}>
-            <NumBlock small={narrow} color="#D9CCFF">{t.from}</NumBlock>
-            <NumBlock small={narrow} plain>{t.op}</NumBlock>
-            <NumBlock small={narrow} color={missing ? (aboard ? '#FFE08A' : '#FFFDF7') : '#FFE08A'} pulse={missing ? null : pulse}>{missing && !aboard ? '?' : t.step}</NumBlock>
-            <NumBlock small={narrow} plain>=</NumBlock>
-            <NumBlock small={narrow} color={missing || aboard ? '#C8F0C0' : '#FFFDF7'}>{missing || aboard ? t.target : '?'}</NumBlock>
-          </div>
-          {plan.frame && <TenFrame filled={t.from} added={aboard ? t.step : 0} />}
-        </motion.div>
-      </div>
-
-      {/* The planets: the number line through space */}
-      <div style={{ width: '100%', maxWidth: 1000, padding: `0 ${SIDE}px`, boxSizing: 'border-box' }}>
-      <div ref={lineRef} style={{ position: 'relative', width: '100%', paddingTop: top, boxSizing: 'border-box' }}>
-        {/* dotted flight path */}
-        <div aria-hidden="true" style={{ position: 'absolute', left: at(span[0]), right: `calc(100% - ${at(span[1])})`, top: top + planetPx / 2, borderTop: '4px dotted rgba(255,255,255,0.45)' }} />
-        {/* the hops: gold arcs with their number, or a wrong count dashed */}
-        <svg aria-hidden="true" viewBox="0 0 1000 100" preserveAspectRatio="none"
-          style={{ position: 'absolute', left: 0, top: top - 34, width: '100%', height: 46, overflow: 'visible', pointerEvents: 'none' }}>
-          {[...trail.map(h => ({ ...h, gold: true })), ...ghostHops].map((h, i) => {
-            const x1 = frac(h.from) * 1000, x2 = frac(h.to) * 1000
+          {/* the planets */}
+          {Array.from({ length: TOP + 1 }, (_, n) => {
+            const p = L.P(n)
+            const isStart = pos === task.from && n === task.from && phase !== 'finale'
+            const tapCell = plan.mode === 'tap' && phase !== 'finale'
+            const hw = vertical ? L.pd + 30 : L.cell, hh = vertical ? L.cell : L.pd + 40
+            const Cell = tapCell ? motion.button : 'div'
+            const dim = plan.mode === 'tap' && tried.includes(n)
             return (
-              <motion.path key={`${h.gold ? 'g' : 'd'}${i}`} d={`M${x1} 96 Q${(x1 + x2) / 2} ${-40} ${x2} 96`} fill="none"
-                stroke={h.gold ? '#FFC93C' : '#D9CCFF'} strokeWidth="4" strokeDasharray={h.gold ? undefined : '6 6'} strokeLinecap="round"
-                vectorEffect="non-scaling-stroke" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: h.gold ? 0.35 : 0.25, delay: h.gold ? 0 : i * 0.15 }} />
+              <Cell key={n} data-planet={n}
+                {...(tapCell && { type: 'button', 'aria-label': `Planet ${n}`, onClick: () => tapPlanet(n), whileTap: playing ? { scale: 0.9 } : undefined })}
+                style={{
+                  all: tapCell ? 'unset' : undefined, position: 'absolute', boxSizing: 'border-box',
+                  left: p.x - hw / 2 - (vertical ? 15 : 0), top: p.y - hh / 2 - (vertical ? 0 : 20), width: hw, height: hh,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: tapCell && playing ? 'pointer' : 'default',
+                  WebkitTapHighlightColor: 'transparent',
+                }}>
+                <motion.div key={`${n}-${isStart ? glow : 0}`} style={{ marginTop: vertical ? 0 : 40, marginLeft: vertical ? 30 : 0, opacity: dim ? 0.55 : 1 }}
+                  animate={isStart && !reduce ? { scale: [1, 1.22, 1, 1.12, 1] } : {}} transition={{ duration: 0.9 }}>
+                  <Planet n={n} size={L.pd} glow={isStart} home={creature?.n === n} />
+                </motion.div>
+              </Cell>
             )
           })}
-        </svg>
-        {[...trail.map(h => ({ ...h, gold: true })), ...ghostHops].map((h, i) => (
-          <motion.span key={`n${h.gold ? 'g' : 'd'}${i}`} aria-hidden="true" initial={{ scale: 0, y: 6 }} animate={{ scale: 1, y: 0 }}
+          {/* the hint hand of the tap levels points between two planets, never at one */}
+          <span ref={gapRef} aria-hidden="true" style={{ position: 'absolute', left: L.gapHand.x, top: L.gapHand.y, width: 2, height: 2 }} />
+
+          {/* the arcs: the way flown, numbered; after two misses the way to fly, dashed */}
+          <svg aria-hidden="true" width={L.w} height={L.h} style={{ position: 'absolute', left: 0, top: 0, overflow: 'visible', pointerEvents: 'none' }}>
+            {ghostHops.map((h, i) => {
+              const q = hopPath(L, h.a, h.b)
+              return <path key={`g${i}`} d={`M${q.a.x} ${q.a.y} Q${q.c.x} ${q.c.y} ${q.b.x} ${q.b.y}`} fill="none" stroke="#fff" strokeWidth="4" strokeDasharray="7 8" strokeLinecap="round" opacity="0.85" />
+            })}
+            <AnimatePresence>
+              {arcs.map(h => {
+                const q = hopPath(L, h.a, h.b)
+                return (
+                  <motion.path key={h.id} d={`M${q.a.x} ${q.a.y} Q${q.c.x} ${q.c.y} ${q.b.x} ${q.b.y}`} fill="none"
+                    stroke={GOLD} strokeWidth="6" strokeLinecap="round" style={{ filter: 'drop-shadow(0 0 5px rgba(255,201,60,0.9))' }}
+                    initial={reduce ? false : { pathLength: 0 }} animate={{ pathLength: 1, opacity: 1 }} exit={{ opacity: 0 }}
+                    transition={{ pathLength: { duration: (plan.mode === 'hop' || plan.mode === 'count' ? HOP_MS : FAST_MS) / 1000, ease: [0.4, 0, 0.5, 1] } }} />
+                )
+              })}
+            </AnimatePresence>
+          </svg>
+          {/* the count on the arcs */}
+          <AnimatePresence>
+            {arcs.map((h, i) => {
+              const p = L.P((h.a + h.b) / 2, L.pr + L.arcH + 14)
+              const s = vertical ? 24 : 28
+              return (
+                <motion.span key={`n${h.id}`} aria-hidden="true" data-arc={i + 1}
+                  initial={reduce ? false : { scale: 0 }} animate={{ scale: counting === i ? [1, 1.6, 1.2] : 1 }} exit={{ scale: 0, opacity: 0 }}
+                  transition={{ delay: counting === i ? 0 : (plan.mode === 'hop' || plan.mode === 'count' ? HOP_MS : FAST_MS) / 2000, type: counting === i ? 'tween' : 'spring', stiffness: 500, damping: 18 }}
+                  style={{
+                    position: 'absolute', left: p.x - s / 2, top: p.y - s / 2, width: s, height: s, borderRadius: '50%', zIndex: 4,
+                    background: counting === i ? '#fff' : GOLD, border: `3px solid ${INK}`, boxSizing: 'border-box',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none',
+                    fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: s * 0.6, lineHeight: 1, color: INK,
+                  }}>{i + 1}</motion.span>
+              )
+            })}
+          </AnimatePresence>
+
+          {/* bonus stars between planets */}
+          <AnimatePresence>
+            {stars.map(gap => {
+              const p = L.P(gap + 0.5, starOff(L))
+              const s = clamp(L.cell * 0.42, 26, 38)
+              return (
+                <motion.div key={`s${gap}`} aria-hidden="true" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 1.8, opacity: 0 }}
+                  style={{ position: 'absolute', left: p.x - s / 2, top: p.y - s / 2, width: s, height: s, pointerEvents: 'none', zIndex: 1 }}>
+                  <BonusStar size={s} />
+                </motion.div>
+              )
+            })}
+          </AnimatePresence>
+
+          {/* levels 9–10: the alien waits on its planet, where the rocket will stand */}
+          <AnimatePresence>
+            {waiting && phase !== 'finale' && (
+              <WaitingAlien key={`w${idx}`} L={L} n={task.target} hue={hue} cheer={cheer} rocketHere={pos === task.target} reduce={reduce} />
+            )}
+          </AnimatePresence>
+
+          {/* the rocket */}
+          <motion.div ref={rocketRef} data-rocket=""
+            onPointerDown={() => { if (hopMode && g.phase === 'play' && arcs.length) land() }}
             style={{
-              position: 'absolute', left: `${(frac(h.from) + frac(h.to)) * 50}%`, top: top - 58, width: 26, height: 26, marginLeft: -13,
-              borderRadius: '50%', background: h.gold ? '#FFC93C' : '#D9CCFF', border: `2px solid ${INK}`, boxSizing: 'border-box',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: INK, pointerEvents: 'none',
-            }}>{(h.gold ? i : i - trail.length) + 1}</motion.span>
-        ))}
-        {/* where the hint hand taps: the row, between two planets, so it
-            never points at the answer */}
-        <span ref={rowRef} aria-hidden="true" style={{ position: 'absolute', left: `${(frac(span[0]) + frac(span[1])) * 50 + 50 / line.length}%`, top: top + planetPx * 0.75, width: 2, height: 2 }} />
-        <div style={{ display: 'flex', gap: GAP }}>
-          {line.map(n => {
-            const isWrong = !missing && wrong.includes(n)
-            const state = done && n === t.target ? 'right' : isWrong ? 'tried' : undefined
-            const Cell = missing ? 'div' : motion.button
-            const landed = trail.length && trail[trail.length - 1].to === n
-            return (
-              <div key={n} style={{ position: 'relative', flex: '1 1 0', minWidth: 0, display: 'flex', justifyContent: 'center', transform: `translateY(${lift(n)}px)` }}>
-                <Cell
-                  {...(!missing && {
-                    whileTap: !done && !hopping ? { scale: 0.8 } : {},
-                    onClick: () => pickField(n),
-                    'aria-label': `Planet ${n}`,
-                  })}
-                  style={{ all: 'unset', cursor: missing || done || hopping ? 'default' : 'pointer', width: planetPx, height: planetPx, display: 'block' }}>
-                  <motion.div key={landed ? `l${trail.length}` : 'p'} animate={landed && !reduceMotion() ? { scaleY: [1, 0.8, 1.08, 1], scaleX: [1, 1.15, 0.95, 1] } : {}} transition={{ duration: 0.35 }}>
-                    <Planet n={n} size={planetPx} state={state} />
-                  </motion.div>
-                </Cell>
-                {/* the alien waits on its planet when the planet is known */}
-                {missing && n === t.target && !aboard && (
-                  <div style={{ position: 'absolute', bottom: planetPx * 0.7, left: '50%', marginLeft: -planetPx * 0.45, pointerEvents: 'none' }}>
-                    <Alien size={planetPx * 0.9} color={t.color} mood="idle" />
-                  </div>
-                )}
-                {/* someone else lives on a wrong planet */}
-                <AnimatePresence>
-                  {resident?.n === n && (
-                    <motion.div key={`r${resident.k}`} aria-hidden="true"
-                      initial={{ y: 20, scale: 0, opacity: 0 }} animate={{ y: 0, scale: 1, opacity: 1, rotate: [0, -12, 12, -8, 0] }} exit={{ y: 20, scale: 0, opacity: 0 }}
-                      transition={{ duration: 0.6 }}
-                      style={{ position: 'absolute', bottom: planetPx * 0.72, left: '50%', marginLeft: -planetPx * 0.55, pointerEvents: 'none' }}>
-                      <Art art={resident.art} size={planetPx * 1.1} />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* the taxi */}
-        <motion.div aria-hidden="true" initial={false}
-          animate={ending && !reduceMotion() ? { left: '115%', y: -500, opacity: 0 } : { left: at(pos), y: 0, opacity: 1 }}
-          transition={ending ? { duration: 1.8, ease: 'easeIn' } : { type: 'spring', stiffness: hopping ? 260 : 120, damping: hopping ? 22 : 18 }}
-          style={{ position: 'absolute', top: 6 + lift(pos), width: rocketPx, height: rocketPx, marginLeft: -rocketPx / 2, pointerEvents: 'none', zIndex: 2 }}>
-          {/* the passengers so far ride on top, in a tower that wobbles
-              at every hop and goes along on the last flight */}
-          <Tower riders={riders} rocketPx={rocketPx} hop={trail.length} ending={ending} />
-          <motion.div key={trail.length} animate={trail.length && !reduceMotion() ? { y: [0, -rocketPx * 0.45, 0] } : {}} transition={{ duration: 0.4 }}>
-            <motion.div initial={false}
-              animate={launching && !reduceMotion() ? { x: [0, -4, 4, -4, 4, 0], rotate: heading, scaleX: back ? -1 : 1 }
-                : aboard && streak >= 3 && !reduceMotion() ? { x: 0, rotate: [heading, heading + 360], scaleX: back ? -1 : 1 }
-                : { x: 0, rotate: ending ? 45 : heading, scaleX: back && !ending ? -1 : 1 }}
-              transition={{ duration: aboard && streak >= 3 ? 0.8 : 0.3, repeat: launching ? 1 : 0 }}>
-              <Art art="🚀" size={rocketPx} />
-              {/* flame puffs out of the tail (the picture points up and to the right) */}
-              <AnimatePresence>
-                {puffs.map(id => (
-                  <motion.div key={id} aria-hidden="true" initial={{ scale: 0.3, opacity: 1, x: 0, y: 0 }}
-                    animate={{ scale: [0.3, 1.4, 1.8], opacity: [1, 1, 0], x: -rocketPx * 0.5, y: rocketPx * 0.5 }} exit={{ opacity: 0 }}
-                    transition={{ duration: 0.6, ease: 'easeOut' }}
-                    style={{ position: 'absolute', left: -rocketPx * 0.22, top: rocketPx * 0.42, width: rocketPx * 0.75, height: rocketPx * 0.75, pointerEvents: 'none' }}>
-                    <div style={{ transform: 'rotate(-135deg)' }}><Art art="🔥" size={rocketPx * 0.75} /></div>
-                    <div style={{ position: 'absolute', left: -rocketPx * 0.2, top: rocketPx * 0.3, width: rocketPx * 0.4, height: rocketPx * 0.4, borderRadius: '50%', background: 'rgba(255,255,255,0.75)', filter: 'blur(2px)' }} />
-                  </motion.div>
-                ))}
-              </AnimatePresence>
+              position: 'absolute', left: 0, top: 0, width: L.rw, height: L.rh, x: rocketX, y: rocketY, rotate: rocketRot,
+              transformOrigin: '50% 100%', zIndex: 5, cursor: hopMode && playing && arcs.length ? 'pointer' : 'default',
+            }}>
+            <motion.div style={{ width: '100%', height: '100%', scaleY: sq, transformOrigin: '50% 100%' }}>
+              <Rocket w={L.rw} h={L.rh} seats={total} riders={finale?.landed ? [] : riders} flame={flame} upright={vertical && !finale?.landed ? 90 : 0} newest={riders.length - 1} />
             </motion.div>
           </motion.div>
-          {/* tap the rocket in flight: the engine gives a puff */}
-          {hopping && (
-            <button type="button" aria-label="Rakete" onPointerDown={boost}
-              style={{ all: 'unset', position: 'absolute', inset: -rocketPx * 0.2, borderRadius: '50%', cursor: 'pointer', pointerEvents: 'auto' }} />
-          )}
-          {/* the way to fly, after a planet the wrong way round */}
+
+          {/* who comes out of the planet */}
           <AnimatePresence>
-            {arrow && (
-              <motion.div key={`a${arrow}`} initial={{ opacity: 0, x: 0 }} animate={{ opacity: 1, x: [0, arrow * 18, 0, arrow * 18, 0] }} exit={{ opacity: 0 }}
-                transition={{ duration: 1.4 }}
-                style={{ position: 'absolute', top: rocketPx * 0.2, [arrow > 0 ? 'left' : 'right']: rocketPx * 1.05 }}>
-                <svg width={rocketPx * 0.75} height={rocketPx * 0.6} viewBox="0 0 40 32" style={{ transform: arrow < 0 ? 'scaleX(-1)' : undefined, display: 'block' }}>
-                  <path d="M3 11 H22 V3 L37 16 L22 29 V21 H3 Z" fill="#FFC93C" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
-                </svg>
+            {creature && <Creature key={creature.key} c={creature} L={L} hue={hue} seat={riders.length} seats={total} reduce={reduce} rx={rx} ry={ry} />}
+          </AnimatePresence>
+
+          {/* the sum */}
+          <AnimatePresence>
+            {phase !== 'finale' && (
+              <motion.div key="card" exit={{ opacity: 0, y: -30 }}
+                style={{ position: 'absolute', left: L.card.x, top: L.card.y, width: L.card.w, height: L.card.h, display: 'flex', alignItems: 'center', justifyContent: L.short ? 'flex-start' : 'center', pointerEvents: 'none', zIndex: 3 }}>
+                <SumCard L={L} task={task} idx={idx} missing={missing} guide={plan.guide || ghost} filled={filled}
+                  glow={glow} badge={badge} opPulse={opPulse} hue={hue} showAlien={!missing && !(creature?.kind === 'alien')} reduce={reduce} />
               </motion.div>
             )}
           </AnimatePresence>
-        </motion.div>
-      </div>
 
-      </div>
-
-      {/* Missing addend: the answer is the number of jumps, in one row */}
-      <div style={{ minHeight: 80, display: 'flex', alignItems: 'center' }}>
-        {missing && !done && (
-          <div style={{ position: 'relative', display: 'flex', gap: narrow ? 6 : 12, flexWrap: 'nowrap', justifyContent: 'center' }}>
-            {/* the hint hand taps below the row, between two buttons: never on one */}
-            <span ref={jumpsRef} aria-hidden="true" style={{ position: 'absolute', left: plan.maxStep % 2 ? `${50 + 50 / plan.maxStep}%` : '50%', top: '112%', width: 2, height: 2 }} />
-            {Array.from({ length: plan.maxStep }, (_, i) => i + 1).map(k => {
-              const isWrong = wrong.includes(k)
-              return (
-                <motion.button key={k}
-                  whileTap={!hopping && !isWrong ? { scale: 0.88 } : {}}
-                  onClick={() => pickJumps(k)}
-                  aria-label={`${k} Sprünge`}
-                  style={{
-                    width: narrow ? Math.min(52, Math.floor((lineW + 2 * SIDE - 6 * (plan.maxStep - 1)) / plan.maxStep)) : 66, height: 72, padding: 0, borderRadius: 16, cursor: hopping || isWrong ? 'default' : 'pointer',
-                    background: isWrong ? '#9A8FB0' : '#FFFDF7', border: `3px solid ${INK}`, boxShadow: '0 4px 0 rgba(0,0,0,0.35)',
-                    opacity: isWrong ? 0.55 : 1, color: INK,
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
-                  }}>
-                  <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 30, lineHeight: 1 }}>{k}</span>
-                  {/* one little hop arc per jump */}
-                  <svg width={Math.min(narrow ? 44 : 56, 10 * k)} height="10" viewBox={`0 0 ${10 * k} 10`} aria-hidden="true">
-                    {Array.from({ length: k }, (_, j) => <path key={j} d={`M${j * 10 + 1} 9 Q${j * 10 + 5} 0 ${j * 10 + 9} 9`} fill="none" stroke="#FF8A3D" strokeWidth="2.5" />)}
-                  </svg>
-                </motion.button>
-              )
-            })}
+          {/* the star counter */}
+          <div style={{ position: 'absolute', top: L.hud.y, ...(L.hud.align === 'right' ? { right: L.w - L.hud.x } : { left: L.hud.x, transform: 'translateX(-50%)' }), zIndex: 6 }}>
+            {juice.hud}
           </div>
-        )}
-      </div>
 
+          {/* the buttons */}
+          <AnimatePresence>
+            {showControls && (
+              <motion.div key="controls" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
+                style={{
+                  position: 'absolute', left: L.controls.x, top: L.controls.y, width: L.controls.w, height: L.controls.h, zIndex: 6,
+                  display: 'flex', alignItems: 'center', justifyContent: L.controls.justify, gap: vertical ? 12 : clamp(L.w * 0.03, 14, 40),
+                }}>
+                {vertical ? (
+                  <>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                      {plan.ops.includes(PLUS) && <ThrustButton op={PLUS} way="up" size={L.btn} onPress={() => thrust(PLUS)} btnRef={plusRef} pulse={thrustPulse.op === PLUS ? thrustPulse.k : 0} />}
+                      {plan.ops.includes(MINUS) && <ThrustButton op={MINUS} way="down" size={L.btn} onPress={() => thrust(MINUS)} btnRef={minusRef} pulse={thrustPulse.op === MINUS ? thrustPulse.k : 0} />}
+                    </div>
+                    <LandButton size={L.btn} onPress={land} disabled={!arcs.length || !playing} btnRef={landRef} />
+                  </>
+                ) : (
+                  <>
+                    {plan.ops.includes(MINUS) && <ThrustButton op={MINUS} way="left" size={L.btn} onPress={() => thrust(MINUS)} btnRef={minusRef} pulse={thrustPulse.op === MINUS ? thrustPulse.k : 0} />}
+                    <LandButton size={L.btn} onPress={land} disabled={!arcs.length || !playing} btnRef={landRef} />
+                    {plan.ops.includes(PLUS) && <ThrustButton op={PLUS} way="right" size={L.btn} onPress={() => thrust(PLUS)} btnRef={plusRef} pulse={thrustPulse.op === PLUS ? thrustPulse.k : 0} />}
+                  </>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* how many hops? */}
+          <AnimatePresence>
+            {bubbles && phase !== 'finale' && (
+              <motion.div key={`b${idx}`} exit={{ opacity: 0 }}
+                style={{
+                  position: 'absolute', left: L.controls.x, top: vertical ? L.h - 3 * (L.btn + 6) - 20 : L.controls.y, width: L.controls.w,
+                  height: vertical ? 3 * (L.btn + 6) + 10 : L.controls.h, zIndex: 6,
+                  display: 'flex', flexDirection: vertical ? 'column' : 'row', alignItems: 'center', justifyContent: L.controls.justify, gap: vertical ? 6 : 18,
+                }}>
+                <div style={{ position: 'relative', display: 'flex', flexDirection: vertical ? 'column' : 'row', gap: vertical ? 6 : 18 }}>
+                  {/* the hint hand taps beside the row, never on a bubble */}
+                  <span ref={bubbleRef} aria-hidden="true" style={{ position: 'absolute', ...(vertical ? { left: '-18%', top: '50%' } : { left: '50%', top: '108%' }), width: 2, height: 2 }} />
+                  {choices.map(k => (
+                    <CountBubble key={k} k={k} size={L.btn} state={tried.includes(k) ? 'tried' : null}
+                      onPress={(kk) => (plan.mode === 'pick' ? pick(kk) : confirm(kk, document.querySelector(`[data-count="${kk}"]`)))} />
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* the finale: the moon, and everybody out to dance on it */}
+          <AnimatePresence>
+            {finale && (
+              <motion.div key="moon" aria-hidden="true" initial={reduce ? false : { scale: 0, rotate: -30 }} animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: 'spring', stiffness: 160, damping: 14 }}
+                style={{ position: 'absolute', left: L.moon.x - L.moon.r, top: L.moon.y - L.moon.r, zIndex: 2, pointerEvents: 'none' }}>
+                <Moon r={L.moon.r} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+          {finale?.landed && <MoonParty L={L} riders={riders} reduce={reduce} />}
+
+          {handTo && <HintHand to={handTo} delay={ghost ? 1500 : handDelay} active={(playing || phase === 'count') && !paused} />}
+          {juice.layer}
+          {bursts}
+        </>
+      )}
+    </div>
+  )
+}
+
+// How far from the line the bonus stars hang: where the rocket's body passes
+const starOff = L => L.pr + L.arcH + L.rh * 0.62
+
+// ── The sum ──────────────────────────────────────────────────────────────
+
+function NumBlock({ n, size, bg, pulse, glowKey, empty, children, dataAttr }) {
+  const reduce = useReducedMotion()
+  const wide = String(n ?? '').length > 1
+  return (
+    <motion.span key={glowKey ?? pulse ?? 'still'} {...dataAttr}
+      animate={!reduce && (pulse || glowKey) ? { scale: [1, 1.28, 1, 1.18, 1] } : {}} transition={{ duration: 0.9 }}
+      style={{
+        position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        minWidth: wide ? size * 1.3 : size, height: size * 1.12, padding: '0 4px', boxSizing: 'border-box', borderRadius: size * 0.24,
+        background: empty ? 'rgba(255,255,255,0.35)' : bg, border: empty ? `3px dashed ${INK}` : `3px solid ${INK}`,
+        boxShadow: empty ? 'none' : '0 4px 0 rgba(42,27,61,0.35)',
+        fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: size * 0.78, lineHeight: 1, color: INK,
+      }}>
+      {empty ? null : n}
+      {children}
+    </motion.span>
+  )
+}
+
+function SumCard({ L, task, idx, missing, guide, filled, glow, badge, opPulse, hue, showAlien, reduce }) {
+  const nb = L.nb
+  const sign = (s, pulse, color) => (
+    <motion.span key={pulse || 'still'} animate={pulse && !reduce ? { scale: [1, 1.6, 1, 1.4, 1] } : {}} transition={{ duration: 1 }}
+      style={{ display: 'inline-block', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: nb * 0.95, lineHeight: 1, color: color ?? '#fff', WebkitTextStroke: `2px ${INK}`, padding: '0 2px' }}>{s}</motion.span>
+  )
+  const stepBlock = (
+    <span style={{ position: 'relative', display: 'inline-flex', flexDirection: 'column', alignItems: 'center' }}>
+      <NumBlock n={task.step} size={nb} bg="#ffe08a" pulse={badge?.key} empty={missing && !filled} dataAttr={{ 'data-sum': 'step' }} />
+      {/* one little arc per hop, in the first levels and after two misses */}
+      {!missing && guide && (
+        <span style={{ position: 'absolute', top: '100%', marginTop: 4 }}><HopArcs k={task.step} width={Math.min(nb * 1.5, nb * 0.5 * task.step)} height={nb * 0.3} color={GOLD} /></span>
+      )}
+      {/* after a miss: how many hops it was, beside the number it should have been */}
+      <AnimatePresence>
+        {badge && (
+          <motion.span key={badge.key} initial={{ scale: 0, x: -10 }} animate={{ scale: 1, x: 0 }} exit={{ scale: 0, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 16 }}
+            data-badge={badge.count}
+            style={{
+              position: 'absolute', left: '50%', top: '100%', marginTop: 2, translate: '-50% 0', padding: '3px 8px 2px', borderRadius: 999, background: GOLD,
+              border: `3px solid ${INK}`, boxShadow: '0 3px 0 rgba(42,27,61,0.35)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
+              fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: nb * 0.5, lineHeight: 1, color: INK, zIndex: 2, whiteSpace: 'nowrap',
+            }}>
+            {badge.count}
+            <HopArcs k={badge.count} width={Math.min(nb * 1.1, 11 * badge.count)} height={nb * 0.18} color={INK} />
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </span>
+  )
+  const sum = (
+    <div aria-label={`${task.from} ${task.op} ${missing ? (filled ? task.step : 'wie viel') : task.step} = ${missing || filled ? task.target : 'wie viel'}`}
+      style={{ display: 'flex', alignItems: 'center', gap: Math.max(3, nb * 0.1), paddingBottom: !missing && guide ? nb * 0.36 : 0 }}>
+      <NumBlock n={task.from} size={nb} bg="#d9ccff" glowKey={glow ? `g${glow}` : null} dataAttr={{ 'data-sum': 'from' }} />
+      {sign(task.op, opPulse, SIGN_COLOR[task.op])}
+      {stepBlock}
+      {sign('=', 0)}
+      <NumBlock n={task.target} size={nb} bg="#c8f0c0" empty={!missing && !filled} dataAttr={{ 'data-sum': 'result' }} />
+    </div>
+  )
+  return (
+    <motion.div key={idx} initial={reduce ? false : { scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+      transition={{ type: 'spring', stiffness: 320, damping: 20 }}
+      style={{
+        display: 'flex', flexDirection: L.card.column ? 'column' : 'row', alignItems: 'center', gap: L.card.column ? 6 : 12,
+        padding: L.short ? '4px 14px 4px 6px' : L.card.column ? '8px 10px 14px' : '10px 22px 14px 12px',
+        background: 'rgba(255,253,247,0.95)', border: `3px solid ${INK}`, borderRadius: 22, boxShadow: '0 6px 0 rgba(0,0,0,0.3)',
+        maxWidth: '100%', boxSizing: 'border-box',
+      }}>
+      {/* levels 9–10: the alien waits on its planet, not here */}
+      {!missing && <div style={{ width: L.alien * (L.card.column ? 1 : 0.86), height: L.alien * (L.card.column ? 0.9 : 0.86), display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <AnimatePresence>
+          {showAlien && (
+            <motion.div key="a" initial={reduce ? false : { scale: 0, rotate: -20 }} animate={reduce ? {} : { scale: 1, rotate: 0, y: [0, -4, 0] }}
+              exit={{ scale: 0, opacity: 0 }} transition={{ y: { duration: 2.2, repeat: Infinity }, default: { type: 'spring', stiffness: 260, damping: 14 } }}>
+              <AlienPic size={L.alien * (L.card.column ? 0.9 : 0.86)} hue={hue} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>}
+      {sum}
+    </motion.div>
+  )
+}
+
+// ── Who comes out of a planet ────────────────────────────────────────────
+
+// The middle of a window of the rocket, on screen, from where its feet are
+function seatPoint(L, fx, fy, seat, seats) {
+  const s = windowSpots(seats)[Math.min(seat, seats - 1)]
+  const dx = (s.x - 50) * (L.rw / 100), dy = (s.y - 160) * (L.rh / 160)
+  const a = (L.base * Math.PI) / 180
+  return { x: fx + dx * Math.cos(a) - dy * Math.sin(a), y: fy + dx * Math.sin(a) + dy * Math.cos(a), r: s.r * (L.rw / 100) }
+}
+
+function Creature({ c, L, hue, seat, seats, reduce, rx, ry }) {
+  const size = L.pd * 1.1
+  // in front of the planet, a little away from the rocket's side
+  const p = L.P(c.n, -L.pd * 0.08)
+  const box = { position: 'absolute', left: p.x - size / 2, top: p.y - size / 2, width: size, height: size, zIndex: 7, pointerEvents: 'none' }
+  if (c.kind === 'resident') {
+    return (
+      <motion.div data-creature="resident" initial={reduce ? false : { scale: 0, y: size * 0.3 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0, y: size * 0.3, opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 380, damping: 16 }} style={box}>
+        <Critter art={c.art} size={size} mood="oops" shadow={false} />
+      </motion.div>
+    )
+  }
+  const to = seatPoint(L, rx.get(), ry.get(), seat, seats)
+  return (
+    <motion.div data-creature="alien" initial={reduce ? false : { scale: 0, y: size * 0.3 }}
+      animate={c.boarding
+        ? { x: to.x - p.x, y: to.y - p.y, scale: (to.r * 2.6) / size, opacity: reduce ? 0 : [1, 1, 0.9] }
+        : reduce ? { scale: 1 } : { scale: 1, y: [0, -size * 0.32, 0, -size * 0.14, 0], rotate: [0, -10, 10, 0, 0] }}
+      exit={{ opacity: 0 }}
+      transition={c.boarding ? { duration: 0.5, ease: 'easeIn' } : { duration: 0.9, scale: { type: 'spring', stiffness: 380, damping: 14 } }}
+      style={box}>
+      <AlienPic size={size} hue={hue} />
+    </motion.div>
+  )
+}
+
+// Levels 9–10: the alien stands on its planet and waves; it steps aside
+// when the rocket comes down there
+function WaitingAlien({ L, n, hue, cheer, rocketHere, reduce }) {
+  const size = clamp(L.cell * 0.9, 50, 84)
+  const side = n >= 8 ? -1 : 1
+  const p = rocketHere ? L.P(n + side * 0.62, L.pr * 0.6) : L.P(n, L.pr - 6)
+  const at = L.vertical ? { left: p.x - size * 0.1, top: p.y - size / 2 } : { left: p.x - size / 2, top: p.y - size }
+  return (
+    <motion.div data-alien-waiting={n} initial={reduce ? false : { scale: 0 }} exit={{ scale: 0, opacity: 0 }}
+      animate={{ scale: 1, left: at.left, top: at.top }}
+      transition={{ type: 'spring', stiffness: 300, damping: 18 }}
+      style={{ position: 'absolute', width: size, height: size, zIndex: 6, pointerEvents: 'none', transformOrigin: '50% 100%' }}>
+      <motion.div key={cheer} animate={reduce ? {} : cheer ? { y: [0, -size * 0.4, 0, -size * 0.2, 0], rotate: [0, -12, 12, 0, 0] } : { rotate: [0, -4, 4, 0] }}
+        transition={cheer ? { duration: 0.9 } : { duration: 1.8, repeat: Infinity }}>
+        <AlienPic size={size} hue={hue} style={{ transform: L.vertical ? 'rotate(0deg)' : undefined }} />
+      </motion.div>
+    </motion.div>
+  )
+}
+
+// The finale: everyone picked up hops out onto the moon and dances
+function MoonParty({ L, riders, reduce }) {
+  const { x, y, r } = L.moon
+  const size = clamp(r * 0.62, 34, 60)
+  const left = Math.ceil(riders.length / 2)
+  return (
+    <div aria-hidden="true" style={{ position: 'absolute', left: 0, top: 0, zIndex: 8, pointerEvents: 'none' }}>
+      {riders.map((h, i) => {
+        // standing round the top of the moon, half left and half right of the rocket
+        const side = i < left ? 0 : 1, k = side ? i - left : i, n = side ? riders.length - left : left
+        const f = n > 1 ? k / (n - 1) : 0.5
+        const deg = side ? -64 + f * 54 : -116 - f * 54
+        const a = (deg * Math.PI) / 180
+        const ex = x + Math.cos(a) * r * 0.8, ey = y + Math.sin(a) * r * 0.8
+        return (
+          <motion.div key={i} initial={reduce ? false : { x: x - size / 2, y: y - r - size, scale: 0.2, opacity: 0 }}
+            animate={{ x: ex - size / 2, y: ey - size, scale: 1, opacity: 1, rotate: (deg + 90) * 0.6 }}
+            transition={{ delay: i * 0.12, type: 'spring', stiffness: 220, damping: 14 }}
+            style={{ position: 'absolute', left: 0, top: 0, width: size, height: size, transformOrigin: '50% 100%' }}>
+            <motion.div animate={reduce ? {} : { y: [0, -size * 0.3, 0], rotate: [0, i % 2 ? 10 : -10, 0] }}
+              transition={{ duration: 0.6, repeat: Infinity, delay: 0.6 + i * 0.09 }}>
+              <AlienPic size={size} hue={h} />
+            </motion.div>
+          </motion.div>
+        )
+      })}
     </div>
   )
 }
