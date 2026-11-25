@@ -10,6 +10,15 @@ const RELEASE_MS = 800    // so lange bleibt sie unten, bevor sie wieder hochfä
 const LS_ENABLED = 'lumi_music_enabled'
 const LS_VOLUME  = 'lumi_music_volume'
 
+// The pieces of background music (public/music/)
+export const TRACKS = ['music/background.mp3', 'music/marimba.mp3', 'music/spieluhr.mp3', 'music/gitarre.mp3']
+/** The piece after `current`: any other one, by chance (the first: any). */
+export function nextTrack(current, count, rnd = Math.random) {
+  if (count <= 1) return 0
+  const others = Array.from({ length: count }, (_, i) => i).filter(i => i !== current)
+  return others[Math.floor(rnd() * others.length)]
+}
+
 const MusicContext = createContext({ enabled: false, setEnabled() {}, volume: 0.15, setVolume() {} })
 export const useMusic = () => useContext(MusicContext)
 
@@ -43,13 +52,22 @@ export function MusicProvider({ children }) {
   const volumeRef  = useRef(volume)
   volumeRef.current = volume
 
+  // Several pieces, one after the other: a single one on a loop wore thin.
+  // Each visit starts with another piece; none comes twice in a row.
+  const trackRef = useRef(-1)
   const getAudio = () => {
     if (!audioRef.current) {
       const audio = new Audio()
       audio.preload = 'none'
-      audio.loop    = true
+      audio.loop    = TRACKS.length === 1
       audio.volume  = volumeRef.current * (duckingRef.current ? DUCK : 1)
-      audio.src     = asset('music/background.mp3')
+      trackRef.current = nextTrack(-1, TRACKS.length)
+      audio.src     = asset(TRACKS[trackRef.current])
+      audio.addEventListener('ended', () => {
+        trackRef.current = nextTrack(trackRef.current, TRACKS.length)
+        audio.src = asset(TRACKS[trackRef.current])
+        audio.play().catch(() => {})
+      })
       audioRef.current = audio
     }
     return audioRef.current
