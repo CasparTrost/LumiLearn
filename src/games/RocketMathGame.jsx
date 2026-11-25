@@ -850,10 +850,13 @@ function Creature({ c, L, hue, seat, seats, reduce, rx, ry }) {
     // smaller, peeking out of the door low on the right of the planet: the
     // planet's number stays in sight (where the rocket landed is the news)
     const rs = L.pd * 0.6, q = L.P(c.n)
+    // kept on the screen: at planet 10 on a low screen it peeked half out of the corner
+    const rl = Math.max(2, Math.min(L.w - rs - 2, q.x + L.pd * 0.46 - rs / 2))
+    const rt = Math.max(2, Math.min(L.h - rs - 2, q.y + L.pd * 0.4 - rs / 2))
     return (
       <motion.div data-creature="resident" initial={reduce ? false : { scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 380, damping: 16 }}
-        style={{ ...box, left: q.x + L.pd * 0.46 - rs / 2, top: q.y + L.pd * 0.4 - rs / 2, width: rs, height: rs, transformOrigin: '15% 20%' }}>
+        style={{ ...box, left: rl, top: rt, width: rs, height: rs, transformOrigin: '15% 20%' }}>
         <Critter art={c.art} size={rs} mood="oops" shadow={false} />
       </motion.div>
     )
