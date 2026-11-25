@@ -516,7 +516,9 @@ export function reducer(state, action) {
           // what Lumi suggests next: higher, the same level to practise, or easier
           suggestedLevel: newCurrentLevel,
           ratio,
-          journey: onJourney ? { next: nextStopIndex(journey), total: journey.stops.length } : null,
+          // followed: the child started this game from Lumi's idea (or from
+          // the idea button after a game), not from its tile
+          journey: onJourney ? { next: nextStopIndex(journey), total: journey.stops.length, followed: typeof state.currentGame?.journeyStop === 'number' } : null,
           newMissionsCompleted: newlyCompletedMissionIds,
           streakCount: streak.count,
           streakGrew: st.lastDate !== today,

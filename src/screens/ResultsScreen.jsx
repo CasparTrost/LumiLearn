@@ -68,8 +68,11 @@ export default function ResultsScreen() {
   const suggested      = gameResult?.suggestedLevel ?? nextLevel ?? level
   const practise       = suggested === level && (gameResult?.ratio ?? 1) < 0.6
   const easier         = suggested < level
-  // this game was one of Lumi's ideas for today
-  const onPlan         = !!gameResult?.journey
+  // The child is following Lumi's ideas for today: this game was started
+  // from the idea, so the next idea is the big button. A game picked from
+  // its tile goes on with its own next level (the big button used to lead
+  // into another game whenever the tile's game happened to be on the plan).
+  const onPlan         = !!gameResult?.journey?.followed
 
   // Today's plan after this game: the next idea, the movement break, the sticker
   const journey = profile?.journey
