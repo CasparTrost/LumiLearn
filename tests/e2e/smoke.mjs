@@ -86,11 +86,11 @@ for (const [size, dim] of Object.entries(SIZES)) {
   await page.goto(URL); await page.waitForTimeout(1500)
   await check(page, `${size} home`)
   const titles = await page.evaluate(() => [...new Set([...document.querySelectorAll('button[aria-label]')]
-    .map(b => b.getAttribute('aria-label').match(/^(.+?), Level/)?.[1]).filter(Boolean))])
+    .map(b => b.getAttribute('aria-label').match(/^(.+?)(?:, Level|\. Spielen$)/)?.[1]).filter(Boolean))])
   if (titles.length < 24) problems.push(`${size}: only ${titles.length} games on the home screen`)
   for (const t of titles) {
     try {
-      await page.getByRole('button', { name: new RegExp(`^${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}, Level`) }).last().click()
+      await page.getByRole('button', { name: new RegExp(`^${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:, Level|\\. Spielen$)`) }).last().click()
       await page.waitForTimeout(1800)
       await check(page, `${size} ${t}`)
       await page.getByRole('button', { name: 'Spiel verlassen' }).click(); await page.waitForTimeout(300)
@@ -104,29 +104,449 @@ for (const [size, dim] of Object.entries(SIZES)) {
   await page.context().close()
 }
 
-// Plays the shadow riddle to the results, answering from the picture shown
-async function playShadows(page) {
-  for (let round = 0; round < 12; round++) {
-    const target = await page.evaluate(() => [...document.querySelectorAll('img.emo')]
-      .sort((a, b) => b.getBoundingClientRect().width - a.getBoundingClientRect().width)[0]?.src.split('/').pop())
-    if (!target || !(await page.getByRole('button', { name: 'Spiel verlassen' }).count())) break
-    await page.locator(`[role="button"]:has(img[src$="${target}"]), button:has(img[src$="${target}"])`).first().click(); await page.waitForTimeout(1200)
-    const next = page.getByRole('button', { name: /Weiter|Fertig/ })
-    if (await next.count()) { await next.first().click(); await page.waitForTimeout(1500) }
+// Plays Schattenrätsel (Taschenlampen-Jagd) to the results: the mouse
+// shines on a shadow until it is caught, then the card of the shadow in
+// focus (data-focus, where a tapped card goes) is tapped and flies to it.
+// With `wrongOnce`, the first caught shadow gets a card that fits no lit
+// shadow first (it shakes its head, the card flies back). Everything is
+// read from data attributes and clicked by coordinates, never by waiting
+// for an element to hold still: the shadows and cards are always moving.
+async function playShadows(page, { wrongOnce = false } = {}) {
+  const game = page.locator('[data-game="schatten"]')
+  await game.waitFor({ timeout: 10000 }).catch(() => problems.push('Schattenrätsel: the game did not start'))
+  let wrong = !wrongOnce
+  const t0 = Date.now()
+  while (Date.now() - t0 < 180000 && (await game.count())) {
+    const s = await page.evaluate(() => {
+      const root = document.querySelector('[data-game="schatten"]')
+      if (!root) return null
+      const mid = el => { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 } }
+      return {
+        phase: root.dataset.phase,
+        shadows: [...root.querySelectorAll('[data-shadow]')].map(el => ({ e: el.dataset.shadow, state: el.dataset.state, focus: el.dataset.focus === '1', ...mid(el) })),
+        cards: [...root.querySelectorAll('[data-card]')].map(el => ({ e: el.dataset.card, ...mid(el) })),
+      }
+    }).catch(() => null)
+    if (!s) break
+    if (s.phase !== 'play') { await page.waitForTimeout(250); continue }
+    const lit = s.shadows.filter(x => x.state === 'caught')
+    const focus = lit.find(x => x.focus)
+    if (focus) {
+      let card = s.cards.find(c => c.e === focus.e)
+      if (!wrong) {
+        const other = s.cards.find(c => !lit.some(x => x.e === c.e))
+        if (other) { wrong = true; card = other }
+      }
+      if (card) await page.mouse.click(card.x, card.y)
+      await page.waitForTimeout(card ? 900 : 250)
+      continue
+    }
+    const dark = s.shadows.find(x => x.state === 'dark' && x.e !== '🐱')
+    if (dark) await page.mouse.move(dark.x, dark.y, { steps: 2 })
+    await page.waitForTimeout(dark ? 120 : 250)
   }
   await page.waitForTimeout(2500)
 }
 
-// 3. One game to the end
+// 3. One game to the end: Schattenrätsel, level 1 (three rooms of three
+// shadows), one card first given to the wrong shadow
 {
   const page = await newPage(SIZES.phone, save)
   await page.goto(URL); await page.waitForTimeout(1500)
-  await page.getByRole('button', { name: /^Schattenrätsel, Level/ }).last().click(); await page.waitForTimeout(2000)
-  await playShadows(page)
+  await page.getByRole('button', { name: /^Schattenrätsel, Level/ }).last().click()
+  await playShadows(page, { wrongOnce: true })
   const text = await page.evaluate(() => document.body.innerText)
-  if (!/8 von 8 gleich beim ersten Mal richtig/.test(text)) problems.push(`full game: results not as expected: ${text.slice(0, 120).replace(/\n/g, ' | ')}`)
+  if (!/8 von 9 gleich beim ersten Mal richtig/.test(text)) problems.push(`full game: results not as expected: ${text.slice(0, 120).replace(/\n/g, ' | ')}`)
   await check(page, 'results')
   problems.push(...page.errors.map(e => `full game: ${e}`))
+  await page.context().close()
+}
+
+// 3b. Zahlenland (Sternbilder): the stars of a level connected in order, one
+// wrong star on the way, to the results
+{
+  const page = await newPage(SIZES.phone, save)
+  await page.goto(URL); await page.waitForTimeout(1500)
+  await page.getByRole('button', { name: /^Zahlenland, Level/ }).last().click()
+  const game = page.locator('[data-module="numbers"] [data-phase]')
+  await page.locator('[data-star="next"]').waitFor({ timeout: 10000 }).catch(() => problems.push('Sternbilder: no stars'))
+  let missed = false
+  for (let i = 0; i < 400 && (await game.count()); i++) {
+    const phase = await game.getAttribute('data-phase').catch(() => null)
+    if (phase !== 'play') { await page.waitForTimeout(250); continue }
+    // once, after the second star: a wrong one wobbles and the line stays where it was
+    if (!missed && (await page.locator('[data-star="done"]').count()) === 2) {
+      missed = true
+      await page.locator('[data-star="todo"]').last().click(); await page.waitForTimeout(300)
+      if ((await page.locator('[data-star="done"]').count()) !== 2) problems.push('Sternbilder: a wrong star was connected')
+      continue
+    }
+    await page.locator('[data-star="next"]').click({ timeout: 3000 }).catch(() => {})
+    await page.waitForTimeout(120)
+  }
+  await page.waitForTimeout(2500)
+  const text = await page.evaluate(() => document.body.innerText)
+  if (!/3 von 4 gleich beim ersten Mal richtig/.test(text)) problems.push(`Sternbilder: results not as expected: ${text.slice(0, 120).replace(/\n/g, ' | ')}`)
+  await check(page, 'Sternbilder results')
+  problems.push(...page.errors.map(e => `Sternbilder: ${e}`))
+  await page.context().close()
+}
+
+// 3c. ABC-Abenteuer (Monster-Mampf): the four monsters of level 1 fed until
+// they are full, one wrong bite on the way, to the results: the result
+// counts bites (4 monsters x 5), one of them came after the wrong one
+{
+  const page = await newPage(SIZES.phone, save)
+  await page.goto(URL); await page.waitForTimeout(1500)
+  await page.getByRole('button', { name: /^ABC-Abenteuer, Level/ }).last().click()
+  const game = page.locator('[data-module="letter-intro"] [data-phase]')
+  await game.waitFor({ timeout: 10000 }).catch(() => problems.push('Monster-Mampf: no stage'))
+  // the hungry monster and what floats past, with where to tap
+  const look = () => page.evaluate(() => {
+    const m = document.querySelector('[data-monster][data-state="hungry"]')
+    if (document.querySelector('[data-phase]')?.dataset.phase !== 'play' || !m) return null
+    return {
+      letter: m.dataset.monster, bites: +m.dataset.bites, spat: document.querySelectorAll('[data-spat]').length,
+      things: [...document.querySelectorAll('[data-thing]')].map(t => {
+        const r = t.querySelector('.mm-plate').getBoundingClientRect()
+        return { letter: t.dataset.thing, x: r.left + r.width / 2, y: r.top + r.height / 2 }
+      }).filter(t => t.x > 60 && t.x < innerWidth - 60),
+    }
+  })
+  let missed = false
+  for (let i = 0; i < 500 && (await game.count()); i++) {
+    const s = await look()
+    // once, after a monster's first bite: a thing that does not fit is spat
+    // out again, and the monster is as hungry as before
+    const wrong = !missed && s?.bites === 1
+    const t = s?.things.find(t => (t.letter === s.letter) !== wrong)
+    if (!t) { await page.waitForTimeout(250); continue }
+    await page.mouse.click(t.x, t.y)
+    await page.waitForTimeout(wrong ? 2000 : 700)
+    if (wrong) {
+      missed = true
+      const after = await look()
+      if (after?.letter !== s.letter || after.bites !== 1) problems.push('Monster-Mampf: a wrong thing was eaten')
+      if (after && after.spat !== s.spat + 1) problems.push('Monster-Mampf: the wrong thing was not spat out')
+    }
+  }
+  await page.waitForTimeout(2500)
+  const text = await page.evaluate(() => document.body.innerText)
+  if (!/19 von 20 gleich beim ersten Mal richtig/.test(text)) problems.push(`Monster-Mampf: results not as expected: ${text.slice(0, 120).replace(/\n/g, ' | ')}`)
+  await check(page, 'Monster-Mampf results')
+  problems.push(...page.errors.map(e => `Monster-Mampf: ${e}`))
+  await page.context().close()
+}
+
+// 3d. Silben-Spaß (Frosch-Hüpfer): a level hopped through, a hop per
+// syllable and then ashore; one hop too many on the way, to the results
+{
+  const page = await newPage(SIZES.phone, save)
+  await page.goto(URL); await page.waitForTimeout(1500)
+  await page.getByRole('button', { name: /^Silben-Spaß, Level/ }).last().click()
+  const game = page.locator('[data-game="frosch"]')
+  await game.waitFor({ timeout: 10000 }).catch(() => problems.push('Frosch-Hüpfer: no pond'))
+  let splashed = false
+  for (let i = 0; i < 600 && (await game.count()); i++) {
+    const s = await game.evaluate(el => ({ ...el.dataset })).catch(() => null)
+    if (!s || s.phase !== 'play') { await page.waitForTimeout(200); continue }
+    const n = s.word.split('-').length, hops = Number(s.hops)
+    // once, in the second word: no syllable is left, no pad comes, the frog
+    // lands in the water and starts again from its bank
+    const over = !splashed && s.round === '1' && hops === n
+    if (over) splashed = true
+    if (hops < n || over) await page.getByRole('button', { name: 'Hüpfen' }).click({ timeout: 3000 }).catch(() => {})
+    else await page.locator('[data-thing]').click({ timeout: 3000 }).catch(() => {})
+    await page.waitForTimeout(650)
+    if (over) {
+      await page.waitForTimeout(3500)
+      if ((await game.getAttribute('data-hops').catch(() => null)) !== '0') problems.push('Frosch-Hüpfer: after a splash the frog is not back on its bank')
+    }
+  }
+  await page.waitForTimeout(2500)
+  const text = await page.evaluate(() => document.body.innerText)
+  if (!/5 von 6 gleich beim ersten Mal richtig/.test(text)) problems.push(`Frosch-Hüpfer: results not as expected: ${text.slice(0, 120).replace(/\n/g, ' | ')}`)
+  await check(page, 'Frosch-Hüpfer results')
+  problems.push(...page.errors.map(e => `Frosch-Hüpfer: ${e}`))
+  await page.context().close()
+}
+
+// 3e. Sortier-Spaß (Fließband-Füttern): every thing off the belt by a tap on
+// it and a tap on the monster that eats it; one thing goes to the wrong
+// monster first and is spat back; to the results
+{
+  const page = await newPage(SIZES.phone, save)
+  await page.goto(URL); await page.waitForTimeout(1500)
+  await page.getByRole('button', { name: /^Sortier-Spaß, Level/ }).last().click()
+  const game = page.locator('[data-module="sort"] [data-phase]')
+  await page.locator('[data-thing]').first().waitFor({ timeout: 10000 }).catch(() => problems.push('Fließband: nothing on the belt'))
+  let missed = false
+  for (let i = 0; i < 300 && (await game.count()); i++) {
+    const phase = await game.getAttribute('data-phase').catch(() => null)
+    const thing = page.locator('[data-thing][data-mode="belt"]').first()
+    if (phase !== 'play' || !(await thing.count())) { await page.waitForTimeout(250); continue }
+    const id = await thing.getAttribute('data-thing').catch(() => null)
+    const to = await thing.getAttribute('data-to').catch(() => null)
+    // the things ride and the monsters bob: no waiting for them to hold still
+    await thing.click({ force: true, timeout: 2000 }).catch(() => {})
+    await page.waitForTimeout(150)
+    if (!id || !(await page.locator(`[data-thing="${id}"][data-mode="picked"]`).count())) continue
+    const wrong = !missed && (await game.getAttribute('data-fed')) === '1'
+    if (wrong) missed = true
+    await page.locator(`[data-target="${wrong ? (to === '0' ? 1 : 0) : to}"]`).click({ force: true, timeout: 2000 }).catch(() => {})
+    await page.waitForTimeout(wrong ? 1800 : 900)
+    if (wrong && !(await page.locator(`[data-thing="${id}"]`).count())) problems.push('Fließband: the wrong monster kept the thing')
+  }
+  await page.waitForTimeout(2500)
+  const text = await page.evaluate(() => document.body.innerText)
+  if (!/7 von 8 gleich beim ersten Mal richtig/.test(text)) problems.push(`Fließband: results not as expected: ${text.slice(0, 120).replace(/\n/g, ' | ')}`)
+  await check(page, 'Fließband results')
+  problems.push(...page.errors.map(e => `Fließband: ${e}`))
+  await page.context().close()
+}
+
+// 3f. Zahlen entdecken (Bruno fängt): level 1 to the results, the basket
+// steered under every falling fruit; five animals end up at the picnic
+{
+  const page = await newPage(SIZES.phone, save)
+  await page.goto(URL); await page.waitForTimeout(1500)
+  await page.getByRole('button', { name: /^Zahlen entdecken, Level/ }).last().click()
+  const game = page.locator('[data-game="bruno"]')
+  await game.waitFor({ timeout: 10000 }).catch(() => problems.push('Bruno fängt: the game did not start'))
+  let fed = 0
+  const t0 = Date.now()
+  while (Date.now() - t0 < 180000 && (await game.count())) {
+    const s = await page.evaluate(() => {
+      const root = document.querySelector('[data-game="bruno"]')
+      if (!root) return null
+      const mid = el => { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, bottom: r.bottom } }
+      return {
+        phase: root.dataset.phase, field: mid(root.querySelector('[data-field]')), fed: Number(root.querySelector('[data-picnic]')?.dataset.picnic ?? 0),
+        drops: [...root.querySelectorAll('[data-drop^="want"]')].map(mid),
+      }
+    })
+    if (!s) break
+    fed = Math.max(fed, s.fed)
+    const lowest = s.drops.sort((a, b) => b.y - a.y)[0]
+    if (s.phase === 'play' && lowest) await page.mouse.move(lowest.x, s.field.bottom - 30)
+    await page.waitForTimeout(60)
+  }
+  await page.waitForTimeout(2500)
+  const text = await page.evaluate(() => document.body.innerText)
+  if (fed < 4) problems.push(`Bruno fängt: only ${fed} animals at the picnic`)
+  if (!/5 von 5 gleich beim ersten Mal richtig/.test(text)) problems.push(`Bruno fängt: results not as expected: ${text.slice(0, 120).replace(/\n/g, ' | ')}`)
+  await check(page, 'Bruno fängt results')
+  problems.push(...page.errors.map(e => `Bruno fängt: ${e}`))
+  await page.context().close()
+}
+
+// 3g. Musterpark (Tier-Band): a wrong animal is tried out on the empty stool
+// and hops back, the right one finishes the row, and the next row comes
+{
+  const page = await newPage(SIZES.phone, save)
+  await page.goto(URL); await page.waitForTimeout(1500)
+  await page.getByRole('button', { name: /^Musterpark, Level/ }).last().click()
+  const game = page.locator('[data-module="patterns"] [data-phase]')
+  const phaseIs = async (p, ms) => {
+    for (let t = 0; t < ms; t += 100) {
+      if ((await game.getAttribute('data-phase').catch(() => null)) === p) return true
+      await page.waitForTimeout(100)
+    }
+    return false
+  }
+  if (!(await phaseIs('play', 10000))) problems.push('Tier-Band: the row did not start')
+  else {
+    await check(page, 'Tier-Band')
+    await page.locator('[data-card]:not([data-right])').first().click()
+    if (!(await phaseIs('demo', 4000))) problems.push('Tier-Band: a wrong animal was not tried out')
+    if (!(await phaseIs('play', 15000))) problems.push('Tier-Band: the wrong animal did not hop back')
+    if ((await page.locator('[data-card][disabled]').count()) !== 1) problems.push('Tier-Band: the wrong animal is not sitting out')
+    await page.locator('[data-card][data-right="1"]').click()
+    if (!(await phaseIs('cheer', 4000))) problems.push('Tier-Band: the right animal did not finish the row')
+    await page.waitForTimeout(1500)
+    const stars = await page.locator('[data-module="patterns"] [data-juice="hud"]').getAttribute('aria-label').catch(() => null)
+    if (stars !== '1 Stern') problems.push(`Tier-Band: star counter says "${stars}" after one row`)
+    if (!(await phaseIs('play', 30000)) || (await game.getAttribute('data-round')) !== '1') problems.push('Tier-Band: the second row did not come')
+  }
+  problems.push(...page.errors.map(e => `Tier-Band: ${e}`))
+  await page.context().close()
+}
+
+// 3h. Anlaut-Angeln: level 1 fished to the results: a tap
+// on a swimmer hooks it, the first catch goes into the wrong bucket (the
+// frog hands it back) and then into the right one, like all the others
+{
+  const page = await newPage(SIZES.phone, save)
+  await page.goto(URL); await page.waitForTimeout(1500)
+  await page.getByRole('button', { name: /^Anlaut-Angeln, Level/ }).last().click()
+  const game = page.locator('[data-game="angeln"]')
+  await game.waitFor({ timeout: 10000 }).catch(() => problems.push('Anlaut-Angeln: the game did not start'))
+  let wrong = false, sorted = 0
+  const t0 = Date.now()
+  while (Date.now() - t0 < 150000 && (await game.count())) {
+    const s = await page.evaluate(() => {
+      const root = document.querySelector('[data-game="angeln"]')
+      if (!root) return null
+      const held = root.querySelector('[data-swimmer="word"][data-wet="1"]')
+      const swimmer = [...root.querySelectorAll('[data-swimmer="word"]')].find(e => e.dataset.dry !== '1' && +getComputedStyle(e).opacity > 0.6)
+      const r = swimmer?.getBoundingClientRect()
+      return { phase: root.dataset.phase, held: held?.dataset.letter, letters: [...root.querySelectorAll('[data-bucket]')].map(b => b.dataset.bucket), at: r && { x: r.left + r.width / 2, y: r.top + r.height / 2 } }
+    })
+    if (!s) break
+    if (s.phase === 'hold' && s.held) {
+      const other = s.letters.find(l => l !== s.held)
+      if (!wrong && other) {
+        wrong = true
+        await page.locator(`[aria-label="Eimer ${other}"]`).click()
+        await page.waitForTimeout(2500)
+        if (!(await page.locator('[data-game="angeln"] [data-swimmer="word"][data-wet="1"]').count())) problems.push('Anlaut-Angeln: the frog did not hand the catch back')
+        continue
+      }
+      await page.locator(`[aria-label="Eimer ${s.held}"]`).click(); sorted++
+      await page.waitForTimeout(900)
+    } else if (s.phase === 'fish' && s.at) {
+      await page.mouse.click(s.at.x, s.at.y)
+      await page.waitForTimeout(1500)
+    } else await page.waitForTimeout(300)
+  }
+  await page.waitForTimeout(2500)
+  const text = await page.evaluate(() => document.body.innerText)
+  if (sorted < 6) problems.push(`Anlaut-Angeln: only ${sorted} catches sorted`)
+  if (!/5 von 6 gleich beim ersten Mal richtig/.test(text)) problems.push(`Anlaut-Angeln: results not as expected: ${text.slice(0, 120).replace(/\n/g, ' | ')}`)
+  await check(page, 'Anlaut-Angeln results')
+  problems.push(...page.errors.map(e => `Anlaut-Angeln: ${e}`))
+  await page.context().close()
+}
+
+// 3i. Rechen-Rakete (Planeten-Hüpfer): level 1 flown with the thrust
+// button, a hop per number and then the landing button; in the second sum
+// one hop too many: someone else lives there, and the rocket flies back to
+// the start; to the results
+{
+  const page = await newPage(SIZES.phone, save)
+  await page.goto(URL); await page.waitForTimeout(1500)
+  await page.getByRole('button', { name: /^Rechen-Rakete, Level/ }).last().click()
+  const game = page.locator('[data-game="rakete"]')
+  await game.waitFor({ timeout: 10000 }).catch(() => problems.push('Planeten-Hüpfer: the game did not start'))
+  const state = () => game.evaluate(el => ({ ...el.dataset })).catch(() => null)
+  const until = async (ok, ms) => {
+    for (let t = 0; t < ms; t += 100) { const s = await state(); if (!s || ok(s)) return s; await page.waitForTimeout(100) }
+    return null
+  }
+  let round = -1, overshot = false
+  for (let i = 0; i < 40 && (await game.count()); i++) {
+    const s = await until(x => x.phase === 'play', 15000)
+    if (!s) break
+    if (+s.idx === round) { await page.waitForTimeout(200); continue }
+    const steps = Math.abs(+s.target - +s.from)
+    const over = !overshot && s.idx === '1' && +s.target < 10
+    for (let k = 0; k < steps + (over ? 1 : 0); k++) {
+      await page.getByRole('button', { name: 'Vorwärts hüpfen' }).click({ timeout: 3000 }).catch(() => {})
+      await page.waitForTimeout(520)
+    }
+    await page.getByRole('button', { name: 'Landen' }).click({ timeout: 3000 }).catch(() => {})
+    if (over) {
+      overshot = true
+      await page.waitForTimeout(600)
+      if (!(await page.locator('[data-creature="resident"]').count())) problems.push('Planeten-Hüpfer: nobody else answered on the wrong planet')
+      const back = await until(x => x.phase === 'play', 6000)
+      if (back?.pos !== s.from) problems.push('Planeten-Hüpfer: after a wrong landing the rocket is not back at the start')
+      continue
+    }
+    round = +s.idx
+    await page.waitForTimeout(400)
+  }
+  await page.waitForTimeout(6000)
+  const text = await page.evaluate(() => document.body.innerText)
+  if (!/5 von 6 gleich beim ersten Mal richtig/.test(text)) problems.push(`Planeten-Hüpfer: results not as expected: ${text.slice(0, 120).replace(/\n/g, ' | ')}`)
+  await check(page, 'Planeten-Hüpfer results')
+  problems.push(...page.errors.map(e => `Planeten-Hüpfer: ${e}`))
+  await page.context().close()
+}
+
+// 3j. Waage-Welt (Wippe-Katapult): level 1 to the results. The first throw
+// is the light thing: the mouse only hops, a mark stays on the tree. Then
+// the heavy one every time; six animals end up on the branch
+{
+  const page = await newPage(SIZES.phone, save)
+  await page.goto(URL); await page.waitForTimeout(1500)
+  await page.getByRole('button', { name: /^Waage-Welt, Level/ }).last().click()
+  const game = page.locator('[data-game="wippe"]')
+  await game.waitFor({ timeout: 10000 }).catch(() => problems.push('Wippe-Katapult: the game did not start'))
+  const phaseIs = async (p, ms) => {
+    for (let t = 0; t < ms; t += 100) {
+      const now = await game.getAttribute('data-phase').catch(() => null)
+      if (now === p || now === null) return now === p
+      await page.waitForTimeout(100)
+    }
+    return false
+  }
+  let missed = false, guests = 0
+  const t0 = Date.now()
+  while (Date.now() - t0 < 150000 && (await game.count())) {
+    if (!(await phaseIs('aim', 20000))) break
+    const target = await game.getAttribute('data-target')
+    const pick = missed ? `[data-item][data-where="ground"][data-w="${target}"]` : `[data-item][data-where="ground"]:not([data-w="${target}"])`
+    await page.locator(pick).first().click()
+    if (!missed) {
+      missed = true
+      if (!(await phaseIs('aim', 15000))) { problems.push('Wippe-Katapult: no new try after a light throw'); break }
+      if ((await page.locator('[data-mark]').count()) !== 1) problems.push('Wippe-Katapult: no mark on the tree after a throw')
+      if ((await game.getAttribute('data-task')) !== '0') problems.push('Wippe-Katapult: a light throw ended the task')
+      await check(page, 'Wippe-Katapult after a miss')
+      continue
+    }
+    guests = Math.max(guests, Number(await game.getAttribute('data-guests').catch(() => 0)))
+    await page.waitForTimeout(400)
+  }
+  await page.waitForTimeout(5000)
+  const text = await page.evaluate(() => document.body.innerText)
+  if (!/5 von 6 gleich beim ersten Mal richtig/.test(text)) problems.push(`Wippe-Katapult: results not as expected: ${text.slice(0, 120).replace(/\n/g, ' | ')}`)
+  if (guests < 5) problems.push(`Wippe-Katapult: only ${guests} animals on the branch`)
+  await check(page, 'Wippe-Katapult results')
+  problems.push(...page.errors.map(e => `Wippe-Katapult: ${e}`))
+  await page.context().close()
+}
+
+// 3k. Hörabenteuer (Hütchenspiel im Gebüsch): level 1 to the results: the
+// things hop into their bushes, Lumi calls one, its bush is tapped; at the
+// first call a wrong bush first (its thing pops out and goes back in)
+{
+  const page = await newPage(SIZES.phone, save)
+  await page.goto(URL); await page.waitForTimeout(1500)
+  await page.getByRole('button', { name: /^Hörabenteuer, Level/ }).last().click()
+  const game = page.locator('[data-game="huetchen"]')
+  await game.waitFor({ timeout: 10000 }).catch(() => problems.push('Hütchenspiel: the game did not start'))
+  let calls = 0, wrong = false
+  const t0 = Date.now()
+  while (Date.now() - t0 < 150000 && (await game.count())) {
+    const s = await page.evaluate(() => {
+      const root = document.querySelector('[data-game="huetchen"]')
+      if (!root) return null
+      const bushes = [...root.querySelectorAll('[data-bush]')].filter(b => b.dataset.gone !== '1').map(b => ({ id: b.dataset.bush, word: b.dataset.word }))
+      return { phase: root.dataset.phase, target: root.dataset.target, bushes }
+    })
+    if (!s) break
+    if (s.phase !== 'find' || !s.target) { await page.waitForTimeout(200); continue }
+    if (!wrong) {
+      wrong = true
+      const other = s.bushes.find(b => b.word !== s.target)
+      await page.locator(`[data-bush="${other.id}"]`).click()
+      await page.waitForTimeout(400)
+      if ((await game.getAttribute('data-phase')) !== 'oops') problems.push('Hütchenspiel: a wrong bush did not show its thing')
+      await page.waitForFunction(() => document.querySelector('[data-game="huetchen"]')?.dataset.phase === 'find', null, { timeout: 8000 }).catch(() => problems.push('Hütchenspiel: no new try after a miss'))
+      continue
+    }
+    await page.locator(`[data-bush="${s.bushes.find(b => b.word === s.target).id}"]`).click()
+    calls++
+    await page.waitForTimeout(1200)
+  }
+  await page.waitForTimeout(2500)
+  const text = await page.evaluate(() => document.body.innerText)
+  if (calls < 6) problems.push(`Hütchenspiel: only ${calls} things found`)
+  if (!/5 von 6 gleich beim ersten Mal richtig/.test(text)) problems.push(`Hütchenspiel: results not as expected: ${text.slice(0, 120).replace(/\n/g, ' | ')}`)
+  await check(page, 'Hütchenspiel results')
+  problems.push(...page.errors.map(e => `Hütchenspiel: ${e}`))
   await page.context().close()
 }
 
@@ -143,7 +563,7 @@ async function playShadows(page) {
   try {
     await page.goto(URL); await page.waitForTimeout(1500)
     await check(page, 'ideas home')
-    await page.getByRole('button', { name: /^Lumis Idee: Schattenrätsel/ }).click(); await page.waitForTimeout(2000)
+    await page.getByRole('button', { name: /^Lumis Idee: Schattenrätsel/ }).click()
     await playShadows(page)
     await check(page, 'ideas results')
     await page.getByRole('button', { name: /Bewegungspause/ }).click(); await page.waitForTimeout(1200)
@@ -180,7 +600,7 @@ async function playShadows(page) {
   await check(page, 'offline home')
   for (const t of ['Waage-Welt', 'Lumi-Labyrinth', 'Mal-Atelier', 'Formen-Land']) {
     try {
-      await page.getByRole('button', { name: new RegExp(`^${t}, Level`) }).last().click(); await page.waitForTimeout(1800)
+      await page.getByRole('button', { name: new RegExp(`^${t}(?:, Level|\\. Spielen$)`) }).last().click(); await page.waitForTimeout(1800)
       await check(page, `offline ${t}`)
       await page.getByRole('button', { name: 'Spiel verlassen' }).click(); await page.waitForTimeout(300)
       await page.getByRole('button', { name: /Aufhören/ }).click(); await page.waitForTimeout(800)

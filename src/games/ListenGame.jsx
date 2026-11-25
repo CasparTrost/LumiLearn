@@ -1,401 +1,460 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { motion } from 'framer-motion'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
 import { sfx } from '../sfx.js'
-import { narrate } from '../narrator.js'
+import { narrate, lockPreviews, leaveGame } from '../narrator.js'
 import { sayRight, sayWrong } from '../lib/feedback.js'
-import { Critter, Art, Wish, RoundTrail, HintHand, useBursts } from '../components/play/index.js'
-import { useRounds, useSpeaking, shuffle, chance, reduceMotion, hintDelay } from './buchstaben/useRounds.js'
+import { result } from '../lib/score.js'
+import { Critter, Art, HintHand, useBursts, useJuice, useMood } from '../components/play/index.js'
+import { useLater } from './zahlen/stage.jsx'
 import { rec, wordRec } from './buchstaben/voice.js'
-import { pxButton, INK } from './px.js'
+import { levelConfig, findsIn, bushesFor, makeShuffle } from './huetchen/plan.js'
+import { layoutFor, thingY } from './huetchen/layout.js'
+import { Bush, Stump, Bubble, Speaker, SwapArrows, Rings } from './huetchen/parts.jsx'
 
 /**
- * Hörabenteuer: das Versteckspiel — Phonologisches Bewusstsein
+ * Hörabenteuer — "Hütchenspiel im Gebüsch": understanding a spoken word,
+ * remembering where it went, following it with the eyes.
  *
- * Erst versteckt das Kind die Dinge selbst: jedes, das es antippt, taucht
- * raschelnd ganz in seinen Busch (wer trödelt, dem verstecken sie sich nach
- * einer Weile von selbst; je höher das Level, desto eher, SHOW_MS). Dann
- * ruft Lumi eines beim Namen, ohne Bild: das Kind hört das Wort, erinnert
- * sich, wo es sich versteckt hat, und tippt den Busch an; das Gesuchte hüpft
- * lachend heraus. Wer sich irrt, lockt das Falsche hervor, und Lumi zeigt
- * jetzt auch das Bild. Ist ein Wort noch nicht aufgenommen, zeigt Lumi
- * gleich das Bild. Beim Suchen streckt ab und zu ein freches Eichhörnchen
- * den Kopf aus einem Busch, nur Spaß, es ist nie die Antwort. In den
- * Lese-Levels (8–10) stecken die Dinge ganz im Busch, vor jedem steht ein
- * Schild, und Lumi zeigt das Bild dessen, was gesucht wird.
+ * Things stand on top of a row of bushes that all look the same. One after
+ * the other each hops into its bush, saying its word as it goes ("Tiger."
+ * hop, the bush rustles, leaves fly). Then the bushes swap places, two at
+ * a time, sliding past each other in an arc (the one behind goes up and
+ * gets smaller), with a whoosh, at a speed a child can follow. A drum roll,
+ * and Lumi calls one of them by its name, without a picture. The child taps
+ * the bush it is in now.
+ *   • Right: it jumps out laughing, a star flies to the counter, and the
+ *     thing flies up to the row of finds at the top and sits down in its
+ *     ring; its bush is empty now and shrinks away. From level 5 Lumi then
+ *     calls a second one from the same bushes, without a new shuffle.
+ *   • Wrong: the one that really is in that bush pops out, shakes its head
+ *     and says its own name, so the miss teaches a word too, and goes back
+ *     in. Lumi's bubble now shows the picture of the one she wants, and she
+ *     says its name again. After two misses that bush wiggles and the
+ *     wanted thing peeks out of it; the hand points there.
+ *   • At the end of a shuffle the others hop out and show where they were.
+ * Nothing else comes out of a bush while the child looks for one: a
+ * squirrel that popped out of one, giggling, read as "it's in here".
  *
- * Scientific basis:
- *   • Phonological Awareness (National Reading Panel, 2000) — connecting spoken words to images
- *     is the single strongest predictor of reading readiness.
- *   • Dual Coding Theory (Paivio, 1990) — audio + visual encoding deepens memory traces.
- *   • Peabody Picture Vocabulary Test methodology — hear a word, find the matching picture.
+ * Levels (huetchen/plan.js): three bushes and no swap, then one slow swap,
+ * four bushes and two swaps, three swaps and two finds per shuffle, words
+ * that sound alike side by side (Maus, Haus, Mais), five bushes and four
+ * swaps; levels 8 to 10 are for reading: Lumi holds up a sign with the
+ * word instead of saying it, the things hop in without saying their names,
+ * and the sign is read aloud only after a miss (then a tap on it reads it
+ * again), at the end with words that look alike (Hose, Rose).
+ * The swaps get a little quicker when a shuffle goes without a miss and
+ * slower after one. Score: the finds at the first tap.
+ *
+ * Why: hearing a word and finding its picture is how word meaning is
+ * tested and trained (Peabody Picture Vocabulary method); holding it in
+ * mind while the eyes track the bushes trains working memory and visual
+ * tracking, and the sound-alike sets need the whole word, not a guess
+ * from its meaning (phonological awareness, National Reading Panel 2000).
  */
 
-// [article, word, picture]. Every picture shows one thing a child names the
-// same way; the wrong answers are other words of this list.
-const BANK = {
-  tier: [
-    ['der','Hund','🐕'], ['die','Katze','🐱'], ['das','Pferd','🐴'], ['die','Kuh','🐄'], ['das','Schaf','🐑'],
-    ['das','Schwein','🐖'], ['der','Löwe','🦁'], ['der','Tiger','🐯'], ['der','Bär','🐻'], ['der','Fuchs','🦊'],
-    ['der','Elefant','🐘'], ['die','Giraffe','🦒'], ['der','Affe','🐒'], ['der','Pinguin','🐧'], ['die','Eule','🦉'],
-    ['der','Frosch','🐸'], ['die','Schildkröte','🐢'], ['die','Biene','🐝'], ['der','Schmetterling','🦋'],
-    ['die','Schnecke','🐌'], ['das','Krokodil','🐊'], ['der','Delfin','🐬'], ['der','Hai','🦈'], ['der','Fisch','🐟'],
-    ['der','Igel','🦔'], ['der','Regenwurm','🪱'],
-  ],
-  essen: [
-    ['der','Apfel','🍎'], ['die','Banane','🍌'], ['die','Erdbeere','🍓'], ['die','Pizza','🍕'], ['der','Kuchen','🎂'],
-    ['das','Eis','🍦'], ['das','Brot','🍞'], ['der','Keks','🍪'], ['die','Milch','🥛'], ['der','Saft','🧃'],
-    ['die','Karotte','🥕'], ['die','Tomate','🍅'],
-  ],
-  ding: [
-    ['der','Ball','⚽'], ['das','Buch','📚'], ['die','Schere','✂️'], ['der','Stuhl','🪑'], ['das','Bett','🛏️'],
-    ['die','Krone','👑'], ['das','Geschenk','🎁'], ['die','Brille','👓'], ['die','Gitarre','🎸'], ['der','Koffer','🧳'],
-    ['die','Kerze','🕯️'], ['der','Schlüssel','🔑'], ['die','Trommel','🥁'], ['der','Anker','⚓'], ['der','Zauberstab','🪄'],
-    ['der','Diamant','💎'], ['der','Hut','🎩'], ['der','Eimer','🪣'], ['der','Kompass','🧭'], ['der','Drache','🐉'],
-  ],
-  fahrzeug: [
-    ['die','Rakete','🚀'], ['der','Zug','🚂'], ['das','Auto','🚗'], ['das','Flugzeug','✈️'], ['das','Schiff','🚢'],
-    ['das','Fahrrad','🚲'], ['der','Traktor','🚜'], ['die','Straßenbahn','🚊'], ['der','Hubschrauber','🚁'], ['der','Bus','🚌'],
-  ],
-  natur: [
-    ['die','Sonne','☀️'], ['der','Mond','🌙'], ['der','Stern','⭐'], ['der','Regenbogen','🌈'], ['die','Blume','🌸'],
-    ['der','Baum','🌳'], ['der','Pilz','🍄'], ['die','Welle','🌊'], ['der','Vulkan','🌋'], ['das','Haus','🏠'],
-    ['das','Schloss','🏰'], ['das','Zelt','⛺'],
-  ],
-}
-const item = (cat) => ([art, word, emoji]) => ({ art, word, emoji, cat })
-const WORD_BANK = Object.entries(BANK).flatMap(([cat, list]) => list.map(item(cat)))
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
 
-// Never wrong answers for each other: a shark is a fish, too, and a child
-// may well call a cake a biscuit.
-const CLOSE = [['Fisch','Hai','Delfin'], ['Kuchen','Keks'], ['Milch','Saft'], ['Haus','Schloss','Zelt'], ['Zug','Straßenbahn']]
-const isClose = (a, b) => CLOSE.some(g => g.includes(a) && g.includes(b))
-
-// Words that differ in a single sound. Picking between these is the one
-// thing that really needs close listening — the ordinary rounds vary
-// meaning, not sound, and can be won on vocabulary alone.
-const MINIMAL_SETS = [
-  [['das','Haus','🏠'], ['die','Maus','🐭'], ['der','Mais','🌽']],
-  [['die','Nase','👃'], ['der','Hase','🐰'], ['die','Vase','🏺']],
-  [['die','Rose','🌹'], ['die','Hose','👖'], ['die','Dose','🥫']],
-  [['die','Kanne','🫖'], ['die','Tanne','🌲'], ['die','Pfanne','🍳']],
-  [['der','Mond','🌙'], ['der','Mund','👄'], ['der','Hund','🐕']],
-  [['das','Bein','🦵'], ['das','Schwein','🐖'], ['der','Stein','🪨']],
-  [['die','Katze','🐱'], ['die','Tatze',':px-tatze:']],
-  [['die','Kuh','🐄'], ['der','Schuh','👟']],
-  [['der','Fisch','🐟'], ['der','Tisch',':px-tisch:']],
-  [['der','Hahn','🐓'], ['der','Zahn','🦷']],
-  [['die','Tasse','☕'], ['die','Tasche','👜']],
-  [['der','Wal','🐋'], ['der','Schal','🧣']],
-].map(set => set.map(item('paar')))
-const PAIR_WORDS = new Set(MINIMAL_SETS.flat().map(w => w.word))
-
-// The steps: pictures from different areas, then from the same area (Hund
-// or Katze?), then words that differ in a single sound (Haus, Maus, Mais),
-// at last reading — the picture is shown, the word must be read.
-// `minimal`: every third round (some) or two of three (most).
-const LEVELS = [
-  { options:3 },
-  { options:4 },
-  { options:4, sameCat:true },
-  { options:4, sameCat:true, minimal:'some' },
-  { options:4, sameCat:true, minimal:'some' },
-  { options:3, sameCat:true, minimal:'most' },
-  { options:3, sameCat:true, minimal:'most' },
-  { options:4, read:true },
-  { options:4, read:true, sameCat:true },
-  { options:3, read:true, minimal:'all' },
-]
-const ROUNDS = 8
-// Without a recorded word: how long everything shows itself before it hides
-// (levels 1–7), shorter as the levels rise.
-const SHOW_MS = [3200, 2800, 2600, 2400, 2200, 2000, 1800]
-
-function buildRounds(level) {
-  const cfg = LEVELS[Math.max(0, Math.min(level - 1, LEVELS.length - 1))]
-  // With sound-pair rounds in play, their words stay out of the others, so
-  // no word comes up twice in one level.
-  const base = shuffle(WORD_BANK.filter(w => !cfg.minimal || !PAIR_WORDS.has(w.word)))
-  const sets = shuffle(MINIMAL_SETS)
-  const isMinimal = i => cfg.minimal === 'all' || (cfg.minimal === 'most' ? i % 3 !== 0 : cfg.minimal === 'some' && i % 3 === 2)
-
-  const fill = (target, taken, n) => {
-    const free = WORD_BANK.filter(w => w.word !== target.word && !(cfg.minimal && PAIR_WORDS.has(w.word))
-      && !isClose(w.word, target.word) && !taken.some(t => t.word === w.word || isClose(t.word, w.word)))
-    const same  = free.filter(w => w.cat === target.cat)
-    const other = free.filter(w => w.cat !== target.cat)
-    return (cfg.sameCat ? [...shuffle(same), ...shuffle(other)] : shuffle(other)).slice(0, n)
-  }
-
-  let next = 0
-  return Array.from({ length: ROUNDS }, (_, i) => {
-    if (isMinimal(i)) {
-      const set = sets[i % sets.length]
-      const target = shuffle(set)[0]
-      const extra = cfg.options > set.length ? fill(target, set, cfg.options - set.length) : []
-      return { target, options: shuffle([...set, ...extra]), pair: true }
-    }
-    const target = base[next++ % base.length]
-    return { target, options: shuffle([target, ...fill(target, [target], cfg.options - 1)]) }
-  })
+/** A drum roll that swells, and a cymbal: now Lumi says who she is looking for. */
+function drumRoll(ms) {
+  const t0 = sfx.bandClock()
+  if (t0 == null) return
+  const n = Math.max(6, Math.round(ms / 60))
+  for (let k = 0; k < n; k++) sfx.band('drum', t0 + k * 0.06, 0.25 + (0.55 * k) / n)
+  sfx.band('cymbal', t0 + n * 0.06 + 0.02, 0.8)
 }
 
 export default function ListenGame({ level = 1, onComplete }) {
-  const isReading = !!LEVELS[Math.max(0, Math.min(level - 1, LEVELS.length - 1))].read
-  // now and then a bird flies out of the bush, too
-  const rounds = useMemo(() => buildRounds(level).map(r => ({ ...r, bird: chance(0.3) })), [level])
+  const cfg = useMemo(() => levelConfig(level), [level])
+  const total = findsIn(cfg)
+  const reduce = !!useReducedMotion()
+  const { later, afterSpeech } = useLater()
+  const juice = useJuice({ hudSize: 30 })
+  const { hit, miss } = juice
   const [bursts, burst] = useBursts()
-  const speaking = useSpeaking()
-  const rowRef = useRef(null)
-  const gapRef = useRef(null)
+  const [mood, setMood] = useMood()
 
-  // Reading levels never say the word before it is answered — otherwise
-  // they would be one more listening task, not reading.
-  const idxRef = useRef(0)
-  const lookingRef = useRef(false)
-  const sayTask = useCallback(() => {
-    const i = idxRef.current, target = rounds[i]?.target
-    if (!target) return
-    if (isReading) narrate([rec('hoeren/lies')])
-    // while the child hides the things, nothing is asked yet
-    else if (!lookingRef.current) narrate([i === 0 && rec('hoeren/wer'), wordRec(target.word)])
-  }, [rounds, isReading])
+  const fieldRef = useRef(null)
+  const [size, setSize] = useState(null)
+  const [n, setN] = useState(null)              // bushes in this shuffle
+  const L = useMemo(() => (size ? layoutFor(size.w, size.h, n ?? bushesFor(cfg, size.w), total) : null), [size, n, cfg, total])
 
-  const { idx, done, leaving, finale, tried, streak, paused, win, miss, reveal, isOver, hasTried } =
-    useRounds(rounds.length, { onComplete, sayTask, outroMs: 500 })
-  idxRef.current = idx
-  const round = rounds[idx]
-  const current = round?.target
-  // First the child hides the things in the bushes, then Lumi calls one by
-  // its word (without a picture: listening is the task) and the child
-  // remembers where it went. Without a recording of the word Lumi shows
-  // its picture instead.
-  const heard = !isReading && !!current && !!wordRec(current.word)
-  const memory = !isReading && !heard
-  const hideFirst = !isReading
-  const party = done && !tried.length && streak >= 3
-  const [hiddenAt, setHiddenAt] = useState(-1)   // the round whose things have hidden
-  const [tuckedIn, setTucked] = useState({ i: -1, words: [] })   // hidden by the child, this round
-  const tucked = tuckedIn.i === idx ? tuckedIn.words : []
-  const looking = hideFirst && hiddenAt !== idx
-  lookingRef.current = looking
-  const hideRef = useRef(null)    // the first thing still out, for the hint hand
-  // whoever dawdles: they hide by themselves after a while
-  useEffect(() => {
-    if (!looking || paused) return
-    const t = setTimeout(() => { sfx.slideDown(); setHiddenAt(idx) }, 2700 + SHOW_MS[Math.min(level, SHOW_MS.length) - 1])
-    return () => clearTimeout(t)
-  }, [looking, paused, idx, level])
-  // the search begins: now Lumi calls the word
-  useEffect(() => {
-    if (!heard || hiddenAt !== idx || paused) return
-    const t = setTimeout(sayTask, 450)
-    return () => clearTimeout(t)
-  }, [heard, hiddenAt, idx, paused, sayTask])
-  // all hidden by the child: now the search
-  useEffect(() => {
-    if (!looking || !round || tucked.length < round.options.length) return
-    const t = setTimeout(() => setHiddenAt(idx), 500)
-    return () => clearTimeout(t)
-  }, [looking, tucked.length, round, idx])
+  const [phase, setPhase] = useState('start')   // start | drop | hide | shuffle | drum | find | oops | found | show | finale
+  const [bushes, setBushes] = useState([])
+  const [target, setTarget] = useState(null)
+  const [pic, setPic] = useState(false)         // the bubble shows the wanted one's picture too
+  const [misses, setMisses] = useState(0)       // for this call
+  const [found, setFound] = useState([])        // the row at the top
+  const [flyers, setFlyers] = useState([])
+  const [arrows, setArrows] = useState(null)    // reduced motion: which two swap next
+  const [signPulse, setSignPulse] = useState(0)
 
-  const tuck = (opt) => {
-    if (tucked.includes(opt.word)) return
-    sfx.slideDown()
-    setTucked({ i: idx, words: [...tucked, opt.word] })
+  // What the timers work on; the state above is its picture
+  const g = useRef({
+    k: 0, sh: null, call: 0, misses: 0, firstTry: 0, finds: 0, pace: 1, missedHere: false,
+    used: new Set(), called: new Set(), bushes: [], phase: 'start', target: null, done: false, started: false,
+  }).current
+  const live = useRef(null)
+  live.current = { L, reduce }
+
+  const speakerRef = useRef(null)
+  const helpRef = useRef(null)
+  const ringEls = useRef([])
+  const bushEls = useRef({})
+
+  useEffect(() => { lockPreviews(); return () => leaveGame() }, [])
+
+  useLayoutEffect(() => {
+    const el = fieldRef.current
+    const measure = () => {
+      const w = el.clientWidth, h = el.clientHeight
+      if (w && h) setSize(s => (s && s.w === w && s.h === h ? s : { w, h }))
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  const go = p => { g.phase = p; setPhase(p) }
+  const put = fn => { g.bushes = fn(g.bushes); setBushes(g.bushes) }
+  const patch = (id, p) => put(bs => bs.map(b => (b.id === id ? { ...b, ...(typeof p === 'function' ? p(b) : p) } : b)))
+  const rustle = (id, big = false) => {
+    patch(id, b => ({ rustle: b.rustle + 1, rustleBig: big }))
+    sfx.band('maraca', 0, big ? 1 : 0.75)
+  }
+  const atSlot = s => g.bushes.find(b => b.slot === s)
+
+  // ── One shuffle ────────────────────────────────────────────────────────
+
+  const startShuffle = k => {
+    g.k = k; g.call = 0; g.missedHere = false
+    const nn = bushesFor(cfg, fieldRef.current?.clientWidth ?? 1024)
+    const sh = makeShuffle(cfg, nn, { used: g.used, called: g.called })
+    sh.things.forEach(t => g.used.add(t.word))
+    g.sh = sh
+    g.target = null
+    setN(nn)
+    // the same bushes stay where they stand; each gets a new thing on top
+    const old = g.bushes.length === nn ? g.bushes : Array.from({ length: nn }, (_, i) => ({ id: i, slot: i, rustle: 0 }))
+    put(() => old.map(b => {
+      const t = sh.things[b.slot]
+      return { ...b, tid: `${k}-${b.slot}`, word: t.word, emoji: t.emoji, thing: 'top', gone: false, help: false, swap: null }
+    }))
+    setTarget(null); setPic(false); setArrows(null)
+    go('drop')
+    lockPreviews()
+    sh.things.forEach((_, i) => later(150 + i * 110, () => sfx.pop()))
+    // the very first time: "Pass gut auf, wo sie sich verstecken!" (once recorded)
+    const intro = k === 0 ? rec('hoeren/pass-auf') : null
+    if (intro) { narrate([intro]); afterSpeech(() => hideNext(0), 900) }
+    else later(950 + nn * 110, () => hideNext(0))
   }
 
-  // The cheeky squirrel: now and then, while the child searches, it pokes
-  // its head out of a random bush, sticks out its tongue and ducks again.
-  const searching = !looking && !done && !leaving && !finale
-  const [cheeky, setCheeky] = useState(null)   // { at: bush index, n }
-  useEffect(() => {
-    if (!searching || paused || reduceMotion()) return
-    const t = setTimeout(() => setCheeky(c => ({ at: Math.floor(Math.random() * round.options.length), n: (c?.n ?? 0) + 1 })), 3500 + Math.random() * 3000)
-    return () => clearTimeout(t)
-  }, [searching, paused, cheeky, round])
-  useEffect(() => { setCheeky(null) }, [idx])
+  // one after the other they say their word and hop into their bush (in the
+  // reading levels they hop in silently: a heard name would make the sign
+  // something to match by ear, not to read)
+  const hideNext = i => {
+    const sh = g.sh
+    if (i >= sh.things.length) { later(450, () => swapNext(0)); return }
+    go('hide')
+    const b = atSlot(i)
+    if (!cfg.read) narrate([wordRec(b.word)])
+    later(reduce ? 150 : 380, () => {
+      patch(b.id, { thing: 'in' })
+      later(reduce ? 80 : 330, () => rustle(b.id))
+    })
+    afterSpeech(() => hideNext(i + 1), cfg.read ? Math.max(cfg.gap, 1100) : cfg.gap)
+  }
 
-  useEffect(() => { if (finale) burst(rowRef.current, 'confetti', 18) }, [finale, burst])
-
-  const pick = (opt, el) => {
-    if (looking) { tuck(opt); return }
-    if (isOver() || hasTried(opt.word)) return
-    if (opt.word === current.word) {
-      const streaky = !tried.length && streak + 1 >= 3
-      win(streaky ? 2300 : 1900)
-      sfx.giggle(); sfx.slideUp()
-      burst(el, streaky ? 'confetti' : chance(0.5) ? 'stars' : 'hearts', streaky ? 16 : 10)
-      sayRight()
+  // two bushes swap places: one passes behind (up and smaller), one in front
+  const swapNext = j => {
+    const sh = g.sh
+    if (j >= sh.swaps.length) {
+      put(bs => bs.map(b => ({ ...b, swap: null })))
+      setArrows(null)
+      later(sh.swaps.length ? 300 : 100, roll)
       return
     }
-    // A wrong bush can be corrected; after the second one Lumi shows the
-    // right one instead of letting the child guess on.
-    sfx.boing()
-    sayWrong()
-    if (miss(opt.word) >= 2) reveal(2600)
+    go('shuffle')
+    const [a, c] = sh.swaps[j]
+    const ms = reduce ? 180 : Math.round(cfg.ms * g.pace)
+    const behind = Math.random() < 0.5 ? a : c
+    const move = () => {
+      put(bs => bs.map(b => (b.slot === a ? { ...b, slot: c, swap: { from: a, to: c, ms, role: a === behind ? 'back' : 'front' } }
+        : b.slot === c ? { ...b, slot: a, swap: { from: c, to: a, ms, role: c === behind ? 'back' : 'front' } }
+        : { ...b, swap: null })))
+      sfx.whoosh()
+    }
+    if (reduce) {
+      // crossing arrows show which two, then a quick slide
+      setArrows({ a, b: c, j })
+      later(800, () => { move(); setArrows(null); later(ms + 350, () => swapNext(j + 1)) })
+    } else {
+      move()
+      later(ms + 170, () => swapNext(j + 1))
+    }
   }
 
-  if (!current) return null
-  const lumiMood = finale ? 'dance' : done ? (tried.length < 2 ? 'happy' : 'idle') : tried.length ? 'oops' : 'idle'
-  const voiced = isReading ? !!rec('hoeren/lies') : heard && !looking
+  const roll = () => {
+    go('drum')
+    drumRoll(reduce ? 500 : 850)
+    later(reduce ? 600 : 1000, call)
+  }
+
+  // Lumi calls one by its name (in the reading levels: holds up its word)
+  const call = () => {
+    const t = g.sh.calls[g.call]
+    g.called.add(t.word)
+    g.target = t
+    g.misses = 0
+    setMisses(0); setPic(false); setTarget(t)
+    go('find')
+    lockPreviews()
+    if (cfg.read) { if (g.k === 0 && g.call === 0) narrate([rec('hoeren/lies')]) }
+    else narrate([wordRec(t.word)])
+  }
+
+  // the word again; in the reading levels only after a miss (before it,
+  // the sign is to be read, not heard)
+  const say = () => {
+    if (!g.target || (cfg.read && g.misses === 0)) return
+    narrate([wordRec(g.target.word)])
+    setSignPulse(p => p + 1)
+  }
+
+  // ── Taps ───────────────────────────────────────────────────────────────
+
+  const tap = (b, el) => {
+    if (g.phase === 'finale') { sfx.giggle(); return }
+    const cur = g.bushes.find(x => x.id === b.id)
+    if (!cur || cur.gone) return
+    // too early (they are still hiding or swapping): the bush only rustles
+    if (g.phase !== 'find' || !g.target) { if (g.phase !== 'oops' && g.phase !== 'found') rustle(cur.id); return }
+    if (cur.word === g.target.word) foundIt(cur, el)
+    else wrongOne(cur, el)
+  }
+
+  const foundIt = (b, el) => {
+    go('found')
+    if (g.misses === 0) g.firstTry++
+    const { milestone } = hit(el)
+    sfx.giggle()
+    put(bs => bs.map(x => (x.id === b.id ? { ...x, thing: 'out', help: false } : { ...x, help: false, thing: x.thing === 'help' ? 'in' : x.thing })))
+    rustle(b.id, true)
+    burst(el, milestone ? 'confetti' : 'stars', milestone ? 16 : 9)
+    setMood(milestone ? 'dance' : 'happy', 1500)
+    setPic(true)
+    sayRight()
+    const k = g.finds++
+    g.call++
+    // off it flies to its ring at the top, and its empty bush shrinks away
+    later(reduce ? 400 : 950, () => {
+      const { L } = live.current
+      const Y = thingY(L.bh, L.T)
+      const from = { x: L.slots[b.slot], y: L.ground - L.bh + Y.top - L.T * 0.12 + L.T / 2 }
+      setFlyers(f => [...f, { id: `${b.tid}`, emoji: b.emoji, from, k }])
+      patch(b.id, { thing: 'gone', gone: true })
+      sfx.slideUp()
+    })
+    later(reduce ? 1300 : 2100, () => afterSpeech(next, 0))
+  }
+
+  const landed = f => {
+    setFlyers(l => l.filter(x => x.id !== f.id))
+    setFound(fs => { const a = [...fs]; a[f.k] = f.emoji; return a })
+    sfx.pop()
+  }
+
+  const next = () => {
+    if (g.call < g.sh.calls.length) roll()
+    else showAll()
+  }
+
+  const wrongOne = (b, el) => {
+    g.misses++
+    g.missedHere = true
+    setMisses(g.misses)
+    go('oops')
+    miss(el)
+    setMood('oops', 1000)
+    patch(b.id, { thing: 'peek' })
+    rustle(b.id)
+    sfx.boing()
+    // the one in there says who it is
+    narrate([wordRec(b.word)])
+    const t = g.target
+    afterSpeech(() => {
+      patch(b.id, { thing: 'in' })
+      later(reduce ? 50 : 300, () => rustle(b.id))
+      if (!cfg.read) setPic(true)
+      go('find')
+      if (g.misses >= 2) put(bs => bs.map(x => (x.word === t.word && !x.gone ? { ...x, help: true, thing: 'help' } : x)))
+      // "Hm, noch nicht." and the wanted word again (read aloud in the reading levels)
+      sayWrong(null, { onEnd: () => later(150, () => { if (g.target === t && g.phase === 'find') say() }) })
+    }, 1150)
+  }
+
+  // the end of a shuffle: the others hop out, here we were!
+  const showAll = () => {
+    go('show')
+    const rest = g.bushes.filter(b => !b.gone)
+    rest.forEach((b, i) => later(i * 130, () => { patch(b.id, { thing: 'wave' }); rustle(b.id) }))
+    g.pace = g.missedHere ? Math.min(1.35, g.pace + 0.12) : Math.max(0.8, g.pace - 0.05)
+    later(1500 + rest.length * 130, () => {
+      put(bs => bs.map(b => ({ ...b, thing: b.gone ? 'gone' : 'leave' })))
+      if (rest.length) sfx.slideUp()
+      later(600, () => (g.k + 1 < cfg.shuffles ? startShuffle(g.k + 1) : finale()))
+    })
+  }
+
+  const finale = () => {
+    go('finale')
+    g.target = null
+    setTarget(null)
+    setMood('dance', 3400)
+    sfx.tada()
+    put(bs => bs.map(b => ({ ...b, gone: false, thing: 'gone', help: false })))
+    later(200, () => g.bushes.forEach(b => rustle(b.id, true)))
+    later(300, () => burst(ringEls.current[Math.floor(total / 2)], 'confetti', 26))
+    later(1300, () => { sfx.sparkle(); burst(bushEls.current[g.bushes[0]?.id], 'stars', 12) })
+    later(3000, () => {
+      if (g.done) return
+      g.done = true
+      sfx.complete()
+      onComplete(result(g.firstTry, total))
+    })
+  }
+
+  // the first shuffle, once the field has its size
+  useEffect(() => {
+    if (!size || g.started) return
+    g.started = true
+    later(400, () => startShuffle(0))
+  }, [size]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── The picture ────────────────────────────────────────────────────────
+
+  const calling = !!target && (phase === 'find' || phase === 'oops' || phase === 'found')
+  const looking = phase === 'drop' || phase === 'hide' || phase === 'shuffle'
+  const helpBush = bushes.find(b => b.help && !b.gone)
+  helpRef.current = helpBush ? bushEls.current[helpBush.id] ?? null : null
+  const firstCall = g.k === 0 && g.call === 0
+
+  let bubble = null
+  if (L) {
+    const bs = L.bubble.size
+    if (looking) {
+      bubble = (
+        <Bubble L={L} k="look">
+          <motion.div animate={reduce ? {} : { scaleY: [1, 1, 0.15, 1, 1] }} transition={{ duration: 2.6, times: [0, 0.8, 0.85, 0.9, 1], repeat: Infinity }}>
+            <Art art="👀" size={bs * 0.62} />
+          </motion.div>
+        </Bubble>
+      )
+    } else if (phase === 'drum') {
+      bubble = (
+        <Bubble L={L} k="drum">
+          <motion.div animate={reduce ? {} : { y: [0, -4, 0], rotate: [0, -6, 6, 0] }} transition={{ duration: 0.18, repeat: Infinity }}>
+            <Art art="🥁" size={bs * 0.62} />
+          </motion.div>
+        </Bubble>
+      )
+    } else if (calling && cfg.read) {
+      // the word as big as it fits, next to its picture once it is found
+      const picS = clamp(bs * 0.55, 48, 80)
+      const fs = Math.max(20, Math.min(clamp(bs * 0.36, 28, 50), (L.bubble.maxW - 52 - (phase === 'found' ? picS + 8 : 0)) / (0.64 * target.word.length + 0.5)))
+      bubble = (
+        <Bubble L={L} k={`sign-${target.word}`} wood>
+          <motion.button type="button" ref={speakerRef} onClick={say} aria-label={misses ? `${target.word}. Vorlesen` : target.word}
+            key={signPulse} initial={signPulse && !reduce ? { scale: 1.12 } : false} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 10 }}
+            style={{
+              all: 'unset', cursor: misses ? 'pointer' : 'default', minHeight: 64, minWidth: 64, boxSizing: 'border-box', padding: '4px 14px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff3d6', border: '3px solid #2a1b3d', borderRadius: 10,
+              fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: fs, color: '#2a1b3d', letterSpacing: 1, whiteSpace: 'nowrap',
+            }}>{target.word}</motion.button>
+          {phase === 'found' && <Art art={target.emoji} size={picS} />}
+        </Bubble>
+      )
+    } else if (calling) {
+      // the loudspeaker and the picture beside it, as big as the bubble allows
+      const sp = clamp(bs * 0.6, 64, 84)
+      const picC = Math.max(44, Math.min(clamp(bs * 0.62, 56, 96), L.bubble.maxW - 24 - 8 - sp))
+      bubble = (
+        <Bubble L={L} k="call">
+          <Speaker size={sp} onTap={say} pulse={phase === 'find' && !reduce} btnRef={speakerRef} />
+          {pic && (
+            <motion.div key={target.word} initial={reduce ? false : { scale: 0, rotate: -30 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 360, damping: 13 }}>
+              <Art art={target.emoji} size={picC} />
+            </motion.div>
+          )}
+        </Bubble>
+      )
+    }
+  }
 
   return (
-    <div style={{
-      flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-evenly',
-      padding: 'clamp(10px,2vw,24px) clamp(12px,3vw,32px)', gap: 'clamp(8px,1.5vh,16px)',
-    }}>
-      <RoundTrail total={rounds.length} done={idx + (done ? 1 : 0)} walker="lumi" goal="🎁" style={{ width: 'calc(100% - 80px)', maxWidth: 560 }} />
+    <div ref={juice.stage} data-game="huetchen" data-phase={phase} data-target={target?.word ?? ''} data-misses={misses}
+      style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <div ref={fieldRef} style={{ position: 'relative', flex: 1, minHeight: 0, overflow: 'hidden', userSelect: 'none', WebkitUserSelect: 'none' }}>
+        {L && (
+          <>
+            {/* the row of finds, and the stars */}
+            <div aria-hidden="true" style={{
+              position: 'absolute', left: L.strip.x, top: L.strip.y, width: L.strip.w, height: L.strip.h, boxSizing: 'border-box',
+              background: 'rgba(255,253,247,0.55)', border: '3px solid rgba(42,27,61,0.25)', borderRadius: L.strip.h / 2,
+            }} />
+            <Rings L={L} found={found} finale={phase === 'finale'} reduce={reduce} setEl={(k, el) => { ringEls.current[k] = el }} />
+            <div style={{ position: 'absolute', right: L.strip.x + 4, top: L.strip.y + L.strip.h / 2, transform: 'translateY(-50%)', zIndex: 4 }}>{juice.hud}</div>
 
-      {/* Lumi is the seeker: calls the word, or shows what to find */}
-      <div style={{ position: 'relative', alignSelf: 'flex-start', marginLeft: 'clamp(8px,8vw,120px)', marginTop: 90 }}>
-        <Critter art="lumi" size={108} talks mood={lumiMood} label="Lumi"
-          accessory={<Art art="🔍" size={46} style={{ position: 'absolute', right: -14, bottom: 6, transform: 'rotate(-15deg)' }} />} />
-        <Wish side="right" size={108}>
-          <motion.div key={idx} initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', stiffness: 320, damping: 15 }}
-            style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {looking
-              ? <motion.div animate={reduceMotion() ? {} : { scale: [1, 1.12, 1] }} transition={{ duration: 0.9, repeat: Infinity }}><Art art="👀" size={72} /></motion.div>
-              : (!heard || tried.length > 0) && <Art art={current.emoji} size={heard ? 60 : 84} />}
-            {memory && !looking && <span aria-hidden="true" style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 40, color: '#6b3fd6' }}>?</span>}
-            {/* reading levels are marked as such: a book */}
-            {isReading && <Art art="📖" size={44} />}
-            {voiced && (
-              <motion.button
-                whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.92 }}
-                onClick={sayTask}
-                animate={!done && !speaking && !reduceMotion() ? { scale: [1, 1.07, 1] } : { scale: 1 }}
-                transition={{ duration: 1.4, repeat: Infinity }}
-                aria-label={isReading ? 'Aufgabe noch einmal anhören' : 'Wort anhören'}
-                style={{ ...pxButton('gold'), width: 64, height: 64, padding: 0, fontSize: 30, lineHeight: 1 }}
-              >🔊</motion.button>
+            {/* on a tall screen the meadow comes up to the raised bushes */}
+            {L.meadow != null && (
+              <div aria-hidden="true" style={{
+                position: 'absolute', left: 0, right: 0, top: L.meadow, bottom: 0,
+                background: 'linear-gradient(#6cb352, #5c9e45 48px)', borderTop: '4px solid rgba(42,27,61,0.16)',
+              }} />
             )}
-          </motion.div>
-        </Wish>
-      </div>
+            <Stump s={L.stump} />
+            <div style={{ position: 'absolute', left: L.lumi.x, top: L.lumi.y, zIndex: 6 }}>
+              <Critter art="lumi" size={L.lumi.s} mood={mood} talks label="Lumi" shadow={!L.stump} />
+            </div>
+            {bubble}
 
-      {/* The bushes */}
-      <div ref={rowRef} style={{
-        // two rows on a phone: room above the lower bushes for what hops out
-        display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'flex-end',
-        columnGap: 16, rowGap: 60, width: '100%', maxWidth: 760,
-      }}>
-        {round.options.map((opt, i) => {
-          const isAns = opt.word === current.word
-          const state = finale ? 'out'
-            : (done && isAns) ? 'out'
-            : tried.includes(opt.word) ? 'tried'
-            : looking && !tucked.includes(opt.word) ? 'show'
-            : (done || leaving || isReading || hideFirst) ? 'hide' : 'peek'
-          return (
-            <HideBush key={`${idx}-${opt.word}`} gapRef={i === 0 ? gapRef : null}
-              tapRef={looking && opt.word === round.options.find(o => !tucked.includes(o.word))?.word ? hideRef : null}
-              cheeky={searching && cheeky?.at === i ? cheeky.n : 0} i={i} n={round.options.length} item={opt} state={state} sign={isReading ? opt.word : null}
-              disabled={done || tried.includes(opt.word) || (looking && tucked.includes(opt.word))} bird={isAns && round.bird} party={isAns && party}
-              label={isReading ? opt.word : `Busch ${i + 1}`}
-              onTap={el => pick(opt, el)} />
-          )
-        })}
-      </div>
-      {/* show phase: the hand taps a thing to hide it; then it taps between the bushes */}
-      <HintHand key={looking ? 'hide' : 'find'} to={looking ? hideRef : gapRef} active={!done && !leaving && !finale} delay={looking ? (idx === 0 ? 1200 : 3000) : hintDelay(idx)} />
-      {bursts}
-    </div>
-  )
-}
+            {bushes.map(b => (
+              <Bush key={b.id} L={L} b={b} reduce={reduce}
+                mode={phase === 'drum' ? 'drum' : phase === 'find' ? 'find' : 'still'}
+                setEl={el => { bushEls.current[b.id] = el }}
+                onTap={tap} />
+            ))}
+            {arrows && <SwapArrows L={L} a={arrows.a} b={arrows.b} />}
 
-/**
- * A bush with something hiding behind it. state: peek (the top shows and
- * bobs), show (all of it out, waving: look at me!), hide (all of it behind
- * the leaves), out (hops out and cheers), tried (a wrong guess: it shows
- * itself and shrugs). `cheeky` (a counter): the squirrel pokes out once.
- */
-function HideBush({ gapRef, tapRef, cheeky, i, n, item, state, sign, disabled, bird, party, label, onTap }) {
-  // on a phone four bushes stand two by two, so none gets too small to hit
-  const narrow = typeof window !== 'undefined' && window.innerWidth < 600
-  const width = narrow && n !== 3 ? 'calc(50% - 8px)' : `calc((100% - ${(n - 1) * 16}px) / ${n})`
-  const still = reduceMotion()
-  // in parts of the thing's own height: how far it is out of the bush
-  const y = { hide: '15%', peek: '-62%', show: '-95%', out: '-95%', tried: '-92%' }[state]
-  const thing = still ? { y, opacity: state === 'tried' ? 0.6 : 1 }
-    : state === 'out' && party ? { y: ['-62%', '-160%', y, '-125%', y, '-125%', y], rotate: [0, 0, 360, 345, 375, 345, 360], scale: [1, 1.25, 1.12, 1.18, 1.12, 1.18, 1.12], opacity: 1 }
-    : state === 'out' ? { y: ['-62%', '-160%', y], rotate: [0, 0, 360], scale: [1, 1.25, 1.12], opacity: 1 }
-    : state === 'tried' ? { y, rotate: [0, -12, 12, -8, 0], scale: 0.92, opacity: 0.6 }
-    : state === 'peek' ? { y: [y, '-70%', y], rotate: 0, scale: 1, opacity: 1 }
-    : state === 'show' ? { y, rotate: [0, -6, 6, 0], scale: 1, opacity: 1 }
-    : { y, rotate: 0, scale: 0.75, opacity: 1 }
-  const tt = state === 'out' ? { duration: party ? 1.8 : 0.9, ease: 'easeOut' }
-    : state === 'peek' ? { duration: 1.8 + (i % 3) * 0.4, repeat: Infinity, delay: 0.3 + i * 0.12 }
-    : state === 'show' ? { type: 'spring', stiffness: 260, damping: 16, delay: i * 0.08, rotate: { duration: 1.4, repeat: Infinity, delay: 0.5 + i * 0.15 } }
-    : { type: 'spring', stiffness: 260, damping: 16, rotate: { duration: 0.6 } }
-
-  return (
-    <motion.button type="button" aria-label={label} disabled={disabled}
-      onClick={e => { sfx.pop(); onTap(e.currentTarget) }}
-      whileTap={disabled || still ? undefined : { rotate: [0, -4, 4, -2, 0], scale: 0.97 }}
-      style={{
-        all: 'unset', position: 'relative', width, maxWidth: 168, minWidth: 96, aspectRatio: '168 / 230',
-        cursor: disabled ? 'default' : 'pointer', WebkitTapHighlightColor: 'transparent',
-      }}>
-      {/* between the first bush and the next: the hint hand taps here, never on one answer */}
-      {gapRef && <span ref={gapRef} aria-hidden="true" style={{ position: 'absolute', right: -9, bottom: '30%', width: 2, height: 2 }} />}
-      {tapRef && <span ref={tapRef} aria-hidden="true" style={{ position: 'absolute', left: '50%', top: '10%', width: 2, height: 2 }} />}
-      {/* the cheeky squirrel, out of the side of the bush */}
-      {cheeky > 0 && (
-        <motion.div key={cheeky} aria-hidden="true" initial={{ y: 30, opacity: 0, rotate: 0 }}
-          animate={{ y: [30, -18, -18, -18, 30], opacity: [0, 1, 1, 1, 0], rotate: [0, -12, 10, -12, 0] }}
-          transition={{ duration: 1.6, times: [0, 0.2, 0.5, 0.8, 1] }}
-          onAnimationStart={() => sfx.giggle()}
-          style={{ position: 'absolute', right: '-4%', top: '22%', width: '34%', zIndex: 0, pointerEvents: 'none' }}>
-          <Art art="🐿️" size={60} style={{ width: '100%', height: 'auto' }} />
-          <motion.span animate={{ scaleY: [0, 0, 1, 1, 0] }} transition={{ duration: 1.6, times: [0, 0.25, 0.35, 0.75, 0.85] }}
-            style={{ position: 'absolute', left: '30%', top: '58%', width: 10, height: 12, borderRadius: '0 0 6px 6px', background: '#ff7a9a', border: `2px solid ${INK}`, borderTop: 'none', transformOrigin: '50% 0' }} />
-        </motion.div>
-      )}
-      {/* the thing, behind the leaves */}
-      <motion.div initial={{ y: '15%' }} animate={thing} transition={tt}
-        style={{ position: 'absolute', left: '18%', width: '64%', bottom: '14%', aspectRatio: '1', display: 'flex', justifyContent: 'center' }}>
-        <Art art={item.emoji} size={110} style={{ width: '100%', height: '100%' }} />
-        {state === 'out' && bird && !still && (
-          <motion.div initial={{ x: 0, y: 30, opacity: 1 }} animate={{ x: 260, y: -260, opacity: [1, 1, 0] }} transition={{ duration: 1.4, delay: 0.3 }}
-            style={{ position: 'absolute', left: '30%', top: '30%' }} onAnimationStart={() => sfx.whoosh()}>
-            <Art art="🐦" size={48} />
-          </motion.div>
+            {/* found things on their way to the row */}
+            {flyers.map(f => {
+              const to = L.rings[f.k]
+              const s = L.T, x0 = f.from.x - s / 2, y0 = f.from.y - s / 2, x1 = to.x - s / 2, y1 = to.y - s / 2
+              return (
+                <motion.div key={f.id} aria-hidden="true"
+                  initial={{ x: x0, y: y0, scale: 1.15, rotate: 0 }}
+                  animate={{ x: [x0, (x0 + x1) / 2, x1], y: [y0, Math.min(y0, y1) - 50, y1], scale: [1.15, 1, (L.ring * 0.82) / s], rotate: [0, -20, 0] }}
+                  transition={{ duration: reduce ? 0.01 : 0.8, times: [0, 0.45, 1], ease: 'easeInOut' }}
+                  onAnimationComplete={() => landed(f)}
+                  style={{ position: 'absolute', left: 0, top: 0, width: s, height: s, zIndex: 9, pointerEvents: 'none' }}>
+                  <Art art={f.emoji} size={s} />
+                </motion.div>
+              )
+            })}
+          </>
         )}
-      </motion.div>
-      {/* the bush */}
-      <motion.svg viewBox="0 0 168 150" aria-hidden="true"
-        animate={state === 'out' || state === 'tried' ? { rotate: [0, -3, 3, -2, 0], scaleY: [1, 0.94, 1.03, 1] } : {}}
-        transition={{ duration: 0.5 }}
-        style={{ position: 'absolute', left: 0, bottom: 0, width: '100%', height: 'auto', overflow: 'visible', transformOrigin: '50% 100%' }}>
-        <g stroke={INK} strokeWidth="4">
-          <ellipse cx="84" cy="140" rx="78" ry="10" fill="rgba(42,27,61,0.18)" stroke="none" />
-          <circle cx="40" cy="98" r="38" fill="#3f9a4a" />
-          <circle cx="128" cy="98" r="38" fill="#3f9a4a" />
-          <circle cx="84" cy="70" r="46" fill="#4caf55" />
-          <circle cx="58" cy="60" r="30" fill="#4caf55" />
-          <circle cx="112" cy="62" r="30" fill="#4caf55" />
-          <rect x="10" y="100" width="148" height="40" rx="20" fill="#3f9a4a" />
-        </g>
-        {/* inner parts without outline, so the blobs read as one bush */}
-        <circle cx="40" cy="98" r="35" fill="#3f9a4a" />
-        <circle cx="128" cy="98" r="35" fill="#3f9a4a" />
-        <rect x="13" y="103" width="142" height="34" rx="17" fill="#3f9a4a" />
-        <circle cx="84" cy="72" r="43" fill="#4caf55" />
-        <circle cx="58" cy="62" r="27" fill="#4caf55" />
-        <circle cx="112" cy="64" r="27" fill="#4caf55" />
-        <path d="M44 56 q10 -10 22 -4 M98 40 q12 -8 22 2 M30 96 q8 -8 18 -2 M118 98 q8 -8 18 -2" stroke="#7fd07e" strokeWidth="5" fill="none" strokeLinecap="round" />
-        {[[52, 88], [118, 76], [84, 112], [140, 116]].map(([x, yy]) => <circle key={x} cx={x} cy={yy} r="6" fill="#ff6b8a" stroke={INK} strokeWidth="2.5" />)}
-      </motion.svg>
-      {/* reading levels: a sign in front */}
-      {sign && (
-        <div style={{
-          position: 'absolute', left: '50%', bottom: '3%', transform: 'translateX(-50%) rotate(-2deg)', maxWidth: '108%',
-          background: '#e9b872', border: `3px solid ${INK}`, borderRadius: 8, boxShadow: '0 4px 0 rgba(42,27,61,0.3)',
-          padding: '4px 10px', fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 'clamp(15px,2.6vw,22px)', color: INK,
-          whiteSpace: 'nowrap',
-        }}>{sign}</div>
-      )}
-    </motion.button>
+      </div>
+
+      {/* a child who waits: the hand shows the loudspeaker, to hear the word
+          again (not the sign in the reading levels: that is to be read);
+          after two misses it points at the right bush.
+          (A hand between two bushes, to say "tap a bush", looked like it
+          pointed at one of them: a hint at a guess.) */}
+      <HintHand key={`say-${g.k}-${g.call}`} to={speakerRef} active={phase === 'find' && misses === 0 && !cfg.read} delay={firstCall && level <= 2 ? 5000 : 8000} />
+      <HintHand key={`help-${g.k}-${g.call}`} to={helpRef} active={phase === 'find' && misses >= 2 && !!helpBush} delay={600} />
+      {bursts}
+      {juice.layer}
+    </div>
   )
 }

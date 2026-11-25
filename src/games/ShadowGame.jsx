@@ -1,733 +1,962 @@
-import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Art, DragArea, Draggable, DropZone, HintHand, useBursts, useIdle } from '../components/play/index.js'
-import { sfx } from '../sfx.js'
-import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
-import { usePaused } from '../lib/pause.js'
-import { useSceneClear } from './sceneSpace.js'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { motion, AnimatePresence, useAnimationFrame, useReducedMotion } from 'framer-motion'
+import { narrate, leaveGame, lockPreviews } from '../narrator.js'
+import { LINES, line } from '../lib/lumiLines.js'
+import { sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
-import { pxCard, pxButton, INK } from './px.js'
+import { sfx } from '../sfx.js'
+import { playAnimal } from '../lib/animalSounds.js'
+import { Art, useBursts, useJuice, HintHand } from '../components/play/index.js'
+import { useLater } from './zahlen/stage.jsx'
+import { pxCard } from './px.js'
+import { THINGS, CAT, planLevel, levelConfig, tasksIn, tiltOf, glints } from './schatten/data.js'
+import { layoutFor } from './schatten/layout.js'
+import { makeRoom, spawn, step, flee, gait, inLight, lookOf, floorOf, placeApart, tapTarget, inBeam, nextFocus, settleFocus, torchCatches, lampDrop, lampSize } from './schatten/sim.js'
+import { Backdrop, Furniture, hidesOf } from './schatten/Room.jsx'
+import { Garland, Eyes, CeilingLamp, Bunting, Joker, slotAt } from './schatten/parts.jsx'
+import { gasp, lampOn, wakeSound } from './schatten/sound.js'
 
 /**
- * Schattenrätsel — Visuelle Wahrnehmung & Kategorisierung
- * Scientific basis:
- *   • Visual Perception Development (Gibson, 1969) — recognizing silhouettes trains
- *     figure-ground discrimination, a core pre-reading skill.
- *   • Object Recognition (Biederman, 1987, Recognition by Components) — matching
- *     shadows to objects strengthens categorical shape perception in the brain.
- *   • Stimulating the "what pathway" in the visual cortex helps children map 2D → 3D
- *     representations, critical for geometry and spatial understanding.
+ * Schattenrätsel — "Taschenlampen-Jagd": recognising things by their outline
  *
- * Mechanic: something hides in a dark room. The child shines a torch over it
- * (finger or mouse; on a touch screen the light sits just above the finger,
- * so the finger does not cover it), and the hidden thing giggles when the
- * light first touches it (now and then a cat's eyes glow in a corner, and
- * the light finds the cat instead). Then the child drags the matching picture
- * into the room (or just taps it). A right one switches the light on: the
- * room turns colourful, the thing waves hello, and it hangs a lit bulb with
- * its picture on the garland of friends above the room. A wrong one bounces
- * back and the shadow shakes its head. The 💡 joker flashes the light on for
- * a moment. Higher levels get a narrower beam and a tilted shadow.
+ * A dark room. Several shadows creep, scurry, roll and flutter about in it
+ * (three at first, five at the top); in the dark only their eyes glow now
+ * and then. The child shines a torch into the room (the light follows the
+ * finger and sits just above it on a touch screen, or follows the mouse).
+ * In the light a thing shows only as a black outline. A shadow caught in
+ * the light gasps, freezes and trembles, and it stays softly lit and still
+ * for a few seconds after the light has moved on, so one finger can go and
+ * fetch a card.
  *
- * Nothing needs words: a hand shows how to sweep the torch and how to drag a
- * picture in when a child waits, and the fact under the found thing is for a
- * grown-up to read aloud.
+ * The cards below show the things in colour. Drag a card onto a lit
+ * shadow, or just tap the card: it flies to the focus, the lit shadow the
+ * child pointed the torch at or touched last (it wears a bright rim, the
+ * other lit ones are dimmer), never to the one it happens to fit
+ * (schatten/sim.js nextFocus, tapTarget).
+ *   • Right: a lamp comes down over it and clicks on, the thing turns
+ *     colourful, Lumi says its name, it waves and climbs up the cord onto
+ *     the garland of friends above the room (a star flies to the counter).
+ *   • Wrong: the card's own outline shows white over the shadow for a
+ *     moment (two outlines that do not fit), the shadow shakes its head and the card flies back.
+ *     After two wrong cards on one shadow it stays lit and the hand shows
+ *     the right card.
+ * Every shadow found, the whole room lights up and its friends come down
+ * from the garland and dance. Then the next room (three or four per level:
+ * nursery, kitchen, living room, attic, barn).
  *
- * This game sizes itself (it is not put into the scaling frame, the torch needs real
- * pointer coordinates): the room takes whatever height is left, so the answers stay
- * on screen.
+ * The cat with the glowing yellow eyes is a joke: it has no card; caught by
+ * the light it meows and runs out of the room. The 💡 joker lights the
+ * whole room for a moment, once a room.
+ *
+ * Levels (schatten/data.js): more shadows and more cards than shadows, a
+ * narrower light, look-alikes (dog, wolf and fox; apple, pear and tomato),
+ * shadows that stay mirrored and then tipped over when caught, quicker
+ * movement, fewer glowing eyes. Score: shadows matched with the first card.
+ *
+ * Game feel: the play kit's useJuice (a note and a star per match, the
+ * streak and its flame); the light, the dust in it and the darkness are a
+ * canvas drawn by the game's clock, the shadows move without React renders.
  */
 
-// Every decoy has a clearly different outline from the answer. In a shadow
-// colour and pattern are gone, so a zebra was a horse, a panda a bear and a
-// small plane a plane: a child who read the shadow correctly was told it was
-// wrong. Animals are full-body pictures where possible (a face is a round
-// blob in silhouette). Facts are short, true, and without numbers a child of
-// five cannot picture; `see` is the fact as a picture, for children who
-// cannot read it (the elephant thinks of a shower, the bee of honey).
-const CHALLENGES = [
-  // Tiere
-  { shadow: '🐘', name: 'Elefant',        see: '🚿', decoys: ['🐪','🦘','🐢'], fact: 'Mit seinem langen Rüssel kann der Elefant trinken und duschen!' },
-  { shadow: '🐪', name: 'Kamel',          see: '💧', decoys: ['🐘','🐢','🐍'], fact: 'Das Kamel kann viele Tage ohne Wasser auskommen!' },
-  { shadow: '🐎', name: 'Pferd',          see: '💤', decoys: ['🐢','🦘','🐿️'], fact: 'Pferde können sogar im Stehen schlafen!' },
-  { shadow: '🦘', name: 'Känguru',        see: '🍼', decoys: ['🐘','🐢','🐊'], fact: 'Das Känguru-Baby wohnt im Beutel seiner Mama!' },
-  { shadow: '🐇', name: 'Hase',           see: '🥕', decoys: ['🐢','🦔','🐌'], fact: 'Hasen haben lange Ohren und hören sehr gut!' },
-  { shadow: '🐿️', name: 'Eichhörnchen',   see: '🌰', decoys: ['🦔','🐢','🐌'], fact: 'Eichhörnchen verstecken im Herbst Nüsse für den Winter!' },
-  { shadow: '🦔', name: 'Igel',           see: '🍂', decoys: ['🐿️','🐇','🐊'], fact: 'Bei Gefahr rollt sich der Igel zu einer stacheligen Kugel zusammen!' },
-  { shadow: '🐢', name: 'Schildkröte',    see: '🏠', decoys: ['🐊','🐇','🐍'], fact: 'Die Schildkröte trägt ihren Panzer immer mit sich herum!' },
-  { shadow: '🐊', name: 'Krokodil',       see: '🦕', decoys: ['🐢','🐍','🐘'], fact: 'Krokodile gibt es schon seit der Zeit der Dinosaurier!' },
-  { shadow: '🐍', name: 'Schlange',      decoys: ['🐊','🐌','🐢'], fact: 'Schlangen haben keine Beine und schlängeln sich vorwärts!' },
-  { shadow: '🦕', name: 'Dinosaurier',    see: '🥚', decoys: ['🐊','🐘','🐢'], fact: 'Dinosaurier lebten vor sehr, sehr langer Zeit!' },
-  { shadow: '🦈', name: 'Hai',            see: '🦷', decoys: ['🐙','🦀','🐢'], fact: 'Haie verlieren ständig Zähne, und es wachsen immer neue nach!' },
-  { shadow: '🐬', name: 'Delfin',         see: '🌊', decoys: ['🐳','🦀','🐙'], fact: 'Delfine sind sehr klug und schwimmen sehr schnell!' },
-  { shadow: '🐳', name: 'Wal',            see: '💧', decoys: ['🐙','🦀','🐢'], fact: 'Wale sind die größten Tiere der Welt!' },
-  { shadow: '🦀', name: 'Krabbe',         see: '🏖️', decoys: ['🐙','🐌','🐢'], fact: 'Krabben laufen seitwärts!' },
-  { shadow: '🐙', name: 'Krake',          see: '🌊', decoys: ['🦀','🐌','🐢'], fact: 'Eine Krake hat acht Arme!' },
-  { shadow: '🦋', name: 'Schmetterling',  see: '🐛', decoys: ['🐝','🐌','🐢'], fact: 'Bevor er fliegen kann, ist der Schmetterling eine Raupe!' },
-  { shadow: '🐝', name: 'Biene',          see: '🍯', decoys: ['🦋','🐌','🐢'], fact: 'Bienen machen Honig und bestäuben Blumen!' },
-  { shadow: '🐌', name: 'Schnecke',       see: '🏠', decoys: ['🦋','🐍','🐇'], fact: 'Schnecken kriechen ganz langsam und tragen ihr Haus auf dem Rücken!' },
-  { shadow: '🐧', name: 'Pinguin',        see: '🧊', decoys: ['🦢','🐓','🦜'], fact: 'Pinguine können nicht fliegen, aber super schwimmen!' },
-  { shadow: '🦢', name: 'Schwan',         see: '🌊', decoys: ['🐧','🐓','🦜'], fact: 'Schwäne haben einen langen, gebogenen Hals!' },
-  { shadow: '🐓', name: 'Hahn',           see: '☀️', decoys: ['🐧','🦢','🐿️'], fact: 'Der Hahn kräht am Morgen: Kikeriki!' },
-  { shadow: '🦜', name: 'Papagei',        see: '🗣️', decoys: ['🐧','🦢','🦋'], fact: 'Papageien können Wörter nachsprechen!' },
-  { shadow: '🦅', name: 'Adler',          see: '👀', decoys: ['🐧','🦢','🐓'], fact: 'Adler sehen ganz weit, viel weiter als wir!' },
-  { shadow: '🐅', name: 'Tiger',          see: '🐱', decoys: ['🐘','🦘','🐢'], fact: 'Tiger sind die größten Katzen der Welt!' },
-  { shadow: '🐒', name: 'Affe',           see: '🌳', decoys: ['🐘','🐢','🐊'], fact: 'Affen klettern geschickt von Baum zu Baum!' },
-  { shadow: '🦏', name: 'Nashorn',       decoys: ['🐇','🐢','🐊'], fact: 'Das Nashorn hat ein Horn auf der Nase!' },
-  // Fahrzeuge
-  { shadow: '🚀', name: 'Rakete',         see: '🌙', decoys: ['🚁','🚲','⛵'], fact: 'Raketen fliegen bis ins Weltall!' },
-  { shadow: '✈️', name: 'Flugzeug',       see: '☁️', decoys: ['🚀','🚁','🚲'], fact: 'Flugzeuge fliegen hoch über den Wolken!' },
-  { shadow: '🚁', name: 'Hubschrauber',   see: '🌀', decoys: ['🚀','⛵','🚲'], fact: 'Hubschrauber können auf der Stelle fliegen!' },
-  { shadow: '🚂', name: 'Lokomotive',     see: '💨', decoys: ['🚁','🚲','⛵'], fact: 'Früher fuhren Lokomotiven mit Dampf: tschu-tschu!' },
-  { shadow: '⛵', name: 'Segelboot',      see: '🌬️', decoys: ['🚂','🚲','🚁'], fact: 'Ein Segelboot fährt mit der Kraft des Windes!' },
-  { shadow: '🚲', name: 'Fahrrad',        see: '🦶', decoys: ['🛴','🚁','⛵'], fact: 'Beim Fahrradfahren trittst du in die Pedale!' },
-  { shadow: '🛴', name: 'Roller',         see: '🦶', decoys: ['🚲','🚁','⛵'], fact: 'Mit dem Roller stößt du dich mit einem Fuß ab!' },
-  { shadow: '🚜', name: 'Traktor',        see: '🌾', decoys: ['🚲','⛵','🚁'], fact: 'Der Traktor zieht schwere Sachen auf dem Bauernhof!' },
-  // Natur
-  { shadow: '🌵', name: 'Kaktus',         see: '☀️', decoys: ['🌴','🍄','🏠'], fact: 'Kakteen speichern Wasser in der Wüste!' },
-  { shadow: '🍄', name: 'Pilz',           see: '🌳', decoys: ['🌵','🌴','🌲'], fact: 'Manche Pilze sind giftig, darum nie einfach einen essen!' },
-  { shadow: '🌴', name: 'Palme',          see: '🥥', decoys: ['🌲','🌵','🍄'], fact: 'Palmen wachsen in warmen Ländern!' },
-  { shadow: '🌲', name: 'Tanne',          see: '❄️', decoys: ['🌴','🍄','🌵'], fact: 'Die Tanne bleibt auch im Winter grün!' },
-  { shadow: '🌋', name: 'Vulkan',         see: '🔥', decoys: ['🍄','🏠','🌴'], fact: 'Ein Vulkan kann sehr heiße Lava ausspucken!' },
-  // Gebäude
-  { shadow: '⛺', name: 'Zelt',           see: '🌙', decoys: ['🏰','🗼','🌴'], fact: 'Im Zelt schläft man draußen in der Natur!' },
-  { shadow: '🏰', name: 'Schloss',        see: '👑', decoys: ['🏠','⛺','🗼'], fact: 'In einem Schloss wohnten früher Könige und Königinnen!' },
-  { shadow: '🗼', name: 'Turm',           see: '👀', decoys: ['🏠','🏰','⛺'], fact: 'Von einem hohen Turm kann man ganz weit schauen!' },
-  // Instrumente
-  { shadow: '🎸', name: 'Gitarre',        see: '🎵', decoys: ['🎺','🥁','☂️'], fact: 'Eine Gitarre hat Saiten, an denen man zupft!' },
-  { shadow: '🎺', name: 'Trompete',       see: '🎵', decoys: ['🎸','🥁','✂️'], fact: 'Die Trompete klingt sehr hell und laut!' },
-  { shadow: '🎻', name: 'Geige',          see: '🎵', decoys: ['🎺','🥁','🔑'], fact: 'Die Geige spielt man mit einem Bogen!' },
-  { shadow: '🥁', name: 'Trommel',        see: '🎵', decoys: ['🎸','🎺','🎻'], fact: 'Auf einer Trommel kann man laut und leise spielen!' },
-  // Dinge
-  { shadow: '🔭', name: 'Fernrohr',       see: '⭐', decoys: ['🔑','✂️','☂️'], fact: 'Mit einem Fernrohr kann man die Sterne sehen!' },
-  { shadow: '☂️', name: 'Regenschirm',    see: '🌧️', decoys: ['🔑','✂️','🎸'], fact: 'Der Regenschirm hält dich bei Regen trocken!' },
-  { shadow: '🔑', name: 'Schlüssel',      see: '🚪', decoys: ['✂️','☂️','🔭'], fact: 'Mit einem Schlüssel schließt man die Tür auf!' },
-  { shadow: '✂️', name: 'Schere',        decoys: ['🔑','☂️','🎺'], fact: 'Mit einer Schere schneidet man Papier!' },
-  { shadow: '⚓', name: 'Anker',          see: '🚢', decoys: ['🔑','✂️','☂️'], fact: 'Der Anker hält das Schiff fest!' },
-  { shadow: '🪁', name: 'Drachen',        see: '🌬️', decoys: ['🎈','☂️','⛵'], fact: 'Im Herbst lässt man Drachen im Wind steigen!' },
-  { shadow: '🎈', name: 'Luftballon',    decoys: ['🪁','☂️','⚓'], fact: 'Ein Luftballon mit Gas fliegt nach oben!' },
-  // Obst und Gemüse
-  { shadow: '🍌', name: 'Banane',         see: '🐒', decoys: ['🍎','🍐','🍦'], fact: 'Bananen wachsen in warmen Ländern!' },
-  { shadow: '🍐', name: 'Birne',          see: '🌳', decoys: ['🍌','🥕','🍦'], fact: 'Eine Birne ist unten dick und oben schmal!' },
-  { shadow: '🥕', name: 'Möhre',          see: '🐇', decoys: ['🍌','🍐','🍎'], fact: 'Möhren wachsen unter der Erde!' },
-]
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
+const optional = key => (LINES[key] ? line(key) : null)
+const wordOf = e => optional(THINGS[e]?.say) ?? optional(THINGS[e]?.word)
+const nameOf = e => THINGS[e]?.name ?? 'Katze'
+// the focus: a bright rim round its black outline (the shape stays the one to read)
+const FOCUS_RIM = 'brightness(0) drop-shadow(0 0 2px #fff6c0) drop-shadow(0 0 2px #fff6c0) drop-shadow(0 0 9px #ffc93c)'
+let seq = 0
 
-function shuffle(a) { return [...a].sort(() => Math.random() - 0.5) }
+// The dust in the light: specks in a unit circle, drifting
+const DUST = Array.from({ length: 28 }, () => {
+  const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random())
+  return { x: Math.cos(a) * r, y: Math.sin(a) * r, vx: (Math.random() - 0.5) * 0.08, vy: -0.03 - Math.random() * 0.07, s: 0.8 + Math.random() * 1.6 }
+})
 
-const BULBS = ['#ffc93c', '#ff6b5b', '#4aa3ff', '#3fc1a8', '#5cc45a', '#ff8fb8', '#b98cff']
-// The room with the light on: striped wallpaper, a warm glow from the lamp, a floor
-const ROOM_LIT = [
-  'radial-gradient(ellipse at 50% 4%, rgba(255,250,215,0.95), rgba(255,250,215,0) 58%)',
-  'linear-gradient(to top, #c98a52 0 13%, #8a4f22 13% 14%, transparent 14%)',
-  'repeating-linear-gradient(90deg, #ffe3f1 0 34px, #d9f1ff 34px 68px, #fff2c2 68px 102px)',
-].join(', ')
-const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+export default function ShadowGame({ level = 1, onComplete }) {
+  const [plan] = useState(() => planLevel(level))
+  const cfg = levelConfig(level)
+  const total = useMemo(() => tasksIn(plan), [plan])
+  const maxCards = Math.max(...plan.map(r => r.cards.length))
+  const reduce = useReducedMotion()
+  const { later, paused } = useLater()
+  const pausedRef = useRef(paused)
+  pausedRef.current = paused
+  const [bursts, burst] = useBursts()
 
-// Width of an element, kept up to date
-function useWidth() {
-  const ref = useRef(null)
-  const [w, setW] = useState(0)
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const ro = new ResizeObserver(() => setW(el.clientWidth))
+  // The play area, measured (the game is not scaled: real pointer coordinates)
+  const rootRef = useRef(null)
+  const [box, setBox] = useState(null)
+  useLayoutEffect(() => {
+    const el = rootRef.current
+    const measure = () => {
+      const w = el.clientWidth, h = el.clientHeight
+      if (w && h) setBox(b => (b && b.w === w && b.h === h ? b : { w, h }))
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
     ro.observe(el)
-    setW(el.clientWidth)
     return () => ro.disconnect()
   }, [])
-  return [ref, w]
+  const L = useMemo(() => box && layoutFor(box.w, box.h, maxCards, total), [box, maxCards, total])
+  const juice = useJuice({ hudSize: L?.hud.size ?? 32 })
+  const { hit, miss } = juice   // these never change
+
+  const [roomIdx, setRoomIdx] = useState(0)
+  const room = plan[roomIdx]
+  const last = roomIdx + 1 >= plan.length
+  const [phase, setPhase] = useState('play')        // play · party
+  const phaseRef = useRef(phase)
+  phaseRef.current = phase
+  const [cardsLeft, setCardsLeft] = useState(room.cards)
+  const [busy, setBusy] = useState([])              // cards in the air
+  const [found, setFound] = useState([])            // { e, name, slot, room }
+  const [away, setAway] = useState([])              // garland places whose friend is down at the party
+  const [hop, setHop] = useState(0)
+  const [flights, setFlights] = useState([])        // cards flying to a shadow or back
+  const [climbers, setClimbers] = useState([])      // found things on their way to the garland
+  const [lamps, setLamps] = useState([])            // { id, x }
+  const [nope, setNope] = useState(null)            // the outline of a card that did not fit
+  const [jokerUsed, setJokerUsed] = useState(false)
+  const [drag, setDrag] = useState(null)            // { e, size }
+  const [help, setHelp] = useState(null)            // a shadow missed twice: the hand shows its card
+  const [caughtId, setCaughtId] = useState(null)    // the shadow caught last
+  const [demo, setDemo] = useState(false)           // a finger shows the torch
+  // a mouse: the light sits on the pointer, so the demo shows no finger
+  const mouse = useRef(typeof matchMedia === 'function' && matchMedia('(hover: hover) and (pointer: fine)').matches)
+  const [, setVer] = useState(0)
+  const bump = useCallback(() => setVer(v => v + 1), [])
+  const firstTry = useRef(0)
+  const slotSeq = useRef(0)
+  const roomDone = useRef(0)
+  const handedIn = useRef(false)
+  const saidCard = useRef(false)
+
+  // Elements the clock moves
+  const roomEl = useRef(null), canvasRef = useRef(null), torchRef = useRef(null), fingerRef = useRef(null), ghostRef = useRef(null)
+  const shadowEls = useRef({}), innerEls = useRef({}), eyeEls = useRef({}), cardEls = useRef({}), cardsBoxRef = useRef(null)
+
+  // The world of the room: the shadows, the light, the lamps (no renders)
+  const W = useRef(null)
+  const S = L?.S ?? 80
+  const beamR = L ? Math.round(Math.max(S * 0.66, L.beam * cfg.beam)) : 100
+  const torchSize = Math.round(clamp(beamR * 0.5, 44, 78))
+  // where the torch lies when put down (its middle), and the room it takes there
+  const torchRest = geo => ({ x: geo.W / 2, y: geo.H - torchSize * 0.83, r: geo.S * 0.5 + torchSize * 0.6 })
+
+  useEffect(() => leaveGame, [])
+  useEffect(() => {
+    lockPreviews()
+    narrate([optional('schatten/leuchte')])
+  }, [])
+
+  // A new room (or a new size): its shadows, spread out; on a resize the
+  // shadows keep their places in proportion
+  useEffect(() => {
+    if (!L) return
+    const { w: RW, h: RH } = L.room
+    const geo = makeRoom(RW, RH, L.S, hidesOf(room.theme, RW, RH))
+    const old = W.current
+    if (old && old.roomIdx === roomIdx) {
+      const fx = RW / old.geo.W, fy = RH / old.geo.H
+      for (const s of old.shadows) { s.x *= fx; s.tx *= fx; s.y *= fy; s.ty *= fy }
+      old.geo = geo
+      return
+    }
+    const shadows = []
+    room.shadows.forEach((e, i) => shadows.push(spawn(`${roomIdx}-${i}`, e, geo, Math.random, shadows)))
+    if (room.cat) shadows.push(spawn(`${roomIdx}-cat`, CAT, geo, Math.random, shadows))
+    for (const s of shadows) { s.sx = lookOf(s.e) === 0 ? 1 : s.face * lookOf(s.e); s.eyePhase = Math.random() * 4 }
+    W.current = {
+      roomIdx, geo, shadows, t: 0,
+      // the torch lies ready at the front of the room until a finger picks it up
+      beam: { on: false, a: 0, x: RW / 2, y: RH / 2 }, input: null, used: false,
+      lastInput: performance.now(), demo: null, flashUntil: -1, lamps: [], dragging: false,
+      // focus: the lit shadow a tapped card goes to · pin: a lit shadow a finger rests on
+      // caughtOnce: the child caught one here (no more demo) · torch: where the torch is drawn
+      focus: null, pin: null, caughtOnce: false, torch: null,
+    }
+    bump()
+  }, [L, roomIdx]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Positions in the game's own px ─────────────────────────────────────
+  const rootPoint = (cx, cy) => {
+    const r = rootRef.current.getBoundingClientRect()
+    return { x: cx - r.left, y: cy - r.top }
+  }
+  const shadowPoint = s => ({ x: L.room.x + s.x, y: L.room.y + s.y })
+  const cardPoint = e => {
+    const el = cardEls.current[e]
+    if (!el) return { x: L.cards.x + L.cards.w / 2, y: L.cards.y + L.cards.h / 2 }
+    const r = el.getBoundingClientRect()
+    return rootPoint(r.left + r.width / 2, r.top + r.height / 2)
+  }
+
+  // ── What happens ───────────────────────────────────────────────────────
+
+  const lift = (s, geo) => {
+    // caught while crouching behind the furniture: it pops up over it
+    let y = s.y
+    for (const h of geo.hides) {
+      if (Math.abs(s.x - h.x) < h.w / 2 + geo.S * 0.3 && s.y + geo.S * 0.45 > h.top) y = Math.min(y, h.top - geo.S * 0.42)
+    }
+    return y
+  }
+
+  const catRuns = s => {
+    const w = W.current
+    s.state = 'run'
+    s.tx = s.x < w.geo.W / 2 ? -w.geo.S : w.geo.W + w.geo.S
+    s.ty = s.y
+    s.dash = 99
+    if (!playAnimal(CAT)) sfx.slideUp()
+    bump()
+  }
+
+  const catchIt = (s, { quiet = false } = {}) => {
+    const w = W.current
+    if (s.e === CAT) { catRuns(s); return }
+    s.state = 'caught'
+    s.caughtAt = w.t
+    s.litUntil = w.t + cfg.hold
+    s.sxCaught = cfg.mirror ? (s.sx < 0 ? -1 : 1) : 1
+    s.tiltTo = (Math.random() < 0.5 ? -1 : 1) * tiltOf(s.e, cfg)
+    // over the furniture, and apart from the other lit ones (both ways),
+    // so every outline shows on its own
+    const held = w.shadows.filter(o => o !== s && (o.state === 'caught' || o.state === 'flying' || o.state === 'found'))
+    const p = placeApart({ x: s.x, y: lift(s, w.geo) }, held.map(o => ({ x: o.slideTo ?? o.x, y: o.liftTo ?? o.y })), w.geo, undefined, [torchRest(w.geo)])
+    s.slideTo = p.x
+    s.liftTo = p.y
+    s.hiding = false
+    w.caughtOnce = true
+    // the joker lights them all, but the child has not looked at them yet
+    s.seenAt = quiet ? null : w.t
+    if (!quiet) gasp(s.move === 'crawl' || s.move === 'fly' ? 1.25 : 1)
+    if (!saidCard.current && level <= 3) {
+      saidCard.current = true
+      const say = optional('schatten/welches-bild')
+      if (say) narrate([say])
+    }
+    bump()
+  }
+
+  // a shadow that keeps its light: one with help, and the focus after a wrong card (it waits for the next)
+  const keepsLit = s => s.help || (s.missed && W.current?.focus === s.id)
+  const setFocus = id => {
+    const w = W.current
+    if (!w || w.focus === id) return
+    // the one it leaves, waiting after a wrong card, fades out gently, not at once
+    const was = w.shadows.find(s => s.id === w.focus)
+    if (was?.state === 'caught' && was.missed && !was.help) was.litUntil = Math.max(was.litUntil, w.t + 2)
+    w.focus = id
+    setCaughtId(id)
+  }
+
+  const letGo = s => {
+    const w = W.current
+    flee(s, w.beam, w.geo)
+    s.liftTo = null
+    s.slideTo = null
+    s.seenAt = null
+    sfx.giggle()
+    bump()
+  }
+
+  // A card goes off: to a shadow (judged on arrival) or back to its place
+  const launch = (e, from, s) => {
+    s.state = 'flying'
+    setBusy(b => (b.includes(e) ? b : [...b, e]))
+    setFlights(l => [...l, { id: ++seq, e, from, to: shadowPoint(s), sid: s.id }])
+    bump()
+  }
+  const flyBack = (e, from) => {
+    setBusy(b => (b.includes(e) ? b : [...b, e]))
+    setFlights(l => [...l, { id: ++seq, e, from, to: cardPoint(e), back: true }])
+  }
+
+  const party = () => {
+    const w = W.current
+    setPhase('party')
+    phaseRef.current = 'party'
+    w.beam.on = false
+    for (const s of w.shadows) if (s.state !== 'gone') s.state = 'gone'
+    setCaughtId(null)
+    setHelp(null)
+    lampOn()
+    sfx.tada()
+    narrate([optional('schatten/licht-an')])
+    setAway([...foundNow.current])
+    burst(roomEl.current, 'confetti', last ? 30 : 18)
+    later(reduce ? 2200 : 3800, () => {
+      setAway([])
+      setHop(h => h + 1)
+      if (last) {
+        later(1500, () => {
+          if (handedIn.current) return
+          handedIn.current = true
+          onComplete?.(result(firstTry.current, total))
+        })
+      } else later(900, nextRoom)
+    })
+  }
+  // the places filled in this room (state may lag behind by a render)
+  const foundNow = useRef([])
+
+  const nextRoom = () => {
+    const i = roomIdx + 1
+    roomDone.current = 0
+    foundNow.current = []
+    setRoomIdx(i)
+    setCardsLeft(plan[i].cards)
+    setBusy([])
+    setLamps([])
+    setNope(null)
+    setJokerUsed(false)
+    setHelp(null)
+    setCaughtId(null)
+    setPhase('play')
+  }
+
+  // Found: up the cord onto the garland
+  const climb = s => {
+    const slot = slotSeq.current++
+    const from = shadowPoint(s)
+    s.state = 'gone'
+    setClimbers(l => [...l, { id: s.id, e: s.e, from, to: slotAt(L.garland, slot, total), top: L.room.y, slot }])
+    bump()
+  }
+  const landed = c => {
+    setClimbers(l => l.filter(x => x.id !== c.id))
+    setFound(f => [...f, { e: c.e, name: nameOf(c.e), slot: c.slot, room: roomIdx }])
+    foundNow.current.push(c.slot)
+    sfx.pop()
+    roomDone.current += 1
+    if (roomDone.current >= room.shadows.length) later(350, party)
+  }
+
+  const right = (s, f) => {
+    const w = W.current
+    s.state = 'found'
+    s.foundAt = w.t
+    const first = !s.missed
+    if (first) firstTry.current += 1
+    setBusy(b => b.filter(x => x !== f.e))
+    setCardsLeft(l => l.filter(x => x !== f.e))
+    // a lamp over the spot, a little to the side if another one hangs there
+    const gap = clamp(S * 0.5, 34, 58) * 1.05
+    let lx = s.x
+    for (let k = 0; k < 6 && w.lamps.some(lp => Math.abs(lp.x - lx) < gap); k++) lx += (s.x < w.geo.W / 2 ? 1 : -1) * gap * 0.5
+    lx = clamp(lx, gap / 2, w.geo.W - gap / 2)
+    setLamps(l => [...l, { id: s.id, x: lx }])
+    w.lamps.push({ x: lx, t0: w.t })
+    lampOn()
+    // a star only for a match with the first card: the counter and the results count the same
+    hit(innerEls.current[s.id] ?? shadowEls.current[s.id], { stars: first ? 1 : 0 })
+    burst(shadowEls.current[s.id], 'stars', 10)
+    sayRight(null, { lead: [wordOf(s.e)].filter(Boolean) })
+    setHelp(h => (h === s.id ? null : h))
+    bump()
+    later(1250, () => { if (s.move !== 'roll' && s.move !== 'hop') playAnimal(s.e) })
+    later(reduce ? 1300 : 2300, () => climb(s))
+  }
+
+  const wrong = (s, f) => {
+    const w = W.current
+    s.missed = (s.missed ?? 0) + 1
+    s.state = 'caught'
+    s.litUntil = w.t + cfg.hold
+    const inner = innerEls.current[s.id]
+    miss(inner)
+    if (!reduce) inner?.animate?.([{ rotate: '0deg' }, { rotate: '-14deg' }, { rotate: '12deg' }, { rotate: '-8deg' }, { rotate: '0deg' }], { duration: 650 })
+    setNope({ k: ++seq, id: s.id, e: f.e, x: s.x, y: s.y })
+    sayWrong()
+    if (s.missed >= 2) { s.help = true; setHelp(s.id) }
+    bump()
+    later(reduce ? 200 : 650, () => { setNope(n => (n?.id === s.id ? null : n)); flyBack(f.e, shadowPoint(s)) })
+  }
+
+  const arrived = f => {
+    setFlights(l => l.filter(x => x.id !== f.id))
+    if (f.back) { setBusy(b => b.filter(x => x !== f.e)); return }
+    const s = W.current?.shadows.find(x => x.id === f.sid)
+    if (!s || s.state !== 'flying') { flyBack(f.e, f.to); return }
+    if (s.e === f.e) right(s, f)
+    else wrong(s, f)
+  }
+
+  // ── The torch ──────────────────────────────────────────────────────────
+
+  const aim = (cx, cy, touch) => {
+    const w = W.current
+    const el = roomEl.current
+    if (!w || !el) return
+    const r = el.getBoundingClientRect()
+    const px = cx - r.left, py = cy - r.top
+    // on a touch screen the light shines just above the finger
+    w.beam.x = px
+    w.beam.y = touch ? py - beamR * 0.75 : py
+    w.beam.touch = touch
+    w.used = true
+    w.lastInput = performance.now()
+    if (w.demo) { w.demo = null; setDemo(false) }
+  }
+  const onRoomDown = e => {
+    wakeSound()
+    mouse.current = e.pointerType === 'mouse'
+    const w = W.current
+    if (!w || phaseRef.current !== 'play') return
+    const touch = e.pointerType !== 'mouse'
+    w.input = { id: e.pointerId, touch }
+    // touching a lit shadow makes it the focus (the light shines above a finger, not on it)
+    const lit = shadowAt(e.clientX, e.clientY)
+    w.pin = lit ? { id: lit.id, x: e.clientX, y: e.clientY } : null
+    if (lit) { lit.seenAt = w.t; setFocus(lit.id) }
+    try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* not capturable */ }
+    w.beam.on = true
+    aim(e.clientX, e.clientY, touch)
+  }
+  const onRoomMove = e => {
+    const w = W.current
+    if (!w || phaseRef.current !== 'play') return
+    // the finger goes off the shadow it touched: the torch decides again
+    if (w.pin && Math.hypot(e.clientX - w.pin.x, e.clientY - w.pin.y) > 24) w.pin = null
+    if (e.pointerType === 'mouse') { w.beam.on = true; aim(e.clientX, e.clientY, false) }
+    else if (w.input?.id === e.pointerId) aim(e.clientX, e.clientY, true)
+  }
+  const onRoomUp = e => {
+    const w = W.current
+    if (!w) return
+    if (w.input?.id === e.pointerId) {
+      w.input = null
+      // a mouse goes on pointing; a finger's light fades where it was (the pin holds till it is out)
+      if (e.pointerType === 'mouse') w.pin = null
+      else w.beam.on = false
+    }
+  }
+  const onRoomLeave = e => {
+    const w = W.current
+    if (w && e.pointerType === 'mouse' && !w.input) w.beam.on = false
+  }
+
+  // The joker: the whole room lights up for a moment and everything in it holds still
+  const joker = () => {
+    const w = W.current
+    if (!w || jokerUsed || phaseRef.current !== 'play') return
+    setJokerUsed(true)
+    w.flashUntil = w.t + 1.6
+    sfx.sparkle()
+    for (const s of w.shadows) {
+      if (s.state === 'dark') { catchIt(s, { quiet: true }); if (s.state === 'caught') s.litUntil = w.flashUntil + cfg.hold }
+    }
+    // a tapped card goes to the lit one nearest the torch, until the child shines on another
+    const lit = w.shadows.filter(s => s.state === 'caught')
+    if (!lit.some(s => s.seenAt != null)) {
+      const near = lit.reduce((m, s) => (!m || Math.hypot(s.x - w.beam.x, s.y - w.beam.y) < Math.hypot(m.x - w.beam.x, m.y - w.beam.y) ? s : m), null)
+      if (near) near.seenAt = w.t
+    }
+  }
+
+  // ── The cards: drag one onto a lit shadow, or tap it ──────────────────
+
+  const press = useRef(null)
+  const shadowAt = (cx, cy) => {
+    const el = roomEl.current, w = W.current
+    if (!el || !w) return null
+    const r = el.getBoundingClientRect()
+    const x = cx - r.left, y = cy - r.top
+    let best = null
+    for (const s of w.shadows) {
+      if (s.state !== 'caught') continue
+      const d = Math.hypot(s.x - x, (s.liftTo ?? s.y) - y)
+      if (d < w.geo.S * 0.8 && (!best || d < best.d)) best = { s, d }
+    }
+    return best?.s ?? null
+  }
+  const onCardDown = (ev, e) => {
+    wakeSound()
+    mouse.current = ev.pointerType === 'mouse'
+    if (phaseRef.current !== 'play' || busy.includes(e) || !W.current) return
+    try { ev.currentTarget.setPointerCapture(ev.pointerId) } catch { /* not capturable */ }
+    press.current = { e, id: ev.pointerId, x0: ev.clientX, y0: ev.clientY, moved: false }
+  }
+  const onCardMove = ev => {
+    const p = press.current
+    if (!p || p.id !== ev.pointerId) return
+    if (!p.moved && Math.hypot(ev.clientX - p.x0, ev.clientY - p.y0) > 12) {
+      p.moved = true
+      W.current.dragging = true
+      setDrag({ e: p.e })
+    }
+    if (p.moved && ghostRef.current) {
+      const q = rootPoint(ev.clientX, ev.clientY)
+      ghostRef.current.style.transform = `translate(${q.x}px, ${q.y}px) translate(-50%, -50%) scale(1.08)`
+    }
+  }
+  const onCardUp = ev => {
+    const p = press.current
+    if (!p || p.id !== ev.pointerId) return
+    press.current = null
+    const w = W.current
+    if (w) w.dragging = false
+    if (phaseRef.current !== 'play' || !w) { setDrag(null); return }
+    if (p.moved) {
+      setDrag(null)
+      const from = rootPoint(ev.clientX, ev.clientY)
+      const s = shadowAt(ev.clientX, ev.clientY)
+      if (s) { s.seenAt = w.t; setFocus(s.id); launch(p.e, from, s) }
+      else flyBack(p.e, from)
+      return
+    }
+    // a tap: the card flies to the lit shadow the child is looking at, and is judged there
+    const s = tapTarget(w.shadows, w.focus)
+    if (!s) {
+      // nothing lit to go to: the card hops (before the first catch, the finger shows the torch)
+      const el = cardEls.current[p.e]
+      if (!reduce) el?.animate?.([{ translate: '0 0' }, { translate: '0 -14px' }, { translate: '0 0' }], { duration: 320 })
+      sfx.boing()
+      w.lastInput = 0
+      return
+    }
+    launch(p.e, cardPoint(p.e), s)
+  }
+
+  // ── The clock: the shadows, the light, the darkness ───────────────────
+
+  useAnimationFrame((_, delta) => {
+    const w = W.current
+    if (!w || !L || pausedRef.current) return
+    const dt = Math.min(delta / 1000, 0.05)
+    w.t += dt
+    const { geo } = w
+    const RS = geo.S
+    const play = phaseRef.current === 'play'
+    const beam = w.beam
+    beam.r = beamR
+    // at rest the torch lies at the front of the room, all of it inside
+    const rest = { x: geo.W / 2, y: geo.H - torchSize * 0.95 - beamR * 0.75 }
+    if (!w.used && !w.demo) { beam.x = rest.x; beam.y = rest.y }
+
+    // A child who has not found out how yet: a finger sweeps the torch
+    // through the room. Only before the first catch in a room; its light
+    // catches nothing (the child does that).
+    const idleMs = roomIdx === 0 && level <= 2 ? 2500 : 7000
+    if (play && !w.demo && !w.caughtOnce && !w.input && !beam.on && performance.now() - w.lastInput > idleMs) {
+      w.demo = { t0: w.t }
+      setDemo(true)
+    }
+    let demoOn = false
+    if (w.demo) {
+      const k = (w.t - w.demo.t0) / 2.8
+      if (k > 2 || !play || w.caughtOnce) { w.demo = null; w.lastInput = performance.now(); setDemo(false) }
+      else {
+        demoOn = true
+        beam.x = geo.W * (0.5 - 0.36 * Math.cos(2 * Math.PI * k))
+        beam.y = geo.H * (0.5 + 0.22 * Math.sin(4 * Math.PI * k))
+        beam.touch = true
+        const f = fingerRef.current
+        if (f) f.style.transform = `translate(${beam.x - 14}px, ${beam.y + beamR * 0.75 - 6}px)`
+      }
+    }
+    const on = play && (beam.on || demoOn)
+    beam.a += ((on ? 1 : 0) - beam.a) * Math.min(1, dt * (on ? 14 : 6))
+    // where the torch is: in the hand under its light, or back at its place at the front
+    const hand = on ? beam : rest
+    const want = { x: hand.x, y: hand.y + beamR * 0.75 - torchSize * 0.3 }
+    if (!w.torch || on) w.torch = want
+    else { const k = Math.min(1, dt * 9); w.torch = { x: w.torch.x + (want.x - w.torch.x) * k, y: w.torch.y + (want.y - w.torch.y) * k } }
+
+    // The shadows
+    const speed = cfg.speed * (reduce ? 0.7 : 1)
+    const around = w.shadows.filter(s => s.state !== 'gone' && s.state !== 'run')
+    // the lit ones: the dark ones keep out of their glow
+    const litAt = w.shadows.filter(s => s.state === 'caught' || s.state === 'flying' || s.state === 'found').map(s => ({ x: s.slideTo ?? s.x, y: s.liftTo ?? s.y }))
+    for (const s of w.shadows) {
+      if (s.state === 'dark') {
+        step(s, dt, geo, speed, Math.random, around.filter(o => o !== s), litAt)
+        // only a child's torch catches: not the demo's light, nor its light fading out
+        if (play && torchCatches(beam, demoOn) && inLight(s, beam, RS)) catchIt(s)
+      } else if (s.state === 'caught') {
+        s.t += dt
+        if (beam.a > 0.5 && inLight({ x: s.x, y: s.liftTo ?? s.y }, { ...beam, r: beam.r * 1.15 }, RS)) s.litUntil = Math.max(s.litUntil, w.t + cfg.hold)
+        else if (!keepsLit(s) && !w.dragging && w.t > s.litUntil) letGo(s)
+      } else if (s.state === 'run') {
+        s.t += dt
+        const dx = s.tx - s.x
+        s.x += Math.sign(dx) * Math.min(Math.abs(dx), geo.W * 0.6 * dt)
+        s.face = Math.sign(dx) || 1
+        if (Math.abs(dx) < 2) { s.state = 'gone'; bump() }
+      } else s.t += dt
+    }
+
+    // The focus: the lit one the child pointed the torch at or touched last (sim.js nextFocus)
+    if (play) {
+      if (w.pin && !w.input && beam.a < 0.5) w.pin = null
+      const now = inBeam(w.shadows, beam, RS)
+      if (now) now.seenAt = w.t
+      // … and the light must rest on another lit one before that one takes over (sim.js settleFocus)
+      const next = settleFocus(w.focus, nextFocus(w.focus, w.shadows, beam, RS, w.pin?.id ?? null), w.shadows, w.dwell, w.t, !!w.pin)
+      w.dwell = next.dwell
+      setFocus(next.focus)
+    }
+
+    // Drawing them: place, gait, a tremble in the light, the turn to face like the card
+    const still = !!reduce
+    for (const s of w.shadows) {
+      const el = shadowEls.current[s.id]
+      if (!el) continue
+      let dy = 0, rot = 0, jx = 0
+      const look = lookOf(s.e)
+      if (s.state === 'dark' || s.state === 'run') {
+        const g = gait(s, RS, still)
+        dy = g.dy; rot = g.rot
+        const want = look === 0 ? 1 : s.face * look
+        s.sx += (want - s.sx) * Math.min(1, dt * 10)
+        s.rotNow = rot
+      } else if (s.state === 'caught' || s.state === 'flying') {
+        if (s.liftTo != null) s.y += (s.liftTo - s.y) * Math.min(1, dt * 10)
+        if (s.slideTo != null) s.x += (s.slideTo - s.x) * Math.min(1, dt * 8)
+        s.sx += (s.sxCaught - s.sx) * Math.min(1, dt * 8)
+        s.rotNow = (s.rotNow ?? 0) + (s.tiltTo - (s.rotNow ?? 0)) * Math.min(1, dt * 8)
+        rot = s.rotNow
+        if (!still) {
+          const since = w.t - s.caughtAt
+          if (since < 0.32) dy = -Math.sin((since / 0.32) * Math.PI) * RS * 0.14
+          jx = Math.sin(s.t * 57) * 1.3
+          rot += Math.sin(s.t * 43) * 1.6
+        }
+      } else if (s.state === 'found') {
+        s.sx += (1 - s.sx) * Math.min(1, dt * 8)
+        s.rotNow = (s.rotNow ?? 0) * Math.max(0, 1 - dt * 8)
+        rot = s.rotNow
+        const since = w.t - s.foundAt
+        if (!still && since > 0.5 && since < 1.9) dy = -Math.abs(Math.sin((since - 0.5) * 6.7)) * RS * 0.14
+      }
+      const sx = Math.abs(s.sx) < 0.04 ? 0.04 * Math.sign(s.sx || 1) : s.sx
+      el.style.transform = `translate(${s.x - RS / 2 + jx}px, ${s.y - RS / 2 + dy}px) rotate(${rot.toFixed(1)}deg) scaleX(${sx.toFixed(3)})`
+      el.style.zIndex = String(10 + Math.round(s.y))
+      if (el.dataset.state !== s.state) el.dataset.state = s.state
+      const focus = w.focus === s.id ? '1' : '0'
+      if (el.dataset.focus !== focus) el.dataset.focus = focus
+      // its eyes in the dark (now and then, more seldom on higher levels)
+      const eye = eyeEls.current[s.id]
+      if (eye) {
+        let o = 0
+        if (play && (s.state === 'dark' || s.state === 'run') && !(beam.a > 0.3 && inLight(s, { ...beam, r: beam.r * 1.2 }, RS))) {
+          o = s.e === CAT || cfg.eyes >= 1 ? 1 : ((w.t + s.eyePhase) % 4) / 4 < cfg.eyes ? 1 : 0
+        }
+        s.eyeO = (s.eyeO ?? 0) + (o - (s.eyeO ?? 0)) * Math.min(1, dt * 6)
+        const dir = look === 0 ? 0 : Math.sign(s.sx) * look
+        eye.style.opacity = s.eyeO.toFixed(2)
+        eye.style.transform = `translate(${s.x + dir * RS * 0.16 - RS * 0.21}px, ${s.y - RS * 0.2 + dy - RS * 0.07}px)`
+      }
+    }
+
+    // The darkness, with the light cut out of it
+    const cv = canvasRef.current
+    const ctx = cv?.getContext('2d')
+    if (ctx && play) {
+      const dpr = cv.width / geo.W
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      ctx.globalCompositeOperation = 'source-over'
+      ctx.clearRect(0, 0, geo.W, geo.H)
+      ctx.fillStyle = '#0a0518'
+      ctx.fillRect(0, 0, geo.W, geo.H)
+      ctx.globalCompositeOperation = 'destination-out'
+      const hole = (x, y, r, a, core = 0.45) => {
+        const gr = ctx.createRadialGradient(x, y, 0, x, y, r)
+        gr.addColorStop(0, `rgba(0,0,0,${a})`)
+        gr.addColorStop(core, `rgba(0,0,0,${a})`)
+        gr.addColorStop(1, 'rgba(0,0,0,0)')
+        ctx.fillStyle = gr
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill()
+      }
+      // the lamps that are on: a cone of light down to the floor
+      const drop = lampDrop(geo.H)
+      for (const lp of w.lamps) {
+        const k = clamp((w.t - lp.t0) / 0.3, 0, 1)
+        const top = drop + 22
+        const gr = ctx.createLinearGradient(0, top, 0, geo.H)
+        gr.addColorStop(0, `rgba(0,0,0,${0.85 * k})`)
+        gr.addColorStop(1, `rgba(0,0,0,${0.35 * k})`)
+        ctx.fillStyle = gr
+        ctx.beginPath()
+        ctx.moveTo(lp.x - 14, top); ctx.lineTo(lp.x + 14, top)
+        ctx.lineTo(lp.x + RS * 0.85, geo.H); ctx.lineTo(lp.x - RS * 0.85, geo.H)
+        ctx.closePath(); ctx.fill()
+        hole(lp.x, top, 46, 0.9 * k)
+      }
+      // shadows held in the light: a soft glow that fades out at the end
+      for (const s of w.shadows) {
+        if (s.state === 'caught' || s.state === 'flying' || s.state === 'found') {
+          const left = s.state === 'caught' && !keepsLit(s) ? clamp((s.litUntil - w.t) / 1.2, 0.25, 1) : 1
+          // the focus bright, the other lit ones dimmer
+          const dim = s.state === 'found' || w.focus === s.id ? 1 : 0.42
+          hole(s.x, s.liftTo ?? s.y, RS * 0.95, 0.92 * left * dim, 0.5)
+        }
+      }
+      // the joker: everything lit for a moment
+      if (w.t < w.flashUntil) {
+        ctx.fillStyle = `rgba(0,0,0,${clamp((w.flashUntil - w.t) / 0.4, 0, 0.94)})`
+        ctx.fillRect(0, 0, geo.W, geo.H)
+      }
+      // the torch light: a soft cone from the torch and a round spot
+      if (beam.a > 0.01) {
+        const { x: hx, y: hy } = w.torch
+        const gr = ctx.createLinearGradient(hx, hy, beam.x, beam.y)
+        gr.addColorStop(0, `rgba(0,0,0,${0.55 * beam.a})`)
+        gr.addColorStop(1, `rgba(0,0,0,${0.15 * beam.a})`)
+        ctx.fillStyle = gr
+        ctx.beginPath()
+        ctx.moveTo(hx - torchSize * 0.14, hy)
+        ctx.lineTo(beam.x - beamR * 0.55, beam.y)
+        ctx.lineTo(beam.x + beamR * 0.55, beam.y)
+        ctx.lineTo(hx + torchSize * 0.14, hy)
+        ctx.closePath(); ctx.fill()
+        hole(beam.x, beam.y, beamR, beam.a, 0.42)
+      }
+      // dust in the light
+      ctx.globalCompositeOperation = 'source-over'
+      if (beam.a > 0.05 && !still) {
+        for (const d of DUST) {
+          d.x += d.vx * dt; d.y += d.vy * dt
+          if (d.x * d.x + d.y * d.y > 1) { d.x = (Math.random() - 0.5) * 1.4; d.y = 0.9 }
+          const fade = 1 - Math.sqrt(d.x * d.x + d.y * d.y)
+          ctx.fillStyle = `rgba(255,250,220,${(0.55 * fade * beam.a).toFixed(3)})`
+          ctx.beginPath(); ctx.arc(beam.x + d.x * beamR * 0.85, beam.y + d.y * beamR * 0.85, d.s, 0, Math.PI * 2); ctx.fill()
+        }
+      }
+      // a warm glow where the lamps shine
+      for (const lp of w.lamps) {
+        ctx.fillStyle = 'rgba(255,214,120,0.10)'
+        ctx.beginPath()
+        ctx.moveTo(lp.x - 14, drop + 22); ctx.lineTo(lp.x + 14, drop + 22)
+        ctx.lineTo(lp.x + RS * 0.85, geo.H); ctx.lineTo(lp.x - RS * 0.85, geo.H)
+        ctx.closePath(); ctx.fill()
+      }
+    }
+
+    // the torch
+    const tr = torchRef.current
+    if (tr) {
+      // in use it is bright; put down, it goes back to its place at the front, a little dimmer
+      // (no caught shadow stands there: catchIt keeps them clear of it)
+      tr.style.opacity = (play ? 0.7 + 0.3 * beam.a : 0).toFixed(2)
+      const { x: hx, y: hy } = w.torch
+      // the picture's lamp head is up and to the right: turned, it points up
+      tr.style.transform = `translate(${hx - torchSize / 2}px, ${hy - torchSize * 0.08}px) rotate(-45deg)`
+    }
+  })
+
+  // The canvas follows the room's size
+  useEffect(() => {
+    const cv = canvasRef.current
+    if (!cv || !L) return
+    const dpr = Math.min(2, window.devicePixelRatio || 1)
+    cv.width = Math.round(L.room.w * dpr)
+    cv.height = Math.round(L.room.h * dpr)
+  }, [L, roomIdx])
+
+  // ── Drawing ────────────────────────────────────────────────────────────
+
+  const w = W.current
+  const ready = L && w && w.roomIdx === roomIdx
+  const shadows = ready ? w.shadows : []
+  const lit = phase === 'party'
+  const caughtEl = caughtId && { current: shadowEls.current[caughtId] }
+  // the help (hand and pulsing card) while that shadow is the focus: a tapped card goes there
+  const helpS = help && help === caughtId && shadows.find(s => s.id === help)
+  const showCardHand = ready && phase === 'play' && !drag && !flights.length && caughtId && !help && shadows.some(s => s.id === caughtId && s.state === 'caught')
+  // the friends down at the party; they fly back up before the next room shows
+  const dancers = lit ? found.filter(f => f.room === roomIdx && away.includes(f.slot)) : []
+  const drop = L ? lampDrop(L.room.h) : 40
+  const lampPx = lampSize(S)
+
+  return (
+    <div ref={rootRef} data-game="schatten" data-phase={phase} data-room={roomIdx}
+      style={{ flex: 1, minHeight: 0, width: '100%', position: 'relative', overflow: 'hidden', userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'none' }}>
+      {L && (
+        <>
+          <Garland box={L.garland} total={total} found={found} away={away} hop={hop} reduce={reduce} />
+          <div style={{ position: 'absolute', left: L.hud.x, top: L.hud.y }}>{juice.hud}</div>
+
+          {/* The room */}
+          <div ref={juice.stage} style={{ position: 'absolute', left: L.room.x, top: L.room.y, width: L.room.w, height: L.room.h }}>
+            <div ref={roomEl}
+              onPointerDown={onRoomDown} onPointerMove={onRoomMove} onPointerUp={onRoomUp} onPointerCancel={onRoomUp} onPointerLeave={onRoomLeave}
+              style={{
+                position: 'absolute', inset: 0, overflow: 'hidden', borderRadius: 14, border: '3px solid #2a1b3d', boxSizing: 'content-box', margin: -3,
+                boxShadow: '0 5px 0 rgba(42,27,61,0.35)', background: '#0a0518', cursor: phase === 'play' ? 'none' : 'default', touchAction: 'none',
+              }}>
+              <div style={{ position: 'absolute', left: 0, top: 0, width: L.room.w, height: L.room.h }}>
+                <Backdrop theme={room.theme} W={L.room.w} H={L.room.h} mode={lit ? 'lit' : 'shade'} />
+                <Furniture theme={room.theme} W={L.room.w} H={L.room.h} mode={lit ? 'lit' : 'shade'} layer="back" />
+                {/* the shadows */}
+                <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', isolation: 'isolate' }}>
+                  {shadows.filter(s => s.state !== 'gone').map(s => (
+                    <div key={s.id} ref={el => { shadowEls.current[s.id] = el }} data-shadow={s.e} data-state={s.state} aria-hidden="true"
+                      style={{ position: 'absolute', left: 0, top: 0, width: S, height: S, willChange: 'transform', transform: `translate(${s.x - S / 2}px, ${s.y - S / 2}px)` }}>
+                      <div ref={el => { innerEls.current[s.id] = el }} style={{ width: S, height: S, display: 'flex', transformOrigin: '50% 80%' }}>
+                        <Art art={s.e} size={S} style={{ filter: s.state === 'found' ? 'none' : s.id === caughtId && (s.state === 'caught' || s.state === 'flying') ? FOCUS_RIM : 'brightness(0)', transition: 'filter .55s ease-in-out' }} />
+                      </div>
+                      {s.state === 'found' && (
+                        <motion.div initial={{ scale: 0, rotate: 0 }} animate={reduce ? { scale: 1 } : { scale: 1, rotate: [0, 25, -10, 25, -10, 0] }}
+                          transition={{ delay: 0.6, duration: 1.1 }}
+                          style={{ position: 'absolute', right: -S * 0.3, top: -S * 0.12, transformOrigin: '30% 90%' }}>
+                          <Art art="👋" size={Math.round(S * 0.42)} />
+                        </motion.div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <Furniture theme={room.theme} W={L.room.w} H={L.room.h} mode={lit ? 'lit' : 'shade'} layer="front" />
+
+                {/* the darkness and the light */}
+                <motion.canvas ref={canvasRef} aria-hidden="true" initial={false} animate={{ opacity: lit ? 0 : 1 }} transition={{ duration: lit ? 0.7 : 0.3 }}
+                  style={{ position: 'absolute', left: 0, top: 0, width: L.room.w, height: L.room.h, pointerEvents: 'none' }} />
+                {!lit && <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+                  <div style={{ position: 'absolute', left: 0, right: 0, top: floorOf(L.room.w, L.room.h), borderTop: '3px solid rgba(190,178,240,0.22)' }} />
+                  <Furniture theme={room.theme} W={L.room.w} H={L.room.h} mode="ghost" />
+                </div>}
+                {lit && <Bunting w={L.room.w} />}
+
+                {/* a card that did not fit: its own outline in white over the black shadow, two shapes that differ */}
+                <AnimatePresence>
+                  {nope && (
+                    <motion.div key={nope.k} aria-hidden="true" initial={{ opacity: 0, scale: 1.2 }} animate={{ opacity: 0.88, scale: 1, x: reduce ? 0 : [0, -8, 8, -4, 0] }} exit={{ opacity: 0 }}
+                      transition={{ duration: 0.35 }}
+                      style={{ position: 'absolute', left: nope.x - S * 0.5, top: nope.y - S * 0.5, width: S, height: S, pointerEvents: 'none', zIndex: 2 }}>
+                      <Art art={nope.e} size={S} style={{ filter: 'brightness(0) invert(1) drop-shadow(0 0 2px #ff3b2f) drop-shadow(0 0 5px #ff3b2f)' }} />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* glowing eyes in the dark */}
+                {!lit && shadows.filter(s => s.state !== 'gone').map((s, i) => (
+                  <div key={s.id} ref={el => { eyeEls.current[s.id] = el }} aria-hidden="true"
+                    style={{ position: 'absolute', left: 0, top: 0, opacity: 0, pointerEvents: 'none', zIndex: 3 }}>
+                    <Eyes size={Math.round(S * 0.42)} cat={s.e === CAT} glint={glints(s.e)} delay={i * 0.9} />
+                  </div>
+                ))}
+
+                {/* the lamps that came down */}
+                {lamps.map(lp => <CeilingLamp key={lp.id} x={lp.x} drop={drop} size={lampPx} reduce={reduce} />)}
+
+                {/* the friends, down from the garland, dancing in the lit room */}
+                <AnimatePresence>
+                  {dancers.map((f, i) => {
+                    const n = dancers.length
+                    const size = Math.round(Math.min(S * 1.05, (L.room.w * 0.9) / n))
+                    const x = (L.room.w * (i + 1)) / (n + 1) - size / 2
+                    return (
+                      <motion.div key={`${f.slot}-d`} aria-hidden="true"
+                        initial={{ y: -L.room.h, opacity: 1 }}
+                        animate={reduce ? { y: 0 } : { y: [-L.room.h, 0, -size * 0.3, 0, -size * 0.3, 0, -size * 0.3, 0], rotate: [0, 0, -12, 12, -12, 12, -8, 0] }}
+                        exit={{ y: -L.room.h, transition: { duration: 0.5, delay: i * 0.05 } }}
+                        transition={{ duration: 3.2, delay: i * 0.12, times: [0, 0.18, 0.3, 0.42, 0.54, 0.66, 0.8, 1] }}
+                        style={{ position: 'absolute', left: x, top: L.room.h - size * 1.12, width: size, height: size, pointerEvents: 'none', zIndex: 4 }}>
+                        <Art art={f.e} size={size} />
+                      </motion.div>
+                    )
+                  })}
+                </AnimatePresence>
+
+                {/* the torch, and the finger that shows it */}
+                <div ref={torchRef} aria-hidden="true"
+                  style={{ position: 'absolute', left: 0, top: 0, opacity: 0, pointerEvents: 'none', zIndex: 5, filter: 'drop-shadow(0 4px 4px rgba(0,0,0,0.5))' }}>
+                  <Art art="🔦" size={torchSize} />
+                </div>
+                {demo && !mouse.current && (
+                  <div ref={fingerRef} aria-hidden="true" style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none', zIndex: 6, filter: 'drop-shadow(0 4px 3px rgba(0,0,0,0.5))' }}>
+                    <Art art="👆" size={58} />
+                  </div>
+                )}
+              </div>
+              {/* a new room: the door opens on the dark */}
+              <motion.div key={`door-${roomIdx}`} aria-hidden="true" initial={{ opacity: 1 }} animate={{ opacity: 0 }} transition={{ duration: 0.6 }}
+                style={{ position: 'absolute', inset: 0, background: '#0a0518', pointerEvents: 'none', zIndex: 7 }} />
+            </div>
+          </div>
+          {/* the light joker, outside the room: it covers no shadow */}
+          <Joker used={jokerUsed || phase !== 'play'} onClick={joker} x={L.joker.x} y={L.joker.y} size={L.joker.size} />
+
+          {/* The cards */}
+          <Cards L={L} cards={room.cards} left={cardsLeft} busy={busy} drag={drag} help={helpS?.e} done={lit} boxRef={cardsBoxRef} cardEls={cardEls}
+            onDown={onCardDown} onMove={onCardMove} onUp={onCardUp} reduce={reduce} />
+
+          {/* in the air: cards, the found ones climbing to the garland, the dragged card */}
+          {flights.map(f => (
+            <motion.div key={f.id} aria-hidden="true" initial={{ x: f.from.x, y: f.from.y, scale: f.back ? 0.7 : 1 }}
+              animate={{ x: f.to.x, y: f.to.y, scale: f.back ? 1 : 0.7 }} transition={{ duration: reduce ? 0.15 : f.back ? 0.4 : 0.32, ease: 'easeOut' }}
+              onAnimationComplete={() => arrived(f)}
+              style={{ position: 'absolute', left: 0, top: 0, zIndex: 20, pointerEvents: 'none' }}>
+              <div style={{ transform: 'translate(-50%, -50%)', width: L.cards.size, height: L.cards.size, ...pxCard(), display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Art art={f.e} size={Math.round(L.cards.size * 0.74)} />
+              </div>
+            </motion.div>
+          ))}
+          {climbers.map(c => (
+            <motion.div key={c.id} aria-hidden="true" initial={{ x: c.from.x, y: c.from.y, scale: 1 }}
+              animate={reduce ? { x: c.to.x, y: c.to.y, scale: (L.garland.pic - 6) / S } : { x: [c.from.x, c.from.x, c.to.x], y: [c.from.y, c.top + S * 0.3, c.to.y], scale: [1, 0.85, (L.garland.pic - 6) / S] }}
+              transition={{ duration: reduce ? 0.3 : 1.1, times: reduce ? undefined : [0, 0.55, 1], ease: 'easeInOut' }}
+              onAnimationComplete={() => landed(c)}
+              style={{ position: 'absolute', left: 0, top: 0, zIndex: 21, pointerEvents: 'none' }}>
+              <div style={{ transform: 'translate(-50%, -50%)', display: 'flex' }}><Art art={c.e} size={S} /></div>
+            </motion.div>
+          ))}
+          {drag && (
+            <div ref={ghostRef} aria-hidden="true" style={{ position: 'absolute', left: 0, top: 0, zIndex: 22, pointerEvents: 'none', transform: 'translate(-999px,-999px)' }}>
+              <div style={{ width: L.cards.size, height: L.cards.size, ...pxCard('selected'), display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 10px 18px rgba(0,0,0,0.35)' }}>
+                <Art art={drag.e} size={Math.round(L.cards.size * 0.74)} />
+              </div>
+            </div>
+          )}
+
+          {/* the hand: how to bring a card to a lit shadow; after two misses, which card. One hand at a
+              time: none while the demo finger shows the torch. It comes well before a shadow lets go. */}
+          <HintHand from={helpS ? { current: cardEls.current[helpS.e] } : cardsBoxRef} to={helpS ? { current: shadowEls.current[helpS.id] } : caughtEl}
+            active={!!(helpS || showCardHand) && phase === 'play' && !flights.length && !demo}
+            delay={helpS ? 400 : level <= 2 ? 2500 : Math.min(4000, (cfg.hold - 1.5) * 1000)} />
+        </>
+      )}
+      {juice.layer}
+      {bursts}
+    </div>
+  )
 }
 
-// The garland above the room: one bulb per round. Each found thing lights
-// its bulb and hangs below it and giggles when tapped; on a run of right
-// answers the friends found so far hop one after the other (`wave`: how
-// often, and up to which friend, so a friend hung up later does not hop).
-function Garland({ total, found, party, wave, maxW }) {
-  const [ref, w] = useWidth()
-  const pic = Math.max(18, Math.min(44, Math.floor(w / total) - 6))
+/**
+ * The cards: the things in colour, in fixed places (a card that found its
+ * shadow leaves an empty place). Press and drag, or tap.
+ */
+function Cards({ L, cards, left, busy, drag, help, done, boxRef, cardEls, onDown, onMove, onUp, reduce }) {
+  const { size, cols: maxCols } = L.cards
+  const cols = L.side ? L.cards.cols : Math.min(maxCols, cards.length)
+  const rows = Math.ceil(cards.length / cols)
+  const gw = cols * size + (cols - 1) * 8, gh = rows * size + (rows - 1) * 8
   return (
-    <div ref={ref} role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={found.length}
-      aria-label={`${found.length} von ${total} gefunden`}
-      style={{ width: '100%', maxWidth: maxW, height: pic + 30, display: 'flex', flexShrink: 0 }}>
-      {Array.from({ length: total }, (_, i) => {
-        const f = found[i]
-        const color = BULBS[i % BULBS.length]
+    <div ref={boxRef} style={{
+      position: 'absolute', left: L.cards.x + (L.cards.w - gw) / 2, top: L.cards.y + (L.cards.h - gh) / 2, width: gw, height: gh,
+      display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignContent: 'center', gap: 8,
+    }}>
+      {cards.map(e => {
+        const here = left.includes(e)
+        const away = busy.includes(e) || drag?.e === e
+        if (!here) {
+          return <div key={e} aria-hidden="true" style={{ width: size, height: size, boxSizing: 'border-box', borderRadius: 14, border: '3px dashed rgba(255,255,255,0.28)' }} />
+        }
         return (
-          <div key={i} style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <svg viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true" style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: 20 }}>
-              <path d="M0 3 Q50 26 100 3" fill="none" stroke="#cfc4ee" strokeWidth="3" vectorEffect="non-scaling-stroke" />
-            </svg>
-            <motion.div aria-hidden="true"
-              animate={party && f && !reduceMotion() ? { scale: [1, 1.3, 1] } : { scale: 1 }}
-              transition={{ duration: 0.6, repeat: party ? Infinity : 0, delay: i * 0.08 }}
-              style={{
-                marginTop: 9, width: 14, height: 18, borderRadius: '50% 50% 45% 45%', border: `2px solid ${INK}`, boxSizing: 'border-box',
-                background: f ? color : '#8d84ab', boxShadow: f ? `0 0 12px 4px ${color}` : 'none', transition: 'background .4s, box-shadow .4s',
-              }} />
-            {f && (
-              <motion.button type="button" aria-label={f.name}
-                initial={{ scale: 0, y: -30 }} animate={{ scale: 1, y: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 14 }}
-                whileTap={{ rotate: [0, -15, 15, 0], scale: 1.2 }}
-                onClick={() => sfx.giggle()}
-                style={{ all: 'unset', cursor: 'pointer', marginTop: 1, width: pic, height: pic, borderRadius: '50%', background: '#fffdf7', border: `2px solid ${color}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <motion.div key={wave.n} animate={wave.n && i < wave.upto && !reduceMotion() ? { y: [0, -pic * 0.4, 0] } : { y: 0 }} transition={{ duration: 0.45, delay: i * 0.06 }}
-                  style={{ display: 'flex' }}>
-                  <Art art={f.emoji} size={pic - 6} />
-                </motion.div>
-              </motion.button>
-            )}
-          </div>
+          <motion.button key={e} type="button" data-card={e} aria-label={THINGS[e].name}
+            ref={el => { cardEls.current[e] = el }}
+            onPointerDown={ev => onDown(ev, e)} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
+            animate={help === e && !reduce ? { scale: [1, 1.1, 1], boxShadow: ['0 0 0 0px #ffc93c', '0 0 0 7px #ffc93c', '0 0 0 0px #ffc93c'] } : { scale: 1 }}
+            transition={help === e ? { duration: 0.9, repeat: Infinity } : { duration: 0.2 }}
+            style={{
+              ...pxCard(), width: size, height: size, padding: 0, boxSizing: 'border-box', cursor: 'grab', touchAction: 'none',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: away ? 0.25 : done ? 0.45 : 1, transition: 'opacity .4s',
+            }}>
+            <Art art={e} size={Math.round(size * 0.74)} />
+          </motion.button>
         )
       })}
     </div>
-  )
-}
-
-// The ceiling lamp: dark until the thing is found, then it swings and glows
-function Lamp({ on }) {
-  return (
-    <motion.div aria-hidden="true" animate={on && !reduceMotion() ? { rotate: [0, 14, -10, 6, 0] } : { rotate: 0 }} transition={{ duration: 1.4 }}
-      style={{ position: 'absolute', left: '50%', top: 0, marginLeft: -22, width: 44, transformOrigin: '50% 0', zIndex: 2 }}>
-      <div style={{ width: 3, height: 18, margin: '0 auto', background: INK }} />
-      <svg viewBox="0 0 44 28" width="44" height="28" style={{ display: 'block', overflow: 'visible' }}>
-        {on && <ellipse cx="22" cy="30" rx="30" ry="10" fill="#fff7c2" opacity="0.8" />}
-        <path d="M4 24 Q22 -8 40 24 Z" fill={on ? '#ff6b5b' : '#4a4260'} stroke={INK} strokeWidth="3" strokeLinejoin="round" />
-        <circle cx="22" cy="25" r="6" fill={on ? '#fff3a0' : '#6d6585'} stroke={INK} strokeWidth="2" />
-      </svg>
-    </motion.div>
-  )
-}
-
-// Bunting along the ceiling, once the light is on
-function Bunting() {
-  return (
-    <motion.svg viewBox="0 0 200 16" preserveAspectRatio="none" aria-hidden="true" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-      style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: 26, zIndex: 1 }}>
-      <path d="M0 2 Q100 10 200 2" fill="none" stroke={INK} strokeWidth="1" vectorEffect="non-scaling-stroke" />
-      {Array.from({ length: 12 }, (_, i) => {
-        const x = 4 + i * 16.5, y = 2 + 8 * Math.sin(Math.PI * (x / 200)) * 0.9
-        return <path key={i} d={`M${x} ${y} L${x + 10} ${y} L${x + 5} ${y + 11} Z`} fill={BULBS[i % BULBS.length]} stroke={INK} strokeWidth="0.6" />
-      })}
-    </motion.svg>
-  )
-}
-
-// A cat in a dark corner: two glowing eyes that blink; caught by the
-// light, it pops up and ducks away again. A surprise in some rounds.
-function CornerCat({ x, y, seen, size }) {
-  return (
-    <div aria-hidden="true" style={{ position: 'absolute', left: `${x}%`, top: `${y}%`, zIndex: 11, pointerEvents: 'none', transform: 'translate(-50%, -50%)' }}>
-      <AnimatePresence>
-        {seen ? (
-          <motion.div key="cat" initial={{ scale: 0, y: size * 0.4 }} animate={{ scale: [0, 1.15, 1, 1, 0], y: [size * 0.4, 0, 0, 0, size * 0.4] }}
-            transition={{ duration: 1.8, times: [0, 0.2, 0.3, 0.8, 1] }}>
-            <Art art="🐱" size={size} />
-          </motion.div>
-        ) : (
-          <motion.svg key="eyes" viewBox="0 0 40 14" width={size * 0.6} height={size * 0.21} exit={{ opacity: 0 }}
-            className="pl-blink" style={{ display: 'block' }}>
-            <ellipse cx="9" cy="7" rx="6" ry="5" fill="#ffe14d" />
-            <ellipse cx="31" cy="7" rx="6" ry="5" fill="#ffe14d" />
-            <ellipse cx="9" cy="7" rx="1.6" ry="4" fill="#2a1b3d" />
-            <ellipse cx="31" cy="7" rx="1.6" ry="4" fill="#2a1b3d" />
-          </motion.svg>
-        )}
-      </AnimatePresence>
-    </div>
-  )
-}
-
-// What a found thing does when the light goes on (about 1.5 s): animals
-// hop, sea creatures swim, things with wings fly up, vehicles drive off and
-// come back, instruments play, the rooster crows, the volcano rumbles.
-const ACT_OF = {
-  swim: ['🦈', '🐬', '🐳', '🦀', '🐙', '🦢', '🐊'],
-  fly: ['🦋', '🐝', '🦜', '🦅', '🚀', '✈️', '🚁', '🪁', '🎈'],
-  drive: ['🚂', '🚲', '🛴', '🚜', '⛵'],
-  music: ['🎸', '🎺', '🎻', '🥁'],
-  crow: ['🐓'],
-  crawl: ['🐌', '🐍', '🐢'],
-  rumble: ['🌋'],
-}
-const actOf = e => Object.keys(ACT_OF).find(k => ACT_OF[k].includes(e)) ?? 'hop'
-const ACTS = {
-  hop:    s => ({ animate: { y: [0, -s * 0.35, 0, -s * 0.2, 0, -s * 0.1, 0] }, duration: 1.4, sound: () => sfx.boing() }),
-  swim:   s => ({ animate: { x: [0, -s * 0.25, s * 0.25, -s * 0.15, 0], rotate: [0, -12, 12, -6, 0] }, duration: 1.5, sound: () => sfx.splash() }),
-  fly:    s => ({ animate: { y: [0, -s * 0.5, -s * 0.7, -s * 0.3, 0], rotate: [0, -8, 8, -4, 0] }, duration: 1.5, sound: () => sfx.whoosh() }),
-  drive:  (s, w) => ({ animate: { x: [0, w * 0.7, -w * 0.7, 0], opacity: [1, 0, 0, 1] }, times: [0, 0.4, 0.42, 1], duration: 1.7, sound: () => sfx.whoosh() }),
-  music:  () => ({ animate: { rotate: [0, -10, 10, -10, 10, 0], scale: [1, 1.1, 1, 1.1, 1, 1] }, duration: 1.5, sound: () => [0, 300, 600, 900].forEach((d, i) => setTimeout(() => sfx.drum(i % 2 === 0), d)) }),
-  crow:   s => ({ animate: { rotate: [0, -18, -18, -18, 0], y: [0, -s * 0.12, -s * 0.12, -s * 0.12, 0] }, duration: 1.4, sound: () => sfx.slideUp() }),
-  crawl:  s => ({ animate: { x: [0, s * 0.18, s * 0.18, 0], scaleX: [1, 1.12, 0.92, 1] }, duration: 1.6, sound: () => sfx.giggle() }),
-  rumble: () => ({ animate: { x: [0, -6, 6, -6, 6, -4, 4, 0], scale: [1, 1.04, 1, 1.06, 1, 1.04, 1, 1] }, duration: 1.4, sound: () => sfx.boing() }),
-}
-
-// Where the friends found earlier sit in the room: down the left and right
-// walls, out of the way. In the dark only their eyes glow and blink.
-const seatOf = k => ({ x: k % 2 ? 95 : 5, y: 22 + Math.min(5, Math.floor(k / 2)) * 12 })
-
-// A big round button with a picture
-function PicButton({ art, label, onClick }) {
-  return (
-    <motion.button initial={{ opacity: 0, scale: 0.6 }} animate={{ opacity: 1, scale: 1 }} whileTap={{ scale: 0.9 }}
-      onClick={onClick} aria-label={label}
-      style={{ ...pxButton('green'), width: 64, height: 64, borderRadius: '50%', padding: 0, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <Art art={art} size={38} />
-    </motion.button>
-  )
-}
-
-export default function ShadowGame({ level = 1, onComplete }) {
-  const roundCount = level <= 4 ? 8 : level <= 7 ? 10 : 12
-  const [challenges] = useState(() => shuffle(CHALLENGES).slice(0, roundCount))
-  const [idx,        setIdx]        = useState(0)
-  const [solved,     setSolved]     = useState(false)
-  const [colored,    setColored]    = useState(false)   // the thing has its colours back
-  const [showNext,   setShowNext]   = useState(false)
-  const [wrongPicks, setWrongPicks] = useState([])
-  // after two wrong picks the whole shadow is lit, as a hint
-  const [fullLight,  setFullLight]  = useState(false)
-  // the torch was moved this round (until then the hand shows how)
-  const [moved,      setMoved]      = useState(false)
-  // the light joker, once a round: the light flashes on for a moment
-  const [hintUsed,   setHintUsed]   = useState(false)
-  const [flash,      setFlash]      = useState(false)
-  const [found,      setFound]      = useState([])
-  const [wave,       setWave]       = useState({ n: 0, upto: 0 })   // the friends hop (a run of right answers)
-  const [catSeen,    setCatSeen]    = useState(false)
-  const [acting,     setActing]     = useState(false)   // the found thing does its act
-  const paused      = usePaused()
-  const firstTryRef = useRef(0)
-  const streak      = useRef(0)
-  const peeked      = useRef(false)                      // the hidden thing giggled this round
-  const timers      = useRef([])
-  const handedIn    = useRef(false)
-  const [bursts, burst] = useBursts()
-  // on a wide screen the room stays left of the moon
-  const [rootRef, clear] = useSceneClear(770, 215)
-  const maxW = clear ? Math.min(820, clear.x - 48) : 820
-
-  const ch      = challenges[idx]
-  const last    = idx + 1 >= challenges.length
-  // Freeze option order per question
-  const options = useMemo(() => ch ? shuffle([ch.shadow, ...ch.decoys]) : [], [idx]) // eslint-disable-line react-hooks/exhaustive-deps
-  // On higher levels the shadow rotates more aggressively
-  const shadowRotate = level <= 2 ? 0
-    : level <= 5 ? (idx % 2 === 0 ? -16 : 16)
-    : (idx % 3 === 0 ? -32 : idx % 3 === 1 ? 32 : -16)
-  // Where in the room the shadow hides, 0..1 across the free space; and in
-  // some rounds (never the first) a cat in the corner furthest from it
-  const spot = useMemo(() => {
-    const u = Math.random(), v = Math.random()
-    const cat = idx > 0 && Math.random() < 0.35
-      ? { x: u > 0.5 ? 10 : 90, y: v > 0.5 || u <= 0.5 ? 16 : 84 }
-      : null
-    return { u, v, cat: cat && (cat.x === 90 && cat.y === 16 ? { x: 90, y: 84 } : cat) }
-  }, [idx])
-
-  // Torch — direct DOM mutation, zero React re-renders
-  const cardRef    = useRef(null)
-  const overlayRef = useRef(null)
-  const torchRef   = useRef(null)
-  const demoRef    = useRef(null)                      // the finger that shows the torch
-  const shadowRef  = useRef(null)
-  const resizeRef  = useRef(null)
-  const picsRef    = useRef(null)                      // the pictures (the hand drags from here into the room)
-  const [card, setCard] = useState({ w: 600, h: 400 })
-  // A new room mounts every round (it animates in), so it is measured
-  // through the ref callback rather than once
-  const setCardEl = useCallback((el) => {
-    cardRef.current = el
-    resizeRef.current?.disconnect()
-    if (!el) return
-    const measure = () => setCard(c => (c.w === el.clientWidth && c.h === el.clientHeight ? c : { w: el.clientWidth, h: el.clientHeight }))
-    measure()
-    resizeRef.current = new ResizeObserver(measure)
-    resizeRef.current.observe(el)
-  }, [])
-  useEffect(() => () => { resizeRef.current?.disconnect(); timers.current.forEach(clearTimeout) }, [])
-  const later = (fn, ms) => timers.current.push(setTimeout(fn, ms))
-
-  // The shadow is sized by the room, so it fits on a phone as on a monitor
-  const shadowSize = Math.round(Math.max(60, Math.min(card.h * 0.44, card.w * 0.4, 230)))
-  const halfW = (shadowSize / 2 / card.w) * 100 + 3
-  const halfH = (shadowSize / 2 / card.h) * 100 + 3
-  const shadowPos = {
-    leftPct: halfW + spot.u * Math.max(0, 100 - 2 * halfW),
-    topPct:  halfH + spot.v * Math.max(0, 100 - 2 * halfH),
-  }
-
-  // How much of the picture the torch uncovers at once, relative to the room.
-  // A narrower beam on higher levels forces the shape to be assembled from
-  // parts.
-  const beam = Math.round(Math.min(card.w, card.h) * (level <= 2 ? 0.36 : level <= 5 ? 0.27 : level <= 8 ? 0.2 : 0.16))
-  const torchSize = Math.round(Math.max(48, Math.min(92, beam * 0.62)))
-
-  useEffect(() => { sayTask() }, [idx])
-
-  const onPointerLeave = useCallback(() => {
-    const overlay = overlayRef.current
-    if (overlay) { overlay.style.maskImage = ''; overlay.style.webkitMaskImage = '' }
-    if (torchRef.current) torchRef.current.style.opacity = 0
-  }, [])
-
-  // Light the room at a finger (or mouse) point; returns the beam's middle
-  const shine = useCallback((px, py, touch) => {
-    const overlay = overlayRef.current
-    if (!overlay) return null
-    // on a touch screen the light shines just above the finger
-    const bx = px, by = py - (touch ? beam * 0.7 : 0)
-    // mask: black = overlay visible (dark), transparent = overlay hidden (shadow shows through)
-    const mask = `radial-gradient(circle ${beam}px at ${bx}px ${by}px, transparent 0%, transparent ${Math.round(beam * 0.39)}px, black ${Math.round(beam * 0.89)}px, black ${beam}px)`
-    overlay.style.maskImage = mask
-    overlay.style.webkitMaskImage = mask
-    const torch = torchRef.current
-    if (torch) {
-      torch.style.opacity = 1
-      torch.style.transform = touch
-        ? `translate(${px - torchSize / 2}px, ${py - torchSize * 0.3}px) rotate(-45deg)`
-        : `translate(${px}px, ${py}px) rotate(-90deg)`
-    }
-    return { bx, by }
-  }, [beam, torchSize])
-
-  const onPointerMove = useCallback((e) => {
-    const el = cardRef.current
-    if (!el) return
-    if (!moved) setMoved(true)
-    const rect = el.getBoundingClientRect()
-    const lit = shine(e.clientX - rect.left, e.clientY - rect.top, e.pointerType !== 'mouse')
-    if (!lit) return
-    const { bx, by } = lit
-    const near = (xPct, yPct, r) => Math.hypot(bx - (xPct / 100) * rect.width, by - (yPct / 100) * rect.height) < r
-    // the first time the light touches it, the hidden thing giggles
-    if (!peeked.current && near(shadowPos.leftPct, shadowPos.topPct, shadowSize * 0.4)) {
-      peeked.current = true
-      sfx.giggle()
-      shadowRef.current?.animate?.([{ transform: 'rotate(0)' }, { transform: 'rotate(-12deg)' }, { transform: 'rotate(10deg)' }, { transform: 'rotate(0)' }], { duration: 500 })
-    }
-    if (spot.cat && !catSeen && near(spot.cat.x, spot.cat.y, beam * 0.5)) {
-      setCatSeen(true)
-      sfx.slideUp()
-    }
-  }, [shine, beam, moved, shadowPos.leftPct, shadowPos.topPct, shadowSize, spot.cat, catSeen])
-
-  // Until the torch was moved, after a quiet spell a finger shows it: it
-  // sweeps across the room twice, and the light follows it.
-  const showTorch = useIdle(idx === 0 ? 1500 : 5000, !solved && !fullLight && !moved && !paused)
-  useEffect(() => {
-    const el = cardRef.current
-    if (!showTorch || !el) return
-    let raf
-    const t0 = performance.now()
-    const hand = demoRef.current
-    const step = now => {
-      const k = (now - t0) / 2600
-      if (k > 2) { onPointerLeave(); if (hand) hand.style.opacity = 0; return }
-      const px = el.clientWidth * (0.5 - 0.32 * Math.cos(2 * Math.PI * k))
-      const py = el.clientHeight * (0.66 + 0.1 * Math.sin(4 * Math.PI * k))
-      shine(px, py, true)
-      if (hand) { hand.style.opacity = 1; hand.style.transform = `translate(${px - 14}px, ${py - 4}px)` }
-      raf = requestAnimationFrame(step)
-    }
-    raf = requestAnimationFrame(step)
-    return () => { cancelAnimationFrame(raf); if (hand) hand.style.opacity = 0 }
-  }, [showTorch, shine]) // eslint-disable-line react-hooks/exhaustive-deps -- onPointerLeave is stable
-
-  // On to the next round, or the end (the ➡️ button, or by itself once the
-  // found thing has waved)
-  const goOn = useCallback(() => {
-    if (!solved || handedIn.current) return
-    setShowNext(false)
-    if (last) {
-      // Stars from the rounds solved at the first pick (lib/score.js), once:
-      // the timer and a tap on 🏁 must not both hand the level in
-      handedIn.current = true
-      onComplete(result(firstTryRef.current, challenges.length))
-      return
-    }
-    peeked.current = false
-    setIdx(i => i + 1)
-    setSolved(false)
-    setColored(false)
-    setWrongPicks([])
-    setFullLight(false)
-    setMoved(false)
-    setHintUsed(false)
-    setFlash(false)
-    setCatSeen(false)
-    setActing(false)
-  }, [solved, last, challenges.length, onComplete])
-
-  // The payoff plays out in full (light on, colours back, a wave), then the
-  // next round comes by itself — held while the help is open
-  useEffect(() => {
-    if (!solved || paused) return
-    const t = setTimeout(goOn, last ? 4200 : 2800)
-    return () => clearTimeout(t)
-  }, [solved, paused, last, goOn])
-
-  // A picture given to the room: taken if it is the hidden thing
-  const pick = (emoji) => {
-    if (solved || !ch) return false
-    if (emoji !== ch.shadow) {
-      // A wrong pick bounces back and is marked; the round stays open, so
-      // the child can look again with the torch. After the second one the
-      // whole shadow is lit.
-      const picks = wrongPicks.includes(emoji) ? wrongPicks : [...wrongPicks, emoji]
-      setWrongPicks(picks)
-      streak.current = 0
-      shadowRef.current?.animate?.([{ transform: 'translateX(0)' }, { transform: 'translateX(-10px)' }, { transform: 'translateX(10px)' }, { transform: 'translateX(-6px)' }, { transform: 'translateX(0)' }], { duration: 500 })
-      if (picks.length >= 2) setFullLight(true)
-      sayWrong()
-      return false
-    }
-    // A round solved with the joker is not counted as first try
-    const first = wrongPicks.length === 0 && !hintUsed
-    if (first) firstTryRef.current += 1
-    streak.current = first ? streak.current + 1 : 0
-    setSolved(true)
-    setFound(f => [...f, { emoji: ch.shadow, name: ch.name }])
-    sfx.sparkle()
-    later(() => setColored(true), 600)
-    later(() => { setActing(true); ACTS[actOf(ch.shadow)](shadowSize, card.w).sound() }, 900)
-    later(() => { sfx.giggle(); burst(shadowRef.current, last ? 'confetti' : 'stars', last ? 20 : 10) }, 900)
-    later(() => setShowNext(true), 800)
-    if (streak.current >= 3) {
-      const upto = found.length + 1, n = streak.current
-      later(() => { setWave(w => ({ n: w.n + 1, upto })); sfx.combo(n) }, 700)
-    }
-    sayRight()
-    return true
-  }
-
-  // The light joker: the whole room lights up for a moment. Once a round.
-  const giveHint = () => {
-    if (hintUsed || solved || !ch) return
-    setHintUsed(true)
-    setFlash(true)
-    sfx.sparkle()
-    later(() => setFlash(false), 1100)
-  }
-
-  if (!ch) return null
-  const dark = !solved && !fullLight && !flash
-  const act = ACTS[actOf(ch.shadow)](shadowSize, card.w)
-
-  return (
-    <DragArea autoTarget="room" disabled={solved || paused}>
-      <div ref={rootRef} style={{
-        flex:1, minHeight:0, width:'100%', boxSizing:'border-box',
-        display:'flex', flexDirection:'column', alignItems: clear ? 'flex-start' : 'center',
-        padding:'clamp(6px,1.4vw,16px) clamp(12px,3vw,32px) clamp(10px,2vw,20px)',
-        gap:'clamp(6px,1.4vh,14px)',
-        overflow:'hidden',
-      }}>
-        <Garland total={challenges.length} found={found} party={solved && last} wave={wave} maxW={maxW} />
-
-        {/* The room: dark, with a torch. It takes the height that is left,
-            so the pictures below always fit. */}
-        <DropZone id="room" onDrop={pick} label="Zimmer"
-          style={{ flex:'1 1 0', minHeight:150, maxHeight:680, width:'100%', maxWidth:maxW, display:'flex' }}>
-          {hover => (
-            <AnimatePresence mode="wait">
-              <motion.div key={idx}
-                initial={{ scale:0.9, opacity:0 }} animate={{ scale:1, opacity:1 }}
-                exit={{ scale:0.92, opacity:0, transition:{ duration:0.22 } }}
-                transition={{ type:'spring', stiffness:260, damping:20 }}
-                ref={setCardEl}
-                onPointerMove={dark ? onPointerMove : undefined}
-                onPointerDown={dark ? onPointerMove : undefined}
-                onPointerLeave={onPointerLeave}
-                style={{
-                  // pure white so the black silhouette shows in the beam
-                  background:'#ffffff',
-                  border:`3px solid ${INK}`, borderRadius:14,
-                  boxShadow: hover ? '0 0 0 5px #ffc93c, 0 5px 0 rgba(42,27,61,0.35)' : '0 5px 0 rgba(42,27,61,0.35)',
-                  flex:1, position:'relative', overflow:'hidden',
-                  cursor: dark ? 'none' : 'default',
-                  touchAction:'none',
-                }}
-              >
-                {/* the light is on: wallpaper, bunting, a lamp */}
-                <motion.div aria-hidden="true" initial={false} animate={{ opacity: solved ? 1 : 0 }} transition={{ duration: 0.5 }}
-                  style={{ position:'absolute', inset:0, background: ROOM_LIT }} />
-                {solved && <Bunting />}
-                <Lamp on={solved} />
-
-                {/* The thing: in its hiding place as a shadow, then in colour in the middle */}
-                <motion.div
-                  animate={solved
-                    ? { left: '50%', top: last ? '36%' : '44%', x: '-50%', y: '-50%', rotate: 0, scale: last ? 0.75 : 0.9 }
-                    : { left: `${shadowPos.leftPct}%`, top: `${shadowPos.topPct}%`, x: '-50%', y: '-50%', rotate: shadowRotate, scale: 1 }
-                  }
-                  transition={{ type: 'spring', stiffness: 140, damping: 16 }}
-                  style={{ position: 'absolute', pointerEvents: 'none', lineHeight: 1, userSelect: 'none', zIndex: 3 }}
-                >
-                  {/* brightness(0) = pure black silhouette, coloured once found;
-                      then it does its act */}
-                  <motion.div animate={acting && !reduceMotion() ? act.animate : { x: 0, y: 0, rotate: 0, scale: 1, scaleX: 1, opacity: 1 }}
-                    transition={acting ? { duration: act.duration, times: act.times } : { duration: 0.2 }}>
-                    <motion.span ref={shadowRef}
-                      animate={{ filter: colored ? 'brightness(1)' : 'brightness(0)' }}
-                      transition={{ duration: 0.6, ease: 'easeInOut' }}
-                      style={{ fontSize: shadowSize, display: 'block', mixBlendMode: solved ? 'normal' : 'multiply' }}
-                    >
-                      {ch.shadow}
-                    </motion.span>
-                  </motion.div>
-                  {/* instruments play: notes float up */}
-                  {acting && actOf(ch.shadow) === 'music' && !reduceMotion() && [0, 1, 2].map(k => (
-                    <motion.div key={k} aria-hidden="true" initial={{ y: 0, opacity: 0 }} animate={{ y: -shadowSize * 0.9, x: (k - 1) * shadowSize * 0.3, opacity: [0, 1, 0] }}
-                      transition={{ duration: 1.3, delay: k * 0.3 }}
-                      style={{ position: 'absolute', left: '40%', top: '10%' }}>
-                      <Art art="🎵" size={Math.round(shadowSize * 0.28)} />
-                    </motion.div>
-                  ))}
-                  {/* found: it thinks of its fun fact, as a picture */}
-                  {colored && ch.see && (
-                    <motion.div aria-hidden="true" initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                      transition={{ type: 'spring', stiffness: 300, damping: 14, delay: 0.5 }}
-                      style={{ position: 'absolute', left: -shadowSize * 0.42, top: -shadowSize * 0.3, transformOrigin: '100% 100%' }}>
-                      <div style={{ background: '#fffdf7', border: `3px solid ${INK}`, borderRadius: '50%', padding: shadowSize * 0.06, boxShadow: '0 4px 0 rgba(42,27,61,0.25)', display: 'flex' }}>
-                        <Art art={ch.see} size={Math.round(shadowSize * 0.34)} />
-                      </div>
-                      <div style={{ position: 'absolute', right: -shadowSize * 0.02, bottom: -shadowSize * 0.08, width: shadowSize * 0.08, height: shadowSize * 0.08, borderRadius: '50%', background: '#fffdf7', border: `2px solid ${INK}` }} />
-                    </motion.div>
-                  )}
-                  {/* found: it waves hello */}
-                  {colored && (
-                    <motion.div aria-hidden="true"
-                      initial={{ scale: 0, rotate: 0 }}
-                      animate={reduceMotion() ? { scale: 1 } : { scale: 1, rotate: [0, 25, -10, 25, -10, 0] }}
-                      transition={{ duration: 1.2 }}
-                      style={{ position: 'absolute', right: -shadowSize * 0.28, top: -shadowSize * 0.08, transformOrigin: '30% 90%' }}>
-                      <Art art="👋" size={Math.round(shadowSize * 0.42)} />
-                    </motion.div>
-                  )}
-                </motion.div>
-
-                {/* the end of the level: all the friends come into the lit room and hop */}
-                {colored && last && (
-                  <div aria-hidden="true" style={{ position:'absolute', left:'4%', right:'4%', bottom:'22%', zIndex:4, display:'flex', justifyContent:'center', alignItems:'flex-end', pointerEvents:'none' }}>
-                    {found.slice(0, -1).map((f, i) => (
-                      <motion.div key={f.emoji} initial={{ y: -40, opacity: 0 }}
-                        animate={reduceMotion() ? { y: 0, opacity: 1 } : { y: [-40, 0, -16, 0, -16, 0], opacity: 1 }}
-                        transition={{ duration: 2.2, delay: i * 0.07 }}>
-                        <Art art={f.emoji} size={Math.round(Math.min(64, card.w * 0.92 / found.length))} />
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Darkness with the torch beam: fully opaque, so nothing of the
-                    shadow shows outside the beam */}
-                <AnimatePresence>
-                  {dark && (
-                    <motion.div key="dark" ref={overlayRef} initial={{ opacity: hintUsed ? 0 : 1 }} animate={{ opacity: 1 }}
-                      exit={{ opacity: 0, transition: { duration: flash ? 0.15 : 0.5 } }}
-                      style={{ position:'absolute', inset:0, pointerEvents:'none', zIndex:10, background:'rgb(6,0,15)' }} />
-                  )}
-                </AnimatePresence>
-                {/* the friends found earlier: glowing eyes in the dark, sitting there in the light */}
-                {!(last && colored) && found.slice(0, solved ? -1 : undefined).map((f, k) => {
-                  const { x, y } = seatOf(k)
-                  const sz = Math.round(Math.min(44, card.h * 0.11))
-                  return (
-                    <div key={f.emoji} aria-hidden="true" style={{ position:'absolute', left:`${x}%`, top:`${y}%`, transform:'translate(-50%, -50%)', zIndex: dark ? 11 : 4, pointerEvents:'none' }}>
-                      {dark
-                        ? <svg viewBox="0 0 40 14" width={sz * 0.6} height={sz * 0.21} className="pl-blink" style={{ display:'block', animationDelay:`${-k * 0.7}s` }}>
-                            <ellipse cx="10" cy="7" rx="6" ry="5" fill="#bfe8ff" /><ellipse cx="30" cy="7" rx="6" ry="5" fill="#bfe8ff" />
-                            <circle cx="10" cy="7" r="2.4" fill="#2a1b3d" /><circle cx="30" cy="7" r="2.4" fill="#2a1b3d" />
-                          </svg>
-                        : <motion.div initial={{ scale: 0.6 }} animate={reduceMotion() ? { scale: 1 } : { scale: 1, y: [0, -8, 0] }} transition={{ duration: 0.5, delay: 0.6 + k * 0.06 }}>
-                            <Art art={f.emoji} size={sz} />
-                          </motion.div>}
-                    </div>
-                  )
-                })}
-                {dark && spot.cat && found.length <= 4 && <CornerCat x={spot.cat.x} y={spot.cat.y} seen={catSeen} size={Math.round(Math.min(90, card.h * 0.22))} />}
-                {dark && (
-                  <div ref={torchRef} aria-hidden="true"
-                    style={{ position:'absolute', left:0, top:0, zIndex:11, opacity:0, pointerEvents:'none', transformOrigin:'50% 50%', filter:'drop-shadow(0 4px 4px rgba(0,0,0,0.5))' }}>
-                    <Art art="🔦" size={torchSize} />
-                  </div>
-                )}
-                {/* the finger that shows the torch */}
-                {dark && (
-                  <div ref={demoRef} aria-hidden="true" style={{ position:'absolute', left:0, top:0, zIndex:12, opacity:0, pointerEvents:'none', filter:'drop-shadow(0 4px 3px rgba(0,0,0,0.5))' }}>
-                    <Art art="👆" size={60} />
-                  </div>
-                )}
-
-                {/* the light joker */}
-                <motion.button
-                  onClick={giveHint}
-                  disabled={hintUsed || solved}
-                  whileTap={hintUsed || solved ? {} : { scale: 0.9 }}
-                  aria-label="Licht-Tipp"
-                  style={{
-                    ...pxButton('gold'), position:'absolute', top:8, left:8, zIndex:12, width:52, height:52, padding:0, borderRadius:'50%',
-                    display:'flex', alignItems:'center', justifyContent:'center',
-                    opacity: hintUsed || solved ? 0.4 : 1, cursor: hintUsed || solved ? 'default' : 'pointer',
-                  }}
-                >
-                  <Art art="💡" size={34} />
-                </motion.button>
-
-                {/* the fact (for a grown-up to read aloud) and the way on */}
-                <AnimatePresence>
-                  {solved && (
-                    <motion.div
-                      initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:8 }}
-                      transition={{ delay: 0.5 }}
-                      style={{
-                        position:'absolute', bottom:6, left:'4%', width:'92%', zIndex:12, boxSizing:'border-box',
-                        display:'flex', alignItems:'center', justifyContent:'flex-end', gap:10,
-                        padding:'2px 2px 2px 10px',
-                        fontFamily:'var(--font-body)', fontWeight:700, fontSize:'clamp(11px,1.6vw,13px)', lineHeight:1.2,
-                        color:'rgba(42,27,61,0.75)', textAlign:'left',
-                      }}
-                    >
-                      <span style={{ flex:1, background:'rgba(255,253,247,0.8)', borderRadius:8, padding:'3px 8px' }}>{ch.fact}</span>
-                      {showNext && <PicButton art={last ? '🏁' : '➡️'} label={last ? 'Fertig' : 'Weiter'} onClick={goOn} />}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            </AnimatePresence>
-          )}
-        </DropZone>
-
-        {/* The pictures: drag the one that fits into the room, or tap it.
-            One row of four, so they never drop below the screen. */}
-        <div ref={picsRef} style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'clamp(8px,1.6vw,16px)', width:'100%', maxWidth:maxW, flexShrink:0 }}>
-          {options.map((emoji, i) => {
-            const isRight = emoji === ch.shadow
-            const isWrong = wrongPicks.includes(emoji)
-            return (
-              <Draggable key={`${idx}-${emoji}`} id={`${idx}-${emoji}`} data={emoji} label={`Bild ${i + 1}`} disabled={isWrong}>
-                <motion.div
-                  initial={{ opacity:0, y:14 }}
-                  animate={{ opacity: isWrong || (solved && !isRight) ? 0.45 : 1, y: 0, scale: solved && isRight ? [1, 1.15, 1] : 1, rotate: isWrong ? [0, -8, 8, -4, 0] : 0 }}
-                  transition={{ delay: solved || isWrong ? 0 : i * 0.06, type:'spring', stiffness:300, scale: { duration: 0.5 }, rotate: { duration: 0.5 } }}
-                  style={{
-                    height:'clamp(72px,16vh,136px)',
-                    ...pxCard(solved && isRight ? 'right' : undefined),
-                    fontSize:'min(11.5vh, 17vw, 100px)', lineHeight:1,
-                    display:'flex', alignItems:'center', justifyContent:'center',
-                    filter: isWrong ? 'grayscale(0.7)' : undefined,
-                  }}
-                >
-                  {emoji}
-                </motion.div>
-              </Draggable>
-            )
-          })}
-        </div>
-      </div>
-      {/* once the torch was used: the hand shows how to bring a picture in */}
-      <HintHand from={picsRef} to={cardRef} active={moved && !solved} delay={idx === 0 ? 3000 : 6000} />
-      {bursts}
-    </DragArea>
   )
 }

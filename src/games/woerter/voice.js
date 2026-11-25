@@ -1,5 +1,6 @@
 import { LINES, line } from '../../lib/lumiLines.js'
 import { narrate } from '../../narrator.js'
+import { soundKey, soundLikeKey } from '../buchstaben/voice.js'
 
 // Recorded sentences for the word games (Zauberkessel, Frosch-Hüpfen,
 // Tierparty, Buchstaben-Spuren). Only Lumi's recorded voice speaks, so the
@@ -16,9 +17,11 @@ export const slug = s => s.toLowerCase()
 export const KEY = {
   word:     w => `wort/${slug(w)}`,          // "Banane."
   syllable: s => `silbe/${slug(s)}`,         // "Na."
-  sound:    c => `laut/${slug(c)}`,          // "Mmm." (the letter's sound)
+  // a letter's sound, and "Mmm wie Maus!": the rule of buchstaben/voice.js
+  // (held sounds and vowels only, never "Bö"; the others are named)
+  sound:    c => soundKey(c),
   letter:   c => `buchstabe/${slug(c)}`,     // "Be." (the letter's name)
-  anlaut:   (c, w) => `laut/${slug(c)}-wie-${slug(w)}`, // "Mmm wie Maus!"
+  anlaut:   (c, w) => soundLikeKey(c, w),
   digit:    n => `ziffer/${n}`,              // "Drei!"
   noise:    w => `geraeusch/${slug(w)}`,     // "Muuh!"
   task:     name => `woerter/${name}`,       // the task of a game, once per level

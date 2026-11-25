@@ -1,21 +1,29 @@
 import { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useAnimationControls } from 'framer-motion'
 import { sfx } from '../sfx.js'
-import { afterNarration, lockPreviews } from '../narrator.js'
+import { afterNarration, lockPreviews, narrate } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
+import { LINES, line } from '../lib/lumiLines.js'
 import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
-import { Critter, Art, useMood, DragArea, Draggable, DropZone, RoundTrail, HintHand, useBursts, useDragState } from '../components/play/index.js'
+import { Critter, Art, DragArea, Draggable, DropZone, RoundTrail, HintHand, useBursts, useDragState, useJuice } from '../components/play/index.js'
 import { pxCard, pxPanel, pxButton, INK } from './px.js'
+import { useBox, isUpright, isFlat } from './useBox.js'
 
 /**
  * Formen-Werkstatt — aus Formen ein Bild zusammensetzen
  *
  * An animal comes into the workshop and wants something: a boat, a house,
- * a rocket. The child drags the shapes into the outline on the workbench;
- * when the last piece is in, the thing comes alive — it gets a face, the
- * boat sails, the rocket lifts off, a bee visits the flower — and the
- * customer cheers.
+ * a rocket (Lumi names it). The child drags the shapes into the outline on
+ * the workbench. Held over a place, a piece shows its ghost there: it fits,
+ * or it is plainly too big, too small or the wrong way round. A piece that
+ * fits snaps in with a click and a little shake, and a star flies to the
+ * counter (components/play/Juice.jsx). When the last piece is in, the
+ * thing does what it does, each in its own way: the boat sails off and
+ * comes back, the rocket shakes and lifts off, the pencil scribbles, the
+ * bus drives a round with the customer on board. Then it goes on the
+ * workshop shelf. After the last wish the bench is free for a moment: the
+ * child builds what it likes, and the level ends by itself.
  *
  * Formen-Land asks which shape something *is*; this asks which shapes
  * something is *made of*. Part-whole composition ("a house is a square and a
@@ -32,9 +40,14 @@ import { pxCard, pxPanel, pxButton, INK } from './px.js'
  *     can be pulled into place, or tapped and then its place tapped. A piece
  *     let go over empty space just goes back — a slipped finger is never
  *     counted as a wrong answer.
+ *
+ * The game lays itself out from the room it really has (useBox.js): stacked
+ * on a tablet and an upright phone, side by side on a phone held sideways.
  */
 
 function shuffle(a) { return [...a].sort(() => Math.random() - 0.5) }
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
+const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
 // Names of the shapes, for screen readers on the pieces
 const SHAPE = {
@@ -63,109 +76,156 @@ function ShapePath({ shape, x, y, w, h, rot = 0, ...paint }) {
   return <rect x={x} y={y} width={w} height={h} rx={3} transform={transform} {...paint} />
 }
 
-// Jede Figur ist eine kleine Teileliste — der Umriss, den das Kind füllt.
+// Every figure is a small list of parts: the outline the child fills.
 //
-// Die Teile schließen exakt aneinander an: die Dachkante liegt genau auf der
-// Hauswand, der Stamm endet genau da, wo die Krone beginnt, die Räder sitzen
-// auf der Unterkante des Wagens. Vorher standen die Formen mit Lücken
-// nebeneinander, und das Ergebnis sah nach Formen aus statt nach einem Haus.
+// The parts meet exactly: the roof's edge lies on the wall, the trunk
+// starts where the crown ends, the wheels sit on the lower edge of the bus.
 //
-// `icon` ist, was sich der Kunde wünscht, `face`, wo das fertige Ding Augen
-// bekommt ([x, y, Maßstab]), `alive`, wie es sich dann bewegt und wer oder
-// was dazukommt (`extra` bei `at`). `use`: wo der Kunde sein Ding benutzt —
-// er steigt ins Boot, leckt am Eis — mit Fußpunkt [x, y] und Stimmung.
+// The customer's wish is the figure itself, drawn small in its colours
+// (MiniFigure): what is wished is exactly what is built. (Emoji were wished
+// before, and none of them looked like the figure: a soft-serve for a scoop
+// on a cone, a flower with five petals and no stem for four and a stem, a
+// locomotive for a box and a square.) `word`: Lumi's recording of its name
+// (lib/lumiLines.js, wort/… or a whole key). `face`: where the finished
+// thing gets eyes ([x, y, scale]).
+// `alive`: what it does then (see ALIVE) and who or what joins it (`extra`
+// at `at`; `rides`: it goes along, `orbit`: it circles). `use`: where the
+// customer uses its thing, with the foot point [x, y] and a mood. `window`:
+// a round window [x, y, r] for the customer to look out of.
 const FIGURES = [
-  { name: 'Haus', icon: '🏠', face: [50, 66, 0.3], alive: { move: 'hop', extra: '🐦', at: [62, 10] }, use: [50, 86, 'happy'], parts: [
-    { shape: 'triangle',  x: 22, y: 18, w: 56, h: 28, color: '#FF6B6B' },    // Dach sitzt auf …
-    { shape: 'square',    x: 30, y: 46, w: 40, h: 40, color: '#FFD93D' }] }, // … der Wand ab y46
-  { name: 'Baum', icon: '🌳', face: [50, 44, 0.28], alive: { move: 'sway', extra: '🍎', at: [34, 34] }, use: [76, 90, 'happy'], parts: [
-    { shape: 'triangle',  x: 20, y: 14, w: 60, h: 48, color: '#6BCB77' },   // Krone endet bei y62
-    { shape: 'rectangle', x: 43, y: 62, w: 14, h: 26, color: '#8D6E63' }] },// Stamm beginnt dort
-  { name: 'Boot', icon: '⛵', face: [50, 72, 0.18], alive: { move: 'sail', extra: '🌊', at: [50, 90] }, use: [30, 62, 'happy'], parts: [
-    { shape: 'triangle',  x: 42, y: 16, w: 32, h: 46, color: '#FF9F43' },   // Segel steht auf …
-    { shape: 'rectangle', x: 16, y: 62, w: 68, h: 20, color: '#74B9FF' }] },// … dem Rumpf
-  { name: 'Kerze', icon: '🕯️', face: [50, 62, 0.14], alive: { move: 'hop', extra: '✨', at: [66, 10] }, use: [74, 90, 'wow'], parts: [
-    { shape: 'triangle',  x: 42, y: 10, w: 16, h: 24, color: '#FF9F43' },  // Flamme genau so …
-    { shape: 'rectangle', x: 42, y: 34, w: 16, h: 56, color: '#FFD93D' }] },// … breit wie die Kerze
-  { name: 'Eis', icon: '🍦', face: [50, 36, 0.24], alive: { move: 'hop', extra: '✨', at: [70, 18] }, use: [76, 60, 'eat'], parts: [
-    { shape: 'circle',    x: 34, y: 20, w: 32, h: 32, color: '#FD79A8' },   // Kugel in der Waffel
-    { shape: 'triangle',  x: 38, y: 46, w: 24, h: 40, rot: 180, color: '#D9A066' }] },
-  { name: 'Lolli', icon: '🍭', face: [50, 32, 0.34], alive: { move: 'spin' }, use: [78, 56, 'eat'], parts: [
-    { shape: 'circle',    x: 28, y: 10, w: 44, h: 44, color: '#E84393' },  // Bonbon auf …
-    { shape: 'rectangle', x: 46, y: 54, w: 8,  h: 36, color: '#D9A066' }] },// … dem Stiel
-  { name: 'Fahne', icon: '🚩', face: [52, 24, 0.18], alive: { move: 'sway', extra: '💨', at: [84, 20] }, use: [62, 92, 'happy'], parts: [
-    { shape: 'rectangle', x: 24, y: 10, w: 8,  h: 80, color: '#8D6E63' },  // Stange, an ihr …
-    { shape: 'triangle',  x: 40, y: 4,  w: 30, h: 46, rot: 90, color: '#FF6B6B' }] }, // … das Tuch (Spitze nach rechts)
-  { name: 'Schneemann', icon: '⛄', face: [50, 19, 0.17], alive: { move: 'hop', extra: '🎩', at: [50, 2] }, use: [80, 96, 'happy'], parts: [
-    { shape: 'circle',    x: 39, y: 8,  w: 22, h: 22, color: '#EAF6FF' },          // drei Kugeln, jede
-    { shape: 'circle',    x: 34, y: 28, w: 32, h: 32, color: '#CFE7FF' },// auf der nächsten
+  { name: 'Haus', word: 'haus', face: [50, 66, 0.3], alive: { move: 'hop', extra: '🐦', at: [62, 10] }, use: [50, 86, 'happy'], parts: [
+    { shape: 'triangle',  x: 22, y: 18, w: 56, h: 28, color: '#FF6B6B' },    // the roof sits on …
+    { shape: 'square',    x: 30, y: 46, w: 40, h: 40, color: '#FFD93D' }] }, // … the wall from y 46
+  { name: 'Tanne', word: 'woerter/tanne', face: [50, 44, 0.28], alive: { move: 'sway', extra: '🐿️', at: [68, 54] }, use: [22, 90, 'happy'], parts: [
+    { shape: 'triangle',  x: 20, y: 14, w: 60, h: 48, color: '#6BCB77' },   // the crown ends at y 62
+    { shape: 'rectangle', x: 43, y: 62, w: 14, h: 26, color: '#8D6E63' }] },// the trunk starts there
+  { name: 'Boot', word: 'boot', face: [50, 72, 0.18], alive: { move: 'sail', extra: '🌊', at: [50, 92] }, use: [30, 62, 'happy'], parts: [
+    { shape: 'triangle',  x: 42, y: 16, w: 32, h: 46, color: '#FF9F43' },   // the sail stands on …
+    { shape: 'rectangle', x: 16, y: 62, w: 68, h: 20, color: '#74B9FF' }] },// … the hull
+  { name: 'Stift', word: 'stift', face: [50, 34, 0.14], alive: { move: 'scribble' }, use: [84, 96, 'happy'], parts: [
+    { shape: 'rectangle', x: 42, y: 8,  w: 16, h: 54, color: '#FFD93D' },   // the pencil and …
+    { shape: 'triangle',  x: 42, y: 62, w: 16, h: 22, rot: 180, color: '#D9A066' }] }, // … its tip, down on the paper
+  { name: 'Eis', word: 'eis', face: [50, 30, 0.24], alive: { move: 'wobble', extra: '✨', at: [70, 12] }, use: [76, 60, 'eat'], parts: [
+    { shape: 'circle',    x: 34, y: 14, w: 32, h: 32, color: '#FD79A8' },   // the scoop sits on the cone's rim (y 46):
+    { shape: 'triangle',  x: 38, y: 46, w: 24, h: 40, rot: 180, color: '#D9A066' }] }, // reaching into it, its outline cut into the cone's place
+  { name: 'Lolli', word: 'lolli', face: [50, 32, 0.34], alive: { move: 'spin' }, use: [80, 60, 'eat'], swirl: true, parts: [
+    { shape: 'circle',    x: 28, y: 10, w: 44, h: 44, color: '#E84393' },  // the sweet on …
+    { shape: 'rectangle', x: 46, y: 54, w: 8,  h: 36, color: '#D9A066' }] },// … its stick
+  { name: 'Fahne', word: 'fahne', face: [52, 24, 0.18], alive: { move: 'flutter', extra: '💨', at: [86, 22] }, use: [62, 92, 'happy'], parts: [
+    { shape: 'rectangle', x: 24, y: 10, w: 8,  h: 80, color: '#8D6E63' },  // the pole, and on it …
+    { shape: 'triangle',  x: 40, y: 4,  w: 30, h: 46, rot: 90, color: '#FF6B6B' }] }, // … the cloth (pointing right)
+  { name: 'Schneemann', word: 'schneemann', face: [50, 19, 0.17], alive: { move: 'hop', extra: '🎩', at: [50, 2], snow: true }, use: [82, 96, 'happy'], parts: [
+    { shape: 'circle',    x: 39, y: 8,  w: 22, h: 22, color: '#EAF6FF' },          // three balls, each
+    { shape: 'circle',    x: 34, y: 28, w: 32, h: 32, color: '#CFE7FF' },          // on the next
     { shape: 'circle',    x: 29, y: 54, w: 42, h: 42, color: '#AED4F7' }] },
-  { name: 'Turm', icon: '🗼', face: [50, 76, 0.26], alive: { move: 'hop', extra: '🐦', at: [64, 4] }, use: [78, 94, 'happy'], parts: [
-    { shape: 'triangle',  x: 30, y: 6,  w: 40, h: 28, color: '#FF6B6B' },  // Spitze  6–34
-    { shape: 'square',    x: 38, y: 34, w: 24, h: 24, color: '#4AA3FF' }, // Mitte  34–58
-    { shape: 'square',    x: 32, y: 58, w: 36, h: 36, color: '#B0BEC5' }] },// Sockel 58–94
-  { name: 'Rakete', icon: '🚀', face: [50, 50, 0.16], alive: { move: 'launch', extra: '🔥', at: [50, 84] }, use: [50, 52, 'happy'], parts: [
-    { shape: 'triangle',  x: 36, y: 6,  w: 28, h: 24, color: '#FF6B6B' },  // Spitze auf dem Rumpf
+  { name: 'Bus', word: 'bus', face: [56, 50, 0.2], alive: { move: 'drive' }, use: [30, 32, 'happy'], parts: [
+    { shape: 'rectangle', x: 12, y: 32, w: 76, h: 40, color: '#FFD93D' },   // a box …
+    { shape: 'circle',    x: 22, y: 64, w: 20, h: 20, color: '#444' },      // … on two wheels
+    { shape: 'circle',    x: 60, y: 64, w: 20, h: 20, color: '#444' }] },
+  { name: 'Rakete', word: 'rakete', face: [50, 62, 0.15], window: [50, 40, 9], alive: { move: 'launch', extra: '🔥', at: [50, 84], rides: true }, use: [50, 48, 'happy'], parts: [
+    { shape: 'triangle',  x: 36, y: 6,  w: 28, h: 24, color: '#FF6B6B' },  // the nose on the hull
     { shape: 'rectangle', x: 40, y: 30, w: 20, h: 44, color: '#B0BEC5' },
-    // Flossen: rechtwinklig, die senkrechte Kante liegt am Rumpf (x 40 / 60),
-    // die untere schließt mit ihm bei y 74 ab. Die linke ist dieselbe Form,
-    // eine Dreivierteldrehung weiter.
+    // The fins: right-angled, the upright side on the hull (x 40 / 60), the
+    // lower one flush with it at y 74. The left one is the same shape, three
+    // quarter turns on.
     { shape: 'rtriangle', x: 20, y: 54, w: 20, h: 20, rot: 270, color: '#4AA3FF' },
     { shape: 'rtriangle', x: 60, y: 54, w: 20, h: 20, color: '#4AA3FF' }] },
-  { name: 'Blume', icon: '🌸', face: [50, 36, 0.12], alive: { move: 'sway', extra: '🐝', at: [80, 12] }, use: [76, 94, 'wow'], parts: [
-    // vier große Blütenblätter um eine deutlich kleinere Mitte
+  { name: 'Blume', word: 'blume', face: [50, 36, 0.12], alive: { move: 'bloom', extra: '🐝', at: [50, 36], orbit: true }, use: [78, 94, 'happy'], parts: [
+    // four big petals around a clearly smaller middle
     { shape: 'circle',    x: 38, y: 5,  w: 24, h: 24, color: '#FD79A8' },
     { shape: 'circle',    x: 19, y: 24, w: 24, h: 24, color: '#FD79A8' },
     { shape: 'circle',    x: 57, y: 24, w: 24, h: 24, color: '#FD79A8' },
     { shape: 'circle',    x: 38, y: 43, w: 24, h: 24, color: '#FD79A8' },
     { shape: 'circle',    x: 43, y: 29, w: 14, h: 14, color: '#FFD93D' },
-    { shape: 'rectangle', x: 46, y: 67, w: 8,  h: 27, color: '#6BCB77' }] },// Stiel ab dem unteren Blatt
-  { name: 'Zug', icon: '🚂', face: [70, 60, 0.18], alive: { move: 'drive', extra: '💨', at: [84, 34] }, use: [34, 44, 'happy'], parts: [
-    { shape: 'rectangle', x: 12, y: 44, w: 46, h: 28, color: '#74B9FF' },   // Wagen 12–58
-    { shape: 'square',    x: 58, y: 48, w: 24, h: 24, color: '#FF9F43' },     // Lok schließt bei 58 an
-    { shape: 'circle',    x: 18, y: 72, w: 16, h: 16, color: '#444' },        // Räder auf der
-    { shape: 'circle',    x: 62, y: 72, w: 16, h: 16, color: '#444' }] },     // Unterkante y72
+    { shape: 'rectangle', x: 46, y: 67, w: 8,  h: 27, color: '#6BCB77' }] },// the stem from the lower petal
+  { name: 'Zug', word: 'zug', face: [70, 60, 0.18], alive: { move: 'chug', extra: '💨', at: [70, 34], rides: true }, use: [34, 44, 'happy'], parts: [
+    { shape: 'rectangle', x: 12, y: 44, w: 46, h: 28, color: '#74B9FF' },   // the wagon 12–58
+    { shape: 'square',    x: 58, y: 48, w: 24, h: 24, color: '#FF9F43' },   // the engine joins at 58
+    { shape: 'circle',    x: 18, y: 72, w: 16, h: 16, color: '#444' },      // wheels on the
+    { shape: 'circle',    x: 62, y: 72, w: 16, h: 16, color: '#444' }] },   // lower edge y 72
 ]
 
-// What each level asks for, on top of more parts:
-//   1–3 two-part figures · 4–5 up to three parts and one piece that does not
-//   belong · 6–7 pieces come turned and are turned by tapping them again ·
-//   8–10 all figures, only the silhouette shows where the parts go
-function levelRules(level) {
+// Lumi names the wish ("Haus."): only where the word is recorded
+const wishKey = fig => (fig.word?.includes('/') ? fig.word : `wort/${fig.word}`)
+const wishWord = fig => (fig.word && LINES[wishKey(fig)] ? line(wishKey(fig)) : null)
+
+// What each level asks for. Every level brings one new thing:
+//    1  two-part figures, every place outlined
+//    2  + one piece too many: a shape the figure does not use at all
+//    3  + three-part figures (the snowman, the bus)
+//    4  the piece too many is one of the figure's shapes in another size
+//    5  + the big figures (the rocket, the flower, the train)
+//    6  the pieces lie turned and are turned with their button
+//    7  turned pieces in the big figures
+//    8  only the silhouette shows where the parts go
+//    9  the silhouette, and the pieces lie turned
+//   10  the silhouette, turned, and only figures of three parts or more
+// `focus`: figures with at least this many parts come first in the draw,
+// so the level's new figures are really there.
+export function levelRules(level) {
   return {
-    maxParts:   level <= 3 ? 2 : level <= 6 ? 3 : Infinity,
-    distractor: level >= 4,
-    turn:       level >= 6,
+    maxParts:   level <= 2 ? 2 : level <= 4 || level === 6 ? 3 : Infinity,
+    minParts:   level >= 10 ? 3 : 1,
+    focus:      level === 3 || level === 4 || level === 6 ? 3 : level === 5 ? 4 : level >= 7 ? 3 : 1,
+    extra:      level < 2 ? null : level <= 3 ? 'other' : 'near',
+    turn:       level === 6 || level === 7 || level >= 9,
     silhouette: level >= 8,
   }
 }
 
-function buildRounds(level, count = 6) {
+export function buildRounds(level, count = 6, random = Math.random) {
   // Easy levels only use figures with few parts. When the tier holds fewer
   // figures than there are rounds it repeats *its own* figures — padding with
-  // the full list used to hand a level-1 child the four-part rocket. From
-  // level 7 the bigger figures come first in the draw, so they do appear.
-  const { maxParts } = levelRules(level)
-  const pool = FIGURES.filter(f => f.parts.length <= maxParts)
+  // the full list used to hand a level-1 child the four-part rocket.
+  const { maxParts, minParts, focus } = levelRules(level)
+  const mix = a => {
+    const out = [...a]
+    for (let i = out.length - 1; i > 0; i--) {
+      const j = Math.floor(random() * (i + 1));
+      [out[i], out[j]] = [out[j], out[i]]
+    }
+    return out
+  }
+  const pool = FIGURES.filter(f => f.parts.length <= maxParts && f.parts.length >= minParts)
+  // the last level only has the big figures: as many rounds as there are of
+  // them, so that none comes twice (the bus was wished for twice)
+  if (minParts > 1) count = Math.min(count, pool.length)
   const picks = []
   while (picks.length < count) {
-    let batch = shuffle(pool)
-    if (level >= 7) batch = [...batch.filter(f => f.parts.length > 2), ...batch.filter(f => f.parts.length <= 2)]
-    // never the same figure twice in a row across a reshuffle
-    if (picks.length && batch[0] === picks[picks.length - 1] && batch.length > 1) {
-      batch = [batch[1], batch[0], ...batch.slice(2)]
-    }
-    picks.push(...batch)
+    // the level's new figures first, so they are among the rounds
+    const batch = mix(pool)
+    picks.push(...batch.filter(f => f.parts.length >= focus), ...batch.filter(f => f.parts.length < focus))
   }
-  return shuffle(picks.slice(0, count))
+  // in a random order, never the same figure twice in a row
+  const chosen = picks.slice(0, count)
+  let order = mix(chosen)
+  for (let n = 0; n < 50 && order.some((f, i) => i && f === order[i - 1]); n++) order = mix(chosen)
+  return order
 }
 
-// A piece that fits nowhere in this figure: a shape it does not use, or a
-// size none of its parts has.
-function makeDistractor(fig) {
+// A piece that fits nowhere in this figure. 'other': a shape it does not
+// use at all. 'near': one of its shapes, but plainly bigger or smaller than
+// every part of that shape (a quarter at least); where there is none, an
+// 'other' one.
+const CLOSE = (a, b) => Math.abs(a / b - 1) < 0.25
+export function makeDistractor(fig, kind = 'other', random = Math.random) {
+  const pick = a => a[Math.floor(random() * a.length)]
+  if (kind === 'near') {
+    const sizes = fig.parts.flatMap(p => {
+      const big = Math.max(p.w, p.h) <= 30
+      const k = big ? 1.6 : 0.6
+      const w = Math.round(p.w * k), h = Math.round(p.h * k)
+      const clash = fig.parts.some(q => q.shape === p.shape && CLOSE(w, q.w) && CLOSE(h, q.h))
+      return clash ? [] : [{ shape: p.shape, w, h }]
+    })
+    if (sizes.length) {
+      const s = pick(sizes)
+      return { shape: s.shape, x: 0, y: 0, w: s.w, h: s.h, color: '#B39DDB', extra: true }
+    }
+  }
   const used = new Set(fig.parts.map(p => p.shape === 'rtriangle' ? 'triangle' : p.shape))
   const free = ['circle', 'square', 'triangle', 'rectangle'].filter(s => !used.has(s))
-  const shape = free.length ? free[Math.floor(Math.random() * free.length)] : 'square'
+  const shape = free.length ? pick(free) : 'square'
   const dims = { circle: [26, 26], square: [28, 28], triangle: [34, 28], rectangle: [36, 16] }[shape]
   return { shape, x: 0, y: 0, w: dims[0], h: dims[1], color: '#B39DDB', extra: true }
 }
@@ -178,180 +238,36 @@ function randomTurn(shape) {
   return 90 * (1 + Math.floor(Math.random() * 3))
 }
 
-// ── Frei bauen: after the last figure, the child builds anything ──────────────
-// Tap a shape to put it on the board, drag it where it should go, tap it to
-// turn it. "Fertig": Lumi counts the shapes and guesses the figure when the
-// shapes are those of one it knows ("Ist das ein Haus?").
-const FREE_SHAPES = [
-  { shape: 'circle',    w: 24, h: 24 },
-  { shape: 'square',    w: 24, h: 24 },
-  { shape: 'triangle',  w: 30, h: 24 },
-  { shape: 'rectangle', w: 34, h: 14 },
-]
-const FREE_COLORS = ['#FF6B6B', '#FFD93D', '#6BCB77', '#4AA3FF', '#FF9F43', '#FD79A8']
-// What Lumi sees in a free build: how many of each shape, and the figure it
-// matches if the shapes are those of one ("Ist das ein Haus?")
-function describeBuild(pieces) {
-  const kind = p => (p.shape === 'rtriangle' ? 'triangle' : p.shape)
-  const key = list => list.map(kind).sort().join()
-  const known = FIGURES.find(f => key(f.parts) === key(pieces))
-  const counts = Object.entries(pieces.reduce((m, p) => ({ ...m, [kind(p)]: (m[kind(p)] ?? 0) + 1 }), {}))
-  return { counts, known }
-}
-
-// Lumi's ideas above the free workbench
-const IDEAS = ['🏠', '⛵', '🚀']
-
-function FreeBuild({ onDone }) {
-  const [pieces, setPieces] = useState([])
-  const [seen, setSeen]     = useState(null)   // what Lumi sees, once finished
-  const svgRef = useRef(null)
-  const drag   = useRef(null)    // { id, dx, dy, moved }
-  const firstRef = useRef(null), doneRef = useRef(null)
-  const done = !!seen
-
-  useEffect(() => { sayTask() }, [])
-
-  const toSvg = e => {
-    const m = svgRef.current?.getScreenCTM()?.inverse()
-    if (!m) return { x: 0, y: 0 }
-    return { x: m.a * e.clientX + m.c * e.clientY + m.e, y: m.b * e.clientX + m.d * e.clientY + m.f }
-  }
-
-  const add = (f) => {
-    if (done) return
-    setPieces(list => [...list, { ...f, id: Date.now(), x: 50 - f.w / 2 + (list.length % 4) * 4, y: 40 - f.h / 2 + (list.length % 4) * 4, rot: 0, color: FREE_COLORS[list.length % FREE_COLORS.length] }])
-    sfx.pop()
-  }
-
-  const down = (e, p) => {
-    if (done) return
-    e.stopPropagation()
-    const pt = toSvg(e)
-    drag.current = { id: p.id, dx: pt.x - p.x, dy: pt.y - p.y, moved: false }
-    try { svgRef.current.setPointerCapture(e.pointerId) } catch { /* not supported */ }
-  }
-  const move = e => {
-    const d = drag.current
-    if (!d) return
-    const pt = toSvg(e)
-    d.moved = true
-    setPieces(list => list.map(p => (p.id === d.id
-      ? { ...p, x: Math.max(-p.w / 2, Math.min(100 - p.w / 2, pt.x - d.dx)), y: Math.max(-p.h / 2, Math.min(100 - p.h / 2, pt.y - d.dy)) }
-      : p)))
-  }
-  const up = () => {
-    const d = drag.current
-    drag.current = null
-    // a tap without moving turns the piece
-    if (d && !d.moved) {
-      setPieces(list => list.map(p => (p.id === d.id && p.shape !== 'circle' ? { ...p, rot: p.rot + 90 } : p)))
-      sfx.flip()
-    }
-  }
-
-  // Lumi looks at the build and shows what it sees, then the results
-  const finish = () => {
-    if (!pieces.length || done) return
-    setSeen(describeBuild(pieces))
-    sfx.tada()
-    sayRight()
-    afterNarration(onDone, { minMs: 3200 })
-  }
-
-  return (
-    <>
-      {/* no words: the first shape button is tapped for you, and once
-          something is built, the check button */}
-      <HintHand to={pieces.length ? doneRef : firstRef} delay={pieces.length ? 8000 : 2500} active={!done} />
-      {/* what free building is for: Lumi dreams of things to build */}
-      <div aria-hidden="true" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Art art="lumi" size={54} />
-        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 15 }}
-          style={{ display: 'flex', gap: 4, padding: '6px 12px', background: '#FFFDF7', border: `3px solid ${INK}`, borderRadius: 22, boxShadow: '0 4px 0 rgba(42,27,61,0.3)' }}>
-          {IDEAS.map((icon, i) => (
-            <motion.span key={icon} animate={reduceMotion() ? {} : { y: [0, -6, 0] }} transition={{ duration: 1.4, repeat: Infinity, delay: i * 0.3 }}>
-              <Art art={icon} size={34} />
-            </motion.span>
-          ))}
-          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 26, color: INK, alignSelf: 'center' }}>?</span>
-        </motion.div>
-      </div>
-      <div style={{ position: 'relative', ...pxPanel, padding: 'clamp(8px,2vw,16px)', background: '#8A5A33' }}>
-        <svg ref={svgRef} viewBox="0 0 100 100" onPointerMove={move} onPointerUp={up} onPointerCancel={up}
-          style={{ width: 'clamp(220px,46vw,300px)', height: 'clamp(220px,46vw,300px)', display: 'block', touchAction: 'none', background: '#DCEBFA', borderRadius: 8 }}>
-          {pieces.map(p => (
-            <ShapePath key={p.id} {...p} fill={p.color} stroke={INK} strokeWidth={1.5} strokeLinejoin="round"
-              onPointerDown={e => down(e, p)} style={{ cursor: done ? 'default' : 'grab' }} />
-          ))}
-        </svg>
-        {/* Lumi says what it sees: each shape with how many, and maybe what it is */}
-        <AnimatePresence>
-          {seen && (
-            <motion.div key="seen" initial={{ scale: 0, y: 20 }} animate={{ scale: 1, y: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 16 }}
-              style={{
-                position: 'absolute', left: '50%', bottom: -30, transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 8,
-                background: '#FFFDF7', border: `3px solid ${INK}`, borderRadius: 18, padding: '6px 12px', boxShadow: '0 4px 0 rgba(42,27,61,0.3)', whiteSpace: 'nowrap',
-              }}>
-              <Art art="lumi" size={40} />
-              {seen.counts.map(([shape, n]) => (
-                <span key={shape} style={{ display: 'flex', alignItems: 'center', gap: 2, fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22, color: INK }}>
-                  {n}
-                  <svg viewBox="0 0 100 100" width="28" height="28"><ShapePath shape={shape} x={10} y={shape === 'rectangle' ? 30 : 10} w={80} h={shape === 'rectangle' ? 40 : 80} fill="#FFC93C" stroke={INK} strokeWidth={6} /></svg>
-                </span>
-              ))}
-              {seen.known && <><span style={{ fontSize: 22 }}>→</span><Art art={seen.known.icon} size={38} /></>}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-      <div style={{ display: 'flex', gap: 'clamp(8px,2.5vw,16px)', flexWrap: 'wrap', justifyContent: 'center', marginTop: 18 }}>
-        {FREE_SHAPES.map((f, i) => (
-          <motion.button key={f.shape} ref={i === 0 ? firstRef : undefined} whileTap={{ scale: 0.9 }} onClick={() => add(f)} disabled={done}
-            aria-label={`${SHAPE[f.shape].name} dazulegen`}
-            style={{ width: 'clamp(66px,13vw,84px)', height: 'clamp(66px,13vw,84px)', ...pxCard(), cursor: 'pointer', padding: 6 }}>
-            <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%' }}>
-              <ShapePath shape={f.shape} x={50 - f.w * 1.2} y={50 - f.h * 1.2} w={f.w * 2.4} h={f.h * 2.4}
-                fill={FREE_COLORS[i]} stroke={INK} strokeWidth={2.5} strokeLinejoin="round" />
-            </svg>
-          </motion.button>
-        ))}
-      </div>
-      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', justifyContent: 'center' }}>
-        <button onClick={() => { setPieces(list => list.slice(0, -1)); sfx.whoosh() }} disabled={!pieces.length || done} aria-label="Weg damit"
-          style={{ ...pxButton('parch'), padding: '8px 22px', minHeight: 56, fontSize: 28, opacity: pieces.length && !done ? 1 : 0.5 }}>
-          🧽
-        </button>
-        <button ref={doneRef} onClick={finish} disabled={!pieces.length || done} aria-label="Fertig"
-          style={{ ...pxButton('green'), color: INK, textShadow: 'none', padding: '8px 30px', minHeight: 56, fontSize: 28, opacity: pieces.length && !done ? 1 : 0.5 }}>
-          <svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6" fill="none" stroke={INK} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" /></svg>
-        </button>
-      </div>
-    </>
-  )
-}
-
 const CUSTOMERS = ['🐰', '🐻', '🐸', '🐱', '🐶', '🐭', '🐷', '🦔']
-const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
-// How a finished figure moves when it comes alive
+// ── What a finished thing does ───────────────────────────────────────────────
+// In board units (the bench is 100 wide). OUT is out of sight: the bench
+// clips what leaves it, so the boat sails out at one side and comes back in
+// at the other. `carries`: the customer rides along. `turn`: about the
+// middle, not the foot.
+const OUT = 126
 const ALIVE = {
-  hop:    { y: [0, -22, 0, -10, 0], scaleY: [1, 1.06, 0.94, 1.03, 1] },
-  sway:   { rotate: [0, -7, 6, -4, 0] },
-  spin:   { rotate: [0, 360] },
-  sail:   { x: [0, 26, -10, 0], rotate: [0, 5, -5, 3, 0] },
-  drive:  { x: [0, 30, 30, 0] },
-  launch: { y: [0, 6, -60, -40, 0] },
+  hop:      { anim: { y: [0, -22, 0, -10, 0], scaleY: [1, 1.06, 0.94, 1.03, 1] }, dur: 1.2 },
+  sway:     { anim: { rotate: [0, -7, 6, -4, 0] }, dur: 1.4 },
+  flutter:  { anim: { rotate: [0, 4, -3, 4, -3, 2, 0], x: [0, 2, -1, 2, -1, 1, 0] }, dur: 1.3 },
+  wobble:   { anim: { scaleX: [1, 1.14, 0.9, 1.07, 1], scaleY: [1, 0.88, 1.1, 0.95, 1] }, dur: 1.1 },
+  bloom:    { anim: { scale: [1, 1.14, 1, 1.1, 1] }, dur: 1.4, turn: true },
+  spin:     { anim: { rotate: [0, 720] }, dur: 1.5, turn: true },
+  scribble: { anim: { x: [0, -28, 28, 0], y: [0, 4, 4, 0] }, times: [0, 0.2, 0.8, 1], dur: 2 },
+  sail:     { anim: { x: [0, OUT, -OUT, 0], rotate: [0, 6, -6, 0] }, times: [0, 0.46, 0.46, 1], dur: 2.8, carries: true },
+  drive:    { anim: { x: [0, -5, OUT, -OUT, 0] }, times: [0, 0.12, 0.5, 0.5, 1], dur: 2.4, carries: true },
+  chug:     { anim: { x: [0, 3, 0, 3, OUT, -OUT, 0], y: [0, -1.5, 0, -1.5, 0, 0, 0] }, times: [0, 0.08, 0.16, 0.24, 0.56, 0.56, 1], dur: 2.8, carries: true },
+  launch:   { anim: { y: [0, 2, -2, 2, -2, -OUT, -OUT, 0], x: [0, -1.5, 1.5, -1.5, 1.5, 0, 0, 0] }, times: [0, 0.07, 0.14, 0.21, 0.28, 0.6, 0.64, 1], dur: 3, carries: true },
 }
+// it starts once the customer has got in
+const aliveDelay = move => (ALIVE[move].carries ? 1 : 0.3)
+const aliveMs = move => (aliveDelay(move) + ALIVE[move].dur) * 1000
+const aliveTransition = move => ({ duration: ALIVE[move].dur, delay: aliveDelay(move), times: ALIVE[move].times, ease: 'easeInOut' })
 
-// The same journey for the customer riding along, in pixels: only the
-// moves that carry it (a boat sails, a rocket lifts off, a train drives)
-const CARRIES = ['sail', 'drive', 'launch']
+// The same journey for whoever rides along, in pixels
 const riding = (move, size) => {
-  const m = ALIVE[move]
-  return CARRIES.includes(move)
-    ? { x: (m.x ?? [0]).map(v => v * size / 100), y: (m.y ?? [0]).map(v => v * size / 100) }
-    : {}
+  const a = ALIVE[move].anim
+  return { x: (a.x ?? [0]).map(v => v * size / 100), y: (a.y ?? [0]).map(v => v * size / 100) }
 }
 
 // Eyes and a smile for the finished thing, in the figure's 100-unit space
@@ -367,6 +283,16 @@ function Face({ x, y, s }) {
   )
 }
 
+// The blueprint paper of the workbench
+function Paper() {
+  return (
+    <>
+      <rect x="-4" y="-4" width="108" height="108" rx="8" fill="#DCEBFA" stroke={INK} strokeWidth="1.6" />
+      {Array.from({ length: 9 }, (_, i) => <path key={i} d={`M${(i + 1) * 10} -4 V104 M-4 ${(i + 1) * 10} H104`} stroke="#B7D2EE" strokeWidth="0.5" />)}
+    </>
+  )
+}
+
 // The box a slot covers on the board, turned with the slot; never smaller
 // than 18 units, so a thin stem is still a place a finger can find.
 function slotBox(p) {
@@ -376,43 +302,66 @@ function slotBox(p) {
   return { left: cx - w / 2, top: cy - h / 2, w, h }
 }
 
-// The workbench: the outline to fill, one drop place per part
-function Board({ fig, customer, rules, filled, wrongSlot, stuck, complete, onDrop, size }) {
+// The workbench: the outline to fill, one drop place per part.
+// `held`: the tray piece a finger is carrying (see the tray).
+function Board({ fig, customer, rules, filled, wrongSlot, stuck, complete, held, onDrop, size, innerRef }) {
   const { hover, picked } = useDragState()
   const zones = fig.parts.map((p, i) => ({ i, box: slotBox(p) }))
     .filter(z => !filled.has(z.i))
     .sort((a, b) => b.box.w * b.box.h - a.box.w * a.box.h)   // small places on top
+  const move = fig.alive.move
+  const moving = complete && !reduceMotion()
+  // The ghost: the piece that is held, drawn where it would land, as big
+  // and turned as it is. In its place it fills the outline; anywhere else
+  // it is plainly too big, too small or the wrong way round.
+  const over = typeof hover === 'string' && hover.startsWith('slot') ? Number(hover.slice(4)) : null
+  const ghost = over != null && held && !filled.has(over) ? { slot: fig.parts[over], piece: held } : null
   return (
-    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+    <div ref={innerRef} style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
       <svg viewBox="0 0 100 100" width={size} height={size} style={{ display: 'block', overflow: 'visible' }} aria-hidden="true">
-        {/* the blueprint grid of the workbench */}
-        <rect x="-4" y="-4" width="108" height="108" rx="8" fill="#DCEBFA" stroke={INK} strokeWidth="1.6" />
-        {Array.from({ length: 9 }, (_, i) => <path key={i} d={`M${(i + 1) * 10} -4 V104 M-4 ${(i + 1) * 10} H104`} stroke="#B7D2EE" strokeWidth="0.5" />)}
-        <motion.g initial={false}
-          animate={complete && !reduceMotion() ? ALIVE[fig.alive.move] : { x: 0, y: 0, rotate: 0, scaleY: 1 }}
-          transition={{ duration: fig.alive.move === 'spin' ? 0.9 : 1.2, delay: CARRIES.includes(fig.alive.move) ? 1 : 0.3 }}
-          style={{ originX: 0.5, originY: 1 }}>
-          {/* top levels: only the outline of the whole figure, no lines between the parts */}
-          {rules.silhouette && (
-            <g pointerEvents="none">
-              {fig.parts.map((p, i) => <ShapePath key={`o${i}`} {...p} fill="none" stroke={INK} strokeWidth={2.4} strokeLinejoin="round" />)}
-              {fig.parts.map((p, i) => <ShapePath key={`f${i}`} {...p} fill="#C9D9EA" />)}
-            </g>
+        <defs><clipPath id="sb-bench"><rect x="-3" y="-3" width="106" height="106" rx="7" /></clipPath></defs>
+        <Paper />
+        <g clipPath="url(#sb-bench)">
+          {/* the pencil's scribble stays on the paper */}
+          {complete && move === 'scribble' && (
+            <motion.path d="M22 92 q5 -9 10 0 t10 0 t10 0 t10 0 t10 0 q3 -5 6 -3" fill="none" stroke="#E84393" strokeWidth="2.4" strokeLinecap="round"
+              initial={{ pathLength: reduceMotion() ? 1 : 0 }} animate={{ pathLength: 1 }}
+              transition={{ duration: ALIVE.scribble.dur * 0.6, delay: aliveDelay(move) + ALIVE.scribble.dur * 0.2, ease: 'linear' }} />
           )}
-          {fig.parts.map((p, i) => {
-            const done = filled.has(i)
-            const glow = !done && (hover === `slot${i}` || (picked && !hover))
-            if (!done && rules.silhouette && wrongSlot !== i && hover !== `slot${i}`) return null
-            return (
-              <ShapePath key={i} {...p}
-                fill={done ? p.color : glow ? 'rgba(255,201,60,0.45)' : 'transparent'}
-                stroke={wrongSlot === i ? '#C2412D' : done ? INK : glow ? '#E0A000' : 'var(--px-ink-soft)'}
-                strokeWidth={done ? 1.6 : wrongSlot === i ? 3 : 2.2}
-                strokeDasharray={done ? undefined : '6 5'} strokeLinejoin="round" />
-            )
-          })}
-          {complete && <Face x={fig.face[0]} y={fig.face[1]} s={fig.face[2]} />}
-        </motion.g>
+          <motion.g initial={false}
+            animate={moving ? ALIVE[move].anim : { x: 0, y: 0, rotate: 0, scale: 1, scaleX: 1, scaleY: 1 }}
+            transition={moving ? aliveTransition(move) : { duration: 0 }}
+            style={{ originX: 0.5, originY: ALIVE[move].turn ? 0.5 : 1 }}>
+            {/* top levels: only the outline of the whole figure, no lines between the parts */}
+            {rules.silhouette && (
+              <g pointerEvents="none">
+                {fig.parts.map((p, i) => <ShapePath key={`o${i}`} {...p} fill="none" stroke={INK} strokeWidth={2.4} strokeLinejoin="round" />)}
+                {fig.parts.map((p, i) => <ShapePath key={`f${i}`} {...p} fill="#C9D9EA" />)}
+              </g>
+            )}
+            {fig.parts.map((p, i) => {
+              const done = filled.has(i)
+              const glow = !done && (hover === `slot${i}` || (picked && !hover))
+              if (!done && rules.silhouette && wrongSlot !== i && hover !== `slot${i}`) return null
+              return (
+                <ShapePath key={i} {...p}
+                  fill={done ? p.color : glow ? 'rgba(255,201,60,0.45)' : 'transparent'}
+                  stroke={wrongSlot === i ? '#C2412D' : done ? INK : glow ? '#E0A000' : 'var(--px-ink-soft)'}
+                  strokeWidth={done ? 1.6 : wrongSlot === i ? 3 : 2.2}
+                  strokeDasharray={done ? undefined : '6 5'} strokeLinejoin="round" />
+              )
+            })}
+            {ghost && (
+              <ShapePath shape={ghost.piece.shape} rot={ghost.piece.rot} w={ghost.piece.w} h={ghost.piece.h}
+                x={ghost.slot.x + ghost.slot.w / 2 - ghost.piece.w / 2} y={ghost.slot.y + ghost.slot.h / 2 - ghost.piece.h / 2}
+                fill={ghost.piece.color} fillOpacity={0.5} stroke={INK} strokeOpacity={0.6} strokeWidth={1.4} strokeLinejoin="round" pointerEvents="none" />
+            )}
+            {/* the sweet's swirl: without it nobody sees that it spins */}
+            {complete && fig.swirl && <path d="M50 32 a4 4 0 0 1 0 8 a8 8 0 0 1 0 -16 a12 12 0 0 1 0 24 a16 16 0 0 1 0 -32" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" opacity="0.85" />}
+            {complete && fig.window && <circle cx={fig.window[0]} cy={fig.window[1]} r={fig.window[2]} fill="#DCEBFA" stroke={INK} strokeWidth="1.6" />}
+            {complete && <Face x={fig.face[0]} y={fig.face[1]} s={fig.face[2]} />}
+          </motion.g>
+        </g>
         {/* a piece that does not fit sits in the place for a moment, all
             wrong and wobbling, then pops back out */}
         <AnimatePresence>
@@ -427,32 +376,53 @@ function Board({ fig, customer, rules, filled, wrongSlot, stuck, complete, onDro
           )}
         </AnimatePresence>
       </svg>
-      {/* the customer gets in or tucks in, and moves along with it */}
-      <AnimatePresence>
-        {complete && (
-          <motion.div key="user" aria-hidden="true" initial={{ opacity: 0, scale: 0.3, y: -size * 0.3 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ delay: 0.4, type: 'spring', stiffness: 260, damping: 14 }}
-            style={{ position: 'absolute', left: `${fig.use[0]}%`, top: `${fig.use[1]}%`, width: 0, height: 0, pointerEvents: 'none', zIndex: 2 }}>
-            <motion.div animate={reduceMotion() ? {} : riding(fig.alive.move, size)} transition={{ duration: 1.2, delay: 1 }}
-              style={{ position: 'absolute', left: -size * 0.11, bottom: 0 }}>
-              <Critter art={customer} size={size * (fig.name === 'Rakete' ? 0.16 : 0.22)} mood={fig.use[2]} shadow={false} />
+      {/* whoever is on the bench with the thing: clipped like the thing itself */}
+      <div aria-hidden="true" style={{ position: 'absolute', left: -size * 0.03, top: -size * 0.03, width: size * 1.06, height: size * 1.06, overflow: 'hidden', borderRadius: size * 0.07, pointerEvents: 'none' }}>
+        <div style={{ position: 'absolute', left: size * 0.03, top: size * 0.03, width: size, height: size }}>
+          {/* the customer gets in or tucks in, and goes along */}
+          <AnimatePresence>
+            {complete && (
+              <motion.div key="user" initial={{ opacity: 0, scale: 0.3, y: -size * 0.3 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ delay: 0.4, type: 'spring', stiffness: 260, damping: 14 }}
+                style={{ position: 'absolute', left: `${fig.use[0]}%`, top: `${fig.use[1]}%`, width: 0, height: 0, zIndex: 2 }}>
+                <motion.div animate={moving && ALIVE[move].carries ? riding(move, size) : {}} transition={aliveTransition(move)}
+                  style={{ position: 'absolute', left: -size * (fig.window ? 0.07 : 0.11), bottom: 0 }}>
+                  <Critter art={customer} size={size * (fig.window ? 0.14 : 0.22)} mood={fig.use[2]} shadow={false} />
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          {/* who or what joins the living thing */}
+          <AnimatePresence>
+            {complete && fig.alive.extra && (
+              <motion.div key="extra" initial={{ scale: 0, y: -30, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }}
+                transition={{ delay: 0.6, type: 'spring', stiffness: 300, damping: 14 }}
+                style={{ position: 'absolute', left: `${fig.alive.at[0]}%`, top: `${fig.alive.at[1]}%`, marginLeft: -size * 0.09, marginTop: -size * 0.09 }}>
+                <motion.div
+                  animate={!moving ? {}
+                    : fig.alive.rides ? riding(move, size)
+                    : fig.alive.orbit ? { x: [0, 30, 0, -30, 0].map(v => v * size / 100), y: [-30, 0, 30, 0, -30].map(v => v * size / 100) }
+                    : {}}
+                  transition={fig.alive.orbit ? { duration: 1.6, delay: 0.7, ease: 'linear' } : aliveTransition(move)}>
+                  <Art art={fig.alive.extra} size={size * 0.18} />
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          {/* snow for the snowman */}
+          {complete && fig.alive.snow && !reduceMotion() && [14, 30, 70, 86, 50].map((x, i) => (
+            <motion.div key={x} initial={{ y: -size * 0.12, opacity: 0 }} animate={{ y: size * 1.05, opacity: [0, 1, 1, 0] }}
+              transition={{ duration: 1.8, delay: 0.3 + i * 0.22, ease: 'linear' }}
+              style={{ position: 'absolute', left: `${x}%`, top: 0, marginLeft: -size * 0.04 }}>
+              <Art art="❄️" size={size * 0.08} />
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      {/* who or what joins the living thing */}
-      <AnimatePresence>
-        {complete && fig.alive.extra && (
-          <motion.div key="extra" aria-hidden="true" initial={{ scale: 0, y: -30, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }}
-            transition={{ delay: 0.6, type: 'spring', stiffness: 300, damping: 14 }}
-            style={{ position: 'absolute', left: `${fig.alive.at[0]}%`, top: `${fig.alive.at[1]}%`, marginLeft: -size * 0.09, marginTop: -size * 0.09, pointerEvents: 'none' }}>
-            <Art art={fig.alive.extra} size={size * 0.18} />
-          </motion.div>
-        )}
-      </AnimatePresence>
-      {/* the places, as drop targets over the drawing */}
+          ))}
+        </div>
+      </div>
+      {/* the places, as drop targets over the drawing; a piece held near
+          one already shows its ghost there */}
       {zones.map(({ i, box }) => (
-        <DropZone key={i} id={`slot${i}`} slop={4} label={`Platz ${i + 1}`} onDrop={piece => onDrop(piece, i)}
+        <DropZone key={i} id={`slot${i}`} slop={Math.round(size * 0.05)} label={`Platz ${i + 1}`} onDrop={piece => onDrop(piece, i)}
           style={{ position: 'absolute', left: `${box.left}%`, top: `${box.top}%`, width: `${box.w}%`, height: `${box.h}%` }}>
           {null}
         </DropZone>
@@ -461,28 +431,42 @@ function Board({ fig, customer, rules, filled, wrongSlot, stuck, complete, onDro
   )
 }
 
-// A finished figure, small: for the workshop shelf
-function MiniFigure({ fig, size }) {
+// A finished figure, small: for the workshop shelf, and as the customer's
+// wish. `whole`: one outline around it all, no lines between the parts (the
+// wish on the silhouette levels, which must not show the parts' borders).
+function MiniFigure({ fig, size, whole = false, face = true, fit = false }) {
+  // fit: the picture is cut to the figure's own box (the wish bubble)
+  let box = '-4 -4 108 108'
+  if (fit) {
+    const x0 = Math.min(...fig.parts.map(p => p.x)), y0 = Math.min(...fig.parts.map(p => p.y))
+    const x1 = Math.max(...fig.parts.map(p => p.x + p.w)), y1 = Math.max(...fig.parts.map(p => p.y + p.h))
+    const side = Math.max(x1 - x0, y1 - y0) + 10
+    box = `${(x0 + x1 - side) / 2} ${(y0 + y1 - side) / 2} ${side} ${side}`
+  }
   return (
-    <svg viewBox="-4 -4 108 108" width={size} height={size} aria-hidden="true" style={{ display: 'block', overflow: 'visible' }}>
-      {fig.parts.map((p, i) => <ShapePath key={i} {...p} fill={p.color} stroke={INK} strokeWidth={3} strokeLinejoin="round" />)}
-      <Face x={fig.face[0]} y={fig.face[1]} s={fig.face[2]} />
+    <svg viewBox={box} width={size} height={size} aria-hidden="true" style={{ display: 'block', overflow: 'visible' }}>
+      {whole && fig.parts.map((p, i) => <ShapePath key={`o${i}`} {...p} fill="none" stroke={INK} strokeWidth={6} strokeLinejoin="round" />)}
+      {fig.parts.map((p, i) => <ShapePath key={i} {...p} fill={p.color} stroke={whole ? p.color : INK} strokeWidth={whole ? 0.5 : 3} strokeLinejoin="round" />)}
+      {face && <Face x={fig.face[0]} y={fig.face[1]} s={fig.face[2]} />}
     </svg>
   )
 }
 
-// The wall shelf of the workshop: every finished figure lands on it (it
-// flies up from the workbench, shrinking), so the workshop fills up
-function Shelf({ figs, total }) {
+// The wall shelf of the workshop: one place for every wish of the level,
+// and every finished thing lands on its place (it flies up from the
+// workbench, shrinking), so the workshop fills up
+function Shelf({ figs, total, mini }) {
   return (
-    <div aria-hidden="true" style={{ position: 'relative', width: 'min(100%, 560px)', height: 62, flexShrink: 0, display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: 4 }}>
+    <div aria-hidden="true" style={{ position: 'relative', flexShrink: 0, display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: 4, padding: '0 10px' }}>
       <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 9, borderRadius: 4, background: '#8A5A33', border: `2px solid ${INK}`, boxShadow: '0 4px 0 rgba(42,27,61,0.25)' }} />
       {Array.from({ length: total }, (_, n) => (
-        <div key={n} style={{ width: 54, height: 52, marginBottom: 9, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+        <div key={n} style={{ position: 'relative', width: mini + 2, height: mini, marginBottom: 9, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+          {/* its place, still free */}
+          {!figs[n] && <div style={{ position: 'absolute', left: '18%', right: '18%', bottom: 2, height: '58%', borderRadius: 8, border: '2px dashed rgba(42,27,61,0.28)' }} />}
           {figs[n] && (
             <motion.div initial={reduceMotion() ? false : { y: 240, scale: 3.2, opacity: 0.4 }} animate={{ y: 0, scale: 1, opacity: 1 }}
               transition={{ type: 'spring', stiffness: 120, damping: 15 }}>
-              <MiniFigure fig={figs[n]} size={52} />
+              <MiniFigure fig={figs[n]} size={mini} />
             </motion.div>
           )}
         </div>
@@ -491,14 +475,163 @@ function Shelf({ figs, total }) {
   )
 }
 
-function useViewportWidth() {
-  const [w, setW] = useState(() => window.innerWidth)
+// ── The bonus: the bench is free ─────────────────────────────────────────────
+// After the last wish the child builds what it likes: a tap on a shape puts
+// it on the bench, a finger moves it, a tap on it turns it. No words and no
+// question: the hand shows the first tap. It ends by itself: with the green
+// tick, or when the child has stopped for a while (the ring round the tick
+// runs out) — then what was built gets a face and hops, and the level is
+// over. Nothing here is rated.
+const FREE_SHAPES = [
+  { shape: 'circle',    w: 24, h: 24, color: '#FF6B6B' },
+  { shape: 'square',    w: 24, h: 24, color: '#FFD93D' },
+  { shape: 'triangle',  w: 30, h: 24, color: '#6BCB77' },
+  { shape: 'rectangle', w: 34, h: 14, color: '#4AA3FF' },
+]
+const QUIET_MS = 9000        // with something built: this long without a touch, and it is done
+const QUIET_EMPTY_MS = 7000  // nothing built: the child does not want to
+const HURRY_MS = 4000        // the ring runs for the last seconds
+
+function FreeBuild({ size, tile, row, onDone, hit, burst }) {
+  const [pieces, setPieces] = useState([])
+  const [done, setDone]     = useState(false)
+  const [hurry, setHurry]   = useState(false)
+  const paused = usePaused()
+  const svgRef = useRef(null)
+  const drag   = useRef(null)    // { id, dx, dy, moved }
+  const firstRef = useRef(null), doneRef = useRef(null)
+  const live = useRef({ pieces, paused, done })
+  live.current = { pieces, paused, done }
+
+  const toSvg = e => {
+    const m = svgRef.current?.getScreenCTM()?.inverse()
+    if (!m) return { x: 0, y: 0 }
+    return { x: m.a * e.clientX + m.c * e.clientY + m.e, y: m.b * e.clientX + m.d * e.clientY + m.f }
+  }
+
+  // the piece is the colour of its button
+  const add = (f) => {
+    if (done) return
+    setPieces(list => [...list, { ...f, id: Date.now(), x: 50 - f.w / 2 + (list.length % 4) * 5 - 8, y: 44 - f.h / 2 + (list.length % 4) * 5 - 8, rot: 0 }])
+    sfx.pop()
+  }
+
+  const down = (e, p) => {
+    if (done) return
+    e.stopPropagation()
+    const pt = toSvg(e)
+    drag.current = { id: p.id, dx: pt.x - p.x, dy: pt.y - p.y, x0: pt.x, y0: pt.y, moved: false }
+    try { svgRef.current.setPointerCapture(e.pointerId) } catch { /* not supported */ }
+    // the one that is touched comes to the front
+    setPieces(list => [...list.filter(q => q.id !== p.id), ...list.filter(q => q.id === p.id)])
+  }
+  const move = e => {
+    const d = drag.current
+    if (!d) return
+    const pt = toSvg(e)
+    // a finger never holds perfectly still: only a real move is a move
+    if (!d.moved && Math.hypot(pt.x - d.x0, pt.y - d.y0) < 2.5) return
+    d.moved = true
+    setPieces(list => list.map(p => (p.id === d.id
+      ? { ...p, x: clamp(pt.x - d.dx, -p.w / 2, 100 - p.w / 2), y: clamp(pt.y - d.dy, -p.h / 2, 100 - p.h / 2) }
+      : p)))
+  }
+  const up = () => {
+    const d = drag.current
+    drag.current = null
+    // a tap without moving turns the piece
+    if (d && !d.moved) {
+      setPieces(list => list.map(p => (p.id === d.id && p.shape !== 'circle' ? { ...p, rot: p.rot + 90 } : p)))
+      sfx.flip()
+    }
+  }
+
+  // What was built comes alive like every other thing here, then the results
+  const finish = useCallback(() => {
+    const { pieces: built, done: over } = live.current
+    if (over) return
+    setDone(true)
+    setHurry(false)
+    if (!built.length) { onDone(); return }
+    sfx.tada()
+    burst(svgRef.current, 'confetti', 18)
+    hit(svgRef.current, { stars: Math.min(built.length, 5) })
+    afterNarration(onDone, { minMs: 2400 })
+  }, [onDone, burst, hit])
+
+  // It ends by itself once the child has stopped. The clock stands while
+  // the help is open or a piece is being moved.
   useEffect(() => {
-    const on = () => setW(window.innerWidth)
-    window.addEventListener('resize', on)
-    return () => window.removeEventListener('resize', on)
-  }, [])
-  return w
+    if (done) return undefined
+    let last = performance.now()
+    const touch = () => { last = performance.now(); setHurry(false) }
+    window.addEventListener('pointerdown', touch, true)
+    window.addEventListener('keydown', touch, true)
+    const id = setInterval(() => {
+      if (live.current.paused || drag.current) { last = performance.now(); return }
+      const quiet = performance.now() - last
+      const limit = live.current.pieces.length ? QUIET_MS : QUIET_EMPTY_MS
+      if (quiet >= limit) finish()
+      else if (quiet >= limit - HURRY_MS) setHurry(true)
+    }, 250)
+    return () => { clearInterval(id); window.removeEventListener('pointerdown', touch, true); window.removeEventListener('keydown', touch, true) }
+  }, [done, finish])
+
+  // the face sits on the piece that lies on top, where nothing hides it
+  const big = pieces[pieces.length - 1] ?? null
+  const btn = Math.round(tile * 0.86)
+  return (
+    <>
+      {/* no words: the hand taps the first shape for you */}
+      <HintHand to={pieces.length ? doneRef : firstRef} delay={pieces.length ? 5000 : 1500} active={!done && !paused} />
+      <div style={{ ...pxPanel, padding: Math.round(size * 0.04), background: '#8A5A33', flexShrink: 0 }}>
+        <svg ref={svgRef} viewBox="0 0 100 100" width={size} height={size} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
+          role="group" aria-label="Freie Werkbank" style={{ display: 'block', touchAction: 'none', overflow: 'visible' }}>
+          <Paper />
+          <motion.g animate={done && pieces.length && !reduceMotion() ? ALIVE.hop.anim : { y: 0, scaleY: 1 }} transition={{ duration: 1.2, delay: 0.2 }} style={{ originX: 0.5, originY: 1 }}>
+            {pieces.map(p => (
+              <ShapePath key={p.id} {...p} fill={p.color} stroke={INK} strokeWidth={1.5} strokeLinejoin="round"
+                onPointerDown={e => down(e, p)} style={{ cursor: done ? 'default' : 'grab' }} />
+            ))}
+            {done && big && <Face x={big.x + big.w / 2} y={big.y + big.h / 2} s={Math.max(0.12, Math.min(big.w, big.h) / 100 * 0.8)} />}
+          </motion.g>
+        </svg>
+      </div>
+      <div style={{ display: 'flex', flexDirection: row ? 'column' : 'row', flexWrap: row ? 'nowrap' : 'wrap', gap: 12, alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', maxWidth: row ? tile * 2 + 12 : undefined }}>
+          {FREE_SHAPES.map((f, i) => (
+            <motion.button key={f.shape} ref={i === 0 ? firstRef : undefined} whileTap={{ scale: 0.9 }} onClick={() => add(f)} disabled={done}
+              aria-label={`${SHAPE[f.shape].name} dazulegen`}
+              style={{ width: tile, height: tile, ...pxCard(), cursor: 'pointer', padding: 6, boxSizing: 'border-box' }}>
+              <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%' }}>
+                <ShapePath shape={f.shape} x={50 - f.w * 1.2} y={50 - f.h * 1.2} w={f.w * 2.4} h={f.h * 2.4}
+                  fill={f.color} stroke={INK} strokeWidth={2.5} strokeLinejoin="round" />
+              </svg>
+            </motion.button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          {/* one step back */}
+          <button onClick={() => { setPieces(list => list.slice(0, -1)); sfx.whoosh() }} disabled={!pieces.length || done} aria-label="Letztes Teil wegnehmen"
+            style={{ ...pxButton('parch'), width: btn, height: btn, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: pieces.length && !done ? 1 : 0.4 }}>
+            <svg width={btn * 0.5} height={btn * 0.5} viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7L4 12l5 5M4 12h10a6 6 0 0 1 0 12" transform="translate(0 -3)" fill="none" stroke={INK} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </button>
+          {/* done: the green tick. In the last seconds its ring runs out. */}
+          <motion.button ref={doneRef} onClick={finish} disabled={done} aria-label="Fertig"
+            animate={hurry && !reduceMotion() ? { scale: [1, 1.1, 1] } : { scale: 1 }} transition={hurry ? { duration: 0.8, repeat: Infinity } : { duration: 0.2 }}
+            style={{ ...pxButton('green'), position: 'relative', width: btn * 1.3, height: btn, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: done ? 0.5 : 1 }}>
+            <svg width={btn * 0.55} height={btn * 0.55} viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6" fill="none" stroke={INK} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            {hurry && (
+              <svg aria-hidden="true" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: 'absolute', inset: -9, width: 'calc(100% + 18px)', height: 'calc(100% + 18px)', pointerEvents: 'none' }}>
+                <motion.rect x="3" y="3" width="94" height="94" rx="18" fill="none" stroke="#FFC93C" strokeWidth="6" strokeLinecap="round" pathLength="1"
+                  initial={{ strokeDasharray: '1 1', strokeDashoffset: 0 }} animate={{ strokeDashoffset: 1 }} transition={{ duration: HURRY_MS / 1000, ease: 'linear' }} />
+              </svg>
+            )}
+          </motion.button>
+        </div>
+      </div>
+    </>
+  )
 }
 
 export default function ShapeBuildGame({ level = 1, onComplete }) {
@@ -507,6 +640,8 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
   const paused = usePaused()
   const pausedRef = useRef(paused)
   pausedRef.current = paused
+  const [rootRef, box] = useBox()
+  const upright = isUpright(box), flat = isFlat(box)
   const [idx,      setIdx]      = useState(0)
   // Each entry pairs the slot that was filled with the tray piece that filled
   // it — the two indices differ whenever a figure has interchangeable pieces
@@ -515,40 +650,42 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
   const [placed,   setPlaced]   = useState([])     // [{ slot, tray }]
   const [turns,    setTurns]    = useState({})     // tray index -> extra turn the child gave it
   const [wrongSlot, setWrongSlot] = useState(null)
-  const [mood,     setMood]     = useMood()
-  const [lastDone, setLastDone] = useState(false)  // the last figure is finished: build freely?
-  const [freeMode, setFreeMode] = useState(false)
+  const [mood,     setMood]     = useState('idle')
+  const [freeMode, setFreeMode] = useState(false)  // the wishes are done: the bench is free
   const [turnHint, setTurnHint] = useState(null)   // { i, n }: this piece only needs turning
-  const [streak,   setStreak]   = useState(0)      // figures built without a miss in a row
   const [stuck,    setStuck]    = useState(null)   // a wrong piece sitting in a place for a moment
+  const [held,     setHeld]     = useState(null)   // the tray piece under a finger
   const [bursts, burst] = useBursts()
-  const misses = useRef(0)
-  const roundMisses = useRef(0)
+  const juice = useJuice({ hudSize: upright ? 28 : flat ? 46 : 36 })
+  const { hit, miss: bonk, shake } = juice         // these never change
+  const noNo = useAnimationControls()
+  // the parts that did not go in right at the first try, as `${figure}-${part}`
+  const missedParts = useRef(new Set())
   const timers = useRef([])
   const boardRef = useRef(null)
+  const benchRef = useRef(null)
   const trayRef  = useRef(null)
-  const vw = useViewportWidth()
   const totalParts = useMemo(() => rounds.reduce((n, f) => n + f.parts.length, 0), [rounds])
 
   const fig = rounds[idx]
   // The tray holds the pieces the figure needs (plus one that does not
-  // belong from level 4), in random order; from level 6 they lie turned.
+  // belong from level 2), in random order; on the turning levels they lie
+  // turned.
   const tray = useMemo(() => {
     if (!fig) return []
-    const pieces = fig.parts.map(p => ({
-      ...p,
+    const pieces = fig.parts.map((p, part) => ({
+      ...p, part,
       rot: (p.rot ?? 0) + (rules.turn ? randomTurn(p.shape) : 0),
     }))
-    if (rules.distractor) pieces.push(makeDistractor(fig))
+    if (rules.extra) pieces.push(makeDistractor(fig, rules.extra))
     const maxDim = Math.max(...pieces.map(p => Math.max(p.w, p.h)))
-    // Drawn size inside the 100-unit tile. Small parts used to shrink in
-    // proportion to the largest one — a wheel became a 12-unit dot. The
-    // sizes are compressed now: bigger stays bigger (the snowman's three
-    // circles keep their order), but a small part stays a shape you see.
+    // Drawn size inside the 100-unit tile: true to scale, so bigger is
+    // plainly bigger (the snowman's three balls were squeezed to nearly one
+    // size). Only a very small part is drawn larger than it is, so it stays
+    // a shape you see: a wheel was a 12-unit dot.
     return shuffle(pieces.map(p => {
-      const long = Math.max(p.w, p.h)
-      const k = (84 * (long / maxDim) ** 0.55) / long
-      return { ...p, dw: Math.max(10, p.w * k), dh: Math.max(10, p.h * k) }
+      const k = Math.max(84 / maxDim, 38 / Math.max(p.w, p.h))
+      return { ...p, dw: Math.max(9, p.w * k), dh: Math.max(9, p.h * k) }
     }))
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -564,25 +701,44 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
   useLayoutEffect(() => {
     if (!fig) return
     timers.current.forEach(clearTimeout); timers.current = []
-    setPlaced([]); setTurns({}); setWrongSlot(null); setTurnHint(null); setStuck(null)
-    roundMisses.current = 0
+    setPlaced([]); setTurns({}); setWrongSlot(null); setTurnHint(null); setStuck(null); setHeld(null); setMood('idle')
     lockPreviews()
     sayTask()
+    // Lumi names the wish as the customer comes in; the first time, after
+    // whatever is still being said
+    const word = wishWord(fig)
+    if (word) later(() => afterNarration(() => narrate([word]), { minMs: 0, maxMs: 4000 }), 500)
   }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => () => timers.current.forEach(clearTimeout), [])
 
+  // which piece is under a finger: its ghost shows on the bench
+  useEffect(() => {
+    const drop = () => setHeld(null)
+    window.addEventListener('pointerup', drop)
+    window.addEventListener('pointercancel', drop)
+    return () => { window.removeEventListener('pointerup', drop); window.removeEventListener('pointercancel', drop) }
+  }, [])
+
   const last = idx + 1 >= rounds.length
-  // every piece is one task; a piece that first went to a wrong place does
-  // not count as right on the first try. Free building is a bonus, not rated.
+  // Every part is one task: it counts as right when it went into its place
+  // at the first try, however often another one was tried. (Every wrong try
+  // was taken off: one piece tried three times cost three of twelve.)
+  // Free building is a bonus, not rated.
   const finishLevel = useCallback(() => {
     sfx.complete()
-    afterNarration(() => onComplete(result(totalParts - misses.current, totalParts)), { minMs: 300 })
+    afterNarration(() => onComplete(result(totalParts - missedParts.current.size, totalParts)), { minMs: 300 })
   }, [onComplete, totalParts])
 
-  // A piece let go over a place: it snaps in, or it bounces back and the
-  // place flashes; a piece that only lies the wrong way round makes its
-  // turn button wiggle.
+  // where a place is on screen: the star starts there
+  const slotPoint = slot => {
+    const b = benchRef.current?.getBoundingClientRect()
+    return b ? { x: b.left + b.width * (slot.x + slot.w / 2) / 100, y: b.top + b.height * (slot.y + slot.h / 2) / 100 } : undefined
+  }
+
+  // A piece let go over a place: it snaps in, or it sits there all wrong for
+  // a moment and pops back; a piece that only lies the wrong way round makes
+  // its turn button wiggle.
   const dropPiece = useCallback((trayIdx, slotIdx) => {
     if (!fig || placed.some(pl => pl.slot === slotIdx)) return false
     const piece = tray[trayIdx]
@@ -593,17 +749,15 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
     const sameShape = piece.shape === slot.shape
     const sameSize  = sameShape && piece.w === slot.w && piece.h === slot.h
     if (!sameSize || !sameTurn(slot.shape, rotOf(trayIdx), slot.rot)) {
-      // It goes in, looking ridiculous; the customer laughs; then it pops
-      // back out to the tray. Still a miss.
       if (stuck) return false
-      misses.current++
-      roundMisses.current++
+      // the part that missed: the piece itself, or, for the piece that does
+      // not belong, the part whose place it was put on
+      missedParts.current.add(`${idx}-${piece.extra ? slotIdx : piece.part}`)
       // the piece's own size, sitting crooked on the place: too big, too small, wrong
       setStuck({ shape: piece.shape, x: slot.x + slot.w / 2 - piece.w / 2, y: slot.y + slot.h / 2 - piece.h / 2, w: piece.w, h: piece.h, rot: rotOf(trayIdx) + 20, color: piece.color, tray: trayIdx, n: Date.now() })
-      setMood('oops', 700)
-      sfx.boing()
+      bonk()                                        // a soft bonk; the streak is over
+      if (!reduceMotion()) noNo.start({ rotate: [0, -10, 9, -6, 4, 0], transition: { duration: 0.6 } })
       sayWrong()
-      later(() => { setMood('happy', 900); sfx.giggle() }, 500)
       later(() => {
         setStuck(null)
         sfx.pop()
@@ -616,25 +770,36 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
     const next = [...placed, { slot: slotIdx, tray: trayIdx }]
     setPlaced(next)
     setTurnHint(null)
-    sfx.pop()
+    // it snaps in: a click, a little shake of the bench, a star
+    sfx.bump()
+    shake(0.5)
+    hit(slotPoint(slot))
     if (next.length < fig.parts.length) {
-      setMood('wow', 700)
+      setMood('wow')
+      later(() => setMood('idle'), 700)
       return true
     }
-    // the last piece: the thing comes alive, the customer cheers; a streak
-    // of figures without a miss gets more confetti
-    const s = roundMisses.current ? 0 : streak + 1
-    setStreak(s)
+    // the last piece: the thing does what it does, the customer joins in
+    const move = fig.alive.move
     later(() => {
       sfx.tada()
-      if (fig.alive.move === 'launch' || fig.alive.move === 'drive' || fig.alive.move === 'sail') sfx.whoosh()
-      burst(boardRef.current, 'confetti', s >= 3 ? 30 : 16)
+      burst(benchRef.current, 'confetti', 16)
     }, 300)
-    sfx.correct()
+    const go = aliveDelay(move) * 1000
+    if (move === 'sail') later(() => sfx.splash(), go)
+    if (move === 'spin') later(() => sfx.slideUp(), go)
+    if (move === 'drive') { later(() => sfx.note(4, 0.16), go - 350); later(() => sfx.note(4, 0.16), go - 100) }   // toot toot
+    if (move === 'chug') [0, 1, 2, 3].forEach(i => later(() => sfx.drum(i % 2 === 0), go + i * 220))
+    if (move === 'launch') later(() => { sfx.whoosh(); shake(1.6) }, go + ALIVE.launch.dur * 280)
+    if (move === 'scribble') [0, 1, 2, 3, 4].forEach(i => later(() => sfx.step(), go + 400 + i * 240))
     sayRight()
-    afterNarration(() => later(() => (last ? setLastDone(true) : setIdx(i => i + 1)), 0), { minMs: 3000 })
+    // The next figure is rendered without this one's pieces from the start:
+    // with them it counted as complete for a moment, and its customer, who
+    // rides along, made the new customer's animal sound
+    const advance = () => { if (last) { setFreeMode(true); return } setPlaced([]); setTurns({}); setIdx(i => i + 1) }
+    afterNarration(() => later(advance, 0), { minMs: Math.max(3000, aliveMs(move) + 700) })
     return true
-  }, [fig, placed, tray, turns, last, streak, stuck, burst, later, setMood]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fig, idx, placed, tray, turns, last, stuck, burst, later, bonk, hit, shake, noNo]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const turn = i => {
     setTurns(t => ({ ...t, [i]: (t[i] ?? 0) + 90 }))
@@ -645,81 +810,135 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
   const filledSlots = new Set(placed.map(pl => pl.slot))
   const usedTiles   = new Set(placed.map(pl => pl.tray))
   const complete    = filledSlots.size === fig.parts.length
-  const tile = 'clamp(68px,13vw,92px)'
-  // on a phone the workbench takes the width; elsewhere a share of it
-  const boardPx = Math.round(vw < 560 ? Math.min(320, vw - 76) : Math.min(330, Math.max(230, vw * 0.44)))
+
+  // ── the room there is, and what goes where ──
+  const pad = flat ? 12 : Math.round(clamp(box.w * 0.02, 8, 22))
+  const gap = flat ? 12 : Math.round(clamp(box.h * 0.016, 8, 14))
+  const trail = upright ? 32 : flat ? 36 : 40
+  const mini = upright ? 40 : flat ? 58 : 52
+  // the turn button sits on the corner of its piece's tile; on an upright
+  // phone, where four tiles fill the width, under the tile (on its corner
+  // it covered a third of the piece)
+  const badge = rules.turn ? (flat ? 76 : upright ? 44 : 50) : 0
+  const cellGap = flat ? 14 : 8
+  const perRow = upright || flat ? 4 : 8
+  const tile = Math.floor(flat ? 112 : upright ? Math.min(80, (box.w - 2 * pad - (perRow - 1) * cellGap) / perRow) : 92)
+  const cell = upright ? { w: tile, h: tile + badge * 0.72 } : { w: tile + badge * 0.4, h: tile + badge * 0.3 }
+  // the tray keeps the room of the fullest tray of the level, so the bench
+  // never jumps: two rows only where seven pieces can come
+  const trayRows = (upright || flat) && rules.maxParts > 3 ? 2 : 1
+  const trayH = trayRows * cell.h + (trayRows - 1) * cellGap
+  const panel = 28                                             // the bench's frame around the paper
+  const custSize = upright ? 72 : flat ? 150 : 110
+  // the wish, and on an upright phone the room above the customer that its
+  // bubble needs (it stood over the shelf)
+  const wishSize = upright ? 38 : flat ? 60 : 44
+  const wishRise = upright ? Math.ceil(wishSize + 22 + custSize * 0.55 - custSize + 4) : 0
+  const headH = flat ? Math.max(trail * 1.35, mini + 10) : trail * 1.35
+  const boardPx = Math.round(clamp(
+    flat ? box.h - 2 * pad - headH - gap - panel
+      : upright ? Math.min(box.w - 2 * pad - panel - 12, box.h - 2 * pad - headH - (mini + 10) - (custSize + wishRise + 14) - trayH - 4 * gap - panel)
+      : box.h - 2 * pad - headH - (mini + 10) - trayH - 3 * gap - panel,
+    160, flat ? 420 : 330))
+
+  const customer = (
+    <AnimatePresence mode="wait">
+      <motion.div key={idx} initial={{ x: -120, opacity: 0 }} animate={{ x: 0, opacity: 1, transition: { type: 'spring', stiffness: 260, damping: 18 } }}
+        exit={{ x: 160, opacity: 0, transition: { duration: 0.25 } }}
+        style={upright ? { paddingRight: custSize * 0.9, paddingTop: wishRise } : { paddingTop: custSize * 0.62 }}>
+        <motion.div animate={noNo} style={{ transformOrigin: '50% 90%' }}>
+          <Critter art={fig.customer} size={custSize} mood={mood} label="Kunde" style={{ opacity: complete ? 0 : 1, transition: 'opacity .4s .8s' }}
+            wishSide={upright ? 'right' : 'top'} wish={<MiniFigure fig={fig} size={wishSize} whole={rules.silhouette} face={false} fit />} />
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  )
+
+  const bench = (
+    <div ref={boardRef} style={{ ...pxPanel, padding: panel / 2 - 3, background: '#8A5A33', flexShrink: 0 }}>
+      <Board fig={fig} customer={fig.customer} rules={rules} filled={filledSlots} wrongSlot={wrongSlot} stuck={stuck} complete={complete}
+        held={held != null && tray[held] ? { ...tray[held], rot: rotOf(held) } : null}
+        size={boardPx} innerRef={benchRef} onDrop={(piece, slot) => dropPiece(piece, slot)} />
+    </div>
+  )
+
+  const trayBox = (
+    <div ref={trayRef} style={{
+      display: 'flex', gap: cellGap, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'flex-start', alignContent: 'center', flexShrink: 0,
+      width: flat ? perRow * (cell.w + cellGap) : '100%', maxWidth: perRow * (cell.w + cellGap), minHeight: trayH,
+    }}>
+      {tray.map((p, i) => {
+        const used = usedTiles.has(i)
+        const turnable = rules.turn && p.shape !== 'circle' && p.shape !== 'square'
+        return (
+          <div key={`${idx}-${i}`} onPointerDownCapture={() => setHeld(i)}
+            style={{ position: 'relative', width: cell.w, height: cell.h, visibility: used || stuck?.tray === i ? 'hidden' : 'visible', opacity: complete ? 0.35 : 1, transition: 'opacity .4s' }}>
+            <Draggable id={`${idx}-${i}`} data={i} label={SHAPE[p.shape].name} disabled={used || complete} style={{ width: tile, height: tile }}>
+              <div style={{ width: tile, height: tile, ...pxCard(), padding: 6, boxSizing: 'border-box' }}>
+                <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+                  <motion.g animate={{ rotate: rotOf(i) }} transition={{ type: 'spring', stiffness: 260, damping: 20 }}>
+                    <ShapePath shape={p.shape}
+                      x={(100 - p.dw) / 2} y={(100 - p.dh) / 2} w={p.dw} h={p.dh}
+                      fill={p.color} stroke={INK} strokeWidth={2.5} strokeLinejoin="round" />
+                  </motion.g>
+                </svg>
+              </div>
+            </Draggable>
+            {turnable && (
+              <motion.button key={turnHint?.i === i ? turnHint.n : 'still'} whileTap={{ scale: 0.88, rotate: 90 }}
+                onClick={() => turn(i)} disabled={used || complete}
+                animate={turnHint?.i === i && !reduceMotion() ? { scale: [1, 1.3, 1, 1.3, 1], rotate: [0, 40, 0, 40, 0] } : {}} transition={{ duration: 1.2 }}
+                aria-label={`${SHAPE[p.shape].name} drehen`}
+                style={{ position: 'absolute', ...(upright ? { left: (tile - badge) / 2 } : { right: 0 }), bottom: 0, width: badge, height: badge, borderRadius: '50%', background: 'var(--px-gold)', border: `3px solid ${INK}`, boxShadow: `0 3px 0 ${INK}`, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}>
+                <svg width={badge * 0.54} height={badge * 0.54} viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-3-6.2M20 4v5h-5" fill="none" stroke={INK} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </motion.button>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+
+  const shelf = <Shelf figs={rounds.slice(0, freeMode ? rounds.length : idx)} total={rounds.length} mini={mini} />
+  const trailBox = <RoundTrail total={rounds.length} done={freeMode ? rounds.length : idx + (complete ? 1 : 0)} walker="🔨" goal="🏠" size={trail} style={{ flex: 1, maxWidth: 560 }} />
+  const free = freeMode && <FreeBuild size={boardPx} tile={tile} row={flat} onDone={finishLevel} hit={hit} burst={burst} />
 
   return (
-    <div style={{
-      flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-      padding: 'clamp(10px,2vw,22px) clamp(12px,3vw,28px)', gap: 'clamp(10px,2vw,18px)',
+    <div ref={rootRef} style={{
+      flex: 1, minHeight: 0, minWidth: 0, boxSizing: 'border-box', display: 'flex', flexDirection: 'column', alignItems: 'center',
+      padding: pad, gap,
     }}>
       {bursts}
+      {juice.layer}
       {!freeMode && <HintHand from={trayRef} to={boardRef} delay={idx === 0 ? 2000 : 6000} active={!complete} />}
-      <RoundTrail total={rounds.length} done={idx + (complete ? 1 : 0)} walker="🔨" goal="🏠" style={{ width: 'calc(100% - 60px)', maxWidth: 700 }} />
-      {!freeMode && <Shelf figs={rounds.slice(0, lastDone ? rounds.length : idx)} total={rounds.length} />}
-
-      {freeMode ? <FreeBuild onDone={finishLevel} /> : (
-        <DragArea disabled={complete}>
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 'clamp(8px,3vw,28px)', flexWrap: 'wrap' }}>
-            {/* the customer, and what it would like */}
-            <AnimatePresence mode="wait">
-              <motion.div key={idx} initial={{ x: -120, opacity: 0 }} animate={{ x: 0, opacity: 1, transition: { type: 'spring', stiffness: 260, damping: 18 } }}
-                exit={{ x: 160, opacity: 0, transition: { duration: 0.25 } }} style={{ paddingTop: 70 }}>
-                <Critter art={fig.customer} size={110} mood={mood} label="Kunde" style={{ opacity: complete ? 0 : 1, transition: 'opacity .4s .8s' }}
-                  wish={<Art art={fig.icon} size={44} />} />
-              </motion.div>
-            </AnimatePresence>
-            <div ref={boardRef} style={{ ...pxPanel, padding: 'clamp(8px,1.6vw,14px)', background: '#8A5A33' }}>
-              <Board fig={fig} customer={fig.customer} rules={rules} filled={filledSlots} wrongSlot={wrongSlot} stuck={stuck} complete={complete}
-                size={boardPx} onDrop={(piece, slot) => dropPiece(piece, slot)} />
-            </div>
-          </div>
-
-          {/* Piece tray. Its place keeps one height all level long, and
-              after the last figure the workshop shelf shows up in it: a
-              growing page made the scaled game shrink at the very end. */}
-          <div ref={trayRef} style={{ display: 'flex', gap: 'clamp(8px,2.5vw,16px)', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', alignContent: 'center', maxWidth: 720, minHeight: 150 }}>
-            {lastDone ? (
-              <motion.div key="end" initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                <div style={{ display: 'flex', gap: 14 }}>
-                  <motion.button whileTap={{ scale: 0.94 }} onClick={() => setFreeMode(true)} aria-label="Frei bauen"
-                    style={{ ...pxButton('gold'), padding: '6px 26px', minHeight: 58, fontSize: 28 }}>🧩</motion.button>
-                  <motion.button whileTap={{ scale: 0.94 }} onClick={finishLevel} aria-label="Weiter"
-                    style={{ ...pxButton('green'), color: INK, textShadow: 'none', padding: '6px 34px', minHeight: 58, fontSize: 28 }}>➡️</motion.button>
-                </div>
-              </motion.div>
-            ) : tray.map((p, i) => {
-              const used = usedTiles.has(i)
-              return (
-                <div key={`${idx}-${i}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, visibility: used || stuck?.tray === i ? 'hidden' : 'visible', opacity: complete ? 0.35 : 1, transition: 'opacity .4s' }}>
-                  <Draggable id={`${idx}-${i}`} data={i} label={SHAPE[p.shape].name} disabled={used || complete}>
-                    <div style={{ width: tile, height: tile, ...pxCard(), padding: 6, boxSizing: 'border-box' }}>
-                      <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
-                        <motion.g animate={{ rotate: rotOf(i) }} transition={{ type: 'spring', stiffness: 260, damping: 20 }}>
-                          <ShapePath shape={p.shape}
-                            x={(100 - p.dw) / 2} y={(100 - p.dh) / 2} w={p.dw} h={p.dh}
-                            fill={p.color} stroke={INK} strokeWidth={2.5} strokeLinejoin="round" />
-                        </motion.g>
-                      </svg>
-                    </div>
-                  </Draggable>
-                  {rules.turn && (p.shape === 'circle' || p.shape === 'square') && <span aria-hidden="true" style={{ width: 48, height: 48 }} />}
-                  {rules.turn && p.shape !== 'circle' && p.shape !== 'square' && (
-                    <motion.button key={turnHint?.i === i ? turnHint.n : 'still'} whileTap={{ scale: 0.88, rotate: 90 }} onClick={() => turn(i)} disabled={used || complete}
-                      animate={turnHint?.i === i && !reduceMotion() ? { scale: [1, 1.3, 1, 1.3, 1], rotate: [0, 40, 0, 40, 0] } : {}} transition={{ duration: 1.2 }}
-                      aria-label={`${SHAPE[p.shape].name} drehen`}
-                      style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--px-gold)', border: `3px solid ${INK}`, boxShadow: `0 3px 0 ${INK}`, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-3-6.2M20 4v5h-5" fill="none" stroke={INK} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                    </motion.button>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </DragArea>
+      {flat ? (
+        // a phone held sideways: the way, the shelf and the stars in one row
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, width: '100%', height: headH, flexShrink: 0 }}>
+          {trailBox}{shelf}<div style={{ alignSelf: 'center' }}>{juice.hud}</div>
+        </div>
+      ) : (
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', maxWidth: 760, flexShrink: 0 }}>{trailBox}{juice.hud}</div>
+          {shelf}
+        </>
       )}
+
+      <div ref={juice.stage} style={{ flex: 1, minHeight: 0, width: '100%', display: 'flex', flexDirection: flat ? 'row' : 'column', alignItems: 'center', justifyContent: 'center', gap: flat ? 24 : gap }}>
+        {freeMode ? free : (
+          <DragArea disabled={complete}>
+            {upright ? (
+              <>{customer}{bench}{trayBox}</>
+            ) : flat ? (
+              <>{customer}{bench}{trayBox}</>
+            ) : (
+              <>
+                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: Math.round(clamp(box.w * 0.03, 8, 28)) }}>{customer}{bench}</div>
+                {trayBox}
+              </>
+            )}
+          </DragArea>
+        )}
+      </div>
     </div>
   )
 }

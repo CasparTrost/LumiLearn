@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- The source of public/sprites/emoji/custom/werkzeugkasten.webp ("Werkzeugkasten"):
+       an open red toolbox, a hammer and a wrench sticking out of it.
+       Render: scripts/art/render-svg.mjs -->
+  <g stroke="#2a1b3d" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">
+    <!-- the lid, swung open behind the box -->
+    <path d="M50 116 L206 116 L196 70 L60 70 Z" fill="#b8312a"/>
+    <!-- the inside -->
+    <path d="M30 140 L226 140 L210 112 L46 112 Z" fill="#5e1a17"/>
+    <!-- the hammer -->
+    <g transform="translate(86 48) rotate(-24)">
+      <rect x="-9" y="4" width="18" height="124" rx="7" fill="#d08a45"/>
+      <path d="M-40 -14 L22 -14 Q40 -14 46 -4 L40 2 Q30 -4 22 -2 L22 12 L-40 12 Z" fill="#9aa4b1"/>
+      <rect x="-48" y="-18" width="14" height="34" rx="4" fill="#b8c1cc"/>
+      <path d="M-3 22 L-3 100" stroke="#eab27a" stroke-width="5"/>
+    </g>
+    <!-- the wrench -->
+    <g transform="translate(172 36) rotate(22)">
+      <rect x="-10" y="10" width="20" height="124" rx="9" fill="#b8c1cc"/>
+      <path d="M-11 -4 L-11 -24 Q-26 -22 -28 -4 Q-28 18 -6 22 L6 22 Q28 18 28 -4 Q26 -22 11 -24 L11 -4 Z" fill="#b8c1cc"/>
+      <path d="M-3 28 L-3 100" stroke="#eef2f6" stroke-width="5"/>
+    </g>
+    <!-- the front of the box -->
+    <path d="M28 138 L228 138 L218 222 Q217 230 208 230 L48 230 Q39 230 38 222 Z" fill="#e2443a"/>
+  </g>
+  <!-- light along the top of the front, shade along the bottom -->
+  <path d="M40 152 L216 152" stroke="#f47a6f" stroke-width="8" stroke-linecap="round"/>
+  <path d="M50 216 L206 216" stroke="#b5302a" stroke-width="10" stroke-linecap="round"/>
+  <!-- the two latches -->
+  <g stroke="#2a1b3d" stroke-width="5" stroke-linejoin="round">
+    <rect x="66" y="132" width="26" height="30" rx="5" fill="#cfd6de"/>
+    <rect x="164" y="132" width="26" height="30" rx="5" fill="#cfd6de"/>
+  </g>
+</svg>

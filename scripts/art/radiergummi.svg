@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- The source of public/sprites/emoji/custom/radiergummi.webp ("Radiergummi"):
+       the red-and-blue school eraser, its red end worn round, a pencil line it
+       half rubbed out and the crumbs.
+       Render: scripts/art/render-svg.mjs -->
+  <!-- the pencil line, broken off where it was rubbed out, and the crumbs -->
+  <path d="M10 236 Q26 220 44 224" stroke="#6b6578" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <path d="M148 226 Q170 238 196 224 Q214 214 238 222" stroke="#6b6578" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <g fill="#f08a8a" stroke="#2a1b3d" stroke-width="3" stroke-linejoin="round">
+    <path d="M60 226 q7 -7 14 -2 q2 7 -5 9 q-7 0 -9 -7 Z"/>
+    <path d="M88 236 q5 -7 12 -3 q1 7 -5 8 q-6 0 -7 -5 Z"/>
+    <path d="M114 224 q5 -6 11 -2 q1 6 -4 7 q-6 0 -7 -5 Z"/>
+    <path d="M128 240 q4 -5 9 -2 q1 5 -4 6 q-4 0 -5 -4 Z"/>
+  </g>
+  <g stroke="#2a1b3d" stroke-width="7" stroke-linejoin="round">
+    <!-- red half: front and top, the left end worn round -->
+    <path d="M52 198 L108 174 L108 110 L52 134 Q30 144 32 170 Q34 196 52 198 Z" fill="#e2443a"/>
+    <path d="M52 134 L108 110 L148 70 L92 94 Q66 104 52 134 Z" fill="#f2665b"/>
+    <!-- blue half: front, top and the end -->
+    <path d="M108 174 L180 143 L180 79 L108 110 Z" fill="#2f78d6"/>
+    <path d="M108 110 L180 79 L220 39 L148 70 Z" fill="#4f95ec"/>
+    <path d="M180 143 L220 103 L220 39 L180 79 Z" fill="#1f5aa8"/>
+  </g>
+  <!-- light along the top of the front, shade along the bottom -->
+  <path d="M50 146 L100 124" stroke="#ff9a8f" stroke-width="7" stroke-linecap="round"/>
+  <path d="M118 118 L172 95" stroke="#8cbaf5" stroke-width="7" stroke-linecap="round"/>
+  <path d="M56 186 L100 167" stroke="#b5302a" stroke-width="7" stroke-linecap="round"/>
+  <path d="M118 162 L172 139" stroke="#1f5aa8" stroke-width="7" stroke-linecap="round"/>
+</svg>

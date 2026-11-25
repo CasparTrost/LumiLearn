@@ -1,26 +1,33 @@
 import { useState, useRef, useCallback, useEffect, useLayoutEffect, useMemo } from 'react'
-import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
 import LumiCharacter from '../components/LumiCharacter.jsx'
-import { PxIcon } from '../components/PixelUI.jsx'
 import { useApp } from '../AppContext.jsx'
 import { narrate } from '../narrator.js'
 import { sfx } from '../sfx.js'
 import { result } from '../lib/score.js'
-import { pxCard, pxButton, pxBubble, INK } from './px.js'
+import { LINES, line } from '../lib/lumiLines.js'
+import { colorWord } from '../lib/words.js'
+import { playAnimal } from '../lib/animalSounds.js'
+import { emojiSrc } from '../lib/emojiArt.jsx'
+import { pxButton, pxBubble, INK } from './px.js'
 import { HintHand, Art, useBursts } from '../components/play/index.js'
+import FinishWall from './coloring/FinishWall.jsx'
+import PicturePanel from './coloring/PicturePanel.jsx'
 import './coloring/coloring.css'
+
+// The Mal-Atelier is a free painting tool, not a game with tasks: nothing is
+// right or wrong, there are no levels and no stars (AppContext hasLevels).
+// What makes it a joy is the toys: a rainbow brush, glitter that twinkles,
+// stamps that land with a wobble and a sound, and "Fertig", which hangs the
+// picture in a frame on the child's wall.
 
 const BASE = import.meta.env.BASE_URL || '/LumiLearn/'
 // size of the coloring pages, and of the empty sheet
 const SHEET_W = 1000, SHEET_H = 1500
 
 const IMAGES = [
-  // A completely empty sheet. Both painting modules were strictly guided —
-  // colour inside these lines, or fill the region in the colour it asks for —
-  // so there was nowhere in the app to simply draw something of your own.
-  // Always unlocked: free drawing is not a reward for reaching a level.
+  // A completely empty sheet: somewhere to simply draw something of one's own.
   { id: 'blank', src: null, label: 'Kritzel-Leinwand', emoji: '🖍️', free: true },
   // Own pages with Lumi (scripts/generate-coloring-pages.py). The ids
   // changed with the redrawn 1000 x 1500 pages: a picture painted on the
@@ -35,8 +42,8 @@ const IMAGES = [
   { id: 'lumi2-winter',    src: `${BASE}images/coloring/lumi-winter.png`,    label: 'Winter',         emoji: '⛄' },
 ]
 
-// 14 colours a child can tell apart, each with its name (Lumi says it). There
-// were 40, many nearly the same (#FF0000 / #FF4444), as 32 px dots.
+// 14 colours a child can tell apart. Picking one, Lumi says its name
+// (farbe/<name>; Rosa is not recorded yet and stays silent).
 const COLORS = [
   { name: 'Rot',       value: '#E53935' },
   { name: 'Orange',    value: '#FB8C00' },
@@ -54,48 +61,70 @@ const COLORS = [
   { name: 'Weiß',      value: '#FFFFFF' },
 ]
 
-// three sizes in picture pixels (the sheets are about 1000 px wide)
+// three sizes in picture pixels (the sheets are 1000 px wide); a stamp
+// comes in three sizes too, shown on the size buttons
 const BRUSHES = [
-  { id: 'thin',   r: 6,  label: 'dünn',   dot: 10 },
-  { id: 'medium', r: 14, label: 'mittel', dot: 18 },
-  { id: 'thick',  r: 28, label: 'dick',   dot: 28 },
+  { id: 'thin',   r: 6,  label: 'dünn',   dot: 10, stamp: 80 },
+  { id: 'medium', r: 14, label: 'mittel', dot: 18, stamp: 130 },
+  { id: 'thick',  r: 28, label: 'dick',   dot: 28, stamp: 190 },
 ]
 
-const STAMPS = ['⭐','❤️','🌈','🌞','🌸','🦋','🐱','🐟','🚀','🍀','⚡','☁️']
-const STAMP_SIZE = 120     // fixed: it used to grow with the brush, which no child could see coming
+// Each stamp says its name when picked and makes its own little sound
+// when it lands (the cat and the unicorn their animal's)
+const STAMPS = [
+  { e: '⭐', word: 'stern',         sound: () => sfx.sparkle() },
+  { e: '❤️', word: 'herz',          sound: () => sfx.pop() },
+  { e: '🌈', word: 'regenbogen',    sound: () => sfx.slideUp() },
+  { e: '🌞', word: 'sonne',         sound: () => sfx.coin() },
+  { e: '🌸', word: 'blume',         sound: () => sfx.pop() },
+  { e: '🦋', word: 'schmetterling', sound: () => sfx.giggle() },
+  { e: '🐱', word: 'katze',         sound: () => sfx.boing(), animal: true },
+  { e: '🐟', word: 'fisch',         sound: () => sfx.splash() },
+  { e: '🚀', word: 'rakete',        sound: () => sfx.whoosh() },
+  { e: '🦄', word: 'einhorn',       sound: () => sfx.boing(), animal: true },
+  { e: '⚡', word: 'blitz',         sound: () => sfx.drum(true) },
+  { e: '☁️', word: 'wolke',         sound: () => sfx.whoosh() },
+]
+const STAMP_BY = Object.fromEntries(STAMPS.map(s => [s.e, s]))
 
 const TOOLS = [
-  { id: 'brush',  icon: '🖌️', label: 'Pinsel',   say: 'Der Pinsel. Mal mit dem Finger.' },
-  { id: 'fill',   icon: '🪣', label: 'Eimer',    say: 'Der Farbeimer. Tippe in eine Fläche.' },
-  { id: 'eraser', icon: '🧽', label: 'Radierer', say: 'Der Radierer. Wisch die Farbe weg.' },
-  { id: 'stamp',  icon: '⭐', label: 'Stempel',  say: 'Die Stempel. Such dir einen aus.' },
+  { id: 'brush',   icon: '🖌️', label: 'Pinsel' },
+  // (the same name as in the help and Lumi's sentence; a soft hyphen lets
+  // it break where the button is narrow)
+  { id: 'rainbow', icon: '🖌️', label: 'Regen\u00ADbogen', rainbow: true, say: 'atelier/regenbogen' },
+  { id: 'glitter', icon: '✨', label: 'Glitzer', say: 'atelier/glitzer' },
+  { id: 'fill',    icon: '🪣', label: 'Eimer',   say: 'atelier/eimer' },
+  { id: 'stamp',   icon: '⭐', label: 'Stempel' },
+  { id: 'eraser',  icon: '🧽', label: 'Radierer' },
 ]
+const RAINBOW_BG = 'conic-gradient(#E53935, #FB8C00, #FDD835, #43A047, #1E88E5, #8E24AA, #E53935)'
 
-const UNDO_MAX  = 10
-const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-// How each stamp comes alive when the picture is done (in place, over the
-// stamp on the sheet): the butterfly flaps, the rocket lifts, the star spins
-const ALIVE = {
-  '🦋': { scaleX: [1, 0.3, 1, 0.3, 1, 0.3, 1] },
-  '🚀': { y: [0, -14, -4, -18, 0], rotate: [0, -4, 4, -2, 0] },
-  '⭐': { rotate: [0, 180, 360], scale: [1, 1.25, 1] },
-  '❤️': { scale: [1, 1.3, 1, 1.3, 1] },
-  '🐟': { x: [0, -10, 10, -10, 0], rotate: [0, -8, 8, -8, 0] },
-  '🐱': { y: [0, -16, 0, -10, 0] },
-  '🌸': { rotate: [0, 90, 180] },
-  '🌞': { rotate: [0, 120, 240, 360], scale: [1, 1.1, 1, 1] },
-  '🌈': { scaleY: [1, 1.15, 0.95, 1.1, 1] },
-  '🍀': { rotate: [0, -20, 20, -10, 0] },
-  '⚡': { opacity: [1, 0.2, 1, 0.2, 1], scale: [1, 1.2, 1, 1.2, 1] },
-  '☁️': { x: [0, 12, -12, 0] },
+// Sentences for the Mal-Atelier that are not recorded yet. Until they are in
+// lib/lumiLines.js under the same key the narrator skips them: only Lumi's
+// recorded voice is heard.
+const ATELIER = {
+  'atelier/los':         'Such dir eine Farbe aus und mal los!',
+  'atelier/eimer':       'Der Farbeimer. Tippe in eine Fläche.',
+  'atelier/regenbogen':  'Der Regenbogen-Pinsel! Er malt in allen Farben.',
+  'atelier/glitzer':     'Glitzer! Das funkelt.',
+  'atelier/an-der-wand': 'Dein Bild hängt jetzt an der Wand!',
+  'atelier/wegwischen':  'Alles wegwischen?',
+  'atelier/wand-voll':   'Die Wand ist voll. Soll das älteste Bild Platz machen?',
 }
+const lumi = key => (LINES[key] ? line(key) : { text: ATELIER[key] })
+const word = w => (LINES[`wort/${w}`] ? line(`wort/${w}`) : null)
+// "Fertig": praise once, with words that fit a picture
+const PRAISE = ['rueckmeldung/richtig-1', 'rueckmeldung/richtig-4', 'rueckmeldung/richtig-5']
+
+const UNDO_MAX = 10
+const TWINKLE_MAX = 90              // twinkling sparkles per sheet
+const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 // Every fifth fill a little visitor crawls or flies across the sheet
 const VISITORS = ['🐞', '🦋', '🐌', '🐝']
 const ALBUM_MAX = 30
+const NO_MARKS = { stamps: [], twinkles: [] }
 
-// ── Album: one per profile, full size, in IndexedDB ───────────────────────────
-// It was one global list of 220 px thumbnails in localStorage: siblings saw
-// and deleted each other's pictures, and a picture could not be opened again.
+// ── Album (the wall): one per profile, full size, in IndexedDB ───────────────
 const DB_NAME = 'lumilearn-album', STORE = 'pictures'
 
 function openDb() {
@@ -192,41 +221,46 @@ function floodFill(paintCtx, base, sx, sy, rgb, W, H) {
 function hexToRgb(hex) {
   return { r: parseInt(hex.slice(1,3),16), g: parseInt(hex.slice(3,5),16), b: parseInt(hex.slice(5,7),16) }
 }
+// a colour mixed with white: the glitter's soft ground
+const pastel = (hex, k = 0.45) => {
+  const { r, g, b } = hexToRgb(hex)
+  return `rgb(${Math.round(r + (255 - r) * k)}, ${Math.round(g + (255 - g) * k)}, ${Math.round(b + (255 - b) * k)})`
+}
 
-// ── Composite: draw base image + paint layer onto display canvas ──────────────
-function composite(displayCtx, baseImg, paintCanvas, W, H) {
+// A four-pointed sparkle
+function sparkle(ctx, x, y, r, fill) {
+  const t = r * 0.28
+  ctx.fillStyle = fill
+  ctx.beginPath()
+  ctx.moveTo(x, y - r); ctx.lineTo(x + t, y - t); ctx.lineTo(x + r, y); ctx.lineTo(x + t, y + t)
+  ctx.lineTo(x, y + r); ctx.lineTo(x - t, y + t); ctx.lineTo(x - r, y); ctx.lineTo(x - t, y - t)
+  ctx.closePath(); ctx.fill()
+}
+
+// A stamp, as the picture on its button (the system's emoji used to land
+// instead of the picture chosen)
+function drawStamp(ctx, st, imgs) {
+  const img = imgs.get(st.e)
+  if (img?.complete && img.naturalWidth) ctx.drawImage(img, st.x - st.size / 2, st.y - st.size / 2, st.size, st.size)
+  else {
+    ctx.font = `${st.size * 0.8}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+    ctx.fillText(st.e, st.x, st.y)
+  }
+}
+
+// ── Composite: the sheet, the paint, the stamps ───────────────────────────────
+// The paint is multiplied onto the sheet so its lines stay visible. The
+// stamps lie on top like stickers: multiplied too, the sheet's lines showed
+// through them.
+function composite(displayCtx, baseImg, paintCanvas, W, H, stamps, imgs) {
   displayCtx.globalCompositeOperation = 'source-over'
   displayCtx.fillStyle = '#ffffff'
   displayCtx.fillRect(0, 0, W, H)
   displayCtx.drawImage(baseImg, 0, 0, W, H)
-  // Paint layer with multiply blend so lines stay visible
   displayCtx.globalCompositeOperation = 'multiply'
   displayCtx.drawImage(paintCanvas, 0, 0, W, H)
   displayCtx.globalCompositeOperation = 'source-over'
-}
-
-// What Lumi sees in the picture: the one or two colours used most.
-function colourComment(paintCanvas) {
-  const { width: W, height: H } = paintCanvas
-  if (!W || !H) return ''
-  const d = paintCanvas.getContext('2d').getImageData(0, 0, W, H).data
-  const counts = new Map()
-  let n = 0
-  for (let i = 0; i < d.length; i += 4 * 16) {
-    if (d[i + 3] < 200) continue
-    let best = null, bestD = Infinity
-    for (const c of COLORS) {
-      const { r, g, b } = hexToRgb(c.value)
-      const dist = (d[i] - r) ** 2 + (d[i + 1] - g) ** 2 + (d[i + 2] - b) ** 2
-      if (dist < bestD) { bestD = dist; best = c.name }
-    }
-    if (best === 'Weiß') continue
-    counts.set(best, (counts.get(best) ?? 0) + 1)
-    n++
-  }
-  const top = [...counts].sort((a, b) => b[1] - a[1]).filter(([, k]) => k / n > 0.12).slice(0, 2).map(([name]) => name)
-  if (!top.length) return ''
-  return top.length === 1 ? `Ich sehe ganz viel ${top[0]}!` : `Ich sehe ganz viel ${top[0]} und ${top[1]}!`
+  for (const st of stamps) drawStamp(displayCtx, st, imgs)
 }
 
 // A curved arrow back: "undo"
@@ -239,32 +273,29 @@ function UndoIcon({ size = 26 }) {
   )
 }
 
-// Wide and not tall (a tablet held sideways, a desktop window)
-function useWide() {
-  const query = '(min-width: 900px) and (min-aspect-ratio: 5/4)'
-  const [wide, setWide] = useState(() => window.matchMedia(query).matches)
-  useEffect(() => {
-    const mq = window.matchMedia(query)
-    const on = () => setWide(mq.matches)
-    mq.addEventListener('change', on)
-    return () => mq.removeEventListener('change', on)
-  }, [])
-  return wide
+// Button and swatch sizes for the room there is. Wide (a tablet or phone
+// held sideways, a desktop): tools left of the sheet, colours right of it.
+// Upright: everything under the sheet, as large as the width allows.
+function uiSizes({ w, h }, wide) {
+  if (wide) {
+    return h >= 560
+      ? { tool: 72, toolH: 66, dot: 56, gap: 6, size: 52, act: 56, font: 13, icon: 28 }
+      : { tool: 54, toolH: 50, dot: 44, gap: 5, size: 40, act: 46, font: 11, icon: 22 }
+  }
+  const avail = Math.max(300, w - 16)
+  const tool = Math.max(48, Math.min(76, Math.floor((avail - 5 * 5) / 6)))
+  const dot = Math.max(40, Math.min(60, Math.floor((avail - 6 * 5) / 7)))
+  const big = tool >= 64 && h >= 900
+  return { tool, toolH: big ? 66 : 52, dot, gap: 5, size: big ? 52 : 44, act: big ? 56 : 46, font: big ? 13 : 11, icon: big ? 28 : 22 }
 }
 
-const toolBtn = active => ({
-  ...pxButton(active ? 'gold' : 'parch'),
-  minWidth: 56, minHeight: 52, padding: '3px 6px',
-  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1,
-  fontFamily: 'var(--font-heading)', fontSize: 13, lineHeight: 1.1,
-})
-
-const actionBtn = (color, enabled = true) => ({
+const actionBtn = (color, size, enabled = true) => ({
   ...pxButton(color),
   // ink text: white on the pixel green/red is too weak (2.2:1, 2.8:1)
   color: INK, textShadow: 'none',
-  minHeight: 46, padding: '4px 12px',
-  fontSize: 15, opacity: enabled ? 1 : 0.55, cursor: enabled ? 'pointer' : 'default',
+  minHeight: size, minWidth: size, padding: '2px 8px',
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+  fontSize: 16, opacity: enabled ? 1 : 0.5, cursor: enabled ? 'pointer' : 'default',
 })
 
 export default function ColoringGame({ onComplete }) {
@@ -276,62 +307,75 @@ export default function ColoringGame({ onComplete }) {
   const [color, setColor]         = useState(COLORS[0].value)
   const [brushIdx, setBrushIdx]   = useState(1)
   const [tool, setTool]           = useState('fill')
-  const [stamp, setStamp]         = useState(STAMPS[0])
+  const [stamp, setStamp]         = useState(STAMPS[0].e)
   const [ready, setReady]         = useState(false)
   const [filling, setFilling]     = useState(false)
-  // "Fertig" used to hand out full marks without ever checking that anything
-  // had been drawn at all.
   const [hasPainted, setHasPainted] = useState(false)
   const [undoCount, setUndoCount] = useState(0)
   const [album, setAlbum]         = useState([])
-  const [albumOpen, setAlbumOpen] = useState(false)
-  const [viewing, setViewing]     = useState(null)    // album entry shown big
+  const [panelOpen, setPanelOpen] = useState(false)
   const [confirm, setConfirm]     = useState(null)    // 'clear' | 'empty' | 'full'
   const [note, setNote]           = useState(null)    // what Lumi just said, shown for a moment
   const [dispSize, setDispSize]   = useState({ w: 0, h: 0 })
-  const [party, setParty]         = useState(false)   // "Fertig": the picture comes alive
+  const [box, setBox]             = useState({ w: 0, h: 0 })
   const [visitor, setVisitor]     = useState(null)    // { art, y, n } crossing the sheet
+  const [landing, setLanding]     = useState([])      // stamps in the air
+  const [marks, setMarks]         = useState(NO_MARKS) // the stamps and twinkles on this sheet
+  const [hanging, setHanging]     = useState(null)    // "Fertig": the picture on the wall
   const [bursts, burst]           = useBursts()
 
+  const rootRef     = useRef(null)
   const displayRef  = useRef(null)
   const areaRef     = useRef(null)
   const paintRef    = useRef(document.createElement('canvas'))   // transparent colour strokes
   const basePixels  = useRef(null)                               // sheet pixels for the fill
   const baseImg     = useRef(null)
   const canvasSize  = useRef({ w: SHEET_W, h: SHEET_H })
-  const undoStack   = useRef([])
+  const undoStack   = useRef([])                                 // [{ data, marks }]
   const pointerId   = useRef(null)
   const lastPos     = useRef(null)
-  // Switching pictures used to wipe the one being painted. Each picture now
-  // keeps its paint while the game is open; `albumId` is the album entry it
-  // came from or was saved as, so saving again replaces it.
-  const sheets      = useRef(new Map())                          // imgId -> { data, albumId, painted }
+  const travel      = useRef(0)                                  // how far this stroke went (rainbow, glitter)
+  const hue0        = useRef(0)
+  const sparkGap    = useRef(0)                                  // glitter: way since the last sparkles
+  // Each picture keeps its paint while the game is open; `albumId` is the
+  // album entry it came from or was saved as, so saving again replaces it.
+  const sheets      = useRef(new Map())                          // imgId -> { data, albumId, painted, marks }
   const albumIdRef  = useRef(null)
-  const pendingPaint = useRef(null)                              // album paint to load onto the next sheet
+  const pendingPaint = useRef(null)                              // album entry to load onto the next sheet
   const noteTimer   = useRef(null)
-  const stamps      = useRef(new Map())                          // imgId -> [{ e, x, y, n }]: the stamps on that sheet
   const fills       = useRef(0)                                  // fills so far (a visitor every fifth)
   const finished    = useRef(false)                              // "Fertig" was tapped: once only
-  const partyT      = useRef([])
-  useEffect(() => () => partyT.current.forEach(clearTimeout), [])
+  const timers      = useRef([])
+  const marksRef    = useRef(NO_MARKS)
+  const landingRef  = useRef([])
+  useEffect(() => () => timers.current.forEach(clearTimeout), [])
 
   const currentImage = IMAGES[imgIdx]
-  const brushR = BRUSHES[brushIdx].r
-  const wide = useWide()
+  const brush = BRUSHES[brushIdx]
+  const wide = box.w > box.h
+  const ui = uiSizes(box, wide)
 
-  const say = useCallback((text, { show = false } = {}) => {
-    narrate([{ text }])
-    if (show) {
-      setNote(text)
-      clearTimeout(noteTimer.current)
-      noteTimer.current = setTimeout(() => setNote(null), 3200)
-    }
+  const setMarksBoth = useCallback(m => { marksRef.current = m; setMarks(m) }, [])
+
+  // the stamp pictures, for the sheet
+  const stampImgs = useMemo(() => new Map(STAMPS.map(s => {
+    const img = new Image()
+    img.src = emojiSrc(s.e)
+    return [s.e, img]
+  })), [])
+
+  // A word from Lumi on screen, for a moment (only when the wall is full of
+  // trouble: the browser refused to store the picture)
+  const showNote = useCallback(text => {
+    setNote(text)
+    clearTimeout(noteTimer.current)
+    noteTimer.current = setTimeout(() => setNote(null), 3200)
   }, [])
 
   useEffect(() => {
-    const id = setTimeout(() => say('Such dir ein Bild aus und mal los!'), 400)
+    const id = setTimeout(() => narrate([lumi('atelier/los')]), 400)
     return () => { clearTimeout(id); clearTimeout(noteTimer.current) }
-  }, [say])
+  }, [])
 
   const refreshAlbum = useCallback(() => albumList(profile).then(setAlbum).catch(() => setAlbum([])), [profile])
   useEffect(() => { migrateOldGallery(profile).catch(() => {}).finally(refreshAlbum) }, [profile, refreshAlbum])
@@ -340,12 +384,25 @@ export default function ColoringGame({ onComplete }) {
   const urls = useMemo(() => new Map(album.map(e => [e.id, URL.createObjectURL(e.picture)])), [album])
   useEffect(() => () => urls.forEach(u => URL.revokeObjectURL(u)), [urls])
 
+  // The room the game has: wide or upright
+  useLayoutEffect(() => {
+    const el = rootRef.current
+    if (!el) return
+    const measure = () => setBox(b => (b.w === el.clientWidth && b.h === el.clientHeight ? b : { w: el.clientWidth, h: el.clientHeight }))
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
   const redraw = useCallback(() => {
     const dc = displayRef.current
     if (!dc || !baseImg.current) return
     const { w, h } = canvasSize.current
-    composite(dc.getContext('2d'), baseImg.current, paintRef.current, w, h)
-  }, [])
+    composite(dc.getContext('2d'), baseImg.current, paintRef.current, w, h, marksRef.current.stamps, stampImgs)
+  }, [stampImgs])
+  // a picture continued from the wall may show its stamps before their pictures are loaded
+  useEffect(() => { stampImgs.forEach(img => { img.onload = redraw }) }, [stampImgs, redraw])
 
   // Load the sheet → set up canvases → draw
   useEffect(() => {
@@ -369,6 +426,7 @@ export default function ColoringGame({ onComplete }) {
       if (kept?.data) pctx.putImageData(kept.data, 0, 0)
       albumIdRef.current = kept?.albumId ?? null
       setHasPainted(!!kept?.painted)
+      setMarksBoth(kept?.marks ?? NO_MARKS)
       undoStack.current = []; setUndoCount(0)
       const dc = displayRef.current
       if (dc) { dc.width = W; dc.height = H }
@@ -380,6 +438,7 @@ export default function ColoringGame({ onComplete }) {
           pctx.clearRect(0, 0, W, H)
           pctx.drawImage(bmp, 0, 0, W, H)
           albumIdRef.current = pending.id
+          setMarksBoth(pending.marks ?? NO_MARKS)
           setHasPainted(true)
           redraw()
         }).catch(() => {})
@@ -402,40 +461,60 @@ export default function ColoringGame({ onComplete }) {
       img.src = currentImage.src
     }
     return () => { cancelled = true }
-  }, [currentImage, redraw])
+  }, [currentImage, redraw, setMarksBoth])
 
-  // Fit the canvas into the free space, whatever is left above the tools
+  // Fit the sheet into the room left beside or above the tools
   useLayoutEffect(() => {
     const el = areaRef.current
     if (!el) return
     const fit = () => {
       const { w, h } = canvasSize.current
-      const aw = el.clientWidth - 16, ah = el.clientHeight - 20
+      const aw = el.clientWidth - 16, ah = el.clientHeight - 18
       if (aw <= 0 || ah <= 0) return
       const k = Math.min(aw / w, ah / h)
-      setDispSize({ w: Math.floor(w * k), h: Math.floor(h * k) })
+      setDispSize(d => {
+        const n = { w: Math.floor(w * k), h: Math.floor(h * k) }
+        return d.w === n.w && d.h === n.h ? d : n
+      })
     }
     fit()
     const ro = new ResizeObserver(fit)
     ro.observe(el)
     return () => ro.disconnect()
-  }, [ready])
+  }, [ready, wide])
+
+  // ── Stamps: they land with a wobble, then go onto the sheet ────────────────
+  const commitStamp = useCallback(id => {
+    const st = landingRef.current.find(s => s.id === id)
+    if (!st) return
+    landingRef.current = landingRef.current.filter(s => s.id !== id)
+    setLanding(landingRef.current)
+    setMarksBoth({ ...marksRef.current, stamps: [...marksRef.current.stamps, { e: st.e, x: st.x, y: st.y, size: st.size }] })
+    redraw()
+  }, [redraw, setMarksBoth])
+
+  // Before anything else changes the sheet, the stamps in the air land at once
+  const flushStamps = useCallback(() => {
+    landingRef.current.slice().forEach(st => commitStamp(st.id))
+  }, [commitStamp])
 
   const keepSheet = useCallback(() => {
+    flushStamps()
     const pc = paintRef.current
     if (!pc.width) return
     sheets.current.set(currentImage.id, {
       data: pc.getContext('2d').getImageData(0, 0, pc.width, pc.height),
-      albumId: albumIdRef.current, painted: hasPainted,
+      albumId: albumIdRef.current, painted: hasPainted, marks: marksRef.current,
     })
-  }, [currentImage, hasPainted])
+  }, [currentImage, hasPainted, flushStamps])
 
   const goToImage = (idx) => {
+    setPanelOpen(false)
     if (idx === imgIdx) return
     keepSheet()
-    say(IMAGES[idx].label)
     // on the empty sheet the bucket would flood the whole page: draw instead
     if (IMAGES[idx].free && tool === 'fill') setTool('brush')
+    sfx.flip?.()
     setImgIdx(idx)
   }
 
@@ -450,70 +529,121 @@ export default function ColoringGame({ onComplete }) {
     }
   }
 
-  // Every step can be taken back: a copy of the paint before it
-  const snapshot = () => {
+  // Every step can be taken back: a copy of the paint, and of the stamps and
+  // twinkles, before it
+  const snapshot = (data) => {
     const pc = paintRef.current
-    undoStack.current.push(pc.getContext('2d').getImageData(0, 0, pc.width, pc.height))
+    undoStack.current.push({ data: data ?? pc.getContext('2d').getImageData(0, 0, pc.width, pc.height), marks: marksRef.current })
     if (undoStack.current.length > UNDO_MAX) undoStack.current.shift()
     setUndoCount(undoStack.current.length)
   }
 
   const undo = () => {
+    flushStamps()
     const prev = undoStack.current.pop()
     if (!prev) return
-    stamps.current.set(currentImage.id, (stamps.current.get(currentImage.id) ?? []).filter(st => st.n <= undoStack.current.length))
-    paintRef.current.getContext('2d').putImageData(prev, 0, 0)
+    paintRef.current.getContext('2d').putImageData(prev.data, 0, 0)
+    setMarksBoth(prev.marks)
     setUndoCount(undoStack.current.length)
-    let painted = false
-    for (let i = 3; i < prev.data.length && !painted; i += 64) painted = prev.data[i] > 0
+    let painted = prev.marks.stamps.length > 0
+    for (let i = 3; i < prev.data.data.length && !painted; i += 64) painted = prev.data.data[i] > 0
     setHasPainted(painted)
     sfx.flip?.()
     redraw()
   }
 
+  // One piece of a stroke, in the tool's way
   const stroke = (from, to) => {
     const ctx = paintRef.current.getContext('2d')
-    ctx.globalCompositeOperation = tool === 'eraser' ? 'destination-out' : 'source-over'
-    ctx.strokeStyle = ctx.fillStyle = tool === 'eraser' ? 'rgba(0,0,0,1)' : color
-    ctx.lineWidth = brushR * 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
-    ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke()
-    ctx.beginPath(); ctx.arc(to.x, to.y, brushR, 0, Math.PI * 2); ctx.fill()
-    ctx.globalCompositeOperation = 'source-over'
+    const r = brush.r
+    const seg = Math.hypot(to.x - from.x, to.y - from.y)
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+    const line2 = (style, width) => {
+      ctx.strokeStyle = ctx.fillStyle = style
+      ctx.lineWidth = width
+      ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke()
+      ctx.beginPath(); ctx.arc(to.x, to.y, width / 2, 0, Math.PI * 2); ctx.fill()
+    }
+    if (tool === 'eraser') {
+      ctx.globalCompositeOperation = 'destination-out'
+      line2('rgba(0,0,0,1)', r * 2)
+      ctx.globalCompositeOperation = 'source-over'
+      // a stamp the eraser touches comes off whole, like a sticker;
+      // glitter it passes over stops twinkling
+      const m = marksRef.current
+      const stamps = m.stamps.filter(st => Math.hypot(st.x - to.x, st.y - to.y) > st.size * 0.4 + r)
+      const twinkles = m.twinkles.filter(t => Math.hypot(t.x - to.x, t.y - to.y) > r + t.s * 0.3)
+      if (stamps.length < m.stamps.length) sfx.pop()
+      if (stamps.length < m.stamps.length || twinkles.length < m.twinkles.length) setMarksBoth({ stamps, twinkles })
+    } else if (tool === 'rainbow') {
+      // the colour runs through the rainbow along the stroke
+      line2(`hsl(${Math.round(hue0.current + travel.current * 0.55) % 360}, 88%, 54%)`, r * 2)
+    } else if (tool === 'glitter') {
+      // a soft ground in the colour, strewn with sparkles; some of them
+      // keep twinkling over the sheet
+      line2(pastel(color), r * 2)
+      // a pair of sparkles every `step` picture pixels along the stroke
+      const step = Math.max(8, r * 0.9)
+      const at = []
+      if (!seg) at.push(0)
+      for (let d = step - sparkGap.current; d <= seg; d += step) at.push(d / seg)
+      sparkGap.current = seg ? (sparkGap.current + seg) % step : 0
+      const add = []
+      for (const f of at) {
+        const cx = from.x + (to.x - from.x) * f
+        const cy = from.y + (to.y - from.y) * f
+        for (let n = 0; n < 2; n++) {
+          const a = Math.random() * Math.PI * 2, d = Math.random() * r * 1.1
+          const x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d
+          const fill = ['#ffffff', '#FFE082', color, '#ffffff'][Math.floor(Math.random() * 4)]
+          sparkle(ctx, x, y, Math.max(3, r * (0.3 + Math.random() * 0.35)), fill)
+          if (Math.random() < 0.35) add.push({ x, y, s: Math.max(26, r * 2.4), d: +(Math.random() * 1.6).toFixed(2), t: +(1.1 + Math.random() * 1.1).toFixed(2) })
+        }
+      }
+      if (add.length) {
+        const m = marksRef.current
+        setMarksBoth({ ...m, twinkles: [...m.twinkles, ...add].slice(-TWINKLE_MAX) })
+      }
+    } else {
+      line2(color, r * 2)
+    }
+    travel.current += seg
     redraw()
+  }
+
+  const throwStamp = (pos, at) => {
+    flushStamps()
+    snapshot()
+    const st = { id: Math.random(), e: stamp, x: pos.x, y: pos.y, size: brush.stamp }
+    landingRef.current = [...landingRef.current, st]
+    setLanding(landingRef.current)
+    setHasPainted(true)
+    const def = STAMP_BY[stamp]
+    if (!(def?.animal && playAnimal(stamp, { volume: 0.6 }))) def?.sound()
+    if (stamp === '⭐' || stamp === '🌈') burst(at, 'stars', 6)
+    if (reduceMotion()) commitStamp(st.id)
   }
 
   // Pointer events: one finger paints; a second one (a resting hand) is ignored.
   const handleDown = (e) => {
-    if (!ready || pointerId.current !== null) return
+    if (!ready || pointerId.current !== null || hanging) return
     e.preventDefault()
     const pos = getPos(e)
 
-    if (tool === 'stamp') {
-      snapshot()
-      const list = stamps.current.get(currentImage.id) ?? []
-      stamps.current.set(currentImage.id, [...list, { e: stamp, x: pos.x, y: pos.y, n: undoStack.current.length }])
-      const ctx = paintRef.current.getContext('2d')
-      ctx.font = `${STAMP_SIZE}px serif`
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillText(stamp, pos.x, pos.y)
-      setHasPainted(true)
-      redraw()
-      return
-    }
+    if (tool === 'stamp') { throwStamp(pos, { x: e.clientX, y: e.clientY }); return }
 
     if (tool === 'fill') {
       if (!basePixels.current) return
+      flushStamps()
       setFilling(true)
       setTimeout(() => {
         const { w, h } = canvasSize.current
         const ctx = paintRef.current.getContext('2d')
         const before = ctx.getImageData(0, 0, w, h)
         if (floodFill(ctx, basePixels.current, pos.x, pos.y, hexToRgb(color), w, h)) {
-          undoStack.current.push(before)
-          if (undoStack.current.length > UNDO_MAX) undoStack.current.shift()
-          setUndoCount(undoStack.current.length)
+          snapshot(before)
           setHasPainted(true)
+          sfx.pop()
           redraw()
           if (++fills.current % 5 === 0) setVisitor({ art: VISITORS[(fills.current / 5 - 1) % VISITORS.length], y: 0.2 + Math.random() * 0.6, n: fills.current })
         }
@@ -522,10 +652,14 @@ export default function ColoringGame({ onComplete }) {
       return
     }
 
+    flushStamps()
     snapshot()
     pointerId.current = e.pointerId
     try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* not supported */ }
     lastPos.current = pos
+    travel.current = 0
+    sparkGap.current = 0
+    hue0.current = Math.floor(Math.random() * 360)
     stroke(pos, pos)
     setHasPainted(true)
   }
@@ -544,61 +678,67 @@ export default function ColoringGame({ onComplete }) {
   }
 
   const clearPaint = () => {
+    flushStamps()
     snapshot()
     const pc = paintRef.current
     pc.getContext('2d').clearRect(0, 0, pc.width, pc.height)
-    stamps.current.set(currentImage.id, [])
+    setMarksBoth(NO_MARKS)
     setHasPainted(false)
+    sfx.whoosh()
     redraw()
   }
 
-  // Saves the picture in the album of this profile (again: replaces it)
-  // A full album asks first whether the oldest picture may make room;
-  // `ask: false` (from "Fertig") then simply does not save.
-  const saveToAlbum = useCallback(async ({ makeRoom = false, ask = true } = {}) => {
+  // Saves the picture on the wall of this profile (again: replaces it).
+  // With a full wall the oldest picture makes room, once the child said so.
+  const saveToAlbum = useCallback(async ({ makeRoom = false } = {}) => {
     const dc = displayRef.current
     if (!dc) return false
     const replacing = albumIdRef.current && album.some(e => e.id === albumIdRef.current)
-    if (!replacing && album.length >= ALBUM_MAX && !makeRoom) { if (ask) setConfirm('full'); return false }
     try {
-      if (!replacing && album.length >= ALBUM_MAX) await albumDelete(album.slice(ALBUM_MAX - 1).map(e => e.id))
+      if (!replacing && album.length >= ALBUM_MAX && makeRoom) await albumDelete(album.slice(ALBUM_MAX - 1).map(e => e.id))
       const [picture, paint] = await Promise.all([toBlob(dc, 'image/jpeg', 0.88), toBlob(paintRef.current, 'image/png')])
       const id = replacing ? albumIdRef.current : Date.now()
-      await albumPut({ id, profile, imgId: currentImage.id, picture, paint })
+      await albumPut({ id, profile, imgId: currentImage.id, picture, paint, marks: marksRef.current })
       albumIdRef.current = id
       await refreshAlbum()
       return true
     } catch {
-      say('Das Bild passt leider nicht mehr ins Album.', { show: true })
+      showNote('Das Bild passt leider nicht mehr an die Wand.')
       return false
     }
-  }, [album, profile, currentImage, refreshAlbum, say])
+  }, [album, profile, currentImage, refreshAlbum, showNote])
 
-  const keep = async (opts) => {
-    if (!hasPainted) return
-    if (await saveToAlbum(opts)) {
-      sfx.correct()
-      say(`Dein Bild ist im Album! ${colourComment(paintRef.current)}`, { show: true })
+  // "Fertig": the picture flies onto the wall, a frame closes around it,
+  // Lumi claps and praises it once, confetti. The picture stays on the wall
+  // until the child taps the big "go on" arrow; then back home: there are
+  // no levels and no stars here (AppContext hasLevels), the child made a picture.
+  const finish = async ({ makeRoom = false } = {}) => {
+    if (!hasPainted || finished.current) return
+    flushStamps()
+    const replacing = albumIdRef.current && album.some(e => e.id === albumIdRef.current)
+    if (!replacing && album.length >= ALBUM_MAX && !makeRoom) {
+      setConfirm('full')
+      return
     }
-  }
-
-  // "Fertig": the stamps come alive and Lumi hops onto the sheet with
-  // confetti, about 3 s, then the results. A free painting game: finishing
-  // is the achievement, there is nothing to get wrong — one task, done.
-  const finish = async () => {
-    if (!hasPainted) { say('Mal zuerst etwas!'); return }
-    if (finished.current) return
     finished.current = true
-    const saved = await saveToAlbum({ ask: false })
-    setParty(true)
-    sfx.tada()
     const dc = displayRef.current
-    const at = (ms, fn) => partyT.current.push(setTimeout(fn, ms))
-    at(500, () => { burst(dc, 'confetti', 24); sfx.complete?.() })
-    at(1600, () => burst(dc, 'stars', 14))
-    narrate([{ text: `Fertig! Was für ein schönes Bild. ${colourComment(paintRef.current)}${saved ? ' Es ist jetzt in deinem Album.' : ''}` }])
-    at(3300, () => onComplete?.(result(1, 1)))
+    const { w, h } = canvasSize.current
+    setHanging({
+      picture: dc.toDataURL('image/jpeg', 0.9),
+      from: dc.getBoundingClientRect(),
+      sheet: { w, h },
+      stamps: marksRef.current.stamps,
+      earlier: album.filter(e => e.id !== albumIdRef.current).slice(0, 4).map(e => urls.get(e.id)).filter(Boolean),
+    })
+    saveToAlbum({ makeRoom })
+    const at = (ms, fn) => timers.current.push(setTimeout(fn, ms))
+    sfx.whoosh()
+    at(650, () => sfx.drum())                              // the frame closes
+    at(850, () => sfx.tada())
+    at(950, () => narrate([line(PRAISE[Math.floor(Math.random() * PRAISE.length)]), { ...lumi('atelier/an-der-wand'), gap: 250 }]))
+    ;[1100, 1450, 1800].forEach(ms => at(ms, () => sfx.drum(true)))   // Lumi claps
   }
+  const leaveWall = () => onComplete?.(result(1, 1))
 
   const continueFromAlbum = (entry) => {
     const idx = IMAGES.findIndex(i => i.id === entry.imgId)
@@ -606,7 +746,7 @@ export default function ColoringGame({ onComplete }) {
     keepSheet()
     sheets.current.delete(entry.imgId)
     pendingPaint.current = entry
-    setViewing(null); setAlbumOpen(false)
+    setPanelOpen(false)
     if (idx === imgIdx) {
       // same sheet: load the paint right away
       createImageBitmap(entry.paint).then(bmp => {
@@ -616,251 +756,245 @@ export default function ColoringGame({ onComplete }) {
         ctx.drawImage(bmp, 0, 0, pc.width, pc.height)
         albumIdRef.current = entry.id
         pendingPaint.current = null
+        setMarksBoth(entry.marks ?? NO_MARKS)
         setHasPainted(true)
         redraw()
       }).catch(() => {})
     } else setImgIdx(idx)
-    say('Mal weiter!')
   }
 
   const chooseColor = (c) => {
     setColor(c.value)
-    if (tool === 'eraser' || tool === 'stamp') setTool('brush')
-    narrate([{ text: c.name }])
+    if (tool === 'eraser' || tool === 'stamp' || tool === 'rainbow') setTool('brush')
+    narrate([colorWord(c.name)])
   }
 
   const chooseTool = (t) => {
     setTool(t.id)
-    narrate([{ text: t.say }])
+    sfx.flip?.()
+    if (t.say) narrate([lumi(t.say)])
+    if (t.id === 'stamp') narrate([word(STAMP_BY[stamp].word)])
   }
 
+  const chooseStamp = (st) => {
+    setStamp(st.e)
+    narrate([word(st.word)])
+  }
+
+  const chooseSize = (i) => { setBrushIdx(i); sfx.flip?.() }
+
+  // ── The pieces of the toolbar ──────────────────────────────────────────────
+  const toolButtons = TOOLS.map(t => {
+    const on = tool === t.id
+    return (
+      <button key={t.id} onClick={() => chooseTool(t)} aria-pressed={on} aria-label={t.rainbow ? 'Regenbogen-Pinsel' : t.label} style={{
+        ...pxButton(on ? 'gold' : 'parch'), color: INK, textShadow: 'none',
+        width: ui.tool, height: ui.toolH, padding: 0, flexShrink: 0,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1,
+        fontFamily: 'var(--font-heading)', fontSize: ui.font, lineHeight: 1.05,
+      }}>
+        <span style={{ width: ui.icon + 4, height: ui.icon + 4, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: t.rainbow ? RAINBOW_BG : undefined }}>
+          {t.id === 'stamp' ? <Art art={stamp} size={ui.icon} /> : <Art art={t.icon} size={ui.icon} />}
+        </span>
+        {t.label}
+      </button>
+    )
+  })
+
+  const sizeButtons = BRUSHES.map((b, i) => {
+    const off = tool === 'fill'
+    const on = brushIdx === i && !off
+    const dot = Math.round(b.dot * ui.size / 52)
+    return (
+      <button key={b.id} onClick={() => chooseSize(i)} disabled={off} aria-pressed={on}
+        aria-label={tool === 'stamp' ? `Stempel ${['klein', 'mittel', 'groß'][i]}` : `Pinsel ${b.label}`} style={{
+          flex: '1 1 0', minWidth: 0, height: ui.size, padding: 0, borderRadius: 10, cursor: off ? 'default' : 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          border: `2px solid ${on ? INK : 'rgba(42,27,61,0.25)'}`,
+          background: on ? 'var(--px-gold)' : 'var(--px-parch-light)', opacity: off ? 0.4 : 1,
+        }}>
+        {tool === 'stamp'
+          ? <Art art={stamp} size={Math.round(ui.size * [0.42, 0.62, 0.84][i])} />
+          : <span style={{
+              width: dot + 6, height: dot + 6, borderRadius: '50%', border: `2px solid ${INK}`,
+              background: tool === 'eraser' ? '#ffffff' : tool === 'rainbow' ? RAINBOW_BG : color,
+            }} />}
+      </button>
+    )
+  })
+
+  const cols = wide ? 4 : 7
+  const rows = wide ? 4 : 2
+  const swatches = tool === 'stamp'
+    ? STAMPS.map(st => (
+        <button key={st.e} onClick={() => chooseStamp(st)} aria-pressed={stamp === st.e} aria-label={`Stempel ${st.word}`} style={{
+          width: ui.dot, height: ui.dot, padding: 0, borderRadius: 12, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          border: `3px solid ${stamp === st.e ? INK : 'rgba(42,27,61,0.25)'}`,
+          background: stamp === st.e ? 'var(--px-gold)' : 'var(--px-parch-light)',
+        }}><Art art={st.e} size={Math.round(ui.dot * 0.72)} /></button>
+      ))
+    : COLORS.map(c => {
+        const on = color === c.value && tool !== 'eraser' && tool !== 'rainbow'
+        return (
+          <button key={c.value} onClick={() => chooseColor(c)} aria-label={c.name} aria-pressed={on} style={{
+            width: ui.dot, height: ui.dot, borderRadius: '50%', padding: 0, background: c.value,
+            border: `3px solid ${INK}`, outline: on ? '4px solid var(--px-gold)' : 'none', outlineOffset: 1,
+            cursor: 'pointer', boxShadow: '0 2px 0 rgba(42,27,61,0.35)',
+            transform: on ? 'scale(1.06)' : undefined,
+          }} />
+        )
+      })
+  const palette = (
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, ${ui.dot}px)`, gridAutoRows: ui.dot, gap: ui.gap + 1, justifyContent: 'center', alignContent: 'start', minHeight: rows * ui.dot + (rows - 1) * (ui.gap + 1) }}>
+      {swatches}
+    </div>
+  )
+
+  const undoBtn = (
+    <button onClick={undo} disabled={!undoCount} aria-label="Rückgängig" style={{ ...actionBtn('parch', ui.act, !!undoCount), flex: '1 1 0' }}>
+      <UndoIcon size={ui.act * 0.5} />
+    </button>
+  )
+  const clearBtn = (
+    <button onClick={() => hasPainted && setConfirm('clear')} disabled={!hasPainted}
+      aria-label="Alles wegwischen" style={{ ...actionBtn('red', ui.act, hasPainted), flex: '1 1 0' }}>
+      <Art art="🗑️" size={ui.act * 0.5} />
+    </button>
+  )
+  const picturesBtn = (
+    <button onClick={() => { flushStamps(); setPanelOpen(true); sfx.flip?.() }} aria-label={`Bilder${album.length ? `, ${album.length} an der Wand` : ''}`}
+      style={{ ...actionBtn('gold', ui.act), flex: '1 1 0' }}>
+      <Art art="🖼️" size={ui.act * 0.56} />
+    </button>
+  )
+  const finishBtn = onComplete && (
+    <button onClick={() => finish()} disabled={!hasPainted || !!hanging} style={{ ...actionBtn('green', ui.act, hasPainted), flex: '2 1 0', paddingInline: 12, fontSize: ui.act >= 56 ? 18 : 16 }}>
+      <Art art="✅" size={ui.act * 0.46} /> Fertig
+    </button>
+  )
+
+  const k = dispSize.w / canvasSize.current.w
+  const panelStyle = { background: 'var(--px-parch)', padding: 8, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: ui.gap + 1, justifyContent: 'center' }
+
   return (
-    <div style={{ display:'flex', flexDirection:'column', flex:1, minHeight:0, background:'#FFF1D6', overflow:'hidden', userSelect:'none' }}>
+    <div ref={rootRef} style={{ display: 'flex', flexDirection: wide ? 'row' : 'column', flex: 1, minHeight: 0, background: '#FFF1D6', overflow: 'hidden', userSelect: 'none', position: 'relative' }}>
 
-      {/* Bild-Auswahl — every sheet is free to pick */}
-      <div style={{ display:'flex', gap:6, padding:'6px 8px', overflowX:'auto', flexShrink:0, background:'var(--px-parch)', borderBottom:`3px solid ${INK}` }}>
-        <button onClick={() => setAlbumOpen(true)} aria-label={`Album${album.length ? `, ${album.length} Bilder` : ''}`} style={{ ...actionBtn('gold'), flexShrink:0, minHeight:44, whiteSpace:'nowrap', fontSize:22 }}>
-          🖼️{album.length ? <span style={{ fontSize:14, marginLeft:4 }}>{album.length}</span> : null}
-        </button>
-        {IMAGES.map((img, i) => (
-          // pictures, not words: the children choosing them can't read yet
-          <button key={img.id} onClick={() => goToImage(i)} aria-pressed={i === imgIdx} aria-label={img.label} title={img.label} style={{
-            ...pxCard(i === imgIdx ? 'selected' : undefined),
-            flexShrink:0, minHeight:44, minWidth:52, padding:'4px 8px', borderRadius:10,
-            boxShadow: i === imgIdx ? `0 3px 0 ${INK}` : '0 3px 0 rgba(42,27,61,0.35)',
-            cursor:'pointer', fontSize:24, lineHeight:1,
-            transform: i === imgIdx ? 'scale(1.08)' : undefined,
-          }}>{img.emoji}</button>
-        ))}
-      </div>
+      {/* sideways: the tools left of the sheet */}
+      {wide && (
+        <div style={{ ...panelStyle, borderRight: `3px solid ${INK}`, width: ui.tool * 2 + ui.gap + 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(2, ${ui.tool}px)`, gap: ui.gap + 1 }}>{toolButtons}</div>
+          <div style={{ display: 'flex', gap: ui.gap + 1 }}>{undoBtn}{clearBtn}</div>
+          <div style={{ display: 'flex' }}>{picturesBtn}</div>
+        </div>
+      )}
 
-      {/* Landscape screens put the tools beside the canvas instead of under it */}
-      <div style={{ flex:1, minHeight:0, display:'flex', flexDirection: wide ? 'row' : 'column' }}>
-      {/* Zeichenfläche — EIN Canvas, kein Mismatch möglich */}
-      <div ref={areaRef} style={{ flex:1, minHeight:140, minWidth:0, overflow:'hidden', background:'var(--px-parch-dark)', display:'flex', alignItems:'center', justifyContent:'center', touchAction:'none', position:'relative' }}>
-        <canvas
-          ref={displayRef}
-          style={{
-            width: dispSize.w || undefined, height: dispSize.h || undefined,
-            // ink frame as a shadow ring: getPos() maps via the bounding rect,
-            // which a real border would shift
-            borderRadius:4,
-            boxShadow:`0 0 0 3px ${INK}, 0 6px 0 3px rgba(42,27,61,0.35)`,
-            cursor: tool === 'fill' ? 'pointer' : 'crosshair',
-            touchAction:'none',
-            visibility: ready && dispSize.w ? 'visible' : 'hidden',
-          }}
-          onPointerDown={handleDown}
-          onPointerMove={handleMove}
-          onPointerUp={handleUp}
-          onPointerCancel={handleUp}
-        />
-        {/* over the sheet: the visitor every fifth fill, and at "Fertig" the
-            stamps come alive and Lumi hops on */}
-        {dispSize.w > 0 && (party || visitor) && (
-          <div aria-hidden="true" style={{ position:'absolute', left: displayRef.current?.offsetLeft ?? 0, top: displayRef.current?.offsetTop ?? 0, width: dispSize.w, height: dispSize.h, overflow:'hidden', pointerEvents:'none' }}>
-            {party && (stamps.current.get(currentImage.id) ?? []).map((st, k) => {
-              const k2 = dispSize.w / canvasSize.current.w, sz = STAMP_SIZE * k2
-              return (
-                <motion.div key={k} animate={reduceMotion() ? undefined : ALIVE[st.e] ?? { y: [0, -10, 0] }}
-                  transition={{ duration: 1.2, repeat: 1, delay: (k % 5) * 0.12 }}
-                  style={{ position:'absolute', left: st.x * k2 - sz / 2, top: st.y * k2 - sz / 2, width: sz, height: sz, display:'flex', alignItems:'center', justifyContent:'center', fontSize: sz }}>
-                  <span className="co-stamp" data-e={st.e} />
-                </motion.div>
-              )
-            })}
-            {party && (
-              <motion.div initial={{ y: dispSize.h * 0.6 }}
-                animate={reduceMotion() ? { y: 0 } : { y: [dispSize.h * 0.6, -dispSize.h * 0.12, 0, -dispSize.h * 0.06, 0] }}
-                transition={{ duration: 1.3, delay: 0.2 }}
-                style={{ position:'absolute', left: '50%', bottom: 6, marginLeft: -Math.min(110, dispSize.w * 0.3) / 2 }}>
-                <Art art="lumi" size={Math.min(110, dispSize.w * 0.3)} />
+      {/* the easel */}
+      <div ref={areaRef} style={{ flex: 1, minHeight: 0, minWidth: 0, overflow: 'hidden', background: 'var(--px-parch-dark)', display: 'flex', alignItems: 'center', justifyContent: 'center', touchAction: 'none', position: 'relative' }}>
+        <div style={{ position: 'relative', width: dispSize.w || 1, height: dispSize.h || 1, visibility: ready && dispSize.w ? 'visible' : 'hidden' }}>
+          <canvas
+            ref={displayRef}
+            style={{
+              width: '100%', height: '100%', display: 'block',
+              // ink frame as a shadow ring: getPos() maps via the bounding rect,
+              // which a real border would shift
+              borderRadius: 4,
+              boxShadow: `0 0 0 3px ${INK}, 0 6px 0 3px rgba(42,27,61,0.35)`,
+              cursor: tool === 'fill' ? 'pointer' : 'crosshair',
+              touchAction: 'none',
+            }}
+            onPointerDown={handleDown}
+            onPointerMove={handleMove}
+            onPointerUp={handleUp}
+            onPointerCancel={handleUp}
+          />
+          {/* over the sheet: the twinkling glitter, stamps landing, a visitor */}
+          <div aria-hidden="true" style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', borderRadius: 4 }}>
+            {marks.twinkles.map((t, i) => (
+              <span key={i} className="co-twinkle" style={{ left: t.x * k, top: t.y * k, width: t.s * k, height: t.s * k, animationDelay: `${t.d}s`, animationDuration: `${t.t}s` }} />
+            ))}
+            {landing.map(st => (
+              <motion.div key={st.id}
+                initial={{ scale: 1.9, opacity: 0, rotate: -24 }}
+                animate={{ scale: [1.9, 0.82, 1.12, 0.96, 1], opacity: 1, rotate: [-24, 12, -7, 3, 0] }}
+                transition={{ duration: 0.45, ease: 'easeOut' }}
+                onAnimationComplete={() => commitStamp(st.id)}
+                style={{ position: 'absolute', left: (st.x - st.size / 2) * k, top: (st.y - st.size / 2) * k, width: st.size * k, height: st.size * k }}>
+                <Art art={st.e} size={st.size * k} />
               </motion.div>
-            )}
-            {visitor && !party && (
+            ))}
+            {visitor && (
               <motion.div key={visitor.n} initial={{ x: -60 }} animate={{ x: dispSize.w + 60, y: [0, -14, 6, -10, 0] }}
                 transition={{ duration: reduceMotion() ? 0.01 : 4.5, ease: 'linear' }} onAnimationComplete={() => setVisitor(null)}
-                style={{ position:'absolute', left: 0, top: visitor.y * dispSize.h }}>
+                style={{ position: 'absolute', left: 0, top: visitor.y * dispSize.h }}>
                 <Art art={visitor.art} size={Math.max(34, Math.min(60, dispSize.w * 0.09))} />
               </motion.div>
             )}
           </div>
-        )}
+        </div>
         {bursts}
         {/* until the child has painted: a hand taps the picture */}
-        <HintHand to={displayRef} active={ready && !hasPainted && !albumOpen} delay={3000} />
-        {!ready && <div style={{ position:'absolute', fontSize:32 }}>⏳</div>}
-        {filling && <div style={{ position:'absolute', fontSize:40, pointerEvents:'none' }}>🎨</div>}
+        <HintHand to={displayRef} active={ready && !hasPainted && !panelOpen && !hanging} delay={3000} />
+        {!ready && <div style={{ position: 'absolute', fontSize: 32 }}>⏳</div>}
+        {filling && <div style={{ position: 'absolute', fontSize: 40, pointerEvents: 'none' }}>🎨</div>}
         <AnimatePresence>
           {note && (
-            <motion.div key="note" initial={{ y:-20, opacity:0 }} animate={{ y:0, opacity:1 }} exit={{ opacity:0 }}
-              style={{ position:'absolute', top:8, left:8, right:8, display:'flex', alignItems:'center', gap:8, justifyContent:'center', pointerEvents:'none' }}>
+            <motion.div key="note" initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ opacity: 0 }}
+              style={{ position: 'absolute', top: 8, left: 8, right: 8, display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', pointerEvents: 'none' }}>
               <LumiCharacter mood="excited" size={48} />
-              <div style={{ ...pxBubble, padding:'8px 14px', fontFamily:'var(--font-heading)', fontSize:16, color:INK, maxWidth:420 }}>{note}</div>
+              <div style={{ ...pxBubble, padding: '8px 14px', fontFamily: 'var(--font-heading)', fontSize: 16, color: INK, maxWidth: 420 }}>{note}</div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* Toolbar — fixed rows, so the canvas never jumps when a tool changes */}
-      <div style={{
-        background:'var(--px-parch)', padding:'6px 8px 8px', flexShrink:0, display:'flex', flexDirection:'column', gap:6, alignItems:'center',
-        ...(wide ? { width:380, borderLeft:`3px solid ${INK}`, justifyContent:'center', overflowY:'auto' } : { borderTop:`3px solid ${INK}` }),
-      }}>
-        {/* Werkzeuge + Rückgängig */}
-        <div style={{ display:'flex', gap:6, justifyContent:'center', flexWrap:'wrap' }}>
-          {TOOLS.map(t => (
-            <button key={t.id} onClick={() => chooseTool(t)} aria-pressed={tool === t.id} style={toolBtn(tool === t.id)}>
-              <span style={{ fontSize:22, lineHeight:1 }}>{t.icon}</span>{t.label}
-            </button>
-          ))}
-          <button onClick={undo} disabled={!undoCount} aria-label="Rückgängig" style={{ ...toolBtn(false), opacity: undoCount ? 1 : 0.45, cursor: undoCount ? 'pointer' : 'default' }}>
-            <UndoIcon />Zurück
-          </button>
+      {/* sideways: sizes, colours and "Fertig" right of the sheet; upright: all
+          of it under the sheet, in rows that keep their height, so the sheet
+          never jumps when a tool changes */}
+      {wide ? (
+        <div style={{ ...panelStyle, borderLeft: `3px solid ${INK}`, width: ui.dot * 4 + (ui.gap + 1) * 3 + 16 }}>
+          <div style={{ display: 'flex', gap: ui.gap + 1 }}>{sizeButtons}</div>
+          {palette}
+          <div style={{ display: 'flex' }}>{finishBtn}</div>
         </div>
-
-        {/* Stempel oder Pinselgröße — same row, same height */}
-        <div style={{ display:'flex', minHeight:48, maxWidth:'100%', overflowX:'auto' }}>
-          {/* auto margins centre the row, yet let it scroll from its start when too wide */}
-          <div style={{ display:'flex', gap:6, alignItems:'center', justifyContent:'center', margin:'0 auto', flexWrap: wide ? 'wrap' : 'nowrap' }}>
-          {tool === 'stamp'
-            ? STAMPS.map(st => (
-                <button key={st} onClick={() => setStamp(st)} aria-pressed={stamp === st} style={{
-                  width:46, height:46, flexShrink:0, fontSize:26, lineHeight:1, padding:0, borderRadius:10, cursor:'pointer',
-                  border:`2px solid ${stamp === st ? INK : 'rgba(42,27,61,0.2)'}`,
-                  background: stamp === st ? 'var(--px-gold)' : 'var(--px-parch-light)',
-                }}>{st}</button>
-              ))
-            : BRUSHES.map((b, i) => {
-                const on = brushIdx === i && tool !== 'fill'
-                return (
-                  <button key={b.id} onClick={() => setBrushIdx(i)} disabled={tool === 'fill'} aria-pressed={on} aria-label={`Pinsel ${b.label}`} style={{
-                    minWidth:64, height:46, padding:'0 8px', borderRadius:10, cursor: tool === 'fill' ? 'default' : 'pointer',
-                    display:'flex', alignItems:'center', gap:6,
-                    border:`2px solid ${on ? INK : 'rgba(42,27,61,0.25)'}`,
-                    background: on ? 'var(--px-gold)' : 'var(--px-parch-light)',
-                    opacity: tool === 'fill' ? 0.45 : 1,
-                    fontFamily:'var(--font-heading)', fontSize:14, color:INK,
-                  }}>
-                    <span style={{ width:b.dot, height:b.dot, borderRadius:'50%', flexShrink:0, background: tool === 'eraser' ? '#9E9E9E' : color, border:`2px solid ${INK}` }} />
-                    {b.label}
-                  </button>
-                )
-              })}
+      ) : (
+        <div style={{ ...panelStyle, borderTop: `3px solid ${INK}`, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: ui.gap }}>{toolButtons}</div>
+          <div style={{ display: 'flex', gap: ui.gap + 1, width: Math.min(box.w - 16, ui.tool * 4) }}>{sizeButtons}</div>
+          {palette}
+          <div style={{ display: 'flex', gap: ui.gap + 1, width: Math.min(box.w - 16, ui.tool * 6 + ui.gap * 5) }}>
+            {undoBtn}{clearBtn}{picturesBtn}{finishBtn}
           </div>
         </div>
+      )}
 
-        {/* Farben */}
-        <div style={{ display:'flex', gap:5, flexWrap:'wrap', justifyContent:'center', maxWidth:700 }}>
-          {COLORS.map(c => {
-            const on = color === c.value && tool !== 'eraser'
-            return (
-              <button key={c.value} onClick={() => chooseColor(c)} aria-label={c.name} aria-pressed={on} style={{
-                width:44, height:44, minHeight:0, borderRadius:'50%', padding:0, background:c.value,
-                border:`3px solid ${INK}`,
-                outline: on ? '4px solid var(--px-gold)' : 'none',
-                outlineOffset:1, cursor:'pointer', flexShrink:0,
-                boxShadow:'0 2px 0 rgba(42,27,61,0.35)',
-              }} />
-            )
-          })}
-        </div>
+      {hanging && <FinishWall {...hanging} onDone={leaveWall} />}
 
-        {/* Aktionen */}
-        <div style={{ display:'flex', gap:6, alignItems:'center', justifyContent:'center', flexWrap:'wrap' }}>
-          <button onClick={() => hasPainted && setConfirm('clear')} disabled={!hasPainted} style={actionBtn('red', hasPainted)}>🗑️ Neu</button>
-          <button onClick={() => keep()} disabled={!hasPainted} style={actionBtn('parch', hasPainted)}>💾 Aufheben</button>
-          {onComplete && (
-            <button onClick={finish} disabled={!hasPainted || party} title={hasPainted ? '' : 'Male zuerst etwas!'} style={actionBtn('green', hasPainted)}>✅ Fertig</button>
-          )}
-        </div>
-      </div>
-      </div>
-
-      {/* Album */}
-      {albumOpen && createPortal(
-        <div className="px-backdrop" onClick={() => { setAlbumOpen(false); setViewing(null) }} style={{ zIndex: 2500 }}>
-          <div className="px-panel" onClick={e => e.stopPropagation()} style={{
-            width:'100%', maxWidth:760, maxHeight:'100%', display:'flex', flexDirection:'column', gap:10, padding:12, overflow:'hidden',
-          }}>
-            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-              <span style={{ flex:1, fontFamily:'var(--font-heading)', fontWeight:700, fontSize:22, color:INK }}>🖼️ Dein Album</span>
-              {!viewing && album.length > 0 && (
-                <button onClick={() => setConfirm('empty')} style={actionBtn('red')}>🗑️ Album leeren</button>
-              )}
-              <button onClick={() => { setAlbumOpen(false); setViewing(null) }} aria-label="Album schließen" style={{ ...actionBtn('parch'), minWidth:46 }}>❌</button>
-            </div>
-            {viewing ? (
-              <>
-                <img src={urls.get(viewing.id)} alt="Dein Bild"
-                  style={{ flex:1, minHeight:0, maxWidth:'100%', objectFit:'contain', background:'#fff', border:`3px solid ${INK}`, borderRadius:8 }} />
-                <div style={{ display:'flex', gap:8, justifyContent:'center', flexWrap:'wrap' }}>
-                  <button onClick={() => setViewing(null)} style={actionBtn('parch')}><PxIcon name="back" size={16} /> Zurück</button>
-                  {viewing.paint && IMAGES.some(i => i.id === viewing.imgId) && (
-                    <button onClick={() => continueFromAlbum(viewing)} style={actionBtn('green')}>🖌️ Weitermalen</button>
-                  )}
-                </div>
-              </>
-            ) : album.length === 0 ? (
-              <div style={{ fontFamily:'var(--font-body)', fontSize:16, color:INK, padding:20, textAlign:'center' }}>
-                Noch keine Bilder. Mal etwas und tippe auf 💾 Aufheben!
-              </div>
-            ) : (
-              <div style={{ overflowY:'auto', display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(110px, 1fr))', gap:10, padding:2 }}>
-                {album.map(e => (
-                  <button key={e.id} onClick={() => setViewing(e)} aria-label="Bild ansehen" style={{
-                    padding:0, border:`3px solid ${INK}`, borderRadius:8, background:'#fff', cursor:'pointer', overflow:'hidden', aspectRatio:`${SHEET_W} / ${SHEET_H}`,
-                  }}>
-                    <img src={urls.get(e.id)} alt="" style={{ width:'100%', height:'100%', objectFit:'contain', display:'block' }} />
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>,
-        document.body,
+      {panelOpen && (
+        <PicturePanel images={IMAGES} current={imgIdx} sheetRatio={SHEET_W / SHEET_H} album={album} urls={urls}
+          onPick={goToImage} onContinue={continueFromAlbum} onEmpty={() => setConfirm('empty')} onClose={() => setPanelOpen(false)} />
       )}
 
       {confirm === 'clear' && (
-        <ConfirmDialog kid danger title="Alles wegwischen?" say="Wirklich alles wegwischen?"
+        <ConfirmDialog kid danger title="Alles wegwischen?" say={lumi('atelier/wegwischen')}
           yesLabel="Ja" noLabel="Nein"
           onNo={() => setConfirm(null)} onYes={() => { setConfirm(null); clearPaint() }} />
       )}
       {confirm === 'empty' && (
-        <ConfirmDialog kid danger title="Album leeren?" say="Sollen wirklich alle Bilder aus dem Album weg?"
+        <ConfirmDialog kid danger title="Alle Bilder abhängen?"
           yesLabel="Ja" noLabel="Nein"
           onNo={() => setConfirm(null)}
           onYes={async () => {
-            setConfirm(null); setViewing(null)
+            setConfirm(null)
             await albumDelete(album.map(e => e.id)).catch(() => {})
             albumIdRef.current = null
             refreshAlbum()
           }} />
       )}
       {confirm === 'full' && (
-        <ConfirmDialog kid title="Das Album ist voll" say="Das Album ist voll. Soll das älteste Bild Platz machen?"
-          text="Das älteste Bild kommt dann heraus." yesLabel="Ja" noLabel="Nein"
-          onNo={() => setConfirm(null)} onYes={() => { setConfirm(null); keep({ makeRoom: true }) }} />
+        <ConfirmDialog kid title="Die Wand ist voll" say={lumi('atelier/wand-voll')}
+          text="Das älteste Bild kommt dann ab." yesLabel="Ja" noLabel="Nein"
+          onNo={() => setConfirm(null)} onYes={() => { setConfirm(null); finish({ makeRoom: true }) }} />
       )}
     </div>
   )

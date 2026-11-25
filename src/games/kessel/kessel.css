@@ -3,17 +3,22 @@
    prefers-reduced-motion. */
 
 @keyframes ks-flicker { 0%,100% { transform: scaleY(1) scaleX(1); } 30% { transform: scaleY(1.18) scaleX(.92); } 60% { transform: scaleY(.9) scaleX(1.06); } }
-@keyframes ks-bubble  { 0% { transform: translateY(0) scale(.4); opacity: 0; } 20% { opacity: 1; } 80% { transform: translateY(-22px) scale(1); opacity: 1; } 100% { transform: translateY(-26px) scale(1.4); opacity: 0; } }
+@keyframes ks-bubble  { 0% { transform: translateY(0) scale(.4); opacity: 0; } 20% { opacity: 1; } 80% { transform: translateY(var(--ks-rise, -22px)) scale(1); opacity: 1; } 100% { transform: translateY(calc(var(--ks-rise, -22px) * 1.2)) scale(1.4); opacity: 0; } }
 @keyframes ks-steam   { 0% { transform: translateY(0) scale(.7); opacity: 0; } 25% { opacity: .8; } 100% { transform: translateY(-70px) scale(1.5); opacity: 0; } }
 @keyframes ks-twinkle { 0%,100% { opacity: .3; transform: scale(.7); } 50% { opacity: 1; transform: scale(1.1); } }
 @keyframes ks-wing    { 0%,100% { transform: scaleY(1); } 50% { transform: scaleY(0.35); } }
+@keyframes ks-glow    { 0%,100% { opacity: .25; } 50% { opacity: .95; } }
+@keyframes ks-sway    { 0%,100% { transform: rotate(-1.2deg); } 50% { transform: rotate(1.2deg); } }
 
 .ks-flame   { animation: ks-flicker .5s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
 .ks-bubble  { animation: ks-bubble 1.6s ease-in infinite; transform-box: fill-box; transform-origin: center; }
 .ks-steam   { animation: ks-steam 2.4s ease-out infinite; transform-box: fill-box; transform-origin: center; }
 .ks-twinkle { animation: ks-twinkle 1.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
 .ks-wing    { animation: ks-wing .12s linear infinite; transform-box: fill-box; transform-origin: 50% 100%; }
+/* the forest: fireflies glow in the leaves, the treetops sway */
+.ks-glow    { animation: ks-glow 2.6s ease-in-out infinite; }
+.ks-sway    { animation: ks-sway 6s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
 
 @media (prefers-reduced-motion: reduce) {
-  .ks-flame, .ks-bubble, .ks-steam, .ks-twinkle, .ks-wing { animation: none !important; }
+  .ks-flame, .ks-bubble, .ks-steam, .ks-twinkle, .ks-wing, .ks-glow, .ks-sway { animation: none !important; }
 }

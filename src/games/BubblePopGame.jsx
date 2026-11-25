@@ -6,17 +6,32 @@ import { numberWord } from '../lib/words.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
-import { Critter, Art, useMood, RoundTrail, useBursts, HintHand, useIdle } from '../components/play/index.js'
+import { Critter, Art, useMood, RoundTrail, useBursts, useJuice, HintHand, useIdle } from '../components/play/index.js'
 import { useLater, Pips, Finale } from './zahlen/stage.jsx'
+import { rand, spawnRound, makeGiant, giantSize } from './blasen/sea.js'
 
 /**
  * Blasen-Blitz — "Kraken-Party": Mengen auf einen Blick erfassen, dann
  * Zahlen schnell finden
  *
  * Under water an octopus wishes for bubbles with exactly one amount (its
- * bubble shows it). Every right bubble pops and a star swims to the
- * octopus, who juggles it; a wrong one turns into a puffer fish that puffs
- * up, offended, and swims off. Quick pops in a row make the octopus dance.
+ * bubble shows it). Every right bubble pops and a star flies to the star
+ * counter (components/play/Juice.jsx: a note that climbs with every right
+ * pop in a row, a flame for three, five and eight). A wrong one is not what
+ * the octopus wished for, so it does not pop: it is rubbery, boings back
+ * from the finger and shoots up out of the sea, still showing what it was,
+ * while the octopus shakes its head and the right ones pulse. Every right
+ * pop amazes the octopus; when all the wished-for bubbles of a round are
+ * found, its wish is fulfilled (the speech bubble goes), it dances, with
+ * its sound once a round, and juggles a star for each of them over its
+ * head.
+ *
+ * Once per level, in one of the middle rounds, a giant bubble drifts
+ * slowly across the sea. In the dot levels it carries two dice faces (a sum:
+ * 2 + 1 dots is a three); in the numeral levels its number hides behind a
+ * wobbling veil and shows only in glimpses. If it is a wished-for one,
+ * popping it bursts it into a shower of five bonus stars; if not, it is a
+ * wrong bubble like any other. It is a bonus: the round never waits for it.
  *
  *   • Levels 1–4: the bubbles carry dice patterns of one to six dots. Small
  *     quantities in a familiar pattern are seen at once rather than counted
@@ -31,62 +46,28 @@ import { useLater, Pips, Finale } from './zahlen/stage.jsx'
  * ones are never lost. A small physics loop moves them through
  * MotionValues; with reduced motion they hold still.
  *
- * The stars the octopus juggles stay from round to round; on a quick
- * streak it drops them on its own head, where they pile up as a crown.
+ * How many bubbles and how big depends on the sea as it is on screen: never
+ * smaller than a fingertip (64 px), and never more than the sea can carry
+ * without a crowd (a phone held sideways has room for about eight, the
+ * giant counting as two or three).
+ *
+ * The stars are counted over the whole level and are a reward only: the
+ * result is the number of rounds without a wrong pop, as before.
  * After the last round comes a short party (not scored): every bubble is
- * a wished-for one, and each pop rings higher.
+ * a wished-for one, every pop is one more star, and the octopus juggles
+ * all the way through.
  */
 
-const TINTS = ['#4aa3ff', '#ff6b5b', '#ffc93c', '#5cc45a', '#8e6cf0', '#fd79a8', '#2fb8a6', '#ff9f43']
 const ROUNDS = 5
-
-function rand(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a }
-
-// Numbers easy to take for the target: digits swapped, neighbours, 6 and 9.
-function confusables(v, maxNum) {
-  const out = [v - 1, v + 1]
-  if (v > 9) out.push(Number(String(v).split('').reverse().join('')))
-  if (v % 10 === 6) out.push(v + 3)
-  if (v % 10 === 9) out.push(v - 3)
-  return out.filter(x => x >= 1 && x <= maxNum && x !== v)
-}
-
-function spawnRound(target, cfg, W, H) {
-  const targetCount = rand(cfg.minT, cfg.maxT)
-  const near = cfg.dots ? [] : confusables(target, cfg.maxNum)
-  const placed = []
-  return Array.from({ length: cfg.count }, (_, i) => {
-    let value = target
-    if (i >= targetCount) {
-      if (near.length && Math.random() < 0.5) value = near[rand(0, near.length - 1)]
-      else do { value = rand(1, cfg.maxNum) } while (value === target)
-    }
-    // a little smaller in a phone-sized sea, never below a fingertip
-    const size = Math.round(rand(cfg.dots ? 70 : 62, cfg.dots ? 96 : 90) * Math.max(0.8, Math.min(1, W / 520)))
-    const r = size / 2 + 4
-    // Inside the water by at least the radius, so no bubble is cut off, and
-    // apart from the others: of a few random spots the one with the most
-    // room is taken, so the bubbles spread over the whole sea instead of
-    // clumping where chance put them.
-    let best = null
-    for (let k = 0; k < 24; k++) {
-      const x = r + Math.random() * Math.max(0, W - 2 * r), y = r + Math.random() * Math.max(0, H - 2 * r)
-      const room = Math.min(Infinity, ...placed.map(p => Math.hypot(p.x - x, p.y - y) - p.r - r))
-      if (!best || room > best.room) best = { x, y, room }
-    }
-    placed.push({ x: best.x, y: best.y, r })
-    return {
-      id: `${i}-${Math.random().toString(36).slice(2)}`,
-      value, tint: TINTS[rand(0, TINTS.length - 1)],
-      left: (best.x / W) * 100, top: (best.y / H) * 100, size,
-      floatDur: 5.5 + Math.random() * 5.0,
-    }
-  })
-}
 
 // How fast the bubbles rise: seconds to cross the sea once
 const riseS = level => (level <= 3 ? 16 : level <= 4 ? 13 : level <= 7 ? 10 : 8)
+// The giant drifts across the sea once, slowly, a little faster later on
+const driftS = level => (level <= 4 ? 14 : 11)
+// …and turns up this long after its round began, once the wish is heard
+const GIANT_AFTER_MS = 2500
 const PARTY_MS = 8000
+const SEA_MASK = 'linear-gradient(to bottom, transparent 0, #000 18px, #000 calc(100% - 36px), transparent 100%)'
 
 // 10 tiers: number range, bubbles in the sea, target bubbles per round.
 // No clock in the first three levels — with a visible countdown a four-year-
@@ -120,10 +101,44 @@ function Shine() {
 }
 
 // White dots on a bubble, its numeral — or a star at the party (value 0)
-function Face({ value, dots, size }) {
+function Face({ bubble, dots, size }) {
+  const { value } = bubble
+  if (bubble.giant) return <GiantFace bubble={bubble} size={size} />
   if (value === 0) return <Art art="⭐" size={size * 0.6} />
   if (dots) return <Pips n={value} size={size * 0.74} color="#fffdf7" face={false} />
   return value
+}
+
+// The giant's face: two dice side by side, like the one in the octopus's
+// wish (two dice, 1 and 2, make a three), or its number behind a milky veil
+// that wobbles and parts now and then for a glimpse
+function GiantFace({ bubble, size }) {
+  if (bubble.parts) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: size * 0.05 }}>
+        {bubble.parts.map((n, i) => (
+          <div key={i} style={{ transform: `rotate(${i ? 9 : -9}deg)` }}>
+            <Pips n={n} size={size * 0.36} color="#ff6b5b" />
+          </div>
+        ))}
+      </div>
+    )
+  }
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', overflow: 'hidden' }}>
+      <motion.span animate={{ filter: ['blur(10px)', 'blur(10px)', 'blur(0px)', 'blur(0px)', 'blur(10px)'] }}
+        transition={{ duration: 3, times: [0, 0.5, 0.6, 0.82, 1], repeat: Infinity }}
+        style={{ display: 'inline-block' }}>{bubble.value}</motion.span>
+      {/* the veil: milky, wavy, parting for a moment */}
+      <motion.div aria-hidden="true"
+        animate={{ opacity: [0.92, 0.92, 0.05, 0.05, 0.92], skewX: [-6, 6, 0, 0, -6], scaleY: [1, 1.06, 1, 1, 1] }}
+        transition={{ duration: 3, times: [0, 0.5, 0.6, 0.82, 1], repeat: Infinity }}
+        style={{
+          position: 'absolute', inset: '-10%', pointerEvents: 'none',
+          background: 'repeating-radial-gradient(circle at 50% 120%, rgba(255,253,247,0.85) 0 14px, rgba(220,240,255,0.7) 14px 26px)',
+        }} />
+    </div>
+  )
 }
 
 export default function BubblePopGame({ level = 1, onComplete }) {
@@ -135,73 +150,111 @@ export default function BubblePopGame({ level = 1, onComplete }) {
   const { later, afterSpeech } = useLater()
   const [mood, setMood] = useMood()
   const [bursts, burst] = useBursts()
+  const juice = useJuice()
+  const { hit, miss, shake } = juice   // these three never change
 
   const [roundIdx,  setRoundIdx]  = useState(0)
   const [target,    setTarget]    = useState(() => rand(1, cfg.maxNum))
   const [bubbles,   setBubbles]   = useState([])
   const [poppedIds, setPoppedIds] = useState([])
-  const poppedRef    = useRef(new Set())
+  const poppedRef    = useRef(new Set())               // popped, or bounced off: no longer tappable
+  const [bounced,   setBounced]   = useState([])     // wrong ones, boinging and shooting off
+  const bouncedRef   = useRef(new Set())
   const [lives,     setLives]     = useState(3)      // per round
   const livesRef     = useRef(3)
   const roundsRef    = useRef([])                    // per finished round: 'clean' | 'won' | 'lost'
   const [timeLeft,  setTimeLeft]  = useState(cfg.timeS)
   const [hint,      setHint]      = useState(false)  // targets pulse briefly after a wrong pop
   const [phase,     setPhase]     = useState('playing')
-  const [stars,     setStars]     = useState(0)      // juggled by the octopus, kept from round to round
-  const starsRef     = useRef(0)
-  const [crown,     setCrown]     = useState(0)      // stars dropped on its head, for good
-  const droppedRef   = useRef(false)                 // one drop per round
-  const partyRef     = useRef(0)                     // pops at the party, for the rising sound
-  const [flyers,    setFlyers]    = useState([])     // stars swimming to the octopus
-  const [puffers,   setPuffers]   = useState([])     // wrong bubbles, now offended puffer fish
-  const lastPopRef  = useRef(0)                      // time of the last right pop, for a streak
-  const streakRef   = useRef(0)
+  const partyRef     = useRef(0)                     // pops at the party: now stars, now confetti
   const mistakesRef = useRef(0)
+  // The one round of the level with the giant bubble: one of the middle ones
+  const [giantRound] = useState(() => rand(1, 3))
 
   const rootRef    = useRef(null)
   const arenaRef   = useRef(null)
   const octoRef    = useRef(null)
-  const wishRef    = useRef(null)
   const anchorRef  = useRef(null) // where a wished-for bubble will be, for the hand
   const physicsRef = useRef({}) // { [id]: { x, y, vx, vy, size, t, freq } } in px, in the sea
   const mvsRef     = useRef({}) // { [id]: { mx: MotionValue, my: MotionValue } }
 
-  // The octopus sits beside the sea on a tablet held sideways, below it
+  // The octopus sits beside the sea on a screen held sideways, below it
   // when the screen is tall.
   // (first guessed from the window, so the first bubbles are spread over
   // the sea as it is really laid out)
   const [wide, setWide] = useState(() => innerWidth > (innerHeight - 80) * 1.05)
+  // The top row has room for the star counter beside the hearts, the trail
+  // and the clock — on a phone held upright it has not.
+  const [roomy, setRoomy] = useState(() => innerWidth >= 560)
+  // The height of the stage: on a phone held sideways the octopus and its
+  // wish have to fit into about 300 px
+  const [stageH, setStageH] = useState(() => innerHeight - 140)
+  const [rootH, setRootH] = useState(() => innerHeight - 80)
+  const stage = juice.stage
   useLayoutEffect(() => {
     const el = rootRef.current
-    const ro = new ResizeObserver(() => setWide(el.clientWidth > el.clientHeight * 1.05))
+    const ro = new ResizeObserver(() => {
+      setWide(el.clientWidth > el.clientHeight * 1.05)
+      setRoomy(el.clientWidth >= 560)
+      setRootH(el.clientHeight)
+      if (stage.current) setStageH(stage.current.clientHeight)
+    })
     ro.observe(el)
+    if (stage.current) ro.observe(stage.current)
     return () => ro.disconnect()
-  }, [])
+  }, [stage])
+  const hudOnTop = wide || roomy
+  // A short screen held sideways (a phone): the row of hearts, trail, clock
+  // and stars moves up beside the octopus, so the sea has the whole height
+  // (under the row it was 150 to 240 px high, the bubbles bunched and the
+  // giant filled it). Smaller wish, and the octopus as big as still fits.
+  const tight = wide && rootH < 440
+  const wishPx = tight ? 44 : 56
+  const wishRoom = wishPx + 48            // the wish bubble with its tail, above the head
+  const TIGHT_HUD = 96                    // the hearts and stars, the trail and clock, above the wish
+  const octoSize = wide ? Math.round(Math.max(96, Math.min(170, stageH - wishRoom - 12 - (tight ? TIGHT_HUD : 0)))) : 150
 
-  // New bubbles: their place and motion are set up before they are drawn,
-  // so none flashes at the corner for a frame.
-  const launch = useCallback((list) => {
+  // Lays out new bubbles: their place and motion are set up before they
+  // are drawn, so none flashes at the corner for a frame. `keep` adds them
+  // to the ones there (the giant), instead of starting a new sea.
+  const place = useCallback((list, keep = false) => {
     const rect = arenaRef.current?.getBoundingClientRect()
     const W = rect?.width || 360, H = rect?.height || 300
-    const phys = {}, mvs = {}
+    const phys = keep ? physicsRef.current : {}, mvs = keep ? mvsRef.current : {}
     list.forEach(b => {
       const x = (W * b.left) / 100, y = (H * b.top) / 100
-      phys[b.id] = { x, y, vx: 0, vy: 0, size: b.size, t: Math.random() * Math.PI * 2, freq: 0.6 + Math.random() * 0.6 }
+      phys[b.id] = { x, y, vx: 0, vy: 0, size: b.size, t: Math.random() * Math.PI * 2, freq: 0.6 + Math.random() * 0.6, giant: !!b.giant, dir: b.dir ?? 0 }
       mvs[b.id] = { mx: motionValue(x), my: motionValue(y) }
     })
     physicsRef.current = phys
     mvsRef.current = mvs
+    if (keep) { setBubbles(l => [...l, ...list]); return }
     poppedRef.current = new Set()
+    bouncedRef.current = new Set()
     setPoppedIds([])
+    setBounced([])
     setBubbles(list)
   }, [])
 
-  useEffect(() => {
-    const t = rand(1, cfg.maxNum)
+  // Gone from the sea for good (popped, bounced off, drifted out)
+  const remove = useCallback((id) => {
+    poppedRef.current.add(id)
+    bouncedRef.current.delete(id)
+    setPoppedIds(prev => (prev.includes(id) ? prev : [...prev, id]))
+  }, [])
+
+  const seaSize = () => {
     const rect = arenaRef.current?.getBoundingClientRect()
+    return { W: rect?.width || 360, H: rect?.height || 300 }
+  }
+
+  useEffect(() => {
+    const withGiant = roundIdx === giantRound
+    // the giant's round wishes for at least two, so that two dice faces can add up to it
+    const t = withGiant && cfg.dots ? rand(2, cfg.maxNum) : rand(1, cfg.maxNum)
+    const { W, H } = seaSize()
     setTarget(t)
-    launch(spawnRound(t, cfg, rect?.width || 360, rect?.height || 300))
-    droppedRef.current = false
+    place(spawnRound(t, cfg, W, H, { giant: withGiant }))
     livesRef.current = 3
     setLives(3)
     mistakesRef.current = 0
@@ -209,22 +262,46 @@ export default function BubblePopGame({ level = 1, onComplete }) {
     setPhase('playing')
     lockPreviews()
     sayTask()
+    // The giant comes in from one side, once the wish has been heard
+    let gone = false
+    if (withGiant) {
+      later(GIANT_AFTER_MS, () => {
+        if (gone) return
+        const { W: w, H: h } = seaSize()
+        const size = giantSize(w, h), dir = Math.random() < 0.5 ? 1 : -1
+        const g = { ...makeGiant(t, cfg), size, dir }
+        // with reduced motion it holds still for a while, where it covers
+        // the fewest bubbles (they hold still too)
+        let at = { x: dir > 0 ? -size / 2 : w + size / 2, y: h / 2 }
+        if (reduce) {
+          const others = Object.values(physicsRef.current)
+          let best = -Infinity
+          for (let k = 0; k < 40; k++) {
+            const x = size / 2 + Math.random() * Math.max(0, w - size), y = size / 2 + Math.random() * Math.max(0, h - size)
+            const room = Math.min(Infinity, ...others.map(o => Math.hypot(o.x - x, o.y - y) - o.size / 2 - size / 2))
+            if (room > best) { best = room; at = { x, y } }
+          }
+        }
+        place([{ ...g, left: (at.x / w) * 100, top: (at.y / h) * 100 }], true)
+        if (reduce) later(driftS(level) * 1000, () => { if (!gone) remove(g.id) })
+      })
+    }
     // after any praise still being spoken, not over it
-    return afterNarration(() => narrate([numberWord(t)]))
-  }, [roundIdx, cfg, launch])
+    const stop = afterNarration(() => narrate([numberWord(t)]))
+    return () => { gone = true; stop?.() }
+  }, [roundIdx, cfg]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // The party after the last round: every bubble is a star bubble, for
   // about eight seconds, then everyone dances (Finale). Not scored.
   const party = useCallback(() => {
-    const rect = arenaRef.current?.getBoundingClientRect()
-    const W = rect?.width || 360, H = rect?.height || 300
+    const { W, H } = seaSize()
     partyRef.current = 0
-    launch(spawnRound(0, { ...cfg, dots: true, minT: 14, maxT: 14, count: 14, maxNum: 0 }, W, H))
+    place(spawnRound(0, { ...cfg, dots: true, count: 14, maxNum: 0 }, W, H, { all: true }))
     setPhase('party')
     setMood('dance', 2000)
     sfx.tada()
     later(PARTY_MS, () => setPhase('finale'))
-  }, [cfg, launch, later, setMood])
+  }, [cfg, place, later, setMood])
 
   // A round is over: note how it went and go on once the octopus has had
   // its moment (a dance for a won round); after the last, the party.
@@ -253,44 +330,17 @@ export default function BubblePopGame({ level = 1, onComplete }) {
     endRound('lost')
   }, [timeLeft, phase, cfg.timed, endRound, setMood])
 
-  // Where a bubble is right now, relative to the whole game
-  const bubbleAt = (b) => {
-    const root = rootRef.current.getBoundingClientRect(), a = arenaRef.current.getBoundingClientRect()
-    const p = physicsRef.current[b.id]
-    return { x: a.left - root.left + (p?.x ?? 0), y: a.top - root.top + (p?.y ?? 0) }
-  }
-
-  // A star swims from the bubble to the octopus, who juggles it.
-  const sendStar = (id, at) => {
-    const root = rootRef.current.getBoundingClientRect(), o = octoRef.current.getBoundingClientRect()
-    setFlyers(f => [...f, { id, x0: at.x, y0: at.y, x1: o.left - root.left + o.width / 2, y1: o.top - root.top + o.height * 0.15 }])
-  }
-
-  // Oops: the juggled stars land on its head, and stay there as a crown.
-  const dropStars = useCallback(() => {
-    const n = starsRef.current
-    if (!n) return
-    starsRef.current = 0
-    setStars(0)
-    setCrown(c => c + n)
-    sfx.slideDown()
-    setMood('oops', 900)
-    later(900, () => { sfx.giggle(); setMood('happy', 1200) })
-  }, [later, setMood])
-
-  const popBubble = useCallback((bubble) => {
+  // `el` is the bubble's button: where the star starts from
+  const popBubble = useCallback((bubble, el) => {
     if ((phase !== 'playing' && phase !== 'party') || pausedRef.current || poppedRef.current.has(bubble.id)) return
-    const at = bubbleAt(bubble)
-    poppedRef.current.add(bubble.id)
-    setPoppedIds(prev => [...prev, bubble.id])
 
     if (phase === 'party') {
-      // every pop rings a little higher; nothing is counted
+      // every pop is one more star and rings a little higher; the result
+      // of the level is not touched
+      remove(bubble.id)
       partyRef.current += 1
-      sfx.combo(Math.min(6, 1 + Math.floor(partyRef.current / 2)))
-      sendStar(bubble.id, at)
-      const r0 = rootRef.current.getBoundingClientRect()
-      burst({ x: r0.left + at.x, y: r0.top + at.y }, partyRef.current % 3 ? 'stars' : 'confetti', 8)
+      hit(el)
+      burst(el, partyRef.current % 3 ? 'stars' : 'confetti', 8)
       // a popped party bubble comes up again from the sand, so the party goes on
       later(900, () => {
         poppedRef.current.delete(bubble.id)
@@ -301,32 +351,49 @@ export default function BubblePopGame({ level = 1, onComplete }) {
     }
 
     if (bubble.value === target) {
+      remove(bubble.id)
       sfx.pop()
-      sendStar(bubble.id, at)
-      const now = Date.now()
-      streakRef.current = now - lastPopRef.current < 1800 ? streakRef.current + 1 : 1
-      lastPopRef.current = now
-      if (streakRef.current >= 2) sfx.combo(streakRef.current)
-      // a little sparkle where it popped; a quick streak sparkles more
-      const r0 = rootRef.current.getBoundingClientRect()
-      burst({ x: r0.left + at.x, y: r0.top + at.y }, 'stars', streakRef.current >= 2 ? 10 : 5)
-      setMood(streakRef.current >= 3 ? 'dance' : 'wow', streakRef.current >= 3 ? 2400 : 700)
-      // on a quick streak it gets carried away and drops its stars (once a round)
-      if (streakRef.current >= 3 && !droppedRef.current) { droppedRef.current = true; later(900, dropStars) }
-      const remaining = bubbles.filter(b => b.value === target && !poppedRef.current.has(b.id)).length
+      if (bubble.giant) {
+        // the giant bursts into a shower of bonus stars; the round goes on
+        hit(el, { stars: 5 })
+        burst(el, 'stars', 22)
+        later(180, () => burst(el, 'confetti', 16))
+        shake(0.6)
+        setMood('wow', 1400)
+        return
+      }
+      // the star, the climbing note, the flame for a streak
+      const { streak, milestone } = hit(el)
+      // a little sparkle where it popped; more when the flame shows
+      burst(el, 'stars', milestone ? 10 : 5)
+      // amazed, not dancing: the dance and its sound belong to the wish
+      // fulfilled, once a round (a sound at every dance of a streak came
+      // two to four times a round)
+      setMood('wow', streak >= 3 ? 1400 : 700)
+      const remaining = bubbles.filter(b => !b.giant && b.value === target && !poppedRef.current.has(b.id)).length
       if (remaining === 0) {
+        shake(0.7)   // the last one of the round lands a little harder
         setPhase('roundWin')
-        later(500, () => { setMood('dance', 2600); burst(octoRef.current, 'stars', 14) })
-        sayRight()
+        // the octopus dances (and makes its sound) first, Lumi praises
+        // after it: both at once covered each other
+        setMood('dance', 2600); burst(octoRef.current, 'stars', 14)
+        later(1150, () => sayRight())
         endRound(mistakesRef.current === 0 ? 'clean' : 'won')
       }
       return
     }
-    // A wrong bubble turns into a puffer fish: it puffs up, offended, and
-    // swims away, still showing what it was.
-    sfx.boing()
-    setPuffers(p => [...p, { id: bubble.id, x: at.x, y: at.y, value: bubble.value, dir: at.x < rootRef.current.clientWidth / 2 ? -1 : 1 }])
-    streakRef.current = 0
+    // Not what the octopus wished for: the bubble does not pop. It is
+    // rubbery, boings back from the finger and shoots up out of the sea,
+    // still showing what it was; the octopus shakes its head and the
+    // wished-for ones pulse.
+    poppedRef.current.add(bubble.id)
+    bouncedRef.current.add(bubble.id)
+    const p = physicsRef.current[bubble.id]
+    if (p) p.bouncedAt = performance.now()
+    setBounced(l => [...l, bubble.id])
+    miss(el)
+    later(60, () => sfx.boing())
+    if (reduce) later(900, () => remove(bubble.id))
     mistakesRef.current += 1
     const nl = livesRef.current - 1
     livesRef.current = nl
@@ -341,7 +408,7 @@ export default function BubblePopGame({ level = 1, onComplete }) {
     }
     setHint(true)
     later(1200, () => setHint(false))
-  }, [phase, bubbles, target, endRound, later, setMood, burst, dropStars])
+  }, [phase, bubbles, target, endRound, later, setMood, burst, hit, miss, shake, remove, reduce])
 
   // Back to the sand: a bubble that left at the top comes up again from
   // below, where there is room.
@@ -360,8 +427,10 @@ export default function BubblePopGame({ level = 1, onComplete }) {
     p.vx = 0
   }
 
-  // Physics loop: the bubbles rise, sway and nudge each other apart; held
-  // while paused, still with reduced motion.
+  // Physics loop: the bubbles rise, sway and nudge each other apart; the
+  // giant drifts across and pushes the others aside; a bounced one waits
+  // out its boing and shoots off. Held while paused, still with reduced
+  // motion.
   useAnimationFrame((time, delta) => {
     if (!arenaRef.current || pausedRef.current) return
     const W = arenaRef.current.clientWidth, H = arenaRef.current.clientHeight
@@ -382,16 +451,41 @@ export default function BubblePopGame({ level = 1, onComplete }) {
     const phys   = physicsRef.current
     const mvs    = mvsRef.current
     const popped = poppedRef.current
+    const off    = bouncedRef.current
     const ids    = Object.keys(phys).filter(id => !popped.has(id))
     const speed  = H / riseS(phase === 'party' ? 6 : level)
 
+    for (const id of off) {
+      const p = phys[id]
+      if (!p) continue
+      // the boing first (it holds still), then up and away, fast
+      if (performance.now() - (p.bouncedAt ?? 0) > 420) {
+        p.vy += (-H * 1.5 - p.vy) * 3 * dt
+        p.vx += ((p.x < W / 2 ? -1 : 1) * 60 - p.vx) * 2 * dt
+        p.x += p.vx * dt
+        p.y += p.vy * dt
+      }
+      if (p.y < -p.size) remove(id)
+      mvs[id]?.mx.set(p.x)
+      mvs[id]?.my.set(p.y)
+    }
+
     for (const id of ids) {
       const p = phys[id]
+      if (p.giant) {
+        // across the sea once, on a slow swell; then it is gone
+        p.x += (p.dir * (W + p.size)) / driftS(level) * dt
+        p.y = H / 2 + Math.sin((time / 1000) * 0.9 + p.t) * H * 0.08
+        if ((p.dir > 0 && p.x > W + p.size / 2) || (p.dir < 0 && p.x < -p.size / 2)) remove(id)
+        mvs[id]?.mx.set(p.x)
+        mvs[id]?.my.set(p.y)
+        continue
+      }
       // rise at the steady speed, sway gently from side to side
       p.vy += (-speed - p.vy) * 1.5 * dt
       p.vx += (Math.cos((time / 1000) * p.freq + p.t) * 22 - p.vx) * 1.2 * dt
 
-      // nudge apart from the others
+      // nudge apart from the others (the giant pushes harder)
       for (const oid of ids) {
         if (oid === id) continue
         const o = phys[oid]
@@ -400,7 +494,7 @@ export default function BubblePopGame({ level = 1, onComplete }) {
         const min = (p.size + o.size) / 2 + 6
         if (d2 < min * min && d2 > 0.01) {
           const d = Math.sqrt(d2)
-          const f = ((min - d) / min) * 220 * dt * 60
+          const f = ((min - d) / min) * 220 * dt * 60 * (o.giant ? 2 : 1)
           p.vx += (dx / d) * f * dt * 4
           p.vy += (dy / d) * f * dt * 2
         }
@@ -419,7 +513,7 @@ export default function BubblePopGame({ level = 1, onComplete }) {
     }
   })
 
-  // The hand points where a wished-for bubble will be in a moment (the
+  // The hand taps where a wished-for bubble will be in a moment (the
   // bubbles move; the hand needs a place that holds still while it shows).
   const hintDelay = roundIdx === 0 ? 2000 : 8000
   const idle = useIdle(hintDelay, phase === 'playing')
@@ -430,7 +524,7 @@ export default function BubblePopGame({ level = 1, onComplete }) {
       const a = arenaRef.current
       if (!a) return
       const H = a.clientHeight, ahead = reduce ? 0 : (H / riseS(level)) * 1.2
-      const p = bubbles.filter(b => b.value === target && !poppedRef.current.has(b.id))
+      const p = bubbles.filter(b => !b.giant && b.value === target && !poppedRef.current.has(b.id))
         .map(b => physicsRef.current[b.id]).filter(Boolean)
         .map(q => ({ x: q.x, y: q.y - ahead })).filter(q => q.y > 60 && q.y < H - 40)
         .sort((u, v) => v.y - u.y)[0]
@@ -442,18 +536,42 @@ export default function BubblePopGame({ level = 1, onComplete }) {
     return () => clearInterval(iv)
   }, [idle]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const octoSize = wide ? 170 : 150
   const wish = cfg.dots
-    ? <Pips n={target} size={56} color="#ff6b5b" />
-    : <span style={{ fontSize: 46, lineHeight: 1, minWidth: 50, textAlign: 'center' }}>{target}</span>
+    ? <Pips n={target} size={wishPx} color="#ff6b5b" />
+    : <span style={{ fontSize: wishPx * 0.82, lineHeight: 1, minWidth: wishPx * 0.9, textAlign: 'center' }}>{target}</span>
+  // The wish is shown while it is open; when it is fulfilled (the round
+  // won) or at the party the octopus juggles stars where it was
+  const wishOpen = phase === 'playing' || phase === 'roundFail'
+  const partyTime = phase === 'party' || phase === 'finale'
+
+  const hearts = size => (
+    <motion.div animate={{ opacity: partyTime ? 0 : 1 }} aria-hidden={partyTime || undefined}
+      style={{ display: 'flex', flexShrink: 0, gap: roomy ? 4 : 2, padding: roomy ? '4px 10px' : '4px 8px', borderRadius: 999, background: 'rgba(255,253,247,0.85)', border: '3px solid #2a1b3d', boxShadow: '0 3px 0 rgba(42,27,61,0.3)' }} aria-label={`${lives} Herzen`}>
+      {[0, 1, 2].map(i => (
+        <motion.span key={i} animate={i < lives ? { scale: 1, opacity: 1, rotate: 0 } : { scale: [1, 1.4, 0.75], opacity: 0.3, rotate: [0, -20, 0] }}
+          transition={{ duration: 0.5 }} style={{ display: 'inline-flex', filter: i < lives ? undefined : 'grayscale(1)' }}>
+          <Art art="❤️" size={size} />
+        </motion.span>
+      ))}
+    </motion.div>
+  )
+  const trail = size => <RoundTrail total={ROUNDS} done={roundsRef.current.length} walker="🐠" goal="🐚" size={size} style={{ flex: 1 }} />
+  const clock = cfg.timed && <motion.div animate={{ opacity: partyTime ? 0 : 1 }}><Clock fraction={timeLeft / cfg.timeS} narrow={!roomy || tight} /></motion.div>
 
   const octopus = (
-    <div style={{ position: 'relative', display: 'flex', flexDirection: wide ? 'column' : 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: wide ? 8 : 18, paddingTop: 80 }}>
+    <div style={{
+      position: 'relative', display: 'flex', flexDirection: wide ? 'column' : 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: wide ? 8 : 18,
+      paddingTop: wishRoom,
+      // on a phone held upright the star counter stands to its right: a step aside for it
+      paddingRight: hudOnTop ? 0 : 'clamp(0px, calc(480px - 100vw), 70px)',
+    }}>
       <div ref={octoRef} style={{ position: 'relative' }}>
         <Critter art="🐙" size={octoSize} mood={mood} label="Krake"
-          wish={phase === 'finale' ? null : phase === 'party' ? <Art art="🎉" size={46} /> : <span ref={wishRef} data-target={target}>{wish}</span>} />
-        <Juggle n={stars} size={octoSize} still={reduce || paused} />
-        <StarCrown n={crown} size={octoSize} />
+          wish={wishOpen ? <span data-target={target}>{wish}</span> : null} />
+        {/* Its turn when the round is won: one star per bubble found.
+            (The star of each single pop flies to the counter instead.) */}
+        <Juggle n={phase === 'party' ? 8 : phase === 'roundWin' ? bubbles.filter(b => !b.giant && b.value === target).length : 0}
+          size={octoSize} room={wishRoom} still={reduce || paused} />
       </div>
     </div>
   )
@@ -461,47 +579,72 @@ export default function BubblePopGame({ level = 1, onComplete }) {
   return (
     <div ref={rootRef} style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: 'clamp(6px,1.5vw,14px) clamp(8px,2vw,20px)', gap: 8, userSelect: 'none', overflow: 'hidden' }}>
 
-      {/* Hearts of this round, the rounds, the calm clock */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-        <div style={{ display: 'flex', gap: 4, padding: '4px 10px', borderRadius: 999, background: 'rgba(255,253,247,0.85)', border: '3px solid #2a1b3d', boxShadow: '0 3px 0 rgba(42,27,61,0.3)' }} aria-label={`${lives} Herzen`}>
-          {[0, 1, 2].map(i => (
-            <motion.span key={i} animate={i < lives ? { scale: 1, opacity: 1, rotate: 0 } : { scale: [1, 1.4, 0.75], opacity: 0.3, rotate: [0, -20, 0] }}
-              transition={{ duration: 0.5 }} style={{ display: 'inline-flex', filter: i < lives ? undefined : 'grayscale(1)' }}>
-              <Art art="❤️" size={40} />
-            </motion.span>
-          ))}
+      {/* Hearts of this round, the rounds, the calm clock. At the party
+          nothing can be lost any more: hearts and clock step aside. */}
+      {!tight && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: roomy ? 12 : 8, flexShrink: 0 }}>
+          {hearts(roomy ? 40 : 30)}
+          {trail(32)}
+          {clock}
+          {/* The star counter (Juice): top right where there is room beside the trail … */}
+          {hudOnTop && juice.hud}
         </div>
-        <RoundTrail total={ROUNDS} done={roundsRef.current.length} walker="🐠" goal="🐚" size={32} style={{ flex: 1 }} />
-        {cfg.timed && <Clock fraction={timeLeft / cfg.timeS} />}
-      </div>
+      )}
 
-      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: wide ? 'row' : 'column-reverse', gap: 8 }}>
-        <div style={{ flexShrink: 0, display: 'flex', alignItems: wide ? 'flex-end' : 'center', justifyContent: 'center', paddingBottom: wide ? 24 : 4, width: wide ? 210 : undefined }}>
+      <div ref={juice.stage} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: wide ? 'row' : 'column-reverse', gap: 8 }}>
+        <div style={{ position: 'relative', flexShrink: 0, display: 'flex', alignItems: wide ? 'flex-end' : 'center', justifyContent: 'center', paddingBottom: wide ? (tight ? 6 : 24) : 4, width: wide ? (tight ? 232 : Math.max(150, octoSize + 40)) : undefined }}>
+          {/* … above the octopus on a short screen held sideways */}
+          {tight && (
+            <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: TIGHT_HUD, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                {hearts(24)}
+                {juice.hud}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                {trail(24)}
+                {clock}
+              </div>
+            </div>
+          )}
           {octopus}
+          {/* … and beside the octopus where the top row is full: below the
+              sea, where no bubble comes */}
+          {!hudOnTop && <div style={{ position: 'absolute', right: 0, top: '50%' }}>{juice.hud}</div>}
         </div>
 
         {/* The open sea: the bubbles float in the scene behind */}
-        <div ref={arenaRef} style={{ position: 'relative', flex: 1, minHeight: 200, overflow: 'hidden' }}>
+        {/* Its edges fade, so the bubbles come up out of the water and
+            leave into it, instead of being cut by a hard line */}
+        <div ref={arenaRef} style={{
+          position: 'relative', flex: 1, minHeight: 200, overflow: 'hidden',
+          WebkitMaskImage: SEA_MASK, maskImage: SEA_MASK,
+        }}>
           {/* now and then a visitor swims through: a fish in one round, a dolphin in another */}
-          {!reduce && phase === 'playing' && roundIdx % 2 === 1 && <Visitor key={roundIdx} art={roundIdx === 1 ? '🐠' : '🐬'} paused={paused} />}
+          {!reduce && phase === 'playing' && roundIdx % 2 === 1 && roundIdx !== giantRound && <Visitor key={roundIdx} art={roundIdx === 1 ? '🐠' : '🐬'} paused={paused} />}
           {aimAt && <div ref={anchorRef} aria-hidden="true" style={{ position: 'absolute', left: aimAt.x, top: aimAt.y, width: 2, height: 2 }} />}
           <AnimatePresence>
             {bubbles.map(bubble => {
               if (poppedIds.includes(bubble.id)) return null
+              const off = bounced.includes(bubble.id)
               // after a miss the wished-for ones pulse once; when a round is
               // lost, they light up gold before the next round comes
-              const reveal = phase === 'roundFail' && bubble.value === target
-              const pulse = (hint || reveal) && bubble.value === target
+              const reveal = phase === 'roundFail' && bubble.value === target && !bubble.giant
+              const big = bubble.giant
+              const pulse = (hint || reveal) && bubble.value === target && !off && !big
               return (
                 <motion.button
                   key={bubble.id}
-                  initial={{ scale: 0, opacity: 0 }}
-                  animate={pulse ? { opacity: 1, scale: [1, 1.18, 1, 1.18, 1] } : { opacity: 1, scale: 1 }}
+                  initial={big ? { scale: 1, opacity: 1 } : { scale: 0, opacity: 0 }}
+                  animate={off
+                    // the boing: squashed flat, stretched tall, settling
+                    ? { scale: 1, scaleX: [1, 1.35, 0.8, 1.12, 0.95], scaleY: [1, 0.68, 1.25, 0.9, 1.05], opacity: 1 }
+                    : pulse ? { opacity: 1, scale: [1, 1.18, 1, 1.18, 1] } : { opacity: 1, scale: 1 }}
                   exit={{ scale: 1.6, opacity: 0, transition: { duration: 0.2 } }}
-                  transition={pulse ? { duration: 1.1, repeat: reveal ? 1 : 0 } : { opacity: { duration: 0.3 }, scale: { type: 'spring', stiffness: 300, damping: 18 } }}
-                  whileTap={{ scale: 1.25 }}
-                  onClick={() => popBubble(bubble)}
-                  aria-label={bubble.value === 0 ? 'Party-Blase' : cfg.dots ? `${bubble.value} ${bubble.value === 1 ? 'Punkt' : 'Punkte'}` : `${bubble.value}`}
+                  transition={off ? { duration: 0.42 } : pulse ? { duration: 1.1, repeat: reveal ? 1 : 0 } : { opacity: { duration: 0.3 }, scale: { type: 'spring', stiffness: 300, damping: 18 } }}
+                  whileTap={off ? undefined : { scale: 1.25 }}
+                  onClick={e => popBubble(bubble, e.currentTarget)}
+                  aria-label={big ? 'Riesenblase' : bubble.value === 0 ? 'Party-Blase' : cfg.dots ? `${bubble.value} ${bubble.value === 1 ? 'Punkt' : 'Punkte'}` : `${bubble.value}`}
+                  data-value={bubble.value}
                   style={{
                     x: mvsRef.current[bubble.id]?.mx,
                     y: mvsRef.current[bubble.id]?.my,
@@ -513,22 +656,26 @@ export default function BubblePopGame({ level = 1, onComplete }) {
                     // see-through soap bubbles with a coloured rim; the shine is a
                     // thin crescent along the rim (Shine), never a dot that
                     // could be counted as one more pip
-                    background: `radial-gradient(circle at 40% 35%, ${bubble.tint}77 0%, ${bubble.tint}cc 60%, ${bubble.tint})`,
-                    border: '3px solid #2a1b3d',
+                    background: big
+                      ? 'radial-gradient(circle at 40% 35%, #dff4ff 0%, #8fd3ff 55%, #8e6cf0 100%)'
+                      : `radial-gradient(circle at 40% 35%, ${bubble.tint}77 0%, ${bubble.tint}cc 60%, ${bubble.tint})`,
+                    border: big ? '4px solid #2a1b3d' : '3px solid #2a1b3d',
                     boxShadow: reveal
                       ? '0 0 0 6px #ffc93c, 0 0 18px 8px rgba(255,201,60,0.8)'
-                      : 'inset 0 -6px 0 rgba(0,0,0,0.12), 0 4px 0 rgba(42,27,61,0.35)',
+                      : big ? 'inset 0 -10px 0 rgba(0,0,0,0.1), 0 0 0 5px rgba(255,253,247,0.55), 0 6px 0 rgba(42,27,61,0.35)'
+                        : 'inset 0 -6px 0 rgba(0,0,0,0.12), 0 4px 0 rgba(42,27,61,0.35)',
                     fontFamily: 'var(--font-heading)',
-                    fontSize: bubble.size * 0.44, fontWeight: 800, color: '#fff',
+                    fontSize: bubble.size * (big ? 0.4 : 0.44), fontWeight: 800, color: '#fff',
                     // an ink outline keeps white digits readable on any tint
                     textShadow: '-2px -2px 0 #2a1b3d, 2px -2px 0 #2a1b3d, -2px 2px 0 #2a1b3d, 2px 2px 0 #2a1b3d, 0 3px 0 #2a1b3d',
                     cursor: 'pointer',
+                    pointerEvents: off ? 'none' : undefined,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    zIndex: 5,
+                    zIndex: big ? 4 : 5,
                   }}
                 >
                   <Shine />
-                  <Face value={bubble.value} dots={cfg.dots} size={bubble.size} />
+                  <Face bubble={bubble} dots={cfg.dots} size={bubble.size} />
                 </motion.button>
               )
             })}
@@ -536,40 +683,14 @@ export default function BubblePopGame({ level = 1, onComplete }) {
         </div>
       </div>
 
-      {/* Stars swimming to the octopus */}
-      {flyers.map(f => (
-        <motion.div key={f.id} aria-hidden="true"
-          initial={{ x: f.x0 - 22, y: f.y0 - 22, scale: 0.4, rotate: 0 }}
-          animate={{ x: [f.x0 - 22, (f.x0 + f.x1) / 2 - 22, f.x1 - 22], y: [f.y0 - 22, Math.min(f.y0, f.y1) - 80, f.y1 - 22], scale: [0.4, 1.3, 0.8], rotate: 360 }}
-          transition={{ duration: reduce ? 0.01 : 0.75, ease: 'easeInOut' }}
-          onAnimationComplete={() => { setFlyers(l => l.filter(x => x.id !== f.id)); starsRef.current += 1; setStars(starsRef.current); sfx.coin() }}
-          style={{ position: 'absolute', left: 0, top: 0, zIndex: 20, pointerEvents: 'none' }}>
-          <Art art="⭐" size={44} />
-        </motion.div>
-      ))}
-
-      {/* Offended puffer fish */}
-      {puffers.map(p => (
-        <motion.div key={p.id} aria-hidden="true"
-          initial={{ x: p.x - 40, y: p.y - 40, scale: 0.5 }}
-          animate={reduce ? { opacity: [1, 1, 0] } : { scale: [0.5, 1.5, 1.35, 1.35], x: [p.x - 40, p.x - 40, p.x - 40, p.x - 40 + p.dir * 900], y: [p.y - 40, p.y - 52, p.y - 40, p.y - 120] }}
-          transition={{ duration: 2.2, times: [0, 0.25, 0.45, 1], ease: 'easeIn' }}
-          onAnimationComplete={() => setPuffers(l => l.filter(x => x.id !== p.id))}
-          style={{ position: 'absolute', left: 0, top: 0, zIndex: 20, pointerEvents: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <div style={{ transform: p.dir > 0 ? 'scaleX(-1)' : undefined }}><Art art="🐡" size={80} /></div>
-          <span style={{
-            marginTop: -6, minWidth: 34, height: 34, padding: '0 4px', borderRadius: 17, background: '#fffdf7', border: '3px solid #2a1b3d',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 20, color: '#2a1b3d',
-          }}>{cfg.dots ? <Pips n={p.value} size={28} color="#2a1b3d" face={false} /> : p.value}</span>
-        </motion.div>
-      ))}
-      {/* The hand shows the move: from the wish to a bubble like it */}
-      <HintHand key={`${roundIdx}-${aimAt?.x}`} from={wishRef} to={anchorRef} active={phase === 'playing' && !!aimAt} delay={0} />
+      {/* The hand taps a wished-for bubble */}
+      <HintHand key={`${roundIdx}-${aimAt?.x}`} to={anchorRef} active={phase === 'playing' && !!aimAt} delay={0} />
       {phase === 'finale' && (
-        <Finale cast={['🐙', '🐠', '🐡', '🦀', '🐬', '🐳']} size={wide ? 110 : 80}
+        <Finale cast={['🐙', '🐠', '🐡', '🦀', '🐬', '🐳']} size={wide ? Math.min(110, stageH * 0.4) : 80}
           onDone={() => onComplete(result(roundsRef.current.filter(r => r === 'clean').length, ROUNDS))} />
       )}
       {bursts}
+      {juice.layer}
     </div>
   )
 }
@@ -596,41 +717,22 @@ function Visitor({ art, paused }) {
   )
 }
 
-// The stars it dropped on its own head, piled up as a wobbly crown
-function StarCrown({ n, size }) {
-  if (!n) return null
-  const rows = [], shown = Math.min(n, 15)
-  for (let left = shown, w = 5; left > 0; w--) { const k = Math.min(w, left); rows.push(k); left -= k }
-  return (
-    <div aria-hidden="true" style={{ position: 'absolute', left: '50%', bottom: size * 0.82, transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column-reverse', alignItems: 'center', pointerEvents: 'none' }}>
-      {rows.map((k, r) => (
-        <div key={r} style={{ display: 'flex', marginBottom: -8 }}>
-          {Array.from({ length: k }, (_, i) => (
-            <motion.span key={i} initial={{ y: -60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 12, delay: i * 0.05 }}
-              style={{ display: 'inline-flex', margin: '0 -3px', transform: `rotate(${((r * 5 + i) * 37) % 30 - 15}deg)` }}>
-              <Art art="⭐" size={22} />
-            </motion.span>
-          ))}
-        </div>
-      ))}
-    </div>
-  )
-}
-
-// The stars the octopus juggles, circling over its head
-function Juggle({ n: all, size, still }) {
+// The stars the octopus juggles, circling over its head where its wish
+// was (`room` px above it), not in front of its face
+function Juggle({ n: all, size, room, still }) {
   const n = Math.min(all, 8)
   if (!n) return null
+  const h = Math.min(room, size * 0.5)
   return (
     <motion.div aria-hidden="true" animate={still ? {} : { rotate: 360 }} transition={{ duration: 2.4, repeat: Infinity, ease: 'linear' }}
-      style={{ position: 'absolute', left: '50%', top: size * 0.05, width: size * 0.9, height: size * 0.5, marginLeft: -size * 0.45, pointerEvents: 'none' }}>
+      style={{ position: 'absolute', left: '50%', top: -h + size * 0.02, width: size * 0.9, height: h, marginLeft: -size * 0.45, pointerEvents: 'none' }}>
       {Array.from({ length: n }, (_, i) => {
         const a = (i / n) * Math.PI * 2
         return (
           <motion.div key={i} initial={{ scale: 0 }} animate={{ scale: 1, rotate: still ? 0 : -360 }}
             transition={{ scale: { type: 'spring', stiffness: 400 }, rotate: { duration: 2.4, repeat: Infinity, ease: 'linear' } }}
-            style={{ position: 'absolute', left: `calc(50% + ${Math.cos(a) * size * 0.4}px - 16px)`, top: `calc(50% + ${Math.sin(a) * size * 0.22}px - 16px)` }}>
-            <Art art="⭐" size={32} />
+            style={{ position: 'absolute', left: `calc(50% + ${Math.cos(a) * size * 0.36}px - 15px)`, top: `calc(50% + ${Math.sin(a) * (h / 2 - 15)}px - 15px)` }}>
+            <Art art="⭐" size={30} />
           </motion.div>
         )
       })}
@@ -639,10 +741,10 @@ function Juggle({ n: all, size, still }) {
 }
 
 // A calm clock: a strip of sand that runs out
-function Clock({ fraction }) {
+function Clock({ fraction, narrow }) {
   return (
-    <div aria-hidden="true" style={{ display: 'flex', alignItems: 'center', gap: 4, width: 'clamp(90px,18vw,170px)' }}>
-      <Art art="⏳" size={30} />
+    <div aria-hidden="true" style={{ display: 'flex', alignItems: 'center', gap: 4, width: narrow ? 74 : 'clamp(90px,18vw,170px)' }}>
+      <Art art="⏳" size={narrow ? 24 : 30} />
       <div style={{ flex: 1, height: 16, background: 'rgba(255,253,247,0.6)', border: '3px solid #2a1b3d', borderRadius: 10, overflow: 'hidden' }}>
         <motion.div animate={{ width: `${fraction * 100}%` }} transition={{ duration: 0.85 }}
           style={{ height: '100%', background: fraction > 0.5 ? '#5cc45a' : fraction > 0.25 ? '#ffc93c' : '#ff9f43' }} />

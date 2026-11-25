@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- The source of public/sprites/emoji/custom/osterhase.webp ("Osterhase"):
+       a brown bunny holding up a basket full of coloured eggs, so it is never
+       read as the plain bunny ("Hase").
+       Render: scripts/art/render-svg.mjs -->
+  <g stroke="#2a1b3d" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">
+    <!-- ears -->
+    <path d="M94 56 C74 30 78 2 96 4 C112 6 116 32 112 54 Z" fill="#c98a52"/>
+    <path d="M162 56 C182 30 178 2 160 4 C144 6 140 32 144 54 Z" fill="#c98a52"/>
+    <!-- body -->
+    <ellipse cx="128" cy="186" rx="68" ry="56" fill="#c98a52"/>
+    <!-- head -->
+    <ellipse cx="128" cy="86" rx="54" ry="44" fill="#c98a52"/>
+  </g>
+  <!-- inside of the ears -->
+  <path d="M98 48 C88 30 90 16 96 16 C102 18 104 32 104 48 Z" fill="#f6a6b6"/>
+  <path d="M158 48 C168 30 166 16 160 16 C154 18 152 32 152 48 Z" fill="#f6a6b6"/>
+  <!-- face: light muzzle, cheeks, eyes, nose -->
+  <ellipse cx="128" cy="106" rx="28" ry="19" fill="#f6e7d3"/>
+  <ellipse cx="92" cy="100" rx="10" ry="6" fill="#f08a8a" opacity="0.6"/>
+  <ellipse cx="164" cy="100" rx="10" ry="6" fill="#f08a8a" opacity="0.6"/>
+  <ellipse cx="106" cy="80" rx="8" ry="10" fill="#2a1b3d"/>
+  <ellipse cx="150" cy="80" rx="8" ry="10" fill="#2a1b3d"/>
+  <circle cx="109" cy="76" r="3" fill="#ffffff"/>
+  <circle cx="153" cy="76" r="3" fill="#ffffff"/>
+  <path d="M120 96 Q128 90 136 96 Q132 104 128 104 Q124 104 120 96 Z" fill="#e8607a" stroke="#2a1b3d" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M128 104 L128 110 M128 110 Q120 118 114 112 M128 110 Q136 118 142 112" stroke="#2a1b3d" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+  <!-- light on the head -->
+  <path d="M90 62 Q100 48 118 44" stroke="#e3ab78" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <!-- the basket handle, behind the eggs -->
+  <path d="M54 186 Q54 128 128 128 Q202 128 202 186" fill="none" stroke="#2a1b3d" stroke-width="16" stroke-linecap="round"/>
+  <path d="M54 186 Q54 128 128 128 Q202 128 202 186" fill="none" stroke="#d9a35a" stroke-width="8" stroke-linecap="round"/>
+  <!-- the eggs, piled up above the rim -->
+  <g stroke="#2a1b3d" stroke-width="5">
+    <ellipse cx="78" cy="170" rx="17" ry="23" fill="#4aa3f0" transform="rotate(-22 78 170)"/>
+    <ellipse cx="178" cy="170" rx="17" ry="23" fill="#7bd35a" transform="rotate(22 178 170)"/>
+    <ellipse cx="128" cy="152" rx="18" ry="25" fill="#b07ae8"/>
+    <ellipse cx="104" cy="164" rx="18" ry="25" fill="#ffd21f" transform="rotate(-10 104 164)"/>
+    <ellipse cx="152" cy="164" rx="18" ry="25" fill="#ff6b8a" transform="rotate(10 152 164)"/>
+  </g>
+  <!-- egg patterns -->
+  <path d="M64 164 Q78 158 94 166" stroke="#ffffff" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M114 142 Q128 136 142 142" stroke="#ffffff" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M88 160 L94 154 L100 160 L106 154 L112 160 L118 154" stroke="#f28a1e" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="146" cy="152" r="3.5" fill="#ffffff"/><circle cx="158" cy="160" r="3.5" fill="#ffffff"/><circle cx="148" cy="170" r="3.5" fill="#ffffff"/>
+  <path d="M164 166 Q178 158 192 166" stroke="#ffffff" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <!-- the basket -->
+  <g stroke="#2a1b3d" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M50 186 L206 186 L192 238 Q190 246 180 246 L76 246 Q66 246 64 238 Z" fill="#d9a35a"/>
+    <rect x="42" y="178" width="172" height="18" rx="9" fill="#e9b86c"/>
+  </g>
+  <!-- woven pattern -->
+  <path d="M64 212 L192 212 M70 230 L186 230" stroke="#a8743a" stroke-width="4" stroke-linecap="round"/>
+  <path d="M88 198 L90 242 M112 198 L113 244 M144 198 L143 244 M168 198 L166 242" stroke="#a8743a" stroke-width="4" stroke-linecap="round"/>
+  <!-- the paws holding the rim -->
+  <g stroke="#2a1b3d" stroke-width="5" fill="#f6e7d3">
+    <ellipse cx="50" cy="190" rx="15" ry="12"/>
+    <ellipse cx="206" cy="190" rx="15" ry="12"/>
+  </g>
+</svg>

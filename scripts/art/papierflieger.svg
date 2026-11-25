@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- The source of public/sprites/emoji/custom/papierflieger.webp ("Papierflieger"):
+       a folded paper plane flying up to the right, a dashed trail behind it.
+       Render: scripts/art/render-svg.mjs -->
+  <!-- the trail -->
+  <path d="M74 206 Q48 226 18 240" stroke="#2a1b3d" stroke-width="6" stroke-dasharray="12 12" fill="none" stroke-linecap="round"/>
+  <g stroke="#2a1b3d" stroke-width="7" stroke-linejoin="round" stroke-linecap="round">
+    <!-- the far wing, seen from below -->
+    <path d="M244 18 L100 150 L166 170 Z" fill="#c9dcef"/>
+    <!-- the keel -->
+    <path d="M244 18 L100 150 L84 222 Z" fill="#8fb2d8"/>
+    <!-- the near wing -->
+    <path d="M244 18 L10 112 L100 150 Z" fill="#ffffff"/>
+  </g>
+  <!-- the fold down the middle of the near wing -->
+  <path d="M234 26 L58 128" stroke="#c9dcef" stroke-width="6" stroke-linecap="round"/>
+  <!-- shade on the keel -->
+  <path d="M226 42 L104 166" stroke="#6f95c2" stroke-width="6" stroke-linecap="round"/>
+</svg>

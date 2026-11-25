@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useApp, todayMs } from '../AppContext.jsx'
 import { PxStar, PxIcon } from '../components/PixelUI.jsx'
@@ -6,7 +6,7 @@ import Confetti from '../components/Confetti.jsx'
 import TileArt from '../components/TileArt.jsx'
 import { Scene, Critter, Art } from '../components/play/index.js'
 import { sfx } from '../sfx.js'
-import { afterNarration, narrate, stopNarration } from '../narrator.js'
+import { afterNarration, lastSaid, narrate, stopNarration } from '../narrator.js'
 import { sayCount } from '../tts.js'
 import { starsFor } from '../lib/score.js'
 import { journeyArt } from '../lib/assets.js'
@@ -16,8 +16,8 @@ import { STICKER_BY_EMOJI } from '../lib/stickers.js'
 import { MODULE_BY_ID } from '../modules.js'
 import { line } from '../lib/lumiLines.js'
 
-// One star means the level is done and the next one is open — the texts
-// say so ("Üb weiter!" next to an unlocked level was a contradiction).
+// One star means the level is done — the texts say so. Whether the next
+// level is announced is decided below (`opened`).
 const MESSAGES = {
   3: ['Fantastisch!', 'Super gemacht!', 'Perfekt!'],
   2: ['Sehr gut gemacht!', 'Klasse!', 'Toll gemacht!'],
@@ -27,6 +27,13 @@ const MESSAGES = {
 // Lumi's recorded praise (lib/lumiLines.js); after a round without a star
 // the encouragement below says enough
 const praise = s => (s >= 1 ? line(`rueckmeldung/richtig-${1 + Math.floor(Math.random() * 9)}`) : null)
+// A level's end is praised once. Some games praise the last answer or the
+// win themselves ("Klasse!"), and a few seconds later this screen said
+// "Klasse!" again, now and then with the very same recording. When praise
+// was the last thing Lumi said, this screen goes straight on to its news.
+const PRAISE_CLIP = /rueckmeldung\/(richtig|drangeblieben)-/
+const PRAISED_MS = 15000
+const justPraised = () => { const s = lastSaid(); return PRAISE_CLIP.test(s.src ?? '') && Date.now() - s.at < PRAISED_MS }
 
 const NO_FRACTION = new Set(['coloring', 'maze'])
 // Friends who come to the party when it went well
@@ -61,8 +68,11 @@ export default function ResultsScreen() {
   const suggested      = gameResult?.suggestedLevel ?? nextLevel ?? level
   const practise       = suggested === level && (gameResult?.ratio ?? 1) < 0.6
   const easier         = suggested < level
-  // this game was one of Lumi's ideas for today
-  const onPlan         = !!gameResult?.journey
+  // The child is following Lumi's ideas for today: this game was started
+  // from the idea, so the next idea is the big button. A game picked from
+  // its tile goes on with its own next level (the big button used to lead
+  // into another game whenever the tile's game happened to be on the plan).
+  const onPlan         = !!gameResult?.journey?.followed
 
   // Today's plan after this game: the next idea, the movement break, the sticker
   const journey = profile?.journey
@@ -70,7 +80,10 @@ export default function ResultsScreen() {
   const nextGame = (journey?.stops ?? []).findIndex((st, i) => st.moduleId && !done.includes(i) && st.moduleId !== moduleId)
   const moveIdx = (journey?.stops ?? []).findIndex((st, i) => st.kind === 'move' && !done.includes(i))
   const planDone = journey && nextStopIndex(journey) === -1
-  const moveNow = moveIdx !== -1 && (nextStopIndex(journey) === moveIdx || todayMs(profile) >= MOVE_AFTER_MS || nextGame === -1)
+  // The break is due after a long time playing, whoever chose the game; as
+  // the next idea of the day only for a child who is following the ideas
+  // (after a game picked from its tile the big button stays with that game)
+  const moveNow = moveIdx !== -1 && (todayMs(profile) >= MOVE_AFTER_MS || (onPlan && (nextStopIndex(journey) === moveIdx || nextGame === -1)))
   const nextMod = nextGame !== -1 ? MODULE_BY_ID[journey.stops[nextGame].moduleId] : null
 
   // All of today's ideas played: the sticker comes out of the chest, here
@@ -83,6 +96,28 @@ export default function ResultsScreen() {
   }, [journey?.chest]) // eslint-disable-line react-hooks/exhaustive-deps
   const [freshSticker] = useState(() => planDone && !journey?.chest)
 
+  // With the day's play time used up (parent area) the way leads home,
+  // where Lumi says goodbye for today
+  const limitMin = state.settings?.dailyLimitMin ?? 0
+  const timeUp = limitMin > 0 && todayMs(profile) >= limitMin * 60000
+
+  // What Lumi proposes for this game (lib/learning.js, the same rule that
+  // sets the level on the game's tile):
+  //   again     no star: the same level once more
+  //   easier    two very hard rounds: the level before
+  //   practise  fewer than 60 % right at the first try: the same level
+  //   next      otherwise the next level (null after the last one)
+  // A level with a star always opens the next one in the level picker; it
+  // is proposed here only after a round that went well.
+  const proposal = stars === 0 ? 'again' : easier ? 'easier' : practise ? 'practise' : nextLevel ? 'next' : null
+  const upTo = Math.max(suggested, level + 1)
+  // "Level 3 ist offen!" is said and shown only when it is news (this level
+  // had no star before) and the big button leads there. It used to stand
+  // over a lone "Nochmal üben", and over a big button to another game when
+  // the day's plan went on elsewhere.
+  const planLeads = moveNow || (onPlan && !!nextMod)
+  const opened = isFirstPass && proposal === 'next' && upTo === nextLevel && !timeUp && !planLeads
+
   // "7 von 7 richtig" next to one star was a contradiction: the line counts
   // what the stars count (answers right on the first try) and is left out
   // for games that rate otherwise (Memo by moves, the maze by dragon hits)
@@ -93,14 +128,38 @@ export default function ResultsScreen() {
   // buttons appeared ("Du schaffst das!" → "Nicht aufgeben!")
   const msg = useMemo(() => {
     if (justCompleted) return masteredWell ? 'Du bist ein Meister!' : 'Alle Level geschafft!'
-    if (isFirstPass && nextLevel) return `Level ${nextLevel} ist offen!`
-    const list = MESSAGES[Math.max(0, Math.min(3, stars))]
+    if (opened) return `Level ${nextLevel} ist offen!`
+    // "Perfekt!" stood over "7 von 8": only when everything was right
+    const list = MESSAGES[Math.max(0, Math.min(3, stars))].filter(m => m !== 'Perfekt!' || !(total > 0) || score >= total)
     return list[Math.floor(Math.random() * list.length)]
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const friends = useMemo(() => {
     const pool = [...FRIENDS].sort(() => Math.random() - 0.5)
     return pool.slice(0, stars >= 3 ? 2 : stars >= 2 ? 1 : 0)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const go = (lv) => dispatch({ type: 'START_GAME', payload: { moduleId, level: lv } })
+  const home = () => dispatch({ type: 'NAVIGATE', payload: 'home' })
+  const toStop = idx => { if (!startStop(dispatch, journey, idx)) home() }
+
+  // One clear main button per situation, plus a small way home
+  const ideaBtn = nextMod && { label: nextMod.title, art: nextMod, onClick: () => toStop(nextGame) }
+  const moveBtn = moveNow && { label: 'Bewegungspause!', icon: '🤸', onClick: () => toStop(moveIdx) }
+  const levelBtn = proposal === 'again' ? { label: 'Nochmal', icon: '🔄', onClick: () => go(level) }
+    : proposal === 'easier' ? { label: `Leichter: Level ${suggested}`, icon: '🌱', onClick: () => go(suggested) }
+    : proposal === 'practise' ? { label: 'Nochmal üben', icon: '💪', onClick: () => go(level) }
+    : proposal === 'next' ? { label: `Weiter: Level ${upTo}`, play: true, onClick: () => go(upTo) }
+    : { label: 'Nochmal', icon: '🔄', onClick: () => go(level) }   // the last level: once more
+  // "…or play the easier level", Lumi says after a round without a star
+  const easierToo = proposal === 'again' && level > 1
+  const main = timeUp ? { label: 'Zur Startseite', icon: '🏠', onClick: home }
+    : moveBtn || (onPlan && ideaBtn) || levelBtn || ideaBtn || { label: 'Zur Startseite', icon: '🏠', onClick: home }
+  const secondary = timeUp ? [] : [
+    levelBtn !== main && levelBtn,
+    easierToo && { label: `Leichter: Level ${level - 1}`, icon: '🌱', onClick: () => go(level - 1) },
+    stars >= 1 && levelBtn?.onClick && !/Nochmal/.test(levelBtn.label) && { label: 'Nochmal', icon: '🔄', onClick: () => go(level) },
+    ideaBtn && ideaBtn !== main && ideaBtn,
+  ].filter(Boolean)
 
   const [showButtons, setShowButtons] = useState(false)
   useEffect(() => {
@@ -113,58 +172,55 @@ export default function ResultsScreen() {
       if (stars >= 3)      sfx.complete()
       else if (stars >= 1) sfx.correct()
     }, 350)
-    // The praise, then what is new
+    // The praise, then what is new. Lumi says what the heading says and
+    // what the big button does, nothing else.
     const news = []
     if (justCompleted) news.push(line(masteredWell ? 'ergebnis/meister' : 'ergebnis/alle-level'))
-    else if (isFirstPass && nextLevel) news.push(line('ergebnis/level-offen'))
-    if (stars === 0) {
-      if (score > 0) news.push({ text: `Du hattest schon ${sayCount(score, 'Aufgabe', 'f')} richtig.` })
-      news.push(line(level > 1 ? 'ergebnis/nochmal-leichter' : 'ergebnis/nochmal'))
+    else if (opened) news.push(line('ergebnis/level-offen'))
+    if (levelBtn && levelBtn === main && !justCompleted) {
+      if (proposal === 'again') {
+        // no recording (a number in the sentence): silent for now, the narrator skips it
+        if (score > 0) news.push({ text: `Du hattest schon ${sayCount(score, 'Aufgabe', 'f')} richtig.` })
+        news.push(line(easierToo ? 'ergebnis/nochmal-leichter' : 'ergebnis/nochmal'))
+      } else if (proposal === 'easier') news.push(line('ergebnis/leichter'))
+      else if (proposal === 'practise') news.push(line('ergebnis/ueben'))
     }
-    if (easier) news.push(line('ergebnis/leichter'))
-    else if (practise && !onPlan) news.push(line('ergebnis/ueben'))
-    if (freshSticker) news.push({ text: 'Überraschung! Du hast alle Ideen von heute gespielt. Hier ist ein neuer Sticker für dein Album!' })
-    else if (moveNow) news.push({ text: 'Lumi möchte sich bewegen! Machst du mit?' })
-    else if (onPlan && nextMod) news.push({ text: 'Lumi hat noch eine Idee!' })
+    if (freshSticker) news.push(line('ergebnis/sticker-tag'))
+    else if (main === moveBtn) news.push(line('ergebnis/bewegen'))
+    else if (main === ideaBtn) news.push(line('ergebnis/noch-eine-idee'))
     const stop = afterNarration(() => {
       narrate([
-        praise(stars),
+        justPraised() ? null : praise(stars),
         ...news.map((part, i) => ({ ...part, gap: i === 0 ? 250 : 150 })),
       ])
     }, { minMs: 900 })
     return () => { clearTimeout(tm); stop(); stopNarration() }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const go = (lv) => dispatch({ type: 'START_GAME', payload: { moduleId, level: lv } })
-  const home = () => dispatch({ type: 'NAVIGATE', payload: 'home' })
-  const toStop = idx => { if (!startStop(dispatch, journey, idx)) home() }
-
-  // With the day's play time used up (parent area) the way leads home,
-  // where Lumi says goodbye for today
-  const limitMin = state.settings?.dailyLimitMin ?? 0
-  const timeUp = limitMin > 0 && todayMs(profile) >= limitMin * 60000
-
-  // One clear main button per situation, plus a small way home
-  const ideaBtn = nextMod && { label: nextMod.title, art: nextMod, onClick: () => toStop(nextGame) }
-  const moveBtn = moveNow && { label: 'Bewegungspause!', icon: '🤸', onClick: () => toStop(moveIdx) }
-  const levelBtn = stars === 0
-    ? { label: 'Nochmal', icon: '🔄', onClick: () => go(level) }
-    : easier
-      ? { label: `Leichter: Level ${suggested}`, icon: '🌱', onClick: () => go(suggested) }
-    : practise
-      ? { label: 'Nochmal üben', icon: '💪', onClick: () => go(level) }
-    : nextLevel
-      ? { label: `Weiter: Level ${Math.max(suggested, level + 1)}`, play: true, onClick: () => go(Math.max(suggested, level + 1)) }
-      : null
-  const main = timeUp ? { label: 'Zur Startseite', icon: '🏠', onClick: home }
-    : moveBtn || (onPlan && ideaBtn) || levelBtn || ideaBtn || { label: 'Zur Startseite', icon: '🏠', onClick: home }
-  const secondary = timeUp ? [] : [
-    levelBtn !== main && levelBtn,
-    stars >= 1 && levelBtn?.onClick && !/Nochmal/.test(levelBtn.label) && { label: 'Nochmal', icon: '🔄', onClick: () => go(level) },
-    ideaBtn && ideaBtn !== main && ideaBtn,
-  ].filter(Boolean)
-
   const lumiMood = stars >= 2 ? 'dance' : stars >= 1 ? 'happy' : 'idle'
+  const lumiSize = Math.min(150, Math.round((typeof window !== 'undefined' ? window.innerHeight : 800) * 0.16))
+
+  // A phone held sideways is lower than the party and the card together:
+  // they shrink to fit instead of scrolling (the buttons were below the
+  // edge after a perfect level). The margin takes back the room the
+  // smaller picture no longer needs.
+  const fitRef = useRef(null)
+  const [fit, setFit] = useState({ scale: 1, need: 0 })
+  useLayoutEffect(() => {
+    const el = fitRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const measure = () => {
+      const room = window.innerHeight - 2 * parseFloat(getComputedStyle(el.parentElement).paddingTop || 0)
+      const need = el.offsetHeight
+      const scale = need > room ? Math.max(0.6, room / need) : 1
+      setFit(f => (f.scale === scale && f.need === need ? f : { scale, need }))
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    window.addEventListener('resize', measure)
+    return () => { ro.disconnect(); window.removeEventListener('resize', measure) }
+  }, [])
 
   return (
     <div style={{
@@ -176,11 +232,15 @@ export default function ResultsScreen() {
       </div>
       {(stars >= 2 || sticker) && <Confetti count={stars === 3 || sticker ? 60 : 28} yFrom="-5vh" yTo="110vh" />}
 
-      {/* the party: Lumi and friends dance */}
+      <div ref={fitRef} style={{
+        position: 'relative', zIndex: 1, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center',
+        ...(fit.scale < 1 ? { transform: `scale(${fit.scale})`, marginBlock: -Math.ceil(fit.need * (1 - fit.scale) / 2) } : null),
+      }}>
+      {/* the party: Lumi and friends dance; the friends are smaller than Lumi on every screen */}
       <div aria-hidden="true" style={{ display: 'flex', alignItems: 'flex-end', gap: 'clamp(4px,2vw,20px)', marginBottom: -12, zIndex: 2 }}>
-        {friends[0] && <PartyFriend art={friends[0]} delay={0.5} />}
-        <Critter art="lumi" size={Math.min(150, Math.round((typeof window !== 'undefined' ? window.innerHeight : 800) * 0.16))} mood={lumiMood} />
-        {friends[1] && <PartyFriend art={friends[1]} delay={0.8} flip />}
+        {friends[0] && <PartyFriend art={friends[0]} delay={0.5} size={Math.round(lumiSize * 0.6)} />}
+        <Critter art="lumi" size={lumiSize} mood={lumiMood} />
+        {friends[1] && <PartyFriend art={friends[1]} delay={0.8} size={Math.round(lumiSize * 0.6)} flip />}
       </div>
 
       <motion.div
@@ -241,14 +301,17 @@ export default function ResultsScreen() {
           </div>
         </motion.div>
       </motion.div>
+      </div>
     </div>
   )
 }
 
-function PartyFriend({ art, delay, flip }) {
+// A friend runs in from its side and stops next to Lumi. (They used to
+// fly up from 200 px below: across the heading they stand on.)
+function PartyFriend({ art, delay, flip, size }) {
   return (
-    <motion.div initial={{ y: 200, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay, type: 'spring', stiffness: 200, damping: 14 }}>
-      <Critter art={art} size={90} mood="dance" flip={flip} />
+    <motion.div initial={{ x: flip ? size : -size, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay, type: 'spring', stiffness: 200, damping: 14 }}>
+      <Critter art={art} size={size} mood="dance" flip={flip} />
     </motion.div>
   )
 }

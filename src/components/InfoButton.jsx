@@ -11,30 +11,30 @@ import { helpLine } from '../lib/lumiLines.js'
 // no "lies", no keyboard talk, nothing that depends on seeing the words.
 // fresh: rewritten for the rebuilt game (docs/spielideen.md), not recorded yet.
 const INFO = {
-  'number-intro':  { emoji: '🔢', title: 'Zahlen entdecken', text: 'Ein Tier hat Hunger und zeigt dir auf einem Schild eine Zahl. Leg genau so viele Sachen auf seinen Teller und tippe dann auf den grünen Haken.', fresh: true },
-  'letter-intro':  { emoji: '🔡', title: 'ABC-Abenteuer', text: 'Das Buchstaben-Monster hat Hunger. In seiner Sprechblase siehst du seinen Buchstaben und ein Bild, das genauso anfängt. Füttere es mit Sachen, die auch so anfangen: ziehen oder antippen.', fresh: true },
-  'initial-sound': { emoji: '🕵️', title: 'Anlaut-Detektiv', text: 'Lumi angelt lustige Sachen aus dem Teich. Womit fängt das Wort an? Bring den Fang in den Eimer mit dem richtigen Buchstaben. Tippst du einen Frosch an, quakt er seinen Buchstaben.', fresh: true },
-  rhyme:           { emoji: '🎵', title: 'Reim-Rallye', text: 'Im Reim-Theater sucht jede Figur einen Reimpartner. Zieh den passenden Ballon auf die Bühne, dann spielen die beiden eine lustige Szene.', fresh: true },
-  numbers:         { emoji: '🛒', title: 'Zahlenland', text: 'Tierkunden kaufen an Lumis Obststand ein. Leg genau so viel Obst in den Korb, wie sich der Kunde wünscht, und tippe dann auf den grünen Haken.', fresh: true },
-  letters:         { emoji: '⌨️', title: 'Buchstabenwald', text: 'Lumi will etwas zaubern: Tipp die Buchstaben des Wortes, dann fliegen sie in den Kessel. Ist das Wort fertig, macht es Puff, und das Ding springt heraus.', fresh: true },
-  listen:          { emoji: '👂', title: 'Hörabenteuer', text: 'Hinter den Büschen hat sich etwas versteckt. Hör genau hin, oder schau in Lumis Sprechblase, und tippe auf den richtigen Busch.', fresh: true },
-  words:           { emoji: '🃏', title: 'Memo-Welt', text: 'Merk dir, wo die Bilder liegen, und mach zwei Geschenke auf. Was zusammengehört, umarmt sich und darf zur Party.', fresh: true },
-  patterns:        { emoji: '🔮', title: 'Musterpark', text: 'In der Tierparade ist ein Platz frei. Zieh das passende Bild in die Lücke, dann marschiert die Parade weiter.', fresh: true },
-  shapes:          { emoji: '🎨', title: 'Farbenreich', text: 'Ein Tier wünscht sich ein Bild in bestimmten Farben. Zieh den Farbtopf mit der Farbe aus der Sprechblase auf das Bild, dann zieht das Tier ein.', fresh: true },
-  emotions:        { emoji: '😊', title: 'Gefühlswelt', text: 'Schau, was Lumi passiert, und gib Lumi das passende Gesicht. Dann zeig, wie stark das Gefühl ist, und gib Lumi etwas, das hilft.', fresh: true },
-  empathy:         { emoji: '🕵️‍♀️', title: 'Gefühlsdetektiv', text: 'Schau genau hin, wie es deinem Freund geht, und zieh das passende Gesicht zu ihm. Dann bring ihm, was hilft, damit er wieder froh wird.', fresh: true },
-  maze:            { emoji: '🌀', title: 'Lumi-Labyrinth', text: 'Hilf Lumi durch das Labyrinth! Sammle alle Zaubertränke und lauf dann zum leuchtenden Ausgang. Wische oder benutze die Pfeile. Pass auf den Drachen auf! Wenn du stehen bleibst, kann der Drache dir nichts tun. Findest du einen ganz kurzen Weg, bekommt Lumi eine Krone!' },
-  shadows:         { emoji: '🌑', title: 'Schattenrätsel', text: 'Wisch mit dem Finger über das dunkle Zimmer, dann leuchtet die Taschenlampe. Zieh das Bild, das zum Schatten passt, ins Zimmer, dann geht das Licht an.', fresh: true },
-  bubbles:         { emoji: '🫧', title: 'Blasen-Blitz', text: 'Der Krake wünscht sich Blasen mit einer bestimmten Zahl. Tippe alle passenden Blasen an, dann jongliert der Krake mit den Sternen.', fresh: true },
-  sort:            { emoji: '🧺', title: 'Sortier-Spaß', text: 'Auf dem Förderband kommen Sachen angefahren. Zieh jede Sache zu dem Korbmonster, das sie sammelt; sein Schild zeigt, was es haben will.', fresh: true },
-  clock:           { emoji: '🕐', title: 'Kuckucksuhr', text: 'Der Kuckuck zeigt, wann er herauskommen will: Dreh die Zeiger dorthin und drück auf den grünen Knopf. Manchmal zeigen Tiere eine Uhrzeit – tippe auf das Tier, das recht hat – oder du gibst Lumi das Bild, was um diese Zeit passiert.', fresh: true },
-  words2:          { emoji: '🔤', title: 'Silben-Spaß', text: 'Sag das Wort und klatsch dazu: Jedes Klatschen legt ein Seerosenblatt ins Wasser, dann hüpft der Frosch hinüber. Manchmal legst du die Silben-Blätter der Reihe nach.', fresh: true },
-  weight:          { emoji: '⚖️', title: 'Waage-Welt', text: 'Zwei Dinge wollen wippen. Tipp an, wer nach unten geht, und schau, ob die Wippe es auch so macht.', fresh: true },
-  'rocket-math':   { emoji: '🚀', title: 'Rechen-Rakete', text: 'Ein Alien wartet und zeigt dir eine Rechnung. Tippe auf den Planeten, wo die Rakete landet, dann hüpft sie hin und holt es ab.', fresh: true },
-  'shapes-land':   { emoji: '🔷', title: 'Formen-Land', text: 'Die Eule zeigt dir eine Form: Tippe im Bild alle an, die so aussehen. Manchmal stellst du Formen der Größe nach zum Foto auf, setzt eine Parade fort oder legst die passende Form auf ein Ding.', fresh: true },
-  'shape-build':   { emoji: '🧩', title: 'Formen-Werkstatt', text: 'Ein Tier wünscht sich etwas: Zieh die Formen in das Bild, bis es fertig ist, dann wird es lebendig. Mit dem Pfeil drehst du eine Form, und manchmal ist ein Teil zu viel.', fresh: true },
-  trace:           { emoji: '📝', title: 'Buchstaben-Spuren', text: 'Fahre den Buchstaben mit dem Finger nach, vom grünen Punkt in Pfeilrichtung. Dann wird er lebendig.', fresh: true },
-  coloring:        { emoji: '🖍️', title: 'Mal-Atelier', text: 'Hier darfst du frei malen. Wähle eine Farbe und male mit dem Pinsel, oder fülle eine ganze Fläche mit dem Farbeimer. Mit dem Pfeil machst du den letzten Schritt rückgängig.' },
+  'number-intro':  { emoji: '🔢', title: 'Zahlen entdecken', text: 'Zieh das Tier mit dem Finger unter das Obst und fang genau so viele, wie auf dem Schild stehen. Hast du genug, drück auf den gelben Mund. Dann wird gegessen.' },
+  'letter-intro':  { emoji: '🔡', title: 'ABC-Abenteuer', text: 'Das Monster frisst nur Sachen, die mit seinem Buchstaben anfangen. Tippe sie an, wenn sie vorbeifliegen. Sind zwei Monster da, zieh jede Sache zu ihrem Monster.' },
+  'initial-sound': { emoji: '🎣', title: 'Anlaut-Angeln', text: 'Lumi angelt lustige Sachen aus dem Teich. Womit fängt das Wort an? Bring den Fang in den Eimer mit dem richtigen Buchstaben. Tippst du einen Frosch an, quakt er seinen Buchstaben.' },
+  rhyme:           { emoji: '🎭', title: 'Reim-Theater', text: 'Tippe auf den Ballon, der sich reimt, dann spielen die zwei eine lustige Szene. Auf dem Trapez drückst du Grün, wenn es sich reimt, und Rot, wenn nicht. Später tippst du den an, der sich nicht reimt: Den holt der Haken von der Bühne. Zum Schluss fängt Lumi einen Vers an, und du tippst das Reimwort dazu.' },
+  numbers:         { emoji: '🌟', title: 'Zahlenland', text: 'Am Himmel verstecken sich Bilder. Tippe die Sterne der Reihe nach an oder fahre mit dem Finger von Stern zu Stern. Beim letzten Stern erscheint das Bild.' },
+  letters:         { emoji: '⌨️', title: 'Buchstabenwald', text: 'Tippe die Buchstaben, die am Ast hängen, dann zaubert Lumi das Ding aus dem Kessel. Später fallen die Buchstaben von den Bäumen: Tippe sie, bevor der Igel sie holt. Am Ende hat ein Rabe das letzte Wort geklaut: Jeder Buchstabe kostet ihn eine Feder.' },
+  listen:          { emoji: '👂', title: 'Hörabenteuer', text: 'Die Dinge hüpfen in die Büsche, dann tauschen die Büsche die Plätze. Lumi ruft eins, oder sie zeigt sein Wort auf einem Schild. Tipp auf den Busch, in dem es jetzt steckt!' },
+  words:           { emoji: '🃏', title: 'Memo-Welt', text: 'Dreh immer zwei Karten um: Zwei gleiche gehören dir. Ab Level drei spielst du abwechselnd mit Lumi. Wer mehr Paare hat, gewinnt. Ab Level fünf liegt eine Zauberkarte mit Augen dabei: Wer sie umdreht, sieht kurz alle Karten.' },
+  patterns:        { emoji: '🥁', title: 'Musterpark', text: 'Die Tiere spielen der Reihe nach, ein Hocker ist leer. Hör gut zu: Wer fehlt? Setz das passende Tier auf den Hocker.' },
+  shapes:          { emoji: '🎨', title: 'Farbenreich', text: 'Das Monster zeigt in seiner Denkblase, welche Farbe es haben möchte. Tippe auf die Farbflaschen, bis der Tank diese Farbe hat, und zieh dann am Hebel. Am Rad am Tank lässt du die Farbe wieder ab.' },
+  emotions:        { emoji: '😊', title: 'Gefühlswelt', text: 'Lumi zeigt dir ein Gesicht und sagt das Gefühl. Tippe alle Tiere an, die sich genauso fühlen. Tippst du auf das Schild, sagt Lumi das Gefühl noch einmal.' },
+  empathy:         { emoji: '🕵️‍♀️', title: 'Gefühlsdetektiv', text: 'Tippe auf die Lupe und schau, was passiert. Dann tippe auf das Gesicht, das passt. Und such aus, was dem Tier jetzt gut tut. Du siehst gleich, ob es hilft.' },
+  maze:            { emoji: '🌀', title: 'Lumi-Labyrinth', text: 'Sammle alle Zaubertränke, dann geht das Tor auf. Der Drache bewacht seinen Weg: Lauf nicht in ihn hinein, sonst kostet es ein Herz. Ab Level 3 liegen drei Münzen versteckt; findest du alle, öffnet sich am Tor die Schatztruhe.' },
+  shadows:         { emoji: '🌑', title: 'Schattenrätsel', text: 'Leuchte mit der Taschenlampe ins dunkle Zimmer. Ein Schatten im Licht bleibt stehen: Zieh das passende Bild darauf oder tippe es an. Die Glühbirne macht kurz alles hell, und die Katze läuft nur weg.' },
+  bubbles:         { emoji: '🫧', title: 'Blasen-Blitz', text: 'Der Krake wünscht sich Blasen mit einer Zahl. Tippe alle Blasen an, die so viele Punkte oder diese Zahl zeigen. Kommt eine Riesenblase vorbei und passt, regnet es Sterne.' },
+  sort:            { emoji: '🧺', title: 'Sortier-Spaß', text: 'Auf dem Förderband kommen Sachen angefahren. Zieh jede Sache zu dem Korbmonster, das sie sammelt; sein Schild zeigt, was in seinen Korb gehört. Du kannst auch erst die Sache und dann das Monster antippen. Später kommt Müll in die Tonne.' },
+  clock:           { emoji: '🕐', title: 'Kuckucksuhr', text: 'Dreh die Zeiger, bis die Uhr die Zeit von der Karte zeigt. Bei zwei Zeigern drückst du danach auf den Haken. Stehen drei Zeiten zur Wahl, tippst du die an, die die Uhr zeigt.' },
+  words2:          { emoji: '🐸', title: 'Silben-Spaß', text: 'Sag das Wort und klatsch dazu: Jedes Klatschen ist ein Tipp ins Wasser, und der Frosch hüpft auf ein Seerosenblatt. Ist das Wort zu Ende, tippst du auf das Ding am Ufer, dann springt er hinüber. Manchmal legst du die Silben-Blätter der Reihe nach.' },
+  weight:          { emoji: '🐭', title: 'Waage-Welt', text: 'Wirf etwas auf die Wippe: Je schwerer es ist, desto höher fliegt das Tier. Es soll genau bis zu seinem Futter kommen. Später zählst du Pakete zusammen. Dann vergleichst du zwei Sachen auf der Wippe und ordnest sie auf der Treppe von leicht nach schwer. Zum Schluss machst du die Wippe gerade.' },
+  'rocket-math':   { emoji: '🚀', title: 'Rechen-Rakete', text: 'Jeder Druck auf die Flamme ist ein Hüpfer zum nächsten Planeten. Hüpf so oft, wie die Rechnung sagt, und lande mit dem grünen Haken. Auf dem richtigen Planeten wohnt der Außerirdische. Später tippst du gleich auf den Planeten, auf dem die Rakete landet. Zum Schluss zeigst du mit den Zahlenblasen, wie viele Hüpfer es sind.' },
+  'shapes-land':   { emoji: '🔷', title: 'Formen-Land', text: 'Die Eule zeigt dir in ihrer Lupe eine Form. Tippe im Bild alle Formen an, die so aussehen. Manchmal stellst du Formen der Größe nach auf, setzt eine Parade fort oder legst die passende Form auf ein Ding.' },
+  'shape-build':   { emoji: '🧩', title: 'Formen-Werkstatt', text: 'Ein Tier wünscht sich etwas. Zieh die Formen an ihren Platz, bis es fertig ist. Mit dem Pfeil drehst du eine Form, und manchmal ist ein Teil zu viel. Am Ende darfst du selbst bauen.' },
+  trace:           { emoji: '📝', title: 'Buchstaben-Spuren', text: 'Leg den Finger auf den grünen Punkt und fahre den Weg nach. Die Schnecke fährt mit und sammelt die Sterne. Fertige Buchstaben und Zahlen werden lebendig.' },
+  coloring:        { emoji: '🖍️', title: 'Mal-Atelier', text: 'Tippe auf eine Farbe und mal mit dem Finger, oder fülle eine Fläche mit dem Eimer. Probier den Regenbogen-Pinsel, den Glitzer und die Stempel! Mit Fertig hängt dein Bild an deiner Wand.' },
 }
 
 export default function InfoButton({ moduleId, onOpenChange }) {
@@ -57,6 +57,11 @@ export default function InfoButton({ moduleId, onOpenChange }) {
   // Escape closes the help, like a tap outside it; the focus stays inside
   // while it is open and goes back to the ? button afterwards
   const trapRef = useFocusTrap(open, { onEscape: () => setOpen(false) })
+
+  // A phone held sideways is lower than the dialog was tall (its picture
+  // was cut off at the top and the button touched the edge): there the
+  // picture stands beside the title and the dialog is wider and flatter.
+  const low = open && typeof window !== 'undefined' && window.innerHeight <= 480
 
   return (
     <>
@@ -84,7 +89,7 @@ export default function InfoButton({ moduleId, onOpenChange }) {
               position: 'fixed', inset: 0, zIndex: 900,
               background: 'rgba(42, 27, 61, 0.60)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              padding: 24,
+              padding: low ? 8 : 24,
             }}
           >
             <motion.div
@@ -99,12 +104,13 @@ export default function InfoButton({ moduleId, onOpenChange }) {
               aria-label={info.title}
               className="px-panel"
               style={{
-                padding: '36px 28px 28px',
-                maxWidth: 420, width: '100%',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18,
+                padding: low ? '14px 24px' : '36px 28px 28px',
+                maxWidth: low ? 700 : 420, width: '100%',
+                maxHeight: '100%', overflowX: 'hidden', overflowY: 'auto',
+                display: 'flex', flexDirection: low ? 'row' : 'column', flexWrap: low ? 'wrap' : 'nowrap',
+                alignItems: 'center', justifyContent: 'center', gap: low ? '8px 14px' : 18,
                 textAlign: 'center',
                 position: 'relative',
-                overflow: 'hidden',
               }}
             >
               {/* Emoji */}
@@ -113,7 +119,7 @@ export default function InfoButton({ moduleId, onOpenChange }) {
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', stiffness: 500, damping: 22, delay: 0.08 }}
                 style={{
-                  fontSize: 72, lineHeight: 1, zIndex: 1,
+                  fontSize: low ? 44 : 72, lineHeight: 1, zIndex: 1,
                   // a hard pixel shadow, like Lumi's (no soft glow)
                   filter: 'drop-shadow(0 4px 0 rgba(42,27,61,0.35))',
                 }}
@@ -136,9 +142,9 @@ export default function InfoButton({ moduleId, onOpenChange }) {
               <div style={{
                 fontFamily: 'var(--font-body, sans-serif)',
                 fontSize: 'clamp(16px,3.5vw,19px)',
-                lineHeight: 1.65,
                 color: 'var(--text-secondary)',
-                maxWidth: 340,
+                maxWidth: low ? 'none' : 340, flexBasis: low ? '100%' : 'auto',
+                lineHeight: low ? 1.45 : 1.65,
                 zIndex: 1,
               }}>
                 {info.text}
@@ -148,7 +154,7 @@ export default function InfoButton({ moduleId, onOpenChange }) {
               <button
                 className="px-btn px-btn--green px-btn--md"
                 onClick={() => setOpen(false)}
-                style={{ marginTop: 6, zIndex: 1 }}
+                style={{ marginTop: low ? 2 : 6, zIndex: 1 }}
               >
                 Alles klar! 👍
               </button>

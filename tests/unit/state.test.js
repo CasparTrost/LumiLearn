@@ -65,6 +65,17 @@ describe('finishing a game', () => {
     expect(s.profiles.p1.progress.numbers.masteredAt).toBe(mastered)
     expect(s.profiles.p1.progress.numbers.levelStars[10]).toBe(3)
   })
+  it('counts a module without levels as played, with no stars and no results screen', () => {
+    const s = finish(start(), { moduleId: 'coloring', stars: 3, score: 1, total: 1 })
+    const p = s.profiles.p1
+    expect(s.screen).toBe('home')
+    expect(p.progress.coloring.plays).toBe(1)
+    expect(p.progress.coloring.levelStars).toEqual({})
+    expect(p.progress.coloring.completed).toBe(false)
+    expect(p.dailyMission.levels).toBe(0)
+    expect(p.dailyMission.got3Stars).toBe(false)
+    expect(finish(start(), {}).screen).toBe('results')
+  })
 })
 
 describe('profiles', () => {

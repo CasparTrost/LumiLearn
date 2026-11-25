@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useRef, useState } from 'react'
-import { useApp, MAX_LEVELS } from '../AppContext.jsx'
+import { useApp, MAX_LEVELS, hasLevels } from '../AppContext.jsx'
 import { HudBar, PxIcon, PixelLumi } from '../components/PixelUI.jsx'
 import InfoButton from '../components/InfoButton.jsx'
 import ErrorBoundary from '../components/ErrorBoundary.jsx'
@@ -82,7 +82,7 @@ function GameLoadingFallback() {
 // Diese Spiele rechnen mit echten Zeigerkoordinaten oder zeichnen auf eine
 // Leinwand — ein Maßstab würde dort Treffer verschieben oder Pixel verwaschen.
 // Sie bemessen sich stattdessen selbst an ihrem Container.
-const NO_SCALE = new Set(['trace', 'bubbles', 'clock', 'coloring', 'numbers', 'shapes', 'shadows', 'maze'])
+const NO_SCALE = new Set(['trace', 'bubbles', 'clock', 'coloring', 'numbers', 'shapes', 'shadows', 'maze', 'sort', 'letter-intro', 'patterns', 'initial-sound', 'rocket-math', 'weight', 'listen'])
 
 const SAY_QUIT = line('menue/wirklich-aufhoeren')
 
@@ -164,17 +164,21 @@ export default function GameScreen() {
         </span>
         <span className="hud-only-sm" style={{ flex: 1 }} />
         <LumiBuddy size={44} />
-        <span className="px-chip" style={{ fontFamily: 'var(--font-heading)', fontSize: 17, flexShrink: 0 }}
-          aria-label={`Level ${level} von ${maxLevel}`}>
-          <span className="hud-hide-sm">Level&nbsp;</span>{level}/{maxLevel}
-        </span>
+        {hasLevels(moduleId) && (
+          <span className="px-chip" style={{ fontFamily: 'var(--font-heading)', fontSize: 17, flexShrink: 0 }}
+            aria-label={`Level ${level} von ${maxLevel}`}>
+            <span className="hud-hide-sm">Level&nbsp;</span>{level}/{maxLevel}
+          </span>
+        )}
         <MusicButton />
         <InfoButton moduleId={moduleId} onOpenChange={setHelpOpen} />
       </HudBar>
 
       {/* Game, in front of its world: a meadow, the sea, the night sky …
           that moves and cheers along (components/play/Scene.jsx) */}
-      <div style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      {/* pl-game: the backdrop's birds, butterflies and fish stay away
+          while a game is running (play.css) */}
+      <div className="pl-game" data-game={moduleId} style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       <Scene theme={mod.scene} />
       {/* positioned, above the scene: games that lay themselves out
           (NO_SCALE) were painted underneath the absolutely placed scene */}

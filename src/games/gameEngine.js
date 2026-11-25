@@ -1,4 +1,4 @@
-// gameEngine.js — question generator for ChoiceGame (Musterpark)
+// gameEngine.js — question generator for ChoiceGame (Musterpark, "Tier-Band")
 // Every call uses fresh Math.random() so each game session is unique.
 //
 // A question is { kind, prompt, tokens, gapAt, options, answer, unit, names }:
@@ -8,6 +8,8 @@
 // A 'build' question has several empty places: `fill` holds what belongs in
 // them, `options` is the tray the child lays them from, `answer` is null.
 
+import { BAND } from './tierband/band.js'
+
 export function generateQuestions(moduleId, level, count = 10) {
   if (moduleId !== 'patterns') return []
   // From level 6 some rounds are built instead of chosen. They take the place
@@ -15,7 +17,32 @@ export function generateQuestions(moduleId, level, count = 10) {
   // out, never the first: the first rounds show what the pattern is.
   const builds = BUILD_ROUNDS[level] ?? 0
   const at = new Set(Array.from({ length: builds }, (_, i) => Math.round((i + 1) * count / (builds + 1))))
-  return Array.from({ length: count }, (_, i) => (at.has(i) ? buildQ(level) : patternsQ(level)))
+  // The kinds of row come from a bag: each of the level once before one
+  // comes again, and a growing row at most once a level (drawn freely, the
+  // same "1, 2, 3, ?" came three times in one level). No row twice.
+  const nextType = typeBag(TYPES_BY_LEVEL[Math.min(level - 1, TYPES_BY_LEVEL.length - 1)])
+  const seen = new Set()
+  return Array.from({ length: count }, (_, i) => {
+    const type = at.has(i) ? null : nextType()
+    const make = type ? () => patternsQ(level, type) : () => buildQ(level)
+    let q = make()
+    for (let n = 0; n < 20 && seen.has(signature(q)); n++) q = make()
+    seen.add(signature(q))
+    return q
+  })
+}
+
+// What a child sees of a question: the row and what is asked
+const signature = q => [q.kind, ...q.tokens, q.answer ?? q.fill.join('')].join('|')
+
+function typeBag(pool) {
+  let left = [], grown = false
+  return () => {
+    if (!left.length) left = shuffle(grown ? pool.filter(t => t !== 'grow') : pool)
+    const type = left.shift()
+    if (type === 'grow') { grown = true; left = left.filter(t => t !== 'grow') }
+    return type
+  }
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -23,78 +50,11 @@ function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + m
 function shuffle(arr)    { return [...arr].sort(() => Math.random() - 0.5) }
 
 // ─── Patterns ────────────────────────────────────────────────────────────────
-// Every symbol once, each with the word a child would use for it, so the
-// feedback can say the pattern out loud. The pool used to hold duplicates
-// (🐸, 🌸, 🏆 twice: the same picture twice among the answers) and
-// look-alikes (🔷/🔹, ⭐/🌟, 🍁/🍂, 🔵/💙). Symbols that still look alike in
-// the pixel pictures share a family (`fam`); a question takes at most one
-// symbol per family.
-const PATTERN_POOL = [
-  { e: '🔴', n: 'Rot',        fam: 'red' },
-  { e: '🔵', n: 'Blau' },
-  { e: '🟡', n: 'Gelb',       fam: 'yellow' },
-  { e: '🟢', n: 'Grün' },
-  { e: '🟠', n: 'Orange',     fam: 'orange' },
-  { e: '🟣', n: 'Lila',       fam: 'purple' },
-  { e: '⭐', n: 'Stern',      fam: 'yellow' },
-  { e: '🌙', n: 'Mond',       fam: 'yellow' },
-  { e: '☀️', n: 'Sonne',      fam: 'yellow' },
-  { e: '❤️', n: 'Herz',       fam: 'red' },
-  { e: '🐸', n: 'Frosch' },
-  { e: '🐶', n: 'Hund' },
-  { e: '🐱', n: 'Katze' },
-  { e: '🐻', n: 'Bär' },
-  { e: '🐼', n: 'Panda' },
-  { e: '🐰', n: 'Hase' },
-  { e: '🐯', n: 'Tiger' },
-  { e: '🦁', n: 'Löwe' },
-  { e: '🐮', n: 'Kuh' },
-  { e: '🐷', n: 'Schwein' },
-  { e: '🐔', n: 'Huhn' },
-  { e: '🦄', n: 'Einhorn' },
-  { e: '🐙', n: 'Krake' },
-  { e: '🦋', n: 'Schmetterling' },
-  { e: '🐝', n: 'Biene' },
-  { e: '🐢', n: 'Schildkröte' },
-  { e: '🦀', n: 'Krebs',      fam: 'red' },
-  { e: '🐟', n: 'Fisch',      fam: 'sea' },
-  { e: '🐳', n: 'Wal',        fam: 'sea' },
-  { e: '🦆', n: 'Ente' },
-  { e: '🐘', n: 'Elefant' },
-  { e: '🐞', n: 'Marienkäfer', fam: 'red' },
-  { e: '🌸', n: 'Blüte' },
-  { e: '🌻', n: 'Sonnenblume' },
-  { e: '🍀', n: 'Kleeblatt' },
-  { e: '🍁', n: 'Blatt' },
-  { e: '🌵', n: 'Kaktus' },
-  { e: '🍄', n: 'Pilz' },
-  { e: '🌈', n: 'Regenbogen' },
-  { e: '⛄', n: 'Schneemann' },
-  { e: '🍎', n: 'Apfel',      fam: 'red' },
-  { e: '🍊', n: 'Orange',     fam: 'orange' },
-  { e: '🍋', n: 'Zitrone',    fam: 'yellow' },
-  { e: '🍇', n: 'Trauben',    fam: 'purple' },
-  { e: '🍓', n: 'Erdbeere',   fam: 'red' },
-  { e: '🍒', n: 'Kirschen',   fam: 'red' },
-  { e: '🍌', n: 'Banane' },
-  { e: '🥕', n: 'Möhre' },
-  { e: '🌽', n: 'Mais' },
-  { e: '🍕', n: 'Pizza' },
-  { e: '🎂', n: 'Torte' },
-  { e: '🍦', n: 'Eis' },
-  { e: '🍪', n: 'Keks' },
-  { e: '🥨', n: 'Brezel' },
-  { e: '🎈', n: 'Luftballon', fam: 'red' },
-  { e: '🎁', n: 'Geschenk' },
-  { e: '🔑', n: 'Schlüssel' },
-  { e: '🎵', n: 'Note' },
-  { e: '🚀', n: 'Rakete' },
-  { e: '🏠', n: 'Haus' },
-  { e: '⚽', n: 'Ball' },
-  { e: '🎲', n: 'Würfel' },
-  { e: '🧩', n: 'Puzzle' },
-  { e: '🚗', n: 'Auto',       fam: 'red' },
-]
+// The rows are made of the animals of the band (tierband/band.js): each has
+// a name and an instrument. Animals whose instruments sound alike share a
+// family (`fam`); a question takes at most one animal per family, so two
+// places that look different never sound the same.
+const PATTERN_POOL = BAND
 
 // Symbols for one question: all different, never two of one family.
 function pickSymbols(count) {
@@ -132,10 +92,15 @@ const LETTER = { A: 0, B: 1, C: 2, D: 3 }
 
 // The unit, started at a random place of the cycle: otherwise a row of two
 // full rounds always asks for the unit's first symbol, and "tap the first
-// picture of the row" wins every time.
+// picture of the row" wins every time. It only starts where a run of the
+// same animal starts: started inside the run, AABC became "A B C A A B C A"
+// and AABB "A B B A A B B A", rows that read like a broken pattern. ABCA is
+// that very row and comes as it is, at the very end.
 function unitOf(type, syms) {
   const unit = [...type].map(ch => syms[LETTER[ch]].e)
-  const o = rand(0, unit.length - 1)
+  if (type === 'ABCA') return unit
+  const starts = unit.flatMap((e, i) => (e !== unit.at(i - 1) ? [i] : []))
+  const o = starts.length ? starts[rand(0, starts.length - 1)] : 0
   return [...unit.slice(o), ...unit.slice(0, o)]
 }
 
@@ -158,10 +123,7 @@ function wrongOptions(answer, rowSyms) {
   return [...others, ...strangers(rowSyms, Math.max(0, 3 - others.length))].slice(0, 3)
 }
 
-function patternsQ(level) {
-  const pool = TYPES_BY_LEVEL[Math.min(level - 1, TYPES_BY_LEVEL.length - 1)]
-  const type = pool[rand(0, pool.length - 1)]
-
+function patternsQ(level, type) {
   if (type === 'grow') return growQ(level)
 
   if (type === 'gap') {
@@ -214,7 +176,8 @@ function patternsQ(level) {
 // patterns. The answer is the next amount.
 function growQ(level) {
   const [sym] = pickSymbols(1)
-  const start = level <= 7 ? 1 : rand(1, 2)
+  // the top levels start the row at two more often
+  const start = level <= 7 ? 1 : level === 8 ? rand(1, 2) : rand(0, 2) ? 2 : 1
   const steps = [start, start + 1, start + 2]
   const next  = start + 3
   const group = n => sym.e.repeat(n)
@@ -256,7 +219,6 @@ function buildQ(level) {
   return {
     kind:    'build',
     prompt:  'Leg die Reihe weiter!',
-    say:     'Leg die Reihe weiter! Zieh die Bilder der Reihe nach in die Parade.',
     tokens:  [...row.slice(0, shown), ...Array(slots).fill('❓')],
     gapAt:   shown,
     fill:    row.slice(shown),

@@ -1,0 +1,58 @@
+/* Gefühle-Haus: what moves by itself. A feeling is also in how a head
+   moves (an angry one shakes, a tired one nods off), and the small things
+   around a face live a little. All CSS, so nine windows stay smooth; all of
+   it holds still for prefers-reduced-motion. */
+
+@keyframes gf-bob     { 0%,100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+@keyframes gf-droop   { 0%,100% { transform: translateY(3%) rotate(-3deg); } 50% { transform: translateY(4%) rotate(3deg); } }
+@keyframes gf-shake   { 0%,100% { transform: translateX(-2.5%); } 50% { transform: translateX(2.5%); } }
+@keyframes gf-tremble { 0%,100% { transform: translateX(-1.6%) scale(.97); } 50% { transform: translateX(1.6%) scale(.97); } }
+@keyframes gf-start   { 0% { transform: translateY(0) scaleY(1); } 12% { transform: translateY(-9%) scaleY(1.08); } 30%,100% { transform: translateY(0) scaleY(1); } }
+@keyframes gf-nod     { 0%,100% { transform: rotate(0); } 45% { transform: rotate(9deg) translateY(3%); } 60% { transform: rotate(9deg) translateY(3%); } 70% { transform: rotate(-2deg); } }
+@keyframes gf-chin    { 0%,100% { transform: rotate(-6deg) translateY(-2%); } 50% { transform: rotate(-4deg) translateY(-4%); } }
+@keyframes gf-squirm  { 0%,100% { transform: rotate(-5deg) scale(.96); } 50% { transform: rotate(5deg) scale(.96); } }
+@keyframes gf-sigh    { 0%,100% { transform: rotate(7deg) scaleY(1); } 50% { transform: rotate(7deg) scaleY(.95); } }
+@keyframes gf-hop     { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-7%); } }
+
+.gf-feel-gluecklich  { animation: gf-bob 1.5s ease-in-out infinite; }
+.gf-feel-traurig     { animation: gf-droop 3.2s ease-in-out infinite; }
+.gf-feel-wuetend     { animation: gf-shake .13s linear infinite; }
+.gf-feel-aengstlich  { animation: gf-tremble .09s linear infinite; }
+.gf-feel-ueberrascht { animation: gf-start 2.2s ease-out infinite; }
+.gf-feel-muede       { animation: gf-nod 3.4s ease-in-out infinite; }
+.gf-feel-stolz       { animation: gf-chin 2.4s ease-in-out infinite; }
+.gf-feel-verlegen    { animation: gf-squirm 1.9s ease-in-out infinite; }
+.gf-feel-gelangweilt { animation: gf-sigh 3.6s ease-in-out infinite; }
+.gf-feel-aufgeregt   { animation: gf-hop .42s ease-in-out infinite; }
+
+@keyframes gf-tear    { 0% { transform: translateY(0); opacity: 1; } 70% { opacity: 1; } 100% { transform: translateY(20px); opacity: 0; } }
+@keyframes gf-stream  { 0%,100% { transform: scaleY(1); } 50% { transform: scaleY(.84); } }
+@keyframes gf-steam   { 0% { transform: translateY(4px) scale(.7); opacity: .3; } 50% { opacity: 1; } 100% { transform: translateY(-9px) scale(1.05); opacity: .2; } }
+@keyframes gf-twinkle { 0%,100% { transform: scale(.7); opacity: .6; } 50% { transform: scale(1.15); opacity: 1; } }
+@keyframes gf-zzz     { 0%,100% { transform: translateY(0); opacity: .45; } 50% { transform: translateY(-5px); opacity: 1; } }
+@keyframes gf-wave    { 0%,100% { transform: rotate(-16deg); } 50% { transform: rotate(22deg); } }
+
+.gf-tear    { animation: gf-tear 1.5s ease-in infinite; }
+.gf-stream  { animation: gf-stream .8s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 0; }
+.gf-steam   { animation: gf-steam .9s ease-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
+.gf-twinkle { animation: gf-twinkle 1.1s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+.gf-zzz     { animation: gf-zzz 2.2s ease-in-out infinite; }
+.gf-wave    { animation: gf-wave .5s ease-in-out infinite; transform-box: fill-box; transform-origin: 20% 100%; }
+
+/* The house */
+@keyframes gf-smoke   { 0% { transform: translate(0, 0) scale(.5); opacity: 0; } 20% { opacity: .85; } 100% { transform: translate(14px, -46px) scale(1.5); opacity: 0; } }
+@keyframes gf-lamp    { 0%,100% { opacity: 1; filter: brightness(1.25); } 50% { opacity: .55; filter: brightness(.9); } }
+@keyframes gf-bounce  { 0%,100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-9%) scale(1.05); } }
+@keyframes gf-sound   { 0%,100% { opacity: .25; } 50% { opacity: 1; } }
+
+.gf-smoke  { animation: gf-smoke 3.2s ease-out infinite; }
+.gf-lit .gf-lamp { animation: gf-lamp .5s ease-in-out infinite; }
+.gf-bounce { animation: gf-bounce .7s ease-in-out infinite; }
+.gf-sound  { animation: gf-sound 1.1s ease-in-out infinite; }
+
+.gf-root button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.gf-root button:focus-visible { outline: 4px solid #4aa3ff; outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .gf-root *, .gf-feel, .gf-feel * { animation: none !important; }
+}

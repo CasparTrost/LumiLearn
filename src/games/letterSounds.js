@@ -18,7 +18,7 @@
  * eigenen Laut; sie stehen mit dem Laut da, mit dem sie ein Wort am häufigsten
  * beginnen (C wie Clown, V wie Vogel, Y wie Yoga).
  *
- * Gebraucht von ABC-Abenteuer, Anlaut-Detektiv und der Anlauttabelle im
+ * Gebraucht von ABC-Abenteuer, Anlaut-Angeln und der Anlauttabelle im
  * Buchstabenwald.
  */
 export const LETTER_SOUND = {

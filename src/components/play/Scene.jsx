@@ -18,8 +18,24 @@ import './play.css'
  *   </div>
  *
  * Themes: meadow · sea · night · space · room · forest · market · pond
+ *
+ * While a game is running (the scene sits inside `.pl-game`, see
+ * GameScreen and play.css) nothing travels through the backdrop: birds,
+ * butterflies, fish, rising air bubbles and the comet are marked
+ * `pl-ambient` and left out. A game puts its task anywhere on the screen,
+ * at three screen shapes, so no band of the picture is safely beside it:
+ * a fish swam through the bubbles a child was counting, a butterfly
+ * landed on an answer. What stays in its place stays alive (plants sway,
+ * stars twinkle, clouds drift in the sky, the sun cheers); the home and
+ * results screens keep the creatures.
+ *
+ * Two quiet themes for games whose own picture must not be mixed up
+ * with the backdrop: 'meadow-calm' (the sun has no face: for a game about
+ * reading faces) and 'night-sky' (no moon: for a game whose numbered stars
+ * fill the whole sky); 'forest-calm' (no mushrooms, the trees pale and
+ * far away: for a game whose bushes stand in that row and are tapped).
  */
-export const SCENE_THEMES = ['meadow', 'sea', 'night', 'space', 'room', 'forest', 'market', 'pond']
+export const SCENE_THEMES = ['meadow', 'sea', 'night', 'space', 'room', 'forest', 'market', 'pond', 'meadow-calm', 'night-sky', 'forest-calm']
 
 export default function Scene({ theme = 'meadow', interactive = false, style }) {
   const [cheer, setCheer] = useState(0)
@@ -87,7 +103,7 @@ function Face({ cx, cy, r, ink = '#2a1b3d' }) {
   )
 }
 
-function Sun({ x = 860, y = 110, r = 58, tap }) {
+function Sun({ x = 860, y = 110, r = 58, tap, face = true }) {
   return (
     <g transform={`translate(${x} ${y})`}>
       <g className="pl-spin">
@@ -97,7 +113,7 @@ function Sun({ x = 860, y = 110, r = 58, tap }) {
       </g>
       <g className="pl-cheerable" {...tapProps(tap, 'giggle')}>
         <circle r={r} fill="#ffd84a" stroke="#f2b632" strokeWidth="6" />
-        <Face cx={0} cy={0} r={r} />
+        {face && <Face cx={0} cy={0} r={r} />}
       </g>
     </g>
   )
@@ -152,7 +168,7 @@ function Tuft({ x, y, color = '#5fae3f' }) {
 
 function Butterfly({ y = 260, dur = 18, delay = 0, color = '#ff8fb8' }) {
   return (
-    <g className="pl-fly" style={{ animationDuration: `${dur}s`, animationDelay: `-${delay}s` }}>
+    <g className="pl-fly pl-ambient" style={{ animationDuration: `${dur}s`, animationDelay: `-${delay}s` }}>
       <g transform={`translate(0 ${y})`}>
         <g className="pl-bob">
           <g className="pl-flap">
@@ -168,7 +184,7 @@ function Butterfly({ y = 260, dur = 18, delay = 0, color = '#ff8fb8' }) {
 
 function Bird({ y = 140, dur = 22, delay = 0 }) {
   return (
-    <g className="pl-fly" style={{ animationDuration: `${dur}s`, animationDelay: `-${delay}s` }}>
+    <g className="pl-fly pl-ambient" style={{ animationDuration: `${dur}s`, animationDelay: `-${delay}s` }}>
       <g transform={`translate(0 ${y})`}>
         <g className="pl-flap">
           <path d="M-18 0 Q-9 -12 0 0 Q9 -12 18 0" stroke="#2a1b3d" strokeWidth="4" fill="none" strokeLinecap="round" />
@@ -190,7 +206,8 @@ function Hills({ back = '#a8e07a', front = '#7cc95a', ground = '#6dbb4c' }) {
 
 // ── Themes ────────────────────────────────────────────────────────────────
 
-function Meadow({ tap }) {
+// `calm`: a sun without a face and no bird or butterflies crossing
+function Meadow({ tap, calm = false }) {
   return (
     <g>
       <defs>
@@ -199,14 +216,15 @@ function Meadow({ tap }) {
         </linearGradient>
       </defs>
       <rect width="1000" height="600" fill="url(#pl-sky)" />
-      <Sun tap={tap} />
+      <Sun tap={tap} face={!calm} />
       <Cloud y={60}  dur={70} delay={10} tap={tap} />
       <Cloud y={150} dur={95} delay={60} scale={0.7} tap={tap} />
       <Cloud y={30}  dur={120} delay={95} scale={0.55} tap={tap} />
-      <Bird y={170} dur={26} delay={8} />
+      {/* below the sun: at y 170 its path led across the sun's mouth */}
+      {!calm && <Bird y={270} dur={26} delay={8} />}
       <Hills />
-      <Butterfly y={380} dur={20} delay={4} />
-      <Butterfly y={330} dur={27} delay={16} color="#ffd34d" />
+      {!calm && <Butterfly y={380} dur={20} delay={4} />}
+      {!calm && <Butterfly y={330} dur={27} delay={16} color="#ffd34d" />}
       {[60, 180, 330, 470, 610, 760, 900].map((x, i) => <Tuft key={x} x={x} y={560 + (i % 2) * 18} />)}
       <Flower x={110} y={590} color="#ff6b5b" />
       <Flower x={260} y={575} color="#ffffff" s={0.8} />
@@ -231,7 +249,7 @@ function Pond({ tap }) {
   )
 }
 
-function Sea({ tap }) {
+function Sea() {
   return (
     <g>
       <defs>
@@ -244,7 +262,7 @@ function Sea({ tap }) {
         <polygon key={x} points={`${x},0 ${x + 60},0 ${x + 160},600 ${x + 40},600`} fill="#fff" opacity="0.07" className="pl-glow" style={{ animationDelay: `-${i * 0.7}s` }} />
       ))}
       {[[-1, 210, 28, '#ffb648'], [-1, 330, 36, '#ff8fb8'], [-1, 140, 44, '#9be15d']].map(([, y, dur, c], i) => (
-        <g key={i} className="pl-swim" style={{ animationDuration: `${dur}s`, animationDelay: `-${i * 9}s` }}>
+        <g key={i} className="pl-swim pl-ambient" style={{ animationDuration: `${dur}s`, animationDelay: `-${i * 9}s` }}>
           <g transform={`translate(0 ${y})`}>
             <g className="pl-bob">
               <ellipse cx="0" cy="0" rx="26" ry="15" fill={c} />
@@ -256,7 +274,7 @@ function Sea({ tap }) {
       ))}
       {Array.from({ length: 14 }, (_, i) => (
         <circle key={i} cx={40 + i * 70} cy={620} r={4 + (i % 4) * 3} fill="none" stroke="#fff" strokeWidth="2" opacity="0.7"
-          className="pl-rise" style={{ animationDuration: `${7 + (i % 5) * 2}s`, animationDelay: `-${i * 1.3}s` }} />
+          className="pl-rise pl-ambient" style={{ animationDuration: `${7 + (i % 5) * 2}s`, animationDelay: `-${i * 1.3}s` }} />
       ))}
       <path d="M0 540 Q250 510 500 535 T1000 530 V600 H0 Z" fill="#f4d58d" />
       {[90, 240, 760, 920].map((x, i) => (
@@ -264,15 +282,18 @@ function Sea({ tap }) {
           <path className="pl-sway" style={{ animationDelay: `-${i}s` }} d="M0 0 Q-16 -40 0 -80 Q16 -120 0 -160" stroke="#3fae6a" strokeWidth="12" fill="none" strokeLinecap="round" />
         </g>
       ))}
-      <g transform="translate(600 556)" {...tapProps(tap, 'boing')}>
-        <path d="M-26 0 L0 -30 L26 0 Z" fill="#ff8a5b" />
-        <circle cx="0" cy="-12" r="5" fill="#fff" />
+      {/* stones on the sand, nothing to count or tap: an orange triangle
+          with a white dot stood here, in a game about counting dots */}
+      <g transform="translate(600 562)">
+        <ellipse cx="-20" cy="0" rx="26" ry="13" fill="#d9b877" />
+        <ellipse cx="16" cy="3" rx="18" ry="9" fill="#cfae6c" />
+        <ellipse cx="-4" cy="-10" rx="13" ry="7" fill="#e3c88f" />
       </g>
     </g>
   )
 }
 
-function Night({ tap }) {
+function Night({ tap, moon = true }) {
   return (
     <g>
       <defs>
@@ -282,7 +303,7 @@ function Night({ tap }) {
       </defs>
       <rect width="1000" height="600" fill="url(#pl-night)" />
       <Stars n={50} />
-      <Moon tap={tap} />
+      {moon && <Moon tap={tap} />}
       <Hills back="#2e2a63" front="#25224f" ground="#1f1c45" />
       {Array.from({ length: 8 }, (_, i) => (
         <circle key={i} cx={80 + i * 120} cy={470 + (i % 3) * 25} r="4" fill="#fff59a" className="pl-twinkle" style={{ animationDelay: `-${i * 0.6}s` }} />
@@ -301,7 +322,7 @@ function Space({ tap }) {
       </defs>
       <rect width="1000" height="600" fill="url(#pl-space)" />
       <Stars n={70} h={600} seed={9} />
-      <g className="pl-comet"><g><circle r="6" fill="#fff" /><path d="M0 0 L80 -45" stroke="#fff" strokeWidth="4" opacity="0.6" strokeLinecap="round" /></g></g>
+      <g className="pl-comet pl-ambient"><g><circle r="6" fill="#fff" /><path d="M0 0 L80 -45" stroke="#fff" strokeWidth="4" opacity="0.6" strokeLinecap="round" /></g></g>
       <g transform="translate(830 130)" className="pl-bob">
         <g className="pl-cheerable" {...tapProps(tap, 'boing')}>
           <circle r="62" fill="#ff8fb8" />
@@ -310,7 +331,9 @@ function Space({ tap }) {
           <Face cx={6} cy={10} r={40} />
         </g>
       </g>
-      <g transform="translate(140 470)">
+      {/* low in the corner and faint: in the Rechen-Rakete (the only game in
+          space) it stood behind planets 0–2 and looked like part of the line */}
+      <g transform="translate(110 650)" opacity="0.4">
         <circle r="120" fill="#5b4bb0" />
         <circle cx="-40" cy="-50" r="18" fill="#4a3c98" />
         <circle cx="40" cy="-10" r="12" fill="#4a3c98" />
@@ -324,19 +347,33 @@ function Room({ tap }) {
     <g>
       <rect width="1000" height="600" fill="#ffe8c4" />
       {Array.from({ length: 21 }, (_, i) => <rect key={i} x={i * 50} y="0" width="22" height="470" fill="#ffdcae" />)}
-      <g transform="translate(720 70)">
+      {/* hidden on a screen held sideways, where only its lower edge showed (play.css) */}
+      <g className="pl-room-window" transform="translate(720 70)">
+        <clipPath id="pl-room-window"><rect width="220" height="170" rx="10" /></clipPath>
         <rect width="220" height="170" rx="10" fill="#9fdcff" stroke="#8a4f22" strokeWidth="12" />
         <g {...tapProps(tap, 'giggle')}><circle cx="160" cy="55" r="28" fill="#ffd84a" className="pl-cheerable" /></g>
-        <Cloud y={70} dur={60} delay={30} scale={0.4} />
+        {/* the sky is outside: the cloud drifted on across the wallpaper */}
+        <g clipPath="url(#pl-room-window)"><Cloud y={70} dur={60} delay={30} scale={0.4} /></g>
         <rect x="104" y="0" width="12" height="170" fill="#8a4f22" />
         <rect x="0" y="80" width="220" height="12" fill="#8a4f22" />
       </g>
       <g transform="translate(80 150)">
         <rect width="240" height="16" rx="4" fill="#a8693a" />
-        <g className="pl-cheerable" {...tapProps(tap, 'boing')}>
-          <circle cx="40" cy="-22" r="22" fill="#ff6b5b" />
-          <rect x="90" y="-50" width="40" height="50" rx="6" fill="#4aa3ff" />
-          <path d="M170 0 L190 -48 L210 0 Z" fill="#5cc45a" />
+        {/* Books and a plant in the colours of the wall. A red circle, a
+            blue square and a green triangle stood here: in the shape games
+            they looked like pieces to pick up. Nothing a game asks for is
+            a row of books, and nothing here has a task's bright colours. */}
+        <g>
+          {[[22, 46, '#d8a98a'], [42, 56, '#c9b48c'], [60, 40, '#b9c2a3'], [78, 50, '#d3a3a0'], [98, 44, '#c2b3c9']].map(([x, h, c]) => (
+            <g key={x}>
+              <rect x={x} y={-h} width="17" height={h} rx="2" fill={c} />
+              <rect x={x + 3} y={-h + 8} width="11" height="4" rx="2" fill="#fff4e0" opacity="0.7" />
+            </g>
+          ))}
+          <path d="M168 0 L172 -30 H206 L210 0 Z" fill="#c98a52" />
+          <g className="pl-sway" style={{ animationDuration: '6s' }}>
+            <path d="M189 -30 Q174 -46 164 -64 Q184 -56 189 -30 Q188 -56 195 -76 Q202 -54 189 -30 Q198 -50 218 -60 Q208 -42 189 -30 Z" fill="#8fbf86" />
+          </g>
         </g>
       </g>
       <rect x="0" y="470" width="1000" height="130" fill="#c98a52" />
@@ -346,7 +383,7 @@ function Room({ tap }) {
   )
 }
 
-function Forest({ tap }) {
+function Forest({ tap, calm = false }) {
   return (
     <g>
       <defs>
@@ -355,10 +392,13 @@ function Forest({ tap }) {
         </linearGradient>
       </defs>
       <rect width="1000" height="600" fill="url(#pl-forest)" />
-      <Sun x={500} y={90} r={44} tap={tap} />
-      {[[-20, '#6fbf73'], [160, '#5aa85f'], [380, '#6fbf73'], [600, '#5aa85f'], [800, '#6fbf73'], [960, '#5aa85f']].map(([x, c], i) => (
+      {/* at the side like every other sun: in the middle it stood behind
+          the game's progress trail and behind Lumi on the results screen */}
+      <Sun x={860} y={90} r={44} tap={tap} />
+      {(calm ? [[-20, '#a9dcae'], [160, '#9ed3a3'], [380, '#a9dcae'], [600, '#9ed3a3'], [800, '#a9dcae'], [960, '#9ed3a3']]
+        : [[-20, '#6fbf73'], [160, '#5aa85f'], [380, '#6fbf73'], [600, '#5aa85f'], [800, '#6fbf73'], [960, '#5aa85f']]).map(([x, c], i) => (
         <g key={i} transform={`translate(${x} ${330 + (i % 2) * 30})`}>
-          <rect x="-12" y="40" width="24" height="200" fill="#8a5a33" />
+          <rect x="-12" y="40" width="24" height="200" fill={calm ? '#b89a7e' : '#8a5a33'} />
           <g className="pl-sway" style={{ animationDuration: '5s', animationDelay: `-${i}s` }}>
             <circle cx="0" cy="0" r="80" fill={c} />
             <circle cx="-50" cy="40" r="56" fill={c} />
@@ -367,7 +407,7 @@ function Forest({ tap }) {
         </g>
       ))}
       <rect x="0" y="520" width="1000" height="80" fill="#5c9e45" />
-      {[140, 520, 870].map((x, i) => (
+      {!calm && [140, 520, 870].map((x, i) => (
         <g key={x} transform={`translate(${x} 540)`} className="pl-hopper" {...tapProps(tap, 'boing')}>
           <rect x="-7" y="-22" width="14" height="24" rx="4" fill="#fff4e0" />
           <path d="M-26 -18 Q0 -54 26 -18 Z" fill={i % 2 ? '#ff6b5b' : '#ff9f43'} />
@@ -396,4 +436,11 @@ function Market({ tap }) {
   )
 }
 
-const THEMES = { meadow: Meadow, sea: Sea, night: Night, space: Space, room: Room, forest: Forest, market: Market, pond: Pond }
+const MeadowCalm = props => <Meadow {...props} calm />
+const NightSky = props => <Night {...props} moon={false} />
+const ForestCalm = props => <Forest {...props} calm />
+
+const THEMES = {
+  meadow: Meadow, sea: Sea, night: Night, space: Space, room: Room, forest: Forest, market: Market, pond: Pond,
+  'meadow-calm': MeadowCalm, 'night-sky': NightSky, 'forest-calm': ForestCalm,
+}

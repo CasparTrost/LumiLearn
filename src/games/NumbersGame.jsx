@@ -1,539 +1,667 @@
-import { useState, useMemo, useEffect, useRef } from 'react'
-import { motion, AnimatePresence, useReducedMotion, useAnimationControls } from 'framer-motion'
-import { lockPreviews, leaveGame, narrate } from '../narrator.js'
-import { numberWord } from '../lib/words.js'
-import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
-import { result } from '../lib/score.js'
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
 import { sfx } from '../sfx.js'
-import { Critter, Art, useMood, DragArea, Draggable, DropZone, RoundTrail, useBursts, HintHand } from '../components/play/index.js'
-import { Stage, useLater, DoneButton, usePops, Finale } from './zahlen/stage.jsx'
+import { lockPreviews, leaveGame, narrate, preloadVoice } from '../narrator.js'
+import { LINES, line } from '../lib/lumiLines.js'
+import { numberWord } from '../lib/words.js'
+import { sayRight, announce } from '../lib/feedback.js'
+import { result } from '../lib/score.js'
+import { usePaused } from '../lib/pause.js'
+import { Art, useBursts, HintHand } from '../components/play/index.js'
+import { playAnimal } from '../lib/animalSounds.js'
+import { useLater } from './sternbilder/useLater.js'
+import { roundsFor, pickOutlines, fitOutline, minGap, skyInset, pictureWord } from './sternbilder/outlines.js'
 
 /**
- * Zahlenland — "Lumis Obststand"
+ * Zahlenland — "Sternbilder": connect the dots in the night sky
  *
- * Animal customers queue at the market stand. Each one shows what it wants
- * in its bubble, as a number and a picture; the child puts the fruit from
- * the crates into the customer's basket and taps the tick. Right: the
- * customer pays, the coins go into Lumi's money jar, and it walks off
- * happily with its basket. Wrong: it looks into the basket, the counts
- * show up, the rows that are off wiggle — and the child fixes them (takes
- * one out, puts more in); nothing that was right is taken away.
+ * Numbered stars hide a picture. Lumi sits beside the first one; the child
+ * taps the stars in order, or draws a finger through them, and a glowing
+ * line follows from star to star. Every star says its number when it is
+ * reached (once: Lumi does not call out the first number beforehand) and
+ * rings one note higher, so a clean run is a little melody. With the last star the line
+ * closes, the constellation lights up, the real picture fades in on exactly
+ * that line, hops, and flies into the album at the top. Then the next one.
  *
- * Hold a crate and the fruit pours in one by one; a basket filled far past
- * the order tips over (a miss, like any wrong basket). Once per level a
- * king comes shopping and pays with one giant coin, and on a streak of
- * three the customer walks off wearing the basket as a hat.
+ * What is learned is the order of the numbers: counting on (1–5 … 1–20),
+ * counting back (the rocket countdown of level 8: 10, 9, … 1, lift-off),
+ * and counting in steps of two and five (levels 9 and 10).
  *
- * Rest orders (levels 9–10): what the customer has at home is already in
- * the basket, marked with a little house, and the bubble shows how many it
- * wants in all — the child counts on from there.
+ * A wrong star wobbles with a dull sound and the line stays where it was;
+ * after two misses the right star pulses. A picture counts as solved on the
+ * first try when no wrong star was touched. In the first five levels the
+ * picture shows through as a ghost, fainter from level to level, so the
+ * goal is plain to see.
+ *
+ * At the end of a countdown the rocket launches; the other pictures of the
+ * countdown come alive in their own way (DRIFT): the duck flies off, the
+ * balloon floats up, the star twinkles away.
+ *
+ * The outlines, the levels and the fitting into the sky: sternbilder/outlines.js
  */
 
-function rnd(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min }
-function shuffle(arr)  { return [...arr].sort(() => Math.random() - 0.5) }
+const INK = '#2a1b3d'
+const GOLD = '#ffd34d'
 
-const SHOP_ITEMS = [
-  { emoji: '🍎', name: 'Apfel' },
-  { emoji: '🍊', name: 'Orange' },
-  { emoji: '🍋', name: 'Zitrone' },
-  { emoji: '🍇', name: 'Weintraube' },
-  { emoji: '🍓', name: 'Erdbeere' },
-  { emoji: '🍩', name: 'Donut' },
-  { emoji: '🧁', name: 'Muffin' },
-  { emoji: '🥕', name: 'Karotte' },
-  { emoji: '🌽', name: 'Maiskolben' },
-  { emoji: '🍕', name: 'Pizzastück' },
-  { emoji: '🐟', name: 'Fisch' },
-  { emoji: '🌸', name: 'Blume' },
-  { emoji: '🍌', name: 'Banane' },
-  { emoji: '🎈', name: 'Ballon' },
-  { emoji: '🍦', name: 'Eistüte' },
-]
+// Lumi's one sentence when a new way of counting begins; silent until recorded
+const KIND_LINE = {
+  up: 'sternbilder/der-reihe-nach', back: 'sternbilder/rueckwaerts',
+  twos: 'sternbilder/zweier', fives: 'sternbilder/fuenfer',
+}
+const optional = key => (LINES[key] ? line(key) : null)
 
-const CUSTOMERS = [
-  ['🐻', 'Bär'], ['🐰', 'Hase'], ['🐷', 'Schwein'], ['🐮', 'Kuh'], ['🐧', 'Pinguin'], ['🦛', 'Nilpferd'],
-  ['🐘', 'Elefant'], ['🐒', 'Affe'], ['🦆', 'Ente'], ['🐔', 'Huhn'], ['🐑', 'Schaf'], ['🦙', 'Lama'],
-  ['🐼', 'Panda'], ['🦔', 'Igel'], ['🐱', 'Katze'], ['🐶', 'Hund'],
-]
-
-// How much a kind's row group may hold before the basket tips over: the
-// order plus a few, rounded up to whole rows of five.
-const capOf = (p, home = 0) => Math.ceil((p.n + home + 3) / 5) * 5
-
-function buildQuestions(level, count = level <= 4 ? 8 : level <= 7 ? 10 : 12) {
-  // L1-2: 1 item | L3-6: 2 items | L7-10: 3 items
-  const numParts = level <= 2 ? 1 : level <= 6 ? 2 : 3
-  // max quantity per item scales with level
-  const maxN = [0, 4, 6, 5, 7, 8, 10, 7, 9, 10, 12][level] ?? 10
-  const custs = shuffle(CUSTOMERS)
-  return Array.from({ length: count }, (_, qi) => {
-    const items = shuffle(SHOP_ITEMS)
-    const [art, label] = custs[qi % custs.length]
-    // Levels 9 and 10 bring real sums: every other customer already has some
-    // at home and wants the rest ("Ich habe schon zwei, ich brauche fünf").
-    if (level >= 9 && qi % 2 === 1) {
-      const total = rnd(4, maxN)
-      const home  = rnd(1, total - 1)
-      return { art, label, home, parts: [{ item: items[0], n: total - home }] }
-    }
-    return { art, label, parts: Array.from({ length: numParts }, (_, pi) => ({ item: items[pi], n: rnd(1, maxN) })) }
-  })
+/**
+ * How a finished picture of the countdown goes off into the night, when it
+ * is not the rocket (that one launches): `x`, `y` as shares of the way out,
+ * keyframes that end there, and the turning and squashing on the way.
+ */
+const DRIFT = {
+  // flies off: up and away to the side, flapping (squash), a quack
+  duck:     { x: [0, 0.08, 0.3, 0.6, 1], y: [0, -0.05, -0.2, -0.45, -0.8], scaleY: [1, 0.86, 1.06, 0.86, 1.06], rotate: [0, -6, -10, -10, -12], sound: '🦆' },
+  swan:     { x: [0, 0.08, 0.3, 0.6, 1], y: [0, -0.05, -0.2, -0.45, -0.8], scaleY: [1, 0.86, 1.06, 0.86, 1.06], rotate: [0, -6, -10, -10, -12] },
+  // floats up, swaying on its string
+  balloon:  { x: [0, 0.03, -0.03, 0.03, 0], y: [0, -0.15, -0.4, -0.7, -1], rotate: [0, 6, -6, 5, 0] },
+  umbrella: { x: [0, 0.05, -0.05, 0.05, 0.1], y: [0, -0.12, -0.35, -0.65, -1], rotate: [0, 10, -8, 8, 0] },
+  // twinkles, turns once and rises to the other stars
+  star:     { x: [0, 0, 0, 0, 0.1], y: [0, -0.02, 0.01, -0.4, -1], rotate: [0, 72, 144, 288, 360], scale: [1, 1.2, 0.9, 1.15, 0.6] },
+  // glows and climbs slowly up the sky
+  moon:     { x: [0, 0, 0.05, 0.1, 0.15], y: [0, -0.05, -0.3, -0.6, -1], rotate: [0, -4, -8, -10, -12], scale: [1, 1.1, 1, 1, 1] },
 }
 
-// Once per level a king does the shopping (never the first customer)
-const pickVip = count => rnd(1, count - 2)
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y)
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
+// how far point p is from the line between a and b
+function distToLine(p, a, b) {
+  const dx = b.x - a.x, dy = b.y - a.y
+  const t = clamp(((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy || 1), 0, 1)
+  return Math.hypot(p.x - a.x - t * dx, p.y - a.y - t * dy)
+}
 
-export default function NumbersGame({ level = 1, onComplete }) {
-  const questions = useMemo(() => buildQuestions(level), [level])
-  const vipAt = useMemo(() => pickVip(questions.length), [questions])
+/**
+ * Where the hint hand points for a star: at its lower rim, not its middle.
+ * The hand is a picture of a finger pointing up, drawn below its fingertip;
+ * with the fingertip in the middle of a star it covered the very number it
+ * was showing. (The hand settles on a 24 px grid, so the aim is the middle
+ * of the band between "just clear of the digit" and "just below the star".)
+ */
+const underStar = ref => ({
+  getBoundingClientRect() {
+    const r = ref.current?.getBoundingClientRect()
+    if (!r || (!r.width && !r.height)) return { left: 0, top: 0, width: 0, height: 0 }
+    return { left: r.left + r.width / 2 - 1, top: r.top + r.height * 0.7 + 22 - 1, width: 2, height: 2 }
+  },
+})
+
+export default function NumbersGame(props) {
+  // a fresh sky for every level
+  return <Sternbilder key={props.level} {...props} />
+}
+
+function Sternbilder({ level = 1, onComplete }) {
+  const rounds = useMemo(() => roundsFor(level), [level])
+  const paused = usePaused()
   const reduce = useReducedMotion()
-  const { later, afterSpeech, clear } = useLater()
-  const [mood, setMood] = useMood()
+  const { later, afterSpeech } = useLater()
   const [bursts, burst] = useBursts()
-  const [pops, pop] = usePops()
 
-  const [idx,    setIdx]    = useState(0)
-  const [basket, setBasket] = useState({})     // { [partIdx]: count }
-  const [phase,  setPhase]  = useState('shop') // shop | look | tip | pay | finale
-  const [wrongs, setWrongs] = useState(0)      // wrong baskets for this customer
-  const [served, setServed] = useState(0)      // coins in the money jar
-  const [giant,  setGiant]  = useState(0)      // the king's giant coins
-  const [hat,    setHat]    = useState(null)   // { x, y }: the basket flies onto the customer's head
-  const [taken,  setTaken]  = useState({})     // per crate: a new fruit rolls up after each one
-  const [queueAt, setQueueAt] = useState(0)    // who stands in line; moves up once the old customer is gone
-  const firstTry  = useRef(0)
-  const streak    = useRef(0)
-  const basketRef = useRef(null), crateRef = useRef(null), doneRef = useRef(null)
-  const custRef = useRef(null), bagRef = useRef(null)
+  // On a phone held sideways the album stands at the side: the sky needs
+  // every pixel of the little height there is.
+  const [side, setSide] = useState(() => innerHeight < 520 && innerWidth > innerHeight)
+  useEffect(() => {
+    const on = () => setSide(innerHeight < 520 && innerWidth > innerHeight)
+    window.addEventListener('resize', on)
+    return () => window.removeEventListener('resize', on)
+  }, [])
 
-  const q = questions[idx]
-  const given = Object.values(basket).reduce((a, b) => a + b, 0)
-  // The counts on the basket rows would do the counting for the child.
-  // They come in as a help once an order went wrong.
-  const help = wrongs >= 1
+  const skyRef = useRef(null)
+  const [size, setSize] = useState(null)
+  useLayoutEffect(() => {
+    const el = skyRef.current
+    const measure = () => {
+      const w = el.clientWidth, h = el.clientHeight
+      if (w && h) setSize(s => (s && s.w === w && s.h === h ? s : { w, h }))
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  // The pictures of this level, chosen once the sky is measured: those
+  // whose stars have room in it.
+  const [outlines, setOutlines] = useState(null)
+  useEffect(() => {
+    if (!size || outlines) return
+    const inset = skyInset(size.w, size.h)
+    setOutlines(pickOutlines(level, size.w - 2 * inset, size.h - 2 * inset))
+  }, [size, outlines, level])
+
+  const [round,   setRound]   = useState(0)
+  const [reached, setReached] = useState(0)      // stars connected so far
+  const [phase,   setPhase]   = useState('play') // play → closing → lit → reveal → fly | launch | drift … finale
+  const [help,    setHelp]    = useState(false)  // two misses: the right star pulses strongly
+  const [wobble,  setWobble]  = useState(null)   // the wrong star that was touched
+  const [album,   setAlbum]   = useState([])     // finished pictures
+  const [flight,  setFlight]  = useState(null)   // the way into the album
+  const [shoot,   setShoot]   = useState(0)      // shooting stars so far
+  const [drawing, setDrawing] = useState(false)  // a finger is down
+  const missRef = useRef(0), cleanRef = useRef(true), firstTryRef = useRef(0), doneRef = useRef(false)
+  const lastWrongRef = useRef(-1), downRef = useRef(false)
+  const starEls = useRef([]), slotEls = useRef([]), rubberRef = useRef(null)
+  const handFrom = useRef(null), handTo = useRef(null)
+  const handFromAt = useMemo(() => underStar(handFrom), []), handToAt = useMemo(() => underStar(handTo), [])
+
+  const rd = rounds[round]
+  const o = outlines?.[round]
+
+  // Where everything is, in px of the sky
+  const lay = useMemo(() => {
+    if (!size || !o) return null
+    const inset = skyInset(size.w, size.h)
+    const f = fitOutline(o, size.w - 2 * inset, size.h - 2 * inset)
+    const P = o.pts.map(([x, y]) => ({ x: inset + f.ox + x * f.scale, y: inset + f.oy + y * f.scale }))
+    const gap = minGap(o) * f.scale
+    const d = Math.round(clamp(gap * 0.84, 34, inset < 30 ? 58 : 68))
+    const mid = { x: P.reduce((a, p) => a + p.x, 0) / P.length, y: P.reduce((a, p) => a + p.y, 0) / P.length }
+    // Lumi's seat at every star: beside it, where no number is covered —
+    // on the outer side of the picture if there is room, else wherever
+    // the other stars and the edge of the sky leave the most. Never on the
+    // way to the next star (that is where the finger goes and the line is
+    // drawn), rather not on a line that is drawn already, and rather not
+    // right under the star, where the hint hand comes up.
+    const lumi = Math.round(clamp(d * 0.95, 40, 60))
+    const n = P.length
+    const seats = P.map((p, i) => {
+      const reach = d / 2 + lumi * 0.44
+      const out = Math.atan2(p.y - mid.y, p.x - mid.x)
+      let best = null
+      for (let k = 0; k < 12; k++) {
+        const turn = k <= 6 ? k : k - 12 // 0, ±30°, ±60° … away from the outer side
+        const a = out + (turn * Math.PI) / 6
+        const x = p.x + Math.cos(a) * reach, y = p.y + Math.sin(a) * reach
+        const inside = x >= lumi / 2 && x <= size.w - lumi / 2 && y >= lumi / 2 && y <= size.h - lumi / 2
+        let room = Infinity, lines = Infinity
+        P.forEach((q, j) => {
+          if (j !== i) room = Math.min(room, Math.hypot(q.x - x, q.y - y))
+          if (j !== i) lines = Math.min(lines, distToLine({ x, y }, q, P[(j + 1) % n]))
+        })
+        const next = distToLine({ x, y }, p, P[(i + 1) % n])
+        const hand = Math.hypot(x - (p.x + 16), y - (p.y + d * 0.2 + 42)) < lumi * 0.5 + 24
+        // (standing on another star counts double: a covered number is worse than a covered Lumi)
+        const score = (inside ? 0 : -1000) - Math.max(0, d / 2 + lumi / 2 + 6 - room) * 2 - Math.abs(turn) * 2
+          - Math.max(0, lumi * 0.5 + 8 - next) * 3 - Math.max(0, lumi * 0.4 - lines) - (hand ? 25 : 0)
+        if (!best || score > best.score) best = { x, y, score }
+      }
+      return best
+    })
+    // How far the rings of a calling star may spread: to the edge of the
+    // sky and no further (a star near the edge sent its rings under the top
+    // bar and off the screen, where they were cut off), and never over a
+    // neighbouring star and its number.
+    const ring = P.map((p, i) => {
+      const edge = Math.min(p.x, p.y, size.w - p.x, size.h - p.y) + 4
+      const next = Math.min(...P.map((q, j) => (j === i ? Infinity : dist(p, q) - d / 2 - 2)))
+      return Math.min(edge, next) / (d / 2)
+    })
+    return { P, gap, d, mid, lumi, seats, ring, img: { left: inset + f.ox, top: inset + f.oy, size: 100 * f.scale } }
+  }, [size, o])
+
+  // what the pointer handlers and the timers need, always current
+  const live = useRef({})
+  Object.assign(live.current, { phase, paused, lay, reached })
 
   useEffect(() => leaveGame, [])
+  useEffect(() => { preloadVoice([...new Set(rounds.flatMap(r => r.numbers))].map(n => numberWord(n)?.src)) }, [rounds])
 
-  // The next customer steps up.
+  // A new picture: once per way of counting Lumi says what is new. The
+  // first number is not called out here: its star pulses, and it says its
+  // number when it is touched, like every other star ("Eins." came twice
+  // at every picture: once now and once on the tap).
   useEffect(() => {
+    if (!outlines) return
     lockPreviews()
-    sayTask()
-  }, [idx])
+    const r = rounds[round]
+    const fresh = round === 0 || rounds[round - 1].kind !== r.kind
+    narrate([fresh ? optional(KIND_LINE[r.kind]) : null])
+  }, [outlines, round, rounds])
 
-  const vip = idx === vipAt
-  const homeOf = pi => (q.home && pi === 0 ? q.home : 0)
+  // The hand shows the move when the child waits: a tap on the first star,
+  // then a stroke from the last star to the next
+  useEffect(() => {
+    handFrom.current = reached > 0 ? starEls.current[reached - 1] : null
+    handTo.current = starEls.current[reached] ?? null
+  })
 
-  const put = (pi) => {
-    if (phase !== 'shop') return false
-    // far too many: the basket tips over and that kind spills out — a miss
-    if ((basket[pi] || 0) + 1 + homeOf(pi) > capOf(q.parts[pi], homeOf(pi))) { tip(pi); return false }
-    setBasket(b => ({ ...b, [pi]: (b[pi] || 0) + 1 }))
-    setTaken(t => ({ ...t, [pi]: (t[pi] || 0) + 1 }))
-    sfx.pop()
-    if (help) pop((basket[pi] || 0) + 1 + homeOf(pi))
-    // Lumi counts along; the child still decides when the basket is full
-    narrate([numberWord((basket[pi] || 0) + 1 + homeOf(pi))])
-    return true
-  }
-  // Holding a crate pours (Crate calls this every 350 ms); the latest put
-  // is kept in a ref, so each pour sees the basket as it is now.
-  const putRef = useRef(put)
-  putRef.current = put
-  const pour = pi => putRef.current(pi)
-
-  const tip = (pi) => {
-    setPhase('tip')
-    setWrongs(w => w + 1)
-    streak.current = 0
-    setMood('wow', 1600)
-    sfx.boing()
-    later(250, () => sfx.splash())
-    sayWrong()
-    afterSpeech(() => {
-      setBasket(b => ({ ...b, [pi]: 0 }))
-      setMood('oops', 1000)
-      setPhase('shop')
-    }, 2000)
-  }
-  // A tap on a kind in the basket puts one of exactly that kind back.
-  const putBack = (pi) => {
-    if (phase !== 'shop' || !(basket[pi] > 0)) return
-    setBasket(b => ({ ...b, [pi]: Math.max(0, (b[pi] || 0) - 1) }))
-    sfx.slideUp()
+  const center = () => {
+    const r = skyRef.current.getBoundingClientRect()
+    return { x: r.left + lay.mid.x, y: r.top + lay.mid.y }
   }
 
+  // ── A picture is finished ──────────────────────────────────────────────
   const next = () => {
-    if (idx + 1 >= questions.length) { setPhase('finale'); return }
-    clear()
-    setIdx(idx + 1)
-    setBasket({})
-    setTaken({})
-    setWrongs(0)
-    setHat(null)
-    setMood('idle')
-    setPhase('shop')
-  }
-
-  // The basket hops onto the customer's head; measured on screen, moved in
-  // the stage's own (scaled) units.
-  const putOnHead = () => {
-    const bag = bagRef.current, cust = custRef.current
-    if (!bag || !cust || reduce) return
-    const b = bag.getBoundingClientRect(), c = cust.getBoundingClientRect()
-    const scale = b.width / (bag.offsetWidth || b.width)
-    setHat({
-      x: (c.left + c.width / 2 - (b.left + b.width / 2)) / scale,
-      y: (c.top + c.height * 0.2 - b.bottom + b.height * 0.25) / scale,
+    if (round + 1 < rounds.length) {
+      cleanRef.current = true
+      missRef.current = 0
+      live.current.reached = 0
+      setReached(0); setHelp(false); setFlight(null); setWobble(null)
+      setRound(round + 1)
+      setPhase('play')
+      return
+    }
+    // the whole album twinkles, picture by picture, a note each
+    setPhase('finale')
+    sfx.tada()
+    rounds.forEach((_, i) => later(350 + i * 240, () => { sfx.note(i * 2); burst(slotEls.current[i], 'stars', 8) }))
+    later(900, () => setShoot(s => s + 1))
+    later(350 + rounds.length * 240 + 1500, () => {
+      if (doneRef.current) return
+      doneRef.current = true
+      onComplete(result(firstTryRef.current, rounds.length))
     })
   }
 
-  const confirm = () => {
-    if (phase !== 'shop' || !given) return
-    if (q.parts.every((p, i) => (basket[i] || 0) === p.n)) {
-      setPhase('pay')
-      if (wrongs === 0) { firstTry.current++; streak.current++ } else streak.current = 0
-      // The customer cheers — on a streak with a dance and confetti — and
-      // now and then can't wait and takes a bite right away.
-      const party = streak.current >= 3 && streak.current % 3 === 0
-      if (party) { setMood('dance', 2400); sfx.tada(); later(300, putOnHead) }
-      else if (Math.random() < 0.3) { setMood('eat', 800); sfx.chomp(); later(800, () => setMood('happy', 1400)) }
-      else setMood(['happy', 'dance', 'wow'][rnd(0, 2)], 1600)
-      burst(basketRef.current, party ? 'confetti' : 'stars', party ? 22 : 10)
-      // It pays: coins clink into the jar one by one — the king with one
-      // giant coin that lands with a thunk.
-      if (vip) later(450, () => { sfx.drum(); sfx.coin(); setGiant(g => g + 1) })
-      else [0, 1, 2].forEach(i => later(350 + i * 260, () => { sfx.coin(); setServed(s => s + 1) }))
-      sayRight()
-      afterSpeech(next, party ? 2600 : 2200)
+  const land = () => {
+    setAlbum(a => [...a, o])
+    sfx.coin()
+    burst(slotEls.current[round], 'stars', 8)
+    later(600, next)
+  }
+
+  const leave = () => {
+    if (rd.launch && !reduce && o.pic === 'rocket') {
+      // countdown over: lift-off
+      setPhase('launch')
+      sfx.whoosh()
+      later(300, () => sfx.slideUp())
+      later(1300, land)
       return
     }
-    setPhase('look')
-    setWrongs(w => w + 1)
-    streak.current = 0
-    setMood('oops', 2000)
-    sfx.boing()
-    sayWrong()
-    // It looks into the basket: the counts come up and the rows that are
-    // off wiggle. Everything stays in the basket; the child fixes it.
-    afterSpeech(() => setPhase('shop'), 1800)
+    if (rd.launch && !reduce && DRIFT[o.pic]) {
+      // the other pictures of the countdown go off into the night their own way
+      setPhase('drift')
+      sfx.sparkle()
+      if (DRIFT[o.pic].sound) later(250, () => playAnimal(DRIFT[o.pic].sound, { volume: 0.6 }))
+      later(1900, land)
+      return
+    }
+    const slot = slotEls.current[round]?.getBoundingClientRect()
+    const sky = skyRef.current.getBoundingClientRect()
+    if (slot) {
+      const cx = sky.left + lay.img.left + lay.img.size / 2, cy = sky.top + lay.img.top + lay.img.size / 2
+      setFlight({ dx: slot.left + slot.width / 2 - cx, dy: slot.top + slot.height / 2 - cy, s: (slot.width * 0.9) / lay.img.size })
+    }
+    setPhase('fly')
+    later(reduce ? 120 : 640, land)
   }
 
-  const waiting = questions.slice(queueAt + 1, queueAt + 3).map((c, i) => ({ ...c, key: queueAt + 1 + i }))
-  // The hand: a fruit from the first crate into the basket; once something
-  // is in it, the tick.
-  const hint = given > 0
-    ? <HintHand key={`t${idx}-${wrongs}`} to={wrongs ? basketRef : doneRef} active={phase === 'shop'} delay={wrongs ? 5000 : 9000} />
-    : <HintHand key={`d${idx}`} from={crateRef} to={basketRef} active={phase === 'shop'} delay={idx === 0 ? 2000 : 6000} />
+  const finish = () => {
+    if (cleanRef.current) firstTryRef.current += 1
+    setPhase('closing')
+    later(reduce ? 60 : 480, () => {
+      setPhase('lit')
+      sfx.sparkle()
+      later(reduce ? 60 : 620, () => {
+        setPhase('reveal')
+        sfx.tada()
+        burst(center(), 'confetti', 18)
+        // a clean run: a shooting star crosses the sky
+        if (cleanRef.current) later(250, () => { setShoot(s => s + 1); sfx.slideUp() })
+        // praise now and then, the picture's name, and off into the album
+        afterSpeech(() => {
+          sayRight()
+          afterSpeech(() => {
+            narrate([pictureWord(o)])
+            afterSpeech(leave, 1500)
+          })
+        }, 200)
+      })
+    })
+  }
 
-  return (
-    <DragArea autoTarget="basket" disabled={phase !== 'shop'}>
-      <Stage wide={[800, 560]} tall={[440, 780]}>
-        {wide => {
-          const size = wide ? 200 : 175
-          // The next in line walks up from its place in the queue (on a
-          // phone, where there is no queue, from the side).
-          const customer = (
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', paddingTop: wide ? 96 : 76 }}>
-              <AnimatePresence mode="wait" onExitComplete={() => setQueueAt(idx)}>
-                <motion.div key={idx} ref={custRef}
-                  initial={reduce ? { opacity: 0 } : wide && idx > 0 ? { x: 430, scale: 0.38, opacity: 1 } : { x: 320, opacity: 0 }}
-                  animate={{ x: 0, scale: 1, opacity: 1 }}
-                  style={{ transformOrigin: '50% 100%' }}
-                  exit={reduce ? { opacity: 0 } : { x: -520, opacity: 0, rotate: [0, -6, 6, -6, 0], transition: { duration: 0.7, ease: 'easeIn' } }}
-                  transition={{ type: 'spring', stiffness: 140, damping: 17 }}>
-                  <Critter art={q.art} size={size} mood={mood} label={vip ? `${q.label}, König` : q.label}
-                    accessory={vip ? <Crown size={size} /> : null}
-                    wish={phase === 'pay' ? null : <Order q={q} />} />
+  // ── Stars ──────────────────────────────────────────────────────────────
+  const hit = i => {
+    const L = live.current
+    if (L.phase !== 'play' || L.paused || i !== L.reached) return
+    const n = rd.numbers.length
+    L.reached = i + 1 // at once: a quick stroke must not take a star twice
+    missRef.current = 0
+    lastWrongRef.current = -1
+    setReached(i + 1)
+    setHelp(false)
+    // one note higher with every star; falling when counting back
+    sfx.note((n > 12 ? -4 : 0) + (rd.kind === 'back' ? n - 1 - i : i))
+    narrate([numberWord(rd.numbers[i])])
+    const r = skyRef.current.getBoundingClientRect()
+    burst({ x: r.left + lay.P[i].x, y: r.top + lay.P[i].y }, 'stars', 4)
+    if (i + 1 === n) { L.phase = 'closing'; finish() }
+  }
+
+  const miss = i => {
+    const L = live.current
+    if (L.phase !== 'play' || L.paused) return
+    cleanRef.current = false
+    missRef.current += 1
+    lastWrongRef.current = i
+    sfx.mismatch()
+    announce('wrong')
+    const k = Date.now()
+    setWobble({ i, k })
+    later(650, () => setWobble(w => (w?.k === k ? null : w)))
+    if (missRef.current >= 2) setHelp(true)
+  }
+
+  const at = e => {
+    const r = skyRef.current.getBoundingClientRect()
+    return { x: e.clientX - r.left, y: e.clientY - r.top }
+  }
+  // the nearest star that is still to come after the next one
+  const nearestWrong = p => {
+    const L = live.current
+    let best = -1, bd = Infinity
+    L.lay.P.forEach((q, i) => { if (i > L.reached) { const dd = dist(p, q); if (dd < bd) { bd = dd; best = i } } })
+    return { i: best, d: bd }
+  }
+  // the line from the last star to the finger
+  const rubber = p => {
+    const el = rubberRef.current, L = live.current
+    if (!el) return
+    const from = p && L.phase === 'play' && L.reached > 0 ? L.lay.P[L.reached - 1] : null
+    if (!from) { el.style.display = 'none'; return }
+    el.setAttribute('x1', from.x); el.setAttribute('y1', from.y)
+    el.setAttribute('x2', p.x); el.setAttribute('y2', p.y)
+    el.style.display = ''
+  }
+
+  const onDown = e => {
+    const L = live.current
+    if (L.phase !== 'play' || L.paused || !L.lay || e.button > 0) return
+    downRef.current = true
+    setDrawing(true)
+    try { skyRef.current.setPointerCapture(e.pointerId) } catch { /* ignore */ }
+    const p = at(e)
+    // generous around the right star, so a near miss is no miss
+    const reach = Math.max(L.lay.d / 2 + 12, 32)
+    if (dist(p, L.lay.P[L.reached]) <= reach) { hit(L.reached); return }
+    const w = nearestWrong(p)
+    if (w.i >= 0 && w.d <= Math.min(reach, L.lay.gap * 0.5)) miss(w.i)
+    rubber(p)
+  }
+  const onMove = e => {
+    const L = live.current
+    if (!downRef.current || L.phase !== 'play' || L.paused || !L.lay) return
+    const p = at(e)
+    const want = L.lay.P[L.reached]
+    if (want && dist(p, want) <= L.lay.d / 2 + 4) { hit(L.reached); rubber(p); return }
+    rubber(p)
+    // a stroke through the middle of a wrong star is a miss, once per star;
+    // brushing past one on the way is not
+    const core = L.lay.d * 0.3
+    const w = nearestWrong(p)
+    if (w.i >= 0 && w.d <= core) { if (lastWrongRef.current !== w.i) miss(w.i) }
+    else if (w.d > core * 1.7) lastWrongRef.current = -1
+  }
+  const onUp = () => {
+    downRef.current = false
+    lastWrongRef.current = -1
+    setDrawing(false)
+    rubber(null)
+  }
+  // keyboard and switch access: Enter on a star
+  const onKeyStar = i => {
+    const L = live.current
+    if (i === L.reached) hit(i)
+    else if (i > L.reached) miss(i)
+  }
+
+  // ── Looks ──────────────────────────────────────────────────────────────
+  const n = rd.numbers.length
+  const d = lay?.d ?? 52
+  const playing = phase === 'play'
+  const shown = phase === 'play' || phase === 'closing' || phase === 'lit'   // stars and line
+  const closed = phase !== 'play'
+  // Lumi sits beside the star reached last (beside the first one to begin with)
+  const lumiSize = lay?.lumi ?? 50
+  const lumiAt = lay?.seats[Math.max(0, reached - 1)] ?? { x: 0, y: 0 }
+  const drift = o && DRIFT[o.pic]
+  // the way a finished picture takes off: a rocket along its nose, the rest straight up
+  const away = (() => {
+    if (!o || !size) return { x: 0, y: -600 }
+    const a = ((o.pic === 'rocket' ? o.rot + 45 : 0) * Math.PI) / 180
+    const far = Math.max(size.w, size.h) + (lay?.img.size ?? 300)
+    return { x: Math.sin(a) * far, y: -Math.cos(a) * far }
+  })()
+
+  const twinkles = useMemo(() => Array.from({ length: 18 }, (_, i) => ({
+    left: `${(i * 61 + 13) % 97 + 1}%`, top: `${(i * 37 + 29) % 93 + 3}%`, s: 2 + (i % 3), delay: -(i % 7) * 0.4,
+  })), [])
+
+  const slot = side ? 46 : 54
+  const albumRow = (
+    <div role="progressbar" aria-valuemin={0} aria-valuemax={rounds.length} aria-valuenow={album.length}
+      aria-label={`${album.length} von ${rounds.length} Bildern`}
+      style={{
+        flexShrink: 0, alignSelf: 'center', display: 'flex', flexDirection: side ? 'column' : 'row', gap: side ? 6 : 8,
+        padding: 6, borderRadius: 18, background: 'rgba(16,10,52,0.55)', border: '2px solid rgba(255,255,255,0.28)',
+      }}>
+      {rounds.map((_, i) => {
+        const got = album[i]
+        return (
+          <motion.div key={i} ref={el => { slotEls.current[i] = el }}
+            animate={phase === 'finale' && !reduce ? { y: [0, -8, 0], scale: [1, 1.15, 1] } : { y: 0, scale: 1 }}
+            transition={phase === 'finale' ? { duration: 0.6, delay: 0.35 + i * 0.24, repeat: 2, repeatDelay: 0.5 } : { duration: 0.2 }}
+            style={{
+              width: slot, height: slot, borderRadius: 12, boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              border: got ? `2px solid ${GOLD}` : i === round ? '2px dashed rgba(255,226,122,0.9)' : '2px dashed rgba(255,255,255,0.3)',
+              background: got ? 'rgba(255,226,122,0.16)' : 'transparent',
+            }}>
+            {got
+              ? <motion.div initial={reduce ? false : { scale: 0.3 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 420, damping: 14 }} style={{ display: 'flex' }}>
+                  <Art art={got.art} alt={got.name} size={slot - 12} style={{ transform: `rotate(${got.rot}deg)` }} />
                 </motion.div>
-              </AnimatePresence>
-            </div>
-          )
-          const bag = (
-            <DropZone id="basket" onDrop={d => put(d.pi)} label="Korb">
-              {(hover, { ready }) => (
-                // the customer takes the full basket along; the next one brings an empty one
-                <AnimatePresence mode="wait" initial={false}>
-                  <motion.div key={idx} ref={bagRef} initial={reduce ? { opacity: 0 } : { x: 320, opacity: 0 }}
-                    animate={hat ? { x: hat.x, y: hat.y, scale: 0.5, rotate: -10, opacity: 1 }
-                      : phase === 'tip' && !reduce ? { x: 0, y: 0, scale: 1, opacity: 1, rotate: [0, 18, -95, -95, 0] }
-                      : { x: 0, y: 0, scale: 1, rotate: 0, opacity: 1 }}
-                    exit={reduce ? { opacity: 0 } : { x: (hat?.x ?? 0) - 520, opacity: 0, transition: { duration: 0.7, ease: 'easeIn' } }}
-                    transition={hat ? { type: 'spring', stiffness: 170, damping: 14 } : phase === 'tip' ? { duration: 2, times: [0, 0.12, 0.35, 0.8, 1] } : { type: 'spring', stiffness: 140, damping: 17 }}
-                    style={{ position: 'relative', zIndex: hat ? 3 : undefined, transformOrigin: phase === 'tip' ? '15% 100%' : '50% 50%' }}>
-                    <Basket q={q} basket={basket} onTake={putBack} glow={hover || ready} innerRef={basketRef}
-                      counts={help || phase === 'look'} wiggle={phase === 'look'} width={wide ? 260 : 220} limit={wide ? 230 : 190} />
-                    <div style={{ position: 'absolute', left: 0, right: 0, top: '20%' }}>{pops}</div>
-                  </motion.div>
-                </AnimatePresence>
-              )}
-            </DropZone>
-          )
-          // The crates change with the customer: the old ones sink behind the
-          // counter while it walks off, then the new ones come up.
-          const crates = (
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div key={idx} initial={reduce ? { opacity: 0 } : { y: 90, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-                exit={reduce ? { opacity: 0 } : { y: 90, opacity: 0, transition: { duration: 0.7, ease: 'easeIn' } }}
-                transition={{ type: 'spring', stiffness: 220, damping: 20 }}
-                style={{ display: 'flex', gap: wide ? 18 : 10, alignItems: 'flex-end', justifyContent: 'center' }}>
-                {q.parts.map((p, i) => (
-                  <Crate key={i} item={p.item} id={`${idx}-${i}-${taken[i] || 0}`} pi={i} innerRef={i === 0 ? crateRef : undefined} onPour={pour}
-                    width={q.parts.length === 3 ? 128 : wide ? 150 : 140} />
-                ))}
+              : <svg viewBox="0 0 24 24" width={slot * 0.36} height={slot * 0.36} aria-hidden="true" style={{ opacity: i === round ? 0.75 : 0.3 }}>
+                  <path d="M12 1.5l3.1 6.6 7.2.9-5.3 5 1.4 7.1L12 17.6l-6.4 3.5 1.4-7.1-5.3-5 7.2-.9z" fill="#fff3b0" />
+                </svg>}
+          </motion.div>
+        )
+      })}
+    </div>
+  )
+
+  return (
+    <div data-phase={phase} data-round={round}
+      style={{
+        position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: side ? 'row' : 'column', gap: 6,
+        padding: side ? '6px 8px' : '8px 8px 6px', overflow: 'hidden', userSelect: 'none', WebkitUserSelect: 'none',
+        // a little deeper night towards the top, so the stars stand out
+        background: 'linear-gradient(rgba(10,6,40,0.5), rgba(10,6,40,0.12) 75%, rgba(10,6,40,0))',
+      }}>
+      {albumRow}
+
+      <div ref={skyRef} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
+        style={{ position: 'relative', flex: 1, minWidth: 0, minHeight: 0, touchAction: 'none', cursor: playing ? 'pointer' : 'default' }}>
+
+        {/* far little stars: no numbers, small and dim */}
+        {twinkles.map((t, i) => (
+          <span key={i} aria-hidden="true" className="pl-twinkle" style={{
+            position: 'absolute', left: t.left, top: t.top, width: t.s, height: t.s, borderRadius: '50%', background: '#fff', opacity: 0.5,
+            animationDelay: `${t.delay}s`, animationName: reduce ? 'none' : undefined, pointerEvents: 'none',
+          }} />
+        ))}
+
+        {lay && (
+          <>
+            {/* the picture shows through, in the first levels */}
+            {rd.ghost > 0 && (
+              <motion.div aria-hidden="true" key={`ghost-${round}`} initial={{ opacity: 0 }} animate={{ opacity: shown ? rd.ghost : 0 }} transition={{ duration: 0.5 }}
+                style={{ position: 'absolute', left: lay.img.left, top: lay.img.top, width: lay.img.size, height: lay.img.size, pointerEvents: 'none', filter: 'brightness(0) invert(1)' }}>
+                <Art art={o.art} size={lay.img.size} style={{ transform: `rotate(${o.rot}deg)` }} />
               </motion.div>
-            </AnimatePresence>
-          )
-          const trail = <RoundTrail total={questions.length} done={idx + (phase === 'pay' || phase === 'finale' ? 1 : 0)} walker="🧺" goal="🪙" size={wide ? 36 : 32} style={{ margin: '6px 48px 0 24px' }} />
-          const done = <div ref={doneRef}><DoneButton onClick={confirm} disabled={phase !== 'shop' || !given} size={wide ? 84 : 80} /></div>
-          return (
-            <>
-              {wide ? (
-                <>
-                  {trail}
-                  <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 40, padding: '0 16px' }}>
-                    {customer}
-                    {bag}
-                    <Queue list={waiting} />
-                  </div>
-                  <Counter>
-                    {crates}
-                    <Jar n={served} giant={giant} />
-                    {done}
-                  </Counter>
-                </>
-              ) : (
-                <>
-                  {trail}
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-evenly' }}>
-                    {customer}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <Jar n={served} giant={giant} />
-                      {bag}
-                      {done}
-                    </div>
-                  </div>
-                  <Counter>{crates}</Counter>
-                </>
+            )}
+
+            {/* the glowing line */}
+            <motion.svg aria-hidden="true" key={`line-${round}`} width={size.w} height={size.h}
+              animate={{ opacity: shown ? 1 : 0 }} transition={{ duration: 0.5 }}
+              style={{ position: 'absolute', left: 0, top: 0, overflow: 'visible', pointerEvents: 'none' }}>
+              {closed && (
+                <motion.polygon points={lay.P.map(p => `${p.x},${p.y}`).join(' ')} fill="#fff3b0"
+                  initial={{ opacity: 0 }} animate={{ opacity: phase === 'lit' ? 0.3 : 0 }} transition={{ duration: 0.4 }} />
               )}
-              {phase === 'finale' && (
-                <Finale cast={questions.slice(0, 6).map(c => c.art)} size={wide ? 110 : 84}
-                  onDone={() => onComplete(result(firstTry.current, questions.length))} />
-              )}
-            </>
-          )
-        }}
-      </Stage>
-      {hint}
-      {bursts}
-    </DragArea>
-  )
-}
+              {lay.P.map((p, i) => {
+                const q = lay.P[(i + 1) % n]
+                // star i to star i+1; the last one closes the picture
+                const on = i + 1 < n ? reached > i + 1 : closed
+                if (!on) return null
+                return (
+                  <g key={i}>
+                    <motion.line x1={p.x} y1={p.y} x2={q.x} y2={q.y} stroke="rgba(255,226,122,0.4)" strokeWidth={Math.max(8, d * 0.2)} strokeLinecap="round"
+                      initial={reduce ? false : { pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.26, ease: 'easeOut' }} />
+                    <motion.line x1={p.x} y1={p.y} x2={q.x} y2={q.y} stroke="#fffbe6" strokeWidth={Math.max(3.5, d * 0.08)} strokeLinecap="round"
+                      initial={reduce ? false : { pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.26, ease: 'easeOut' }} />
+                  </g>
+                )
+              })}
+              <line ref={rubberRef} stroke="#fffbe6" strokeWidth={3} strokeLinecap="round" strokeDasharray="2 9" opacity={0.75} style={{ display: 'none' }} />
+            </motion.svg>
 
-// What the customer wants, as pictures: "4 🍋 2 🍓". For a rest order the
-// bubble shows how many it wants in all; the ones from home are already in
-// the basket.
-function Order({ q }) {
-  const num = n => <span style={{ fontSize: 30, lineHeight: 1 }}>{n}</span>
-  return (
-    <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}
-      aria-label={q.home ? `${q.home} ${q.parts[0].item.name} zu Hause, ${q.home + q.parts[0].n} gewünscht` : q.parts.map(p => `${p.n} ${p.item.name}`).join(', ')}>
-      {q.parts.map((p, i) => (
-        <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>{num(p.n + (q.home && i === 0 ? q.home : 0))}<Art art={p.item.emoji} size={38} /></span>
-      ))}
-    </span>
-  )
-}
-
-const badge = {
-  position: 'absolute', right: -24, top: '50%', marginTop: -18, width: 36, height: 36, borderRadius: '50%', zIndex: 3,
-  background: '#fffdf7', border: '3px solid #2a1b3d', boxShadow: '0 3px 0 #2a1b3d',
-  display: 'flex', alignItems: 'center', justifyContent: 'center',
-  fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 19, color: '#2a1b3d',
-}
-
-// The customer's basket: a wide wicker basket with one group per kind,
-// laid out in rows of five (five and some more is seen at a glance), so
-// everything in it lies flat and can be counted. Each group is a button
-// that puts one of that kind back on its crate. Things from home sit first
-// in their group with a little house and stay.
-function Basket({ q, basket, onTake, glow, counts, wiggle, innerRef, width, limit }) {
-  const total = Object.values(basket).reduce((a, b) => a + b, 0)
-  const home = i => (q.home && i === 0 ? q.home : 0)
-  // Small enough that even a full basket (every kind at its cap) stays
-  // below the awning
-  const rows = q.parts.reduce((a, p, i) => a + capOf(p, home(i)) / 5, 0)
-  const item = Math.min(width >= 250 ? 30 : 26, Math.floor((limit - q.parts.length * 10) / rows))
-  // a little squash each time something lands, without re-mounting
-  const squash = useAnimationControls()
-  const last = useRef(total)
-  useEffect(() => {
-    if (total > last.current) squash.start({ scaleY: [0.92, 1], scaleX: [1.04, 1], transition: { type: 'spring', stiffness: 600, damping: 14 } })
-    last.current = total
-  }, [total, squash])
-  return (
-    <div ref={innerRef} style={{ position: 'relative', width, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      <svg width={width * 0.62} height={46} viewBox="0 0 100 46" preserveAspectRatio="none" aria-hidden="true" style={{ marginBottom: -12, display: 'block' }}>
-        <path d="M6 46 Q50 -16 94 46" fill="none" stroke="#2a1b3d" strokeWidth="11" />
-        <path d="M6 46 Q50 -16 94 46" fill="none" stroke="#c98a52" strokeWidth="6" />
-      </svg>
-      <motion.div animate={squash}
-        style={{
-          width, boxSizing: 'border-box', padding: '8px 12px 20px', display: 'flex', flexDirection: 'column', gap: 4,
-          borderRadius: '18px 18px 90px 90px / 18px 18px 56px 56px', border: '4px solid #2a1b3d', borderTop: '10px solid #8a4f22', transformOrigin: '50% 100%',
-          background: 'repeating-linear-gradient(0deg, transparent 0 13px, rgba(90,50,20,0.35) 13px 15px), repeating-linear-gradient(90deg, #d99a5b 0 14px, #c27a3a 14px 28px)',
-          boxShadow: `inset 0 6px 0 rgba(255,255,255,0.25), 0 6px 0 rgba(42,27,61,0.3)${glow ? ', 0 0 0 6px #ffc93c' : ''}`,
-        }}>
-        {q.parts.map((p, i) => {
-          const have = basket[i] || 0, off = have !== p.n
-          return (
-            <motion.button key={i} type="button" onClick={e => { e.stopPropagation(); onTake(i) }} aria-label={`${p.item.name} zurücklegen`}
-              animate={wiggle && off ? { x: [0, -5, 5, -5, 5, 0] } : { x: 0 }} transition={{ duration: 0.6, repeat: wiggle ? 2 : 0 }}
-              style={{
-                all: 'unset', cursor: 'pointer', position: 'relative', minHeight: 44, padding: '3px 44px 3px 6px', borderRadius: 12,
-                display: 'grid', gridTemplateColumns: `repeat(5, ${item}px)`, gridAutoRows: item, alignContent: 'center', justifyContent: 'center',
-                background: 'rgba(255,253,247,0.4)',
-              }}>
-              {Array.from({ length: home(i) }, (_, j) => (
-                <span key={`h${j}`} style={{ position: 'relative', display: 'inline-flex', opacity: 0.9 }}>
-                  <Art art={p.item.emoji} size={item} />
-                  <span style={{ position: 'absolute', left: -4, top: -6 }}><Art art="🏠" size={16} /></span>
-                </span>
-              ))}
-              <AnimatePresence>
-                {Array.from({ length: have }, (_, j) => (
-                  <motion.span key={j} initial={{ y: -40, scale: 0.4 }} animate={{ y: 0, scale: 1 }} exit={{ y: -30, opacity: 0 }}
-                    transition={{ type: 'spring', stiffness: 520, damping: 20 }} style={{ display: 'inline-flex' }}>
-                    <Art art={p.item.emoji} size={item} />
-                  </motion.span>
-                ))}
-              </AnimatePresence>
-              {counts && (
-                <motion.span key={have} initial={{ scale: 0.5 }} animate={{ scale: 1 }} style={{ ...badge, right: 2 }}>{have + home(i)}</motion.span>
-              )}
-            </motion.button>
-          )
-        })}
-      </motion.div>
-    </div>
-  )
-}
-
-// A crate full of one kind; the one on top can be dragged (or tapped) into
-// the basket, and another rolls up in its place.
-// Holding it pours: after a short hold one fruit after another goes in,
-// until the finger lets go. A quick tap still puts in one.
-function Crate({ item, id, pi, width, innerRef, onPour }) {
-  const hold = useRef(null)
-  const stop = () => { clearTimeout(hold.current?.t); clearInterval(hold.current?.iv); hold.current = null }
-  useEffect(() => stop, [])
-  const start = e => {
-    stop()
-    const h = { poured: false, x: e.clientX, y: e.clientY }
-    h.t = setTimeout(() => {
-      const go = () => { if (onPour(pi) === false) stop(); else h.poured = true }
-      go()
-      h.iv = setInterval(go, 350)
-    }, 420)
-    hold.current = h
-    window.addEventListener('pointerup', stop, { once: true })
-    window.addEventListener('pointercancel', stop, { once: true })
-  }
-  return (
-    <div style={{ position: 'relative', width, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      <div style={{ display: 'flex', marginBottom: -26, zIndex: 1, alignItems: 'flex-end' }}>
-        <Art art={item.emoji} size={width * 0.34} style={{ transform: 'rotate(-14deg)', marginRight: -width * 0.12 }} />
-        <div ref={innerRef} style={{ zIndex: 2 }} onPointerDownCapture={start}
-          onPointerMoveCapture={e => {
-            const h = hold.current
-            if (h?.poured) e.stopPropagation()
-            // a finger that moves is dragging, not pouring
-            else if (h && Math.hypot(e.clientX - h.x, e.clientY - h.y) > 8) stop()
-          }}
-          onPointerUpCapture={e => { if (hold.current?.poured) e.stopPropagation(); stop() }}>
-          <Draggable key={id} id={id} data={{ pi }} label={`${item.name} in den Korb legen`} style={{ borderRadius: '50%' }}>
-            <motion.div initial={{ y: -16, scale: 0.6 }} animate={{ y: 0, scale: 1 }} transition={{ type: 'spring', stiffness: 500, damping: 16 }}>
-              <Art art={item.emoji} size={width * 0.56} />
+            {/* the numbered stars */}
+            <motion.div key={`stars-${round}`} animate={{ opacity: shown ? 1 : 0 }} transition={{ duration: 0.45 }}
+              style={{ position: 'absolute', inset: 0, pointerEvents: shown ? undefined : 'none' }}>
+              {lay.P.map((p, i) => {
+                const state = i < reached ? 'done' : i === reached ? 'next' : 'todo'
+                const beacon = playing && state === 'next' && (reached === 0 || help)
+                const wrong = wobble?.i === i
+                const value = rd.numbers[i]
+                // the rings and the glow stay inside the sky
+                const far = Math.max(1, Math.min(help ? 2.5 : 2, lay.ring[i]))
+                const glow = help ? [Math.min(1.1, far), Math.min(1.55, far)] : [Math.min(1.05, far), Math.min(1.3, far)]
+                return (
+                  <motion.div key={i} initial={reduce ? false : { scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: i * 0.055, type: 'spring', stiffness: 380, damping: 17 }}
+                    style={{ position: 'absolute', left: p.x - d / 2, top: p.y - d / 2, width: d, height: d, zIndex: state === 'next' ? 2 : 1 }}>
+                    {/* the star to begin with, and the right one after two misses, send out rings */}
+                    {beacon && (reduce
+                      ? <span aria-hidden="true" style={{ position: 'absolute', inset: -9, borderRadius: '50%', border: `4px solid ${GOLD}` }} />
+                      : (
+                        // a star that has just popped in swings out a little first:
+                        // its rings show when it has landed
+                        <motion.span aria-hidden="true" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: reached === 0 ? 0.5 : 0, duration: 0.25 }}
+                          style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+                          {[0, 1, 2].map(k => k === 2
+                            ? <motion.span key={k} animate={{ scale: [glow[0], glow[1], glow[0]], opacity: [0.55, 0.25, 0.55] }}
+                                transition={{ duration: help ? 0.7 : 1.2, repeat: Infinity }}
+                                style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: GOLD }} />
+                            : (
+                              <motion.span key={k}
+                                initial={{ scale: 1, opacity: 0.9 }} animate={{ scale: far, opacity: 0 }}
+                                transition={{ duration: help ? 1 : 1.5, repeat: Infinity, delay: k * (help ? 0.5 : 0.75), ease: 'easeOut' }}
+                                style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: `${help ? 5 : 4}px solid ${GOLD}` }} />
+                            ))}
+                        </motion.span>
+                      ))}
+                    <motion.button type="button" ref={el => { starEls.current[i] = el }}
+                      aria-label={`Stern ${value}`} data-star={state} data-value={value}
+                      onClick={e => { if (e.detail === 0) onKeyStar(i) }}
+                      animate={reduce ? {}
+                        : wrong ? { rotate: [0, -16, 13, -9, 6, 0], x: [0, -6, 6, -4, 3, 0], scale: 1 }
+                        : phase === 'lit' ? { scale: [1, 1.25, 1], rotate: 0, x: 0 }
+                        : { scale: 1, rotate: 0, x: 0 }}
+                      transition={{ duration: wrong ? 0.5 : 0.4 }}
+                      style={{
+                        all: 'unset', boxSizing: 'border-box', position: 'absolute', inset: 0, borderRadius: '50%', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', touchAction: 'none', WebkitTapHighlightColor: 'transparent',
+                        fontFamily: 'var(--font-heading)', fontWeight: 800, lineHeight: 1,
+                        fontSize: Math.round(d * (value > 9 ? 0.47 : 0.56)), color: INK,
+                        background: wrong ? 'radial-gradient(circle at 35% 30%, #ffe1dc, #ff8a7a)'
+                          : state === 'done' ? 'radial-gradient(circle at 35% 30%, #fff3b0, #ffb72e)'
+                          : 'radial-gradient(circle at 35% 30%, #ffffff, #ffe9a3)',
+                        border: `3px solid ${state === 'done' ? '#fff3b0' : '#ffffff'}`,
+                        boxShadow: state === 'done' ? '0 0 16px 6px rgba(255,190,60,0.75)' : '0 0 12px 4px rgba(255,240,180,0.55)',
+                        // until the first star is found the others step back
+                        opacity: playing && reached === 0 && state === 'todo' ? 0.8 : 1,
+                        transition: 'opacity .3s, background .2s, box-shadow .2s',
+                      }}>
+                      {/* the number itself beats, the star holds still under the finger */}
+                      {beacon && !reduce
+                        ? <motion.span animate={{ scale: help ? [1, 1.35, 1] : [1, 1.18, 1] }} transition={{ duration: help ? 0.7 : 1.2, repeat: Infinity }}>{value}</motion.span>
+                        : value}
+                    </motion.button>
+                  </motion.div>
+                )
+              })}
             </motion.div>
-          </Draggable>
-        </div>
-        <Art art={item.emoji} size={width * 0.34} style={{ transform: 'rotate(12deg)', marginLeft: -width * 0.12 }} />
+
+            {/* Lumi hops along from star to star */}
+            <motion.div aria-hidden="true" initial={false}
+              animate={{ x: lumiAt.x - lumiSize / 2, y: lumiAt.y - lumiSize / 2, opacity: phase === 'finale' || phase === 'launch' || phase === 'drift' || phase === 'fly' ? 0 : 1 }}
+              transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 240, damping: 26 }}
+              style={{ position: 'absolute', left: 0, top: 0, width: lumiSize, height: lumiSize, zIndex: 4, pointerEvents: 'none' }}>
+              <motion.div key={`${round}-${reached}-${phase === 'reveal'}`}
+                animate={reduce ? {} : phase === 'reveal' ? { y: [0, -lumiSize * 0.5, 0, -lumiSize * 0.3, 0] } : { y: [0, -lumiSize * 0.32, 0] }}
+                transition={{ duration: phase === 'reveal' ? 0.9 : 0.34 }}>
+                <Art art="lumi" mood={wobble ? 'oops' : reached > 0 ? 'happy' : 'idle'} size={lumiSize} />
+              </motion.div>
+            </motion.div>
+
+            {/* the real picture, on exactly the line that was drawn */}
+            <motion.div aria-hidden="true" key={`pic-${round}`} initial={{ opacity: 0, scale: 0.94 }}
+              animate={
+                phase === 'reveal' ? (reduce ? { opacity: 1, scale: 1 } : { opacity: 1, scale: [0.94, 1.07, 1], y: [0, -lay.img.size * 0.07, 0, -lay.img.size * 0.03, 0], rotate: [0, -4, 4, -2, 0] })
+                : phase === 'launch' ? { opacity: 1, scale: 1, rotate: 0, x: [0, -4, 4, -4, 4, 0, away.x], y: [0, 3, -3, 3, -3, 0, away.y] }
+                : phase === 'drift' && drift ? { opacity: [1, 1, 1, 0.6, 0], x: drift.x.map(v => v * lay.img.size * 1.2), y: drift.y.map(v => v * (lay.img.top + lay.img.size * 0.6)), rotate: drift.rotate, scale: drift.scale ?? 1, scaleY: drift.scaleY ?? 1 }
+                : phase === 'fly' && flight ? { opacity: [1, 1, 0], scale: flight.s, x: flight.dx, y: flight.dy, rotate: 0 }
+                : phase === 'fly' ? { opacity: 0 }
+                : { opacity: 0, scale: 0.94 }
+              }
+              transition={
+                phase === 'reveal' ? { duration: 0.9, opacity: { duration: 0.5 } }
+                : phase === 'launch' ? { duration: 1.25, times: [0, 0.08, 0.16, 0.24, 0.32, 0.4, 1], ease: 'easeIn' }
+                : phase === 'drift' ? { duration: 1.8, ease: 'easeInOut' }
+                : phase === 'fly' ? { duration: reduce ? 0.1 : 0.62, ease: 'easeInOut', opacity: { duration: reduce ? 0.1 : 0.62, times: [0, 0.85, 1] } }
+                : { duration: 0.2 }
+              }
+              style={{ position: 'absolute', left: lay.img.left, top: lay.img.top, width: lay.img.size, height: lay.img.size, zIndex: 5, pointerEvents: 'none' }}>
+              <Art art={o.art} size={lay.img.size} style={{ transform: `rotate(${o.rot}deg)` }} />
+            </motion.div>
+          </>
+        )}
+
+        {/* a shooting star for a clean picture */}
+        {shoot > 0 && !reduce && size && (
+          <motion.div aria-hidden="true" key={shoot}
+            initial={{ x: -120, y: size.h * 0.08, opacity: 0 }} animate={{ x: size.w + 120, y: size.h * 0.4, opacity: [0, 1, 1, 0] }}
+            transition={{ duration: 0.95, ease: 'easeIn' }}
+            style={{ position: 'absolute', left: 0, top: 0, zIndex: 6, pointerEvents: 'none', rotate: `${Math.atan2(size.h * 0.32, size.w + 240) * 57.3}deg` }}>
+            <div style={{ width: 110, height: 5, borderRadius: 5, background: 'linear-gradient(90deg, rgba(255,255,255,0), #fff)', boxShadow: '0 0 14px 4px rgba(255,255,255,0.55)' }} />
+          </motion.div>
+        )}
+
+        {/* the end of the level: all pictures of the album, large, and Lumi */}
+        {phase === 'finale' && size && (
+          <div aria-hidden="true" style={{ position: 'absolute', inset: 0, zIndex: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, pointerEvents: 'none' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 10, maxWidth: '96%' }}>
+              {album.map((a, i) => {
+                // one row where the sky is wide, two on a phone held upright
+                const cols = size.w > size.h ? album.length : Math.ceil(album.length / 2)
+                const s = Math.round(clamp(Math.min((size.w * 0.94 - (cols - 1) * 10) / cols, (size.h * 0.56) / Math.ceil(album.length / cols)), 60, 190))
+                return (
+                  <motion.div key={i} initial={reduce ? { opacity: 0 } : { scale: 0, rotate: -25 }}
+                    animate={reduce ? { opacity: 1 } : { scale: [0, 1.2, 1], rotate: [-25, 6, 0] }}
+                    transition={{ delay: 0.35 + i * 0.24, duration: 0.5 }} style={{ display: 'flex' }}>
+                    <Art art={a.art} size={s} style={{ transform: `rotate(${a.rot}deg)`, filter: 'drop-shadow(0 0 10px rgba(255,226,122,0.7))' }} />
+                  </motion.div>
+                )
+              })}
+            </div>
+            <motion.div animate={reduce ? {} : { y: [0, -16, 0] }} transition={{ duration: 0.6, repeat: Infinity }}>
+              <Art art="lumi" mood="happy" size={Math.round(clamp(size.h * 0.2, 56, 110))} />
+            </motion.div>
+          </div>
+        )}
       </div>
-      <div style={{
-        width, height: width * 0.42, boxSizing: 'border-box', borderRadius: 8, border: '4px solid #2a1b3d',
-        background: 'repeating-linear-gradient(0deg, #c27a3a 0 12px, #a8642c 12px 15px)', boxShadow: '0 5px 0 rgba(42,27,61,0.35)',
-      }} />
-    </div>
-  )
-}
 
-// The stand's wooden counter along the bottom
-function Counter({ children }) {
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 26, padding: '10px 14px 14px',
-      background: 'linear-gradient(#c98a52 0 12px, #a8693a 12px)', borderTop: '4px solid #2a1b3d',
-    }}>
-      {children}
-    </div>
-  )
-}
-
-// Lumi's money jar: each customer's coins drop in with a clink and pile up
-// inside, so the level's work can be seen filling it.
-function Jar({ n, giant }) {
-  const reduce = useReducedMotion()
-  const shown = Math.min(n, 24)
-  // a little squash for each coin, without dropping the old ones again
-  const squash = useAnimationControls()
-  useEffect(() => {
-    if ((n || giant) && !reduce) squash.start({ scaleY: [giant ? 0.85 : 0.94, 1], transition: { type: 'spring', stiffness: 500, damping: 12 } })
-  }, [n, giant, reduce, squash])
-  return (
-    <div aria-hidden="true" style={{ position: 'relative', width: 78, height: 96, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      <div style={{ width: 50, height: 12, borderRadius: 4, background: '#e8663a', border: '3px solid #2a1b3d', zIndex: 2 }} />
-      <motion.div animate={squash}
-        style={{
-          position: 'relative', width: 70, height: 76, marginTop: -3, borderRadius: '14px 14px 20px 20px', border: '3px solid #2a1b3d', overflow: 'hidden',
-          background: 'linear-gradient(90deg, rgba(255,255,255,0.75) 0 18%, rgba(220,240,255,0.55) 18%)', transformOrigin: '50% 100%',
-        }}>
-        {Array.from({ length: Math.min(giant, 2) }, (_, i) => (
-          <motion.div key={`g${i}`} initial={reduce ? false : { y: -110, rotate: -40 }} animate={{ y: 0, rotate: 0 }} transition={{ type: 'spring', stiffness: 220, damping: 11 }}
-            style={{ position: 'absolute', left: 8 + i * 10, bottom: 2 + i * 6 }}>
-            <Art art="🪙" size={50} />
-          </motion.div>
-        ))}
-        {Array.from({ length: shown }, (_, i) => (
-          <motion.div key={i} initial={reduce ? false : { y: -80 }} animate={{ y: 0 }} transition={{ type: 'spring', stiffness: 260, damping: 16 }}
-            style={{ position: 'absolute', left: 4 + (i % 3) * 19 + (Math.floor(i / 3) % 2) * 6, bottom: 2 + Math.floor(i / 3) * 8 + (giant ? 22 : 0) }}>
-            <Art art="🪙" size={24} />
-          </motion.div>
-        ))}
-      </motion.div>
-    </div>
-  )
-}
-
-// The king's crown, worn on the customer and moving with it
-function Crown({ size }) {
-  return (
-    <span aria-hidden="true" style={{ position: 'absolute', top: -size * 0.1, left: '50%', transform: 'translateX(-50%) rotate(-10deg)', pointerEvents: 'none' }}>
-      <Art art="👑" size={size * 0.34} />
-    </span>
-  )
-}
-
-// The next customers, waiting their turn; each keeps its place in the line
-// as it moves up.
-function Queue({ list }) {
-  return (
-    <div aria-hidden="true" style={{ display: 'flex', alignItems: 'flex-end', gap: 4, alignSelf: 'flex-end', minWidth: 150 }}>
-      <AnimatePresence initial={false}>
-        {list.map((c, i) => (
-          <motion.div key={c.key} layout initial={{ x: 80, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0 } }}>
-            <Critter art={c.art} size={i === 0 ? 76 : 62} />
-          </motion.div>
-        ))}
-      </AnimatePresence>
+      <HintHand key={`${round}-${reached}`} from={reached > 0 ? handFromAt : undefined} to={handToAt}
+        active={playing && !drawing && !!lay} delay={round === 0 && reached < 2 ? 2600 : rd.kind !== 'up' && reached === 0 ? 3500 : 9000} />
+      {bursts}
     </div>
   )
 }

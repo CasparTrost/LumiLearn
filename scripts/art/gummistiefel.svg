@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- The source of public/sprites/emoji/custom/gummistiefel.webp ("Gummistiefel"):
+       a pair of shiny yellow rubber boots with ribbed soles.
+       Render: scripts/art/render-svg.mjs -->
+  <defs>
+    <g id="boot">
+      <g stroke="#2a1b3d" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">
+        <!-- shaft and foot, toe to the right -->
+        <path d="M14 8 L80 8 L82 104 Q126 108 144 132 Q152 144 150 156 L10 156 Q6 120 14 8 Z" fill="#ffd21f"/>
+        <!-- the rim at the top -->
+        <rect x="8" y="0" width="80" height="20" rx="6" fill="#f0a800"/>
+        <!-- the pull loop at the back -->
+        <path d="M10 6 Q-6 4 -4 22 Q-2 34 12 30" fill="none" stroke-width="6"/>
+        <!-- the sole -->
+        <path d="M6 150 L154 150 Q158 168 146 170 L10 170 Q2 168 6 150 Z" fill="#5a3b2a"/>
+      </g>
+      <!-- the ribs of the sole -->
+      <path d="M30 156 L30 166 M56 156 L56 166 M82 156 L82 166 M108 156 L108 166 M132 156 L132 166" stroke="#2a1b3d" stroke-width="3" stroke-linecap="round"/>
+      <!-- shade on the front, light on the back -->
+      <path d="M74 26 L76 100" stroke="#e5a600" stroke-width="9" stroke-linecap="round"/>
+      <path d="M88 116 Q124 120 138 138" stroke="#e5a600" stroke-width="8" stroke-linecap="round" fill="none"/>
+      <path d="M26 30 L24 118" stroke="#fff3a6" stroke-width="8" stroke-linecap="round"/>
+    </g>
+  </defs>
+  <!-- the back boot a little higher, the front one overlapping it -->
+  <use href="#boot" transform="translate(94 38)"/>
+  <use href="#boot" transform="translate(26 74)"/>
+</svg>
