@@ -58,6 +58,11 @@ export default function InfoButton({ moduleId, onOpenChange }) {
   // while it is open and goes back to the ? button afterwards
   const trapRef = useFocusTrap(open, { onEscape: () => setOpen(false) })
 
+  // A phone held sideways is lower than the dialog was tall (its picture
+  // was cut off at the top and the button touched the edge): there the
+  // picture stands beside the title and the dialog is wider and flatter.
+  const low = open && typeof window !== 'undefined' && window.innerHeight <= 480
+
   return (
     <>
       <button
@@ -84,7 +89,7 @@ export default function InfoButton({ moduleId, onOpenChange }) {
               position: 'fixed', inset: 0, zIndex: 900,
               background: 'rgba(42, 27, 61, 0.60)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              padding: 24,
+              padding: low ? 8 : 24,
             }}
           >
             <motion.div
@@ -99,12 +104,13 @@ export default function InfoButton({ moduleId, onOpenChange }) {
               aria-label={info.title}
               className="px-panel"
               style={{
-                padding: '36px 28px 28px',
-                maxWidth: 420, width: '100%',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18,
+                padding: low ? '14px 24px' : '36px 28px 28px',
+                maxWidth: low ? 700 : 420, width: '100%',
+                maxHeight: '100%', overflowX: 'hidden', overflowY: 'auto',
+                display: 'flex', flexDirection: low ? 'row' : 'column', flexWrap: low ? 'wrap' : 'nowrap',
+                alignItems: 'center', justifyContent: 'center', gap: low ? '8px 14px' : 18,
                 textAlign: 'center',
                 position: 'relative',
-                overflow: 'hidden',
               }}
             >
               {/* Emoji */}
@@ -113,7 +119,7 @@ export default function InfoButton({ moduleId, onOpenChange }) {
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', stiffness: 500, damping: 22, delay: 0.08 }}
                 style={{
-                  fontSize: 72, lineHeight: 1, zIndex: 1,
+                  fontSize: low ? 44 : 72, lineHeight: 1, zIndex: 1,
                   // a hard pixel shadow, like Lumi's (no soft glow)
                   filter: 'drop-shadow(0 4px 0 rgba(42,27,61,0.35))',
                 }}
@@ -136,9 +142,9 @@ export default function InfoButton({ moduleId, onOpenChange }) {
               <div style={{
                 fontFamily: 'var(--font-body, sans-serif)',
                 fontSize: 'clamp(16px,3.5vw,19px)',
-                lineHeight: 1.65,
                 color: 'var(--text-secondary)',
-                maxWidth: 340,
+                maxWidth: low ? 'none' : 340, flexBasis: low ? '100%' : 'auto',
+                lineHeight: low ? 1.45 : 1.65,
                 zIndex: 1,
               }}>
                 {info.text}
@@ -148,7 +154,7 @@ export default function InfoButton({ moduleId, onOpenChange }) {
               <button
                 className="px-btn px-btn--green px-btn--md"
                 onClick={() => setOpen(false)}
-                style={{ marginTop: 6, zIndex: 1 }}
+                style={{ marginTop: low ? 2 : 6, zIndex: 1 }}
               >
                 Alles klar! 👍
               </button>
