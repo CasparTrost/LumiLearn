@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { motion, motionValue, AnimatePresence, useMotionValue, useTransform, useReducedMotion } from 'framer-motion'
 import { sfx } from '../sfx.js'
-import { lockPreviews, leaveGame, narrate, afterNarration } from '../narrator.js'
+import { lockPreviews, leaveGame, narrate, afterNarration, isNarrating } from '../narrator.js'
 import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { LINES, line } from '../lib/lumiLines.js'
 import { numberWord } from '../lib/words.js'
@@ -516,9 +516,11 @@ function Play({ wide, level, onComplete }) {
     setTreatOn('gone')
     const big = hit(flyerRef.current, { stars: clean ? 2 : 1 }).milestone
     sayRight()
-    // glad once Lumi has spoken: 'happy' and 'dance' play the animal's own
-    // sound (Critter), which started together with her praise in levels 9–10
-    afterNarration(() => setFlyerMood(big ? 'dance' : 'happy', 1500), { maxMs: 3500 })
+    // Glad at once, so the joy is seen before the animal leaves for the
+    // branch. Its own sound only when Lumi says nothing: together with her
+    // praise it talked over her, and after a long praise it came too late.
+    setFlyerMood(big ? 'dance' : 'happy', 1500)
+    if (!isNarrating()) playAnimal(flyer.art, { volume: 0.6 })
     if (big) burst(flyerRef.current, 'confetti', 16)
     await wait(big ? 1300 : 800)
     // off to the branch
@@ -1162,7 +1164,7 @@ function Play({ wide, level, onComplete }) {
                 )}
               </AnimatePresence>
               <div ref={flyerRef}>
-                <Critter art={flyer.art} size={g.FS} mood={flyerMood} label={flyer.label} shadow={false} />
+                <Critter art={flyer.art} size={g.FS} mood={flyerMood} label={flyer.label} shadow={false} quiet />
               </div>
             </motion.div>
           )}

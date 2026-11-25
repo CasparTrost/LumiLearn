@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { THINGS, ROOMS, ROOM_IDS, LEVELS, CAT, planLevel, planRoom, levelConfig, tasksIn, tiltOf } from '../../src/games/schatten/data.js'
 import { layoutFor, MIN_CARD } from '../../src/games/schatten/layout.js'
-import { makeRoom, spawn, step, flee, inLight, lookOf, placeApart, tapTarget, nextFocus, settleFocus, FOCUS_DWELL, torchCatches, keepAway, ceilingOf, behindFurniture } from '../../src/games/schatten/sim.js'
+import { makeRoom, spawn, step, flee, inLight, lookOf, placeApart, tapTarget, nextFocus, settleFocus, FOCUS_DWELL, torchCatches, keepAway, ceilingOf, behindFurniture, lampPool, lampDrop } from '../../src/games/schatten/sim.js'
 import { hasEmojiArt } from '../../src/lib/emojiArt.jsx'
 import { LINES } from '../../src/lib/lumiLines.js'
 
@@ -363,5 +363,16 @@ describe('Schattenrätsel: the light must rest on a shadow before it takes the f
     expect(settleFocus(null, 'b', [lit('b')], null, 0).focus).toBe('b')
     expect(settleFocus('a', 'b', [{ id: 'a', state: 'found' }, lit('b')], null, 0).focus).toBe('b')
     expect(settleFocus('a', 'b', [lit('a'), lit('b')], null, 0, true).focus).toBe('b')
+  })
+})
+
+describe('Schattenrätsel: the lamps of the found things', () => {
+  it('light a pool under the ceiling that ends above the floor where the shadows walk', () => {
+    for (const [H, S] of [[690, 96], [316, 56], [600, 72], [760, 110]]) {
+      const bottom = lampDrop(H) + 22 + lampPool(S)
+      expect(bottom, `${H}x${S}`).toBeLessThan(H * 0.5)
+      // and it only brushes the top of the band where things fly
+      expect(bottom - ceilingOf(H, S), `${H}x${S}`).toBeLessThan(S * 0.6)
+    }
   })
 })

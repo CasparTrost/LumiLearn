@@ -41,6 +41,8 @@ const LOCK_MAX_MS = 12000
 // dreht, solange Lumi redet).
 const listeners = new Set()
 export function onNarrationChange(fn) { listeners.add(fn); return () => listeners.delete(fn) }
+/** Is Lumi speaking right now? */
+export const isNarrating = () => running
 function setRunning(v) {
   if (running === v) return
   running = v

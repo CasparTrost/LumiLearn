@@ -40,6 +40,12 @@ export const floorOf = (W, H) => H * (W / H < 1 ? 0.46 : W / H < 1.4 ? 0.53 : 0.
 /** How far a lamp's cord hangs down from the ceiling, and how big its shade is. */
 export const lampDrop = H => Math.round(clamp(H * 0.06, 10, 36))
 export const lampSize = S => Math.round(clamp(S * 0.5, 34, 58))
+/**
+ * How far a lamp's light reaches (px round the bulb): a pool under the shade,
+ * in the band under the ceiling, fading out before the place where the
+ * shadows fly and far from where they walk.
+ */
+export const lampPool = S => Math.round(lampSize(S) * 0.85)
 /** The band under the ceiling where the lamps of the found things hang: no shadow goes there. */
 export const ceilingOf = (H, S) => lampDrop(H) + Math.round(lampSize(S) * 0.68) + 4
 
@@ -128,11 +134,13 @@ export function nextFocus(focus, shadows, beam, S, pin = null) {
 
 /**
  * How long the light must rest on another lit shadow before it takes the
- * focus (seconds). Short: a child shines on a shadow, looks, and goes for
- * the card; with 0.4 s the focus had often not arrived when the pointer left.
- * What keeps a crossed shadow from taking it is that the light must REST.
+ * focus (seconds). A child shines on a shadow, looks, and goes for the card:
+ * with 0.4 s the focus had often not arrived when the pointer left (together
+ * with the time the light takes to come to rest it was 0.8 s); with 0.12 s a
+ * short pause on the way to the cards was enough to move it. What keeps a
+ * crossed shadow from taking it is that the light must REST.
  */
-export const FOCUS_DWELL = 0.12
+export const FOCUS_DWELL = 0.25
 /** The light counts as resting while it moves slower than this many beam radii a second. */
 export const REST_SPEED = 0.45
 /**
