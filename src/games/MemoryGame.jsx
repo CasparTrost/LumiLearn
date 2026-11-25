@@ -450,8 +450,11 @@ export default function MemoryGame({ level = 1, onComplete }) {
         setLumiMood('sleep')                    // Lumi does not look
         voice([SAY.joker])
       } else {
+        // a glimpse of every card at once: Lumi keeps half as much as of
+        // one card turned (with all it notices it swept the board at level 10)
         const view = viewOf(cards)
-        down.forEach(c => observe(memRef.current, { id: c.id, pairKey: c.pairKey }, view, grid?.cols ?? 4, skill))
+        const glimpse = { ...skill, notice: skill.notice / 2 }
+        down.forEach(c => observe(memRef.current, { id: c.id, pairKey: c.pairKey }, view, grid?.cols ?? 4, glimpse))
         setLumiMood('wow')
         voice([SAY.lumiJoker])
       }
