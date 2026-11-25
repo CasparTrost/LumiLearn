@@ -34,7 +34,7 @@ const INFO = {
   'shapes-land':   { emoji: '🔷', title: 'Formen-Land', text: 'Die Eule zeigt dir in ihrer Lupe eine Form. Tippe im Bild alle Formen an, die so aussehen. Manchmal stellst du Formen der Größe nach auf, setzt eine Parade fort oder legst die passende Form auf ein Ding.' },
   'shape-build':   { emoji: '🧩', title: 'Formen-Werkstatt', text: 'Ein Tier wünscht sich etwas. Zieh die Formen an ihren Platz, bis es fertig ist. Mit dem Pfeil drehst du eine Form, und manchmal ist ein Teil zu viel. Am Ende darfst du selbst bauen.' },
   trace:           { emoji: '📝', title: 'Buchstaben-Spuren', text: 'Leg den Finger auf den grünen Punkt und fahre den Weg nach. Die Schnecke fährt mit und sammelt die Sterne. Fertige Buchstaben und Zahlen werden lebendig.' },
-  coloring:        { emoji: '🖍️', title: 'Mal-Atelier', text: 'Hier darfst du frei malen. Wähle eine Farbe und male mit dem Pinsel, oder fülle eine ganze Fläche mit dem Farbeimer. Mit dem Pfeil machst du den letzten Schritt rückgängig.' },
+  coloring:        { emoji: '🖍️', title: 'Mal-Atelier', text: 'Tippe auf eine Farbe und mal mit dem Finger, oder fülle eine Fläche mit dem Eimer. Probier den Regenbogen-Pinsel, den Glitzer und die Stempel! Mit Fertig hängt dein Bild an deiner Wand.', fresh: true },
 }
 
 export default function InfoButton({ moduleId, onOpenChange }) {
