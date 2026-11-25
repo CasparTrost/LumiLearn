@@ -92,7 +92,6 @@ function Eye({ kind, cx, cy = 48, look = [0, 0], right }) {
         <g>
           <ellipse cx={cx + lx} cy={cy + ly + 1} rx="7" ry="8" fill={INK} />
           <circle cx={cx + lx * 1.5} cy={cy + ly + 3.5} r="2.4" fill="#fff" />
-          <path d={`M${cx + lx - 10} ${cy + ly - 6} Q${cx + lx} ${cy + ly - 10} ${cx + lx + 10} ${cy + ly - 6}`} {...stroke(4)} />
         </g>
       )
     case 'half': return (

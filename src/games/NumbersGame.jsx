@@ -64,7 +64,7 @@ const underStar = ref => ({
   getBoundingClientRect() {
     const r = ref.current?.getBoundingClientRect()
     if (!r || (!r.width && !r.height)) return { left: 0, top: 0, width: 0, height: 0 }
-    return { left: r.left + r.width / 2 - 1, top: r.top + r.height * 0.7 + 18 - 1, width: 2, height: 2 }
+    return { left: r.left + r.width / 2 - 1, top: r.top + r.height * 0.7 + 22 - 1, width: 2, height: 2 }
   },
 })
 
@@ -163,8 +163,9 @@ function Sternbilder({ level = 1, onComplete }) {
         })
         const next = distToLine({ x, y }, p, P[(i + 1) % n])
         const hand = Math.hypot(x - (p.x + 16), y - (p.y + d * 0.2 + 42)) < lumi * 0.5 + 24
-        const score = (inside ? 0 : -1000) + Math.min(room, d / 2 + lumi / 2 + 6) - Math.abs(turn) * 2
-          - Math.max(0, lumi * 0.5 + 8 - next) * 3 - Math.max(0, lumi * 0.4 - lines) - (hand ? 10 : 0)
+        // (standing on another star counts double: a covered number is worse than a covered Lumi)
+        const score = (inside ? 0 : -1000) - Math.max(0, d / 2 + lumi / 2 + 6 - room) * 2 - Math.abs(turn) * 2
+          - Math.max(0, lumi * 0.5 + 8 - next) * 3 - Math.max(0, lumi * 0.4 - lines) - (hand ? 25 : 0)
         if (!best || score > best.score) best = { x, y, score }
       }
       return best
@@ -495,6 +496,8 @@ function Sternbilder({ level = 1, onComplete }) {
                 // the rings and the glow stay inside the sky
                 const far = Math.max(1, Math.min(help ? 2.5 : 2, lay.ring[i]))
                 const glow = help ? [Math.min(1.1, far), Math.min(1.55, far)] : [Math.min(1.05, far), Math.min(1.3, far)]
+                // a star that has just popped in swings out a little first: the rings start when it has landed
+                const wait = help ? 0 : 0.5
                 return (
                   <motion.div key={i} initial={reduce ? false : { scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: i * 0.055, type: 'spring', stiffness: 380, damping: 17 }}
@@ -503,13 +506,13 @@ function Sternbilder({ level = 1, onComplete }) {
                     {beacon && (reduce
                       ? <span aria-hidden="true" style={{ position: 'absolute', inset: -9, borderRadius: '50%', border: `4px solid ${GOLD}` }} />
                       : [0, 1, 2].map(k => k === 2
-                        ? <motion.span key={k} aria-hidden="true" animate={{ scale: [glow[0], glow[1], glow[0]], opacity: [0.55, 0.25, 0.55] }}
-                            transition={{ duration: help ? 0.7 : 1.2, repeat: Infinity }}
+                        ? <motion.span key={k} aria-hidden="true" initial={{ scale: 1, opacity: 0 }} animate={{ scale: [glow[0], glow[1], glow[0]], opacity: [0.55, 0.25, 0.55] }}
+                            transition={{ duration: help ? 0.7 : 1.2, repeat: Infinity, delay: wait }}
                             style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: GOLD, pointerEvents: 'none' }} />
                         : (
                           <motion.span key={k} aria-hidden="true"
-                            initial={{ scale: 1, opacity: 0.9 }} animate={{ scale: far, opacity: 0 }}
-                            transition={{ duration: help ? 1 : 1.5, repeat: Infinity, delay: k * (help ? 0.5 : 0.75), ease: 'easeOut' }}
+                            initial={{ scale: 1, opacity: 0 }} animate={{ scale: [1, far], opacity: [0.9, 0] }}
+                            transition={{ duration: help ? 1 : 1.5, repeat: Infinity, delay: wait + k * (help ? 0.5 : 0.75), ease: 'easeOut' }}
                             style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: `${help ? 5 : 4}px solid ${GOLD}`, pointerEvents: 'none' }} />
                         )))}
                     <motion.button type="button" ref={el => { starEls.current[i] = el }}
