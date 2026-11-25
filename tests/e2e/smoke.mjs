@@ -307,6 +307,38 @@ async function playShadows(page) {
   await page.context().close()
 }
 
+// 3g. Musterpark (Tier-Band): a wrong animal is tried out on the empty stool
+// and hops back, the right one finishes the row, and the next row comes
+{
+  const page = await newPage(SIZES.phone, save)
+  await page.goto(URL); await page.waitForTimeout(1500)
+  await page.getByRole('button', { name: /^Musterpark, Level/ }).last().click()
+  const game = page.locator('[data-module="patterns"] [data-phase]')
+  const phaseIs = async (p, ms) => {
+    for (let t = 0; t < ms; t += 100) {
+      if ((await game.getAttribute('data-phase').catch(() => null)) === p) return true
+      await page.waitForTimeout(100)
+    }
+    return false
+  }
+  if (!(await phaseIs('play', 10000))) problems.push('Tier-Band: the row did not start')
+  else {
+    await check(page, 'Tier-Band')
+    await page.locator('[data-card]:not([data-right])').first().click()
+    if (!(await phaseIs('demo', 4000))) problems.push('Tier-Band: a wrong animal was not tried out')
+    if (!(await phaseIs('play', 15000))) problems.push('Tier-Band: the wrong animal did not hop back')
+    if ((await page.locator('[data-card][disabled]').count()) !== 1) problems.push('Tier-Band: the wrong animal is not sitting out')
+    await page.locator('[data-card][data-right="1"]').click()
+    if (!(await phaseIs('cheer', 4000))) problems.push('Tier-Band: the right animal did not finish the row')
+    await page.waitForTimeout(1500)
+    const stars = await page.locator('[data-module="patterns"] [data-juice="hud"]').getAttribute('aria-label').catch(() => null)
+    if (stars !== '1 Stern') problems.push(`Tier-Band: star counter says "${stars}" after one row`)
+    if (!(await phaseIs('play', 30000)) || (await game.getAttribute('data-round')) !== '1') problems.push('Tier-Band: the second row did not come')
+  }
+  problems.push(...page.errors.map(e => `Tier-Band: ${e}`))
+  await page.context().close()
+}
+
 // 4. Lumi's ideas for today: the last idea from the home screen, the
 // movement break the results suggest, the sticker, the album
 {
