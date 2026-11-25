@@ -14,10 +14,11 @@ import { roundsFor, pickOutlines, fitOutline, minGap, skyInset, pictureWord } fr
 /**
  * Zahlenland — "Sternbilder": connect the dots in the night sky
  *
- * Numbered stars hide a picture. Lumi sits on the first one; the child taps
- * the stars in order, or draws a finger through them, and a glowing line
- * follows from star to star. Every star says its number and rings one note
- * higher, so a clean run is a little melody. With the last star the line
+ * Numbered stars hide a picture. Lumi sits beside the first one; the child
+ * taps the stars in order, or draws a finger through them, and a glowing
+ * line follows from star to star. Every star says its number when it is
+ * reached (once: Lumi does not call out the first number beforehand) and
+ * rings one note higher, so a clean run is a little melody. With the last star the line
  * closes, the constellation lights up, the real picture fades in on exactly
  * that line, hops, and flies into the album at the top. Then the next one.
  *
@@ -45,6 +46,27 @@ const optional = key => (LINES[key] ? line(key) : null)
 
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y)
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
+// how far point p is from the line between a and b
+function distToLine(p, a, b) {
+  const dx = b.x - a.x, dy = b.y - a.y
+  const t = clamp(((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy || 1), 0, 1)
+  return Math.hypot(p.x - a.x - t * dx, p.y - a.y - t * dy)
+}
+
+/**
+ * Where the hint hand points for a star: at its lower rim, not its middle.
+ * The hand is a picture of a finger pointing up, drawn below its fingertip;
+ * with the fingertip in the middle of a star it covered the very number it
+ * was showing. (The hand settles on a 24 px grid, so the aim is the middle
+ * of the band between "just clear of the digit" and "just below the star".)
+ */
+const underStar = ref => ({
+  getBoundingClientRect() {
+    const r = ref.current?.getBoundingClientRect()
+    if (!r || (!r.width && !r.height)) return { left: 0, top: 0, width: 0, height: 0 }
+    return { left: r.left + r.width / 2 - 1, top: r.top + r.height * 0.7 + 22 - 1, width: 2, height: 2 }
+  },
+})
 
 export default function NumbersGame(props) {
   // a fresh sky for every level
@@ -103,6 +125,7 @@ function Sternbilder({ level = 1, onComplete }) {
   const lastWrongRef = useRef(-1), downRef = useRef(false)
   const starEls = useRef([]), slotEls = useRef([]), rubberRef = useRef(null)
   const handFrom = useRef(null), handTo = useRef(null)
+  const handFromAt = useMemo(() => underStar(handFrom), []), handToAt = useMemo(() => underStar(handTo), [])
 
   const rd = rounds[round]
   const o = outlines?.[round]
@@ -118,8 +141,12 @@ function Sternbilder({ level = 1, onComplete }) {
     const mid = { x: P.reduce((a, p) => a + p.x, 0) / P.length, y: P.reduce((a, p) => a + p.y, 0) / P.length }
     // Lumi's seat at every star: beside it, where no number is covered —
     // on the outer side of the picture if there is room, else wherever
-    // the other stars and the edge of the sky leave the most
+    // the other stars and the edge of the sky leave the most. Never on the
+    // way to the next star (that is where the finger goes and the line is
+    // drawn), rather not on a line that is drawn already, and rather not
+    // right under the star, where the hint hand comes up.
     const lumi = Math.round(clamp(d * 0.95, 40, 60))
+    const n = P.length
     const seats = P.map((p, i) => {
       const reach = d / 2 + lumi * 0.44
       const out = Math.atan2(p.y - mid.y, p.x - mid.x)
@@ -129,14 +156,25 @@ function Sternbilder({ level = 1, onComplete }) {
         const a = out + (turn * Math.PI) / 6
         const x = p.x + Math.cos(a) * reach, y = p.y + Math.sin(a) * reach
         const inside = x >= lumi / 2 && x <= size.w - lumi / 2 && y >= lumi / 2 && y <= size.h - lumi / 2
-        let room = Infinity
-        P.forEach((q, j) => { if (j !== i) room = Math.min(room, Math.hypot(q.x - x, q.y - y)) })
-        const score = (inside ? 0 : -1000) + Math.min(room, d / 2 + lumi / 2 + 6) - Math.abs(turn) * 2
+        let room = Infinity, lines = Infinity
+        P.forEach((q, j) => {
+          if (j !== i) room = Math.min(room, Math.hypot(q.x - x, q.y - y))
+          if (j !== i) lines = Math.min(lines, distToLine({ x, y }, q, P[(j + 1) % n]))
+        })
+        const next = distToLine({ x, y }, p, P[(i + 1) % n])
+        const hand = Math.hypot(x - (p.x + 16), y - (p.y + d * 0.2 + 42)) < lumi * 0.5 + 24
+        // (standing on another star counts double: a covered number is worse than a covered Lumi)
+        const score = (inside ? 0 : -1000) - Math.max(0, d / 2 + lumi / 2 + 6 - room) * 2 - Math.abs(turn) * 2
+          - Math.max(0, lumi * 0.5 + 8 - next) * 3 - Math.max(0, lumi * 0.4 - lines) - (hand ? 25 : 0)
         if (!best || score > best.score) best = { x, y, score }
       }
       return best
     })
-    return { P, gap, d, mid, lumi, seats, img: { left: inset + f.ox, top: inset + f.oy, size: 100 * f.scale } }
+    // How far the rings of a calling star may spread: to the edge of the
+    // sky and no further. A star near the edge sent its rings under the top
+    // bar and off the screen, where they were cut off.
+    const ring = P.map(p => (Math.min(p.x, p.y, size.w - p.x, size.h - p.y) + 4) / (d / 2))
+    return { P, gap, d, mid, lumi, seats, ring, img: { left: inset + f.ox, top: inset + f.oy, size: 100 * f.scale } }
   }, [size, o])
 
   // what the pointer handlers and the timers need, always current
@@ -146,14 +184,16 @@ function Sternbilder({ level = 1, onComplete }) {
   useEffect(() => leaveGame, [])
   useEffect(() => { preloadVoice([...new Set(rounds.flatMap(r => r.numbers))].map(n => numberWord(n)?.src)) }, [rounds])
 
-  // A new picture: Lumi names the star to begin with (and, once per way of
-  // counting, says what is new)
+  // A new picture: once per way of counting Lumi says what is new. The
+  // first number is not called out here: its star pulses, and it says its
+  // number when it is touched, like every other star ("Eins." came twice
+  // at every picture: once now and once on the tap).
   useEffect(() => {
     if (!outlines) return
     lockPreviews()
     const r = rounds[round]
     const fresh = round === 0 || rounds[round - 1].kind !== r.kind
-    narrate([fresh ? optional(KIND_LINE[r.kind]) : null, numberWord(r.numbers[0])])
+    narrate([fresh ? optional(KIND_LINE[r.kind]) : null])
   }, [outlines, round, rounds])
 
   // The hand shows the move when the child waits: a tap on the first star,
@@ -453,6 +493,9 @@ function Sternbilder({ level = 1, onComplete }) {
                 const beacon = playing && state === 'next' && (reached === 0 || help)
                 const wrong = wobble?.i === i
                 const value = rd.numbers[i]
+                // the rings and the glow stay inside the sky
+                const far = Math.max(1, Math.min(help ? 2.5 : 2, lay.ring[i]))
+                const glow = help ? [Math.min(1.1, far), Math.min(1.55, far)] : [Math.min(1.05, far), Math.min(1.3, far)]
                 return (
                   <motion.div key={i} initial={reduce ? false : { scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: i * 0.055, type: 'spring', stiffness: 380, damping: 17 }}
@@ -460,16 +503,23 @@ function Sternbilder({ level = 1, onComplete }) {
                     {/* the star to begin with, and the right one after two misses, send out rings */}
                     {beacon && (reduce
                       ? <span aria-hidden="true" style={{ position: 'absolute', inset: -9, borderRadius: '50%', border: `4px solid ${GOLD}` }} />
-                      : [0, 1, 2].map(k => k === 2
-                        ? <motion.span key={k} aria-hidden="true" animate={{ scale: help ? [1.1, 1.55, 1.1] : [1.05, 1.3, 1.05], opacity: [0.55, 0.25, 0.55] }}
-                            transition={{ duration: help ? 0.7 : 1.2, repeat: Infinity }}
-                            style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: GOLD, pointerEvents: 'none' }} />
-                        : (
-                          <motion.span key={k} aria-hidden="true"
-                            initial={{ scale: 1, opacity: 0.9 }} animate={{ scale: help ? 2.5 : 2, opacity: 0 }}
-                            transition={{ duration: help ? 1 : 1.5, repeat: Infinity, delay: k * (help ? 0.5 : 0.75), ease: 'easeOut' }}
-                            style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: `${help ? 5 : 4}px solid ${GOLD}`, pointerEvents: 'none' }} />
-                        )))}
+                      : (
+                        // a star that has just popped in swings out a little first:
+                        // its rings show when it has landed
+                        <motion.span aria-hidden="true" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: reached === 0 ? 0.5 : 0, duration: 0.25 }}
+                          style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+                          {[0, 1, 2].map(k => k === 2
+                            ? <motion.span key={k} animate={{ scale: [glow[0], glow[1], glow[0]], opacity: [0.55, 0.25, 0.55] }}
+                                transition={{ duration: help ? 0.7 : 1.2, repeat: Infinity }}
+                                style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: GOLD }} />
+                            : (
+                              <motion.span key={k}
+                                initial={{ scale: 1, opacity: 0.9 }} animate={{ scale: far, opacity: 0 }}
+                                transition={{ duration: help ? 1 : 1.5, repeat: Infinity, delay: k * (help ? 0.5 : 0.75), ease: 'easeOut' }}
+                                style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: `${help ? 5 : 4}px solid ${GOLD}` }} />
+                            ))}
+                        </motion.span>
+                      ))}
                     <motion.button type="button" ref={el => { starEls.current[i] = el }}
                       aria-label={`Stern ${value}`} data-star={state} data-value={value}
                       onClick={e => { if (e.detail === 0) onKeyStar(i) }}
@@ -569,7 +619,7 @@ function Sternbilder({ level = 1, onComplete }) {
         )}
       </div>
 
-      <HintHand key={`${round}-${reached}`} from={reached > 0 ? handFrom : undefined} to={handTo}
+      <HintHand key={`${round}-${reached}`} from={reached > 0 ? handFromAt : undefined} to={handToAt}
         active={playing && !drawing && !!lay} delay={round === 0 && reached < 2 ? 2600 : rd.kind !== 'up' && reached === 0 ? 3500 : 9000} />
       {bursts}
     </div>

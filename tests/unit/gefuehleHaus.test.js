@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { FEELINGS, levelConfig, pickRounds, step, allDown, GRIDS, ANIMALS } from '../../src/games/gefuehle/rounds.js'
+import { FEELINGS, TOO_CLOSE, levelConfig, pickRounds, step, allDown, GRIDS, ANIMALS } from '../../src/games/gefuehle/rounds.js'
 import { feelingWord } from '../../src/lib/words.js'
 
 // a random source that repeats, so a failing run can be played again
@@ -98,6 +98,21 @@ describe('Gefühle-Haus', () => {
     }
     // level 1 keeps to one face per feeling
     expect(watch(1, 'Traurig', 20000).log.every(t => t.up.every(c => c.variant === 0))).toBe(true)
+  })
+
+  it('no face that can be argued for is a wrong answer: happy, proud and excited keep apart', () => {
+    expect(TOO_CLOSE['Glücklich']).toEqual(['Stolz', 'Aufgeregt'])
+    for (const [target, barred] of Object.entries(TOO_CLOSE)) {
+      for (const level of [5, 7, 10]) {
+        if (!levelConfig(level).feelings.includes(target)) continue
+        for (let seed = 1; seed <= 8; seed++) {
+          const { log } = watch(level, target, 40000, seed)
+          const seen = new Set(log.flatMap(t => t.up.map(c => c.feeling)))
+          for (const f of barred) expect(seen.has(f), `${f} under ${target}, level ${level}, seed ${seed}`).toBe(false)
+          expect(seen.size).toBeGreaterThan(2)
+        }
+      }
+    }
   })
 
   it('nothing changes, nothing is rebuilt; at the end of a round everyone ducks', () => {

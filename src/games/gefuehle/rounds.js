@@ -18,9 +18,8 @@ export const FEELINGS = TIERS.flat()
 // Faces a child easily takes for one another. From level 5 the other
 // windows favour these, so the child has to look twice.
 const LOOKALIKE = {
-  'Glücklich':   ['Aufgeregt', 'Stolz'],
-  'Aufgeregt':   ['Glücklich', 'Überrascht'],
-  'Stolz':       ['Glücklich', 'Verlegen'],
+  'Aufgeregt':   ['Überrascht'],
+  'Stolz':       ['Verlegen'],
   'Traurig':     ['Ängstlich', 'Müde', 'Verlegen'],
   'Ängstlich':   ['Überrascht', 'Traurig'],
   'Überrascht':  ['Ängstlich', 'Aufgeregt'],
@@ -28,6 +27,17 @@ const LOOKALIKE = {
   'Gelangweilt': ['Müde', 'Wütend'],
   'Wütend':      ['Gelangweilt', 'Ängstlich'],
   'Verlegen':    ['Traurig', 'Stolz'],
+}
+
+// Feelings a child may rightly take for the one on the sign: someone proud
+// or excited is beaming, and beaming is "glücklich"; and a beaming face
+// under the proud sign differs from it only by a medal, which is no
+// expression. While the sign shows the key, these stay away from the
+// windows, so that no tap that can be argued for is called wrong.
+export const TOO_CLOSE = {
+  'Glücklich': ['Stolz', 'Aufgeregt'],
+  'Stolz':     ['Glücklich'],
+  'Aufgeregt': ['Glücklich'],
 }
 
 const STAY_MS = [5500, 5000, 4500, 4000, 3400, 3000, 2800, 2500, 2300, 2000]
@@ -86,7 +96,8 @@ export function pickRounds(cfg, rnd = Math.random) {
 }
 
 function otherFeeling(target, cfg, up, rnd) {
-  const others = cfg.feelings.filter(f => f !== target)
+  const barred = TOO_CLOSE[target] ?? []
+  const others = cfg.feelings.filter(f => f !== target && !barred.includes(f))
   const near = (LOOKALIKE[target] ?? []).filter(f => others.includes(f))
   if (cfg.lookalikes && near.length && rnd() < 0.5) return pick(near, rnd)
   // rather a feeling that is not at a window already

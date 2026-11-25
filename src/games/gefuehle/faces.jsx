@@ -53,8 +53,10 @@ const LOOKS = {
     { eyes: 'wink', brows: 'soft', mouth: 'smug', cheeks: true, medal: true, sparkle: 1 },
   ],
   'Verlegen': [
-    { eyes: 'side', look: [-4, 3], brows: 'worried', mouth: 'shy', blush: true, paws: 'chin' },
-    { eyes: 'side', look: [4, 3], brows: 'worried', mouth: 'shy', blush: true, paws: 'cheek' },
+    // not the round white eyes and the wavy mouth of 'Ängstlich': dark eyes
+    // that look down and away, and a small crooked smile under a big blush
+    { eyes: 'shy', look: [-5, 3], brows: 'worried', mouth: 'sheepish', blush: true, paws: 'chin' },
+    { eyes: 'shy', look: [5, 3], brows: 'worried', mouth: 'sheepish', blush: true, paws: 'cheek' },
   ],
   'Gelangweilt': [
     { eyes: 'half', look: [4, 0], brows: 'low', mouth: 'flat', paws: 'prop' },
@@ -85,7 +87,13 @@ function Eye({ kind, cx, cy = 48, look = [0, 0], right }) {
     }
     case 'tiny': return <g><circle cx={cx} cy={cy} r="11.5" fill="#fff" stroke={INK} strokeWidth="3" /><circle cx={cx} cy={cy + 1} r="3.6" fill={INK} /></g>
     case 'wide': return <g><circle cx={cx} cy={cy} r="11.5" fill="#fff" stroke={INK} strokeWidth="3" /><circle cx={cx} cy={cy} r="6.5" fill={INK} /><circle cx={cx - 2.5} cy={cy - 2.5} r="2.4" fill="#fff" /></g>
-    case 'side': return <g><circle cx={cx} cy={cy} r="10" fill="#fff" stroke={INK} strokeWidth="3" /><circle cx={cx + lx} cy={cy + ly} r="5" fill={INK} /></g>
+    case 'shy': // dark, turned down and to the side, under a lowered lid
+      return (
+        <g>
+          <ellipse cx={cx + lx} cy={cy + ly + 1} rx="7" ry="8" fill={INK} />
+          <circle cx={cx + lx * 1.5} cy={cy + ly + 3.5} r="2.4" fill="#fff" />
+        </g>
+      )
     case 'half': return (
       <g>
         <path d={`M${cx - 11} ${cy} A11 10 0 0 0 ${cx + 11} ${cy} Z`} fill="#fff" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
@@ -148,7 +156,7 @@ function Mouth({ kind }) {
     case 'flat':   return <path d="M36 79 L64 77" {...stroke(5.5)} />
     case 'pout':   return <path d="M38 81 Q50 73 62 81" {...stroke(5.5)} />
     case 'smug':   return <path d="M34 73 Q49 86 67 69" {...stroke(5.5)} />
-    case 'shy':    return <path d="M38 77 q4 5 8 0 q4 -5 8 0 q4 5 8 0" {...stroke(4.8)} />
+    case 'sheepish': return <path d="M40 76 Q47 83 60 74" {...stroke(5)} />
     default:       return <path d="M42 77 Q50 82 58 77" {...stroke(5)} />
   }
 }
@@ -344,8 +352,11 @@ export function Friend({ animal = 0, feeling, variant = 0, size = 100, wave = fa
 
 /** The plain face of a feeling, as on Lumi's sign. */
 export function SignFace({ feeling, size = 120 }) {
+  // a face with a medal under its chin sits a little higher on the sign,
+  // so the medal stays clear of the sign's frame
+  const drop = LOOKS[feeling]?.[0].medal ? 7 : 0
   return (
-    <svg viewBox="-12 -12 124 124" width={size} height={size} aria-hidden="true" style={{ display: 'block', overflow: 'visible' }}>
+    <svg viewBox={`-12 ${drop - 12} 124 124`} width={size} height={size} aria-hidden="true" style={{ display: 'block', overflow: 'visible' }}>
       <Head who={PLAIN} feeling={feeling} variant={0} />
     </svg>
   )
