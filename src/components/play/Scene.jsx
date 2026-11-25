@@ -32,9 +32,10 @@ import './play.css'
  * Two quiet themes for games whose own picture must not be mixed up
  * with the backdrop: 'meadow-calm' (the sun has no face: for a game about
  * reading faces) and 'night-sky' (no moon: for a game whose numbered stars
- * fill the whole sky).
+ * fill the whole sky); 'forest-calm' (no mushrooms, the trees pale and
+ * far away: for a game whose bushes stand in that row and are tapped).
  */
-export const SCENE_THEMES = ['meadow', 'sea', 'night', 'space', 'room', 'forest', 'market', 'pond', 'meadow-calm', 'night-sky']
+export const SCENE_THEMES = ['meadow', 'sea', 'night', 'space', 'room', 'forest', 'market', 'pond', 'meadow-calm', 'night-sky', 'forest-calm']
 
 export default function Scene({ theme = 'meadow', interactive = false, style }) {
   const [cheer, setCheer] = useState(0)
@@ -379,7 +380,7 @@ function Room({ tap }) {
   )
 }
 
-function Forest({ tap }) {
+function Forest({ tap, calm = false }) {
   return (
     <g>
       <defs>
@@ -391,9 +392,10 @@ function Forest({ tap }) {
       {/* at the side like every other sun: in the middle it stood behind
           the game's progress trail and behind Lumi on the results screen */}
       <Sun x={860} y={90} r={44} tap={tap} />
-      {[[-20, '#6fbf73'], [160, '#5aa85f'], [380, '#6fbf73'], [600, '#5aa85f'], [800, '#6fbf73'], [960, '#5aa85f']].map(([x, c], i) => (
+      {(calm ? [[-20, '#a9dcae'], [160, '#9ed3a3'], [380, '#a9dcae'], [600, '#9ed3a3'], [800, '#a9dcae'], [960, '#9ed3a3']]
+        : [[-20, '#6fbf73'], [160, '#5aa85f'], [380, '#6fbf73'], [600, '#5aa85f'], [800, '#6fbf73'], [960, '#5aa85f']]).map(([x, c], i) => (
         <g key={i} transform={`translate(${x} ${330 + (i % 2) * 30})`}>
-          <rect x="-12" y="40" width="24" height="200" fill="#8a5a33" />
+          <rect x="-12" y="40" width="24" height="200" fill={calm ? '#b89a7e' : '#8a5a33'} />
           <g className="pl-sway" style={{ animationDuration: '5s', animationDelay: `-${i}s` }}>
             <circle cx="0" cy="0" r="80" fill={c} />
             <circle cx="-50" cy="40" r="56" fill={c} />
@@ -402,7 +404,7 @@ function Forest({ tap }) {
         </g>
       ))}
       <rect x="0" y="520" width="1000" height="80" fill="#5c9e45" />
-      {[140, 520, 870].map((x, i) => (
+      {!calm && [140, 520, 870].map((x, i) => (
         <g key={x} transform={`translate(${x} 540)`} className="pl-hopper" {...tapProps(tap, 'boing')}>
           <rect x="-7" y="-22" width="14" height="24" rx="4" fill="#fff4e0" />
           <path d="M-26 -18 Q0 -54 26 -18 Z" fill={i % 2 ? '#ff6b5b' : '#ff9f43'} />
@@ -433,8 +435,9 @@ function Market({ tap }) {
 
 const MeadowCalm = props => <Meadow {...props} calm />
 const NightSky = props => <Night {...props} moon={false} />
+const ForestCalm = props => <Forest {...props} calm />
 
 const THEMES = {
   meadow: Meadow, sea: Sea, night: Night, space: Space, room: Room, forest: Forest, market: Market, pond: Pond,
-  'meadow-calm': MeadowCalm, 'night-sky': NightSky,
+  'meadow-calm': MeadowCalm, 'night-sky': NightSky, 'forest-calm': ForestCalm,
 }

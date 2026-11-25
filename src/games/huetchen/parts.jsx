@@ -1,5 +1,4 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { sfx } from '../../sfx.js'
 import { Art } from '../../components/play/index.js'
 import { thingY } from './layout.js'
 
@@ -14,7 +13,7 @@ const rand = (a, b) => a + Math.random() * (b - a)
  * top, in, out (b.thing). Every bush looks the same: which is which only
  * the eyes that followed them know.
  */
-export function Bush({ L, b, mode, reduce, cheeky, onTap, setEl }) {
+export function Bush({ L, b, mode, reduce, onTap, setEl }) {
   const { B, bh, T, ground, slots } = L
   const Y = thingY(bh, T)
   const sw = b.swap
@@ -47,7 +46,7 @@ export function Bush({ L, b, mode, reduce, cheeky, onTap, setEl }) {
 
   // the thing: where it is, and how it gets there
   const thing = thingMotion(b.thing, Y, T, B, reduce)
-  const z = sw ? (sw.role === 'back' ? 1 : 5) : b.thing === 'out' || b.thing === 'peek' ? 4 : cheeky ? 3 : 2
+  const z = sw ? (sw.role === 'back' ? 1 : 5) : b.thing === 'out' || b.thing === 'peek' ? 4 : 2
   const breathe = mode === 'find' && !b.gone && !reduce
   const help = b.help && !reduce
 
@@ -63,18 +62,6 @@ export function Bush({ L, b, mode, reduce, cheeky, onTap, setEl }) {
         cursor: b.gone ? 'default' : 'pointer', WebkitTapHighlightColor: 'transparent', transformOrigin: '50% 100%',
         pointerEvents: b.gone ? 'none' : 'auto',
       }}>
-      {/* the squirrel: pokes its head out from behind, sticks out its tongue, ducks */}
-      {cheeky > 0 && !reduce && (
-        <motion.div key={cheeky} aria-hidden="true" initial={{ y: B * 0.3, opacity: 0, rotate: 0 }}
-          animate={{ y: [B * 0.3, -B * 0.22, -B * 0.22, -B * 0.22, B * 0.3], opacity: [0, 1, 1, 1, 0], rotate: [0, -12, 10, -12, 0] }}
-          transition={{ duration: 1.7, times: [0, 0.2, 0.5, 0.8, 1] }}
-          onAnimationStart={() => sfx.giggle()}
-          style={{ position: 'absolute', right: -B * 0.14, top: bh * 0.02, width: B * 0.44, pointerEvents: 'none' }}>
-          <Art art="🐿️" size={B * 0.44} />
-          <motion.span animate={{ scaleY: [0, 0, 1, 1, 0] }} transition={{ duration: 1.7, times: [0, 0.25, 0.35, 0.75, 0.85] }}
-            style={{ position: 'absolute', left: '30%', top: '60%', width: Math.max(6, B * 0.05), height: Math.max(8, B * 0.07), borderRadius: '0 0 6px 6px', background: '#ff7a9a', border: `2px solid ${INK}`, borderTop: 'none', transformOrigin: '50% 0' }} />
-        </motion.div>
-      )}
       {/* the thing, cut off where the bush ends below */}
       <div aria-hidden="true" style={{ position: 'absolute', left: -B * 0.3, width: B * 1.6, top: -B * 3, height: B * 3 + bh * 0.93, overflow: 'hidden', pointerEvents: 'none' }}>
         <motion.div key={b.tid} data-thing={b.thing} initial={b.thing === 'top' && !reduce ? { y: Y.top - B * 1.8, opacity: 1, scale: 1, rotate: 0 } : false}

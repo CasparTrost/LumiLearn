@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   MOMENTS, planDay, stepFor, handsFor, cardFor, readingAt, readingOptions, offHand, callsFor,
-  digital, spoken, faceOf, hourOf, sameFace, towards, skyFix, darkness, sunAt, moonAt, skyAt, DAWN, TASKS,
+  digital, spoken, hardToRead, faceOf, hourOf, sameFace, towards, skyFix, darkness, sunAt, moonAt, skyAt, DAWN, TASKS,
 } from '../../src/games/lumistag/day.js'
 import { hasEmojiArt, customName } from '../../src/lib/emojiArt.jsx'
 import { CUSTOM_ART } from '../../src/lib/emojiArtList.js'
@@ -57,6 +57,20 @@ describe('Lumis Tag: the day of a level', () => {
     const day = planDay(10, seeded(5))
     expect(day.filter(t => t.read).length).toBe(2)
     expect(day[0].read || day[5].read).toBe(false)
+  })
+
+  it('level 9 reads only clear faces; level 10 may ask the hard ones', () => {
+    expect(hardToRead(at(12, 55))).toBe(true)  // the hour hand almost on 1
+    expect(hardToRead(at(6, 45))).toBe(true)
+    expect(hardToRead(at(4, 25))).toBe(true)   // the hands on top of each other
+    expect(hardToRead(at(8, 10))).toBe(false)
+    expect(hardToRead(at(12, 40))).toBe(false)
+    let hard10 = 0
+    for (let seed = 1; seed < 400; seed++) {
+      for (const t of planDay(9, seeded(seed)).filter(t => t.read)) expect(hardToRead(t.time), digital(t.time)).toBe(false)
+      hard10 += planDay(10, seeded(seed)).filter(t => t.read && hardToRead(t.time)).length
+    }
+    expect(hard10).toBeGreaterThan(0)
   })
 })
 
