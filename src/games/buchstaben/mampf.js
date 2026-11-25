@@ -18,9 +18,9 @@
 // name: they only ever come for their own monster.
 export const WORDS = {
   A: [['Affe', '🐒'], ['Apfel', '🍎'], ['Ananas', '🍍'], ['Anker', '⚓', '*'], ['Ameise', '🐜', 'K'], ['Adler', '🦅', 'V']],
-  B: [['Bär', '🐻'], ['Banane', '🍌'], ['Biene', '🐝'], ['Blume', '🌸'], ['Baum', '🌳'], ['Buch', '📖'], ['Bus', '🚌'], ['Brot', '🍞'], ['Bett', '🛏️'], ['Brille', '👓'], ['Ball', '⚽', 'F']],
+  B: [['Bär', '🐻'], ['Banane', '🍌'], ['Biene', '🐝'], ['Blume', '🌸'], ['Baum', '🌳'], ['Buch', '📖'], ['Bus', '🚌'], ['Brot', '🍞', 'T'], ['Bett', '🛏️'], ['Brille', '👓', 'S'], ['Ball', '⚽', 'F']],
   C: [['Clown', '🤡'], ['Computer', '💻', 'L'], ['Croissant', '🥐', 'H']],
-  D: [['Dino', '🦖'], ['Drache', '🐉'], ['Dose', '🥫', 'BK'], ['Delfin', '🐬', 'F']],
+  D: [['Dino', '🦖'], ['Drache', '🐉'], ['Dose', '🥫', 'BKT'], ['Delfin', '🐬', 'F']],
   E: [['Ente', '🦆'], ['Elefant', '🐘'], ['Erdbeere', '🍓'], ['Esel', '🫏', 'P']],
   F: [['Fisch', '🐟'], ['Frosch', '🐸'], ['Fuchs', '🦊'], ['Feder', '🪶'], ['Fuß', '🦶'], ['Flugzeug', '✈️'], ['Fahrrad', '🚲', 'R']],
   G: [['Giraffe', '🦒'], ['Geist', '👻'], ['Gurke', '🥒'], ['Gitarre', '🎸'], ['Geschenk', '🎁', 'P']],
@@ -28,14 +28,14 @@ export const WORDS = {
   I: [['Igel', '🦔'], ['Insel', '🏝️', 'PS']],
   J: [['Jacke', '🧥', 'MA'], ['Jo-Jo', '🪀', '*']],
   K: [['Katze', '🐱'], ['Kuh', '🐄'], ['Käse', '🧀'], ['Kerze', '🕯️'], ['Krokodil', '🐊'], ['Krone', '👑'], ['Keks', '🍪', 'P'], ['Koala', '🐨', 'B'], ['Koffer', '🧳', 'T']],
-  L: [['Löwe', '🦁'], ['Leiter', '🪜'], ['Lama', '🦙']],
+  L: [['Löwe', '🦁'], ['Leiter', '🪜'], ['Lama', '🦙', 'SA']],
   M: [['Maus', '🐭', 'R'], ['Mond', '🌙'], ['Mais', '🌽'], ['Milch', '🥛', 'GW']],
   N: [['Nase', '👃'], ['Nest', '🪺', 'EV'], ['Nudeln', '🍝', 'ST']],
   O: [['Oma', '👵', 'FG'], ['Ohr', '👂'], ['Orange', '🍊', 'AM']],
-  P: [['Pinguin', '🐧'], ['Pilz', '🍄'], ['Pizza', '🍕'], ['Pinsel', '🖌️'], ['Panda', '🐼', 'B'], ['Papagei', '🦜', 'V']],
+  P: [['Pinguin', '🐧'], ['Pilz', '🍄', 'F'], ['Pizza', '🍕'], ['Pinsel', '🖌️'], ['Panda', '🐼', 'B'], ['Papagei', '🦜', 'V']],
   Q: [['Qualle', '🪼', '*'], ['Quadrat', '🟥', '*']],
-  R: [['Rakete', '🚀'], ['Roboter', '🤖'], ['Regenbogen', '🌈'], ['Rose', '🌹', 'B']],
-  S: [['Sonne', '☀️'], ['Socke', '🧦'], ['Sofa', '🛋️', 'CK'], ['Salat', '🥗', 'G'], ['Seife', '🧼', '*']],
+  R: [['Rakete', '🚀'], ['Roboter', '🤖'], ['Regenbogen', '🌈', 'W'], ['Rose', '🌹', 'B']],
+  S: [['Sonne', '☀️'], ['Socke', '🧦'], ['Sofa', '🛋️', 'CKL'], ['Salat', '🥗', 'G'], ['Seife', '🧼', '*']],
   T: [['Tiger', '🐯'], ['Tomate', '🍅'], ['Trommel', '🥁'], ['Traktor', '🚜'], ['Tür', '🚪'], ['Tisch', ':px-tisch:']],
   U: [['Uhu', '🦉', 'E'], ['Ufo', '🛸', 'R']],
   V: [['Vogel', '🐦'], ['Vase', '🏺', '*'], ['Vulkan', '🌋', 'B']],
@@ -168,11 +168,13 @@ export function planLevel(level, rnd = Math.random) {
 export function pickThing({ targets, afloat = [], avoid = [], count = 3, near = false, first = false }, rnd = Math.random) {
   const pick = a => a[Math.floor(rnd() * a.length)]
   const up = new Set(afloat.map(t => t.word))
-  const fresh = L => {
-    const all = thingsOf(L).filter(t => !up.has(t.word))
+  // not seen a moment ago; if everything was, the one that is longest ago
+  const rested = all => {
     const unseen = all.filter(t => !avoid.includes(t.word))
-    return unseen.length ? unseen : all
+    if (unseen.length || !all.length) return unseen
+    return [all.reduce((a, b) => (avoid.lastIndexOf(b.word) < avoid.lastIndexOf(a.word) ? b : a))]
   }
+  const fresh = L => rested(thingsOf(L).filter(t => !up.has(t.word)))
   const inAir = L => afloat.filter(t => t.letter === L).length
 
   const starving = targets.filter(L => inAir(L) === 0 && fresh(L).length)
@@ -195,9 +197,7 @@ export function pickThing({ targets, afloat = [], avoid = [], count = 3, near = 
   if (!letters.length) letters = LETTERS.filter(L => targets.every(T => far(L, T)) && usable(L).length)
   if (!letters.length) letters = LETTERS.filter(L => targets.every(T => fair(L, T)) && usable(L).length)
   if (!letters.length) return null
-  const all = usable(pick(letters))
-  const unseen = all.filter(t => !avoid.includes(t.word))
-  return pick(unseen.length ? unseen : all)
+  return pick(rested(usable(pick(letters))))
 }
 
 // ─── Layout ───────────────────────────────────────────────────────────────────

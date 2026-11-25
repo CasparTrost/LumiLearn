@@ -680,9 +680,10 @@ function Spat({ s, reduce, lower }) {
       <motion.div initial={reduce ? false : { scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 420, damping: 13, delay: reduce ? 0 : 0.12 }}
         style={{
           position: 'absolute', right: -badge * 0.42, top: -badge * 0.42, width: badge, height: badge, borderRadius: '50%', boxSizing: 'border-box',
-          background: GOLD, border: `3px solid ${INK}`, boxShadow: '0 3px 0 rgba(42,27,61,0.3)',
+          // cream and ink, like the letter on a monster's belly
+          background: CREAM, border: `3px solid ${INK}`, boxShadow: '0 3px 0 rgba(42,27,61,0.3)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: badge * 0.66, lineHeight: 1, color: INK,
+          fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: badge * 0.68, lineHeight: 1, color: INK,
         }}>{letter}</motion.div>
     </motion.div>
   )

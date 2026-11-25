@@ -152,6 +152,8 @@ describe('Monster-Mampf: what floats in', () => {
       const t = pickThing({ targets: ['L'], afloat: [], avoid: ['Löwe', 'Lama'], count: 2 }, rnd)
       expect(t.word).toBe('Leiter')
     }
+    // all three were just seen: the one that is longest ago comes back, not the last one again
+    for (let i = 0; i < 20; i++) expect(pickThing({ targets: ['L'], afloat: [], avoid: ['Lama', 'Löwe', 'Leiter'], count: 2 }, rnd).word).toBe('Lama')
   })
 })
 
