@@ -208,8 +208,9 @@ export function Bench({ w, h, want = false }) {
  * that has the beat (`x`, `top` of the rail) and lights the floor `h`
  * below, `w` wide; between two rounds of the loop it is dark.
  */
-export function Lamp({ x, top, w, h, on, reduce }) {
-  const head = Math.max(20, Math.min(34, w * 0.4))
+export function Lamp({ x, top, w, h, on, reduce, maxHead = 34 }) {
+  // `maxHead`: the room above the animals; the shade never hangs into them
+  const head = Math.max(16, Math.min(34, maxHead, Math.max(20, w * 0.4)))
   const neck = Math.min(46, (head * 0.7 * 100) / w)   // half the cone's width at the lamp, in percent
   return (
     <motion.div aria-hidden="true" initial={false} animate={{ x, y: top }}

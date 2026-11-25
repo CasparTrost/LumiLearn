@@ -41,7 +41,7 @@ function picture({ parts, tall, ...rest }) {
 }
 
 // little sparkles in space: crosses, so they are never taken for a shape
-function Twinkles({ at }) {
+export function Twinkles({ at }) {
   return (
     <g stroke="#FFF3B0" strokeWidth="2" strokeLinecap="round">
       {at.map(([x, y], i) => <path key={i} d={`M${x - 5} ${y} H${x + 5} M${x} ${y - 5} V${y + 5}`} />)}
@@ -372,7 +372,7 @@ export const SCENES = [
       ['circle',    '#E8F7FF', [204, 20, 30, 30],  [234, 12, 30, 30], 'fly'],      // bubble
       ['circle',    '#E8F7FF', [228, 58, 24, 24],  [262, 50, 24, 24], 'fly'],      // bubble
       ['circle',    '#E8F7FF', [180, 100, 26, 26], [22, 120, 26, 26], 'fly'],      // bubble
-      ['rhombus',   '#E8503F', [238, 84, 20, 38],  [76, 90, 20, 40], 'drive'],     // propeller, at the stern
+      ['rhombus',   '#E8503F', [232, 82, 18, 42],  [70, 89, 18, 42], 'drive'],     // propeller, on its shaft at the stern
       ['rectangle', '#9A8FB0', [352, 22, 10, 32],  [184, 26, 10, 34], 'drive'],    // periscope
       ['oval',      '#F2B705', [260, 70, 154, 66], [98, 76, 156, 68], 'drive'],    // submarine
       ['rectangle', '#F2B705', [318, 48, 48, 30],  [150, 54, 48, 30], 'drive'],    // tower, on it
@@ -388,8 +388,8 @@ export const SCENES = [
       ['square',    '#8E6CF0', [348, 222, 30, 30], [172, 318, 30, 30], 'loose'],   // little box
       ['star',      '#E0509A', [200, 236, 40, 40], [58, 348, 40, 40]],             // starfish
       ['star',      '#F2B705', [394, 254, 30, 30], [232, 372, 30, 30]],            // starfish
-      ['heart',     '#E8503F', [86, 256, 28, 26],  [120, 376, 30, 28]],            // shell
-      ['heart',     '#FFC93C', [262, 264, 24, 22], [186, 386, 26, 24]],            // shell
+      ['heart',     '#E8503F', [86, 256, 28, 26],  [120, 376, 30, 28]],            // a heart in the sand (asked as a heart, so drawn as one)
+      ['heart',     '#FFC93C', [262, 264, 24, 22], [186, 386, 26, 24]],            // a heart in the sand
     ],
     scenery: (
       <>
@@ -399,7 +399,10 @@ export const SCENES = [
         <path d="M150 230 q6 -14 0 -28 M160 236 q-6 -16 2 -30 M452 160 q8 -16 0 -30" stroke="#2F8F3A" strokeWidth="4" fill="none" strokeLinecap="round" />
       </>
     ),
+    // the propeller's shaft, into the stern (it goes with the submarine)
+    strings: pole('M241 103 H270', '#6B6390'),
     tall: {
+      strings: pole('M79 110 H108', '#6B6390'),
       scenery: (
         <>
           <path d="M40 0 L80 0 L30 300 L0 300Z M200 0 L230 0 L190 300 L160 300Z" fill="#fff" opacity="0.12" />

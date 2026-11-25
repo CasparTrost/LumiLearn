@@ -81,47 +81,48 @@ function ShapePath({ shape, x, y, w, h, rot = 0, ...paint }) {
 // The parts meet exactly: the roof's edge lies on the wall, the trunk
 // starts where the crown ends, the wheels sit on the lower edge of the bus.
 //
-// `icon` is what the customer wishes for, and it shows what is built: a
-// fir tree for a triangle on a trunk, a pencil for a rectangle with a tip, a
-// bus for a box on two wheels. (A candle was wished and a pencil built, a
-// lattice tower wished and a house with a roof built, a leafy tree wished
-// and a fir built.) `word`: Lumi's recording of its name (lib/lumiLines.js,
-// wort/…). `face`: where the finished thing gets eyes ([x, y, scale]).
+// The customer's wish is the figure itself, drawn small in its colours
+// (MiniFigure): what is wished is exactly what is built. (Emoji were wished
+// before, and none of them looked like the figure: a soft-serve for a scoop
+// on a cone, a flower with five petals and no stem for four and a stem, a
+// locomotive for a box and a square.) `word`: Lumi's recording of its name
+// (lib/lumiLines.js, wort/… or a whole key). `face`: where the finished
+// thing gets eyes ([x, y, scale]).
 // `alive`: what it does then (see ALIVE) and who or what joins it (`extra`
 // at `at`; `rides`: it goes along, `orbit`: it circles). `use`: where the
 // customer uses its thing, with the foot point [x, y] and a mood. `window`:
 // a round window [x, y, r] for the customer to look out of.
 const FIGURES = [
-  { name: 'Haus', icon: '🏠', word: 'haus', face: [50, 66, 0.3], alive: { move: 'hop', extra: '🐦', at: [62, 10] }, use: [50, 86, 'happy'], parts: [
+  { name: 'Haus', word: 'haus', face: [50, 66, 0.3], alive: { move: 'hop', extra: '🐦', at: [62, 10] }, use: [50, 86, 'happy'], parts: [
     { shape: 'triangle',  x: 22, y: 18, w: 56, h: 28, color: '#FF6B6B' },    // the roof sits on …
     { shape: 'square',    x: 30, y: 46, w: 40, h: 40, color: '#FFD93D' }] }, // … the wall from y 46
-  { name: 'Tanne', icon: '🌲', word: 'baum', face: [50, 44, 0.28], alive: { move: 'sway', extra: '🐿️', at: [68, 54] }, use: [22, 90, 'happy'], parts: [
+  { name: 'Tanne', word: 'woerter/tanne', face: [50, 44, 0.28], alive: { move: 'sway', extra: '🐿️', at: [68, 54] }, use: [22, 90, 'happy'], parts: [
     { shape: 'triangle',  x: 20, y: 14, w: 60, h: 48, color: '#6BCB77' },   // the crown ends at y 62
     { shape: 'rectangle', x: 43, y: 62, w: 14, h: 26, color: '#8D6E63' }] },// the trunk starts there
-  { name: 'Boot', icon: '⛵', word: 'boot', face: [50, 72, 0.18], alive: { move: 'sail', extra: '🌊', at: [50, 92] }, use: [30, 62, 'happy'], parts: [
+  { name: 'Boot', word: 'boot', face: [50, 72, 0.18], alive: { move: 'sail', extra: '🌊', at: [50, 92] }, use: [30, 62, 'happy'], parts: [
     { shape: 'triangle',  x: 42, y: 16, w: 32, h: 46, color: '#FF9F43' },   // the sail stands on …
     { shape: 'rectangle', x: 16, y: 62, w: 68, h: 20, color: '#74B9FF' }] },// … the hull
-  { name: 'Stift', icon: '✏️', word: 'stift', face: [50, 34, 0.14], alive: { move: 'scribble' }, use: [84, 96, 'happy'], parts: [
+  { name: 'Stift', word: 'stift', face: [50, 34, 0.14], alive: { move: 'scribble' }, use: [84, 96, 'happy'], parts: [
     { shape: 'rectangle', x: 42, y: 8,  w: 16, h: 54, color: '#FFD93D' },   // the pencil and …
     { shape: 'triangle',  x: 42, y: 62, w: 16, h: 22, rot: 180, color: '#D9A066' }] }, // … its tip, down on the paper
-  { name: 'Eis', icon: '🍦', word: 'eis', face: [50, 36, 0.24], alive: { move: 'wobble', extra: '✨', at: [70, 18] }, use: [76, 60, 'eat'], parts: [
-    { shape: 'circle',    x: 34, y: 20, w: 32, h: 32, color: '#FD79A8' },   // the scoop in the cone
-    { shape: 'triangle',  x: 38, y: 46, w: 24, h: 40, rot: 180, color: '#D9A066' }] },
-  { name: 'Lolli', icon: '🍭', face: [50, 32, 0.34], alive: { move: 'spin' }, use: [80, 60, 'eat'], swirl: true, parts: [
+  { name: 'Eis', word: 'eis', face: [50, 30, 0.24], alive: { move: 'wobble', extra: '✨', at: [70, 12] }, use: [76, 60, 'eat'], parts: [
+    { shape: 'circle',    x: 34, y: 14, w: 32, h: 32, color: '#FD79A8' },   // the scoop sits on the cone's rim (y 46):
+    { shape: 'triangle',  x: 38, y: 46, w: 24, h: 40, rot: 180, color: '#D9A066' }] }, // reaching into it, its outline cut into the cone's place
+  { name: 'Lolli', word: 'lolli', face: [50, 32, 0.34], alive: { move: 'spin' }, use: [80, 60, 'eat'], swirl: true, parts: [
     { shape: 'circle',    x: 28, y: 10, w: 44, h: 44, color: '#E84393' },  // the sweet on …
     { shape: 'rectangle', x: 46, y: 54, w: 8,  h: 36, color: '#D9A066' }] },// … its stick
-  { name: 'Fahne', icon: '🚩', word: 'fahne', face: [52, 24, 0.18], alive: { move: 'flutter', extra: '💨', at: [86, 22] }, use: [62, 92, 'happy'], parts: [
+  { name: 'Fahne', word: 'fahne', face: [52, 24, 0.18], alive: { move: 'flutter', extra: '💨', at: [86, 22] }, use: [62, 92, 'happy'], parts: [
     { shape: 'rectangle', x: 24, y: 10, w: 8,  h: 80, color: '#8D6E63' },  // the pole, and on it …
     { shape: 'triangle',  x: 40, y: 4,  w: 30, h: 46, rot: 90, color: '#FF6B6B' }] }, // … the cloth (pointing right)
-  { name: 'Schneemann', icon: '⛄', word: 'schneemann', face: [50, 19, 0.17], alive: { move: 'hop', extra: '🎩', at: [50, 2], snow: true }, use: [82, 96, 'happy'], parts: [
+  { name: 'Schneemann', word: 'schneemann', face: [50, 19, 0.17], alive: { move: 'hop', extra: '🎩', at: [50, 2], snow: true }, use: [82, 96, 'happy'], parts: [
     { shape: 'circle',    x: 39, y: 8,  w: 22, h: 22, color: '#EAF6FF' },          // three balls, each
     { shape: 'circle',    x: 34, y: 28, w: 32, h: 32, color: '#CFE7FF' },          // on the next
     { shape: 'circle',    x: 29, y: 54, w: 42, h: 42, color: '#AED4F7' }] },
-  { name: 'Bus', icon: '🚌', word: 'bus', face: [56, 50, 0.2], alive: { move: 'drive' }, use: [30, 32, 'happy'], parts: [
+  { name: 'Bus', word: 'bus', face: [56, 50, 0.2], alive: { move: 'drive' }, use: [30, 32, 'happy'], parts: [
     { shape: 'rectangle', x: 12, y: 32, w: 76, h: 40, color: '#FFD93D' },   // a box …
     { shape: 'circle',    x: 22, y: 64, w: 20, h: 20, color: '#444' },      // … on two wheels
     { shape: 'circle',    x: 60, y: 64, w: 20, h: 20, color: '#444' }] },
-  { name: 'Rakete', icon: '🚀', word: 'rakete', face: [50, 62, 0.15], window: [50, 40, 9], alive: { move: 'launch', extra: '🔥', at: [50, 84], rides: true }, use: [50, 48, 'happy'], parts: [
+  { name: 'Rakete', word: 'rakete', face: [50, 62, 0.15], window: [50, 40, 9], alive: { move: 'launch', extra: '🔥', at: [50, 84], rides: true }, use: [50, 48, 'happy'], parts: [
     { shape: 'triangle',  x: 36, y: 6,  w: 28, h: 24, color: '#FF6B6B' },  // the nose on the hull
     { shape: 'rectangle', x: 40, y: 30, w: 20, h: 44, color: '#B0BEC5' },
     // The fins: right-angled, the upright side on the hull (x 40 / 60), the
@@ -129,7 +130,7 @@ const FIGURES = [
     // quarter turns on.
     { shape: 'rtriangle', x: 20, y: 54, w: 20, h: 20, rot: 270, color: '#4AA3FF' },
     { shape: 'rtriangle', x: 60, y: 54, w: 20, h: 20, color: '#4AA3FF' }] },
-  { name: 'Blume', icon: '🌸', word: 'blume', face: [50, 36, 0.12], alive: { move: 'bloom', extra: '🐝', at: [50, 36], orbit: true }, use: [78, 94, 'happy'], parts: [
+  { name: 'Blume', word: 'blume', face: [50, 36, 0.12], alive: { move: 'bloom', extra: '🐝', at: [50, 36], orbit: true }, use: [78, 94, 'happy'], parts: [
     // four big petals around a clearly smaller middle
     { shape: 'circle',    x: 38, y: 5,  w: 24, h: 24, color: '#FD79A8' },
     { shape: 'circle',    x: 19, y: 24, w: 24, h: 24, color: '#FD79A8' },
@@ -137,7 +138,7 @@ const FIGURES = [
     { shape: 'circle',    x: 38, y: 43, w: 24, h: 24, color: '#FD79A8' },
     { shape: 'circle',    x: 43, y: 29, w: 14, h: 14, color: '#FFD93D' },
     { shape: 'rectangle', x: 46, y: 67, w: 8,  h: 27, color: '#6BCB77' }] },// the stem from the lower petal
-  { name: 'Zug', icon: '🚂', word: 'zug', face: [70, 60, 0.18], alive: { move: 'chug', extra: '💨', at: [70, 34], rides: true }, use: [34, 44, 'happy'], parts: [
+  { name: 'Zug', word: 'zug', face: [70, 60, 0.18], alive: { move: 'chug', extra: '💨', at: [70, 34], rides: true }, use: [34, 44, 'happy'], parts: [
     { shape: 'rectangle', x: 12, y: 44, w: 46, h: 28, color: '#74B9FF' },   // the wagon 12–58
     { shape: 'square',    x: 58, y: 48, w: 24, h: 24, color: '#FF9F43' },   // the engine joins at 58
     { shape: 'circle',    x: 18, y: 72, w: 16, h: 16, color: '#444' },      // wheels on the
@@ -145,47 +146,83 @@ const FIGURES = [
 ]
 
 // Lumi names the wish ("Haus."): only where the word is recorded
-const wishWord = fig => (fig.word && LINES[`wort/${fig.word}`] ? line(`wort/${fig.word}`) : null)
+const wishKey = fig => (fig.word?.includes('/') ? fig.word : `wort/${fig.word}`)
+const wishWord = fig => (fig.word && LINES[wishKey(fig)] ? line(wishKey(fig)) : null)
 
-// What each level asks for, on top of more parts:
-//   1–3 two-part figures · 4–5 up to three parts and one piece that does not
-//   belong · 6–7 pieces come turned and are turned with their button ·
-//   8–10 all figures, only the silhouette shows where the parts go
-function levelRules(level) {
+// What each level asks for. Every level brings one new thing:
+//    1  two-part figures, every place outlined
+//    2  + one piece too many: a shape the figure does not use at all
+//    3  + three-part figures (the snowman, the bus)
+//    4  the piece too many is one of the figure's shapes in another size
+//    5  + the big figures (the rocket, the flower, the train)
+//    6  the pieces lie turned and are turned with their button
+//    7  turned pieces in the big figures
+//    8  only the silhouette shows where the parts go
+//    9  the silhouette, and the pieces lie turned
+//   10  the silhouette, turned, and only figures of three parts or more
+// `focus`: figures with at least this many parts come first in the draw,
+// so the level's new figures are really there.
+export function levelRules(level) {
   return {
-    maxParts:   level <= 3 ? 2 : level <= 6 ? 3 : Infinity,
-    distractor: level >= 4,
-    turn:       level >= 6,
+    maxParts:   level <= 2 ? 2 : level <= 4 || level === 6 ? 3 : Infinity,
+    minParts:   level >= 10 ? 3 : 1,
+    focus:      level === 3 || level === 4 || level === 6 ? 3 : level === 5 ? 4 : level >= 7 ? 3 : 1,
+    extra:      level < 2 ? null : level <= 3 ? 'other' : 'near',
+    turn:       level === 6 || level === 7 || level >= 9,
     silhouette: level >= 8,
   }
 }
 
-function buildRounds(level, count = 6) {
+export function buildRounds(level, count = 6, random = Math.random) {
   // Easy levels only use figures with few parts. When the tier holds fewer
   // figures than there are rounds it repeats *its own* figures — padding with
-  // the full list used to hand a level-1 child the four-part rocket. From
-  // level 7 the bigger figures come first in the draw, so they do appear.
-  const { maxParts } = levelRules(level)
-  const pool = FIGURES.filter(f => f.parts.length <= maxParts)
+  // the full list used to hand a level-1 child the four-part rocket.
+  const { maxParts, minParts, focus } = levelRules(level)
+  const mix = a => {
+    const out = [...a]
+    for (let i = out.length - 1; i > 0; i--) {
+      const j = Math.floor(random() * (i + 1));
+      [out[i], out[j]] = [out[j], out[i]]
+    }
+    return out
+  }
+  const pool = FIGURES.filter(f => f.parts.length <= maxParts && f.parts.length >= minParts)
   const picks = []
   while (picks.length < count) {
-    let batch = shuffle(pool)
-    if (level >= 7) batch = [...batch.filter(f => f.parts.length > 2), ...batch.filter(f => f.parts.length <= 2)]
-    // never the same figure twice in a row across a reshuffle
-    if (picks.length && batch[0] === picks[picks.length - 1] && batch.length > 1) {
-      batch = [batch[1], batch[0], ...batch.slice(2)]
-    }
-    picks.push(...batch)
+    // the level's new figures first, so they are among the rounds
+    const batch = mix(pool)
+    picks.push(...batch.filter(f => f.parts.length >= focus), ...batch.filter(f => f.parts.length < focus))
   }
-  return shuffle(picks.slice(0, count))
+  // in a random order, never the same figure twice in a row
+  const chosen = picks.slice(0, count)
+  let order = mix(chosen)
+  for (let n = 0; n < 50 && order.some((f, i) => i && f === order[i - 1]); n++) order = mix(chosen)
+  return order
 }
 
-// A piece that fits nowhere in this figure: a shape it does not use, or a
-// size none of its parts has.
-function makeDistractor(fig) {
+// A piece that fits nowhere in this figure. 'other': a shape it does not
+// use at all. 'near': one of its shapes, but plainly bigger or smaller than
+// every part of that shape (a quarter at least); where there is none, an
+// 'other' one.
+const CLOSE = (a, b) => Math.abs(a / b - 1) < 0.25
+export function makeDistractor(fig, kind = 'other', random = Math.random) {
+  const pick = a => a[Math.floor(random() * a.length)]
+  if (kind === 'near') {
+    const sizes = fig.parts.flatMap(p => {
+      const big = Math.max(p.w, p.h) <= 30
+      const k = big ? 1.6 : 0.6
+      const w = Math.round(p.w * k), h = Math.round(p.h * k)
+      const clash = fig.parts.some(q => q.shape === p.shape && CLOSE(w, q.w) && CLOSE(h, q.h))
+      return clash ? [] : [{ shape: p.shape, w, h }]
+    })
+    if (sizes.length) {
+      const s = pick(sizes)
+      return { shape: s.shape, x: 0, y: 0, w: s.w, h: s.h, color: '#B39DDB', extra: true }
+    }
+  }
   const used = new Set(fig.parts.map(p => p.shape === 'rtriangle' ? 'triangle' : p.shape))
   const free = ['circle', 'square', 'triangle', 'rectangle'].filter(s => !used.has(s))
-  const shape = free.length ? free[Math.floor(Math.random() * free.length)] : 'square'
+  const shape = free.length ? pick(free) : 'square'
   const dims = { circle: [26, 26], square: [28, 28], triangle: [34, 28], rectangle: [36, 16] }[shape]
   return { shape, x: 0, y: 0, w: dims[0], h: dims[1], color: '#B39DDB', extra: true }
 }
@@ -391,12 +428,15 @@ function Board({ fig, customer, rules, filled, wrongSlot, stuck, complete, held,
   )
 }
 
-// A finished figure, small: for the workshop shelf
-function MiniFigure({ fig, size }) {
+// A finished figure, small: for the workshop shelf, and as the customer's
+// wish. `whole`: one outline around it all, no lines between the parts (the
+// wish on the silhouette levels, which must not show the parts' borders).
+function MiniFigure({ fig, size, whole = false, face = true }) {
   return (
     <svg viewBox="-4 -4 108 108" width={size} height={size} aria-hidden="true" style={{ display: 'block', overflow: 'visible' }}>
-      {fig.parts.map((p, i) => <ShapePath key={i} {...p} fill={p.color} stroke={INK} strokeWidth={3} strokeLinejoin="round" />)}
-      <Face x={fig.face[0]} y={fig.face[1]} s={fig.face[2]} />
+      {whole && fig.parts.map((p, i) => <ShapePath key={`o${i}`} {...p} fill="none" stroke={INK} strokeWidth={6} strokeLinejoin="round" />)}
+      {fig.parts.map((p, i) => <ShapePath key={i} {...p} fill={p.color} stroke={whole ? p.color : INK} strokeWidth={whole ? 0.5 : 3} strokeLinejoin="round" />)}
+      {face && <Face x={fig.face[0]} y={fig.face[1]} s={fig.face[2]} />}
     </svg>
   )
 }
@@ -618,14 +658,15 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
 
   const fig = rounds[idx]
   // The tray holds the pieces the figure needs (plus one that does not
-  // belong from level 4), in random order; from level 6 they lie turned.
+  // belong from level 2), in random order; on the turning levels they lie
+  // turned.
   const tray = useMemo(() => {
     if (!fig) return []
     const pieces = fig.parts.map((p, part) => ({
       ...p, part,
       rot: (p.rot ?? 0) + (rules.turn ? randomTurn(p.shape) : 0),
     }))
-    if (rules.distractor) pieces.push(makeDistractor(fig))
+    if (rules.extra) pieces.push(makeDistractor(fig, rules.extra))
     const maxDim = Math.max(...pieces.map(p => Math.max(p.w, p.h)))
     // Drawn size inside the 100-unit tile: true to scale, so bigger is
     // plainly bigger (the snowman's three balls were squeezed to nearly one
@@ -764,22 +805,28 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
   const gap = flat ? 12 : Math.round(clamp(box.h * 0.016, 8, 14))
   const trail = upright ? 32 : flat ? 36 : 40
   const mini = upright ? 40 : flat ? 58 : 52
-  // the turn button sits on the corner of its piece's tile
-  const badge = rules.turn ? (flat ? 76 : upright ? 46 : 50) : 0
+  // the turn button sits on the corner of its piece's tile; on an upright
+  // phone, where four tiles fill the width, under the tile (on its corner
+  // it covered a third of the piece)
+  const badge = rules.turn ? (flat ? 76 : upright ? 44 : 50) : 0
   const cellGap = flat ? 14 : 8
   const perRow = upright || flat ? 4 : 8
-  const tile = Math.floor(flat ? 112 : upright ? Math.min(80, (box.w - 2 * pad - (perRow - 1) * cellGap) / perRow - badge * 0.4) : 92)
-  const cell = { w: tile + badge * 0.4, h: tile + badge * 0.3 }
+  const tile = Math.floor(flat ? 112 : upright ? Math.min(80, (box.w - 2 * pad - (perRow - 1) * cellGap) / perRow) : 92)
+  const cell = upright ? { w: tile, h: tile + badge * 0.72 } : { w: tile + badge * 0.4, h: tile + badge * 0.3 }
   // the tray keeps the room of the fullest tray of the level, so the bench
   // never jumps: two rows only where seven pieces can come
-  const trayRows = (upright || flat) && level >= 7 ? 2 : 1
+  const trayRows = (upright || flat) && rules.maxParts > 3 ? 2 : 1
   const trayH = trayRows * cell.h + (trayRows - 1) * cellGap
   const panel = 28                                             // the bench's frame around the paper
   const custSize = upright ? 72 : flat ? 150 : 110
+  // the wish, and on an upright phone the room above the customer that its
+  // bubble needs (it stood over the shelf)
+  const wishSize = upright ? 38 : flat ? 60 : 44
+  const wishRise = upright ? Math.ceil(wishSize + 22 + custSize * 0.55 - custSize + 4) : 0
   const headH = flat ? Math.max(trail * 1.35, mini + 10) : trail * 1.35
   const boardPx = Math.round(clamp(
     flat ? box.h - 2 * pad - headH - gap - panel
-      : upright ? Math.min(box.w - 2 * pad - panel - 12, box.h - 2 * pad - headH - (mini + 10) - (custSize + 14) - trayH - 4 * gap - panel)
+      : upright ? Math.min(box.w - 2 * pad - panel - 12, box.h - 2 * pad - headH - (mini + 10) - (custSize + wishRise + 14) - trayH - 4 * gap - panel)
       : box.h - 2 * pad - headH - (mini + 10) - trayH - 3 * gap - panel,
     160, flat ? 420 : 330))
 
@@ -787,10 +834,10 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
     <AnimatePresence mode="wait">
       <motion.div key={idx} initial={{ x: -120, opacity: 0 }} animate={{ x: 0, opacity: 1, transition: { type: 'spring', stiffness: 260, damping: 18 } }}
         exit={{ x: 160, opacity: 0, transition: { duration: 0.25 } }}
-        style={upright ? { paddingRight: custSize * 0.9 } : { paddingTop: custSize * 0.62 }}>
+        style={upright ? { paddingRight: custSize * 0.9, paddingTop: wishRise } : { paddingTop: custSize * 0.62 }}>
         <motion.div animate={noNo} style={{ transformOrigin: '50% 90%' }}>
           <Critter art={fig.customer} size={custSize} mood={mood} label="Kunde" style={{ opacity: complete ? 0 : 1, transition: 'opacity .4s .8s' }}
-            wishSide={upright ? 'right' : 'top'} wish={<Art art={fig.icon} size={upright ? 38 : flat ? 60 : 44} />} />
+            wishSide={upright ? 'right' : 'top'} wish={<MiniFigure fig={fig} size={wishSize} whole={rules.silhouette} face={false} />} />
         </motion.div>
       </motion.div>
     </AnimatePresence>
@@ -831,7 +878,7 @@ export default function ShapeBuildGame({ level = 1, onComplete }) {
                 onClick={() => turn(i)} disabled={used || complete}
                 animate={turnHint?.i === i && !reduceMotion() ? { scale: [1, 1.3, 1, 1.3, 1], rotate: [0, 40, 0, 40, 0] } : {}} transition={{ duration: 1.2 }}
                 aria-label={`${SHAPE[p.shape].name} drehen`}
-                style={{ position: 'absolute', right: 0, bottom: 0, width: badge, height: badge, borderRadius: '50%', background: 'var(--px-gold)', border: `3px solid ${INK}`, boxShadow: `0 3px 0 ${INK}`, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}>
+                style={{ position: 'absolute', ...(upright ? { left: (tile - badge) / 2 } : { right: 0 }), bottom: 0, width: badge, height: badge, borderRadius: '50%', background: 'var(--px-gold)', border: `3px solid ${INK}`, boxShadow: `0 3px 0 ${INK}`, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}>
                 <svg width={badge * 0.54} height={badge * 0.54} viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-3-6.2M20 4v5h-5" fill="none" stroke={INK} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </motion.button>
             )}

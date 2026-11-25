@@ -20,16 +20,45 @@ export const defensible = (tapped, asked) => tapped === asked || (ALSO[tapped]?.
 // shape as drawn: the coin and the target (drawn at an angle, they look
 // oval), the flag (a pole and a cloth), the tent (drawn in perspective),
 // the open book, the cake slice, the gift, the waffle (drawn round), the
-// framed picture (not square) and the potato (lying at a slant).
+// framed picture (not square), the potato (lying at a slant) and the kite
+// (drawn tilted and nearly square: a child who calls it a Quadrat is right).
 // Names (for screen readers) with their article.
+//
+// The third entry is the thing's outline in its picture (0-100 on the
+// picture's square), where the right shape is laid onto it once it is
+// found: [x, y, w, h] for a round or four-cornered thing, the three
+// corners for a triangle. tests/unit/shapeScenes.test.js checks that a
+// circle's outline is as high as wide and a rectangle's is not.
 export const OBJECTS = {
-  circle:    [['🕐', 'die Uhr'], ['🍪', 'der Keks'], ['🌕', 'der Vollmond'], ['⚽', 'der Ball']],
-  square:    [['🪟', 'das Fenster']],
-  triangle:  [['🍕', 'das Pizzastück'], ['⚠️', 'das Warnschild'], ['📐', 'das Geodreieck']],
-  rectangle: [['🚪', 'die Tür'], ['📱', 'das Handy'], ['💌', 'der Brief']],
-  oval:      [['🥚', 'das Ei'], ['🪞', 'der Spiegel']],
-  rhombus:   [['🪁', 'der Drachen']],
+  circle: [
+    ['🕐', 'die Uhr',            [4, 4, 92, 92]],
+    ['🍪', 'der Keks',           [4, 5, 92, 90]],
+    ['🌕', 'der Vollmond',       [4, 4, 92, 92]],
+    ['⚽', 'der Ball',           [4, 4, 92, 91]],
+  ],
+  square: [
+    ['🪟', 'das Fenster',        [7, 3, 86, 87]],
+  ],
+  triangle: [
+    ['🍕', 'das Pizzastück',     [[6, 92], [44, 6], [97, 47]]],
+    ['⚠️', 'das Warnschild',     [[50, 8], [97, 91], [3, 91]]],
+    ['📐', 'das Zeichendreieck', [[4, 3], [96, 96], [4, 96]]],
+  ],
+  rectangle: [
+    ['🚪', 'die Tür',            [21, 4, 58, 92]],
+    ['📱', 'das Handy',          [25, 4, 49, 92]],
+    ['💌', 'der Brief',          [3, 18, 93, 64]],
+  ],
+  oval: [
+    ['🥚', 'das Ei',             [13, 4, 73, 92]],
+    ['🪞', 'der Spiegel',        [21, 4, 58, 72]],
+  ],
 }
+
+// Beyond the rules above (a square is a rectangle too), a shape the
+// thing's picture could pass for is never offered next to it either: a
+// Raute that is nearly square looks like a turned Quadrat.
+const LOOKS_LIKE = { rhombus: ['square'] }
 
 /**
  * The shapes to choose from for a thing of shape `type`: the right one and
@@ -39,7 +68,7 @@ export const OBJECTS = {
  * one (the letter with its heart).
  */
 export function objectOptions(type, pool, shuffle) {
-  const others = pool.filter(t => t !== 'star' && t !== 'heart' && !defensible(type, t))
+  const others = pool.filter(t => t !== 'star' && t !== 'heart' && !defensible(type, t) && !LOOKS_LIKE[type]?.includes(t))
   return shuffle([type, ...shuffle(others).slice(0, 2)])
 }
 

@@ -151,7 +151,11 @@ function layout(W, H, q) {
   const stoolU = grow ? 0.2 : 0.34, lampU = 0.36
   const all = q.tokens.map((_, i) => i)
   const roomOf = lines => (availH - (lines.length - 1) * 8) / lines.length - FLOOR - 4
-  const fit = lines => Math.min(grow ? 84 : 104, RW / Math.max(...lines.map(lineU)), roomOf(lines) / (bodyU + stoolU + lampU))
+  // the lamp needs LAMP_MIN pixels above the animals at least: with less,
+  // its shade hung into the row (a group of three on a phone)
+  const LAMP_MIN = 30
+  const fit = lines => Math.min(grow ? 84 : 104, RW / Math.max(...lines.map(lineU)),
+    roomOf(lines) / (bodyU + stoolU + lampU), (roomOf(lines) - LAMP_MIN) / (bodyU + stoolU))
   let lines = [all], s = fit(lines)
   if (!short && n > (narrow && !grow ? 5 : 3) && s < (grow ? 50 : narrow ? 72 : 54)) {
     // the row goes round the bend: two lines, read like a book, broken
@@ -166,7 +170,7 @@ function layout(W, H, q) {
   s = Math.max(30, s)
   const body = s * bodyU, stool = Math.max(10, s * stoolU)
   // the lamp hangs as high as there is room: a long cone of light
-  const lamp = clamp(roomOf(lines) - body - stool, Math.max(18, s * lampU), s * 0.75)
+  const lamp = clamp(roomOf(lines) - body - stool, Math.max(LAMP_MIN, s * lampU), Math.max(LAMP_MIN, s * 0.75))
   const lineH = lamp + body + stool + FLOOR
   const blockH = lines.length * lineH + (lines.length - 1) * 8
   const stageY = stageTop + Math.max(0, (availH - blockH) * 0.5)
@@ -251,7 +255,7 @@ export default function ChoiceGame({ level = 1, onComplete }) {
   const { hit, miss, shake } = juice   // these three never change
 
   // What the band and the taps work on; the state above is its picture
-  const G = useRef({ q, L, phase: 'enter', seats: [], slot: 0, misses: 0, roundMisses: 0, tried: [], firstTry: 0, streak: 0, crowdN: 0, n: 0, resume: null, ended: false }).current
+  const G = useRef({ q, L, phase: 'enter', seats: [], slot: 0, misses: 0, roundMisses: 0, tried: [], firstTry: 0, streak: 0, crowdN: 0, onHill: new Set(), n: 0, resume: null, ended: false }).current
   G.q = q
   G.L = L
   const pausedRef = useRef(paused)
@@ -363,16 +367,20 @@ export default function ChoiceGame({ level = 1, onComplete }) {
   const crowdRef = useRef(crowd)
   crowdRef.current = crowd
 
-  // The row is done and has had its dance: its animals hop up the hill
+  // The row is done and has had its dance: those of its animals who are
+  // not in the big band yet hop up the hill. Each animal once: with every
+  // row's animals the hill became a heap of the same lions and elephants.
   const leave = () => {
     go('leave')
     dark()
     const row = seated(G.q, G.seats)
     sfx.slideUp()
     for (const art of membersOf(G.q)) {
+      if (G.onHill.has(art)) continue
       const to = G.L.hillAt(G.crowdN)
       if (!to) break                      // the hill is full
       G.crowdN += 1
+      G.onHill.add(art)
       const place = row.findIndex(t => t && artOf(G.q, t) === art)
       fly({ art, from: G.L.seatAt(Math.max(0, place)), to, size: Math.min(G.L.s, 80), toSize: G.L.a, then: () => setCrowd(c => [...c, { id: c.length, art }]) })
     }
@@ -582,7 +590,7 @@ export default function ChoiceGame({ level = 1, onComplete }) {
                 )
               })}
               {beat.place >= 0 && L.places[beat.place] && (
-                <Lamp x={L.places[beat.place].x} top={L.places[beat.place].top + 9} w={Math.max(L.places[beat.place].w * 1.06, 44)} h={L.lineH - FLOOR - 5} on={beat.lit} reduce={reduce} />
+                <Lamp x={L.places[beat.place].x} top={L.places[beat.place].top + 9} w={Math.max(L.places[beat.place].w * 1.06, 44)} h={L.lineH - FLOOR - 5} maxHead={(L.lamp - 9) / 0.9} on={beat.lit} reduce={reduce} />
               )}
               {q.tokens.map((_, i) => {
                 const p = L.places[i], token = row[i]

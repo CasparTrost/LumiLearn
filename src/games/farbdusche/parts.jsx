@@ -189,7 +189,14 @@ export function Bubble({ rect, kind, target, recipe, tail = 'left', big, label, 
         boxShadow: '0 5px 0 rgba(42,27,61,0.28)', boxSizing: 'border-box',
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: side * 0.02,
       }}>
-        <div style={{ width: side * 0.86, height: side * 0.86, position: 'absolute', borderRadius: '50%', background: 'radial-gradient(circle, #e8e2f6 0%, #f3eefb 62%, rgba(255,253,247,0) 72%)' }} />
+        {/* a white wish stands on a sky-blue glow: on the pale one it looked
+            like the grey, unpainted monster under the shower */}
+        <div style={{
+          width: side * 0.86, height: side * 0.86, position: 'absolute', borderRadius: '50%',
+          background: target === 'weiß'
+            ? 'radial-gradient(circle, #7fa6e0 0%, #a9c3ec 58%, rgba(255,253,247,0) 72%)'
+            : 'radial-gradient(circle, #e8e2f6 0%, #f3eefb 62%, rgba(255,253,247,0) 72%)',
+        }} />
         <Monster kind={kind} color={target} size={inner} mood="happy" wipe={0} style={{ zIndex: 1 }} />
         {recipe && (
           <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 320, damping: 14 }}

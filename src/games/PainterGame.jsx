@@ -39,13 +39,13 @@ import './farbdusche/farbdusche.css'
  * Score: monsters that got their colour with the first shower.
  *
  * Lumi says one word: the wished colour when a monster arrives, the paint
- * of a tap, and the colour that came out. A hand shows the next step when
- * a child waits.
+ * of a tap, and the colour that came out, each only when it is not the
+ * word Lumi said last ("Rot. Rot. Rot." for a red wish, a red tap and a
+ * red monster). A hand shows the next step when a child waits.
  */
 
 const LABEL = { rot: 'Rot', gelb: 'Gelb', blau: 'Blau', weiß: 'Weiß', schwarz: 'Schwarz' }
 const label = id => id.charAt(0).toUpperCase() + id.slice(1)
-const word = id => (COLORS[id]?.word ? colorWord(COLORS[id].word) : null)
 const FUNNY = [() => sfx.giggle(), () => sfx.burp(), () => { sfx.boing(); sfx.giggle() }, () => sfx.sparkle()]
 
 // A squirt flies in a bow from the tap into the tank
@@ -108,6 +108,15 @@ export default function PainterGame({ level = 1, onComplete }) {
   const leverEl  = useRef(null)
   const drainEl  = useRef(null)
   const lastHex  = useRef('#ffffff')
+  const lastWord = useRef(null)
+
+  // A colour's word, unless it is the one Lumi said last (the wish always)
+  const sayColour = (id, always = false) => {
+    const w = COLORS[id]?.word
+    if (!w || (!always && w === lastWord.current)) return
+    lastWord.current = w
+    narrate([colorWord(w)])
+  }
 
   const mon = plan.monsters[Math.min(idx, total - 1)]
   const mixed = mixOf(tank)
@@ -130,7 +139,7 @@ export default function PainterGame({ level = 1, onComplete }) {
     later(reduce ? 300 : 1050, () => {
       setPhase('mix')
       // after any praise still being spoken, not over it
-      afterSpeech(() => narrate([word(plan.monsters[idx].target)]))
+      afterSpeech(() => sayColour(plan.monsters[idx].target, true))
     })
   }, [idx, ready]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -141,7 +150,7 @@ export default function PainterGame({ level = 1, onComplete }) {
     if (!canFill || paused) return
     if (tank.length + flying.length >= MAX_SQUIRTS) { setWobble(w => w + 1); sfx.bump(); return }
     sfx.pop()
-    narrate([colorWord(paint)])
+    sayColour(paint)
     const id = ++squirtId.current
     setFlying(f => [...f, { id, paint, i }])
     later(reduce ? 0 : 400, () => {
@@ -179,7 +188,7 @@ export default function PainterGame({ level = 1, onComplete }) {
   }
 
   const judge = (got, missed) => {
-    narrate([word(got)])
+    sayColour(got)
     if (got === mon.target) {
       if (missed) streak.current = 0
       else { firstTry.current += 1; streak.current += 1 }

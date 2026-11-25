@@ -162,3 +162,37 @@ describe('the hill', () => {
     }
   })
 })
+
+describe('the rounds of a level', () => {
+  const sig = q => [q.kind, ...q.tokens, q.answer ?? q.fill.join('')].join('|')
+
+  it('never asks the same row twice, and a growing row at most once', () => {
+    for (let level = 1; level <= 10; level++) {
+      for (let run = 0; run < 60; run++) {
+        const qs = generateQuestions('patterns', level, 8)
+        expect(new Set(qs.map(sig)).size, `level ${level}`).toBe(qs.length)
+        expect(qs.filter(q => q.kind === 'grow').length).toBeLessThanOrEqual(1)
+      }
+    }
+  })
+
+  it('takes every kind of row of the level before one comes again', () => {
+    // level 4: ABC, AABB, ABBC and gap rows; no build rounds yet
+    for (let run = 0; run < 60; run++) {
+      const kinds = generateQuestions('patterns', 4, 8).map(q => (q.kind === 'gap' ? 'gap' : q.unit.length))
+      expect(kinds.filter(k => k === 'gap')).toHaveLength(2)
+      expect(new Set(kinds.slice(0, 4)).size).toBe(3)                 // three places, four places, a gap
+    }
+  })
+
+  it('starts a row where a run of one animal starts: no "A B C A A B C A" before ABCA is due', () => {
+    for (let level = 1; level <= 8; level++) {
+      for (let run = 0; run < 60; run++) {
+        for (const q of generateQuestions('patterns', level, 8)) {
+          // a unit whose first animal is its last too is a run cut in two
+          if (q.unit && q.unit.length > 2) expect(q.unit[0], `level ${level}: ${q.unit.join(' ')}`).not.toBe(q.unit.at(-1))
+        }
+      }
+    }
+  })
+})

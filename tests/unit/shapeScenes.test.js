@@ -125,6 +125,33 @@ describe('Formen-Land: what counts as right', () => {
     for (const out of ['🪙', '🎯', '⛺', '🚩']) expect(emojis).not.toContain(out)
   })
 
+  it('asks only things whose outline is plainly their shape', () => {
+    // the kite was drawn tilted and nearly square: a child calling it a
+    // Quadrat was right and got it marked wrong
+    expect(Object.values(OBJECTS).flat().map(t => t[0])).not.toContain('🪁')
+    for (const [type, things] of Object.entries(OBJECTS)) {
+      for (const [, name, outline] of things) {
+        if (type === 'triangle') {
+          expect(outline, name).toHaveLength(3)
+          continue
+        }
+        const [x, y, w, h] = outline
+        expect(x >= 0 && y >= 0 && x + w <= 100 && y + h <= 100, name).toBe(true)
+        // a circle and a square as high as wide, a rectangle and an oval
+        // clearly longer one way (no square door, no round egg)
+        if (type === 'circle' || type === 'square') expect(ratio(outline), name).toBeLessThan(1.06)
+        else expect(ratio(outline), name).toBeGreaterThan(1.2)
+      }
+    }
+  })
+
+  it('never offers a Quadrat next to a Raute', () => {
+    for (let i = 0; i < 40; i++) {
+      const shuffle = a => [...a].sort(() => Math.random() - 0.5)
+      expect(objectOptions('rhombus', SHAPE_IDS, shuffle)).not.toContain('square')
+    }
+  })
+
   it('never offers a second shape the thing could be called', () => {
     const same = a => a
     for (const type of Object.keys(OBJECTS)) {
