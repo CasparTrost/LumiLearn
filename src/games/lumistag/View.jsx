@@ -52,7 +52,7 @@ export default function View({ skyDay, scene, width, height, reduce, lightsOff, 
   const at = (cx, bottom, size) => ({ position: 'absolute', left: px(cx - size / 2), top: px(top + bottom - size), width: px(size), height: px(size) })
 
   return (
-    <div role="img" aria-label={dark > 0.6 ? 'Nacht' : dark > 0.2 ? 'Abend' : 'Tag'}
+    <div role="img" aria-label={dark > 0.6 ? 'Nacht' : dark > 0.2 ? (((d % 1440) + 1440) % 1440 < 720 ? 'Morgen' : 'Abend') : 'Tag'}
       style={{
         position: 'relative', width, height, flexShrink: 0, borderRadius: 18, overflow: 'hidden', boxSizing: 'border-box',
         border: `${frame}px solid #8A4F22`, outline: `3px solid ${INK}`, outlineOffset: -1,
@@ -168,7 +168,7 @@ function Lumi({ scene, at, px, gx, sx, reduce }) {
     pos = at(96, FLOOR - 26, 56); mood = 'happy'
     act = reduce ? {} : { rotate: [-5, 5, -5], transition: { duration: 1.2, repeat: Infinity } }
   } else if (id === 'kindergarten') {
-    pos = at(sx - 62, 196, 56); mood = 'wave'
+    pos = at(sx - 4, 194, 46); mood = 'wave'
     act = reduce ? {} : { y: [0, -px(8), 0], transition: { duration: 0.5, repeat: 3 } }
   } else if (id === 'spielplatz') {
     // on the swing's seat, swinging from its top bar
