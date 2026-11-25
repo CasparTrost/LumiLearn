@@ -100,7 +100,7 @@ export const wordOf  = w => groupOf(w).words.find(x => x.w === w)
 //   beside stands next to it (am, so … wie)
 // `act` is how it plays: bounce, wobble, sink, peek, grow, brush, wave, glow.
 const P = {
-  mausHaus:     { how: 'peek',   at: [0.2, -0.02], size: 0.3, act: 'peek' },
+  mausHaus:     { how: 'peek',   at: [0.16, 0.11], size: 0.22, act: 'peek' },
   inHose:       { how: 'in',     at: [0, -0.5],  size: 0.6, rim: -0.4, act: 'sink' },
   inDose:       { how: 'in',     at: [0, -0.5],  size: 0.62, rim: -0.36, act: 'sink' },
   hoseInDose:   { how: 'in',     at: [0, -0.48], size: 0.58, rim: -0.36, act: 'sink' },

@@ -80,13 +80,13 @@ export function stageLayout(w, h, { verse = false, n = 0 } = {}) {
   const W = w, H = h
   const valH = row ? clamp(H * 0.07, 28, 40) + (verse ? 16 : 0) : clamp(H * 0.1, 26, 34) + (verse ? 8 : 0)
   const audH = row ? clamp(H * 0.12, 46, 74) : 0
-  const head = row ? audH * 0.74 : clamp(H * 0.13, 28, 42)
+  const head = row ? audH * 0.74 : clamp(H * 0.17, 30, 46)
   const labelH = row ? 24 : 20
   const lampH = row ? 14 : 12
   const floorH = labelH + lampH + 8
   const floorBottom = H - audH
   const floorTop = floorBottom - floorH
-  const S = clamp(Math.min((H - valH - audH - floorH) * (row ? 0.4 : 0.42), W * 0.24), 56, 170)
+  const S = clamp(Math.min((H - valH - audH - floorH) * (row ? 0.4 : 0.42), W * 0.3), 56, 170)
   const open = { left: W * 0.08, right: W * 0.92 }
   const flyTop = valH + 6, flyBottom = floorTop - S - 6
   const flyH = Math.max(0, flyBottom - flyTop)
@@ -240,7 +240,10 @@ export default function RhymeGame({ level = 1, onComplete }) {
     const sc = r.mode === 'verse' ? { ...r.verse, line: r.verse.line.replace(' …', ` ${r.verse.answer}!`), key: `reim/vers-${r.verse.slug}-ganz` } : sceneOf(a.w, b.w)
     const mover = sc.mover === a.w ? a : b
     const seat = mover === a ? b : a
-    setPlay({ i: idx, kind: 'scene', mover, seat, place: sc.place, line: sc.line, from })
+    // the names in the order of the line
+    const first = r.mode === 'verse' ? r.base.w : sc.first
+    const names = first === a.w ? [a, b] : [b, a]
+    setPlay({ i: idx, kind: 'scene', mover, seat, place: sc.place, line: sc.line, from, names })
     cheerCrowd('laugh')
     sfx.slideUp()
     burst(regionRef.current, 'confetti', 12)
@@ -291,8 +294,9 @@ export default function RhymeGame({ level = 1, onComplete }) {
   const dropWrong = (opt, from) => {
     // it lands where no one stands
     const near = Math.abs(from.x - baseX) < lay.S * 0.9 || Math.abs(from.x - slotX) < lay.S * 0.9
-    const side = from.x < lay.cx ? lay.open.left + lay.S * 0.45 : lay.open.right - lay.S * 0.45
-    const landX = near ? side : clamp(from.x, lay.open.left + lay.S * 0.45, lay.open.right - lay.S * 0.45)
+    const edge = lay.S * 0.6
+    const side = from.x < lay.cx ? lay.open.left + edge : lay.open.right - edge
+    const landX = near ? side : clamp(from.x, lay.open.left + edge, lay.open.right - edge)
     const color = BALLOONS[r.options.indexOf(opt) % BALLOONS.length]
     setFallers(f => [...f, { id: `${idx}-${opt.w}`, item: opt, from, to: { x: landX, y: lay.feetY - lay.S * 0.35 }, color }])  // to.y: its middle on the boards
     later(600, () => { sfx.boing(); setNope(n => n + 1) })
@@ -648,7 +652,7 @@ function Wanted({ lay, x }) {
  * The pair's scene, as its line says. The mover hops from where it stood to
  * its place on (in, before, beside) the seat and plays its act there.
  */
-function Tableau({ lay, mover, seat, place, from }) {
+function Tableau({ lay, mover, seat, place, from, names = [seat, mover] }) {
   const still = reduceMotion()
   const S = lay.S
   const [settled, setSettled] = useState(still)
@@ -704,8 +708,7 @@ function Tableau({ lay, mover, seat, place, from }) {
       )}
       {/* both names, the rhyme coloured, under the pair */}
       <div style={{ position: 'absolute', left: seatX, top: lay.feetY + 4, transform: 'translateX(-50%)', display: 'flex', gap: 6, zIndex: 4 }}>
-        <Name item={seat} rime size={lay.labelH * 0.72} />
-        <Name item={mover} rime size={lay.labelH * 0.72} />
+        {names.map(x => <Name key={x.w} item={x} rime size={lay.labelH * 0.72} />)}
       </div>
     </div>
   )
@@ -731,7 +734,7 @@ function Hook({ lay, size, targetX }) {
   const y = lay.feetY - size * 0.72 - h / 2
   // its crook (the right end) reaches round the one it takes
   const reach = targetX != null ? targetX + size * 0.18 - w : null
-  const rest = lay.open.left + size * 0.15 - w
+  const rest = lay.open.left + size * 0.42 - w
   return (
     <motion.svg aria-hidden="true" viewBox="0 0 260 90" width={w} height={h}
       initial={{ x: rest }}
@@ -805,8 +808,8 @@ function Trapezes({ lay, round, play }) {
           style={{ position: 'absolute', left: S * 0.1, top: L - S, width: S, height: S, transformOrigin: '50% 100%' }}>
           <Art art={it.e} size={140} style={{ width: '100%', height: 'auto' }} />
         </motion.div>
-        <div style={{ position: 'absolute', left: '50%', top: L + 12, transform: 'translateX(-50%)' }}>
-          <Name item={it} rime={hug} size={lay.labelH * 0.66} />
+        <div style={{ position: 'absolute', left: '50%', top: L + 12, transform: 'translateX(-50%)', opacity: hug ? 0 : 1, transition: 'opacity .3s' }}>
+          <Name item={it} size={lay.labelH * 0.66} />
         </div>
         {hug && side === 0 && !still && (
           <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: [0, 1.3, 1], opacity: 1, y: [0, -S * 0.3] }} transition={{ delay: 0.9, duration: 0.8 }}
@@ -950,7 +953,7 @@ function Audience({ lay, crowd, lit }) {
           <motion.span initial={{ opacity: 0, y: 0, scale: 0.5 }} animate={{ opacity: [0, 1, 1, 0], y: -h * 0.6, scale: 1 }}
             transition={{ duration: 1.3, delay: 0.1 + i * 0.06 }}
             style={{ position: 'absolute', left: '50%', top: -h * 0.2, transform: 'translateX(-50%)', whiteSpace: 'nowrap',
-              fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: clamp(h * 0.34, 12, 18), color: '#ff6fa3', WebkitTextStroke: `1px ${INK}` }}>
+              fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: clamp(h * 0.36, 14, 20), color: '#ff6fa3', WebkitTextStroke: `1px ${INK}` }}>
             {kind === 'clap' ? <Art art="👏" size={Math.round(h * 0.7)} /> : kind === 'laugh' ? 'ha ha!' : <Art art="🎉" size={Math.round(h * 0.7)} />}
           </motion.span>
         )}
