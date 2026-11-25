@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- The source of public/sprites/emoji/custom/klettergeruest.webp ("Klettergerüst"):
+       a playground climbing tower: a wall with coloured climbing holds up to
+       the platform, a ladder down the other side, a flag on top.
+       Render: scripts/art/render-svg.mjs -->
+  <g stroke="#2a1b3d" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">
+    <!-- the flag -->
+    <path d="M128 64 L128 8" fill="none"/>
+    <path d="M131 10 L168 20 L131 32 Z" fill="#ffd21f"/>
+    <!-- the four posts -->
+    <rect x="80" y="54" width="14" height="184" rx="5" fill="#d08a45"/>
+    <rect x="162" y="54" width="14" height="184" rx="5" fill="#d08a45"/>
+    <!-- the railing round the platform -->
+    <rect x="74" y="56" width="108" height="12" rx="5" fill="#e2443a"/>
+    <path d="M106 68 L106 112 M128 68 L128 112 M150 68 L150 112" fill="none" stroke-width="7"/>
+    <path d="M106 68 L106 112 M128 68 L128 112 M150 68 L150 112" fill="none" stroke="#e2443a" stroke-width="3"/>
+    <!-- the platform -->
+    <rect x="66" y="110" width="124" height="18" rx="5" fill="#e9a85c"/>
+    <!-- the cross brace below -->
+    <path d="M94 136 L162 196 M162 136 L94 196" fill="none" stroke-width="10"/>
+    <path d="M94 136 L162 196 M162 136 L94 196" fill="none" stroke="#b9773a" stroke-width="4"/>
+    <!-- the red ladder on the right -->
+    <path d="M176 124 L214 238 M204 124 L242 238" fill="none" stroke-width="14"/>
+    <path d="M176 124 L214 238 M204 124 L242 238" fill="none" stroke="#e2443a" stroke-width="6"/>
+    <path d="M186 152 L214 152 M196 180 L224 180 M205 208 L233 208" fill="none" stroke-width="12"/>
+    <path d="M186 152 L214 152 M196 180 L224 180 M205 208 L233 208" fill="none" stroke="#ff9a8f" stroke-width="5"/>
+    <!-- the blue climbing wall on the left -->
+    <path d="M70 120 L102 120 L58 240 L14 240 Z" fill="#4f95ec"/>
+  </g>
+  <!-- light and shade on the wall -->
+  <path d="M74 132 L36 230" stroke="#9fc6f6" stroke-width="6" stroke-linecap="round"/>
+  <path d="M94 134 L56 232" stroke="#2f6dc0" stroke-width="6" stroke-linecap="round"/>
+  <!-- the climbing holds -->
+  <g stroke="#2a1b3d" stroke-width="4" stroke-linejoin="round">
+    <path d="M80 138 q6 -8 13 -2 q3 8 -5 10 q-8 0 -8 -8 Z" fill="#e2443a"/>
+    <path d="M60 162 q6 -8 13 -2 q3 8 -5 10 q-8 0 -8 -8 Z" fill="#ffd21f"/>
+    <path d="M72 186 q6 -8 13 -2 q3 8 -5 10 q-8 0 -8 -8 Z" fill="#7bd35a"/>
+    <path d="M44 204 q6 -8 13 -2 q3 8 -5 10 q-8 0 -8 -8 Z" fill="#ff6b8a"/>
+    <path d="M52 226 q6 -8 13 -2 q3 8 -5 10 q-8 0 -8 -8 Z" fill="#b07ae8"/>
+  </g>
+  <!-- light on the posts -->
+  <path d="M85 70 L85 104 M167 70 L167 104 M167 134 L167 228" stroke="#f0b77a" stroke-width="4" stroke-linecap="round"/>
+</svg>

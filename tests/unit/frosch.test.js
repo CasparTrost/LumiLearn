@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { POOLS, levelConfig, buildRounds, decoys, CELLS } from '../../src/games/frosch/words.js'
+import { POOLS, FOUR_SOURCE, levelConfig, buildRounds, decoys, CELLS } from '../../src/games/frosch/words.js'
 import { stageLayout, hopSpots, padCells, shelfSlots } from '../../src/games/frosch/layout.js'
 import { KEY } from '../../src/games/woerter/voice.js'
 import { LINES } from '../../src/lib/lumiLines.js'
-import { hasEmojiArt } from '../../src/lib/emojiArt.jsx'
+import { hasEmojiArt, customName } from '../../src/lib/emojiArt.jsx'
+import { CUSTOM_ART } from '../../src/lib/emojiArtList.js'
 
 // the same words every run
 function seeded(seed) {
@@ -11,6 +12,8 @@ function seeded(seed) {
   return () => (s = (s * 9301 + 49297) % 233280) / 233280
 }
 const ALL = Object.values(POOLS).flat()
+// an emoji with its picture, or a :px-…: token with its drawn picture
+const hasPicture = e => (customName(e) ? CUSTOM_ART.has(customName(e)) : hasEmojiArt(e))
 const sound = s => LINES[KEY.syllable(s)].toLowerCase().replace(/[^a-zäöüß]/g, '')
 
 describe('Frosch-Hüpfer: words', () => {
@@ -19,7 +22,7 @@ describe('Frosch-Hüpfer: words', () => {
     for (const w of ALL) {
       expect(KEY.word(w.name) in LINES, w.name).toBe(true)
       for (const s of w.syllables) expect(KEY.syllable(s) in LINES, `${w.name}: ${s}`).toBe(true)
-      expect(hasEmojiArt(w.emoji), w.name).toBe(true)
+      expect(hasPicture(w.emoji), w.name).toBe(true)
     }
   })
 
@@ -33,6 +36,22 @@ describe('Frosch-Hüpfer: words', () => {
       byPic.set(pic(w.emoji), w.name)
     }
     expect(new Set(ALL.map(w => w.name)).size).toBe(ALL.length)
+  })
+
+  it('has a picture for every four-syllable word, recorded yet or not', () => {
+    // the pool drops words whose recordings are missing: a missing picture
+    // must not hide behind a missing recording
+    expect(FOUR_SOURCE.length).toBeGreaterThanOrEqual(19)
+    const pic = e => e.replace(/️/g, '')
+    const others = new Set(ALL.filter(w => w.syllables.length !== 4).map(w => pic(w.emoji)))
+    for (const w of FOUR_SOURCE) {
+      expect(w.syllables.length, w.name).toBe(4)
+      expect(hasPicture(w.emoji), `${w.name} ${w.emoji}`).toBe(true)
+      expect(others.has(pic(w.emoji)), `${w.name} ${w.emoji}`).toBe(false)
+    }
+    expect(new Set(FOUR_SOURCE.map(w => pic(w.emoji))).size).toBe(FOUR_SOURCE.length)
+    // the recorded ones are the pool
+    expect(POOLS.FOUR.every(w => FOUR_SOURCE.some(s => s.name === w.name))).toBe(true)
   })
 
   it('sorts the words by their number of syllables', () => {
