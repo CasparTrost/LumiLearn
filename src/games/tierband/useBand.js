@@ -27,12 +27,12 @@ import { usePaused } from '../../lib/pause.js'
  */
 const AHEAD = 0.3     // seconds of sound laid on the audio clock ahead of time
 const LEAD = 0.18     // a breath before the first beat
-const SLEPT = 0.7     // a gap this long between two looks at the clock: the page slept
+const SLEPT = 3       // a gap this long between two looks at the clock: the page slept
 
 const pageClock = () => performance.now() / 1000
 
 export function useBand({ on = true, mute = false, onStep }) {
-  const S = useRef({ piece: null, raf: 0, on, mute, onStep, audio: false, t0: 0, last: 0, a: 0, v: 0 }).current
+  const S = useRef({ piece: null, raf: 0, on, mute, onStep, audio: false, asked: 0, t0: 0, last: 0, a: 0, v: 0 }).current
   S.onStep = onStep
   S.mute = mute
 
@@ -56,10 +56,13 @@ export function useBand({ on = true, mute = false, onStep }) {
     const tick = () => {
       const p = S.piece
       if (!p) return
-      const clock = sfx.bandClock()
+      // (while there is no sound, asking for it twice a second is enough)
+      const clock = S.audio || ++S.asked % 30 === 0 ? sfx.bandClock() : null
       // the sound came (the first touch unlocked it) or went: from the top, on the right clock
       if ((clock != null) !== S.audio) { start(); return }
       const now = S.audio ? clock : pageClock()
+      // After a long sleep: from the top. A short stall (a slow device) is
+      // caught up instead: the notes it missed are left out, never played late.
       if (now - S.last > SLEPT) { sfx.bandHush(); start(); return }
       S.last = now
       const n = p.events.length

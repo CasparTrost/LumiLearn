@@ -54,7 +54,7 @@ describe('the band', () => {
       expect(bpmOf(level)).toBeGreaterThanOrEqual(100)
       expect(bpmOf(level)).toBeLessThanOrEqual(120)
       expect(cheerBpm(level, 6)).toBeGreaterThan(bpmOf(level))
-      expect(cheerBpm(level, 10)).toBeLessThanOrEqual(190)
+      expect(cheerBpm(level, 10)).toBeLessThanOrEqual(200)
     }
   })
 })
@@ -86,12 +86,12 @@ describe('a row as a rhythm', () => {
     expect(ghosts[0].vol).toBeLessThan(1)
   })
 
-  it('a try-out plays the round before the stool and the round with the wrong animal', () => {
-    expect(tryFrom(AB, 5)).toBe(2)
-    expect(tryFrom(GAP, 4)).toBe(0)
+  it('a try-out plays one round before the stool and then the wrong animal', () => {
+    expect(tryFrom(AB, 5)).toBe(3)
+    expect(tryFrom(GAP, 4)).toBe(1)
     expect(tryFrom(GROW, 3)).toBe(0)
     const { events } = timeline(AB, [null], { trial: { slot: 0, token: '🐱' }, from: tryFrom(AB, 5), upTo: 5, rest: 1 })
-    expect(events.filter(e => !e.off).map(e => [e.place, e.inst])).toEqual([[2, 'drum'], [3, 'whistle'], [4, 'drum'], [5, 'bell']])
+    expect(events.filter(e => !e.off).map(e => [e.place, e.inst])).toEqual([[3, 'whistle'], [4, 'drum'], [5, 'bell']])
     expect(events[0].t).toBe(0)
   })
 

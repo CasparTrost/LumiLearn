@@ -133,7 +133,7 @@ export function Performer({ art, size, pulse = 0, delay = 0, dance = false, phas
         <div className={dance && !reduce ? 'tb-sway' : still || reduce ? undefined : 'tb-wait'} style={{ position: 'relative', width: size, height: size, animationDelay: `${-phase * 0.5}s` }}>
           <Art art={art} size={size} />
           {inst && (
-            <div style={{ position: 'absolute', right: -size * 0.1, bottom: -size * 0.04, filter: 'drop-shadow(0 2px 0 rgba(42,27,61,0.35))' }}>
+            <div style={{ position: 'absolute', right: -size * 0.1, bottom: -size * 0.04 }}>
               <Instrument inst={inst} size={size * 0.5} />
             </div>
           )}

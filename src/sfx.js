@@ -254,6 +254,11 @@ const BAND = {
     wave(ac, lp, 'sawtooth', t, 0.55, 329.63)
     wave(ac, shape(ac, out, t, 0.004, 0.4, 0.14 * v), 'triangle', t, 0.4, 329.63)
   },
+  /** the child claps along: three thin slaps close together */
+  clap(ac, out, t, v) {
+    const bp = filter(ac, out, 'bandpass', 1300, 0.9)
+    ;[0, 0.011, 0.023].forEach(d => hiss(ac, shape(ac, bp, t + d, 0.001, d < 0.02 ? 0.02 : 0.11, 0.9 * v), t + d, d < 0.02 ? 0.02 : 0.11))
+  },
   /** the tune of the finale: a soft marimba at any pitch */
   tune(ac, out, t, v, f = 523.25) {
     wave(ac, shape(ac, out, t, 0.004, 0.34, 0.2 * v), 'sine', t, 0.34, f)
@@ -471,7 +476,8 @@ export const sfx = {
 
   /**
    * One note of an instrument of the band (BAND_VOICES: drum, bass, maraca,
-   * cymbal, bell, xylo, cowbell, whistle, quack, trumpet, wood, guitar, tune).
+   * cymbal, bell, xylo, cowbell, whistle, quack, trumpet, wood, guitar, and
+   * clap and tune for the child's clapping and the finale's melody).
    * `at` is a moment on the audio clock (sfx.bandClock()); 0 or a moment
    * gone by means now. `freq` sets the pitch of 'tune' only.
    */

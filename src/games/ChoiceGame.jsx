@@ -29,15 +29,16 @@ import { INK, Performer, Group, Stool, Bench, Lamp, Hill, Flyer, hillSlots, cols
  *
  * Below the stage wait the animals to choose from. The child puts the
  * right one on the empty stool: drags it there, or taps it (it plays its
- * sound alone and is picked up) and then taps the stool. Up to level 3 a
- * tap alone sends it to the stool.
+ * sound alone and is picked up) and then taps the stool or the animal once
+ * more. Up to level 5 a tap alone sends it to the stool.
  *
  *   • Right: a star flies to the counter, the band plays the whole row
  *     twice, faster, everybody dances, and the row's animals hop up the
  *     hill at the back to the big band, which grows over the level.
  *   • Wrong: the animal sits down all the same and the band plays the last
- *     round of the pattern with it. It sounds wrong at its place; the
- *     animal shakes its head and hops back to where it waited. Try again.
+ *     round of the pattern with it. It sounds wrong at its place (its note
+ *     comes out grey and falls down); the animal shakes its head and hops
+ *     back to where it waited. Try again.
  *   • After two misses at one stool the right animal plays softly from
  *     where it waits each time the light is on the empty stool: the loop is
  *     heard whole, and one sees who made the missing sound.
@@ -46,6 +47,8 @@ import { INK, Performer, Group, Stool, Bench, Lamp, Hill, Flyer, hillSlots, cols
  *   • A growing row (from level 5): one frog, two frogs, three frogs on
  *     their benches play one, two, three notes. Which group comes next?
  *   • Finale: the whole big band plays a short tune together.
+ *   • Every animal is a toy: tapped on the stage or on the hill, it plays.
+ *     While the band dances, every tap anywhere is a clap.
  *
  * The rows come from games/gameEngine.js (AB, AAB, ABB, ABC, AABB, growing
  * rows, a gap in the middle, several stools). The steady time is kept by
@@ -63,15 +66,17 @@ import { INK, Performer, Group, Stool, Bench, Lamp, Hill, Flyer, hillSlots, cols
  */
 
 const ROUNDS = 8
-// Up to this level a tap alone sends an animal to the stool; from then on
-// a tap lets it play alone first (and picks it up)
-const DIRECT_TO = 3
+// Up to this level every row has one empty stool, and a tap alone sends an
+// animal there. From then on (rows with several stools come in) a tap lets
+// it play alone first and picks it up; a second tap on it, a tap on the
+// stool or a drag sends it.
+const DIRECT_TO = 5
 // The app's music switch also silences the band. Set to false if the band
 // is to play whatever the switch says.
 const RESPECT_MUSIC_SWITCH = true
 // Lines Lumi may get later; silent until they are recorded
 const SAY_START = 'musterpark/wer-fehlt'
-const SAY_BUILD = 'musterpark/spiel-weiter'
+const SAY_BUILD = 'musterpark/wie-weiter'
 const optional = key => (LINES[key] ? line(key) : null)
 
 const PAD = 8
@@ -196,7 +201,7 @@ function layout(W, H, q) {
 function grid(n, w, h, max) {
   let best = { cols: 1, size: 0 }
   for (let cols = 1; cols <= n; cols++) {
-    const size = Math.min(max, w / cols, h / Math.ceil(n / cols))
+    const size = Math.min(max, w / (cols + 0.24), h / Math.ceil(n / cols))   // (a line's step juts out a little)
     if (size > best.size) best = { cols, size }
   }
   return best
@@ -230,8 +235,14 @@ export default function ChoiceGame({ level = 1, onComplete }) {
   const [drag, setDrag] = useState(null)        // { token, x, y, near }
   const [done, setDone] = useState(0)
   const [fbeat, setFbeat] = useState({ id: 0, who: [], all: false })
-  const [speaking, setSpeaking] = useState(false)
-  useEffect(() => onNarrationChange(setSpeaking), [])
+  // Lumi's voice: the band waits for it (also for what is still being said
+  // when the game opens)
+  const [speaking, setSpeaking] = useState(true)
+  useEffect(() => {
+    const stop = afterNarration(() => setSpeaking(false), { maxMs: 6000 })
+    const off = onNarrationChange(setSpeaking)
+    return () => { stop(); off() }
+  }, [])
   useEffect(() => leaveGame, [])
 
   const q = questions[idx]
@@ -309,26 +320,32 @@ export default function ChoiceGame({ level = 1, onComplete }) {
   const landed = f => { setFlyers(l => l.filter(x => x.id !== f.id)); f.then?.() }
 
   // An animal plays alone: the band holds its breath and comes in again
-  const audition = (token, who = token) => {
-    const n = countOf(G.q, token)
+  const alone = (art, n, who) => {
     clearTimeout(G.resume)
     band.stop()
     dark()
-    band.sound(instOf(artOf(G.q, token)), n, 0.3)
+    band.sound(instOf(art), n, 0.3)
     setSolo({ id: ++G.n, token: who })
     G.resume = setTimeout(loop, 950 + n * 300)
   }
+  const audition = token => alone(artOf(G.q, token), countOf(G.q, token), token)
   // The animals on the stage and on the hill are toys, too: a tap and
   // they play (the one on the stage in the light)
   const tapSeat = i => {
     const token = seated(G.q, G.seats)[i]
     if (G.phase !== 'play' || pausedRef.current || !token) return
-    audition(token, `seat-${i}`)
+    alone(artOf(G.q, token), countOf(G.q, token), `seat-${i}`)
     setBeat({ id: G.n, place: i, sub: -1, lit: true, played: false, ghost: false })
   }
   const tapHill = (c, i) => {
     if (G.phase !== 'play' || pausedRef.current) return
-    audition(c.art, `hill-${i}`)
+    alone(c.art, 1, `hill-${i}`)
+  }
+  // While the band has its dance (and at the finale) every tap is a clap
+  const clap = e => {
+    if ((G.phase !== 'cheer' && G.phase !== 'finale') || pausedRef.current) return
+    band.sound('clap')
+    burst({ x: e.clientX, y: e.clientY }, 'stars', 4)
   }
 
   const finale = () => {
@@ -368,7 +385,7 @@ export default function ChoiceGame({ level = 1, onComplete }) {
     go('cheer')
     sayRight()
     const places = G.q.tokens.length
-    later(420, () => band.play({ ...timeline(G.q, G.seats, { rest: 1 }), beat: 60 / cheerBpm(level, places), passes: 2, onEnd: leave }))
+    later(380, () => band.play({ ...timeline(G.q, G.seats, { rest: 0.5 }), beat: 60 / cheerBpm(level, places), passes: 2, onEnd: leave }))
   }
 
   // The try-out is over, it did not fit: a shake of the head, and back
@@ -379,7 +396,7 @@ export default function ChoiceGame({ level = 1, onComplete }) {
     setOops(n => n + 1)
     miss(seatEls.current[place])
     sayWrong()
-    later(reduce ? 300 : 800, () => {
+    later(reduce ? 300 : 700, () => {
       setTrial(null)
       const back = () => {
         G.trial = null
@@ -425,7 +442,7 @@ export default function ChoiceGame({ level = 1, onComplete }) {
     setTrial(G.trial)
     go('demo')
     if (qq.kind !== 'grow') band.sound(instOf(token))
-    later(qq.kind === 'grow' ? 250 : 550, () => band.play({
+    later(qq.kind === 'grow' ? 250 : 400, () => band.play({
       ...timeline(qq, G.seats, { trial: G.trial, from: tryFrom(qq, place), upTo: place, rest: 0.8 }), beat: beatS(), onEnd: reject,
     }))
   }
@@ -446,7 +463,8 @@ export default function ChoiceGame({ level = 1, onComplete }) {
   const usable = token => G.phase === 'play' && !pausedRef.current && !G.tried.includes(token)
   const tapCard = token => {
     if (!usable(token)) return
-    if (direct) { place(token); return }
+    // a tap alone at the low levels; later the second tap on the same one
+    if (direct || picked === token) { place(token); return }
     audition(token)
     setPicked(token)
   }
@@ -524,7 +542,7 @@ export default function ChoiceGame({ level = 1, onComplete }) {
   const band2 = phase === 'finale' && L ? grid(Math.max(1, crowd.length), size.w - PAD * 4, size.h - L.topH - PAD * 3, 132) : null
 
   return (
-    <div ref={el => { rootRef.current = el; juice.stage.current = el }} data-phase={phase} data-round={idx} data-kind={q.kind} data-light={beat.lit ? beat.place : -1}
+    <div ref={el => { rootRef.current = el; juice.stage.current = el }} onPointerDown={clap} data-phase={phase} data-round={idx} data-kind={q.kind} data-light={beat.lit ? beat.place : -1}
       style={{ position: 'relative', flex: 1, minHeight: 0, overflow: 'hidden', userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'none' }}>
       {L && (
         <>
@@ -588,7 +606,8 @@ export default function ChoiceGame({ level = 1, onComplete }) {
                     {grow && token && countOf(q, token) > 2 && (
                       <div aria-hidden="true" style={{ position: 'absolute', left: 10, right: 10, bottom: L.stool - 3, height: L.s * 0.8, boxSizing: 'border-box', background: '#b3723f', border: `3px solid ${INK}`, borderRadius: '8px 8px 0 0', boxShadow: 'inset 0 4px 0 rgba(255,255,255,0.25)' }} />
                     )}
-                    <div className={open ? `tb-want${picked || drag ? ' tb-want--now' : ''}` : undefined} style={{ display: 'flex', justifyContent: 'center', transformOrigin: '50% 100%' }}>
+                    <div className={open ? `tb-want${picked || drag ? ' tb-want--now' : ''}` : undefined} style={{ position: 'relative', display: 'flex', justifyContent: 'center', transformOrigin: '50% 100%' }}>
+                      {isWant && <span aria-hidden="true" className="tb-glow" style={{ position: 'absolute', left: '-18%', right: '-18%', top: -L.stool * 0.5, bottom: -L.stool * 0.25, borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(255,211,77,0.9), rgba(255,211,77,0))' }} />}
                       {grow
                         ? <Bench w={p.w - 6} h={L.stool} want={isWant} />
                         : <Stool w={Math.min(p.w, L.s * 0.72)} h={L.stool} want={isWant} dim={!token && !isWant} />}
@@ -667,13 +686,19 @@ export default function ChoiceGame({ level = 1, onComplete }) {
           {/* the finale: the whole big band plays together */}
           {phase === 'finale' && band2 && (
             <div role="img" aria-label="Die große Band spielt" style={{ position: 'absolute', left: PAD * 2, right: PAD * 2, top: L.topH + PAD, bottom: PAD * 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${band2.cols}, ${band2.size}px)`, justifyContent: 'center' }}>
-                {crowd.map((c, i) => (
-                  <motion.div key={c.id} initial={reduce ? { opacity: 0 } : { scale: 0, y: -60 }} animate={{ opacity: 1, scale: 1, y: 0 }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 16, delay: reduce ? 0 : i * 0.03 }}
-                    style={{ width: band2.size, height: band2.size, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Performer art={c.art} size={band2.size * 0.82} pulse={fbeat.all || fbeat.who.includes(instOf(c.art)) ? fbeat.id : 0} dance phase={i % 2} reduce={reduce} />
-                  </motion.div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                {Array.from({ length: Math.ceil(crowd.length / band2.cols) }, (_, r) => crowd.slice(r * band2.cols, (r + 1) * band2.cols)).map((line, r) => (
+                  <div key={r} style={{ position: 'relative', display: 'flex', justifyContent: 'center', height: band2.size, padding: `0 ${band2.size * 0.12}px` }}>
+                    {/* the step this line stands on */}
+                    <div aria-hidden="true" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: Math.max(10, band2.size * 0.13), boxSizing: 'border-box', background: 'repeating-linear-gradient(90deg, #c98a52 0 46px, #a8683a 46px 48px)', border: `3px solid ${INK}`, borderRadius: 5, boxShadow: 'inset 0 3px 0 rgba(255,255,255,0.25), 0 4px 0 rgba(42,27,61,0.3)' }} />
+                    {line.map((c, k) => (
+                      <motion.div key={c.id} initial={reduce ? { opacity: 0 } : { scale: 0, y: -60 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+                        transition={{ type: 'spring', stiffness: 300, damping: 16, delay: reduce ? 0 : (r * band2.cols + k) * 0.03 }}
+                        style={{ position: 'relative', width: band2.size, height: band2.size, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', paddingBottom: band2.size * 0.06, boxSizing: 'border-box' }}>
+                        <Performer art={c.art} size={band2.size * 0.8} pulse={fbeat.all || fbeat.who.includes(instOf(c.art)) ? fbeat.id : 0} dance phase={(r + k) % 2} reduce={reduce} />
+                      </motion.div>
+                    ))}
+                  </div>
                 ))}
               </div>
             </div>

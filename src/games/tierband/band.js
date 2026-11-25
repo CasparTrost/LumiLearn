@@ -68,8 +68,8 @@ export function membersOf(q) {
 
 /** Beats per minute of a level: slow enough to follow at four, a little brisker at the end. */
 export const bpmOf = level => 100 + 2 * (Math.max(1, Math.min(10, level)) - 1)
-/** The band plays a finished row faster; long rows faster still, so the fun stays short. */
-export const cheerBpm = (level, places) => Math.min(190, Math.round(bpmOf(level) * (places > 7 ? 1.75 : 1.5)))
+/** The band plays a finished row faster; long rows faster still, so the dance stays short. */
+export const cheerBpm = (level, places) => Math.min(200, Math.round(bpmOf(level) * (places > 8 ? 1.9 : places > 6 ? 1.75 : 1.6)))
 
 export const REST = 2        // beats of dark between two rounds of the loop
 const GROW_NOTE = 0.72       // a growing row: every animal of a group, one after the other
@@ -129,14 +129,13 @@ export function timeline(q, seats = [], { trial = null, help = null, from = 0, u
 }
 
 /**
- * Where a try-out starts: the place the round of the pattern before the
- * stool begins, so the child hears one round as it should be and then the
- * round with the animal it chose. (A growing row is short: all of it.)
+ * Where a try-out starts: one round of the pattern before the stool. The
+ * child hears a round as it should be, and then the animal it chose in the
+ * place of the one the round began with. (A growing row is short: all of it.)
  */
 export function tryFrom(q, place) {
   if (q.kind === 'grow' || !q.unit?.length) return 0
-  const u = q.unit.length
-  return Math.max(0, place - (place % u) - u)
+  return Math.max(0, place - q.unit.length)
 }
 
 // ── The finale ──────────────────────────────────────────────────────────────
