@@ -147,9 +147,7 @@ export default function SortGame({ level = 1, onComplete }) {
 
   // Lumi names the monsters once the recordings exist (silent until then):
   // each hops as its word is said. Picking up a thing ends it. The first
-  // levels start with "Ab in den richtigen Korb!" once it is recorded, and
-  // "Schau auf die Schilder!" until then (the old recording 'start' says
-  // "Füttere die Monster!", and nobody eats here).
+  // levels start with "Ab in den richtigen Korb!" (nobody eats here).
   useEffect(() => {
     lockPreviews()
     const first = plan.targets.some(t => t.kind === 'bin') ? gameLine('tonne')

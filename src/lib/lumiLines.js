@@ -43,7 +43,7 @@ export const LINES = {
   'spielnamen/spiel-bubbles': 'Blasen-Blitz. Tippe die richtigen Blasen an.',
   'spielnamen/spiel-words': 'Memo-Welt. Finde die Paare.',
   'spielnamen/spiel-patterns': 'Musterpark. Wer fehlt in der Band?',
-  'spielnamen/spiel-sort': 'Sortier-Spaß. Räume alles an den richtigen Platz.',
+  'spielnamen/spiel-sort': 'Sortier-Spaß. Leg jede Sache in den richtigen Korb.',
   'spielnamen/spiel-weight': 'Waage-Welt. Schleudere die Maus zum Käse!',
   'spielnamen/spiel-clock': 'Kuckucksuhr. Stell die Uhr für Lumis Tag.',
   'spielnamen/spiel-maze': 'Lumi-Labyrinth. Hilf Lumi durch das Labyrinth.',
@@ -111,10 +111,10 @@ export const LINES = {
   'hilfe/hilfe-shapes': 'Farbenreich. Das Monster zeigt, welche Farbe es haben möchte. Tippe auf die Farbflaschen, bis der Tank diese Farbe hat, und zieh dann am Hebel.',
   'hilfe/hilfe-emotions': 'Gefühlswelt. Lumi zeigt dir ein Gesicht und sagt das Gefühl. Tippe alle Tiere an, die sich genauso fühlen.',
   'hilfe/hilfe-empathy': 'Gefühlsdetektiv. Tippe auf die Lupe und schau, was passiert. Dann tippe auf das Gesicht, das passt. Und such aus, was dem Tier jetzt gut tut.',
-  'hilfe/hilfe-maze': 'Lumi-Labyrinth. Hilf Lumi durch das Labyrinth! Sammle alle Zaubertränke und lauf dann zum leuchtenden Ausgang. Wische oder benutze die Pfeile. Pass auf den Drachen auf! Wenn du stehen bleibst, kann der Drache dir nichts tun. Findest du einen ganz kurzen Weg, bekommt Lumi eine Krone!',
+  'hilfe/hilfe-maze': 'Lumi-Labyrinth. Sammle alle Zaubertränke, dann geht das Tor auf. Der Drache bewacht seinen Weg: Lauf nicht in ihn hinein, sonst kostet es ein Herz. Ab Level 3 liegen drei Münzen versteckt; findest du alle, öffnet sich am Tor die Schatztruhe.',
   'hilfe/hilfe-shadows': 'Schattenrätsel. Im Dunkeln versteckt sich etwas. Fahre mit der Taschenlampe über das Bild. Was ist es? Tippe auf das richtige Bild. Tippe auf den Tipp-Knopf, dann verrät Lumi dir etwas über das Versteckte.',
   'hilfe/hilfe-bubbles': 'Blasen-Blitz. Der Krake wünscht sich Blasen mit einer Zahl. Tippe alle Blasen an, die so viele Punkte oder diese Zahl zeigen. Kommt eine Riesenblase vorbei und passt, regnet es Sterne.',
-  'hilfe/hilfe-sort': 'Sortier-Spaß. Lumi zeigt dir ein Ding und sagt dir, was es ist. In welchen Korb gehört es? Tippe auf den richtigen Korb.',
+  'hilfe/hilfe-sort': 'Sortier-Spaß. Auf dem Förderband kommen Sachen angefahren. Zieh jede Sache zu dem Korbmonster, das sie sammelt; sein Schild zeigt, was in seinen Korb gehört. Du kannst auch erst die Sache und dann das Monster antippen. Später kommt Müll in die Tonne.',
   'hilfe/hilfe-clock': 'Kuckucksuhr. Der kurze Zeiger zeigt die Stunde, der lange Zeiger die Minuten. Schau, wohin die Zeiger zeigen, und tippe auf die richtige Uhrzeit. Manchmal stellst du die Uhr selbst: Zieh die Zeiger oder tippe auf Plus und Minus. Und manchmal fragt Lumi, was um diese Zeit passiert.',
   'hilfe/hilfe-words2': 'Silben-Spaß. Schau auf das Bild und hör das Wort. Jedes Stück des Wortes ist eine Silbe, wie beim Klatschen: Ho, nig. Tippe die Silben in der richtigen Reihenfolge. Manchmal klatschst du mit und zählst, wie viele Silben du hörst.',
   'hilfe/hilfe-weight': 'Waage-Welt. Zwei Dinge liegen auf der Waage. Welches ist schwerer? Tippe auf die schwerere Seite. Später stehen Zahlen auf den Paketen: Die größere Zahl ist schwerer. Ganz am Ende legst du Klötze auf die Waage, bis sie gerade ist.',
@@ -122,7 +122,7 @@ export const LINES = {
   'hilfe/hilfe-shapes-land': 'Formen-Land. Die Eule zeigt dir in ihrer Lupe eine Form. Tippe im Bild alle Formen an, die so aussehen. Manchmal stellst du Formen der Größe nach auf, setzt eine Parade fort oder legst die passende Form auf ein Ding.',
   'hilfe/hilfe-shape-build': 'Formen-Werkstatt. Ein Tier wünscht sich etwas. Zieh die Formen an ihren Platz, bis es fertig ist. Mit dem Pfeil drehst du eine Form, und manchmal ist ein Teil zu viel. Am Ende darfst du selbst bauen.',
   'hilfe/hilfe-trace': 'Buchstaben-Spuren. Leg den Finger auf den grünen Punkt und fahre den Weg nach. Die Schnecke fährt mit und sammelt die Sterne. Fertige Buchstaben und Zahlen werden lebendig.',
-  'hilfe/hilfe-coloring': 'Mal-Atelier. Hier darfst du frei malen. Wähle eine Farbe und male mit dem Pinsel, oder fülle eine ganze Fläche mit dem Farbeimer. Mit dem Pfeil machst du den letzten Schritt rückgängig.',
+  'hilfe/hilfe-coloring': 'Mal-Atelier. Tippe auf eine Farbe und mal mit dem Finger, oder fülle eine Fläche mit dem Eimer. Probier den Regenbogen-Pinsel, den Glitzer und die Stempel! Mit Fertig hängt dein Bild an deiner Wand.',
   // Buchstaben- und Wörter-Spiele: Laute, Silben, Wörter, Reime. Made with the
   // same voice in eleven v3, read as short lists and cut apart at the pauses
   // (single words made alone sounded odd), brought to -17.5 LUFS.
@@ -1033,7 +1033,6 @@ export const LINES = {
   'woerter/frosch-huepfen': 'Ein Hüpfer für jede Silbe!',
   'woerter/frosch-bauen': 'Tipp die Silben der Reihe nach.',
   'woerter/frosch-allein': 'Jetzt hüpfst du die Silben allein.',
-  'fliessband/start': 'Füttere die Monster!',
   'fliessband/schilder': 'Schau auf die Schilder!',
   'fliessband/tonne': 'Müll kommt in die Tonne!',
   'abc/mampf-start': 'Füttere das Monster!',
@@ -1201,6 +1200,14 @@ export const LINES = {
   'woerter/fliege': 'Fliege.',
   'woerter/reis': 'Reis.',
   'woerter/strand': 'Strand.',
+  'fliessband/korb': 'Ab in den richtigen Korb!',
+  'atelier/los': 'Such dir eine Farbe aus und mal los!',
+  'atelier/eimer': 'Der Farbeimer. Tippe in eine Fläche.',
+  'atelier/regenbogen': 'Der Regenbogen-Pinsel! Er malt in allen Farben.',
+  'atelier/glitzer': 'Glitzer! Das funkelt.',
+  'atelier/an-der-wand': 'Dein Bild hängt jetzt an der Wand!',
+  'atelier/wegwischen': 'Alles wegwischen?',
+  'atelier/wand-voll': 'Die Wand ist voll. Soll das älteste Bild Platz machen?',
 }
 
 /** The recording of a sentence, with its text for the browser voice. */
