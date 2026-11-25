@@ -69,22 +69,25 @@ export const behindFurniture = (p, room) => room.hides.some(h => Math.abs(p.x - 
  * Where a caught shadow holds still: at p, or the nearest place from
  * which it stands at least `gap` (1.1 shadows) from every other held
  * shadow (`others`: their places), in the room, under the lamps and not
- * behind the furniture, so every outline shows on its own.
+ * behind the furniture, so every outline shows on its own. `avoid`:
+ * places it keeps clear of besides ({ x, y, r }: the torch lying at rest).
  */
-export function placeApart(p, others, room, gap = room.S * 1.1) {
+export function placeApart(p, others, room, gap = room.S * 1.1, avoid = []) {
   const lo = room.top, hi = room.H - room.S * 0.5
   const inRoom = q => ({ x: clamp(q.x, room.x0, room.x1), y: clamp(q.y, lo, Math.max(lo, hi)) })
   const nearest = q => others.reduce((m, o) => Math.min(m, Math.hypot(o.x - q.x, o.y - q.y)), Infinity)
+  // how far it is from being in the way (>= 0: clear of everything)
+  const clear = q => Math.min(nearest(q) - gap, ...avoid.map(a => Math.hypot(a.x - q.x, a.y - q.y) - a.r))
   const start = inRoom(p)
-  if (nearest(start) >= gap) return start
+  if (clear(start) >= 0) return start
   let best = null
   for (let ring = 1; ring <= 8; ring++) {
     let found = null
     for (let k = 0; k < 24; k++) {
       const a = (k / 24) * Math.PI * 2
       const q = inRoom({ x: start.x + Math.cos(a) * gap * ring * 0.5, y: start.y + Math.sin(a) * gap * ring * 0.5 })
-      const far = nearest(q), dist = Math.hypot(q.x - start.x, q.y - start.y)
-      if (far >= gap && !behindFurniture(q, room)) { if (!found || dist < found.dist) found = { ...q, dist } }
+      const far = clear(q), dist = Math.hypot(q.x - start.x, q.y - start.y)
+      if (far >= 0 && !behindFurniture(q, room)) { if (!found || dist < found.dist) found = { ...q, dist } }
       if (!best || far > best.far) best = { ...q, far }
     }
     if (found) return { x: found.x, y: found.y }
@@ -93,30 +96,50 @@ export function placeApart(p, others, room, gap = room.S * 1.1) {
   return { x: best.x, y: best.y }
 }
 
+const held = s => !!s && (s.state === 'caught' || s.state === 'flying')
+
 /**
- * Which shadow a tapped card flies to: the lit one in the torch light now
- * (the nearest to its middle), else the lit one the child looked at last
- * (caught or shone on with the torch: `seenAt`). Never the one the card
- * fits: what goes where is the child's work. Shadows lit only by the light
- * joker and not looked at since are no target. null: none.
+ * The focus: the lit shadow a tapped card flies to (its id, or null). It
+ * is the one the child pointed the torch at or touched last, and it does
+ * not move by itself:
+ *   - `pin`: a lit shadow a finger rests on (touched) wins;
+ *   - else the lit one in the torch light now (the nearest to its middle);
+ *     one with a card on its way to it counts too, so the light lingering
+ *     there does not hand the focus to a neighbour while the card flies;
+ *   - else the focus stays where it is while that shadow is lit (also
+ *     after a wrong card, while it waits for the next);
+ *   - only when it has gone (found, or let go) does it pass to the lit one
+ *     looked at last (`seenAt`). Shadows lit only by the light joker and
+ *     not looked at since get no focus.
+ * Never the one a card fits: what goes where is the child's work.
  */
-export function tapTarget(shadows, beam, S) {
+export function nextFocus(focus, shadows, beam, S, pin = null) {
+  const byId = id => shadows.find(s => s.id === id)
+  if (pin != null && held(byId(pin))) return pin
   const now = inBeam(shadows, beam, S)
-  if (now) return now
-  // a card on its way to the one looked at last keeps the focus there: a
-  // second quick tap waits, it does not go to another one
+  if (now) return now.state === 'caught' || !held(byId(focus)) ? now.id : focus
+  if (held(byId(focus))) return focus
   let best = null
   for (const s of shadows) {
-    if ((s.state === 'caught' || s.state === 'flying') && s.seenAt != null && (!best || s.seenAt > best.seenAt)) best = s
+    if (s.state === 'caught' && s.seenAt != null && (!best || s.seenAt > best.seenAt)) best = s
   }
-  return best?.state === 'caught' ? best : null
+  return best?.id ?? null
 }
-/** The caught shadow in the torch light now (the nearest to its middle), or null. */
+
+/**
+ * Which shadow a tapped card flies to: the focus, when it is lit and free
+ * (a card on its way to it: a second quick tap waits). null: none.
+ */
+export function tapTarget(shadows, focus) {
+  const s = shadows.find(x => x.id === focus)
+  return s?.state === 'caught' ? s : null
+}
+/** The lit shadow in the torch light now (the nearest to its middle; one a card flies to included), or null. */
 export function inBeam(shadows, beam, S) {
   if (!(beam.a > 0.5)) return null
   let best = null
   for (const s of shadows) {
-    if (s.state !== 'caught') continue
+    if (!held(s)) continue
     const p = { x: s.slideTo ?? s.x, y: s.liftTo ?? s.y }
     if (!inLight(p, { ...beam, r: beam.r * 1.15 }, S)) continue
     const d = Math.hypot(p.x - beam.x, p.y - beam.y)
@@ -125,15 +148,28 @@ export function inBeam(shadows, beam, S) {
   return best?.s ?? null
 }
 
-function randomSpot(s, room, rnd, others = []) {
+/** How far a dark shadow keeps from a lit one, so it never shows inside that one's glow. */
+export const keepAway = S => S * 1.3
+
+const nearLit = (p, lit, S) => lit.some(o => Math.hypot(o.x - p.x, o.y - p.y) < keepAway(S) * 1.1)
+// how near the way from a to b comes to o
+const passes = (a, b, o) => {
+  const dx = b.x - a.x, dy = b.y - a.y, l2 = dx * dx + dy * dy
+  const k = l2 ? clamp(((o.x - a.x) * dx + (o.y - a.y) * dy) / l2, 0, 1) : 0
+  return Math.hypot(a.x + dx * k - o.x, a.y + dy * k - o.y)
+}
+const wayThroughLit = (a, b, lit, S) => lit.some(o => passes(a, b, o) < keepAway(S) * 0.98)
+
+function randomSpot(s, room, rnd, others = [], lit = []) {
   const [y0, y1] = isAirborne(s.move) ? room.air : room.ground
   let best = null
-  for (let k = 0; k < 6; k++) {
+  for (let k = 0; k < 10; k++) {
     const p = { x: room.x0 + rnd() * (room.x1 - room.x0), y: y0 + rnd() * Math.max(0, y1 - y0) }
     // not onto a spot another shadow is heading for, and a real walk away
     const near = others.reduce((m, o) => Math.min(m, Math.hypot(o.tx - p.x, o.ty - p.y)), Infinity)
     const far = Math.hypot(p.x - s.x, p.y - s.y)
-    const score = Math.min(near, room.S * 1.4) + Math.min(far, room.W * 0.4) * 0.5
+    // and never into the glow round a lit one
+    const score = Math.min(near, room.S * 1.4) + Math.min(far, room.W * 0.4) * 0.5 - (nearLit(p, lit, room.S) ? 1e6 : 0) - (wayThroughLit(s, p, lit, room.S) ? 1e5 : 0)
     if (!best || score > best.score) best = { ...p, score }
   }
   return best
@@ -159,9 +195,11 @@ export function spawn(id, e, room, rnd = Math.random, others = []) {
 
 /**
  * One frame for a free shadow (state 'dark'): `dt` seconds, `speed` the
- * level's pace, `others` the other shadows (not to bump into them).
+ * level's pace, `others` the other shadows (not to bump into them), `lit`
+ * the places of the lit ones: a dark one keeps out of their glow
+ * (`keepAway`), going round it, so the outline to read there stays alone.
  */
-export function step(s, dt, room, speed, rnd = Math.random, others = []) {
+export function step(s, dt, room, speed, rnd = Math.random, others = [], lit = []) {
   s.t += dt
   if (s.wait > 0) {
     s.wait -= dt
@@ -169,16 +207,16 @@ export function step(s, dt, room, speed, rnd = Math.random, others = []) {
     if (s.wait <= 0) {
       const hides = room.hides
       // things on the floor sometimes crouch behind the furniture in front
-      if (!isAirborne(s.move) && hides.length && !s.hiding && rnd() < 0.3) {
-        const p = hideSpot(hides[Math.floor(rnd() * hides.length)], room)
-        s.tx = p.x; s.ty = p.y; s.hiding = true
+      const hide = !isAirborne(s.move) && hides.length && !s.hiding && rnd() < 0.3 && hideSpot(hides[Math.floor(rnd() * hides.length)], room)
+      if (hide && !nearLit(hide, lit, room.S)) {
+        s.tx = hide.x; s.ty = hide.y; s.hiding = true
       } else {
-        const p = randomSpot(s, room, rnd, others)
+        const p = randomSpot(s, room, rnd, others, lit)
         s.tx = p.x; s.ty = p.y; s.hiding = false
         if (rnd() < 0.22) s.dash = 0.5 + rnd() * 0.5
       }
     }
-    return s
+    return keepOut(s, dt, room, lit, 0)
   }
   const v = room.W * 0.09 * speed * PACE[s.move] * (s.dash > 0 ? 2.6 : 1)
   if (s.dash > 0) s.dash -= dt
@@ -187,7 +225,7 @@ export function step(s, dt, room, speed, rnd = Math.random, others = []) {
   if (d < 2) {
     s.vx = 0
     s.wait = s.hiding ? 1.6 + rnd() * 2 : 0.3 + rnd() * 1.2
-    return s
+    return keepOut(s, dt, room, lit, 0)
   }
   const k = Math.min(1, (v * dt) / d)
   const mx = dx * k, my = dy * k
@@ -206,6 +244,43 @@ export function step(s, dt, room, speed, rnd = Math.random, others = []) {
   const [y0, y1] = isAirborne(s.move) ? room.air : room.ground
   s.x = clamp(s.x, room.x0, room.x1)
   s.y = clamp(s.y, Math.min(y0, s.ty), Math.max(y1, s.ty))
+  return keepOut(s, dt, room, lit, Math.hypot(mx, my))
+}
+
+/** Out of a lit one's glow, quickly, then round it (`along`: its step this frame): never through it. */
+function keepOut(s, dt, room, lit, along) {
+  const [y0, y1] = isAirborne(s.move) ? room.air : room.ground
+  const fit = () => {
+    s.x = clamp(s.x, room.x0, room.x1)
+    s.y = clamp(s.y, Math.min(y0, s.ty), Math.max(y1, s.ty))
+  }
+  const keep = keepAway(room.S), fast = room.W * 0.6 * dt
+  for (const o of lit) {
+    let ox = s.x - o.x, oy = s.y - o.y
+    const od = Math.hypot(ox, oy)
+    if (od >= keep) continue
+    if (od < 0.01) { ox = s.x < room.W / 2 ? -1 : 1; oy = 0 }
+    const nx = ox / Math.hypot(ox, oy), ny = oy / Math.hypot(ox, oy)
+    let tx = -ny, ty = nx
+    if ((s.tx - o.x) * tx + (s.ty - o.y) * ty < 0) { tx = -tx; ty = -ty }
+    const out = Math.min(keep - od, fast)
+    s.x += nx * out + tx * along
+    s.y += ny * out + ty * along
+    fit()
+    // held in by the floor or a wall: sideways out of it
+    const hx = s.x - o.x, hy = s.y - o.y
+    if (Math.hypot(hx, hy) < keep) {
+      const need = Math.sqrt(Math.max(0, keep * keep - hy * hy)) - Math.abs(hx)
+      let side = (hx || nx) < 0 ? -1 : 1
+      // no way out at the wall: out on the other side
+      if (side > 0 && o.x + keep > room.x1) side = -1
+      else if (side < 0 && o.x - keep < room.x0) side = 1
+      s.x += side * Math.min(need, fast)
+      fit()
+    }
+    // its way leads through the glow: it stops and picks another place to go
+    if (passes(s, { x: s.tx, y: s.ty }, o) < keep * 0.98 || nearLit({ x: s.tx, y: s.ty }, [o], room.S)) { s.tx = s.x; s.ty = s.y; s.hiding = false }
+  }
   return s
 }
 
@@ -241,6 +316,13 @@ export function gait(s, S, still) {
     default: return { dy: 0, rot: 0 }
   }
 }
+
+/**
+ * Does the torch light catch a dark shadow now? Only the child's own torch
+ * (on: a finger or the mouse holds it), bright enough: never the demo's
+ * light, nor a light fading out after the demo or after a finger lifted.
+ */
+export const torchCatches = (beam, demoOn) => !!beam.on && !demoOn && beam.a > 0.5
 
 /** Is a shadow in the light? The light must cover a good part of it. */
 export const inLight = (s, beam, S) => Math.hypot(s.x - beam.x, s.y - beam.y) < beam.r * 0.62 + S * 0.18

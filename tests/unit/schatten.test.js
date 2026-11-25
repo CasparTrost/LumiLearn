@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { THINGS, ROOMS, ROOM_IDS, LEVELS, CAT, planLevel, planRoom, levelConfig, tasksIn, tiltOf } from '../../src/games/schatten/data.js'
 import { layoutFor, MIN_CARD } from '../../src/games/schatten/layout.js'
-import { makeRoom, spawn, step, flee, inLight, lookOf, placeApart, tapTarget, ceilingOf, behindFurniture } from '../../src/games/schatten/sim.js'
+import { makeRoom, spawn, step, flee, inLight, lookOf, placeApart, tapTarget, nextFocus, torchCatches, keepAway, ceilingOf, behindFurniture } from '../../src/games/schatten/sim.js'
 import { hasEmojiArt } from '../../src/lib/emojiArt.jsx'
 import { LINES } from '../../src/lib/lumiLines.js'
 
@@ -162,28 +162,62 @@ describe('a tapped card', () => {
   const off = { a: 0, x: 0, y: 0, r: 100 }
   const lit = (id, e, x, y, seenAt = null) => ({ id, e, x, y, state: 'caught', seenAt })
 
-  it('goes to the lit shadow in the light now, whatever card it is', () => {
+  it('goes to the focus: the lit shadow in the light now, whatever card it is', () => {
     const a = lit('a', '🐕', 100, 100, 5), b = lit('b', '🐺', 400, 100, 9)
-    expect(tapTarget([a, b], { a: 1, x: 105, y: 100, r: 100 }, S)).toBe(a)
+    const f = nextFocus('b', [a, b], { a: 1, x: 105, y: 100, r: 100 }, S)
+    expect(f).toBe('a')
+    expect(tapTarget([a, b], f)).toBe(a)
+    // the rule knows nothing of the card: the same target for every card
+    expect(tapTarget.length).toBe(2)
   })
 
-  it('else goes to the one looked at last, never to the one it fits', () => {
+  it('keeps the focus where it is while that shadow is lit, also after a wrong card', () => {
     const a = lit('a', '🐕', 100, 100, 5), b = lit('b', '🐺', 400, 100, 9)
-    expect(tapTarget([a, b], off, S)).toBe(b)
-    // the rule knows nothing of the card: the same target for every card
-    expect(tapTarget.length).toBe(3)
+    // b was looked at later, but a is the focus: it stays
+    a.missed = 1
+    expect(nextFocus('a', [a, b], off, S)).toBe('a')
+  })
+
+  it('does not jump to a neighbour in the lingering light while a card flies to the focus', () => {
+    // the cause of the jump: the light still on after the pointer left for the cards,
+    // the focus excluded while its card flew, the neighbour in the same light took over
+    const a = { ...lit('a', '🐢', 100, 100, 5), state: 'flying' }, b = lit('b', '🐹', 150, 110, 4)
+    const beam = { a: 0.8, x: 102, y: 100, r: 110 }
+    expect(nextFocus('a', [a, b], beam, S)).toBe('a')
+    a.state = 'caught'
+    a.missed = 1
+    expect(nextFocus('a', [a, b], beam, S)).toBe('a')
+    expect(nextFocus('a', [a, b], off, S)).toBe('a')
+  })
+
+  it('moves when the child shines on another lit one or touches it', () => {
+    const a = lit('a', '🐕', 100, 100, 5), b = lit('b', '🐺', 400, 100, 9)
+    a.missed = 1
+    expect(nextFocus('a', [a, b], { a: 1, x: 400, y: 100, r: 100 }, S)).toBe('b')
+    // a finger on b, while the light (above the finger) is on a
+    expect(nextFocus('a', [a, b], { a: 1, x: 100, y: 100, r: 100 }, S, 'b')).toBe('b')
+  })
+
+  it('passes to the one looked at last only when the focus has gone', () => {
+    const a = lit('a', '🐕', 100, 100, 5), b = lit('b', '🐺', 400, 100, 9), c = lit('c', '🦊', 250, 300, 7)
+    a.state = 'found'
+    expect(nextFocus('a', [a, b, c], off, S)).toBe('b')
+    b.state = 'dark'
+    expect(nextFocus('b', [a, b, c], off, S)).toBe('c')
   })
 
   it('does not go to shadows the joker lit that the child has not looked at', () => {
     const a = lit('a', '🐕', 100, 100), b = lit('b', '🐺', 400, 100)
-    expect(tapTarget([a, b], off, S)).toBe(null)
+    expect(nextFocus(null, [a, b], off, S)).toBe(null)
+    expect(tapTarget([a, b], null)).toBe(null)
     b.seenAt = 3
-    expect(tapTarget([a, b], off, S)).toBe(b)
+    expect(nextFocus(null, [a, b], off, S)).toBe('b')
   })
 
-  it('waits while a card is on its way to the one looked at last', () => {
+  it('waits while a card is on its way to the focus', () => {
     const a = lit('a', '🐕', 100, 100, 5), b = { ...lit('b', '🐺', 400, 100, 9), state: 'flying' }
-    expect(tapTarget([a, b], off, S)).toBe(null)
+    expect(nextFocus('b', [a, b], off, S)).toBe('b')
+    expect(tapTarget([a, b], 'b')).toBe(null)
   })
 
   it('cannot solve a room by tapping every card blind after the joker', () => {
@@ -194,12 +228,59 @@ describe('a tapped card', () => {
       const plan = planRoom('stall', levelConfig(10), new Set(), rnd)
       const shadows = plan.shadows.map((e, i) => lit(i, e, 100 + i * 120, 150))
       shadows[Math.floor(rnd() * shadows.length)].seenAt = 0
-      let right = 0
+      let right = 0, focus = null
       for (const card of plan.cards) {
-        const s = tapTarget(shadows, off, S)
+        focus = nextFocus(focus, shadows, off, S)
+        const s = tapTarget(shadows, focus)
         if (s && s.e === card) { s.state = 'found'; right++ }
       }
       expect(right, plan.cards.join('')).toBeLessThanOrEqual(1)
+    }
+  })
+})
+
+describe('the torch', () => {
+  it('catches only in a child\'s hand: not the demo, not its light fading out', () => {
+    expect(torchCatches({ on: true, a: 1 }, false)).toBe(true)
+    // the demo sweeps
+    expect(torchCatches({ on: false, a: 1 }, true)).toBe(false)
+    // the demo has just ended: its light still bright at the rest place, nobody holds it
+    expect(torchCatches({ on: false, a: 0.9 }, false)).toBe(false)
+    expect(torchCatches({ on: true, a: 0.3 }, false)).toBe(false)
+  })
+
+  it('lies at rest where no caught shadow stands', () => {
+    for (const [W, H, S] of [[988, 484, 145], [370, 519, 81], [570, 252, 76]]) {
+      const room = makeRoom(W, H, S)
+      const torch = { x: W / 2, y: H - 40, r: S * 0.5 + 33 }
+      for (let k = 0; k < 20; k++) {
+        const p = placeApart({ x: W / 2 + (k - 10) * 4, y: H - S * 0.5 }, [], room, undefined, [torch])
+        expect(Math.hypot(p.x - torch.x, p.y - torch.y)).toBeGreaterThanOrEqual(torch.r - 0.01)
+      }
+    }
+  })
+})
+
+describe('dark shadows near lit ones', () => {
+  it('keep out of a lit one\'s glow, going round it, and still get about', () => {
+    for (const [W, H, S] of [[988, 484, 145], [570, 252, 76], [370, 519, 81]]) {
+      const room = makeRoom(W, H, S)
+      const rnd = seeded(W)
+      // lit ones on the floor and in the air, one of them staying lit (help)
+      const litAt = [{ x: W * 0.5, y: (room.ground[0] + room.ground[1]) / 2 }, { x: W * 0.2, y: room.air[0] + S * 0.3 }]
+      const list = Object.keys(THINGS).slice(0, 5).map((e, i) => spawn(i, e, room, rnd))
+      const moved = list.map(() => 0)
+      for (let f = 0; f < 3000; f++) {
+        list.forEach((s, i) => {
+          const x0 = s.x, y0 = s.y
+          step(s, 1 / 60, room, 1.45, rnd, list.filter(o => o !== s), litAt)
+          moved[i] += Math.hypot(s.x - x0, s.y - y0)
+          // after a short way out (it may have started inside)
+          if (f > 120) for (const o of litAt) expect(Math.hypot(s.x - o.x, s.y - o.y), `${W}x${H} ${s.e}`).toBeGreaterThanOrEqual(keepAway(S) * 0.97)
+        })
+      }
+      // they still get about (none stuck at a glow)
+      for (const m of moved) expect(m).toBeGreaterThan(W * 0.2)
     }
   })
 })
