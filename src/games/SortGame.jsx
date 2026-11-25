@@ -49,7 +49,7 @@ import { layoutFor, aimAt, throwArc, arcAt, freeSpot, SIGN_H, AIM_MIN } from './
  */
 
 const PIPE_S = 1.2        // seconds a thing needs back through the pipe
-const FLING = 0.7         // px per ms: faster than this, a drag is a fling
+const FLING = 0.008       // × S px per ms: faster than this, a drag is a fling
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 const lerp = (a, b, t) => a + (b - a) * t
 const easeOut = t => 1 - (1 - t) * (1 - t)
@@ -446,7 +446,7 @@ export default function SortGame({ level = 1, onComplete }) {
     // the monster the drag points at opens its mouth
     const d = drag.current
     if (d) {
-      const a = aimAt(L, d.start, d.at, flinging(d))
+      const a = aimAt(L, d.start, d.at, flinging(d, performance.now()))
       if (a !== aimRef.current) { aimRef.current = a; setAim(a) }
     }
 
@@ -475,7 +475,7 @@ export default function SortGame({ level = 1, onComplete }) {
     const at = local(e)
     const other = pickedRef.current
     if (other && other !== t.id) putDown(other)
-    drag.current = { id: t.id, pid: e.pointerId, start: at, at, far: 0, was: p.mode, speed: 0, moved: 0 }
+    drag.current = { id: t.id, pid: e.pointerId, start: at, at, far: 0, was: p.mode, speed: 0, moved: e.timeStamp }
     s.ptr = { x: at.x, y: at.y, ox: p.x - at.x, oy: p.y - at.y }
     p.mode = 'held'
     sfx.pop()
@@ -483,14 +483,15 @@ export default function SortGame({ level = 1, onComplete }) {
     narrate([wordOf(t.name)])
     bump()
   }
-  // Is the finger flinging (fast, just now) or resting?
-  const flinging = d => performance.now() - d.moved < 90 && d.speed > FLING
+  // Is the finger flinging (fast, just now) or resting? By the clock of
+  // the events themselves, so a busy frame does not turn a fling into a rest.
+  const flinging = (d, now) => now - d.moved < 90 && d.speed > LRef.current.S * FLING
   const move = e => {
     const d = drag.current
     if (!d || e.pointerId !== d.pid) return
-    const at = local(e), now = performance.now()
+    const at = local(e), now = e.timeStamp
     const v = Math.hypot(at.x - d.at.x, at.y - d.at.y) / Math.max(1, now - d.moved)
-    d.speed = d.moved ? d.speed * 0.5 + v * 0.5 : 0
+    d.speed = d.speed * 0.4 + v * 0.6
     d.moved = now
     d.at = at
     d.far = Math.max(d.far, Math.hypot(at.x - d.start.x, at.y - d.start.y))
@@ -506,7 +507,7 @@ export default function SortGame({ level = 1, onComplete }) {
     if (sim.current.th[d.id].mode !== 'held') return
     if (cancelled) { putDown(d.id); return }
     const L = LRef.current
-    const a = aimAt(L, d.start, local(e), flinging(d))
+    const a = aimAt(L, d.start, local(e), flinging(d, e.timeStamp))
     if (a >= 0) throwTo(d.id, a)
     // hardly moved: a tap. The thing is held up for a tap on a monster; a
     // second tap on it puts it back.
