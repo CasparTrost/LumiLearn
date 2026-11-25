@@ -10,7 +10,8 @@ import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
 import { useLater } from './zahlen/stage.jsx'
 import { ALIEN_HUES, MINUS, PLUS, TOP, buildTasks, countChoices, dirOf, freeGap, judge, landingLead, levelPlan, residentOf, starsWon, tapHelp } from './rakete/tasks.js'
-import { bow, clamp, hopPath, layout, moonFlight } from './rakete/layout.js'
+import { bow, clamp, hopPath, layout, lineAt, moonFlight } from './rakete/layout.js'
+import { DRAG_PX, FLY_MAX, crossings, flyDown, flyHeight, flyStep, hopArcs, reachOf, releaseAt } from './rakete/fly.js'
 import {
   AlienPic, BonusStar, CountBubble, GOLD, HopArcs, INK, LandButton, Moon, Planet, Rocket, SIGN_COLOR, ThrustButton, windowSpots,
 } from './rakete/parts.jsx'
@@ -32,10 +33,19 @@ import {
  *     sum's second number pulses with the number of arcs beside it (one hop
  *     too many), and the rocket flies back to the start. Minus has a
  *     backward button; from level 5 both come mixed, each marked with its
- *     sign, and a hop back along the last arc takes that arc back.
+ *     sign. A hop back along the last arc takes that arc back (fly.js,
+ *     hopArcs): in a level with one sign the other button is a plain one
+ *     that only does that, so a child who went too far can go back.
+ *     The child can also take hold of the rocket and fly it by hand,
+ *     slowly (a top speed): every planet it passes over is a hop, with its
+ *     arc and its number, exactly as with the buttons; letting go sets it
+ *     down on the nearer planet, and the tick still says "my answer".
  *   • Levels 7–8 (tap). No buttons: the child taps the planet where the
  *     rocket will land and it flies there in one go, drawing the arcs as
- *     proof. Worked out in the head.
+ *     proof. Worked out in the head. Or it carries the rocket there by hand
+ *     and lets go: that is the answer. No arcs and no numbers on the way
+ *     (counting along would undo the "in the head"); the arcs come after,
+ *     as proof, as after a tap.
  *   • Level 9 (count). "4 + ▢ = 7": the alien waves from planet 7. The
  *     child hops there, lands, and then says how many hops it took with one
  *     of three number bubbles. A wrong bubble: the arcs count themselves.
@@ -66,16 +76,18 @@ const FAST_MS = 240          // one hop of a flight in one go
 const BACK_MS = 700          // back to the start after a miss
 const ENTER_MS = 850         // to the start of a new sum
 const STAR_COUNT = 2         // bonus stars on the line at a time
+const HAND_ARC_MS = 260      // an arc drawn when the rocket flown by hand reaches a planet
 let seq = 0
 
 const rec = key => (LINES[key] ? line(key) : null)
 // Lumi's lines for this game; silent until they are recorded
 const SAY = {
   [PLUS]: 'rakete/plus', [MINUS]: 'rakete/minus', equals: 'rakete/gleich',
-  hop: 'rakete/huepf', back: 'rakete/zurueck', tap: 'rakete/tippen', howMany: 'rakete/wie-viele',
+  hop: 'rakete/huepf', back: 'rakete/zurueck', tap: 'rakete/tippen', howMany: 'rakete/wie-viele', fly: 'rakete/fliegen',
   far: 'rakete/zu-weit', short: 'rakete/zu-kurz', wrongway: 'rakete/andersrum',
 }
-const INTRO = { 1: 'hop', 4: 'back', 5: 'back', 7: 'tap', 9: 'hop', 10: 'howMany' }
+// level 2: flying by hand
+const INTRO = { 1: 'hop', 2: 'fly', 4: 'back', 5: 'back', 7: 'tap', 9: 'hop', 10: 'howMany' }
 
 export default function RocketMathGame({ level = 1, onComplete }) {
   const plan = useMemo(() => levelPlan(level), [level])
@@ -114,6 +126,8 @@ export default function RocketMathGame({ level = 1, onComplete }) {
   const [counting, setCounting] = useState(-1)      // a wrong bubble: the arcs count themselves
   const [finale, setFinale] = useState(null)        // { landed }
   const [wave, setWave] = useState({ k: 0, skip: null }) // the tap levels: the planets bounce, "tap one of us" (not the rocket's)
+  const [dragging, setDragging] = useState(false)   // the child flies the rocket by hand
+  const [over, setOver] = useState(null)            // … and it has just passed over this planet: { n, k }
 
   const task = tasks[idx]
   const d = dirOf(task.op)
@@ -121,7 +135,7 @@ export default function RocketMathGame({ level = 1, onComplete }) {
   const hue = ALIEN_HUES[idx % ALIEN_HUES.length]
 
   // What the timers and the taps work on; the state above is its picture
-  const g = useRef({ phase: 'enter', pos: null, air: false, queue: [], arcs: [], misses: 0, firstTry: 0, stars: [], win: [], idx: 0, done: false }).current
+  const g = useRef({ phase: 'enter', pos: null, air: false, drag: null, queue: [], arcs: [], misses: 0, firstTry: 0, stars: [], win: [], idx: 0, done: false }).current
   const S = useRef({}).current
   Object.assign(S, { L, task, idx, plan, reduce, paused, hue })
   const setPhase = p => { g.phase = p; setPhaseState(p) }
@@ -133,7 +147,8 @@ export default function RocketMathGame({ level = 1, onComplete }) {
   const rocketRot = useTransform(rot, v => (L?.base ?? 0) + v)
   const anims = useRef(new Set())
   const run = a => { anims.current.add(a); a.then?.(() => anims.current.delete(a)); return a }
-  useEffect(() => () => { anims.current.forEach(a => a.stop?.()); leaveGame() }, [])
+  const frame = useRef(0)
+  useEffect(() => () => { anims.current.forEach(a => a.stop?.()); cancelAnimationFrame(frame.current); leaveGame() }, [])
 
   const rocketRef = useRef(null)
   const plusRef = useRef(null), minusRef = useRef(null), landRef = useRef(null)
@@ -215,9 +230,7 @@ export default function RocketMathGame({ level = 1, onComplete }) {
   // last arc, that arc is taken back)
   const hopOnce = (op, ms, onDone) => {
     const a = g.pos, b = a + dirOf(op)
-    const last = g.arcs[g.arcs.length - 1]
-    if (last && last.b === a && last.a === b) g.arcs = g.arcs.slice(0, -1)
-    else g.arcs = [...g.arcs, { id: ++seq, a, b }]
+    g.arcs = hopArcs(g.arcs, a, b, ++seq, { ms })
     setArcs(g.arcs)
     sfx.whoosh()
     if (g.win.includes(Math.min(a, b))) later(ms * 0.5, () => collect(Math.min(a, b)))
@@ -252,11 +265,13 @@ export default function RocketMathGame({ level = 1, onComplete }) {
   }
 
   const thrust = op => {
-    if (g.phase !== 'play' || S.paused) return
+    if (g.phase !== 'play' || S.paused || g.drag) return
     // presses in the air wait their turn: three quick presses are three hops
     if (g.air) { if (g.queue.length < 6) g.queue.push(op); return }
     const b = g.pos + dirOf(op)
-    if (b < 0 || b > TOP) { sfx.bonk(); nudge(); return }
+    // the end of the line, or behind the start in a level with one sign
+    const reach = reachOf(S.plan, S.task)
+    if (b < reach.lo || b > reach.hi) { sfx.bonk(); nudge(); return }
     hopOnce(op, HOP_MS, n => {
       const q = g.queue.shift()
       // the tick was pressed in the air: the planet's number is said with
@@ -269,7 +284,7 @@ export default function RocketMathGame({ level = 1, onComplete }) {
 
   // saidByHop: the number of the planet has been said by the last hop
   const land = (saidByHop = true) => {
-    if (g.phase !== 'play' || S.paused) return
+    if (g.phase !== 'play' || S.paused || g.drag) return
     if (g.air) { if (!g.queue.includes('land')) g.queue.push('land'); return }
     if (g.pos === S.task.from) { if (!saidByHop) narrate([numberWord(g.pos)]); nudge(); return }
     settle(g.pos, saidByHop)
@@ -288,6 +303,160 @@ export default function RocketMathGame({ level = 1, onComplete }) {
     setBubbles(false)
     g.picked = k
     flyTo(S.task.from + dirOf(S.task.op) * k, () => settle(g.pos))
+  }
+
+  // ── Flying by hand ──────────────────────────────────────────────────────
+  // The finger holds the rocket; a frame loop moves it after the finger
+  // (fly.js: lag, top speed) and turns each planet it passes over into a hop.
+
+  const finger = useRef(null)   // { id, x0, y0, px, py, flying }
+  const handMode = () => S.plan.mode === 'hop' || S.plan.mode === 'count' || S.plan.mode === 'tap'
+
+  const onRocketDown = e => {
+    if (g.phase !== 'play' || S.paused || g.drag || !handMode()) return
+    // the rocket is still hopping from a button: a tap on it is the tick, as before
+    if (g.air) { if (S.plan.mode !== 'tap' && g.arcs.length) land(); return }
+    e.preventDefault()
+    e.currentTarget.setPointerCapture?.(e.pointerId)
+    finger.current = { id: e.pointerId, x0: e.clientX, y0: e.clientY, px: e.clientX, py: e.clientY, flying: false }
+  }
+  const onRocketMove = e => {
+    const f = finger.current
+    if (!f || f.id !== e.pointerId) return
+    f.px = e.clientX; f.py = e.clientY
+    if (!f.flying && Math.hypot(f.px - f.x0, f.py - f.y0) > DRAG_PX) {
+      if (g.phase === 'play' && !S.paused && !g.air && !g.drag) { f.flying = true; takeOff() } else finger.current = null
+    }
+  }
+  const onRocketUp = e => {
+    const f = finger.current
+    if (!f || f.id !== e.pointerId) return
+    finger.current = null
+    if (f.flying) { letGo(); return }
+    if (e.type === 'pointercancel') return
+    // a tap on the rocket: in the hop levels it is the tick (once it has hopped)
+    if (S.plan.mode === 'tap') { nudge(); sfx.boing() } else if (g.arcs.length) land()
+  }
+
+  const takeOff = () => {
+    const start = g.pos
+    // h: the height over the line, in px; off0: where the finger was when it took hold
+    g.drag = { x: start, cell: start, start, goal: null, mode: 'hold', h: 0, off0: null, rot: 0, facing: dirOf(S.task.op), last: performance.now() }
+    g.air = true
+    g.queue = []
+    setDragging(true)
+    setFlame(1)
+    sfx.whoosh()
+    cancelAnimationFrame(frame.current)
+    frame.current = requestAnimationFrame(flyFrame)
+  }
+
+  const letGo = () => {
+    const D = g.drag
+    if (!D || D.mode !== 'hold') return
+    D.mode = 'glide'
+    D.goal = releaseAt(D.x, reachOf(S.plan, S.task))
+  }
+
+  // Over a planet: in the hop levels a hop like the button's (its arc, its
+  // number); in the tap levels only the planet bobs (worked out in the head)
+  const passOver = (a, b) => {
+    setOver({ n: b, k: ++seq })
+    if (S.plan.mode === 'tap') { sfx.pluck(b); return }
+    g.arcs = hopArcs(g.arcs, a, b, ++seq, { ms: HAND_ARC_MS })
+    setArcs(g.arcs)
+    g.pos = b
+    setPos(b)
+    sfx.bump()
+    narrate([numberWord(b)])
+  }
+
+  const flyFrame = now => {
+    const D = g.drag
+    if (!D) return
+    const Lx = S.L
+    const dt = Math.min(0.1, (now - D.last) / 1000)
+    D.last = now
+    if (D.mode === 'hold' && (S.paused || g.phase !== 'play')) { finger.current = null; letGo() }
+    let target = D.x
+    // free flight: along the line after the finger (within reach), and as high as the finger goes
+    const hover = (Lx.arcH + 24) * 0.55
+    if (D.mode === 'hold') {
+      const f = finger.current, r = rootRef.current?.getBoundingClientRect()
+      const reach = reachOf(S.plan, S.task)
+      if (f && r) {
+        const fp = { x: f.px - r.left, y: f.py - r.top }
+        target = clamp(lineAt(Lx, fp), reach.lo, reach.hi)
+        // how far the finger is from the line, on the rocket's side of it
+        const o = Lx.P(0, 0), n1 = Lx.P(0, 1)
+        const off = (fp.x - o.x) * (n1.x - o.x) + (fp.y - o.y) * (n1.y - o.y)
+        if (D.off0 == null) D.off0 = off
+        // the sky ends where the rocket would leave the screen
+        const top = Math.max(hover, (Lx.vertical ? Lx.w - o.x : o.y) - Lx.pr - Lx.rh - 10)
+        D.h = flyHeight(D.h, off - D.off0, dt, { hover, top })
+      }
+    } else target = D.goal
+    let x = flyStep(D.x, target, dt)
+    // the glide down: arrive at the planet rather than creep towards it
+    if (D.mode !== 'hold' && Math.abs(x - D.goal) < 0.04) x = D.goal
+    const v = dt > 0 ? (x - D.x) / dt : 0
+    D.x = x
+    if (Math.abs(v) > 0.05) D.facing = Math.sign(v)
+    const { cell, passed } = crossings(D.cell, x)
+    let from = D.cell
+    for (const m of passed) { passOver(from, m); from = m }
+    D.cell = cell
+    // let go: over to the nearer planet, then down onto it
+    if (D.mode === 'glide' && x === D.goal) { D.mode = 'down'; D.h0 = Math.max(D.h, 1) }
+    if (D.mode === 'down') D.h = flyDown(D.h, dt, Math.max(260, D.h0 / 0.45))
+    // leaning the way it flies; on a phone held upright, nose the way it goes
+    const lean = Lx.vertical ? -90 * D.facing : 22 * clamp(v / FLY_MAX, -1, 1)
+    D.rot += (lean - D.rot) * Math.min(1, dt * 8)
+    const bob = D.mode === 'hold' && !S.reduce ? Math.sin(now / 220) * 3 : 0
+    // the flame (its feet) over the planet, as at the top of a button hop: on
+    // a phone held upright the body points on, and the arcs behind stay in sight
+    const p = Lx.P(x, Lx.pr + D.h + (D.mode === 'hold' ? bob : 0))
+    rx.set(p.x); ry.set(p.y); rot.set(D.mode === 'down' ? D.rot * Math.min(1, D.h / D.h0) : D.rot)
+    if (D.mode === 'down' && D.h <= 0) { touchDown(D); return }
+    frame.current = requestAnimationFrame(flyFrame)
+  }
+
+  const touchDown = D => {
+    g.drag = null
+    g.air = false
+    const Lx = S.L, p = Lx.P(D.goal, Lx.pr)
+    rx.set(p.x); ry.set(p.y); rot.set(0)
+    setDragging(false)
+    setOver(null)
+    setFlame(0)
+    squash(0.8)
+    sfx.bump()
+    if (g.phase !== 'play') return
+    // Where the rocket is set down is the answer, in every level it can be
+    // flown in. Back on the planet it started from: nothing was answered.
+    if (D.goal === D.start) { nudge(); return }
+    if (S.plan.mode === 'tap') { answerByHand(D.start, D.goal); return }
+    // the hop levels: the hops were counted on the way, the landing is the tick
+    land(true)
+  }
+
+  // The tap levels: the arcs come after, as proof, then the landing
+  const answerByHand = (a, n) => {
+    setPhase('fly')
+    g.win = starsWon(g.stars, S.task, n)
+    g.pos = n
+    setPos(n)
+    const dir = Math.sign(n - a), k = Math.abs(n - a), gapMs = 170
+    for (let i = 0; i < k; i++) {
+      later(i * gapMs, () => {
+        const x = a + dir * i, y = x + dir
+        g.arcs = hopArcs(g.arcs, x, y, ++seq, { ms: FAST_MS })
+        setArcs(g.arcs)
+        sfx.whoosh()
+        if (g.win.includes(Math.min(x, y))) collect(Math.min(x, y))
+      })
+    }
+    later(k * gapMs + FAST_MS, () => settle(n))
   }
 
   // ── Landing: who lives here? ────────────────────────────────────────────
@@ -466,7 +635,7 @@ export default function RocketMathGame({ level = 1, onComplete }) {
 
   // The tap levels: while the child waits, the planets bounce one after the
   // other, all alike (tapHelp): soon at the first sum, later after a long wait
-  const waving = tapHelp(plan.mode, ghost) === 'wave' && phase === 'play' && !paused
+  const waving = tapHelp(plan.mode, ghost) === 'wave' && phase === 'play' && !paused && !dragging
   useEffect(() => {
     if (!waving) return
     let t
@@ -516,6 +685,14 @@ export default function RocketMathGame({ level = 1, onComplete }) {
   const playing = phase === 'play'
   const hopMode = plan.mode === 'hop' || plan.mode === 'count'
   const showControls = hopMode && !bubbles && phase !== 'finale' && phase !== 'count' && counting < 0
+  // a level with one sign: the other button only takes hops back (fly.js, reachOf)
+  const undoOp = plan.ops.length === 1 ? (plan.ops[0] === PLUS ? MINUS : PLUS) : null
+  const thrustBtn = (op, way) => (
+    <ThrustButton op={op} way={way} size={op === undoOp ? Math.round(L.btn * 0.8) : L.btn} onPress={() => thrust(op)}
+      btnRef={op === PLUS ? plusRef : minusRef} pulse={thrustPulse.op === op ? thrustPulse.k : 0}
+      undo={op === undoOp} disabled={op === undoOp && (!arcs.length || !playing || dragging)} />
+  )
+  const canHold = playing && !paused && (hopMode || plan.mode === 'tap')
   // the hint hand: the first sum of a level shows the move soon, later only a long wait
   const handDelay = idx === 0 && level <= 7 ? 2500 : 7000
   // the tap levels: no hand before a miss (the planets bounce instead, see
@@ -567,7 +744,11 @@ export default function RocketMathGame({ level = 1, onComplete }) {
                   <motion.div key={`wv${wave.k}`} data-wave={wave.k && tapCell && n !== wave.skip ? wave.k : undefined}
                     animate={wave.k && tapCell && n !== wave.skip && !reduce ? (vertical ? { x: [0, 16, 0] } : { y: [0, -16, 0], scale: [1, 1.08, 1] }) : {}}
                     transition={{ duration: 0.4, delay: n * 0.07, ease: 'easeOut' }}>
-                    <Planet n={n} size={L.pd} glow={isStart} home={creature?.n === n} />
+                    {/* flown over by hand: the planet bobs, so each one on the way is seen */}
+                    <motion.div key={over?.n === n ? `o${over.k}` : 'o'} data-over={over?.n === n ? '' : undefined}
+                      animate={over?.n === n && !reduce ? { scale: [1, 1.18, 1] } : {}} transition={{ duration: 0.35 }}>
+                      <Planet n={n} size={L.pd} glow={isStart} home={creature?.n === n} />
+                    </motion.div>
                   </motion.div>
                 </motion.div>
               </Cell>
@@ -589,7 +770,7 @@ export default function RocketMathGame({ level = 1, onComplete }) {
                   <motion.path key={h.id} d={`M${q.a.x} ${q.a.y} Q${q.c.x} ${q.c.y} ${q.b.x} ${q.b.y}`} fill="none"
                     stroke={GOLD} strokeWidth="6" strokeLinecap="round" style={{ filter: 'drop-shadow(0 0 5px rgba(255,201,60,0.9))' }}
                     initial={reduce ? false : { pathLength: 0 }} animate={{ pathLength: 1, opacity: 1 }} exit={{ opacity: 0 }}
-                    transition={{ pathLength: { duration: (plan.mode === 'hop' || plan.mode === 'count' ? HOP_MS : FAST_MS) / 1000, ease: [0.4, 0, 0.5, 1] } }} />
+                    transition={{ pathLength: { duration: (h.ms ?? HOP_MS) / 1000, ease: [0.4, 0, 0.5, 1] } }} />
                 )
               })}
             </AnimatePresence>
@@ -605,7 +786,7 @@ export default function RocketMathGame({ level = 1, onComplete }) {
               return (
                 <motion.span key={`n${h.id}`} aria-hidden="true" data-arc={i + 1}
                   initial={reduce ? false : { scale: 0 }} animate={{ scale: counting === i ? [1, 1.6, 1.2] : 1 }} exit={{ scale: 0, opacity: 0 }}
-                  transition={{ delay: counting === i ? 0 : (plan.mode === 'hop' || plan.mode === 'count' ? HOP_MS : FAST_MS) / 2000, type: counting === i ? 'tween' : 'spring', stiffness: 500, damping: 18 }}
+                  transition={{ delay: counting === i ? 0 : (h.ms ?? HOP_MS) / 2000, type: counting === i ? 'tween' : 'spring', stiffness: 500, damping: 18 }}
                   style={{
                     position: 'absolute', left: p.x - s / 2, top: p.y - s / 2, width: s, height: s, borderRadius: '50%', zIndex: 4,
                     background: counting === i ? '#fff' : GOLD, border: `3px solid ${INK}`, boxSizing: 'border-box',
@@ -639,12 +820,16 @@ export default function RocketMathGame({ level = 1, onComplete }) {
           </AnimatePresence>
 
           {/* the rocket */}
-          <motion.div ref={rocketRef} data-rocket=""
-            onPointerDown={() => { if (hopMode && g.phase === 'play' && arcs.length) land() }}
+          <motion.div ref={rocketRef} data-rocket="" data-flying={dragging ? '' : undefined}
+            onPointerDown={onRocketDown} onPointerMove={onRocketMove} onPointerUp={onRocketUp} onPointerCancel={onRocketUp}
             style={{
               position: 'absolute', left: 0, top: 0, width: L.rw, height: L.rh, x: rocketX, y: rocketY, rotate: rocketRot,
-              transformOrigin: '50% 100%', zIndex: 5, cursor: hopMode && playing && arcs.length ? 'pointer' : 'default',
+              // flown by hand it is in front of everything: the sky is the whole
+              // screen, and the rocket never slips behind a button on the way
+              transformOrigin: '50% 100%', zIndex: dragging ? 7 : 5, touchAction: 'none', cursor: dragging ? 'grabbing' : canHold ? 'grab' : 'default',
             }}>
+            {/* a finger-wide grip round the rocket */}
+            <span aria-hidden="true" style={{ position: 'absolute', inset: -14 }} />
             <motion.div style={{ width: '100%', height: '100%', scaleY: sq, transformOrigin: '50% 100%' }}>
               <Rocket w={L.rw} h={L.rh} seats={total} riders={finale?.landed ? [] : riders} flame={flame} upright={vertical && !finale?.landed ? 90 : 0} newest={riders.length - 1} />
             </motion.div>
@@ -684,17 +869,17 @@ export default function RocketMathGame({ level = 1, onComplete }) {
                 }}>
                 {vertical ? (
                   <>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                      {plan.ops.includes(PLUS) && <ThrustButton op={PLUS} way="up" size={L.btn} onPress={() => thrust(PLUS)} btnRef={plusRef} pulse={thrustPulse.op === PLUS ? thrustPulse.k : 0} />}
-                      {plan.ops.includes(MINUS) && <ThrustButton op={MINUS} way="down" size={L.btn} onPress={() => thrust(MINUS)} btnRef={minusRef} pulse={thrustPulse.op === MINUS ? thrustPulse.k : 0} />}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+                      {thrustBtn(PLUS, 'up')}
+                      {thrustBtn(MINUS, 'down')}
                     </div>
-                    <LandButton size={L.btn} onPress={land} disabled={!arcs.length || !playing} btnRef={landRef} />
+                    <LandButton size={L.btn} onPress={land} disabled={!arcs.length || !playing || dragging} btnRef={landRef} />
                   </>
                 ) : (
                   <>
-                    {plan.ops.includes(MINUS) && <ThrustButton op={MINUS} way="left" size={L.btn} onPress={() => thrust(MINUS)} btnRef={minusRef} pulse={thrustPulse.op === MINUS ? thrustPulse.k : 0} />}
-                    <LandButton size={L.btn} onPress={land} disabled={!arcs.length || !playing} btnRef={landRef} />
-                    {plan.ops.includes(PLUS) && <ThrustButton op={PLUS} way="right" size={L.btn} onPress={() => thrust(PLUS)} btnRef={plusRef} pulse={thrustPulse.op === PLUS ? thrustPulse.k : 0} />}
+                    {thrustBtn(MINUS, 'left')}
+                    <LandButton size={L.btn} onPress={land} disabled={!arcs.length || !playing || dragging} btnRef={landRef} />
+                    {thrustBtn(PLUS, 'right')}
                   </>
                 )}
               </motion.div>
@@ -735,7 +920,7 @@ export default function RocketMathGame({ level = 1, onComplete }) {
           {finale?.landed && <MoonParty L={L} riders={riders} reduce={reduce} />}
 
           {handTo && <HintHand to={handTo} delay={ghost ? 1500 : handDelay}
-            active={(playing || phase === 'count') && !paused} />}
+            active={(playing || phase === 'count') && !paused && !dragging} />}
           {juice.layer}
           {bursts}
         </>

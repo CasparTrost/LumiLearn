@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence, useAnimationFrame, useReducedMotion } from 'framer-motion'
-import { narrate, leaveGame, lockPreviews, afterNarration } from '../narrator.js'
+import { narrate, leaveGame, lockPreviews, afterNarration, isNarrating } from '../narrator.js'
 import { LINES, line } from '../lib/lumiLines.js'
 import { sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
@@ -11,7 +11,7 @@ import { useLater } from './zahlen/stage.jsx'
 import { pxCard } from './px.js'
 import { THINGS, CAT, planLevel, levelConfig, tasksIn, tiltOf, glints } from './schatten/data.js'
 import { layoutFor } from './schatten/layout.js'
-import { makeRoom, spawn, step, flee, gait, inLight, lookOf, floorOf, placeApart, tapTarget, inBeam, nextFocus, settleFocus, REST_SPEED, torchCatches, lampDrop, lampSize } from './schatten/sim.js'
+import { makeRoom, spawn, step, flee, gait, inLight, lookOf, floorOf, placeApart, tapTarget, inBeam, nextFocus, settleFocus, REST_SPEED, torchCatches, lampDrop, lampSize, lampPool } from './schatten/sim.js'
 import { Backdrop, Furniture, hidesOf } from './schatten/Room.jsx'
 import { Garland, Eyes, CeilingLamp, Bunting, Joker, slotAt } from './schatten/parts.jsx'
 import { gasp, lampOn, wakeSound } from './schatten/sound.js'
@@ -127,6 +127,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
   const bump = useCallback(() => setVer(v => v + 1), [])
   const firstTry = useRef(0)
   const slotSeq = useRef(0)
+  const soundSeq = useRef(0)                        // the find whose animal sound is still to come
   const roomDone = useRef(0)
   const handedIn = useRef(false)
   const saidCard = useRef(false)
@@ -355,8 +356,13 @@ export default function ShadowGame({ level = 1, onComplete }) {
     sayRight(null, { lead: [wordOf(s.e)].filter(Boolean) })
     setHelp(h => (h === s.id ? null : h))
     bump()
-    // its own sound once Lumi has said its name and her praise, not over them
-    later(1250, () => afterNarration(() => { if (s.move !== 'roll' && s.move !== 'hop') playAnimal(s.e) }, { maxMs: 4000 }))
+    // Its own sound once Lumi has said its name and her praise, not over
+    // them. Only the thing found last: after two quick finds the first one's
+    // sound came after the second one's name, as if it were that one's.
+    const mine = ++soundSeq.current
+    later(1250, () => afterNarration(() => {
+      if (soundSeq.current === mine && !isNarrating() && s.move !== 'roll' && s.move !== 'hop') playAnimal(s.e)
+    }, { maxMs: 4000 }))
     later(reduce ? 1300 : 2300, () => climb(s))
   }
 
@@ -407,6 +413,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
     if (!w || phaseRef.current !== 'play') return
     const touch = e.pointerType !== 'mouse'
     w.input = { id: e.pointerId, touch }
+    w.downAt = w.t
     // touching a lit shadow makes it the focus (the light shines above a finger, not on it)
     const lit = shadowAt(e.clientX, e.clientY)
     w.pin = lit ? { id: lit.id, x: e.clientX, y: e.clientY } : null
@@ -599,7 +606,13 @@ export default function ShadowGame({ level = 1, onComplete }) {
       const v = dt > 0 ? Math.hypot(beam.x - at.x, beam.y - at.y) / dt / beamR : 0
       w.beamSpeed = (w.beamSpeed ?? 0) + (v - (w.beamSpeed ?? 0)) * Math.min(1, dt * 12)
       w.beamAt = { x: beam.x, y: beam.y }
-      const next = settleFocus(w.focus, nextFocus(w.focus, w.shadows, beam, RS, w.pin?.id ?? null), w.shadows, w.dwell, w.t, !!w.pin, w.beamSpeed < REST_SPEED)
+      const want = nextFocus(w.focus, w.shadows, beam, RS, w.pin?.id ?? null)
+      // A finger: the light shines above it, so where it rests says little
+      // (it rests above the finger that pauses on its way to the cards). It
+      // moves the focus only to a shadow it caught in this very touch; one
+      // that is lit already is chosen by touching it.
+      const fresh = !beam.touch || (w.shadows.find(x => x.id === want)?.caughtAt ?? -1) >= (w.downAt ?? Infinity)
+      const next = settleFocus(w.focus, want, w.shadows, w.dwell, w.t, !!w.pin, fresh && w.beamSpeed < REST_SPEED)
       w.dwell = next.dwell
       setFocus(next.focus)
     }
@@ -675,20 +688,15 @@ export default function ShadowGame({ level = 1, onComplete }) {
         ctx.fillStyle = gr
         ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill()
       }
-      // the lamps that are on: a cone of light down to the floor
+      // The lamps that are on: a pool of light under each shade, up in the
+      // band under the ceiling where no shadow goes. A cone down to the floor
+      // lit the way of the dark shadows, and one standing black in the light
+      // broke the game's own rule ("ein Schatten im Licht bleibt stehen").
       const drop = lampDrop(geo.H)
+      const pool = lampPool(RS)
       for (const lp of w.lamps) {
         const k = clamp((w.t - lp.t0) / 0.3, 0, 1)
-        const top = drop + 22
-        const gr = ctx.createLinearGradient(0, top, 0, geo.H)
-        gr.addColorStop(0, `rgba(0,0,0,${0.85 * k})`)
-        gr.addColorStop(1, `rgba(0,0,0,${0.35 * k})`)
-        ctx.fillStyle = gr
-        ctx.beginPath()
-        ctx.moveTo(lp.x - 14, top); ctx.lineTo(lp.x + 14, top)
-        ctx.lineTo(lp.x + RS * 0.85, geo.H); ctx.lineTo(lp.x - RS * 0.85, geo.H)
-        ctx.closePath(); ctx.fill()
-        hole(lp.x, top, 46, 0.9 * k)
+        hole(lp.x, drop + 22, pool, 0.9 * k, 0.35)
       }
       // shadows held in the light: a soft glow that fades out at the end
       for (const s of w.shadows) {
@@ -732,11 +740,11 @@ export default function ShadowGame({ level = 1, onComplete }) {
       }
       // a warm glow where the lamps shine
       for (const lp of w.lamps) {
-        ctx.fillStyle = 'rgba(255,214,120,0.10)'
-        ctx.beginPath()
-        ctx.moveTo(lp.x - 14, drop + 22); ctx.lineTo(lp.x + 14, drop + 22)
-        ctx.lineTo(lp.x + RS * 0.85, geo.H); ctx.lineTo(lp.x - RS * 0.85, geo.H)
-        ctx.closePath(); ctx.fill()
+        const gr = ctx.createRadialGradient(lp.x, drop + 22, 0, lp.x, drop + 22, pool)
+        gr.addColorStop(0, 'rgba(255,214,120,0.22)')
+        gr.addColorStop(1, 'rgba(255,214,120,0)')
+        ctx.fillStyle = gr
+        ctx.beginPath(); ctx.arc(lp.x, drop + 22, pool, 0, Math.PI * 2); ctx.fill()
       }
     }
 

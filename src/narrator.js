@@ -41,6 +41,8 @@ const LOCK_MAX_MS = 12000
 // dreht, solange Lumi redet).
 const listeners = new Set()
 export function onNarrationChange(fn) { listeners.add(fn); return () => listeners.delete(fn) }
+/** Is Lumi speaking right now? */
+export const isNarrating = () => running
 function setRunning(v) {
   if (running === v) return
   running = v
@@ -255,7 +257,16 @@ export function narrate(parts, { onEnd, skipIfSame = false, priority = 'normal' 
       a.volume = voiceVolume
       audioEl = a
       let failed = false
-      const hand = once(done, s, 15000)
+      // The watchdog waits as long as the clip is: a help text runs for up
+      // to 25 seconds, and after a flat 15 the narrator counted as silent
+      // while Lumi was still talking (what waits for her went on too early)
+      let over = false, guard = null
+      const hand = () => { if (over) return; over = true; clearTimeout(guard); if (s === seq) done() }
+      const watch = ms => { clearTimeout(guard); if (!over) guard = setTimeout(hand, ms) }
+      const byLength = () => { if (Number.isFinite(a.duration) && a.duration > 0) watch(a.duration * 1000 + 2000) }
+      watch(15000)
+      byLength()
+      a.addEventListener('loadedmetadata', byLength, { once: true })
       said = { src: p.src, at: Date.now() }
       const onFail = () => {
         // error-Ereignis und abgelehntes play() kommen beide — nur einmal

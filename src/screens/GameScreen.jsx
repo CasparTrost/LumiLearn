@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useRef, useState } from 'react'
-import { useApp, MAX_LEVELS, hasLevels } from '../AppContext.jsx'
+import { useApp, MAX_LEVELS, hasLevels, needsHelpFirst } from '../AppContext.jsx'
 import { HudBar, PxIcon, PixelLumi } from '../components/PixelUI.jsx'
 import InfoButton from '../components/InfoButton.jsx'
 import ErrorBoundary from '../components/ErrorBoundary.jsx'
@@ -123,6 +123,12 @@ export default function GameScreen() {
 
   const GameComponent = gameComponent(moduleId, attempt)
 
+  // A game the child has never played explains itself first: the help box
+  // is up, Lumi reads it, and the game starts when the child has ticked it
+  // off (its own first words would talk over the explanation)
+  const firstHelp = needsHelpFirst(state.profiles[state.activeProfileId], moduleId)
+  useEffect(() => { if (firstHelp) ensureGame(moduleId).catch(() => {}) }, [firstHelp, moduleId])
+
   // One result per round played: a second tap on a game's last button (or a
   // timer firing twice) counted the game twice — plays, review, stars
   const completed = useRef(false)
@@ -171,7 +177,8 @@ export default function GameScreen() {
           </span>
         )}
         <MusicButton />
-        <InfoButton moduleId={moduleId} onOpenChange={setHelpOpen} />
+        <InfoButton moduleId={moduleId} onOpenChange={setHelpOpen} first={firstHelp}
+          onConfirm={() => dispatch({ type: 'HELP_SEEN', payload: moduleId })} onLeave={quit} />
       </HudBar>
 
       {/* Game, in front of its world: a meadow, the sea, the night sky …
@@ -188,7 +195,7 @@ export default function GameScreen() {
         onHome={() => dispatch({ type: 'NAVIGATE', payload: 'home' })}>
         <PauseContext.Provider value={helpOpen || askQuit}>
         <Suspense fallback={<GameLoadingFallback />}>
-          {NO_SCALE.has(moduleId)
+          {firstHelp ? null : NO_SCALE.has(moduleId)
             ? <GameComponent moduleId={moduleId} level={level} onComplete={handleComplete} />
             // key: jedes Spiel misst seine nötige Höhe neu, statt die des
             // vorigen zu erben

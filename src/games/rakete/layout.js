@@ -122,3 +122,14 @@ export function hopPath(L, a, b, high = 1) {
   const mid = (a + b) / 2
   return { a: L.P(a, L.pr), c: L.P(mid, L.pr + 2 * L.arcH * high), b: L.P(b, L.pr) }
 }
+
+/**
+ * Where on the line a point of the screen is, as a place n (planet 3 is 3,
+ * half way to 4 is 3.5), whichever way the line runs: the finger's place
+ * when the child flies the rocket by hand.
+ */
+export function lineAt(L, p) {
+  const a = L.P(0), b = L.P(1)
+  const dx = b.x - a.x, dy = b.y - a.y
+  return ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy)
+}

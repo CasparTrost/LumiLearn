@@ -7,6 +7,7 @@ import { narrate } from '../narrator.js'
 import { hearable } from '../lib/hearable.js'
 import { sayNumber } from '../tts.js'
 import { line } from '../lib/lumiLines.js'
+import { Art } from '../components/play/index.js'
 
 // The animals a child can be, with the name Lumi says when it is tapped and
 // the name a profile gets when nobody types one in.
@@ -33,8 +34,10 @@ const SAY_WHO  = line('menue/wer-spielt-heute')
 const AGE_CLIP = { 4: 'vier', 5: 'fuenf', 6: 'sechs', 7: 'sieben' }
 
 // Avatar tiles are sized by the height as well, so the grid fits on a small
-// phone without scrolling
-const TILE = 'min(19vw, 10dvh, 88px)'
+// phone without scrolling (the size is in pixel.css, .avatar-tile). The
+// picture is sized as a share of its tile, not by a font size: the font size
+// was a calc() over min() with dvh, the pictures (1.15em) hung on it, and on
+// an iPhone they did not show at all.
 
 // Two short steps: tap an animal (that already moves on), then the age and
 // "Los geht's!". The name is for the parents and may stay empty — typing it
@@ -80,19 +83,19 @@ function CreateProfileForm({ onSave, onCancel, showCancel }) {
               </div>
             </div>
 
-            <div style={{ display:'grid', gridTemplateColumns:`repeat(4, ${TILE})`, gap:'clamp(8px,1.6dvh,12px)' }}>
+            <div className="avatar-grid">
               {AVATARS.map(a => {
                 const sel = avatar === a
                 return (
                   <button key={a}
-                    className={`px-btn ${sel ? 'px-btn--gold' : 'px-btn--parch'}`}
+                    className={`px-btn avatar-tile ${sel ? 'px-btn--gold' : 'px-btn--parch'}`}
                     onClick={() => pickAvatar(a)}
                     {...hearable(sayAvatar(a))}
                     aria-label={avatarName(a)}
                     aria-pressed={sel}
-                    style={{ width:TILE, height:TILE, padding:0, fontSize:`calc(${TILE} * 0.5)`, lineHeight:1 }}
+                    style={{ padding:0, lineHeight:1 }}
                   >
-                    {a}
+                    <Art art={a} size={96} style={{ width:'62%', height:'62%', objectFit:'contain' }} />
                   </button>
                 )
               })}

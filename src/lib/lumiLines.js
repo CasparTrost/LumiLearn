@@ -109,7 +109,7 @@ export const LINES = {
   'hilfe/hilfe-words': 'Memo-Welt. Dreh immer zwei Karten um: Zwei gleiche gehören dir. Ab Level drei spielst du abwechselnd mit Lumi. Wer mehr Paare hat, gewinnt. Ab Level fünf liegt eine Zauberkarte mit Augen dabei: Wer sie umdreht, sieht kurz alle Karten.',
   'hilfe/hilfe-patterns': 'Musterpark. Die Tiere spielen der Reihe nach, ein Hocker ist leer. Hör gut zu: Wer fehlt? Setz das passende Tier auf den Hocker.',
   'hilfe/hilfe-shapes': 'Farbenreich. Das Monster zeigt in seiner Denkblase, welche Farbe es haben möchte. Tippe auf die Farbflaschen, bis der Tank diese Farbe hat, und zieh dann am Hebel. Am Rad am Tank lässt du die Farbe wieder ab.',
-  'hilfe/hilfe-emotions': 'Gefühlswelt. Lumi zeigt dir ein Gesicht und sagt das Gefühl. Tippe alle Tiere an, die sich genauso fühlen. Tippst du auf das Schild, sagt Lumi das Gefühl noch einmal.',
+  'hilfe/hilfe-emotions': 'Gefühlswelt. Lumi zeigt dir ein Gesicht und sagt das Gefühl. Finde das Tier, das sich genauso fühlt, und tippe es an. Dann gehen alle Fenster zu, und gleich suchst du das nächste. Tippst du auf das Schild, sagt Lumi das Gefühl noch einmal.',
   'hilfe/hilfe-empathy': 'Gefühlsdetektiv. Tippe auf die Lupe und schau, was passiert. Dann tippe auf das Gesicht, das passt. Und such aus, was dem Tier jetzt gut tut. Du siehst gleich, ob es hilft.',
   'hilfe/hilfe-maze': 'Lumi-Labyrinth. Sammle alle Zaubertränke, dann geht das Tor auf. Der Drache bewacht seinen Weg: Lauf nicht in ihn hinein, sonst kostet es ein Herz. Ab Level 3 liegen drei Münzen versteckt; findest du alle, öffnet sich am Tor die Schatztruhe.',
   'hilfe/hilfe-shadows': 'Schattenrätsel. Leuchte mit der Taschenlampe ins dunkle Zimmer. Ein Schatten im Licht bleibt stehen: Zieh das passende Bild darauf oder tippe es an. Die Glühbirne macht kurz alles hell, und die Katze läuft nur weg.',
@@ -118,11 +118,11 @@ export const LINES = {
   'hilfe/hilfe-clock': 'Kuckucksuhr. Dreh die Zeiger, bis die Uhr die Zeit von der Karte zeigt. Bei zwei Zeigern drückst du danach auf den Haken. Stehen drei Zeiten zur Wahl, tippst du die an, die die Uhr zeigt.',
   'hilfe/hilfe-words2': 'Silben-Spaß. Sag das Wort und klatsch dazu: Jedes Klatschen ist ein Tipp ins Wasser, und der Frosch hüpft auf ein Seerosenblatt. Ist das Wort zu Ende, tippst du auf das Ding am Ufer, dann springt er hinüber. Manchmal legst du die Silben-Blätter der Reihe nach.',
   'hilfe/hilfe-weight': 'Waage-Welt. Wirf etwas auf die Wippe: Je schwerer es ist, desto höher fliegt das Tier. Es soll genau bis zu seinem Futter kommen. Später zählst du Pakete zusammen. Dann vergleichst du zwei Sachen auf der Wippe und ordnest sie auf der Treppe von leicht nach schwer. Zum Schluss machst du die Wippe gerade.',
-  'hilfe/hilfe-rocket-math': 'Rechen-Rakete. Jeder Druck auf die Flamme ist ein Hüpfer zum nächsten Planeten. Hüpf so oft, wie die Rechnung sagt, und lande mit dem grünen Haken. Auf dem richtigen Planeten wohnt der Außerirdische. Später tippst du gleich auf den Planeten, auf dem die Rakete landet. Zum Schluss zeigst du mit den Zahlenblasen, wie viele Hüpfer es sind.',
+  'hilfe/hilfe-rocket-math': 'Rechen-Rakete. Rechne aus, wo die Rakete landet. Nimm sie mit dem Finger und flieg sie zu dem Planeten: Wo du loslässt, landet sie. Du kannst auch die Flamme drücken, dann hüpft sie einen Planeten weiter, mit der zweiten Flamme zurück, und der grüne Haken landet. Später tippst du gleich auf den richtigen Planeten, und zum Schluss zeigst du, wie viele Hüpfer es sind.',
   'hilfe/hilfe-shapes-land': 'Formen-Land. Die Eule zeigt dir in ihrer Lupe eine Form. Tippe im Bild alle Formen an, die so aussehen. Manchmal stellst du Formen der Größe nach auf, setzt eine Parade fort oder legst die passende Form auf ein Ding.',
   'hilfe/hilfe-shape-build': 'Formen-Werkstatt. Ein Tier wünscht sich etwas. Zieh die Formen an ihren Platz, bis es fertig ist. Mit dem Pfeil drehst du eine Form, und manchmal ist ein Teil zu viel. Am Ende darfst du selbst bauen.',
   'hilfe/hilfe-trace': 'Buchstaben-Spuren. Leg den Finger auf den grünen Punkt und fahre den Weg nach. Die Schnecke fährt mit und sammelt die Sterne. Fertige Buchstaben und Zahlen werden lebendig.',
-  'hilfe/hilfe-coloring': 'Mal-Atelier. Tippe auf eine Farbe und mal mit dem Finger, oder fülle eine Fläche mit dem Eimer. Probier den Regenbogen-Pinsel, den Glitzer und die Stempel! Mit Fertig hängt dein Bild an deiner Wand.',
+  'hilfe/hilfe-coloring': 'Mal-Atelier. Tippe auf eine Farbe und mal mit dem Finger, oder fülle eine Fläche mit dem Eimer. Probier den Regenbogen-Pinsel, den Glitzer und die Stempel! Mit Fertig hängt dein Bild an deiner Wand. Bei den Bildern kannst du mit einem Erwachsenen auch ein eigenes Bild zum Ausmalen holen. Fertige Bilder kannst du speichern oder drucken.',
   // Buchstaben- und Wörter-Spiele: Laute, Silben, Wörter, Reime. Made with the
   // same voice in eleven v3, read as short lists and cut apart at the pauses
   // (single words made alone sounded odd), brought to -17.5 LUFS.
@@ -1237,6 +1237,11 @@ export const LINES = {
   'silbe/dier': 'Dier.',
   'silbe/kin': 'Kinn.',
   'wippe/tauschen': 'Das Schwere gehört weiter nach oben. Tausch die beiden!',
+  'rakete/fliegen': 'Nimm die Rakete mit dem Finger und flieg sie zum Planeten! Wo du loslässt, landet sie.',
+  'atelier/eigenes-bild': 'Dein eigenes Bild! Hol einen Erwachsenen, der dir hilft.',
+  'atelier/zeichnet': 'Ich zeichne die Linien. Einen Moment!',
+  'atelier/eigenes-da': 'Fertig! Jetzt kannst du dein Bild ausmalen.',
+  'atelier/geht-nicht': 'Aus diesem Bild kann ich leider kein Malbild machen. Probier ein anderes!',
 }
 
 /** The recording of a sentence, with its text for the browser voice. */

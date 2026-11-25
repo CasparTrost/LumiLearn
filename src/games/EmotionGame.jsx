@@ -10,7 +10,7 @@ import { usePaused } from '../lib/pause.js'
 import { Critter, Art, useMood, RoundTrail, useBursts, HintHand, useIdle } from '../components/play/index.js'
 import { INK } from './px.js'
 import { Friend, SignFace, CAST, FRIEND_RATIO, slug } from './gefuehle/faces.jsx'
-import { levelConfig, pickRounds, step, allDown, shuffle, GRIDS } from './gefuehle/rounds.js'
+import { levelConfig, pickRounds, deal, settle, allDown, shuffle, GRIDS, SHUT_MS } from './gefuehle/rounds.js'
 import { useLater, useSize, pointIn } from './gefuehle/hooks.js'
 
 /**
@@ -18,22 +18,24 @@ import { useLater, useSize, pointIn } from './gefuehle/hooks.js'
  * for them
  *
  * A house full of animals. Lumi stands beside it and holds up a sign with
- * one face, and says the feeling ("Traurig."). Animals pop up at the
- * windows, each with a feeling on its face; the child taps everyone who
- * feels like the sign. That is the whole rule.
+ * one face, and says the feeling ("Traurig."). The shutters open, an animal
+ * at every window, each with a feeling on its face, and one of them feels
+ * like the sign; the child finds it and taps it. That is the whole rule.
  *
  *   • A right tap: the animal cheers, leaps out of its window to the sign
- *     and turns into a star on the meter under it. A full meter (four to
- *     six stars) ends the round.
+ *     and turns into a star on the meter under it. All shutters close, and
+ *     when they open (about a second after the tap) every window has a new
+ *     animal with a new face, and the next one with the feeling is
+ *     somewhere else, never in the window just tapped (gefuehle/rounds.js
+ *     deal). The meter's empty stars show how many are still to find; a
+ *     full meter (four to six stars) ends the round.
  *   • A wrong tap: the animal shakes its head, Lumi says "Hm, noch nicht."
  *     and then, while the sign nods, the feeling on the sign once more. Only
  *     that one feeling is named: two bare words in a row ("Wütend."
- *     "Traurig.") left a child guessing which was meant. The animal stays
- *     at its window; the round just no longer counts as "first try".
- *   • The animals stay a while, duck down, and others come up (about five
- *     seconds at level 1, two at level 10). A right face is always on
- *     screen (gefuehle/rounds.js), so a child never waits.
- *   • After two misses in a round the right ones bounce.
+ *     "Traurig.") left a child guessing which was meant. Nothing is dealt
+ *     anew (guessing must not reshuffle the house); the round just no
+ *     longer counts as "first try".
+ *   • After two misses in one deal the right one bounces.
  *   • The third right tap in a row within a round lights the house up and
  *     the cat on the roof dances (without a sound: it used to meow at every
  *     tap of a faultless level); at the end of a level everyone leans out
@@ -123,7 +125,7 @@ export default function EmotionGame({ level = 1, onComplete }) {
   const [phase, setPhase] = useState('ready')     // ready | play | won | finale
   const [slots, setSlots] = useState(() => Array(cfg.windows).fill(null))
   const [stars, setStars] = useState(0)           // landed on the meter
-  const [misses, setMisses] = useState(0)         // in this round
+  const [misses, setMisses] = useState(0)         // in this deal (the help); the round's are in g.misses
   const [faceUp, setFaceUp] = useState(true)      // the sign shows its face
   const [pulse, setPulse] = useState(0)           // the sign calls for a look
   const [lit, setLit] = useState(0)               // the house is lit up (a streak)
@@ -131,7 +133,10 @@ export default function EmotionGame({ level = 1, onComplete }) {
   const [done, setDone] = useState(0)             // rounds finished
 
   // What the clock and the taps work on; the state above is its picture
-  const g = useRef({ now: 0, slots: [], mem: {}, caught: 0, misses: 0, streak: 0, clean: 0, faceUntil: 0, faceUp: true }).current
+  // (lastAt / lastAnimal / prev: the window and animal of the last right
+  // tap and the deal before, so the next deal puts everyone somewhere new)
+  const g = useRef({ now: 0, slots: [], caught: 0, misses: 0, dealMisses: 0, streak: 0, clean: 0, faceUntil: 0, faceUp: true,
+    lastAt: null, lastAnimal: null, prev: null }).current
   const target = phase === 'finale' ? 'Glücklich' : rounds[roundIdx]
 
   const rootRef = useRef(null)
@@ -147,14 +152,24 @@ export default function EmotionGame({ level = 1, onComplete }) {
   const show = next => { g.slots = next; setSlots(next) }
   const sayTarget = () => narrate([feelingWord(target)])
 
+  // The shutters open on a new deal: one sound for all of them
+  const dealNow = () => {
+    const next = deal(cfg, rounds[g.round], { avoid: g.lastAt, lastAnimal: g.lastAnimal, before: g.prev })
+    g.prev = next
+    g.dealMisses = 0
+    setMisses(0)
+    show(next)
+    sfx.flip()
+  }
+
   // A new round: the sign turns to the next face, Lumi says the word, and
-  // the first animal to pop up is one that feels like it.
+  // the shutters open on the first deal.
   useEffect(() => {
     g.round = roundIdx
     g.streak = 0
     g.caught = 0
     g.misses = 0
-    g.mem = {}
+    g.dealMisses = 0
     g.faceUp = true
     setStars(0)
     setMisses(0)
@@ -168,34 +183,32 @@ export default function EmotionGame({ level = 1, onComplete }) {
     g.faceUntil = Infinity
     const stop = afterNarration(() => narrate([roundIdx === 0 ? optional(cfg.hideFace ? SAY_LISTEN : SAY_START) : null, feelingWord(rounds[roundIdx])],
       { onEnd: () => { g.faceUntil = g.now + SIGN_MS } }))
-    later(reduce ? 300 : 800, () => setPhase('play'))
+    later(reduce ? 300 : 800, () => { setPhase('play'); dealNow() })
     return stop
   }, [roundIdx]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // The house's clock: who ducks, who comes up. It stands still while the
-  // help is open.
+  // The house's clock: who has ducked away is gone. It stands still while
+  // the help is open.
   useEffect(() => {
     if (phase !== 'play' && phase !== 'won') return
     const iv = setInterval(() => {
       if (pausedRef.current) return
       g.now += TICK
-      const next = step(g.slots, g.mem, { now: g.now, target, cfg, spawn: phase === 'play' })
+      const next = settle(g.slots, g.now)
       if (next !== g.slots) show(next)
-      if (g.mem.born) sfx.flip()
       // levels 9 and 10: the sign turns away, the word has to do
       if (cfg.hideFace && phase === 'play' && g.faceUp && g.misses < 2 && g.now >= g.faceUntil) { g.faceUp = false; setFaceUp(false) }
     }, TICK)
     return () => clearInterval(iv)
-  }, [phase, target, cfg]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [phase, cfg]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // The hand points at one animal that feels like the sign, and only as
-  // long as that animal is at its window: it keeps to the one it chose, and
-  // when that one ducks or is caught the hand is gone in the same moment and
-  // a new one comes at the next right animal (the one that stays longest).
-  // The hand never slides across the house and never rests on a window
-  // whose animal has changed.
+  // The hand points at the animal that feels like the sign, and only as
+  // long as that animal is at its window: when it is caught the hand is gone
+  // in the same moment, and a new one waits for the next deal. The hand
+  // never slides across the house and never rests on a window whose animal
+  // has changed.
   const rightUp = phase === 'play' ? slots.filter(c => c?.state === 'up' && c.feeling === target) : []
-  const hinted = rightUp.find(c => c.id === hintId.current) ?? rightUp.reduce((a, c) => (!a || c.until > a.until ? c : a), null)
+  const hinted = rightUp.find(c => c.id === hintId.current) ?? rightUp[0] ?? null
   useLayoutEffect(() => {
     hintId.current = hinted?.id ?? null
     hintRef.current = hinted ? rootRef.current?.querySelector('[data-hint="1"]') ?? null : null
@@ -240,9 +253,8 @@ export default function EmotionGame({ level = 1, onComplete }) {
     const c = g.slots[i]
     if (pausedRef.current || !c || c.state === 'out') return
     if (phase === 'finale') { sfx.giggle(); burst(el, 'hearts', 6); return }
-    if (phase !== 'play') return
-    // a right one that is just ducking away still counts: the finger was on its way
-    if (c.state === 'down' && c.feeling !== target) return
+    // (while the shutters close and stay shut, nobody can be tapped)
+    if (phase !== 'play' || c.state !== 'up') return
     // (a tap cuts Lumi's word short: the sign's two seconds start now)
     if (g.faceUntil === Infinity) g.faceUntil = g.now + SIGN_MS
 
@@ -250,7 +262,10 @@ export default function EmotionGame({ level = 1, onComplete }) {
       g.caught += 1
       g.streak += 1
       const n = g.caught
-      show(g.slots.map((x, k) => (k === i ? { ...c, state: 'out', gone: g.now + 300 } : x)))
+      // it leaves its window, everyone else ducks, and all shutters close
+      g.lastAt = i
+      g.lastAnimal = c.animal
+      show(allDown(g.slots.map((x, k) => (k === i ? { ...c, state: 'out', gone: g.now + 300 } : x)), g.now))
       sfx.pop()
       announce('right')
       burst(el, 'stars', 6)
@@ -268,7 +283,12 @@ export default function EmotionGame({ level = 1, onComplete }) {
         burst(el, 'confetti', 14)
       }
       if (n >= cfg.need) win()
-      else setLumi('happy', 900)
+      else {
+        setLumi('happy', 900)
+        // a moment shut, then they open on a new deal
+        const round = roundIdx
+        later(reduce ? 400 : SHUT_MS, () => { if (g.round === round && g.caught < cfg.need) dealNow() })
+      }
       return
     }
 
@@ -276,9 +296,10 @@ export default function EmotionGame({ level = 1, onComplete }) {
     // through, never cut off), and then the sign nods and Lumi says again
     // whom we are looking for.
     g.misses += 1
+    g.dealMisses += 1
     g.streak = 0
-    setMisses(g.misses)
-    show(g.slots.map((x, k) => (k === i ? { ...c, until: Math.max(c.until, g.now + 1800), shake: (c.shake ?? 0) + 1 } : x)))
+    setMisses(g.dealMisses)
+    show(g.slots.map((x, k) => (k === i ? { ...c, shake: (c.shake ?? 0) + 1 } : x)))
     sfx.boing()
     setLumi('oops', 900)
     const round = roundIdx
@@ -525,7 +546,7 @@ function Window({ i, c, w, h, target, phase, lit, helping, hint, onTap, reduce, 
   const up = c?.state === 'up'
   const open = !!c && c.state !== 'down'
   const right = up && phase === 'play' && c.feeling === target
-  const live = up || (c?.state === 'down' && phase === 'play' && c.feeling === target)
+  const live = up
   const size = Math.min((w - FRAME) * 0.96, (h - FRAME) / FRIEND_RATIO * 1.03)
   const tint = CURTAINS[i % CURTAINS.length]
   const curtain = side => (

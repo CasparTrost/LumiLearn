@@ -214,6 +214,19 @@
 
 /* Emoji pictures (src/lib/emojiArt.jsx): sized by the surrounding font, so
    every place that sized an emoji with font-size keeps its size. */
+/* The animals a child can be (ProfileScreen): four in a row, sized by the
+   width and the height of the screen. vh first, for a browser that does not
+   know dvh; the picture inside is a share of the tile. */
+.avatar-grid { display: grid; grid-template-columns: repeat(4, auto); justify-content: center; gap: 10px; }
+.avatar-tile { width: min(19vw, 10vh, 88px); height: min(19vw, 10vh, 88px); }
+@supports (height: 1dvh) { .avatar-tile { width: min(19vw, 10dvh, 88px); height: min(19vw, 10dvh, 88px); } }
+/* a phone held sideways: two rows of eight, big enough for a finger (four
+   rows left tiles of 40 px) */
+@media (orientation: landscape) and (max-height: 500px) {
+  .avatar-grid { grid-template-columns: repeat(8, auto); }
+  .avatar-tile { width: min(10vw, 22vh, 76px); height: min(10vw, 22vh, 76px); min-height: 0; }
+}
+
 .emo {
   display: inline-block;
   width: 1.15em;

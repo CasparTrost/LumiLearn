@@ -58,6 +58,7 @@ export function Art({ art, size = 64, style, alt = '', mood }) {
 export default function Critter({
   art = '🐻', size = 140, mood = 'idle', flip = false, wish = null, wishSide = 'top',
   onTap, talks = false, label, style, children, accessory = null, shadow = true,
+  quiet = false,   // no sound of its own when it turns glad (the game plays it when it fits)
 }) {
   const controls = useAnimationControls()
   const [tickle, setTickle] = useState(0)
@@ -94,8 +95,8 @@ export default function Critter({
   useEffect(() => {
     const was = seen.current
     seen.current = mood
-    if (was !== mood && (mood === 'happy' || mood === 'dance') && Date.now() - born.current > 1500) playAnimal(art, { volume: 0.6 })
-  }, [mood, art])
+    if (!quiet && was !== mood && (mood === 'happy' || mood === 'dance') && Date.now() - born.current > 1500) playAnimal(art, { volume: 0.6 })
+  }, [mood, art, quiet])
 
   const tap = e => {
     if (onTap) { playAnimal(art, { volume: 0.6 }); onTap(e); return }

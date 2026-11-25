@@ -13,7 +13,12 @@ const URL = process.env.URL ?? 'http://localhost:4173/LumiLearn/'
 const SIZES = { phone: [360, 740], tablet: [1024, 768], desktop: [1440, 900] }
 const save = { version: 2, language: 'de', activeProfileId: 'p1', settings: { parentPin: '1234', pinIsDefault: true },
   profiles: { p1: { id: 'p1', name: 'Mia', age: 7, avatar: '🦊', progress: {}, streak: { count: 0, lastDate: null },
-    dailyMission: { date: null, missions: [], completedIds: [] }, lastPlayed: null } } }
+    dailyMission: { date: null, missions: [], completedIds: [] }, lastPlayed: null,
+    // the help box of every game is ticked off (it comes up by itself the
+    // first time a game is played; section 6 looks at that)
+    helpSeen: Object.fromEntries(['numbers', 'letters', 'listen', 'words', 'patterns', 'shapes', 'emotions', 'maze', 'shadows', 'bubbles', 'sort',
+      'clock', 'words2', 'weight', 'number-intro', 'letter-intro', 'coloring', 'shape-build', 'empathy', 'initial-sound', 'rhyme', 'shapes-land',
+      'rocket-math', 'trace'].map(id => [id, true])) } } }
 // silent speech: headless browsers have no voices, and tests should not wait for them
 const mute = () => {
   const SS = window.speechSynthesis
@@ -440,6 +445,39 @@ async function playShadows(page, { wrongOnce = false } = {}) {
     if (+s.idx === round) { await page.waitForTimeout(200); continue }
     const steps = Math.abs(+s.target - +s.from)
     const over = !overshot && s.idx === '1' && +s.target < 10
+    if (s.idx === '3') {
+      // flown by hand: hold the rocket, move slowly to the planet, let go
+      const box = async sel => { const b = await page.locator(sel).first().boundingBox(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 } }
+      const r = await box('[data-rocket]'), p = await box(`[data-planet="${s.target}"] svg`), q = await box('[data-planet="0"] svg')
+      const upright = Math.abs(p.y - q.y) > Math.abs(p.x - q.x)
+      const to = upright ? { x: r.x, y: p.y } : { x: p.x, y: r.y }
+      await page.mouse.move(r.x, r.y); await page.mouse.down()
+      for (let i = 1; i <= 20; i++) { await page.mouse.move(r.x + (to.x - r.x) * i / 20, r.y + (to.y - r.y) * i / 20); await page.waitForTimeout(30) }
+      await page.waitForTimeout(steps * 550 + 600)
+      await page.mouse.up()
+      const set = await until(x => x.pos === s.target, 5000)
+      for (let t = 0; t < 3000 && (await page.locator('[data-flying]').count()); t += 100) await page.waitForTimeout(100)
+      if (!set) problems.push('Planeten-Hüpfer: the rocket flown by hand did not come down on the planet')
+      // where it is set down is the answer: no tick needed
+      if (!(await until(x => x.phase !== 'play' || +x.idx !== +s.idx, 6000))) problems.push('Planeten-Hüpfer: landing by hand was not taken as the answer')
+      round = +s.idx
+      await page.waitForTimeout(400)
+      continue
+    }
+    if (s.idx === '2' && +s.target < 10) {
+      // one hop too far, then the plain button back: the count goes back with it
+      for (let k = 0; k <= steps; k++) {
+        await page.getByRole('button', { name: 'Vorwärts hüpfen' }).click({ timeout: 3000 }).catch(() => {})
+        await page.waitForTimeout(520)
+      }
+      await page.getByRole('button', { name: 'Zurück hüpfen' }).click({ timeout: 3000 }).catch(() => problems.push('Planeten-Hüpfer: no button back in level 1'))
+      await page.waitForTimeout(600)
+      if ((await state())?.pos !== s.target) problems.push('Planeten-Hüpfer: the button back did not hop back')
+      await page.getByRole('button', { name: 'Landen' }).click({ timeout: 3000 }).catch(() => {})
+      round = +s.idx
+      await page.waitForTimeout(400)
+      continue
+    }
     for (let k = 0; k < steps + (over ? 1 : 0); k++) {
       await page.getByRole('button', { name: 'Vorwärts hüpfen' }).click({ timeout: 3000 }).catch(() => {})
       await page.waitForTimeout(520)
@@ -607,6 +645,40 @@ async function playShadows(page, { wrongOnce = false } = {}) {
     } catch (e) { problems.push(`offline ${t}: ${String(e).split('\n')[0]}`) }
   }
   problems.push(...page.errors.filter(e => !/net::ERR_INTERNET_DISCONNECTED|Failed to load resource/.test(e)).map(e => `offline: ${e}`))
+  await page.context().close()
+}
+
+// 6. A game played for the first time explains itself: the help box is up
+// before the game starts, a tap outside does not close it, and the game
+// begins when it is ticked off. The second time the game starts at once.
+{
+  const fresh = structuredClone(save)
+  fresh.profiles.p1.helpSeen = {}
+  const page = await newPage(SIZES.phone, fresh)
+  try {
+    await page.goto(URL); await page.waitForTimeout(1500)
+    const open = async () => { await page.getByRole('button', { name: /^Sortier-Spaß(?:, Level|\. Spielen$)/ }).last().click(); await page.waitForTimeout(1500) }
+    await open()
+    const box = page.locator('[data-help="first"]')
+    if (!(await box.count())) problems.push('first help: no help box when a game is opened for the first time')
+    await check(page, 'first help')
+    if (await page.locator('.pl-game [data-belt], .pl-game button').count()) problems.push('first help: the game runs behind the help box')
+    await page.mouse.click(4, 300); await page.waitForTimeout(400)
+    if (!(await box.count())) problems.push('first help: a tap outside closed the box')
+    const ok = page.locator('[data-help-ok]')
+    await ok.waitFor({ state: 'visible' })
+    for (let i = 0; i < 120 && await ok.isDisabled(); i++) await page.waitForTimeout(500)
+    if (await ok.isDisabled()) problems.push('first help: the tick never woke up')
+    await ok.click({ force: true }); await page.waitForTimeout(1800)
+    if (await box.count()) problems.push('first help: the box stayed after the tick')
+    if (!(await page.locator('.pl-game button').count())) problems.push('first help: no game after the tick')
+    await check(page, 'first help → game')
+    await page.getByRole('button', { name: 'Spiel verlassen' }).click(); await page.waitForTimeout(300)
+    await page.getByRole('button', { name: /Aufhören/ }).click(); await page.waitForTimeout(800)
+    await open()
+    if (await box.count()) problems.push('first help: the box came a second time')
+  } catch (e) { problems.push(`first help: ${String(e).split('\n')[0]}`) }
+  problems.push(...page.errors.map(e => `first help: ${e}`))
   await page.context().close()
 }
 
