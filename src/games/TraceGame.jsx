@@ -12,7 +12,7 @@ import {
   GLYPHS, isDigit, pathOf, lengths, pointAt, guidanceFor, glyphsForLevel, makeTracer, arrowsAt, starsAt, SNAIL_AT,
 } from './traceStrokes.js'
 import { praiseOf } from './spuren/words.js'
-import { bodyOf } from './spuren/alive.js'
+import { bodyOf, picSpot } from './spuren/alive.js'
 import { VIEW, MINI, INK_W, SPUREN_CSS, GlyphBody, MiniGlyph, Pic } from './spuren/Glyph.jsx'
 import Parade from './spuren/Parade.jsx'
 import { pxPanel, pxBubble, pxButton, INK } from './px.js'
@@ -481,12 +481,12 @@ export default function TraceGame({ level = 1, onComplete }) {
   // The snail: on the road ahead of the finger; before the stroke begins it
   // waits just past the green dot and looks the way the stroke goes. Where
   // the arrows are gone (level 10) it sits on top of the dot and gives
-  // nothing away.
+  // nothing away; high enough that the dot's number stays readable.
   const fingerS = demo ? demo.t * curLen : slipAt ? slipAt.s : rideS
   const riding = fingerS != null
   const snailS = riding ? Math.min(curLen, fingerS + LEAD) : null
   const snail = !cur || done ? null
-    : !riding && guide.arrows === 'none' ? { x: cur[0].x, y: cur[0].y - 11, angle: 0, small: true }
+    : !riding && guide.arrows === 'none' ? { x: cur[0].x, y: cur[0].y - 15, angle: 0, small: true }
     : pointAt(cur, snailS ?? Math.min(LEAD, curLen * 0.5), curCum)
 
   const shown = isDigit(g)
@@ -522,10 +522,12 @@ export default function TraceGame({ level = 1, onComplete }) {
     </motion.button>
   )
 
-  // the picture that pops out of the letter lands in the board's corner
-  const picSize = Math.max(56, Math.min(W, H) * 0.3)
-  const picLeft = (area.w - W) / 2 + W - picSize - W * 0.03
-  const picTop  = (area.h - H) / 2 + H - picSize - H * 0.03
+  // the picture that pops out of the letter lands where it covers none of
+  // the letter: in a free corner of the board, or along a side
+  const spot = picSpot(g, VIEW, Math.min(VIEW.w, VIEW.h) * 0.3, 22)
+  const picSize = spot.s * scale
+  const picLeft = (area.w - W) / 2 + (spot.x - VIEW.x) * scale
+  const picTop  = (area.h - H) / 2 + (spot.y - VIEW.y) * scale
   const picFrom = {
     x: (area.w - W) / 2 + (body.centre.x - VIEW.x) * scale - (picLeft + picSize / 2),
     y: (area.h - H) / 2 + (body.centre.y - VIEW.y) * scale - (picTop + picSize / 2),
@@ -739,7 +741,7 @@ export default function TraceGame({ level = 1, onComplete }) {
     <div ref={rootRef} style={{
       position: 'relative', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', overflow: 'hidden',
       display: 'flex', flexDirection: wide ? 'row' : 'column', alignItems: 'stretch', justifyContent: 'center',
-      padding: wide ? (low ? '10px 12px 14px' : 'clamp(12px,2vw,24px)') : '10px 12px 12px', gap: wide ? (low ? 16 : 'clamp(14px,2.5vw,32px)') : 10,
+      padding: wide ? (low ? '4px 12px 6px' :'clamp(12px,2vw,24px)') : '10px 12px 12px', gap: wide ? (low ? 16 : 'clamp(14px,2.5vw,32px)') : 10,
     }}>
       <style>{SPUREN_CSS}</style>
       {wide && !low && (

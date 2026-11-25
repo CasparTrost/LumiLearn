@@ -1,12 +1,14 @@
 import { LINES, line } from '../../lib/lumiLines.js'
 import { isDigit } from '../traceStrokes.js'
+import { letterKey } from '../buchstaben/voice.js'
 
 /**
  * Buchstaben-Spuren: what a finished glyph says and shows.
  *
- * Lumi says the recorded sentence of the letter, `abc/<letter>` ("L wie
- * Löwe."), with the letter's name, not its sound ("Lö wie Löwe" was what
- * the owner objected to). The picture that pops out of the letter is the
+ * Lumi says the recorded sentence that names the letter (letterKey in
+ * buchstaben/voice.js: `abc/<letter>`, "L wie Löwe."), with the letter's
+ * name, not its sound ("Lö wie Löwe" was what the owner objected to). U is
+ * the Ufo, "Uh wie Ufo!": the owl is "Eule" everywhere in the app. The picture that pops out of the letter is the
  * thing that sentence names, so the word and the picture here follow the
  * recordings (tests/unit/spuren.test.js checks the two against each other).
  *
@@ -21,7 +23,7 @@ export const WORD = {
   I: ['Igel', '🦔'],    J: ['Jacke', ':px-jacke:'], K: ['Katze', '🐱'], L: ['Löwe', '🦁'],
   M: ['Maus', '🐭'],    N: ['Nase', '👃'],   O: ['Oma', '👵'],    P: ['Pinguin', '🐧'],
   Q: ['Qualle', '🪼'],  R: ['Rakete', '🚀'], S: ['Sonne', '☀️'],  T: ['Tiger', '🐯'],
-  U: ['Uhu', '🦉'],     V: ['Vogel', '🐦'],  W: ['Wal', '🐋'],    X: ['Hexe und Taxi', '🚕'],
+  U: ['Ufo', '🛸'],     V: ['Vogel', '🐦'],  W: ['Wal', '🐋'],    X: ['Hexe und Taxi', '🚕'],
   Y: ['Yoga', '🧘'],    Z: ['Zebra', '🦓'],
 }
 
@@ -31,7 +33,7 @@ const INSIDE = new Set(['X', 'Y'])
 const NUMBER = ['Null', 'Eins', 'Zwei', 'Drei', 'Vier', 'Fünf', 'Sechs', 'Sieben', 'Acht', 'Neun']
 
 /** The key of the sentence Lumi says for a finished glyph. */
-export const praiseKey = g => (isDigit(g) ? `ziffer/${g}` : `abc/${g.toLowerCase()}`)
+export const praiseKey = g => (isDigit(g) ? `ziffer/${g}` : letterKey(g))
 
 /**
  * What is shown and said when a glyph is done.

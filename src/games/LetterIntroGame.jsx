@@ -7,7 +7,7 @@ import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
 import { Art, useBursts, useJuice, HintHand } from '../components/play/index.js'
 import { useLater, useSize } from './gefuehle/hooks.js'
-import { rec, slug, wordRec, soundRec } from './buchstaben/voice.js'
+import { rec, wordRec, soundRec, letterRec } from './buchstaben/voice.js'
 import Monster, { Balloon } from './buchstaben/Monster.jsx'
 import { planLevel, pickThing, layoutFor, spitSpot, scaleAt, MOUTH_Y, EYES_Y, MONSTER_RATIO, BADGE } from './buchstaben/mampf.js'
 import './buchstaben/mampf.css'
@@ -37,7 +37,8 @@ import './buchstaben/mampf.css'
  * The stream gets a little quicker on a streak and eases after a miss; the
  * monster's eyes follow the nearest thing that fits; after two misses the
  * fitting things glow. Stars, streak and notes come from the play kit's
- * Juice. The result: monsters fed without a wrong bite.
+ * Juice. The result counts things, like the game: of all the bites the
+ * monsters need, those with no wrong bite for that monster just before.
  *
  * The game lays itself out in real pixels (GameScreen: NO_SCALE); the
  * words, levels and layout are in buchstaben/mampf.js.
@@ -61,6 +62,7 @@ export default function LetterIntroGame(props) {
 function MonsterMampf({ level = 1, onComplete }) {
   const { cfg, groups } = useMemo(() => planLevel(level), [level])
   const total = groups.reduce((n, grp) => n + grp.length, 0)
+  const bitesTotal = groups.flat().reduce((n, m) => n + m.need, 0)
   const paused = usePaused()
   const pausedRef = useRef(paused)
   pausedRef.current = paused
@@ -90,7 +92,7 @@ function MonsterMampf({ level = 1, onComplete }) {
     bubbles: [],         // burped letter bubbles
     pops: [],            // balloons that just popped
     row: [],             // the full monsters
-    clean: 0,            // monsters fed without a wrong bite
+    clean: 0,            // right bites with no wrong bite for that monster just before
     pace: 1, paceTo: 1,  // how fast the stream is: up on a streak, down after a miss
     picked: null,        // two monsters: the thing that was tapped and waits for its monster
     over: null,          // two monsters: the one a dragged thing is held over
@@ -268,7 +270,7 @@ function MonsterMampf({ level = 1, onComplete }) {
     g.help = false
     g.picked = null
     g.mons = groups[i].map((d, pos) => ({
-      ...d, pos, bites: 0, incoming: 0, mood: 'walk', moodSeq: 0, state: 'wait', clean: true, missRow: 0, spits: 0,
+      ...d, pos, bites: 0, incoming: 0, mood: 'walk', moodSeq: 0, state: 'wait', missRow: 0, spits: 0,
       look: { x: motionValue(0), y: motionValue(0) },
     }))
     lockPreviews()
@@ -286,7 +288,7 @@ function MonsterMampf({ level = 1, onComplete }) {
       m.mood = 'hungry'
       m.moodSeq++
       bump()
-      narrate([g.gi === 0 && k === 0 ? rec(cfg.duo ? SAY_DUO : SAY_START) : null, rec(`abc/${slug(m.letter)}`)])
+      narrate([g.gi === 0 && k === 0 ? rec(cfg.duo ? SAY_DUO : SAY_START) : null, letterRec(m.letter)])
       afterSpeech(() => (k + 1 < g.mons.length ? introduce(k + 1) : begin()), reduce ? 200 : 600)
     })
   }
@@ -336,6 +338,7 @@ function MonsterMampf({ level = 1, onComplete }) {
     sfx.chomp()
     if (f.fit) {
       m.bites++
+      if (m.missRow === 0) g.clean++
       m.missRow = 0
       g.help = false
       const last = m.bites >= m.need
@@ -348,7 +351,6 @@ function MonsterMampf({ level = 1, onComplete }) {
       return
     }
     // It chews once, then: bäh! Out it comes, in a high arc
-    m.clean = false
     m.missRow++
     setMood(m, 'eat', 2000)
     later(reduce ? 60 : 380, () => {
@@ -375,7 +377,6 @@ function MonsterMampf({ level = 1, onComplete }) {
     m.state = 'full'
     m.mood = 'full'
     m.moodSeq++
-    if (m.clean) g.clean++
     g.picked = null
     shake(0.7)
     burst(monEls.current[m.slot], 'stars', 12)
@@ -420,7 +421,7 @@ function MonsterMampf({ level = 1, onComplete }) {
     const mid = r ? { x: r.left + r.width / 2, y: r.top + r.height * 0.45 } : undefined
     later(150, () => burst(mid, 'confetti', 24))
     later(900, () => burst(mid, 'stars', 14))
-    later(reduce ? 1600 : 3200, () => onComplete(result(g.clean, total)))
+    later(reduce ? 1600 : 3200, () => onComplete(result(g.clean, bitesTotal)))
   }
 
   // ── Fingers ───────────────────────────────────────────────────────────────
@@ -505,7 +506,7 @@ function MonsterMampf({ level = 1, onComplete }) {
     if (t) { feed(t, m); return }
     sfx.giggle()
     setMood(m, 'dance', 800)
-    narrate([rec(`abc/${slug(m.letter)}`)])
+    narrate([letterRec(m.letter)])
   }
   const tapRow = (r) => {
     sfx.giggle()
@@ -550,6 +551,17 @@ function MonsterMampf({ level = 1, onComplete }) {
       style={{ position: 'relative', flex: 1, minHeight: 0, overflow: 'hidden', userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'manipulation' }}>
       {lay && (
         <>
+          {/* Held sideways, the row stands on a tray of its own, like the star
+              counter on the other side: a place to collect the full monsters,
+              not something growing on the meadow among its flowers */}
+          {lay.wide && g.phase !== 'finale' && (
+            <div aria-hidden="true" style={{
+              position: 'absolute', left: 2, bottom: Math.max(2, lay.ground - 6), zIndex: 1,
+              width: total * (lay.mini + 4) + 12, height: lay.mini * MONSTER_RATIO + 14,
+              borderRadius: 16, background: CREAM, border: `3px solid ${INK}`,
+              boxShadow: '0 4px 0 rgba(42,27,61,0.28)', boxSizing: 'border-box',
+            }} />
+          )}
           {/* The row of full monsters, with a free place for each one still to come */}
           {g.phase !== 'finale' && Array.from({ length: total }, (_, i) => {
             const r = g.row.find(x => x.slot === i), at = lay.slotAt(i)

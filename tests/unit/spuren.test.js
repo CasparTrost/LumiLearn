@@ -12,11 +12,13 @@ const ALL = [...LETTERS, ...DIGITS]
 describe('Buchstaben-Spuren: what a finished glyph says and shows', () => {
   it('says the recorded sentence with the letter\'s name, never the "Lö wie Löwe" ones', () => {
     for (const g of LETTERS) {
-      expect(praiseKey(g)).toBe(`abc/${g.toLowerCase()}`)
-      expect(praiseOf(g).line?.src, g).toBe(`audio/lumi/abc/${g.toLowerCase()}.mp3`)
-      expect(existsSync(`public/audio/lumi/abc/${g.toLowerCase()}.mp3`), g).toBe(true)
-      // the sentence begins with the letter itself: "L wie …", "X klingt …"
-      expect(LINES[praiseKey(g)].startsWith(g + ' '), g).toBe(true)
+      // U is "Uh wie Ufo!": abc/u names the owl, which is "Eule" in the app
+      const key = g === 'U' ? 'laut/u-wie-ufo' : `abc/${g.toLowerCase()}`
+      expect(praiseKey(g)).toBe(key)
+      expect(praiseOf(g).line?.src, g).toBe(`audio/lumi/${key}.mp3`)
+      expect(existsSync(`public/audio/lumi/${key}.mp3`), g).toBe(true)
+      // the sentence begins with the letter itself: "L wie …", "X klingt …", "Uh wie …"
+      expect(LINES[praiseKey(g)].startsWith(g), g).toBe(true)
     }
     for (const d of DIGITS) {
       expect(praiseOf(d).line?.src).toBe(`audio/lumi/ziffer/${d}.mp3`)
@@ -32,7 +34,7 @@ describe('Buchstaben-Spuren: what a finished glyph says and shows', () => {
       expect(said, g).toContain(word)
       expect(praiseOf(g).show, g).toContain(word)
       // "wie Löwe", but "wie in Taxi": X and Y are not at the beginning
-      expect(praiseOf(g).show.startsWith('wie in '), g).toBe(!said.includes(`${g} wie `))
+      expect(praiseOf(g).show.startsWith('wie in '), g).toBe(said.includes(' wie in '))
     }
   })
 
@@ -45,11 +47,11 @@ describe('Buchstaben-Spuren: what a finished glyph says and shows', () => {
       if (custom) expect(existsSync(`public/sprites/emoji/custom/${custom}.webp`), g).toBe(true)
       else expect(EMOJI_ART.has(emojiCode(art)), `${g} ${art}`).toBe(true)
     }
-    // the jacket is not the coat emoji, the owl is the Uhu, the dog the Hund
+    // the jacket is not the coat emoji, U is the Ufo (the owl is "Eule"), the dog the Hund
     expect(WORD.J[1]).toBe(':px-jacke:')
     expect(WORD.G).toEqual(['Giraffe', '🦒'])
     expect(WORD.H).toEqual(['Hund', '🐶'])
-    expect(WORD.U).toEqual(['Uhu', '🦉'])
+    expect(WORD.U).toEqual(['Ufo', '🛸'])
   })
 
   it('shows a digit with its number word and no picture (its dots are drawn)', () => {

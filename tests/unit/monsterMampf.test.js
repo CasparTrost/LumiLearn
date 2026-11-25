@@ -91,6 +91,25 @@ describe('Monster-Mampf: the levels', () => {
   })
 })
 
+describe('Monster-Mampf: one picture, one name, one sound', () => {
+  it('every monster of a level wears its own colour (they dance side by side at the end)', () => {
+    for (let level = 1; level <= 10; level++) {
+      for (let seed = 1; seed <= 40; seed++) {
+        const mons = planLevel(level, seeded(seed * 13 + level)).groups.flat()
+        expect(new Set(mons.map(m => m.color)).size, `level ${level}`).toBe(mons.length)
+      }
+    }
+  })
+
+  it('the owl is not the U word, the jacket is not the coat, V only begins like "Vogel"', () => {
+    const all = LETTERS.flatMap(thingsOf)
+    expect(all.some(t => t.emoji === '🦉' || t.emoji === '🧥')).toBe(false)
+    expect(WORDS.U[0][0]).toBe('Ufo')
+    expect(WORDS.J[0]).toEqual(['Jacke', ':px-jacke:', 'A'])
+    expect(WORDS.V.map(w => w[0])).toEqual(['Vogel'])
+  })
+})
+
 describe('Monster-Mampf: what floats in', () => {
   it('a hungry monster with nothing of its own in the air gets something first', () => {
     for (let seed = 1; seed <= 50; seed++) {

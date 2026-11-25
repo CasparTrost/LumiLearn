@@ -1,23 +1,32 @@
 import { describe, it, expect } from 'vitest'
 import { WORDS, LEVELS, PARTNER, KEY, levelConfig, pickBuckets, nextWord, keyFor, wordsOf, layoutFor, lanesFor } from '../../src/games/buchstaben/angeln.js'
-import { hasEmojiArt } from '../../src/lib/emojiArt.jsx'
-import { wordRec, rec, slug } from '../../src/games/buchstaben/voice.js'
+import { hasEmojiArt, customName } from '../../src/lib/emojiArt.jsx'
+import { CUSTOM_ART } from '../../src/lib/emojiArtList.js'
+import { wordRec, soundLikeKey, soundLikeRec, letterKey, isHeld } from '../../src/games/buchstaben/voice.js'
 
 describe('Anlaut-Angeln: words', () => {
   it('every word has a picture, a recording and starts with its letter', () => {
     for (const w of WORDS) {
-      expect(hasEmojiArt(w.emoji), `picture for ${w.word}`).toBe(true)
+      const custom = customName(w.emoji)
+      expect(custom ? CUSTOM_ART.has(custom) : hasEmojiArt(w.emoji), `picture for ${w.word}`).toBe(true)
       expect(wordRec(w.word), `recording for ${w.word}`).toBeTruthy()
       expect(w.word[0]).toBe(w.letter)
     }
     expect(new Set(WORDS.map(w => w.word)).size).toBe(WORDS.length)
   })
 
-  it('every hint picture is a word of its letter, and the frog can say "M wie Maus"', () => {
+  it('every hint picture is a word of its letter, and the frog can say "Mmm wie Maus!" or "L wie Löwe."', () => {
     for (const [L, word] of Object.entries(KEY)) {
       expect(wordsOf(L).some(w => w.word === word), word).toBe(true)
-      expect(rec(`laut/${slug(L)}-wie-${slug(word)}`), `laut/${L}-wie-${word}`).toBeTruthy()
+      expect(soundLikeRec(L, word), `${L} ${word}`).toBeTruthy()
+      // a held sound with its thing, or the letter's own sentence: never the bare word
+      if (isHeld(L)) expect(soundLikeKey(L, word)).toMatch(/^laut\/[a-z]+-wie-/)
+      else expect(soundLikeKey(L, word)).toBe(letterKey(L))
     }
+  })
+
+  it('the owl is not the U word: it is the "Eule" everywhere else', () => {
+    expect(WORDS.some(w => w.emoji === '🦉' || w.word === 'Uhu')).toBe(false)
   })
 
   it('the hint picture is never the word on the hook', () => {
@@ -65,6 +74,42 @@ describe('Anlaut-Angeln: levels', () => {
           expect(b.some(L => 'AEIOU'.includes(L))).toBe(true)
           expect(b.some(L => !'AEIOU'.includes(L))).toBe(true)
         }
+      }
+    }
+  })
+
+  it('every letter of a level\'s pool with words enough still gets a bucket now and then', () => {
+    for (let level = 1; level <= 10; level++) {
+      const seen = new Set()
+      for (let run = 0; run < 400; run++) pickBuckets(level).forEach(L => seen.add(L))
+      const want = [...levelConfig(level).pool].filter(L => wordsOf(L).length >= 2)
+      expect([...seen].sort().join(''), `level ${level}`).toBe(want.sort().join(''))
+    }
+  })
+
+  it('no thing swims in twice in a level', () => {
+    for (let level = 1; level <= 10; level++) {
+      const cfg = levelConfig(level)
+      for (let run = 0; run < 200; run++) {
+        const buckets = pickBuckets(level)
+        const swimming = [], used = {}, sorted = {}
+        // as in the game: the pond is kept full while words are still to
+        // come, but never more words than catches
+        const spawn = k => {
+          while (swimming.length < cfg.swimmers && k + swimming.length < cfg.catches) {
+            const w = nextWord(buckets, { swimming, used, sorted })
+            expect(used[w.word] ?? 0, `level ${level} ${buckets.join('')}: ${w.word} again`).toBe(0)
+            used[w.word] = 1
+            swimming.push(w)
+          }
+        }
+        spawn(0)
+        for (let k = 1; k <= cfg.catches; k++) {
+          const [caught] = swimming.splice(Math.floor(Math.random() * swimming.length), 1)
+          sorted[caught.letter] = (sorted[caught.letter] ?? 0) + 1
+          spawn(k)
+        }
+        expect(swimming).toHaveLength(0)
       }
     }
   })
