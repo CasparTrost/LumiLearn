@@ -1,7 +1,14 @@
 // The rules of the Gefühle-Haus, without any drawing: which feelings a
-// level knows, how long a character stays at its window, and who pops up
-// next. Kept apart from the game so the promises can be tested
-// (tests/unit/gefuehleHaus.test.js): a right face is always on screen.
+// level knows, and who is dealt to which window. Kept apart from the game
+// so the promises can be tested (tests/unit/gefuehleHaus.test.js).
+//
+// The house plays in deals: all shutters open, every window has an animal,
+// and exactly one of them feels like the sign. A right tap closes all
+// shutters, and when they open again everyone is dealt anew, the right one
+// somewhere else. (It used to be a stream of animals popping up and down,
+// and the next right one came up in the window just tapped: the owner
+// found that "keine Herausforderung".) A wrong tap changes nothing, so
+// guessing never reshuffles the house.
 
 // Every feeling here has a recorded word (lib/words.js feelingWord) and a
 // face that can be told from the others at window size (gefuehle/faces.jsx).
@@ -57,8 +64,12 @@ export const TOO_CLOSE = {
   'Aufgeregt':   ['Glücklich', 'Stolz', 'Überrascht', 'Ängstlich'],
 }
 
-const STAY_MS = [5500, 5000, 4500, 4000, 3400, 3000, 2800, 2500, 2300, 2000]
 export const DUCK_MS = 350
+// After a right tap: from the tap until the shutters open on the new deal
+// (the animals duck and the shutters close in about 400 ms of it, then they
+// stay shut a moment, so the child sees that everything is new). Short, so
+// it never drags.
+export const SHUT_MS = 950
 export const ANIMALS = 10
 
 export function shuffle(list, rnd = Math.random) {
@@ -71,7 +82,7 @@ export function shuffle(list, rnd = Math.random) {
 }
 const pick = (list, rnd) => list[Math.floor(rnd() * list.length)]
 
-/** What a level asks: feelings, windows, tempo. */
+/** What a level asks: feelings, windows, how many to find. */
 export function levelConfig(level) {
   const L = Math.max(1, Math.min(10, Math.round(level) || 1))
   const tier = L <= 2 ? 0 : L <= 4 ? 1 : L <= 6 ? 2 : 3
@@ -80,14 +91,8 @@ export function levelConfig(level) {
     level: L,
     feelings: TIERS.slice(0, tier + 1).flat(),
     fresh: L <= 8 ? TIERS[tier] : [],              // new on this step: they get a round for sure
-    windows,
-    maxUp: windows === 4 ? 3 : windows === 6 ? 4 : L >= 9 ? 6 : 5, // characters at the windows at once
-    maxRight: 2,                                   // of them, right ones
-    share: L <= 4 ? 0.5 : 0.4,                     // how often the next one up is a right one
-    stay: STAY_MS[L - 1],                          // ms at the window
-    gap: L <= 4 ? [500, 1100] : [300, 800],        // ms a window rests before the next one comes
-    stagger: L <= 2 ? 650 : L <= 6 ? 500 : 380,    // ms between two pop-ups
-    need: L <= 4 ? 4 : L <= 8 ? 5 : 6,             // stars that fill the meter
+    windows,                                       // each deal fills every window
+    need: L <= 4 ? 4 : L <= 8 ? 5 : 6,             // right ones to find in a round: the meter's stars
     rounds: L <= 4 ? 5 : 6,
     // level 1 shows each feeling with one face only; from level 2 the same
     // feeling comes with a second face (other eyes, other mouth)
@@ -112,86 +117,83 @@ export function pickRounds(cfg, rnd = Math.random) {
   return list
 }
 
-function otherFeeling(target, cfg, up, rnd) {
+function otherFeeling(target, cfg, shown, rnd) {
   const barred = TOO_CLOSE[target] ?? []
   const others = cfg.feelings.filter(f => f !== target && !barred.includes(f))
   const near = (LOOKALIKE[target] ?? []).filter(f => others.includes(f))
   if (cfg.lookalikes && near.length && rnd() < 0.5) return pick(near, rnd)
   // rather a feeling that is not at a window already
-  const shown = new Set(up.map(c => c.feeling))
-  const unseen = others.filter(f => !shown.has(f))
+  const unseen = others.filter(f => !shown.includes(f))
   return pick(unseen.length ? unseen : others, rnd)
 }
+
+// How good a deal is as a search. 0: not allowed (the right one in the
+// window just tapped, or the animal just caught again). Better: the others
+// show at least two feelings, and one of them is alone as well, so the
+// right one cannot be found as "the odd one out" without reading its face;
+// no other feeling fills more than half the other windows; and no window
+// keeps the animal it had.
+function quality(cast, at, { avoid, lastAnimal, before }) {
+  if (avoid != null && at === avoid) return 0
+  if (lastAnimal != null && cast[at].animal === lastAnimal) return 0
+  const counts = {}
+  cast.forEach((c, i) => { if (i !== at) counts[c.feeling] = (counts[c.feeling] ?? 0) + 1 })
+  const n = Object.values(counts)
+  let score = 1
+  if (n.length >= 2) score += 2
+  if (n.includes(1)) score += 2
+  // a mix, not a wall of one look-alike
+  if (Math.max(...n) <= Math.ceil((cast.length - 1) / 2)) score += 1
+  if (!before || cast.every((c, i) => !before[i] || before[i].animal !== c.animal)) score += 1
+  return score
+}
+const BEST_DEAL = 7
 
 let uid = 0
 
 /**
- * One tick of the house. `slots` is one entry per window: null (nobody
- * there) or a character { id, animal, feeling, variant, state, until, gone }
- * with state 'up' (at the window), 'down' (ducking away) or 'out' (caught,
- * on its way to the meter). `mem` keeps what is not drawn: when the next
- * one may come, and how long each window rests.
+ * A new deal: every window gets an animal, ten animals, none twice, and
+ * exactly one of them feels like the sign. `avoid` is the window just
+ * tapped (the right one never comes there again straight away, so it is
+ * never twice running in the same window), `lastAnimal` the animal just
+ * caught (the next right one is another animal: it is the face that
+ * counts), `before` the deal before (every window gets a new animal).
  *
- * Returns the same array when nothing changed, a new one otherwise, and
- * counts the newcomers in `mem.born`.
+ * A character is { id, animal, feeling, variant, state: 'up' }. Faces that
+ * can be argued for as the sign's feeling (TOO_CLOSE) never come.
  */
-export function step(slots, mem, { now, target, cfg, spawn = true, rnd = Math.random }) {
-  let out = slots
-  const set = (i, v) => { if (out === slots) out = [...slots]; out[i] = v }
-  mem.freeAt ??= []
-  mem.nextAt ??= 0
-  mem.born = 0
+export function deal(cfg, target, { avoid = null, lastAnimal = null, before = null, rnd = Math.random } = {}) {
+  const windows = Array.from({ length: cfg.windows }, (_, i) => i)
+  const spots = windows.filter(i => i !== avoid)
+  let best = null, bestScore = -1
+  for (let tries = 0; tries < 60 && bestScore < BEST_DEAL; tries++) {
+    const at = pick(spots, rnd)
+    const animals = shuffle(Array.from({ length: ANIMALS }, (_, i) => i), rnd)
+    const shown = []
+    const cast = windows.map(i => {
+      const feeling = i === at ? target : otherFeeling(target, cfg, shown, rnd)
+      if (i !== at) shown.push(feeling)
+      return { id: ++uid, animal: animals[i], feeling, variant: Math.floor(rnd() * cfg.variants), state: 'up' }
+    })
+    const score = quality(cast, at, { avoid, lastAnimal, before })
+    if (score > bestScore) { best = cast; bestScore = score }
+  }
+  return best
+}
 
+/** One tick of the house: whoever has ducked away is gone. The same array when nothing changed. */
+export function settle(slots, now) {
+  let out = slots
   slots.forEach((c, i) => {
-    if (!c) return
-    if (c.state === 'up' && now >= c.until) set(i, { ...c, state: 'down', gone: now + DUCK_MS })
-    else if (c.state !== 'up' && now >= c.gone) {
-      set(i, null)
-      mem.freeAt[i] = now + cfg.gap[0] + rnd() * (cfg.gap[1] - cfg.gap[0])
+    if (c && c.state !== 'up' && now >= c.gone) {
+      if (out === slots) out = [...slots]
+      out[i] = null
     }
   })
-  if (!spawn) return out
-
-  const up = out.filter(c => c?.state === 'up')
-  const right = up.filter(c => c.feeling === target)
-  const free = out.map((c, i) => (c ? -1 : i)).filter(i => i >= 0)
-  if (!free.length) return out
-  const rested = free.filter(i => now >= (mem.freeAt[i] ?? 0))
-
-  let feeling = null, at = -1
-  // Never without a right face: when none is up, or the last one is about
-  // to duck, the next right one comes at once, in any empty window.
-  if (!right.some(c => c.until - now > 900)) {
-    feeling = target
-    at = pick(rested.length ? rested : free, rnd)
-  } else if (up.length < cfg.maxUp && rested.length && now >= mem.nextAt) {
-    // a second right one only among more others: a child who taps every
-    // window without looking must be wrong more often than right
-    const room = right.length < cfg.maxRight && up.length - right.length > right.length
-    feeling = room && rnd() < cfg.share ? target : otherFeeling(target, cfg, up, rnd)
-    at = pick(rested, rnd)
-  }
-  if (feeling == null) return out
-
-  // another animal than those at the windows right now
-  const taken = new Set(out.filter(Boolean).map(c => c.animal))
-  const animals = Array.from({ length: ANIMALS }, (_, i) => i).filter(i => !taken.has(i))
-  const isRight = feeling === target
-  set(at, {
-    id: ++uid,
-    animal: animals.length ? pick(animals, rnd) : Math.floor(rnd() * ANIMALS),
-    feeling,
-    variant: Math.floor(rnd() * cfg.variants),
-    state: 'up',
-    // a right one stays a little longer than the others
-    until: now + cfg.stay * (0.9 + rnd() * 0.25) * (isRight ? 1.15 : 1),
-  })
-  mem.nextAt = now + cfg.stagger
-  mem.born = 1
   return out
 }
 
-/** Everyone ducks: the round is over. */
+/** Everyone ducks and the shutters close: after a right tap, and at the end of a round. */
 export function allDown(slots, now) {
   return slots.map(c => (c && c.state === 'up' ? { ...c, state: 'down', gone: now + DUCK_MS } : c))
 }
