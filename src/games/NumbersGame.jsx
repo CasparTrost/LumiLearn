@@ -8,6 +8,7 @@ import { sayRight, announce } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
 import { Art, useBursts, HintHand } from '../components/play/index.js'
+import { playAnimal } from '../lib/animalSounds.js'
 import { useLater } from './sternbilder/useLater.js'
 import { roundsFor, pickOutlines, fitOutline, minGap, skyInset, pictureWord } from './sternbilder/outlines.js'
 
@@ -28,8 +29,13 @@ import { roundsFor, pickOutlines, fitOutline, minGap, skyInset, pictureWord } fr
  *
  * A wrong star wobbles with a dull sound and the line stays where it was;
  * after two misses the right star pulses. A picture counts as solved on the
- * first try when no wrong star was touched. In the first three levels the
- * picture shows through as a faint ghost, so the goal is plain to see.
+ * first try when no wrong star was touched. In the first five levels the
+ * picture shows through as a ghost, fainter from level to level, so the
+ * goal is plain to see.
+ *
+ * At the end of a countdown the rocket launches; the other pictures of the
+ * countdown come alive in their own way (DRIFT): the duck flies off, the
+ * balloon floats up, the star twinkles away.
  *
  * The outlines, the levels and the fitting into the sky: sternbilder/outlines.js
  */
@@ -43,6 +49,24 @@ const KIND_LINE = {
   twos: 'sternbilder/zweier', fives: 'sternbilder/fuenfer',
 }
 const optional = key => (LINES[key] ? line(key) : null)
+
+/**
+ * How a finished picture of the countdown goes off into the night, when it
+ * is not the rocket (that one launches): `x`, `y` as shares of the way out,
+ * keyframes that end there, and the turning and squashing on the way.
+ */
+const DRIFT = {
+  // flies off: up and away to the side, flapping (squash), a quack
+  duck:     { x: [0, 0.08, 0.3, 0.6, 1], y: [0, -0.05, -0.2, -0.45, -0.8], scaleY: [1, 0.86, 1.06, 0.86, 1.06], rotate: [0, -6, -10, -10, -12], sound: '🦆' },
+  swan:     { x: [0, 0.08, 0.3, 0.6, 1], y: [0, -0.05, -0.2, -0.45, -0.8], scaleY: [1, 0.86, 1.06, 0.86, 1.06], rotate: [0, -6, -10, -10, -12] },
+  // floats up, swaying on its string
+  balloon:  { x: [0, 0.03, -0.03, 0.03, 0], y: [0, -0.15, -0.4, -0.7, -1], rotate: [0, 6, -6, 5, 0] },
+  umbrella: { x: [0, 0.05, -0.05, 0.05, 0.1], y: [0, -0.12, -0.35, -0.65, -1], rotate: [0, 10, -8, 8, 0] },
+  // twinkles, turns once and rises to the other stars
+  star:     { x: [0, 0, 0, 0, 0.1], y: [0, -0.02, 0.01, -0.4, -1], rotate: [0, 72, 144, 288, 360], scale: [1, 1.2, 0.9, 1.15, 0.6] },
+  // glows and climbs slowly up the sky
+  moon:     { x: [0, 0, 0.05, 0.1, 0.15], y: [0, -0.05, -0.3, -0.6, -1], rotate: [0, -4, -8, -10, -12], scale: [1, 1.1, 1, 1, 1] },
+}
 
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y)
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
@@ -114,7 +138,7 @@ function Sternbilder({ level = 1, onComplete }) {
 
   const [round,   setRound]   = useState(0)
   const [reached, setReached] = useState(0)      // stars connected so far
-  const [phase,   setPhase]   = useState('play') // play → closing → lit → reveal → fly | launch … finale
+  const [phase,   setPhase]   = useState('play') // play → closing → lit → reveal → fly | launch | drift … finale
   const [help,    setHelp]    = useState(false)  // two misses: the right star pulses strongly
   const [wobble,  setWobble]  = useState(null)   // the wrong star that was touched
   const [album,   setAlbum]   = useState([])     // finished pictures
@@ -171,9 +195,14 @@ function Sternbilder({ level = 1, onComplete }) {
       return best
     })
     // How far the rings of a calling star may spread: to the edge of the
-    // sky and no further. A star near the edge sent its rings under the top
-    // bar and off the screen, where they were cut off.
-    const ring = P.map(p => (Math.min(p.x, p.y, size.w - p.x, size.h - p.y) + 4) / (d / 2))
+    // sky and no further (a star near the edge sent its rings under the top
+    // bar and off the screen, where they were cut off), and never over a
+    // neighbouring star and its number.
+    const ring = P.map((p, i) => {
+      const edge = Math.min(p.x, p.y, size.w - p.x, size.h - p.y) + 4
+      const next = Math.min(...P.map((q, j) => (j === i ? Infinity : dist(p, q) - d / 2 - 2)))
+      return Math.min(edge, next) / (d / 2)
+    })
     return { P, gap, d, mid, lumi, seats, ring, img: { left: inset + f.ox, top: inset + f.oy, size: 100 * f.scale } }
   }, [size, o])
 
@@ -239,12 +268,20 @@ function Sternbilder({ level = 1, onComplete }) {
   }
 
   const leave = () => {
-    if (rd.launch && !reduce) {
+    if (rd.launch && !reduce && o.pic === 'rocket') {
       // countdown over: lift-off
       setPhase('launch')
       sfx.whoosh()
       later(300, () => sfx.slideUp())
       later(1300, land)
+      return
+    }
+    if (rd.launch && !reduce && DRIFT[o.pic]) {
+      // the other pictures of the countdown go off into the night their own way
+      setPhase('drift')
+      sfx.sparkle()
+      if (DRIFT[o.pic].sound) later(250, () => playAnimal(DRIFT[o.pic].sound, { volume: 0.6 }))
+      later(1900, land)
       return
     }
     const slot = slotEls.current[round]?.getBoundingClientRect()
@@ -385,6 +422,8 @@ function Sternbilder({ level = 1, onComplete }) {
   // Lumi sits beside the star reached last (beside the first one to begin with)
   const lumiSize = lay?.lumi ?? 50
   const lumiAt = lay?.seats[Math.max(0, reached - 1)] ?? { x: 0, y: 0 }
+  const drift = o && DRIFT[o.pic]
+  const far = size ? Math.max(size.w, size.h) + (lay?.img.size ?? 300) : 600
   // the way a finished picture takes off: a rocket along its nose, the rest straight up
   const away = (() => {
     if (!o || !size) return { x: 0, y: -600 }
@@ -554,7 +593,7 @@ function Sternbilder({ level = 1, onComplete }) {
 
             {/* Lumi hops along from star to star */}
             <motion.div aria-hidden="true" initial={false}
-              animate={{ x: lumiAt.x - lumiSize / 2, y: lumiAt.y - lumiSize / 2, opacity: phase === 'finale' || phase === 'launch' || phase === 'fly' ? 0 : 1 }}
+              animate={{ x: lumiAt.x - lumiSize / 2, y: lumiAt.y - lumiSize / 2, opacity: phase === 'finale' || phase === 'launch' || phase === 'drift' || phase === 'fly' ? 0 : 1 }}
               transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 240, damping: 26 }}
               style={{ position: 'absolute', left: 0, top: 0, width: lumiSize, height: lumiSize, zIndex: 4, pointerEvents: 'none' }}>
               <motion.div key={`${round}-${reached}-${phase === 'reveal'}`}
@@ -569,6 +608,7 @@ function Sternbilder({ level = 1, onComplete }) {
               animate={
                 phase === 'reveal' ? (reduce ? { opacity: 1, scale: 1 } : { opacity: 1, scale: [0.94, 1.07, 1], y: [0, -lay.img.size * 0.07, 0, -lay.img.size * 0.03, 0], rotate: [0, -4, 4, -2, 0] })
                 : phase === 'launch' ? { opacity: 1, scale: 1, rotate: 0, x: [0, -4, 4, -4, 4, 0, away.x], y: [0, 3, -3, 3, -3, 0, away.y] }
+                : phase === 'drift' && drift ? { opacity: [1, 1, 1, 1, 0], x: drift.x.map(v => v * far), y: drift.y.map(v => v * far), rotate: drift.rotate, scale: drift.scale ?? 1, scaleY: drift.scaleY ?? 1 }
                 : phase === 'fly' && flight ? { opacity: [1, 1, 0], scale: flight.s, x: flight.dx, y: flight.dy, rotate: 0 }
                 : phase === 'fly' ? { opacity: 0 }
                 : { opacity: 0, scale: 0.94 }
@@ -576,6 +616,7 @@ function Sternbilder({ level = 1, onComplete }) {
               transition={
                 phase === 'reveal' ? { duration: 0.9, opacity: { duration: 0.5 } }
                 : phase === 'launch' ? { duration: 1.25, times: [0, 0.08, 0.16, 0.24, 0.32, 0.4, 1], ease: 'easeIn' }
+                : phase === 'drift' ? { duration: 1.8, ease: 'easeInOut' }
                 : phase === 'fly' ? { duration: reduce ? 0.1 : 0.62, ease: 'easeInOut', opacity: { duration: reduce ? 0.1 : 0.62, times: [0, 0.85, 1] } }
                 : { duration: 0.2 }
               }

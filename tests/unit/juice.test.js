@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { pluckFreq } from '../../src/sfx.js'
 import {
-  STREAK_MILESTONES, isStreakMilestone, losesFlame, NOTE_STEPS, noteStepFor, arcControl, arcPoint,
+  STREAK_MILESTONES, isStreakMilestone, flamesFor, NOTE_STEPS, noteStepFor, arcControl, arcPoint,
 } from '../../src/components/play/Juice.jsx'
 
 const C5 = 523.25
@@ -14,9 +14,8 @@ describe('streak', () => {
     expect(shown).toEqual([3, 5, 8])
     expect(isStreakMilestone(0)).toBe(false)
   })
-  it('a miss puts a flame out only if one was lit', () => {
-    expect([0, 1, 2].some(losesFlame)).toBe(false)
-    expect([3, 4, 8, 20].every(losesFlame)).toBe(true)
+  it('shows more flames, never a number, for a longer streak', () => {
+    expect(STREAK_MILESTONES.map(flamesFor)).toEqual([1, 2, 3])
   })
 })
 

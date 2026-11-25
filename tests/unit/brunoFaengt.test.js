@@ -107,10 +107,15 @@ describe('Bruno fängt: the ten levels', () => {
         if (l === 7 || l === 8) {
           expect(t.other, `level ${l}`).toBeTruthy()
           expect(FRUITS[t.other].look).not.toBe(FRUITS[t.wants[0].fruit].look)
+          // the kind not wanted is one the animal does not eat
+          expect(t.eater.fruits).not.toContain(t.other)
         } else expect(t.other, `level ${l}`).toBeNull()
         if (l >= 9) {
           expect(t.wants[0].fruit).not.toBe(t.wants[1].fruit)
           expect(FRUITS[t.wants[0].fruit].look).not.toBe(FRUITS[t.wants[1].fruit].look)
+          // both kinds are the animal's own food
+          expect(t.eater.fruits).toContain(t.wants[0].fruit)
+          expect(t.eater.fruits).toContain(t.wants[1].fruit)
           // two different amounts, so the two numerals differ in colour too
           expect(t.wants[0].n).not.toBe(t.wants[1].n)
         }
@@ -148,7 +153,8 @@ describe('Bruno fängt: Mampf', () => {
     expect(capacity(one, 0)).toBe(8)
     expect(capacity(ten, 0)).toBe(15)
     expect(capacity(pair, 0)).toBe(6)
-    expect(capacity(pair, 1)).toBe(9)
+    // a half of the two-kind basket: two rows of three, nothing over the rim
+    expect(capacity(pair, 1)).toBe(6)
   })
 })
 

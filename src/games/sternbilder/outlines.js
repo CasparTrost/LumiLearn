@@ -121,15 +121,18 @@ const FLYERS = ['rocket', 'balloon', 'duck', 'swan', 'star', 'umbrella', 'moon']
 /**
  * What each level asks for. `numbers` are the stars of one picture in the
  * order they are to be connected; `ghost` is how strongly the picture shows
- * through from the start (0 = a surprise); `kind` names the counting, for
- * Lumi's one sentence at the start; `launch`: the finished picture takes off.
+ * through from the start (0 = a surprise; a faint one where the line of
+ * ten and fifteen stars jumps across the picture); `kind` names the
+ * counting, for Lumi's one sentence at the start; `launch`: the finished
+ * picture takes off into the night (the rocket with a launch, the others
+ * each in their own way: see NumbersGame, DRIFT).
  */
 const PLAN = [
   { rounds: 4, numbers: count(1, 5),  ghost: 0.26, first: 'house' }, // the very first picture: nothing crosses
   { rounds: 4, numbers: count(1, 7),  ghost: 0.2 },
   { rounds: 4, numbers: count(1, 10), ghost: 0.13 },
-  { rounds: 5, numbers: count(1, 10) },
-  { rounds: 4, numbers: count(1, 15) },
+  { rounds: 5, numbers: count(1, 10), ghost: 0.09 },
+  { rounds: 4, numbers: count(1, 15), ghost: 0.07 },
   { rounds: 5, numbers: count(1, 15) },
   { rounds: 4, numbers: count(1, 20) },
   { rounds: 4, numbers: count(10, 1), kind: 'back', launch: true, first: 'rocket', only: FLYERS },
@@ -185,6 +188,21 @@ export function skyInset(w, h) {
   return Math.min(w, h) < 380 ? 26 : 38
 }
 
+/** How much of a sky of w × h the outline's box covers when fitted (0..1). */
+export function fill(o, w, h) {
+  const [x0, y0, x1, y1] = o.box
+  const { scale } = fitOutline(o, w, h)
+  return ((x1 - x0) * scale * (y1 - y0) * scale) / (w * h)
+}
+
+// one of `list`, the more likely the more `weight` it has
+function weighted(list, weight, rnd) {
+  const ws = list.map(weight)
+  let r = rnd() * ws.reduce((a, b) => a + b, 0)
+  for (let i = 0; i < list.length; i++) if ((r -= ws[i]) <= 0) return list[i]
+  return list[list.length - 1]
+}
+
 function shuffled(list, rnd) {
   const a = [...list]
   for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]] }
@@ -196,7 +214,10 @@ function shuffled(list, rnd) {
  * centres). Of each picture the variant that fits this sky best is taken
  * (the rocket upright or on its side); pictures whose stars would end up
  * closer than MIN_GAP are left out as long as there are enough others, and
- * no picture comes twice in a level.
+ * no picture comes twice in a level. A picture that fills more of this sky
+ * is more likely: on a phone held upright a tall one (the tower, the
+ * giraffe) stands large in the tall sky, where a square one left half of it
+ * empty.
  */
 export function pickOutlines(level, w, h, rnd = Math.random) {
   const used = new Set()
@@ -216,7 +237,7 @@ export function pickOutlines(level, w, h, rnd = Math.random) {
       if (fresh.length) pool = fresh
       const wide = pool.filter(c => c.g >= MIN_GAP)
       // no room for any: one of the two roomiest (a phone held sideways)
-      pick = wide.length ? shuffled(wide, rnd)[0] : shuffled([...pool].sort((a, b) => b.g - a.g).slice(0, 2), rnd)[0]
+      pick = wide.length ? weighted(wide, c => fill(c.o, w, h) ** 2, rnd) : shuffled([...pool].sort((a, b) => b.g - a.g).slice(0, 2), rnd)[0]
     }
     used.add(pick.o.pic)
     return pick.o

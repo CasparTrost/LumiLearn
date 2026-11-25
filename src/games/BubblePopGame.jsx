@@ -20,10 +20,11 @@ import { rand, spawnRound, makeGiant, giantSize } from './blasen/sea.js'
  * pop in a row, a flame for three, five and eight). A wrong one is not what
  * the octopus wished for, so it does not pop: it is rubbery, boings back
  * from the finger and shoots up out of the sea, still showing what it was,
- * while the octopus shakes its head and the right ones pulse. From three in
- * a row the octopus dances; when all the wished-for bubbles of a round are
- * found, its wish is fulfilled (the speech bubble goes) and it juggles a
- * star for each of them over its head.
+ * while the octopus shakes its head and the right ones pulse. Every right
+ * pop amazes the octopus; when all the wished-for bubbles of a round are
+ * found, its wish is fulfilled (the speech bubble goes), it dances, with
+ * its sound once a round, and juggles a star for each of them over its
+ * head.
  *
  * Once per level, in one of the middle rounds, a giant bubble drifts
  * slowly across the sea. In the dot levels it carries two dice faces (a sum:
@@ -185,27 +186,33 @@ export default function BubblePopGame({ level = 1, onComplete }) {
   // The top row has room for the star counter beside the hearts, the trail
   // and the clock — on a phone held upright it has not.
   const [roomy, setRoomy] = useState(() => innerWidth >= 560)
-  // The height under the top row: on a phone held sideways the octopus and
-  // its wish have to fit into about 250 px
+  // The height of the stage: on a phone held sideways the octopus and its
+  // wish have to fit into about 300 px
   const [stageH, setStageH] = useState(() => innerHeight - 140)
+  const [rootH, setRootH] = useState(() => innerHeight - 80)
   const stage = juice.stage
   useLayoutEffect(() => {
     const el = rootRef.current
     const ro = new ResizeObserver(() => {
       setWide(el.clientWidth > el.clientHeight * 1.05)
       setRoomy(el.clientWidth >= 560)
+      setRootH(el.clientHeight)
       if (stage.current) setStageH(stage.current.clientHeight)
     })
     ro.observe(el)
+    if (stage.current) ro.observe(stage.current)
     return () => ro.disconnect()
   }, [stage])
   const hudOnTop = wide || roomy
-  // A short stage: smaller wish, and the octopus as big as still fits
-  // under it (it used to stand 80 px into the row of hearts)
-  const tight = wide && stageH < 360
+  // A short screen held sideways (a phone): the row of hearts, trail, clock
+  // and stars moves up beside the octopus, so the sea has the whole height
+  // (under the row it was 150 to 240 px high, the bubbles bunched and the
+  // giant filled it). Smaller wish, and the octopus as big as still fits.
+  const tight = wide && rootH < 440
   const wishPx = tight ? 44 : 56
   const wishRoom = wishPx + 48            // the wish bubble with its tail, above the head
-  const octoSize = wide ? Math.round(Math.max(96, Math.min(170, stageH - wishRoom - 12))) : 150
+  const TIGHT_HUD = 96                    // the hearts and stars, the trail and clock, above the wish
+  const octoSize = wide ? Math.round(Math.max(96, Math.min(170, stageH - wishRoom - 12 - (tight ? TIGHT_HUD : 0)))) : 150
 
   // Lays out new bubbles: their place and motion are set up before they
   // are drawn, so none flashes at the corner for a frame. `keep` adds them
@@ -352,14 +359,17 @@ export default function BubblePopGame({ level = 1, onComplete }) {
         burst(el, 'stars', 22)
         later(180, () => burst(el, 'confetti', 16))
         shake(0.6)
-        setMood('dance', 2400)
+        setMood('wow', 1400)
         return
       }
       // the star, the climbing note, the flame for a streak
       const { streak, milestone } = hit(el)
       // a little sparkle where it popped; more when the flame shows
       burst(el, 'stars', milestone ? 10 : 5)
-      setMood(streak >= 3 ? 'dance' : 'wow', streak >= 3 ? 2400 : 700)
+      // amazed, not dancing: the dance and its sound belong to the wish
+      // fulfilled, once a round (a sound at every dance of a streak came
+      // two to four times a round)
+      setMood('wow', streak >= 3 ? 1400 : 700)
       const remaining = bubbles.filter(b => !b.giant && b.value === target && !poppedRef.current.has(b.id)).length
       if (remaining === 0) {
         shake(0.7)   // the last one of the round lands a little harder
@@ -532,6 +542,20 @@ export default function BubblePopGame({ level = 1, onComplete }) {
   const wishOpen = phase === 'playing' || phase === 'roundFail'
   const partyTime = phase === 'party' || phase === 'finale'
 
+  const hearts = size => (
+    <motion.div animate={{ opacity: partyTime ? 0 : 1 }} aria-hidden={partyTime || undefined}
+      style={{ display: 'flex', flexShrink: 0, gap: roomy ? 4 : 2, padding: roomy ? '4px 10px' : '4px 8px', borderRadius: 999, background: 'rgba(255,253,247,0.85)', border: '3px solid #2a1b3d', boxShadow: '0 3px 0 rgba(42,27,61,0.3)' }} aria-label={`${lives} Herzen`}>
+      {[0, 1, 2].map(i => (
+        <motion.span key={i} animate={i < lives ? { scale: 1, opacity: 1, rotate: 0 } : { scale: [1, 1.4, 0.75], opacity: 0.3, rotate: [0, -20, 0] }}
+          transition={{ duration: 0.5 }} style={{ display: 'inline-flex', filter: i < lives ? undefined : 'grayscale(1)' }}>
+          <Art art="❤️" size={size} />
+        </motion.span>
+      ))}
+    </motion.div>
+  )
+  const trail = size => <RoundTrail total={ROUNDS} done={roundsRef.current.length} walker="🐠" goal="🐚" size={size} style={{ flex: 1 }} />
+  const clock = cfg.timed && <motion.div animate={{ opacity: partyTime ? 0 : 1 }}><Clock fraction={timeLeft / cfg.timeS} narrow={!roomy || tight} /></motion.div>
+
   const octopus = (
     <div style={{
       position: 'relative', display: 'flex', flexDirection: wide ? 'column' : 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: wide ? 8 : 18,
@@ -555,24 +579,31 @@ export default function BubblePopGame({ level = 1, onComplete }) {
 
       {/* Hearts of this round, the rounds, the calm clock. At the party
           nothing can be lost any more: hearts and clock step aside. */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: roomy ? 12 : 8, flexShrink: 0 }}>
-        <motion.div animate={{ opacity: partyTime ? 0 : 1 }} aria-hidden={partyTime || undefined}
-          style={{ display: 'flex', gap: roomy ? 4 : 2, padding: roomy ? '4px 10px' : '4px 8px', borderRadius: 999, background: 'rgba(255,253,247,0.85)', border: '3px solid #2a1b3d', boxShadow: '0 3px 0 rgba(42,27,61,0.3)' }} aria-label={`${lives} Herzen`}>
-          {[0, 1, 2].map(i => (
-            <motion.span key={i} animate={i < lives ? { scale: 1, opacity: 1, rotate: 0 } : { scale: [1, 1.4, 0.75], opacity: 0.3, rotate: [0, -20, 0] }}
-              transition={{ duration: 0.5 }} style={{ display: 'inline-flex', filter: i < lives ? undefined : 'grayscale(1)' }}>
-              <Art art="❤️" size={roomy ? 40 : 30} />
-            </motion.span>
-          ))}
-        </motion.div>
-        <RoundTrail total={ROUNDS} done={roundsRef.current.length} walker="🐠" goal="🐚" size={32} style={{ flex: 1 }} />
-        {cfg.timed && <motion.div animate={{ opacity: partyTime ? 0 : 1 }}><Clock fraction={timeLeft / cfg.timeS} narrow={!roomy} /></motion.div>}
-        {/* The star counter (Juice): top right where there is room beside the trail … */}
-        {hudOnTop && juice.hud}
-      </div>
+      {!tight && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: roomy ? 12 : 8, flexShrink: 0 }}>
+          {hearts(roomy ? 40 : 30)}
+          {trail(32)}
+          {clock}
+          {/* The star counter (Juice): top right where there is room beside the trail … */}
+          {hudOnTop && juice.hud}
+        </div>
+      )}
 
       <div ref={juice.stage} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: wide ? 'row' : 'column-reverse', gap: 8 }}>
-        <div style={{ position: 'relative', flexShrink: 0, display: 'flex', alignItems: wide ? 'flex-end' : 'center', justifyContent: 'center', paddingBottom: wide ? (tight ? 6 : 24) : 4, width: wide ? Math.max(150, octoSize + 40) : undefined }}>
+        <div style={{ position: 'relative', flexShrink: 0, display: 'flex', alignItems: wide ? 'flex-end' : 'center', justifyContent: 'center', paddingBottom: wide ? (tight ? 6 : 24) : 4, width: wide ? (tight ? 232 : Math.max(150, octoSize + 40)) : undefined }}>
+          {/* … above the octopus on a short screen held sideways */}
+          {tight && (
+            <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: TIGHT_HUD, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                {hearts(24)}
+                {juice.hud}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                {trail(24)}
+                {clock}
+              </div>
+            </div>
+          )}
           {octopus}
           {/* … and beside the octopus where the top row is full: below the
               sea, where no bubble comes */}

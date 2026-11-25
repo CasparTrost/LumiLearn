@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { OUTLINES, roundsFor, pickOutlines, gapIn, minGap, skyInset, MIN_GAP } from '../../src/games/sternbilder/outlines.js'
+import { OUTLINES, roundsFor, pickOutlines, gapIn, minGap, skyInset, fill, MIN_GAP } from '../../src/games/sternbilder/outlines.js'
 import { hasEmojiArt } from '../../src/lib/emojiArt.jsx'
 
 // The sky of the game (the room below the top bar and the album) as measured
@@ -56,10 +56,20 @@ describe('Sternbilder: levels', () => {
     for (let l = 1; l <= 10; l++) for (const r of roundsFor(l)) for (const v of r.numbers) expect(v >= 0 && v <= 40).toBe(true)
   })
 
-  it('shows the picture as a ghost in the first levels only', () => {
-    expect(roundsFor(1)[0].ghost).toBeGreaterThan(0)
-    expect(roundsFor(3)[0].ghost).toBeGreaterThan(0)
-    for (let l = 4; l <= 10; l++) for (const r of roundsFor(l)) expect(r.ghost).toBe(0)
+  it('shows the picture as a ghost in the first levels only, fainter and fainter', () => {
+    const ghost = l => roundsFor(l)[0].ghost
+    for (let l = 1; l <= 5; l++) expect(ghost(l), `level ${l}`).toBeGreaterThan(0)
+    for (let l = 2; l <= 5; l++) expect(ghost(l), `level ${l}`).toBeLessThan(ghost(l - 1))
+    for (let l = 6; l <= 10; l++) for (const r of roundsFor(l)) expect(r.ghost).toBe(0)
+  })
+
+  it('stands tall pictures in the tall sky of a phone held upright more often', () => {
+    const [w, h] = room(SKY.phone)
+    let filled = 0, n = 0
+    for (let seed = 1; seed <= 40; seed++) for (const o of pickOutlines(6, w, h, seeded(seed))) { filled += fill(o, w, h); n += 1 }
+    const all = OUTLINES.filter(o => o.pts.length === 15)
+    const even = all.reduce((a, o) => a + fill(o, w, h), 0) / all.length
+    expect(filled / n).toBeGreaterThan(even + 0.05)
   })
 
   for (const [screen, sky] of Object.entries(SKY)) {

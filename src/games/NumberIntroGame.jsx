@@ -9,9 +9,11 @@ import { usePaused } from '../lib/pause.js'
 import { sfx } from '../sfx.js'
 import { Critter, useMood, useBursts, useJuice, HintHand } from '../components/play/index.js'
 import { isStreakMilestone } from '../components/play/Juice.jsx'
+import { animalSound } from '../lib/animalSounds.js'
+import { asset } from '../lib/assets.js'
 import { Stage, useLater, usePops, Finale } from './zahlen/stage.jsx'
 import { levelConfig, tasksFor, capacity, isRight, judge, nextDrop, dropX, paceAfter, slotOf, colsFor } from './zahlen/fangen.js'
-import { Basket, Nest, Fruit, Boot, Crown, Trunk, Sign, MampfButton, Picnic, CompareBoard, boardLayout, BASKET_H, BASKET_FLOOR } from './zahlen/fangenParts.jsx'
+import { Basket, Nest, Fruit, Boot, Crown, Trunk, Sign, MampfButton, Picnic, CompareBoard, boardLayout, treeSpans, BASKET_H, BASKET_FLOOR } from './zahlen/fangenParts.jsx'
 
 /**
  * Zahlen entdecken — "Bruno fängt": counting out exactly n and stopping;
@@ -36,8 +38,13 @@ import { Basket, Nest, Fruit, Boot, Crown, Trunk, Sign, MampfButton, Picnic, Com
  *   • Levels 7–8: two kinds fall, only the one on the sign is wanted (the
  *     other bounces off the rim, the animal shakes its head), and an old
  *     boot is to be dodged (caught: it hops out again, the streak is over).
- *   • Levels 9–10: two amounts at once ("2 apples and 3 pears"), a basket
- *     with two halves, a little faster.
+ *   • Levels 9–10: two amounts at once ("2 apples and 3 pears"), both the
+ *     animal's own food, a basket with two halves, a little faster. Lumi
+ *     does not count along here (two counts at once ran into "eins, eins,
+ *     zwei, zwei"); the count pops up over each half, and Lumi says both
+ *     amounts when the animal eats.
+ *
+ * Two kinds (levels 7–10) grow on two trees, each falling from its own.
  *
  * After two wrong presses in a task the hollows come back for that task.
  * Different animals take turns; everyone who has eaten sits down on the
@@ -61,6 +68,21 @@ const FS = 54                 // a falling fruit
 const ANIMAL = 124
 const ANIMAL_UP = 60          // the animal stands behind the basket, this far up
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
+
+// How long an animal's own sound lasts: it makes it when it turns happy
+// (Critter), and Lumi's praise waits for it instead of talking over it
+const soundMs = {}
+function measureSound(art) {
+  const name = animalSound(art)
+  if (!name || name in soundMs || typeof Audio === 'undefined') return
+  soundMs[name] = 1000
+  try {
+    const a = new Audio(asset(`audio/tiere/${name}.mp3`))
+    a.preload = 'metadata'
+    a.addEventListener('loadedmetadata', () => { if (Number.isFinite(a.duration)) soundMs[name] = a.duration * 1000 }, { once: true })
+  } catch { /* no audio: the guess stays */ }
+}
+const soundOf = art => { const name = animalSound(art); return name ? soundMs[name] ?? 1000 : 0 }
 
 // Lines Lumi may get later; the game is silent there until they are recorded
 const optional = key => (LINES[key] ? line(key) : null)
@@ -136,6 +158,10 @@ function Play({ wide, level, onComplete }) {
   const crownH = !wide ? 84 : fh < 450 ? 66 : 76
   const groundY = fh - 12
   const halfX = k => (pair ? (k === 0 ? -1 : 1) * (BW / 4 + 1) : 0)
+  const boardCell = pair ? 40 : wide ? 46 : 44
+  // two kinds, two trees: which tree each kind (want 0, want 1 or other) falls from
+  const kinds = task.wants.length + (task.other ? 1 : 0)
+  const sides = useMemo(() => (Math.random() < 0.5 ? [0, 1] : [1, 0]), [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const go = p => { g.phase = p; setPhase(p) }
 
@@ -156,6 +182,7 @@ function Play({ wide, level, onComplete }) {
   // A new animal comes in with an empty basket: Lumi says the number
   useEffect(() => {
     lockPreviews()
+    measureSound(task.eater.art)
     sayTask()
     const intro = idx === 0 ? optional(SAY[pair ? 'pair' : task.other ? 'other' : free ? 'free' : 'nests']) : null
     const words = task.wants.map((w, k) => { const p = numberWord(w.n); return p && k > 0 ? { ...p, gap: 250 } : p })
@@ -197,8 +224,9 @@ function Play({ wide, level, onComplete }) {
     })
   }
 
-  // The animal eats what is in the basket, one after the other
-  const eat = clean => {
+  // The animal eats what is in the basket, one after the other. `rolled`:
+  // the game rolled the ones too many out itself; nothing to praise then.
+  const eat = (clean, { rolled = false } = {}) => {
     go('eat')
     g.locked = true
     g.target = g.bx
@@ -207,7 +235,9 @@ function Play({ wide, level, onComplete }) {
     setEating(true)
     setMood('eat', 400 + total * 130)
     for (let i = 0; i < Math.ceil(total / 2); i++) later(120 + i * 260, () => sfx.chomp())
-    later(420 + total * 130, () => {
+    // two kinds: no count along the way, so both amounts now
+    if (pair) narrate(task.wants.map((w, k) => { const p = numberWord(w.n); return p && k > 0 ? { ...p, gap: 250 } : p }))
+    afterSpeech(() => {
       setEating(false)
       setBasket([[], []])
       let big = false
@@ -218,11 +248,15 @@ function Play({ wide, level, onComplete }) {
         big = good({ stars: 2, silent: true }).milestone
         sfx.slideUp()
       }
+      // the animal is happy and makes its sound; Lumi's praise follows it
       setMood(big ? 'dance' : 'happy', big ? 2200 : 1300)
       burst(animalRef.current, big ? 'confetti' : 'hearts', big ? 18 : 10)
-      sayRight()
-      afterSpeech(leave, big ? 1900 : 1100)
-    })
+      if (rolled) { afterSpeech(leave, Math.max(1100, soundOf(task.eater.art) + 300)); return }
+      later(soundOf(task.eater.art) + 150, () => {
+        sayRight()
+        afterSpeech(leave, big ? 1900 : 1100)
+      })
+    }, 420 + total * 130)
   }
 
   // "Mampf" with the wrong amount: the basket is laid against the sign's dots
@@ -236,12 +270,12 @@ function Play({ wide, level, onComplete }) {
     setMisses(g.misses)
     clearAir()
     bad(mampfRef.current)
-    sayWrong()
+    // "Noch nicht ganz.", then what was wrong ("Das war zu viel."): one after the other
     const said = optional(SAY[verdict === 'few' ? 'few' : 'many'])
-    if (said) narrate([said])
+    sayWrong(undefined, said ? { onEnd: () => narrate([said]) } : {})
     const counts = [...g.counts]
     const most = Math.max(...counts)
-    const L = boardLayout(task.wants, counts, wide ? 46 : 44)
+    const L = boardLayout(task.wants, counts, boardCell)
     const top = crownH + 16
     setCmp({ counts, rolled: [0, 0], show: false, top, from: { x: g.bx - (g.fw / 2 - L.width / 2), y: groundY - BASKET_H / 2 - top } })
     const flown = (reduce ? 300 : 520) + most * 80
@@ -258,24 +292,28 @@ function Play({ wide, level, onComplete }) {
       g.nextSpawn = g.t + 0.5
       go('play')
     }
-    if (verdict === 'few') { later(flown + 1900, back); return }
+    // (each step waits for Lumi to finish what she is saying)
+    if (verdict === 'few') { afterSpeech(back, flown + 1900); return }
     // the ones too many roll away, one by one, and Lumi counts back
     const extras = task.wants.flatMap((w, k) => Array.from({ length: Math.max(0, counts[k] - w.n) }, () => k))
-    extras.forEach((k, e) => later(flown + 800 + e * 560, () => {
-      g.counts[k] -= 1
-      setCmp(c => c && { ...c, rolled: c.rolled.map((r, j) => (j === k ? r + 1 : r)) })
-      setBasket(b => b.map((list, j) => (j === k ? list.slice(0, -1) : list)))
-      sfx.boing()
-      narrate([numberWord(g.counts[k])])
-    }))
-    later(flown + 800 + extras.length * 560 + 500, () => {
-      if (verdict === 'many') {
-        setCmp(null)
-        setStuffed(false)
-        sfx.burp()
-        later(350, () => eat(false))
-      } else back()
-    })
+    afterSpeech(() => {
+      extras.forEach((k, e) => later(e * 560, () => {
+        g.counts[k] -= 1
+        setCmp(c => c && { ...c, rolled: c.rolled.map((r, j) => (j === k ? r + 1 : r)) })
+        setBasket(b => b.map((list, j) => (j === k ? list.slice(0, -1) : list)))
+        sfx.boing()
+        narrate([numberWord(g.counts[k])])
+      }))
+      later(extras.length * 560 + 500, () => {
+        if (verdict === 'many') {
+          setCmp(null)
+          setStuffed(false)
+          sfx.burp()
+          // the game put it right, not the child: no praise for it
+          later(350, () => eat(false, { rolled: true }))
+        } else back()
+      })
+    }, flown + 800)
   }
 
   const mampf = () => {
@@ -323,7 +361,8 @@ function Play({ wide, level, onComplete }) {
     sfx.drum()
     if (!reduce) squash.start({ scaleY: [1, 0.86, 1.05, 1], scaleX: [1, 1.05, 0.98, 1], transition: { duration: 0.32 } })
     pop(c, halfX(k))
-    narrate([numberWord(c)])
+    // two kinds: no counting along, it would run the two counts into each other
+    if (!pair) narrate([numberWord(c)])
     if (c <= want.n) {
       // one that was still wanted: a note, a star
       good({ stars: it.gold ? 3 : 1 })
@@ -341,7 +380,7 @@ function Play({ wide, level, onComplete }) {
 
   // The loop reads the newest of all this
   const live = useRef(null)
-  live.current = { task, cfg, nests, BW, caught, reduce, crownH, groundY, level, idx }
+  live.current = { task, cfg, nests, BW, caught, reduce, crownH, groundY, level, idx, kinds, sides, wide }
 
   // ── The clock: the catcher, what falls ──────────────────────────────────
 
@@ -363,7 +402,10 @@ function Play({ wide, level, onComplete }) {
     const trail = L.reduce ? 0 : clamp(-g.bv * 0.02, -12, 12)
     lag.set(trail)
     tilt.set(L.reduce ? 0 : clamp(g.bv * 0.022, -9, 9))
-    fade.set(clamp(1 - Math.max(-60 - g.bx, g.bx - g.fw - 60, 0) / 90, 0, 1))
+    // wide: the field ends at the sign and the picnic, so the animal is
+    // whole only inside it (it is clipped at the edges, see the field)
+    const edge = L.wide ? half : -60
+    fade.set(clamp(1 - Math.max(edge - g.bx, g.bx - g.fw + edge, 0) / (L.wide ? 120 : 90), 0, 1))
     if (Math.abs(g.bv) > 50 && g.phase !== 'leave') {
       const f = g.bv > 0 ? 1 : -1
       if (f !== g.facing) { g.facing = f; setFacing(f) }
@@ -376,8 +418,11 @@ function Play({ wide, level, onComplete }) {
     if (g.phase === 'play' && g.t >= g.nextSpawn && (L.cfg.gap == null ? active.length === 0 : active.length < 4)) {
       const right = isRight(g.counts, L.task.wants)
       const d = nextDrop(L.cfg, { counts: g.counts, wants: L.task.wants, hasOther: !!L.task.other, sinceWanted: g.sinceWanted, goldDone: g.goldDone, first: g.first })
+      // two trees: a fruit falls from its own kind's tree (a boot from anywhere)
+      const tree = L.kinds > 1 && d.kind !== 'boot' ? L.sides[d.kind === 'other' ? 1 : d.which] : null
+      const [lo, hi] = tree == null ? [46, g.fw - 46] : treeSpans(g.fw, 2)[tree].map((v, j) => v + (j ? -34 : 34))
       const x = dropX({
-        lo: 46, hi: g.fw - 46, bx: g.bx, reach: L.cfg.reach, width: g.fw, taken: active.map(i => i.x), half,
+        lo, hi, bx: g.bx, reach: L.cfg.reach, width: g.fw, taken: active.map(i => i.x), half, spread: tree != null,
         avoid: right && Math.random() < L.cfg.safe, onto: g.first && L.idx === 0 && L.level <= 3,
       })
       const id = ++g.seq
@@ -499,8 +544,10 @@ function Play({ wide, level, onComplete }) {
   const counts = basket.map(l => l.length)
   const canPress = phase === 'play' && counts[0] + counts[1] > 0
   const seats = tasks.length
-  const fruits = [...task.wants.map(w => w.fruit), ...(task.other ? [task.other] : [])]
-  const board = cmp && boardLayout(task.wants, cmp.counts, wide ? 46 : 44)
+  const kindFruits = [...task.wants.map(w => w.fruit), ...(task.other ? [task.other] : [])]
+  // the crown's fruit in tree order (left, right)
+  const fruits = kinds > 1 ? sides.map((_, t) => kindFruits[sides.indexOf(t)]) : kindFruits
+  const board = cmp && boardLayout(task.wants, cmp.counts, boardCell)
 
   // a tap on the sign: Lumi says the number again
   const sayNumber = () => { setBump(b => b + 1); narrate(task.wants.map((w, k) => { const p = numberWord(w.n); return p && k > 0 ? { ...p, gap: 250 } : p })) }
@@ -514,10 +561,10 @@ function Play({ wide, level, onComplete }) {
     : <Picnic seats={seats} guests={guests} size={free ? 58 : 60} cols={free ? Math.ceil(seats / 2) : seats} />
 
   const field = (
-    <div ref={fieldRef} data-field="1" style={{ position: 'relative', flex: 1, minWidth: 0, minHeight: 0, maxWidth: wide ? 720 : undefined }}>
+    <div ref={fieldRef} data-field="1" style={{ position: 'relative', flex: 1, minWidth: 0, minHeight: 0, maxWidth: wide ? 720 : undefined, overflowX: wide ? 'clip' : undefined }}>
       {size && (
         <>
-          <Trunk x={fw / 2} top={crownH * 0.6} bottom={groundY - 6} />
+          {treeSpans(fw, kinds).map(([a, b]) => <Trunk key={a} x={(a + b) / 2} top={crownH * 0.6} bottom={groundY - 6} />)}
 
           {/* The catcher: the animal behind, its basket in front */}
           <motion.div style={{ position: 'absolute', left: 0, top: groundY, width: 0, height: 0, x: bx, opacity: fade, zIndex: 3 }}>
@@ -590,7 +637,7 @@ function Play({ wide, level, onComplete }) {
           <AnimatePresence>
             {cmp && (
               <div key="cmp" style={{ position: 'absolute', left: fw / 2 - board.width / 2, top: cmp.top, zIndex: 20 }}>
-                <CompareBoard wants={task.wants} counts={cmp.counts} cell={wide ? 46 : 44} from={cmp.from} rolled={cmp.rolled} show={cmp.show} />
+                <CompareBoard wants={task.wants} counts={cmp.counts} cell={boardCell} from={cmp.from} rolled={cmp.rolled} show={cmp.show} />
               </div>
             )}
           </AnimatePresence>

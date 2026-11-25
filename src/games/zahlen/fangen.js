@@ -19,17 +19,20 @@ export const FRUITS = {
 }
 
 // Who catches. Bruno opens every level; the others follow in a new order.
+// Each eats two kinds a child would believe it eats, of two different
+// looks: in the levels with two amounts the second kind is the animal's
+// other food. Nobody eats lemons; they only fall as the kind not wanted.
 export const EATERS = [
   { art: '🐻', label: 'Bruno, der Bär', fruits: ['apfel', 'birne'] },
-  { art: '🐒', label: 'Affe',           fruits: ['banane'] },
-  { art: '🐿️', label: 'Eichhörnchen',   fruits: ['kastanie'] },
+  { art: '🐒', label: 'Affe',           fruits: ['banane', 'orange'] },
+  { art: '🐿️', label: 'Eichhörnchen',   fruits: ['kastanie', 'apfel'] },
   { art: '🦔', label: 'Igel',           fruits: ['birne', 'apfel'] },
   { art: '🐘', label: 'Elefant',        fruits: ['orange', 'banane'] },
-  { art: '🐷', label: 'Schwein',        fruits: ['pfirsich', 'apfel'] },
-  { art: '🦛', label: 'Nilpferd',       fruits: ['zitrone', 'orange'] },
+  { art: '🐷', label: 'Schwein',        fruits: ['pfirsich', 'kastanie'] },
+  { art: '🦛', label: 'Nilpferd',       fruits: ['apfel', 'banane'] },
   { art: '🐭', label: 'Maus',           fruits: ['kastanie', 'birne'] },
-  { art: '🐰', label: 'Hase',           fruits: ['apfel', 'pfirsich'] },
-  { art: '🐼', label: 'Panda',          fruits: ['pfirsich', 'zitrone'] },
+  { art: '🐰', label: 'Hase',           fruits: ['apfel', 'birne'] },
+  { art: '🐼', label: 'Panda',          fruits: ['apfel', 'banane'] },
 ]
 
 // Content colours of the numerals 0–10 (the ink outline keeps even the
@@ -76,11 +79,15 @@ export const LEVELS = [
 
 export const levelConfig = level => LEVELS[Math.max(1, Math.min(LEVELS.length, Math.round(level) || 1)) - 1]
 
-// A kind that cannot be taken for `key`
-function contrastFor(key, rnd) {
-  const pool = Object.keys(FRUITS).filter(k => k !== key && FRUITS[k].look !== FRUITS[key].look)
+// A kind that cannot be taken for `key`, preferably one of `from`
+function contrastFor(key, rnd, from = []) {
+  const ok = k => k !== key && FRUITS[k].look !== FRUITS[key].look
+  const own = from.filter(ok)
+  const pool = own.length ? own : Object.keys(FRUITS).filter(ok)
   return pool[Math.floor(rnd() * pool.length)]
 }
+// A kind the animal does not eat (it falls, and is not wanted)
+const notEatenBy = eater => Object.keys(FRUITS).filter(k => !eater.fruits.includes(k))
 
 /**
  * The tasks of a level: who catches, how many of what.
@@ -97,7 +104,9 @@ export function tasksFor(level, rnd = Math.random) {
     const eater = eaters[i % eaters.length]
     // Bruno eats apples; the others take one of theirs
     const fruit = i === 0 ? eater.fruits[0] : eater.fruits[Math.floor(rnd() * eater.fruits.length)]
-    const second = ns.length > 1 || cfg.other > 0 ? contrastFor(fruit, rnd) : null
+    // two amounts: the animal's other food · a kind not wanted: one it does not eat
+    const second = ns.length > 1 ? contrastFor(fruit, rnd, eater.fruits)
+      : cfg.other > 0 ? contrastFor(fruit, rnd, notEatenBy(eater)) : null
     const kinds = [fruit, second]
     return {
       eater,
@@ -107,8 +116,12 @@ export function tasksFor(level, rnd = Math.random) {
   })
 }
 
-/** How many things of one kind the basket takes before more bounce off. */
-export const capacity = (task, k) => (task.wants.length > 1 ? Math.min(9, task.wants[k].n + 4) : Math.min(15, task.wants[k].n + 5))
+/**
+ * How many things of one kind the basket takes before more bounce off. A
+ * half of the two-kind basket holds two rows of three: a third row would
+ * stand over the rim and hide the animal.
+ */
+export const capacity = (task, k) => (task.wants.length > 1 ? Math.min(6, task.wants[k].n + 4) : Math.min(15, task.wants[k].n + 5))
 
 /** True when every kind in the basket is exactly what the sign says. */
 export const isRight = (counts, wants) => wants.every((w, k) => (counts[k] ?? 0) === w.n)
@@ -154,14 +167,15 @@ export function nextDrop(cfg, st, rnd = Math.random) {
 /**
  * Where the next thing falls: inside [lo, hi], within reach of the catcher
  * at `bx`, away from things already in the air at `taken` — and, with
- * `avoid`, not onto the basket (`half` is half its width).
+ * `avoid`, not onto the basket (`half` is half its width). With `spread`
+ * anywhere in [lo, hi] (one tree of two: its own half of the field).
  */
-export function dropX({ lo, hi, bx, reach, width, taken = [], avoid = false, half = 0, onto = false }, rnd = Math.random) {
+export function dropX({ lo, hi, bx, reach, width, taken = [], avoid = false, half = 0, onto = false, spread = false }, rnd = Math.random) {
   const clamp = v => Math.max(lo, Math.min(hi, v))
   if (onto) return clamp(bx)
   let best = null
   for (let i = 0; i < 8; i++) {
-    let x = clamp(bx + (rnd() * 2 - 1) * reach * width)
+    let x = spread ? lo + rnd() * (hi - lo) : clamp(bx + (rnd() * 2 - 1) * reach * width)
     if (avoid) {
       const gapWanted = half + 44
       if (Math.abs(x - bx) < gapWanted) {
