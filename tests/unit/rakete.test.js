@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { TOP, PLUS, MINUS, levelPlan, buildTasks, countChoices, judge, gapsBetween, freeGap, RESIDENTS, dirOf } from '../../src/games/rakete/tasks.js'
-import { layout, hopPath, bow } from '../../src/games/rakete/layout.js'
-import { windowSpots } from '../../src/games/rakete/parts.jsx'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { TOP, PLUS, MINUS, levelPlan, buildTasks, countChoices, judge, gapsBetween, freeGap, RESIDENTS, dirOf, starsWon, landingLead, tapHelp } from '../../src/games/rakete/tasks.js'
+import { layout, hopPath, bow, clamp, moonFlight } from '../../src/games/rakete/layout.js'
+import { windowSpots, ThrustButton } from '../../src/games/rakete/parts.jsx'
 import { hasEmojiArt } from '../../src/lib/emojiArt.jsx'
 
 const LEVELS = Array.from({ length: 10 }, (_, i) => i + 1)
@@ -86,6 +88,36 @@ describe('Planeten-Hüpfer: the sums', () => {
     expect(freeGap(Array.from({ length: TOP }, (_, i) => i))).toBe(null)
   })
 
+  it('bonus stars count only on the flight of a right answer, and only those on its way', () => {
+    const t = { op: PLUS, from: 4, step: 2, target: 6 }
+    expect(starsWon([4, 8], t, 6)).toEqual([4])
+    expect(starsWon([4, 5], t, 6)).toEqual([4, 5])
+    // a miss wins nothing: too far, too short, the wrong way
+    expect(starsWon([4, 5, 6], t, 7)).toEqual([])
+    expect(starsWon([4], t, 5)).toEqual([])
+    expect(starsWon([3], t, 3)).toEqual([])
+    const m = { op: MINUS, from: 7, step: 3, target: 4 }
+    expect(starsWon([4, 6, 7], m, 4)).toEqual([4, 6])
+    expect(starsWon([7], m, 8)).toEqual([])
+  })
+
+  it('the landing planet is said with the feedback, unless the hop has said it already', () => {
+    // a flight in one go says only where it ended, always in the feedback's narration
+    expect(landingLead('tap', false)).toBe(true)
+    expect(landingLead('pick', false)).toBe(true)
+    // a hop has said it, unless the tick was pressed while it was in the air
+    expect(landingLead('hop', true)).toBe(false)
+    expect(landingLead('count', true)).toBe(false)
+    expect(landingLead('hop', false)).toBe(true)
+    expect(landingLead('count', false)).toBe(true)
+  })
+
+  it('the tap levels never point at the answer before two misses', () => {
+    expect(tapHelp('tap', false)).toBe('wave')
+    expect(tapHelp('tap', true)).toBe('target')
+    for (const mode of ['hop', 'count', 'pick']) expect(tapHelp(mode, false)).toBe(null)
+  })
+
   it('every resident has a picture', () => {
     for (const r of RESIDENTS) expect(hasEmojiArt(r), r).toBe(true)
     expect(hasEmojiArt('⭐')).toBe(true)
@@ -125,6 +157,60 @@ describe('Planeten-Hüpfer: the layout', () => {
       // the moon of the finale, with the rocket standing on it, is on the screen
       expect(L.moon.y - L.moon.r - L.rh).toBeGreaterThanOrEqual(0)
       expect(L.moon.x + L.moon.r).toBeLessThanOrEqual(w)
+    }
+  })
+
+  it('the star counter covers neither the sum nor the rocket and the dancers on the moon', () => {
+    // the counter: a star of 36 px and two digits in a pill (components/play/Juice.jsx)
+    const HUD_W = 100, HUD_H = 50
+    const overlap = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
+    for (const [w, h] of SIZES) {
+      const L = layout(w, h)
+      const box = c => ({ x: c.align === 'right' ? c.x - HUD_W : c.align === 'left' ? c.x : c.x - HUD_W / 2, y: c.y, w: HUD_W, h: HUD_H })
+      let hud = box(L.hud)
+      expect(hud.x, `${w}x${h} counter on screen`).toBeGreaterThanOrEqual(0)
+      expect(hud.x + hud.w).toBeLessThanOrEqual(w)
+      // during play: beside the sum on a short screen (it has the left half), below it on a phone held upright
+      if (L.short) expect(hud.x, `${w}x${h} counter beside the sum`).toBeGreaterThanOrEqual(L.card.x + L.card.w)
+      if (L.vertical) expect(hud.y).toBeGreaterThanOrEqual(L.card.y + L.card.h)
+      // the finale (the sum is gone): the rocket stands upright on the top of the moon, the dancers round it
+      hud = box(L.hudFinale)
+      expect(hud.y + hud.h).toBeLessThanOrEqual(h)
+      const { x, y, r } = L.moon
+      const feet = { x, y: y - r * 0.8 }
+      const rocket = { x: feet.x - L.rw / 2, y: feet.y - L.rh, w: L.rw, h: L.rh }
+      expect(overlap(hud, rocket), `${w}x${h} counter over the rocket on the moon`).toBe(false)
+      // and on its way there from any planet
+      for (let n = 0; n <= TOP; n++) {
+        const from = L.P(n, L.pr)
+        const { to, c } = moonFlight(L, from)
+        for (let t = 0; t <= 1; t += 0.05) {
+          const p = bow(from, c, to, t)
+          // the rocket turns about its feet as in toTheMoon: the box round its turned outline
+          const deg = L.base - L.base * Math.min(1, t * 1.4) + 18 * Math.sin(Math.PI * t), a = (deg * Math.PI) / 180
+          const pts = [[-L.rw / 2, 0], [L.rw / 2, 0], [-L.rw / 2, -L.rh], [L.rw / 2, -L.rh]]
+            .map(([dx, dy]) => [p.x + dx * Math.cos(a) - dy * Math.sin(a), p.y + dx * Math.sin(a) + dy * Math.cos(a)])
+          const xs = pts.map(q => q[0]), ys = pts.map(q => q[1])
+          const box = { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) }
+          expect(overlap(hud, box), `${w}x${h} counter over the flying rocket from ${n} at t=${t.toFixed(2)}`).toBe(false)
+        }
+      }
+      const size = clamp(r * 0.62, 34, 60)
+      for (const deg of [-10, -37, -64, -116, -143, -170]) {
+        const a = (deg * Math.PI) / 180
+        const ex = x + Math.cos(a) * r * 0.8, ey = y + Math.sin(a) * r * 0.8
+        expect(overlap(hud, { x: ex - size / 2, y: ey - size, w: size, h: size }), `${w}x${h} counter over a dancer at ${deg}°`).toBe(false)
+      }
+    }
+  })
+
+  it('the thrust button shows a flame, its round front the way of the hop', () => {
+    for (const [op, way] of [[PLUS, 'right'], [MINUS, 'left'], [PLUS, 'up'], [MINUS, 'down']]) {
+      const html = renderToStaticMarkup(createElement(ThrustButton, { op, way, size: 80, onPress: () => {} }))
+      expect(html).toContain('data-flame-part="outer"')
+      expect(html).toContain(`data-flame="${way}"`)
+      // no white arrow any more
+      expect(html).not.toContain('fill="#fff"')
     }
   })
 

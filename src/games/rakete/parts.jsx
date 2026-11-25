@@ -126,9 +126,12 @@ const round = (size, bg) => ({
 })
 
 /**
- * A thrust button: an arrow the way the rocket hops, a flame behind it, and
- * the sign it stands for in its corner (in the sign's colour, as in the sum).
- * `way` is the arrow on screen: 'right' | 'left' | 'up' | 'down'.
+ * A thrust button: a flame, the way Lumi says it ("Drück die Flamme"). It
+ * is a fireball rushing the way the rocket hops: the round, bright front
+ * leads, the flame's tongues trail behind it, as behind a rocket; so the
+ * two buttons of levels 4–6 point apart. The sign it stands for sits in its
+ * corner (in the sign's colour, as in the sum).
+ * `way` is the way of the hop on screen: 'right' | 'left' | 'up' | 'down'.
  */
 export function ThrustButton({ op, way, size, onPress, btnRef, pulse = 0 }) {
   const reduce = useReducedMotion()
@@ -143,11 +146,8 @@ export function ThrustButton({ op, way, size, onPress, btnRef, pulse = 0 }) {
       transition={{ duration: 0.7 }}
       key={pulse}
       style={round(size, SIGN_COLOR[op])}>
-      <svg viewBox="0 0 100 100" width={size * 0.8} height={size * 0.8} aria-hidden="true" style={{ transform: `rotate(${turn}deg)`, overflow: 'visible' }}>
-        {/* the flame trails behind the arrow */}
-        <path d="M30 50 Q6 34 -2 50 Q6 66 30 50 Z" fill="#ffd34d" stroke={INK} strokeWidth="4" strokeLinejoin="round" />
-        <path d="M30 50 Q14 42 10 50 Q14 58 30 50 Z" fill="#ff6b3d" />
-        <path d="M28 38 H58 V22 L92 50 L58 78 V62 H28 Z" fill="#fff" stroke={INK} strokeWidth="6" strokeLinejoin="round" />
+      <svg viewBox="0 0 100 100" width={size * 0.84} height={size * 0.84} aria-hidden="true" data-flame={way} style={{ transform: `rotate(${turn}deg)`, overflow: 'visible' }}>
+        <FlameShape />
       </svg>
       <span aria-hidden="true" style={{
         position: 'absolute', top: -12, right: -12, width: size * 0.42, height: size * 0.42, borderRadius: '50%',
@@ -156,6 +156,25 @@ export function ThrustButton({ op, way, size, onPress, btnRef, pulse = 0 }) {
         WebkitTextStroke: `1.5px ${INK}`,
       }}>{op}</span>
     </motion.button>
+  )
+}
+
+// The fireball of the thrust button, rushing right (viewBox 0 0 100 100):
+// a round front, three tongues trailing left, red outside, yellow inside;
+// a small chevron in front of it says the way once more
+function FlameShape() {
+  return (
+    <g strokeLinejoin="round" strokeLinecap="round">
+      <path d="M88 36 L100 50 L88 64" fill="none" stroke={INK} strokeWidth="11" />
+      <path d="M88 36 L100 50 L88 64" fill="none" stroke="#ffe08a" strokeWidth="5" />
+      <g transform="translate(4 7) scale(0.86)">
+        <path data-flame-part="outer" fill="#ff4d2e" stroke={INK} strokeWidth="6"
+          d="M62 20 C80 20 92 34 92 50 C92 66 80 80 62 80 C50 80 42 76 36 71 L6 80 L24 63 L-4 50 L24 37 L6 20 L36 29 C42 24 50 20 62 20 Z" />
+        <path fill="#ffa62b"
+          d="M63 31 C74 31 82 40 82 50 C82 60 74 69 63 69 C54 69 47 65 43 60 L26 63 L36 53 L20 50 L36 46 L26 37 L43 40 C47 35 54 31 63 31 Z" />
+        <circle cx="66" cy="50" r="11" fill="#fff3a0" />
+      </g>
+    </g>
   )
 }
 
