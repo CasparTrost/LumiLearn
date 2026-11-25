@@ -88,7 +88,7 @@ export function Stand({ g }) {
 }
 
 /** The plank, turned by the motion value `ang` about the pivot. */
-export function Plank({ g, ang }) {
+export function Plank({ g, ang, seat = true }) {
   return (
     <motion.div aria-hidden="true" style={{
       position: 'absolute', left: g.px - g.L, top: g.py - THICK / 2, width: g.L * 2, height: THICK,
@@ -96,7 +96,9 @@ export function Plank({ g, ang }) {
       background: `repeating-linear-gradient(90deg, ${WOOD_L} 0 34px, ${WOOD} 34px 38px)`, boxShadow: '0 5px 0 rgba(42,27,61,0.28)', zIndex: 3,
     }}>
       {/* a little seat on the flyer's end, a landing pad on the other */}
-      <div style={{ position: 'absolute', left: g.L + g.seat - 26, top: -10, width: 52, height: 10, borderRadius: '8px 8px 0 0', background: '#ff6b5b', border: `3px solid ${INK}`, borderBottom: 'none', boxSizing: 'border-box' }} />
+      {/* the landing plate on the raised end: where things go */}
+      {seat && <div style={{ position: 'absolute', left: g.L + g.load - 30, top: -9, width: 60, height: 9, borderRadius: '8px 8px 0 0', background: '#ffc93c', border: `3px solid ${INK}`, borderBottom: 'none', boxSizing: 'border-box' }} />}
+      {seat && <div style={{ position: 'absolute', left: g.L + g.seat - 26, top: -10, width: 52, height: 10, borderRadius: '8px 8px 0 0', background: '#ff6b5b', border: `3px solid ${INK}`, borderBottom: 'none', boxSizing: 'border-box' }} />}
     </motion.div>
   )
 }
@@ -245,7 +247,7 @@ export function Mark({ g, step, art, n, blink }) {
   const reduce = useReducedMotion()
   const s = 30
   return (
-    <motion.div aria-hidden="true" initial={{ scale: 0.2, opacity: 0 }}
+    <motion.div aria-hidden="true" data-mark={step} initial={{ scale: 0.2, opacity: 0 }}
       animate={blink && !reduce ? { scale: [1, 1.25, 1], opacity: 1, transition: { duration: 0.5, repeat: 3 } } : { scale: 1, opacity: 1 }}
       style={{
         position: 'absolute', left: g.trunk.x1 + 2, top: g.yAt(step) - s / 2 - 3, height: s + 6, minWidth: s + 14, zIndex: 2,

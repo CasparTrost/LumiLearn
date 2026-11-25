@@ -58,6 +58,8 @@ import { Tree, TreatBranch, Stand, Plank, Prop, Parachute, Parcel, Glow, Block, 
  */
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
+const BLK = 40                // a one-kilo block (level 10)
+const BRIDGE = 0.7            // the parcels of level 10, this far out along the plank
 const optional = key => (LINES[key] ? line(key) : null)
 const INTRO = { throw: 'wippe/schwer-genug', sum: 'wippe/pakete', order: 'wippe/ordnen', balance: 'wippe/gerade' }
 
@@ -157,7 +159,9 @@ function Play({ wide, level, onComplete }) {
     if (mode === 'order') {
       const b = g.supply
       const s = Math.min(g.thing, Math.floor((b.x1 - b.x0 - (wide ? 24 : 120)) / 3 - 12))
-      return { stair: stairLayout(g, s), k: s / g.thing, button: wide ? { x: b.x1 - 44, y: b.y0 + 44 } : { x: b.x1 - 44, y: b.y1 - 46 } }
+      const stair = stairLayout(g, s)
+      // the tick: above the thing on the highest step (wide), beside the stair (tall)
+      return { stair, k: s / g.thing, button: wide ? { x: stair[2].x, y: stair[2].top - s - 58 } : { x: b.x1 - 44, y: b.y1 - 46 } }
     }
     if (mode === 'balance') {
       const { spots, button } = supplyLayout(g, [120], true)
@@ -269,7 +273,7 @@ function Play({ wide, level, onComplete }) {
       tween(m.s, 1, { type: 'spring', stiffness: 420, damping: 15, delay: 0.25 + i * 0.12 })
     })
     if (task.mode === 'balance') {
-      for (const [id, along, n] of [['left', -0.62 * gg.L, task.left], ['right', 0.62 * gg.L, task.right]]) {
+      for (const [id, along, n] of [['left', -BRIDGE * gg.L, task.left], ['right', BRIDGE * gg.L, task.right]]) {
         if (!mvs.current.has(id)) mvs.current.set(id, { x: motionValueOf(0), y: motionValueOf(0), r: motionValueOf(0), s: motionValueOf(0) })
         attach.current.set(id, { along, lift: gg.parcel / 2 })
         const m = M(id)
@@ -277,7 +281,8 @@ function Play({ wide, level, onComplete }) {
         void n
         tween(m.s, 1, { type: 'spring', stiffness: 420, damping: 15, delay: 0.3 })
       }
-      attach.current.set('blocks', { along: 0.3 * gg.L, lift: 0 })
+      // the blocks go on top of the right parcel: the same place, the same pull
+      attach.current.set('blocks', { along: BRIDGE * gg.L, lift: gg.parcel - 6 })
     }
     follow()
     // the treat appears where it hangs
@@ -382,7 +387,9 @@ function Play({ wide, level, onComplete }) {
       tween(ang, [-A, -A + 7, -A - 1, -A], { duration: 0.5 })
       await wait(60)
     } else {
-      await tween(ang, A, { type: 'spring', stiffness: 520, damping: 17, restDelta: 0.2 })
+      // the flyer goes up the moment the plank hits the ground, while it still rocks
+      tween(ang, A, { type: 'spring', stiffness: 520, damping: 17, restDelta: 0.2 })
+      await wait(reduce ? 0 : 110)
     }
   }
 
@@ -450,6 +457,7 @@ function Play({ wide, level, onComplete }) {
         tween(m.r, [A, A + turns * 0.3, turns], { duration: 1.1, ease: 'easeIn' }),
       ])
     }
+    if (S.where?.[id] === 'gone') setPlace(id, 'out')
   }
 
   // After the flyer is down again: right — eat and go to the branch; wrong — try again
@@ -703,8 +711,9 @@ function Play({ wide, level, onComplete }) {
       burst(refOf(S.steps[i]).current, 'stars', 6)
       await wait(260)
     }
+    // the heaviest first, at the bottom of the pile
     let lift = 0
-    const jumps = S.steps.map((id, i) => {
+    const jumps = [...S.steps].reverse().map((id, i) => {
       const s = sizeOf(byId[id]), m = M(id)
       const rest = gg.dropAt(s, -A, lift)
       const at = { along: gg.load, lift: lift + s / 2 }
@@ -753,11 +762,10 @@ function Play({ wide, level, onComplete }) {
     if (S.live) tween(ang, leanNow(S.blocks), { type: 'spring', stiffness: 160, damping: 11 })
   }
   // where the next block lands (two columns, bottom up)
-  const BLK = 40
   const stackTop = n => {
     const gg = G.current
     const col = n % 2, row = Math.floor(n / 2)
-    return onPlank(gg, ang.get(), 0.3 * gg.L + (col - 0.5) * (BLK + 2), BLK / 2 + row * BLK)
+    return onPlank(gg, ang.get(), BRIDGE * gg.L + (col - 0.5) * (BLK + 2), gg.parcel - 6 + BLK / 2 + row * (BLK + 2))
   }
 
   async function checkBalance() {
@@ -786,13 +794,14 @@ function Play({ wide, level, onComplete }) {
     await tween(ang, [ang.get(), 1.5, -1, 0], { duration: 0.6 })
     const top = gg.py - THICK / 2 - gg.FS / 2 + gg.sink
     const x0 = fx.get(), x1 = gg.stumps[1].x - gg.FS * 0.35
-    const hop = gg.parcel + 14
-    const xs = [x0, gg.px - 0.62 * gg.L, gg.px + 0.3 * gg.L, gg.px + 0.62 * gg.L, x1]
-    const ys = [fy.get(), top - hop, top - hop * 0.9, top - hop, top]
+    const hop = gg.parcel + 16
+    const tower = gg.parcel + Math.ceil(S.blocks / 2) * (BLK + 2) + 16
+    const xs = [x0, gg.px - BRIDGE * gg.L, gg.px, gg.px + BRIDGE * gg.L, x1]
+    const ys = [fy.get(), top - hop, top, top - tower, top]
     sfx.slideUp()
     await Promise.all([
-      tween(fx, xs, { duration: 2.0, ease: 'linear' }),
-      tween(fy, ys, { duration: 2.0, times: [0, 0.27, 0.56, 0.78, 1], ease: 'easeInOut' }),
+      tween(fx, xs, { duration: 2.2, ease: 'linear' }),
+      tween(fy, ys, { duration: 2.2, times: [0, 0.25, 0.5, 0.75, 1], ease: 'easeInOut' }),
     ])
     sfx.step()
     // the treat on the stump goes into its paws
@@ -988,7 +997,7 @@ function Play({ wide, level, onComplete }) {
             const foot = g.ground + 2
             return <Prop key={side} x={g.px + side * 0.55 * g.L} foot={foot} height={foot - (g.py + THICK / 2)} rot={side < 0 ? propL : propR} />
           })}
-          <Plank g={g} ang={ang} />
+          <Plank g={g} ang={ang} seat={mode !== 'balance'} />
 
           {/* where things are dropped: the raised end */}
           {(() => {
@@ -1039,13 +1048,16 @@ function Play({ wide, level, onComplete }) {
           {items.map(it => {
             const m = M(it.id), s = sizeOf(it)
             const w = where[it.id]
+            if (w === 'out') return null
             const up = w === 'air' || w === 'held'
+            // a small thing still gets a finger-sized place to tap
+            const hitS = Math.max(s, wide ? 88 : 76)
             return (
               <motion.button key={it.id} ref={el => { refOf(it.id).current = el }} type="button" data-item={it.id} data-w={it.w}
                 data-where={w} data-step={mode === 'order' && S.steps ? S.steps.indexOf(it.id) : undefined}
                 aria-label={it.kind === 'parcel' ? `Paket ${it.n}` : it.label} onClick={keyTap(it.id)}
                 style={{
-                  all: 'unset', position: 'absolute', left: -s / 2, top: -s / 2, width: s, height: s, x: m.x, y: m.y, rotate: m.r, scale: m.s,
+                  all: 'unset', position: 'absolute', left: -hitS / 2, top: -hitS / 2, width: hitS, height: hitS, x: m.x, y: m.y, rotate: m.r, scale: m.s,
                   zIndex: up ? 9 : w === 'plank' ? 5 : w === 'gone' ? 3 : 6, cursor: 'pointer', touchAction: 'none',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent',
                 }}>
@@ -1071,7 +1083,7 @@ function Play({ wide, level, onComplete }) {
                   </motion.div>
                 )
               })}
-              <motion.button ref={stackRef} type="button" aria-label="Klotz wegnehmen" onClick={takeBlock}
+              {phase !== 'finale' && <motion.button ref={stackRef} type="button" aria-label="Klotz wegnehmen" onClick={takeBlock}
                 style={{ all: 'unset', position: 'absolute', left: -(BLK + 2), top: -BLK * 5, width: BLK * 2 + 4, height: BLK * 5, x: stackMv.x, y: stackMv.y, rotate: stackMv.r, zIndex: 5, cursor: 'pointer', transformOrigin: '50% 100%' }}>
                 <div style={{ position: 'absolute', left: 0, bottom: 0, width: '100%', display: 'flex', flexWrap: 'wrap-reverse', gap: 2, alignContent: 'flex-start' }}>
                   {Array.from({ length: Math.max(blocks, misses >= 2 ? task.need : 0) }, (_, i) => (
@@ -1080,7 +1092,7 @@ function Play({ wide, level, onComplete }) {
                     </motion.div>
                   ))}
                 </div>
-              </motion.button>
+              </motion.button>}
               <motion.div aria-hidden="true" style={{ position: 'absolute', left: -BLK / 2, top: -BLK / 2, x: flyBlock.x, y: flyBlock.y, opacity: flyBlock.o, zIndex: 9, pointerEvents: 'none' }}>
                 <Block size={BLK} />
               </motion.div>
@@ -1105,7 +1117,7 @@ function Play({ wide, level, onComplete }) {
 
   return (
     <div ref={juice.stage} data-game="wippe" data-mode={mode} data-phase={phase} data-task={idx} data-level={level}
-      data-target={task.mode === 'balance' ? task.need : task.target} data-misses={misses}
+      data-target={task.mode === 'balance' ? task.need : task.target} data-misses={misses} data-guests={guests.length}
       onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
       style={{ position: 'relative', flex: 1, minHeight: 0, overflow: 'hidden', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}>
       {field}

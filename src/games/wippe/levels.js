@@ -42,7 +42,9 @@ const LOOKALIKE = [
   ['🎈', '🥥', '📚'],
 ]
 
-const ALL = [...LIGHT, ...SMALL, ...MIDDLE, ...HEAVY]
+/** Every thing that can be thrown: [picture, name, weight in steps]. */
+export const THINGS = [...LIGHT, ...SMALL, ...MIDDLE, ...HEAVY]
+const ALL = THINGS
 const byArt = e => ALL.find(t => t[0] === e)
 const CLASS = { light: LIGHT, small: SMALL, middle: MIDDLE, heavy: HEAVY }
 

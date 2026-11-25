@@ -54,7 +54,7 @@ export function layoutFor(W, H, wide, mode = 'throw') {
     g.FS = 86
     g.L = 170
     g.thing = 88
-    g.parcel = 74
+    g.parcel = 86
     g.topY = 46
     g.px = balance ? 330 : g.cx + 0.75 * g.L
   } else {
@@ -107,7 +107,7 @@ export function layoutFor(W, H, wide, mode = 'throw') {
   // Level 10: two stumps, the plank between them is a bridge when level
   if (balance) {
     const top = g.py - THICK / 2
-    g.stumps = [g.px - g.L - 24, g.px + g.L + 24].map(x => ({ x, top, w: 46 }))
+    g.stumps = [g.px - g.L - 28, g.px + g.L + 28].map(x => ({ x, top, w: 46 }))
     if (wide) g.supply = { x0: g.stumps[1].x + 46, x1: W - 14, y0: 128, y1: g.ground - 2 }
   }
   return g
@@ -134,7 +134,9 @@ export function supplyLayout(g, sizes, withButton) {
       button = { x: box.x1 - B / 2, y: box.y1 - B / 2 - 2 }
       box.x1 -= B + gap * 1.5
     } else {
-      button = { x: box.x1 - B / 2, y: box.y0 + B / 2 }
+      // above the row, on the right
+      const row = Math.max(...sizes) * Math.min(1, (box.x1 - box.x0) / Math.max(1, total))
+      button = { x: box.x1 - B / 2, y: Math.max(box.y0 + B / 2, box.y1 - row - B / 2 - 22) }
     }
   }
   const k = Math.min(1, (box.x1 - box.x0) / Math.max(1, total))
