@@ -18,7 +18,7 @@ const INFO = {
   numbers:         { emoji: '⭐', title: 'Zahlenland', text: 'Am Himmel verstecken sich Bilder. Tippe die Sterne der Reihe nach an oder fahre mit dem Finger von Stern zu Stern. Beim letzten Stern erscheint das Bild.' },
   letters:         { emoji: '⌨️', title: 'Buchstabenwald', text: 'Lumi will etwas zaubern: Tipp die Buchstaben des Wortes, dann fliegen sie in den Kessel. Ist das Wort fertig, macht es Puff, und das Ding springt heraus.', fresh: true },
   listen:          { emoji: '👂', title: 'Hörabenteuer', text: 'Hinter den Büschen hat sich etwas versteckt. Hör genau hin, oder schau in Lumis Sprechblase, und tippe auf den richtigen Busch.', fresh: true },
-  words:           { emoji: '🃏', title: 'Memo-Welt', text: 'Merk dir, wo die Bilder liegen, und mach zwei Geschenke auf. Was zusammengehört, umarmt sich und darf zur Party.', fresh: true },
+  words:           { emoji: '🃏', title: 'Memo-Welt', text: 'Dreh immer zwei Karten um: Zwei gleiche gehören dir. Ab Level drei spielst du abwechselnd mit Lumi. Wer mehr Paare hat, gewinnt.', fresh: true },
   patterns:        { emoji: '🔮', title: 'Musterpark', text: 'Die Tiere spielen der Reihe nach, ein Hocker ist leer. Hör gut zu: Wer fehlt? Setz das passende Tier auf den Hocker.' },
   shapes:          { emoji: '🎨', title: 'Farbenreich', text: 'Das Monster zeigt in seiner Denkblase, welche Farbe es haben möchte. Tippe auf die Farbflaschen, bis der Tank diese Farbe hat, und zieh dann am Hebel. Am Rad am Tank lässt du die Farbe wieder ab.' },
   emotions:        { emoji: '😊', title: 'Gefühlswelt', text: 'Lumi zeigt dir ein Gesicht und sagt das Gefühl. Tippe alle Tiere an, die sich genauso fühlen. Tippst du auf das Schild, sagt Lumi das Gefühl noch einmal.' },
