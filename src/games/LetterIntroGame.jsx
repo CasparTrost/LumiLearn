@@ -7,7 +7,7 @@ import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
 import { Art, useBursts, useJuice, HintHand } from '../components/play/index.js'
 import { useLater, useSize } from './gefuehle/hooks.js'
-import { rec, wordRec, soundRec, letterRec } from './buchstaben/voice.js'
+import { rec, wordRec, soundRec, letterRec, hearWord } from './buchstaben/voice.js'
 import Monster, { Balloon } from './buchstaben/Monster.jsx'
 import { planLevel, pickThing, layoutFor, spitSpot, scaleAt, MOUTH_Y, EYES_Y, MONSTER_RATIO, BADGE } from './buchstaben/mampf.js'
 import './buchstaben/mampf.css'
@@ -463,6 +463,9 @@ function MonsterMampf({ level = 1, onComplete }) {
       t.held = true
       g.picked = t.id
       sfx.flip()
+      // lifted to carry it to a monster: Lumi says what it is (a finger cannot hover)
+      const w = wordRec(t.word)
+      if (w) narrate([w], { skipIfSame: true, priority: 'preview' })
     }
     t.x = d.tx + dx
     t.y = d.ty + dy
@@ -672,12 +675,16 @@ function Plate({ art, size, pic, ring = INK, className, style }) {
 // A thing on its balloon. The whole of it takes the finger; the loop moves
 // it through its two motion values.
 function Thing({ t, lay, reduce, paused, picked, glow, onDown, onMove, onUp, onKey }) {
+  // the pointer resting on a thing says its word, without feeding it: a
+  // child who cannot tell what the picture is hears it before it chooses
+  const hear = hearWord(t.word)
   return (
     <motion.div ref={el => { t.el = el }} className="mm-thing" role="button" tabIndex={0} aria-label={t.word} aria-pressed={picked || undefined}
       data-thing={t.letter}
       initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.3 }} animate={{ opacity: 1, scale: picked ? 1.14 : 1 }}
       transition={{ type: 'spring', stiffness: 320, damping: 16 }}
-      onPointerDown={e => onDown(t, e)} onPointerMove={e => onMove(t, e)} onPointerUp={e => onUp(t, e)} onPointerCancel={e => onUp(t, e)}
+      onPointerEnter={hear.onPointerEnter} onPointerLeave={hear.onPointerLeave} onFocus={hear.onFocus} onBlur={hear.onBlur}
+      onPointerDown={e => { hear.onPointerDown?.(e); onDown(t, e) }} onPointerMove={e => onMove(t, e)} onPointerUp={e => onUp(t, e)} onPointerCancel={e => onUp(t, e)}
       onKeyDown={e => onKey(t, e)}
       style={{ position: 'absolute', left: -lay.fw / 2, top: -lay.fh / 2, width: lay.fw, height: lay.fh, x: t.mx, y: t.my, zIndex: picked ? 6 : 5 }}>
       <div className={picked ? undefined : 'mm-sway'} style={{ animationDelay: `${-t.sway}s`, animationPlayState: paused ? 'paused' : undefined, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>

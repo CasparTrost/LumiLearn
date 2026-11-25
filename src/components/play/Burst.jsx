@@ -52,7 +52,7 @@ function BurstAt({ x, y, kind, n }) {
 function Piece({ kind, s, color }) {
   if (kind === 'confetti') return <div style={{ width: s, height: s * 0.6, background: color, borderRadius: 2 }} />
   if (kind === 'hearts') return (
-    <svg viewBox="0 0 20 18" width={s} height={s * 0.9}>
+    <svg viewBox="-2 -2.5 24 22" width={s} height={s * 0.9}>
       <path d="M10 17 C2 11 0 7 0 4.5 A4.5 4.5 0 0 1 10 3 A4.5 4.5 0 0 1 20 4.5 C20 7 18 11 10 17Z" fill="#ff5b8a" stroke="#2a1b3d" strokeWidth="1.5" />
     </svg>
   )

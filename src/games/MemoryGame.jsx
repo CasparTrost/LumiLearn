@@ -67,7 +67,25 @@ const wordLine = name => {
 const LUMI_GOLD = '#ffc93c'
 
 /** The back of a card: a present with a ribbon and a bow. */
-function Present({ s }) {
+// `magic`: the Zauberkarte. It is the one card without a partner, so it does
+// not look like the others: a golden present with two eyes peeping out. As a
+// plain present it lay there like a card whose pair was missing.
+function Present({ s, magic = false }) {
+  if (magic) return (
+    <svg viewBox="0 0 100 100" width={s} height={s} aria-hidden="true" style={{ display: 'block' }}>
+      <rect x={3} y={3} width={94} height={94} rx={14} fill="#ffc93c" stroke={INK} strokeWidth={5} />
+      {[[20, 20], [80, 22], [18, 80], [82, 80], [50, 12], [50, 88]].map(([x, y], i) => (
+        <path key={i} d={`M${x} ${y - 7} l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2z`} fill="#fff7c2" stroke={INK} strokeWidth={1.5} strokeLinejoin="round" />
+      ))}
+      {[34, 66].map(x => (
+        <g key={x}>
+          <ellipse cx={x} cy={50} rx={15} ry={18} fill="#fff" stroke={INK} strokeWidth={4} />
+          <circle cx={x + 3} cy={53} r={8} fill={INK} />
+          <circle cx={x + 6} cy={49} r={3} fill="#fff" />
+        </g>
+      ))}
+    </svg>
+  )
   return (
     <svg viewBox="0 0 100 100" width={s} height={s} aria-hidden="true" style={{ display: 'block' }}>
       <rect x={3} y={3} width={94} height={94} rx={14} fill="#8e6cf0" stroke={INK} strokeWidth={5} />
@@ -121,7 +139,7 @@ function PairExample({ s }) {
     <motion.div aria-hidden="true" animate={reduceMotion() ? {} : { y: [0, -4, 0] }} transition={{ duration: 1.2, repeat: Infinity }}
       style={{ display: 'flex', alignItems: 'center', gap: 3, opacity: 0.7 }}>
       {card}
-      <svg viewBox="0 0 20 18" width={s * 0.45} height={s * 0.4}><path d="M10 17 C2 11 0 7 0 4.5 A4.5 4.5 0 0 1 10 3 A4.5 4.5 0 0 1 20 4.5 C20 7 18 11 10 17Z" fill="#ff5b8a" stroke={INK} strokeWidth="1.5" /></svg>
+      <svg viewBox="-2 -2.5 24 22" width={s * 0.45} height={s * 0.4}><path d="M10 17 C2 11 0 7 0 4.5 A4.5 4.5 0 0 1 10 3 A4.5 4.5 0 0 1 20 4.5 C20 7 18 11 10 17Z" fill="#ff5b8a" stroke={INK} strokeWidth="1.5" /></svg>
       {card}
     </motion.div>
   )
@@ -421,6 +439,14 @@ export default function MemoryGame({ level = 1, onComplete }) {
       const cards = now.cards.map(c => (c.id === a || c.id === b) ? { ...c, matched: true, flipped: false } : c)
       const piles = { ...now.piles, [who]: [...now.piles[who], { key: ca.pairKey, emoji: ca.emoji, from }] }
       const left = cards.some(c => !c.matched && !c.joker)
+      // the last pair is found and the Zauberkarte was never turned: it goes
+      // in a puff of stars, so no card is left lying without a partner
+      const spare = left ? null : cards.find(c => c.joker && !c.gone)
+      if (spare) {
+        const el = cardRefs.current[spare.id]
+        if (el) burst(el, 'stars', 12)
+        cards.forEach((c, i) => { if (c.id === spare.id) cards[i] = { ...c, gone: true } })
+      }
       update({ cards, piles, open: [], busy: !left })
       if (who === 'lumi') later(700, () => setLumiMood('hmm'))
       if (!left) finish()
@@ -687,7 +713,7 @@ export default function MemoryGame({ level = 1, onComplete }) {
           {cards.map(card => {
             if (card.matched || card.gone) return null
             const p = pos(card.id)
-            const face = card.flipped || phase === 'preview' || (peek === 'child' && !card.joker)
+            const face = card.flipped || (phase === 'preview' && !card.joker) || (peek === 'child' && !card.joker)
             const canTap = !face && childActive && !game.busy && !peek
             const inHug = hug && (hug.a === card.id || hug.b === card.id)
             const sign = hug?.a === card.id ? 1 : -1
@@ -742,7 +768,7 @@ export default function MemoryGame({ level = 1, onComplete }) {
                     boxShadow: lumiPeek ? `0 0 0 4px ${LUMI_GOLD}, 0 0 22px 6px rgba(255,214,70,0.9)` : 'none',
                     transition: 'box-shadow .3s',
                   }}>
-                    <Present s={s} />
+                    <Present s={s} magic={card.joker} />
                   </div>
                 </motion.div>
               </motion.div>
