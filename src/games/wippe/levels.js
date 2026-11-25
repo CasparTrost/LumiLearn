@@ -29,11 +29,13 @@ export const FLYERS = [
 // same in every level: light things send the flyer two steps up, small ones
 // three (only in level 9), middle ones five, heavy ones eight. Read with a
 // parent's eyes: the things of a class weigh about the same in real life
-// (light: a few grams; small: an egg; middle: an apple; heavy: kilos), and
-// the classes are clearly apart. Nothing that floats (no balloon, feather or
-// leaf): everything here falls when it is dropped.
-const LIGHT = [['🍓', 'Erdbeere', 2], ['🧽', 'Schwamm', 2], ['🥜', 'Erdnüsse', 2], ['🔑', 'Schlüssel', 2], ['🐚', 'Muschel', 2]]
-const SMALL = [['🥚', 'Ei', 3], ['🍋', 'Zitrone', 3], ['🥝', 'Kiwi', 3], ['🍅', 'Tomate', 3]]
+// (light: a few grams; small: about an egg, 40–90 g, clearly lighter than
+// an apple; middle: an apple, 150–250 g; heavy: kilos), and the classes are
+// clearly apart. Nothing that floats (no balloon, feather or leaf):
+// everything here falls when it is dropped. Every picture is one a child
+// names in one word (no shell that looks like a snail's house).
+const LIGHT = [['🍓', 'Erdbeere', 2], ['🧽', 'Schwamm', 2], ['🥜', 'Erdnüsse', 2], ['🔑', 'Schlüssel', 2], ['🍪', 'Keks', 2]]
+const SMALL = [['🥚', 'Ei', 3], ['🥝', 'Kiwi', 3], ['🧁', 'Muffin', 3], ['🧄', 'Knoblauch', 3]]
 const MIDDLE = [['🍎', 'Apfel', 5], ['🍐', 'Birne', 5], ['🥔', 'Kartoffel', 5], ['🍊', 'Orange', 5]]
 const HEAVY = [['🪨', 'Stein', 8], ['🧱', 'Ziegelstein', 8], ['🪵', 'Holzklotz', 8], ['🎃', 'Kürbis', 8], ['📚', 'Bücherstapel', 8]]
 
@@ -184,33 +186,52 @@ export function sumSolution(parcels, target) {
 
 // ── Level 9: light to heavy ──────────────────────────────────────────────
 
-// A light, a small and a middle thing (2, 3 and 5 steps) on a stair. The
-// green tick throws them onto the plank one after the other, from the
-// lowest step up, and they stay there: the pile grows, and every throw
-// sends the flyer as high as the whole pile weighs. Three treats hang where
-// the pile from light to heavy sends it (2, 2 + 3, 2 + 3 + 5 = TOP): only
-// that order gets all three; in any other order a treat is missed, so the
-// order is what makes it work.
+// A light, a small and a middle thing (all drawn the same size) on a stair
+// of three steps, never already in order. Nothing is thrown here: the
+// seesaw is a balance. Any two things go on its two ends as often as the
+// child likes, and the heavier end goes down. The child puts them on the
+// stair, light on the lowest step, heavy on the highest, and taps the tick,
+// which proves the order on the seesaw, neighbour against neighbour (see
+// proveOrder).
 export function orderTask(rnd, flyer, next = pool(rnd)) {
   const things = ['light', 'small', 'middle'].map(cls => thing(next(cls), { scale: 1 }))
-  const treats = pileHeights([...things].sort((a, b) => a.w - b.w))
-  // never already in order
   let steps
   do { steps = shuffle(things, rnd) } while (isOrdered(steps))
-  return { mode: 'order', flyer, target: TOP, treats, things, steps: steps.map(t => t.id) }
+  return { mode: 'order', flyer, things, steps: steps.map(t => t.id) }
+}
+
+/** The seesaw as a balance: -1 the left end goes down, 1 the right end, 0 it stays level (nothing on it, or the same weight). */
+export const sinks = (left, right) => lean(left?.w ?? 0, right?.w ?? 0)
+
+/**
+ * The tick of level 9: the things on the stair (lowest step first) are
+ * weighed neighbour against neighbour, the lower step's on the left end,
+ * the higher step's on the right. Right order: the right end sinks every
+ * time. → { ok, pairs: [{ i, a, b, sinks }], wrong: the index of the first
+ * pair where it does not (the proof stops there), or -1 }.
+ */
+export function proveOrder(steps) {
+  const pairs = []
+  for (let i = 0; i < steps.length - 1; i++) {
+    const s = sinks(steps[i], steps[i + 1])
+    pairs.push({ i, a: steps[i].id, b: steps[i + 1].id, sinks: s })
+    if (s <= 0) return { ok: false, pairs, wrong: i }
+  }
+  return { ok: true, pairs, wrong: -1 }
 }
 
 /** Light on the lowest step, heavy on the highest. */
-export const isOrdered = steps => steps.every((t, i) => i === 0 || steps[i - 1].w < t.w)
+export const isOrdered = steps => proveOrder(steps).ok
 
-/** The heights a pile thrown in this order reaches, one throw after the other. */
-export const pileHeights = steps => {
-  let sum = 0
-  return steps.map(t => (sum += t.w))
+/**
+ * Level 9, the help after two misses: the two things to weigh against each
+ * other (the first neighbours in the wrong order), not where they belong.
+ * → [id of the lower step's, id of the higher step's], or null when in order.
+ */
+export function pairToCompare(steps) {
+  const p = proveOrder(steps)
+  return p.ok ? null : [steps[p.wrong].id, steps[p.wrong + 1].id]
 }
-
-/** Which treats (their heights) a pile thrown in this order gets. */
-export const treatsCaught = (steps, treats) => pileHeights(steps).filter(h => treats.includes(h))
 
 // ── Level 10: make it level ──────────────────────────────────────────────
 
@@ -221,7 +242,14 @@ export function balanceTask(rnd, flyer) {
 }
 
 /** The plank's lean: -1 left side down, 0 level, 1 right side down. */
-export const lean = (left, right) => Math.sign(right - left)
+export function lean(left, right) { return Math.sign(right - left) }
+
+/**
+ * Level 10, the help after two misses: the next right move for the blocks on
+ * the lighter parcel. 'take' one off (too many), 'add' one (too few), or
+ * 'done' (as many as needed: tap the tick).
+ */
+export const balanceHint = (blocks, need) => (blocks > need ? 'take' : blocks < need ? 'add' : 'done')
 
 /** The six tasks of a level. */
 export function tasksFor(level, rnd = Math.random) {

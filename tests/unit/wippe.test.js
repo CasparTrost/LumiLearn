@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { THINGS, CLASSES, SCALE, FLYERS, TOP, TASKS, LIGHT_W, FULL, STACK_MAX, tasksFor, modeFor, verdict, sumSolution, isOrdered, pileHeights, treatsCaught, classOf, lean } from '../../src/games/wippe/levels.js'
-import { layoutFor, supplyLayout, stairLayout, onPlank, nearDrop, A } from '../../src/games/wippe/geometry.js'
+import { THINGS, CLASSES, SCALE, FLYERS, TOP, TASKS, LIGHT_W, FULL, STACK_MAX, tasksFor, modeFor, verdict, sumSolution, isOrdered, proveOrder, pairToCompare, sinks, balanceHint, classOf, lean } from '../../src/games/wippe/levels.js'
+import { layoutFor, supplyLayout, stairLayout, onPlank, nearDrop, nearPan, A } from '../../src/games/wippe/geometry.js'
 import { hasEmojiArt } from '../../src/lib/emojiArt.jsx'
 import { animalSound } from '../../src/lib/animalSounds.js'
 import { numberWord } from '../../src/lib/words.js'
@@ -71,6 +71,16 @@ describe('Wippe-Katapult: what is thrown, who flies', () => {
     const named = name => THINGS.find(t => t[1] === name)
     for (const gone of ['Kokosnuss', 'Teddy', 'Banane', 'Hammer']) expect(named(gone), gone).toBeUndefined()
     expect(named('Erdbeere')[2]).toBeLessThan(named('Apfel')[2])
+  })
+
+  it('keeps the small class clearly between light and middle (third logic check, N9)', () => {
+    const named = name => THINGS.find(t => t[1] === name)
+    // a tomato weighs like a potato, a lemon nearly like an orange: not "small"
+    for (const gone of ['Tomate', 'Zitrone']) expect(CLASSES.small.some(t => t[1] === gone), gone).toBe(false)
+    expect(CLASSES.small.map(t => t[1]).sort()).toEqual(['Ei', 'Kiwi', 'Knoblauch', 'Muffin'])
+    // the shell looked like a snail's house: gone, a biscuit instead
+    expect(THINGS.some(t => t[0] === '🐚')).toBe(false)
+    expect(named('Keks')[2]).toBe(LIGHT_W)
   })
 
   it('draws the things bigger the heavier they are in levels 1–4, an apple clearly smaller than a pumpkin', () => {
@@ -160,38 +170,61 @@ describe('Wippe-Katapult: levels 7–8, parcels add up', () => {
   })
 })
 
-describe('Wippe-Katapult: level 9, light to heavy', () => {
-  it('puts a light, a small and a middle thing on the stair, never already in order, that together reach the top', () => {
+describe('Wippe-Katapult: level 9, light to heavy on the balance', () => {
+  const th = (id, w) => ({ id, w })
+  const light = th('l', 2), small = th('s', 3), middle = th('m', 5)
+
+  it('puts a light, a small and a middle thing on the stair, never already in order, and throws nothing at a treat', () => {
     for (const seed of SEEDS) {
       for (const t of tasksFor(9, seeded(seed))) {
-        const ws = t.things.map(th => th.w)
-        expect(t.things.map(th => classOf(th.w)).sort()).toEqual(['light', 'middle', 'small'])
-        expect(ws.reduce((a, b) => a + b, 0)).toBe(TOP)
-        expect(t.target).toBe(TOP)
-        const steps = t.steps.map(id => t.things.find(th => th.id === id))
+        expect(t.things.map(x => classOf(x.w)).sort()).toEqual(['light', 'middle', 'small'])
+        // all drawn the same size: the picture neither gives the order away nor contradicts it
+        for (const x of t.things) expect(x.scale).toBe(1)
+        expect(t.treats).toBeUndefined()
+        expect(t.target).toBeUndefined()
+        const steps = t.steps.map(id => t.things.find(x => x.id === id))
         expect(isOrdered(steps)).toBe(false)
         expect(isOrdered([...steps].sort((a, b) => a.w - b.w))).toBe(true)
       }
     }
   })
 
-  it('makes the order matter: only the pile from light to heavy gets all three treats', () => {
+  it('lets the heavier end of the seesaw go down', () => {
+    expect(sinks(light, middle)).toBe(1)
+    expect(sinks(middle, light)).toBe(-1)
+    expect(sinks(small, null)).toBe(-1)
+    expect(sinks(null, small)).toBe(1)
+    expect(sinks(null, null)).toBe(0)
+  })
+
+  it('accepts the tick only for light to heavy, proving it neighbour against neighbour', () => {
+    const ok = proveOrder([light, small, middle])
+    expect(ok.ok).toBe(true)
+    expect(ok.wrong).toBe(-1)
+    expect(ok.pairs.map(p => [p.a, p.b, p.sinks])).toEqual([['l', 's', 1], ['s', 'm', 1]])
     const perms = l => (l.length <= 1 ? [l] : l.flatMap((x, i) => perms([...l.slice(0, i), ...l.slice(i + 1)]).map(p => [x, ...p])))
-    for (const seed of SEEDS) {
-      for (const t of tasksFor(9, seeded(seed))) {
-        const sorted = [...t.things].sort((a, b) => a.w - b.w)
-        // the treats hang where the pile from light to heavy sends the flyer, the last at the top
-        expect(t.treats).toEqual(pileHeights(sorted))
-        expect(t.treats.at(-1)).toBe(TOP)
-        for (const p of perms(t.things)) {
-          const all = treatsCaught(p, t.treats).length === 3
-          expect(all, p.map(th => th.label).join(' ')).toBe(isOrdered(p))
-          // every throw sends the flyer higher than the one before
-          const hs = pileHeights(p)
-          expect(hs.every((h, i) => i === 0 || h > hs[i - 1])).toBe(true)
-        }
+    for (const p of perms([light, small, middle])) {
+      const name = p.map(x => x.id).join('')
+      const proof = proveOrder(p)
+      expect(proof.ok, name).toBe(name === 'lsm')
+      // every pair before the wrong one sinks to the right; the wrong one tips the other way and ends the proof
+      if (!proof.ok) {
+        expect(proof.pairs.at(-1).sinks, name).toBe(-1)
+        expect(proof.pairs.slice(0, -1).every(q => q.sinks === 1), name).toBe(true)
       }
     }
+  })
+
+  it('marks the first pair that tips the wrong way, and the help weighs exactly that pair', () => {
+    // heavy at the bottom: the first pair is wrong
+    expect(proveOrder([middle, light, small]).wrong).toBe(0)
+    expect(pairToCompare([middle, light, small])).toEqual(['m', 'l'])
+    // the first pair right, the second wrong
+    expect(proveOrder([light, middle, small]).wrong).toBe(1)
+    expect(pairToCompare([light, middle, small])).toEqual(['m', 's'])
+    expect(proveOrder([small, middle, light]).wrong).toBe(1)
+    // in order: nothing to compare, the tick
+    expect(pairToCompare([light, small, middle])).toBeNull()
   })
 })
 
@@ -208,6 +241,14 @@ describe('Wippe-Katapult: level 10, make it level', () => {
         expect(lean(t.left, t.right + t.need)).toBe(0)
       }
     }
+  })
+
+  it('shows the next right move after two misses: one off, one on, or the tick', () => {
+    expect(balanceHint(5, 3)).toBe('take')
+    expect(balanceHint(4, 3)).toBe('take')
+    expect(balanceHint(1, 3)).toBe('add')
+    expect(balanceHint(0, 3)).toBe('add')
+    expect(balanceHint(3, 3)).toBe('done')
   })
 })
 
@@ -248,6 +289,21 @@ describe('Wippe-Katapult: the stage at the three sizes', () => {
       }
       // the branch is on the screen
       expect(g.branch.x0).toBeGreaterThan(0)
+      // level 9: a balance with room for the animal on its left, a thing on each end on the screen
+      const o = layoutFor(W, H, wide, 'order')
+      expect(o.watch.x - o.FS / 2).toBeGreaterThanOrEqual(0)
+      for (const deg of [-A, 0, A]) {
+        const l = onPlank(o, deg, -o.L), r = onPlank(o, deg, o.L)
+        expect(l.x).toBeGreaterThan(o.watch.x + o.FS / 2 - 10)
+        expect(r.x).toBeLessThan(W)
+        expect(onPlank(o, deg, o.load).x + o.thing / 2).toBeLessThan(W)
+        expect(Math.max(l.y, r.y)).toBeLessThanOrEqual(o.ground)
+      }
+      for (const side of [-1, 1]) {
+        const p = onPlank(o, A * side, side * o.load, 40)
+        expect(nearPan(o, A * side, p.x, p.y - 10, 80)).toBe(side)
+      }
+      expect(nearPan(o, 0, o.px, o.ground + 200, 80)).toBe(0)
       // level 10: both stumps on the screen
       const b = layoutFor(W, H, wide, 'balance')
       for (const s of b.stumps) {

@@ -45,6 +45,8 @@ export function grid(n, s, box, gap = 10) {
 export function layoutFor(W, H, wide, mode = 'throw') {
   const g = { W, H, wide }
   const balance = mode === 'balance'
+  // level 9: the seesaw is a balance, the flyer watches from the grass on its left
+  const scales = mode === 'order'
   if (wide) {
     g.ground = H - 18
     g.trunk = { x0: 22, x1: 72 }
@@ -56,7 +58,7 @@ export function layoutFor(W, H, wide, mode = 'throw') {
     g.thing = 88
     g.parcel = 86
     g.topY = 46
-    g.px = balance ? 330 : g.cx + 0.75 * g.L
+    g.px = balance ? 330 : scales ? 150 + g.L : g.cx + 0.75 * g.L
   } else {
     g.ground = H - 196
     g.trunk = { x0: 12, x1: 50 }
@@ -64,11 +66,11 @@ export function layoutFor(W, H, wide, mode = 'throw') {
     g.treat = 46
     g.cx = 146
     g.FS = 78
-    g.L = balance ? 150 : 160
+    g.L = balance || scales ? 150 : 160
     g.thing = 80
     g.parcel = 72
     g.topY = 168
-    g.px = balance ? W / 2 : g.cx + 0.75 * g.L
+    g.px = balance ? W / 2 : scales ? W - 32 - g.L : g.cx + 0.75 * g.L
   }
   g.py = g.ground - g.L * Math.sin(rad(A)) - (THICK / 2) * Math.cos(rad(A))
   g.seat = -0.78 * g.L                    // where the flyer sits, along the plank
@@ -108,6 +110,9 @@ export function layoutFor(W, H, wide, mode = 'throw') {
     ? { x0: W - 12 - seatW * 6 - 74, x1: W + 6, y: 112, seat: seatW, crown }
     : { x0: g.cx + g.FS / 2 + 4, x1: W + 6, y: 108, seat: seatW, crown }
 
+  // Level 9: where the flyer sits and watches, left of the seesaw
+  if (scales) g.watch = { x: wide ? 76 : 48, y: g.ground - g.FS / 2 + 2 }
+
   // Level 10: two stumps, the plank between them is a bridge when level
   if (balance) {
     const top = g.py - THICK / 2
@@ -121,6 +126,17 @@ export function layoutFor(W, H, wide, mode = 'throw') {
 export function nearDrop(g, x, y, s) {
   const d = g.dropAt(s)
   return Math.abs(x - d.x) < g.L * 0.55 && y < d.y + s * 0.6 && y > d.y - s * 3.2
+}
+
+/** Level 9: which end of the seesaw (-1 left, 1 right) a thing of size s let go at (x, y) is dropped on, or 0. */
+export function nearPan(g, deg, x, y, s) {
+  let best = 0, bd = Infinity
+  for (const side of [-1, 1]) {
+    const p = onPlank(g, deg, side * g.load, s / 2)
+    const d = Math.hypot(x - p.x, y - p.y)
+    if (d < bd) { bd = d; best = side }
+  }
+  return bd < s * 1.3 ? best : 0
 }
 
 /**
@@ -159,7 +175,8 @@ export function stairLayout(g, s) {
   const stepW = s + 12
   const rise = clamp((box.y1 - box.y0 - s - 20) / 3, 22, 40)
   const w = stepW * 3
-  const x0 = Math.min(box.x0 + 6, (box.x0 + box.x1) / 2 - w / 2 - (g.wide ? 0 : 50))
+  // wide: in the middle of the grass (with the tick beside it), clear of the seesaw's end
+  const x0 = g.wide ? Math.max(box.x0 + 6, (box.x0 + box.x1) / 2 - w / 2 - 50) : Math.min(box.x0 + 6, (box.x0 + box.x1) / 2 - w / 2 - 50)
   return Array.from({ length: 3 }, (_, i) => {
     const top = box.y1 - rise * (i + 1)
     return { x: x0 + stepW * i + stepW / 2, top, w: stepW, y: top - s / 2 + 4 }
