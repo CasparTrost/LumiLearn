@@ -80,7 +80,30 @@ export function Bank({ L }) {
       border: `3px solid ${INK}`, borderRadius: side ? '26px 0 0 26px' : '0 0 26px 26px',
       borderRight: side ? 'none' : undefined, borderTop: side ? undefined : 'none',
       boxShadow: 'inset 0 -6px 0 rgba(42,27,61,0.12)',
-    }} />
+    }}>
+      {/* reeds and flowers where no bucket stands */}
+      {(side
+        ? [[0.12, 0.97, 'reed'], [0.88, 0.97, 'flower', '#ff8fb8'], [0.5, 0.985, 'tuft']]
+        : [[0.03, 0.9, 'reed'], [0.1, 0.86, 'flower', '#ff8fb8'], [0.9, 0.88, 'flower', '#ffd34d'], [0.97, 0.9, 'reed'], [0.2, 0.95, 'tuft'], [0.8, 0.95, 'tuft']]
+      ).filter(([fx, fy]) => !L.units.some(u => {
+        const x = bank.x + fx * bank.w, y = bank.y + fy * bank.h
+        return x > u.x - 22 && x < u.x + u.uw + 22 && y > u.y - 10 && y < u.y + u.uh + 64
+      })).map(([fx, fy, kind, c], k) => (
+        <svg key={k} width="40" height="64" viewBox="-20 -60 40 64" style={{ position: 'absolute', left: fx * bank.w - 20, top: fy * bank.h - 60, overflow: 'visible' }}>
+          {kind === 'reed' && <>
+            <path d="M-6 2 Q-8 -30 -12 -50 M6 2 Q8 -26 14 -42" stroke="#3f8f3a" strokeWidth="4" fill="none" strokeLinecap="round" />
+            <rect x="-17" y="-58" width="9" height="22" rx="4.5" fill="#8a5a33" stroke={INK} strokeWidth="2" />
+            <rect x="9" y="-50" width="9" height="20" rx="4.5" fill="#8a5a33" stroke={INK} strokeWidth="2" />
+          </>}
+          {kind === 'flower' && <>
+            <path d="M0 2 V-26" stroke="#3f9a3a" strokeWidth="4" />
+            {[0, 72, 144, 216, 288].map(a => <ellipse key={a} cx="0" cy="-35" rx="5" ry="9" fill={c} stroke={INK} strokeWidth="1.5" transform={`rotate(${a} 0 -28)`} />)}
+            <circle cx="0" cy="-28" r="4.5" fill="#ffd34d" stroke={INK} strokeWidth="1.5" />
+          </>}
+          {kind === 'tuft' && <path d="M-14 2 Q-12 -18 -5 -26 Q-6 -12 0 2 Q2 -22 9 -28 Q6 -10 14 2 Z" fill="#4f9e3a" />}
+        </svg>
+      ))}
+    </div>
   )
 }
 

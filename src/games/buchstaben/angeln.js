@@ -97,8 +97,11 @@ export function pickBuckets(level) {
       const pairs = shuffle(usable.filter(L => usable.includes(PARTNER[L]) && L < PARTNER[L]))
         .slice(0, cfg.pairs).map(L => shuffle([L, PARTNER[L]]))
       const taken = pairs.flat()
-      const rest = shuffle(usable.filter(L => !taken.includes(L) && !taken.includes(PARTNER[L])))
-        .slice(0, n - taken.length)
+      const rest = []
+      for (const L of shuffle(usable)) {
+        if (taken.length + rest.length >= n) break
+        if (![...taken, ...rest].some(o => o === L || o === PARTNER[L])) rest.push(L)
+      }
       // a lone letter goes to one end, the pairs stay together
       const groups = shuffle([...pairs, ...rest.map(L => [L])])
       const out = groups.flat()
@@ -179,9 +182,9 @@ export function layoutFor(w, h, n, lanes) {
     pond = { x: 0, y: 0, w: x1, h }
   }
   const sand = 12, k = 0.8
-  // the surface band is C + 36 high and C = 1.1 S; the water holds the lanes and a strip of sand
-  const S = Math.round(clamp(Math.min((pond.h - sand - 36) / (1.1 + 0.6 + k * lanes), pond.w / 4.4), 52, 96))
-  const C = Math.round(S * 1.1)
+  // the surface band is C + 36 high and C = 1.3 S; the water holds the lanes and a strip of sand
+  const S = Math.round(clamp(Math.min((pond.h - sand - 36) / (1.3 + 0.75 + k * lanes), pond.w / 4.4), 52, 96))
+  const C = Math.round(S * 1.3)
   const rodUp = C + 22
   const surface = pond.y + rodUp + 14
   const water = { top: surface, bottom: pond.y + pond.h - sand }
@@ -190,7 +193,8 @@ export function layoutFor(w, h, n, lanes) {
 
 /** The depths (y) of the lanes: shallow ones first, deeper ones in the later levels. */
 export function lanesFor(L, lanes, depth) {
-  const top = L.water.top + L.S * 0.62
+  // the first lane below the boat's keel
+  const top = L.water.top + Math.max(L.S * 0.62, L.lumi * 0.26 + L.S * 0.5)
   // the bottom is for the chest and the boot
   const deepest = L.water.bottom - L.S * 1.25
   const want = top + (deepest - top) * depth

@@ -214,7 +214,9 @@ export default function InitialSoundGame({ level = 1, onComplete }) {
     const h = g.hook
     if (!retarget && !['idle', 'wait', 'sink', 'reel'].includes(h.st)) return
     if (h.st === 'reel' && h.prey) return
-    let tx = clamp(x, L.pond.x + 24, L.pond.x + L.pond.w - 24)
+    // the catch will dangle where the hook goes in: whole, inside the pond
+    const edge = L.C / 2 + 8
+    let tx = clamp(x, L.pond.x + edge, L.pond.x + L.pond.w - edge)
     let ty = clamp(y, L.surface + L.S * 0.3, L.water.bottom - L.S * 0.3)
     // a little help with aiming: a tap close to a swimmer goes where it will be
     if (!retarget) {
@@ -226,8 +228,7 @@ export default function InitialSoundGame({ level = 1, onComplete }) {
       }
       if (best) {
         const T = Math.abs(best.x - tip().x) / 900 + (best.y - L.surface) / SINK
-        const [lo, hi] = bounds()
-        tx = clamp(best.x + best.vx * g.pace * T * 0.7, lo, hi)
+        tx = clamp(best.x + best.vx * g.pace * T * 0.7, L.pond.x + edge, L.pond.x + L.pond.w - edge)
         ty = best.y
       }
     }
@@ -460,9 +461,11 @@ export default function InitialSoundGame({ level = 1, onComplete }) {
     }
     h.hy = hy
     const wet = hy > L.surface + 4
+    // the hook bites only down where it was sent, not on its way through the others
+    const armed = wet && (h.st === 'wait' || (h.st === 'sink' && Math.abs(hy - h.ty) < L.S * 0.8))
 
     // a bite?
-    if ((h.st === 'sink' || h.st === 'wait') && wet) {
+    if (armed) {
       let best = null, bd = L.S * 0.62
       for (const it of g.items.values()) {
         if (it.st !== 'swim' || it.a < 0.6) continue
@@ -485,7 +488,7 @@ export default function InitialSoundGame({ level = 1, onComplete }) {
         it.y = laneY + (reduce || it.kind === 'chest' ? 0 : Math.sin(g.t * 1.7 + it.ph) * 5)
         it.rot = reduce || it.kind !== 'word' ? 0 : Math.sin(g.t * 2.3 + it.ph) * 5
         // a word near the hook swims to it: they bite gladly
-        if (it.kind === 'word' && wet && (h.st === 'sink' || h.st === 'wait') && !reduce) {
+        if (it.kind === 'word' && armed && !reduce) {
           const dx = hx - it.x, dy = hy - it.y, d = Math.hypot(dx, dy)
           if (d < L.S * 1.6 && d > 1) {
             const p = cfg.pull * clamp(L.S / 80, 0.7, 1.2) * dt
@@ -665,9 +668,10 @@ export default function InitialSoundGame({ level = 1, onComplete }) {
   rightRef.current = held ? bucketEls.current[held.letter] ?? null : null
 
   return (
-    <div ref={juice.stage} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+    <div ref={juice.stage} data-game="angeln" data-phase={phase} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       <div ref={fieldRef} data-field="1" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
-        style={{ position: 'relative', flex: 1, minHeight: 0, overflow: 'hidden', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}>
+        style={{ position: 'relative', flex: 1, minHeight: 0, overflow: 'hidden', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none',
+          background: 'linear-gradient(180deg, #8fd3ff 0%, #d8f1ff 100%)' }}>
         {L && (
           <>
             <Pond L={L} />
