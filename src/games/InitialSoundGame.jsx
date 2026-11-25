@@ -12,7 +12,7 @@ import { levelConfig, pickBuckets, nextWord, layoutFor, lanesFor, keyFor } from 
 import { Pond, Bank, Boat, Boot, Chest, BinFrog, Splash, FrogUnit, BUCKET_COLORS } from './buchstaben/AngelnParts.jsx'
 
 /**
- * Anlaut-Detektiv — "Anlaut-Angeln": hearing the first sound of a word and
+ * Anlaut-Angeln: hearing the first sound of a word and
  * finding its letter.
  *
  * Lumi sits in a little boat on the pond. Under the surface things swim to

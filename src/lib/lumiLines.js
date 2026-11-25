@@ -50,7 +50,7 @@ export const LINES = {
   'spielnamen/spiel-rocket-math': 'Rechen-Rakete. Hüpf mit der Rakete von Planet zu Planet.',
   'spielnamen/spiel-shapes-land': 'Formen-Land. Finde Kreise, Dreiecke und Quadrate.',
   'spielnamen/spiel-rhyme': 'Reim-Theater. Finde, was sich reimt.',
-  'spielnamen/spiel-initial-sound': 'Anlaut-Detektiv. Mit welchem Laut fängt das Wort an?',
+  'spielnamen/spiel-initial-sound': 'Anlaut-Angeln. Womit fängt das Wort an?',
   'spielnamen/spiel-empathy': 'Gefühlsdetektiv. Was ist passiert, und was tut jetzt gut?',
   'spielnamen/spiel-shape-build': 'Formen-Werkstatt. Baue Bilder aus Formen.',
   'spielnamen/spiel-trace': 'Buchstaben-Spuren. Fahre Buchstaben und Zahlen mit dem Finger nach.',
@@ -101,7 +101,7 @@ export const LINES = {
   // hilfe
   'hilfe/hilfe-number-intro': 'Zahlen entdecken. Zieh das Tier mit dem Finger unter das Obst und fang genau so viele, wie auf dem Schild stehen. Hast du genug, drück auf den gelben Mund. Dann wird gegessen.',
   'hilfe/hilfe-letter-intro': 'ABC-Abenteuer. Das Monster frisst nur Sachen, die mit seinem Buchstaben anfangen. Tippe sie an, wenn sie vorbeifliegen. Sind zwei Monster da, zieh jede Sache zu ihrem Monster.',
-  'hilfe/hilfe-initial-sound': 'Anlaut-Detektiv. Du siehst ein Bild und hörst das Wort. Hör genau auf den ersten Laut! Dann tippe auf den Buchstaben, mit dem das Wort anfängt.',
+  'hilfe/hilfe-initial-sound': 'Anlaut-Angeln. Lumi angelt lustige Sachen aus dem Teich. Womit fängt das Wort an? Bring den Fang in den Eimer mit dem richtigen Buchstaben. Tippst du einen Frosch an, quakt er seinen Buchstaben.',
   'hilfe/hilfe-rhyme': 'Reim-Theater. Tippe auf den Ballon, der sich reimt, dann spielen die zwei eine lustige Szene. Auf dem Trapez drückst du Grün, wenn es sich reimt, und Rot, wenn nicht. Später tippst du den an, der sich nicht reimt: Den holt der Haken von der Bühne. Zum Schluss fängt Lumi einen Vers an, und du tippst das Reimwort dazu.',
   'hilfe/hilfe-numbers': 'Zahlenland. Am Himmel verstecken sich Bilder. Verbinde die Sterne der Reihe nach, dann erscheint das Bild.',
   'hilfe/hilfe-letters': 'Buchstabenwald. Tippe die Buchstaben, die am Ast hängen, dann zaubert Lumi das Ding aus dem Kessel. Später fallen die Buchstaben von den Bäumen: Tippe sie, bevor der Igel sie holt. Am Ende hat ein Rabe das letzte Wort geklaut: Jeder Buchstabe kostet ihn eine Feder.',

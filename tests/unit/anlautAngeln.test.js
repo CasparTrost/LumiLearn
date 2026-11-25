@@ -114,23 +114,32 @@ describe('Anlaut-Angeln: levels', () => {
     }
   })
 
-  it('the water is stocked evenly and never holds the same word twice', () => {
-    for (let level = 1; level <= 10; level++) {
-      const buckets = pickBuckets(level)
-      const swimming = [], used = {}, sorted = {}
-      for (let i = 0; i < 3; i++) swimming.push(nextWord(buckets, { swimming, used, sorted }))
-      for (let k = 0; k < 20; k++) {
-        const w = nextWord(buckets, { swimming, used, sorted })
-        expect(buckets).toContain(w.letter)
-        expect(swimming.some(s => s.word === w.word)).toBe(false)
-        used[w.word] = (used[w.word] ?? 0) + 1
-        // one is caught and sorted, the new one swims in
-        const caught = swimming.shift()
-        sorted[caught.letter] = (sorted[caught.letter] ?? 0) + 1
-        swimming.push(w)
+  // Played the way the game plays it: the pond gets as many words as the
+  // level has catches, no more (an earlier version drew twenty, more than
+  // some buckets have words, and failed now and then for that alone).
+  it('the water is stocked evenly, and no thing comes twice in a level', () => {
+    for (let run = 0; run < 200; run++) {
+      for (let level = 1; level <= 10; level++) {
+        const cfg = levelConfig(level), buckets = pickBuckets(level)
+        const swimming = [], used = {}, sorted = {}, all = []
+        const add = () => {
+          const w = nextWord(buckets, { swimming, used, sorted })
+          expect(buckets).toContain(w.letter)
+          used[w.word] = (used[w.word] ?? 0) + 1
+          swimming.push(w); all.push(w)
+        }
+        for (let i = 0; i < cfg.swimmers; i++) add()
+        for (let k = cfg.swimmers; k < cfg.catches; k++) {
+          // one is caught and sorted, the new one swims in
+          const caught = swimming.shift()
+          sorted[caught.letter] = (sorted[caught.letter] ?? 0) + 1
+          add()
+        }
+        expect(new Set(all.map(w => w.word)).size, `level ${level}`).toBe(all.length)
+        const counts = buckets.map(L => all.filter(w => w.letter === L).length)
+        expect(Math.max(...counts) - Math.min(...counts), `level ${level}`).toBeLessThanOrEqual(1)
+        expect(Math.min(...counts), `level ${level}`).toBeGreaterThanOrEqual(2)
       }
-      const counts = buckets.map(L => sorted[L] ?? 0)
-      expect(Math.max(...counts) - Math.min(...counts)).toBeLessThanOrEqual(3)
     }
   })
 })

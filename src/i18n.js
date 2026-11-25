@@ -74,7 +74,7 @@ export const translations = {
     'module.coloring': 'Mal-Atelier',
     'module.shape-build': 'Formen-Werkstatt',
     'module.empathy': 'Gefühlsdetektiv',
-    'module.initial-sound': 'Anlaut-Detektiv',
+    'module.initial-sound': 'Anlaut-Angeln',
     'module.rhyme': 'Reim-Theater',
     'module.shapes-land': 'Formen-Land',
     'module.rocket-math': 'Rechen-Rakete',

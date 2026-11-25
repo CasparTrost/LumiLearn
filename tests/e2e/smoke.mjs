@@ -370,13 +370,13 @@ async function playShadows(page, { wrongOnce = false } = {}) {
   await page.context().close()
 }
 
-// 3h. Anlaut-Detektiv (Anlaut-Angeln): level 1 fished to the results: a tap
+// 3h. Anlaut-Angeln: level 1 fished to the results: a tap
 // on a swimmer hooks it, the first catch goes into the wrong bucket (the
 // frog hands it back) and then into the right one, like all the others
 {
   const page = await newPage(SIZES.phone, save)
   await page.goto(URL); await page.waitForTimeout(1500)
-  await page.getByRole('button', { name: /^Anlaut-Detektiv, Level/ }).last().click()
+  await page.getByRole('button', { name: /^Anlaut-Angeln, Level/ }).last().click()
   const game = page.locator('[data-game="angeln"]')
   await game.waitFor({ timeout: 10000 }).catch(() => problems.push('Anlaut-Angeln: the game did not start'))
   let wrong = false, sorted = 0
