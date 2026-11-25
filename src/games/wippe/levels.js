@@ -153,10 +153,13 @@ export function sumTask(level, rnd, flyer) {
     sol.push(left)
     if (sol.length !== parts || sol.some(v => v < 1 || v > maxPart || v >= target)) continue
     // the others: no parcel equals the target on its own
+    // the others: no parcel equals the target on its own, and as few twins as can be
     const others = []
-    while (sol.length + others.length < 4) {
+    for (let k = 0; sol.length + others.length < 4; k++) {
       const v = between(1, maxPart, rnd)
-      if (v !== target) others.push(v)
+      if (v === target) continue
+      if (k < 40 && [...sol, ...others].includes(v)) continue
+      others.push(v)
     }
     const values = [...sol, ...others]
     if (values.some(v => v === target)) continue

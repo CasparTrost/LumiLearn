@@ -335,7 +335,7 @@ function Play({ wide, level, onComplete }) {
     await tween(fy, apexY, { duration: up, ease: [0.12, 0.8, 0.3, 1] })
     setTrail(false)
     if (task.mode === 'sum') addMark(h, null, h)
-    else addMark(h, label)
+    else if (label) addMark(h, label)
     if (task.mode === 'sum') { const w = numberWord(h); if (w) narrate([w]) }
     if (v === 'right') {
       // got it: the treat jumps into its paws

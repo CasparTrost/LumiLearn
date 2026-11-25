@@ -245,7 +245,8 @@ export function Branch({ g, guests, seats }) {
 /** A mark at the height a throw reached: the thing's picture, or the number. */
 export function Mark({ g, step, art, n, blink }) {
   const reduce = useReducedMotion()
-  const s = 30
+  // never taller than a step of the ruler, so two marks next to each other do not overlap
+  const s = Math.max(20, Math.min(30, Math.floor(g.unit) - 9))
   return (
     <motion.div aria-hidden="true" data-mark={step} initial={{ scale: 0.2, opacity: 0 }}
       animate={blink && !reduce ? { scale: [1, 1.25, 1], opacity: 1, transition: { duration: 0.5, repeat: 3 } } : { scale: 1, opacity: 1 }}
@@ -254,7 +255,7 @@ export function Mark({ g, step, art, n, blink }) {
         display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 8px 0 4px', boxSizing: 'border-box',
         background: PARCH, border: `3px solid ${INK}`, borderRadius: '6px 16px 16px 6px', boxShadow: '0 3px 0 rgba(42,27,61,0.25)',
       }}>
-      {art ? <Art art={art} size={s - 2} /> : <span style={numeral(24)}>{n}</span>}
+      {art ? <Art art={art} size={s - 2} /> : <span style={numeral(s * 0.8)}>{n}</span>}
     </motion.div>
   )
 }
