@@ -53,12 +53,12 @@ export function Planet({ n, size, glow = false, home = false }) {
 // two columns, one row per pair of passengers
 export function windowSpots(seats) {
   const rows = Math.ceil(seats / 2)
-  const r = rows <= 3 ? 11.5 : 9.5
-  const top = 56, bottom = 116
+  const r = rows <= 3 ? 13 : 9
+  const top = rows <= 3 ? 62 : 56, bottom = 120
   return Array.from({ length: seats }, (_, i) => {
     const row = Math.floor(i / 2), col = i % 2
     const y = rows === 1 ? (top + bottom) / 2 : top + (row * (bottom - top)) / (rows - 1)
-    return { x: col ? 64 : 36, y, r }
+    return { x: col ? 66 : 34, y, r }
   })
 }
 

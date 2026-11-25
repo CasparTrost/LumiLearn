@@ -283,7 +283,8 @@ export default function RocketMathGame({ level = 1, onComplete }) {
   const settle = n => {
     setPhase('land')
     shake(0.35)
-    if (S.plan.mode !== 'hop') narrate([numberWord(n)])
+    // a flight in one go says only where it ended (a hop says every planet)
+    if (S.plan.mode === 'tap' || S.plan.mode === 'pick') narrate([numberWord(n)])
     const verdict = judge(S.task, n)
     if (verdict === 'right') { right(); return }
     wrong(verdict, n)
@@ -322,10 +323,11 @@ export default function RocketMathGame({ level = 1, onComplete }) {
     if (milestone) burst(rocketRef.current, 'confetti', 16)
     // the alien jumps in, then the next sum
     later(1000, () => {
-      setWaiting(false)
-      setCreature({ n: t.target, kind: 'alien', key: seq, boarding: true })
+      if (missing) setWaiting('board')
+      else setCreature({ n: t.target, kind: 'alien', key: seq, boarding: true })
       later(S.reduce ? 50 : 520, () => {
         setCreature(null)
+        setWaiting(false)
         setRiders(r => [...r, S.hue])
         sfx.pop()
         squash(0.6)
@@ -575,7 +577,8 @@ export default function RocketMathGame({ level = 1, onComplete }) {
           {/* levels 9–10: the alien waits on its planet, where the rocket will stand */}
           <AnimatePresence>
             {waiting && phase !== 'finale' && (
-              <WaitingAlien key={`w${idx}`} L={L} n={task.target} hue={hue} cheer={cheer} rocketHere={pos === task.target} reduce={reduce} />
+              <WaitingAlien key={`w${idx}`} L={L} n={task.target} hue={hue} cheer={cheer} rocketHere={pos === task.target} reduce={reduce}
+                boarding={waiting === 'board' && seatPoint(L, rx.get(), ry.get(), riders.length, total)} />
             )}
           </AnimatePresence>
 
@@ -810,16 +813,19 @@ function Creature({ c, L, hue, seat, seats, reduce, rx, ry }) {
 
 // Levels 9–10: the alien stands on its planet and waves; it steps aside
 // when the rocket comes down there
-function WaitingAlien({ L, n, hue, cheer, rocketHere, reduce }) {
+function WaitingAlien({ L, n, hue, cheer, rocketHere, reduce, boarding }) {
   const size = clamp(L.cell * 0.9, 50, 84)
   const side = n >= 8 ? -1 : 1
   const p = rocketHere ? L.P(n + side * 0.62, L.pr * 0.6) : L.P(n, L.pr - 6)
   const at = L.vertical ? { left: p.x - size * 0.1, top: p.y - size / 2 } : { left: p.x - size / 2, top: p.y - size }
   return (
     <motion.div data-alien-waiting={n} initial={reduce ? false : { scale: 0 }} exit={{ scale: 0, opacity: 0 }}
-      animate={{ scale: 1, left: at.left, top: at.top }}
-      transition={{ type: 'spring', stiffness: 300, damping: 18 }}
-      style={{ position: 'absolute', width: size, height: size, zIndex: 6, pointerEvents: 'none', transformOrigin: '50% 100%' }}>
+      animate={boarding
+        // into the rocket, through its window
+        ? { left: boarding.x - size / 2, top: boarding.y - size / 2, scale: (boarding.r * 2.6) / size, opacity: 0.9 }
+        : { scale: 1, left: at.left, top: at.top }}
+      transition={boarding ? { duration: reduce ? 0 : 0.5, ease: 'easeIn' } : { type: 'spring', stiffness: 300, damping: 18 }}
+      style={{ position: 'absolute', width: size, height: size, zIndex: 6, pointerEvents: 'none', transformOrigin: boarding ? '50% 50%' : '50% 100%' }}>
       <motion.div key={cheer} animate={reduce ? {} : cheer ? { y: [0, -size * 0.4, 0, -size * 0.2, 0], rotate: [0, -12, 12, 0, 0] } : { rotate: [0, -4, 4, 0] }}
         transition={cheer ? { duration: 0.9 } : { duration: 1.8, repeat: Infinity }}>
         <AlienPic size={size} hue={hue} style={{ transform: L.vertical ? 'rotate(0deg)' : undefined }} />
