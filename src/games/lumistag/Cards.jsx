@@ -138,7 +138,7 @@ export function DayStrip({ tasks, done, current, slot, slotRefs, reduce, hop }) 
 }
 
 /** One digital time to pick in a reading round. */
-export function ReadChoice({ time, state, onPick, height, glow, reduce }) {
+export function ReadChoice({ time, state, onPick, height, width, glow, reduce }) {
   return (
     <motion.button type="button" onClick={onPick} aria-label={spoken(time)} disabled={state === 'tried'}
       initial={reduce ? false : { scale: 0.5, opacity: 0 }}
@@ -148,11 +148,11 @@ export function ReadChoice({ time, state, onPick, height, glow, reduce }) {
       whileTap={state ? undefined : { scale: 0.9 }}
       style={{
         all: 'unset', boxSizing: 'border-box', cursor: state === 'tried' ? 'default' : 'pointer', flexShrink: 0,
-        minWidth: Math.max(72, height * 1.35), height: Math.max(64, height), padding: '0 6px', borderRadius: 14,
+        width: Math.max(72, width), height: Math.max(64, height), padding: '0 4px', borderRadius: 14,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         background: state === 'right' ? '#DDF6CF' : glow ? '#FFF0B8' : '#FFFDF7',
         border: `3px solid ${state === 'right' ? '#2F8F3A' : INK}`, boxShadow: '0 5px 0 rgba(42,27,61,0.35)',
-        fontFamily: FONT, fontWeight: 800, fontSize: Math.max(24, height * 0.42), fontVariantNumeric: 'tabular-nums',
+        fontFamily: FONT, fontWeight: 800, fontSize: Math.max(22, Math.min(height * 0.42, width * 0.27)), fontVariantNumeric: 'tabular-nums',
         WebkitTapHighlightColor: 'transparent',
       }}>
       <span style={{ color: HOUR_C }}>{hourOf(time)}</span>

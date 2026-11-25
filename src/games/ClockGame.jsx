@@ -140,6 +140,8 @@ export default function ClockGame({ level = 1, onComplete }) {
   dayRef.current = day
   const phaseRef = useRef(phase)
   phaseRef.current = phase
+  // the ref at once, so a second touch in the same moment sees it
+  const go = p => { phaseRef.current = p; setPhase(p) }
 
   const houseRef = useRef(null), viewRef = useRef(null), tickRef = useRef(null), stripRefs = useRef([])
   const handFrom = useRef(null), handTo = useRef(null), rightRef = useRef(null)
@@ -183,15 +185,15 @@ export default function ClockGame({ level = 1, onComplete }) {
     sayTask()
     const first = idx === 0 || (reading && !tasks.slice(0, idx).some(t => t.read))
     if (reading) {
-      setPhase('run')
+      go('run')
       const target = dayRef.current + towards(dayRef.current + shift, task.time)
       later(500, () => runTo(target, () => {
-        setPhase('play')
+        go('play')
         if (first) narrate([optional(SAY.read)])
       }))
       return
     }
-    setPhase('play')
+    go('play')
     const parts = []
     if (idx === 0) parts.push(optional(hands === 'hour' ? SAY.set : SAY.tick))
     if (kind === 'number') parts.push(hourWord(hourOf(task.time)))
@@ -200,7 +202,7 @@ export default function ClockGame({ level = 1, onComplete }) {
 
   // ── The end of the level ─────────────────────────────────────────────────
   const finale = useCallback(() => {
-    setPhase('finale')
+    go('finale')
     sfx.tada()
     burst(viewRef.current, 'confetti', 22)
     // the day strip, one picture after the other, a little tune going up
@@ -215,7 +217,7 @@ export default function ClockGame({ level = 1, onComplete }) {
 
   // ── Right ────────────────────────────────────────────────────────────────
   const right = useCallback(at => {
-    setPhase('cheer')
+    go('cheer')
     setPulse(null)
     const clean = misses === 0
     if (clean) firstTry.current += 1
@@ -258,7 +260,7 @@ export default function ClockGame({ level = 1, onComplete }) {
 
   // ── Wrong ────────────────────────────────────────────────────────────────
   const oops = useCallback((at, off) => {
-    setPhase('oops')
+    go('oops')
     setMisses(m => m + 1)
     miss(at ?? houseRef.current)
     sayWrong()
@@ -266,7 +268,7 @@ export default function ClockGame({ level = 1, onComplete }) {
     setBird('flop')
     cuckooCall(true)
     if (off) setPulse(off)
-    later(reduce ? 400 : 850, () => { setBird('in'); sfx.bump(); setPhase('play') })
+    later(reduce ? 400 : 850, () => { setBird('in'); sfx.bump(); go('play') })
   }, [miss, later, reduce])
 
   const check = useCallback(() => {
@@ -279,6 +281,7 @@ export default function ClockGame({ level = 1, onComplete }) {
   const canTurn = phase === 'play' && !reading
   const onTurn = useCallback(delta => {
     if (phaseRef.current !== 'play') return
+    dayRef.current += delta
     setDay(d => d + delta)
     setMoved(true)
     setPulse(null)
@@ -300,27 +303,35 @@ export default function ClockGame({ level = 1, onComplete }) {
   const L = box && layoutFor(box.w, box.h)
   const helpOn = misses >= 2
   const ghost = helpOn && !reading && phase === 'play' ? task.time : null
-  const handToMove = hands === 'hour' ? 'hour' : (pulse === 'hour' ? 'hour' : offHand(day, task.time) === 'hour' ? 'hour' : 'minute')
+  // which hand the hint hand turns: with both off, the short one first (to the
+  // hour, the minutes kept), then the long one
+  const handToMove = hands === 'hour' || offHand(day, task.time) !== 'minute' ? 'hour' : 'minute'
+  const hintTarget = handToMove === 'hour' ? (hourOf(task.time) % 12) * 60 + minuteOf(day) : task.time
 
   const clock = L && (
     <CuckooHouse size={L.face} bird={bird} call={call} paused={paused} reduce={reduce} houseRef={houseRef}>
       <ClockFace day={day} hands={canTurn ? hands : null} step={step} onTurn={onTurn} onLetGo={onLetGo}
         lit={lit} pulse={phase === 'play' || phase === 'oops' ? pulse : null} ghost={ghost} labels={minuteLabels(level)}
         size={L.face} reduce={reduce}
-        anchors={{ from: handFrom, to: handTo, hand: handToMove, target: task.time }} />
+        anchors={{ from: handFrom, to: handTo, hand: handToMove, target: hintTarget }} />
     </CuckooHouse>
   )
 
+  // a reading round: the picture and three times side by side, as wide as there is room
+  const readCardH = L ? Math.min(L.cardH, L.wide ? 96 : 76) : 0
+  const choiceGap = L?.wide ? 10 : 6
+  const choiceW = L ? Math.floor(Math.min(130, (L.colW - readCardH * 0.92 - 6 - (L.wide ? 14 : 8) - 2 * choiceGap) / 3)) : 0
+  const choiceH = L ? Math.max(64, Math.min(L.cardH * 0.8, 84)) : 0
   const cardRow = L && (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: L.wide ? 14 : 8, flexShrink: 0, width: '100%', minHeight: L.cardH }}>
-      {phase !== 'finale' && <TaskCard key={idx} task={task} kind={kind} height={reading ? Math.min(L.cardH, 96) : L.cardH} reading={reading} reduce={reduce} />}
+      {phase !== 'finale' && <TaskCard key={idx} task={task} kind={kind} height={reading ? readCardH : L.cardH} reading={reading} reduce={reduce} />}
       {reading && (
-        <div style={{ display: 'flex', gap: L.wide ? 10 : 6 }}>
+        <div style={{ display: 'flex', gap: choiceGap }}>
           {options.map((o, i) => {
             const isRight = sameFace(o, task.time)
             return (
               <span key={`${idx}-${o}`} ref={isRight ? rightRef : undefined} style={{ display: 'flex' }}>
-                <ReadChoice time={o} height={Math.min(L.cardH * 0.8, 84)} reduce={reduce}
+                <ReadChoice time={o} height={choiceH} width={choiceW} reduce={reduce}
                   state={tried.includes(i) ? 'tried' : picked === i && phase === 'cheer' ? 'right' : null}
                   glow={helpOn && isRight && phase === 'play'}
                   onPick={e => pick(o, i, e)} />
@@ -373,7 +384,7 @@ export default function ClockGame({ level = 1, onComplete }) {
 
       {/* the hand shows the move: the first time, and after two misses */}
       <HintHand key={`set${idx}-${handToMove}`} from={handFrom} to={handTo}
-        active={canTurn && (helpOn || (idx === 0 && level <= 2 && !moved))} delay={helpOn ? 600 : 5000} repeat={2} />
+        active={canTurn && (helpOn || (idx === 0 && (level <= 2 || level === 5) && !moved))} delay={helpOn ? 600 : 5000} repeat={2} />
       <HintHand key={`tick${idx}`} to={tickRef} active={canTurn && hands === 'both' && moved && !helpOn} delay={7000} />
       <HintHand key={`read${idx}`} to={rightRef} active={reading && phase === 'play' && helpOn} delay={400} />
       {bursts}

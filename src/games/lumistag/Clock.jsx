@@ -18,7 +18,8 @@ const CX = 120, CY = 120, R = 108
 const HOUR_LEN = R * 0.52, MIN_LEN = R * 0.84
 const rad = d => d * Math.PI / 180
 const tip = (deg, len) => ({ x: CX + len * Math.sin(rad(deg)), y: CY - len * Math.cos(rad(deg)) })
-const angleDiff = (a, b) => ((a - b) % 360 + 540) % 360 - 180
+// the turn from b to a, −180 … 180; exactly opposite counts as forward (the day goes on)
+const angleDiff = (a, b) => { const d = ((a - b) % 360 + 360) % 360; return d > 180 ? d - 360 : d }
 
 /**
  * A number that glides to `to` (a soft spring), re-rendering as it goes.
