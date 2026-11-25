@@ -43,7 +43,7 @@ export const MODULES = [
   { id: 'initial-sound', title: 'Anlaut-Detektiv',  sub: 'Der erste Laut',         emoji: '🕵️', world: 'buchstaben', scene: 'pond', minAge: 5, color: 'var(--px-gold)',   say: 'Anlaut-Detektiv. Mit welchem Laut fängt das Wort an?' },
   { id: 'empathy',       title: 'Gefühlsdetektiv',  sub: 'Was ist passiert? Was hilft?', emoji: '🕵️‍♀️', world: 'gefuehle', scene: 'meadow', minAge: 5, color: 'var(--px-red)',    say: 'Gefühlsdetektiv. Was ist passiert, und was tut jetzt gut?' },
   { id: 'shape-build',   title: 'Formen-Werkstatt', sub: 'Aus Formen bauen',       emoji: '🧩', world: 'denken', scene: 'room',     minAge: 5, color: 'var(--px-orange)', say: 'Formen-Werkstatt. Baue Bilder aus Formen.' },
-  { id: 'trace',         title: 'Buchstaben-Spuren', sub: 'Mit dem Finger schreiben', emoji: '📝', world: 'buchstaben', scene: 'room', minAge: 4, color: 'var(--px-sky)', say: 'Buchstaben-Spuren. Fahre Buchstaben und Zahlen mit dem Finger nach.' },
+  { id: 'trace',         title: 'Buchstaben-Spuren', sub: 'Buchstaben und Zahlen', emoji: '📝', world: 'buchstaben', scene: 'room', minAge: 4, color: 'var(--px-sky)', say: 'Buchstaben-Spuren. Fahre Buchstaben und Zahlen mit dem Finger nach.' },
   { id: 'coloring',      title: 'Mal-Atelier',      sub: 'Frei malen',             emoji: '🖍️', world: 'malen', scene: 'room',      minAge: 4, color: 'var(--px-purple)', say: 'Mal-Atelier. Male, was du möchtest.' },
 ]
 
