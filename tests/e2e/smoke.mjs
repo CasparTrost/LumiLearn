@@ -272,7 +272,7 @@ async function playShadows(page) {
   await page.context().close()
 }
 
-// 3e. Zahlen entdecken (Bruno fängt): level 1 to the results, the basket
+// 3f. Zahlen entdecken (Bruno fängt): level 1 to the results, the basket
 // steered under every falling fruit; five animals end up at the picnic
 {
   const page = await newPage(SIZES.phone, save)
