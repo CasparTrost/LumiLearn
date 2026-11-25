@@ -330,14 +330,28 @@ describe('Schattenrätsel: the light must rest on a shadow before it takes the f
   it('a lit shadow the light only crosses (the mouse on its way to the cards) does not take the focus', () => {
     const shadows = [lit('a'), lit('b')]
     let st = { focus: 'a', dwell: null }
-    // the light is over b for a quarter of a second, then gone
-    for (let t = 0; t < 0.25; t += 0.016) st = settleFocus(st.focus, 'b', shadows, st.dwell, t)
+    // the travelling light is over b for a quarter of a second, then gone
+    for (let t = 0; t < 0.25; t += 0.016) st = settleFocus(st.focus, 'b', shadows, st.dwell, t, false, false)
     expect(st.focus).toBe('a')
     st = settleFocus(st.focus, 'a', shadows, st.dwell, 0.3)
     expect(st).toEqual({ focus: 'a', dwell: null })
-    // crossing it again later starts counting anew
+    // a rest shorter than the dwell does not count either, and the next one starts anew
     st = settleFocus(st.focus, 'b', shadows, st.dwell, 5)
     expect(st.focus).toBe('a')
+    st = settleFocus(st.focus, 'a', shadows, st.dwell, 5.05)
+    st = settleFocus(st.focus, 'b', shadows, st.dwell, 9)
+    expect(st.focus).toBe('a')
+  })
+  it('a light that is travelling never moves the focus, however slowly it crosses the shadow', () => {
+    const shadows = [lit('a'), lit('b')]
+    let st = { focus: 'a', dwell: null }
+    for (let t = 0; t < 3; t += 0.016) st = settleFocus(st.focus, 'b', shadows, st.dwell, t, false, false)
+    expect(st).toEqual({ focus: 'a', dwell: null })
+    // it comes to rest there: now the time counts, from the moment it rests
+    st = settleFocus(st.focus, 'b', shadows, st.dwell, 3, false, true)
+    expect(st.focus).toBe('a')
+    st = settleFocus(st.focus, 'b', shadows, st.dwell, 3 + FOCUS_DWELL + 0.01, false, true)
+    expect(st.focus).toBe('b')
   })
   it('resting on it takes the focus', () => {
     const shadows = [lit('a'), lit('b')]
