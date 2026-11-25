@@ -401,6 +401,8 @@ export default function RocketMathGame({ level = 1, onComplete }) {
     const lean = Lx.vertical ? -90 * D.facing : 22 * clamp(v / FLY_MAX, -1, 1)
     D.rot += (lean - D.rot) * Math.min(1, dt * 8)
     const bob = D.mode === 'hold' && !S.reduce ? Math.sin(now / 220) * 3 : 0
+    // the flame (its feet) over the planet, as at the top of a button hop: on
+    // a phone held upright the body points on, and the arcs behind stay in sight
     const p = Lx.P(x, Lx.pr + D.lift * (Lx.arcH + 24 + bob))
     rx.set(p.x); ry.set(p.y); rot.set(D.mode === 'down' ? D.rot * D.lift : D.rot)
     if (D.mode === 'down' && D.lift <= 0) { touchDown(D); return }
