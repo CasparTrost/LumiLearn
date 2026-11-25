@@ -9,8 +9,8 @@ import { sayRight, sayTask, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
 import { useLater } from './zahlen/stage.jsx'
-import { ALIEN_HUES, MINUS, PLUS, TOP, buildTasks, countChoices, dirOf, freeGap, judge, levelPlan, residentOf } from './rakete/tasks.js'
-import { bow, clamp, hopPath, layout } from './rakete/layout.js'
+import { ALIEN_HUES, MINUS, PLUS, TOP, buildTasks, countChoices, dirOf, freeGap, judge, landingLead, levelPlan, residentOf, starsWon, tapHelp } from './rakete/tasks.js'
+import { bow, clamp, hopPath, layout, moonFlight } from './rakete/layout.js'
 import {
   AlienPic, BonusStar, CountBubble, GOLD, HopArcs, INK, LandButton, Moon, Planet, Rocket, SIGN_COLOR, ThrustButton, windowSpots,
 } from './rakete/parts.jsx'
@@ -45,7 +45,9 @@ import {
  * The alien's planet is never marked before the rocket lands right (every
  * planet has a door, the alien comes out of the right one). After two
  * misses the way is drawn as a dashed path. Bonus stars hang between some
- * planets and are collected by flying through them. Everyone picked up
+ * planets and are collected by the flight of a right answer through them
+ * (a miss collects none). In the tap levels the planets bounce one after
+ * the other while the child waits: "tap one of us", never the answer. Everyone picked up
  * looks out of one of the rocket's windows; at the end of the level the
  * rocket takes them all to the moon.
  *
@@ -111,6 +113,7 @@ export default function RocketMathGame({ level = 1, onComplete }) {
   const [tried, setTried] = useState([])            // bubbles or planets that were wrong
   const [counting, setCounting] = useState(-1)      // a wrong bubble: the arcs count themselves
   const [finale, setFinale] = useState(null)        // { landed }
+  const [wave, setWave] = useState({ k: 0, skip: null }) // the tap levels: the planets bounce, "tap one of us" (not the rocket's)
 
   const task = tasks[idx]
   const d = dirOf(task.op)
@@ -118,7 +121,7 @@ export default function RocketMathGame({ level = 1, onComplete }) {
   const hue = ALIEN_HUES[idx % ALIEN_HUES.length]
 
   // What the timers and the taps work on; the state above is its picture
-  const g = useRef({ phase: 'enter', pos: null, air: false, queue: [], arcs: [], misses: 0, firstTry: 0, stars: [], idx: 0, done: false }).current
+  const g = useRef({ phase: 'enter', pos: null, air: false, queue: [], arcs: [], misses: 0, firstTry: 0, stars: [], win: [], idx: 0, done: false }).current
   const S = useRef({}).current
   Object.assign(S, { L, task, idx, plan, reduce, paused, hue })
   const setPhase = p => { g.phase = p; setPhaseState(p) }
@@ -134,7 +137,7 @@ export default function RocketMathGame({ level = 1, onComplete }) {
 
   const rocketRef = useRef(null)
   const plusRef = useRef(null), minusRef = useRef(null), landRef = useRef(null)
-  const bubbleRef = useRef(null), startRef = useRef(null), targetRef = useRef(null)
+  const bubbleRef = useRef(null), targetRef = useRef(null)
 
   // ── The size of the play area ──
   useLayoutEffect(() => {
@@ -197,7 +200,8 @@ export default function RocketMathGame({ level = 1, onComplete }) {
     })
   }
 
-  // A star over the gap a hop flies through goes to the counter
+  // A star over a gap goes to the counter: during a flight in one go that
+  // lands right, or when the hops have landed right (starsWon)
   const collect = gap => {
     if (!g.stars.includes(gap)) return
     g.stars = g.stars.filter(x => x !== gap)
@@ -216,7 +220,7 @@ export default function RocketMathGame({ level = 1, onComplete }) {
     else g.arcs = [...g.arcs, { id: ++seq, a, b }]
     setArcs(g.arcs)
     sfx.whoosh()
-    later(ms * 0.5, () => collect(Math.min(a, b)))
+    if (g.win.includes(Math.min(a, b))) later(ms * 0.5, () => collect(Math.min(a, b)))
     flight(a, b, {
       ms,
       onDone: () => {
@@ -231,6 +235,8 @@ export default function RocketMathGame({ level = 1, onComplete }) {
   // Many hops in a row, quickly: the flight in one go (levels 7, 8, 10)
   const flyTo = (n, onDone) => {
     const op = n > g.pos ? PLUS : MINUS
+    // the stars on the way count only if this is the right planet
+    g.win = starsWon(g.stars, S.task, n)
     const step = () => {
       if (g.pos === n) { onDone(); return }
       hopOnce(op, FAST_MS, step)
@@ -252,18 +258,21 @@ export default function RocketMathGame({ level = 1, onComplete }) {
     const b = g.pos + dirOf(op)
     if (b < 0 || b > TOP) { sfx.bonk(); nudge(); return }
     hopOnce(op, HOP_MS, n => {
-      narrate([numberWord(n)])
       const q = g.queue.shift()
-      if (q === 'land') { g.queue = []; land() }
-      else if (q) thrust(q)
+      // the tick was pressed in the air: the planet's number is said with
+      // the landing's feedback, not on its own (the feedback stopped it)
+      if (q === 'land') { g.queue = []; land(false); return }
+      narrate([numberWord(n)])
+      if (q) thrust(q)
     })
   }
 
-  const land = () => {
+  // saidByHop: the number of the planet has been said by the last hop
+  const land = (saidByHop = true) => {
     if (g.phase !== 'play' || S.paused) return
     if (g.air) { if (!g.queue.includes('land')) g.queue.push('land'); return }
-    if (g.pos === S.task.from) { nudge(); return }
-    settle(g.pos)
+    if (g.pos === S.task.from) { if (!saidByHop) narrate([numberWord(g.pos)]); nudge(); return }
+    settle(g.pos, saidByHop)
   }
 
   const tapPlanet = n => {
@@ -283,18 +292,28 @@ export default function RocketMathGame({ level = 1, onComplete }) {
 
   // ── Landing: who lives here? ────────────────────────────────────────────
 
-  const settle = n => {
+  const settle = (n, saidByHop = false) => {
     setPhase('land')
     shake(0.35)
-    // a flight in one go says only where it ended (a hop says every planet)
-    if (S.plan.mode === 'tap' || S.plan.mode === 'pick') narrate([numberWord(n)])
+    g.win = []
+    // where it landed comes first, in the same narration as the feedback (a
+    // flight in one go says only where it ended; a hop says every planet)
+    const withNumber = landingLead(S.plan.mode, saidByHop)
+    const lead = withNumber ? [numberWord(n)] : []
+    // the hop's number may still be playing: the feedback waits for its end
+    const speak = fn => (withNumber ? fn() : afterSpeech(fn, 0))
     const verdict = judge(S.task, n)
-    if (verdict === 'right') { right(); return }
-    wrong(verdict, n)
+    if (verdict === 'right') { right(lead, speak); return }
+    wrong(verdict, n, lead, speak)
   }
 
-  const right = () => {
+  const right = (lead, speak) => {
+    // the stars the hops flew through count now that the landing is right
+    if (S.plan.mode === 'hop' || S.plan.mode === 'count') {
+      starsWon(g.stars, S.task, g.pos).forEach((gap, i) => later(i * 160, () => collect(gap)))
+    }
     if (S.plan.mode === 'count') {
+      if (lead.length) narrate(lead)
       // at the alien's planet: now how many hops was it?
       setCheer(c => c + 1)
       sfx.slideUp()
@@ -306,10 +325,10 @@ export default function RocketMathGame({ level = 1, onComplete }) {
       })
       return
     }
-    won()
+    won(lead, speak)
   }
 
-  const won = () => {
+  const won = (lead = [], speak = fn => fn()) => {
     const first = g.misses === 0
     if (first) g.firstTry += 1
     setPhase('won')
@@ -318,7 +337,7 @@ export default function RocketMathGame({ level = 1, onComplete }) {
     setGhost(false)
     setBubbles(false)
     const { milestone } = hit(rocketRef.current, { stars: first ? 2 : 1 })
-    sayRight()
+    speak(() => sayRight(undefined, { lead }))
     const t = S.task
     if (!missing) setCreature({ n: t.target, kind: 'alien', key: ++seq })
     else setCheer(c => c + 1)
@@ -339,13 +358,15 @@ export default function RocketMathGame({ level = 1, onComplete }) {
     })
   }
 
-  const wrong = (verdict, n) => {
+  const wrong = (verdict, n, lead, speak) => {
     g.misses += 1
     const t = S.task
     miss(rocketRef.current)
-    sayWrong()
     const hint = rec(SAY[verdict])
-    if (hint) afterSpeech(() => narrate([hint]), 0)
+    speak(() => {
+      sayWrong(null, { lead })
+      if (hint) afterSpeech(() => narrate([hint]), 0)
+    })
     setCreature({ n, kind: 'resident', art: residentOf(n), key: ++seq })
     // how many hops it was, beside the number it should have been; not in
     // levels 9–10: there that number is the empty box, and counting the hops
@@ -405,7 +426,7 @@ export default function RocketMathGame({ level = 1, onComplete }) {
   useEffect(() => {
     if (!L) return
     const t = tasks[idx]
-    g.arcs = []; g.misses = 0; g.queue = []; g.idx = idx
+    g.arcs = []; g.misses = 0; g.queue = []; g.idx = idx; g.win = []
     setArcs([]); setGhost(false); setBadge(null); setFilled(false); setTried([]); setBubbles(false); setCounting(-1)
     setPhase('enter')
     lockPreviews()
@@ -438,6 +459,17 @@ export default function RocketMathGame({ level = 1, onComplete }) {
     }))
   }, [idx, L == null]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // The tap levels: while the child waits, the planets bounce one after the
+  // other, all alike (tapHelp): soon at the first sum, later after a long wait
+  const waving = tapHelp(plan.mode, ghost) === 'wave' && phase === 'play' && !paused
+  useEffect(() => {
+    if (!waving) return
+    let t
+    const go = ms => { t = setTimeout(() => { setWave(w => ({ k: w.k + 1, skip: g.pos })); go(7000) }, ms) }
+    go(idx === 0 ? 2500 : 7000)
+    return () => clearTimeout(t)
+  }, [waving, idx]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── The end of the level: everybody to the moon ──
   const toTheMoon = () => {
     setPhase('finale')
@@ -449,8 +481,7 @@ export default function RocketMathGame({ level = 1, onComplete }) {
     sfx.slideUp()
     const Lx = S.L
     const from = { x: rx.get(), y: ry.get() }
-    const to = { x: Lx.moon.x, y: Lx.moon.y - Lx.moon.r * 0.8 }
-    const c = { x: (from.x + to.x) / 2, y: Math.max(Lx.rh * 0.9, Math.min(from.y, to.y) - Lx.rh * 1.2) }
+    const { to, c } = moonFlight(Lx, from)
     later(500, () => {
       setFlame(1)
       sfx.whoosh()
@@ -482,18 +513,17 @@ export default function RocketMathGame({ level = 1, onComplete }) {
   const showControls = hopMode && !bubbles && phase !== 'finale' && phase !== 'count' && counting < 0
   // the hint hand: the first sum of a level shows the move soon, later only a long wait
   const handDelay = idx === 0 && level <= 7 ? 2500 : 7000
-  // the tap levels: at the first sum the hand shows the move once, from the
-  // rocket along the line to the planet it lands on; after two misses it
-  // taps the end of the dashed way
-  const tapDemo = plan.mode === 'tap' && idx === 0 && !ghost
+  // the tap levels: no hand before a miss (the planets bounce instead, see
+  // above); after two misses it taps the end of the dashed way
   const handTo = !ready || phase === 'finale' ? null
     : bubbles ? bubbleRef
-    : plan.mode === 'tap' ? (ghost || tapDemo ? targetRef : null)
+    : plan.mode === 'tap' ? (tapHelp(plan.mode, ghost) === 'target' ? targetRef : null)
     : ghost && pos === task.target ? landRef
     : ghost ? (task.target > pos ? plusRef : minusRef)
     // the right button only where there is one sign: the sign is the lesson of the mixed levels
     : arcs.length === 0 && plan.ops.length === 1 ? (task.op === PLUS ? plusRef : minusRef)
     : null
+  const hud = L && (phase === 'finale' ? L.hudFinale : L.hud)
   const ghostHops = ghost && L ? Array.from({ length: task.step }, (_, i) => ({ a: task.from + d * i, b: task.from + d * (i + 1) })) : []
 
   return (
@@ -528,13 +558,17 @@ export default function RocketMathGame({ level = 1, onComplete }) {
                 }}>
                 <motion.div key={`${n}-${isStart ? glow : 0}`} style={{ opacity: dim ? 0.55 : 1 }}
                   animate={isStart && !reduce ? { scale: [1, 1.22, 1, 1.12, 1] } : {}} transition={{ duration: 0.9 }}>
-                  <Planet n={n} size={L.pd} glow={isStart} home={creature?.n === n} />
+                  {/* the tap levels' wave: every planet but the rocket's bounces once, one after the other */}
+                  <motion.div key={`wv${wave.k}`} data-wave={wave.k && tapCell && n !== wave.skip ? wave.k : undefined}
+                    animate={wave.k && tapCell && n !== wave.skip && !reduce ? (vertical ? { x: [0, 16, 0] } : { y: [0, -16, 0], scale: [1, 1.08, 1] }) : {}}
+                    transition={{ duration: 0.4, delay: n * 0.07, ease: 'easeOut' }}>
+                    <Planet n={n} size={L.pd} glow={isStart} home={creature?.n === n} />
+                  </motion.div>
                 </motion.div>
               </Cell>
             )
           })}
-          {/* where the hint hand of the tap levels starts and taps: the start and the alien's planet */}
-          <span ref={startRef} aria-hidden="true" style={{ position: 'absolute', left: L.P(task.from).x, top: L.P(task.from).y, width: 2, height: 2 }} />
+          {/* where the hint hand of the tap levels taps after two misses: the alien's planet */}
           <span ref={targetRef} aria-hidden="true" style={{ position: 'absolute', left: L.P(task.target).x, top: L.P(task.target).y, width: 2, height: 2 }} />
 
           {/* the arcs: the way flown, numbered; after two misses the way to fly, dashed */}
@@ -583,7 +617,7 @@ export default function RocketMathGame({ level = 1, onComplete }) {
               const p = L.P(gap + 0.5, starOff(L))
               const s = clamp(L.cell * 0.42, 26, 38)
               return (
-                <motion.div key={`s${gap}`} aria-hidden="true" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 1.8, opacity: 0 }}
+                <motion.div key={`s${gap}`} aria-hidden="true" data-star-gap={gap} initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 1.8, opacity: 0 }}
                   style={{ position: 'absolute', left: p.x - s / 2, top: p.y - s / 2, width: s, height: s, pointerEvents: 'none', zIndex: 1 }}>
                   <BonusStar size={s} />
                 </motion.div>
@@ -627,8 +661,11 @@ export default function RocketMathGame({ level = 1, onComplete }) {
             )}
           </AnimatePresence>
 
-          {/* the star counter */}
-          <div style={{ position: 'absolute', top: L.hud.y, ...(L.hud.align === 'right' ? { right: L.w - L.hud.x } : L.hud.align === 'left' ? { left: L.hud.x } : { left: L.hud.x, transform: 'translateX(-50%)' }), zIndex: 6 }}>
+          {/* the star counter; in the finale it moves out of the rocket's way (layout.js: hudFinale) */}
+          <div style={{
+            position: 'absolute', top: hud.y, zIndex: 6, transition: reduce ? undefined : 'top 0.5s ease, left 0.5s ease',
+            ...(hud.align === 'right' ? { right: L.w - hud.x } : hud.align === 'left' ? { left: hud.x } : { left: hud.x, transform: 'translateX(-50%)' }),
+          }}>
             {juice.hud}
           </div>
 
@@ -692,7 +729,7 @@ export default function RocketMathGame({ level = 1, onComplete }) {
           </AnimatePresence>
           {finale?.landed && <MoonParty L={L} riders={riders} reduce={reduce} />}
 
-          {handTo && <HintHand key={tapDemo ? 'demo' : 'tap'} from={tapDemo ? startRef : undefined} to={handTo} delay={ghost ? 1500 : handDelay}
+          {handTo && <HintHand to={handTo} delay={ghost ? 1500 : handDelay}
             active={(playing || phase === 'count') && !paused} />}
           {juice.layer}
           {bursts}

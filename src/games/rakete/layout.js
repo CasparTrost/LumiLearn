@@ -29,19 +29,23 @@ function wide(w, h, m) {
   const arcH = clamp(cell * 0.5, 26, 50)
   const short = h < 520
   const btn = short ? clamp(h * 0.25, 66, 80) : clamp(h * 0.14, 80, 104)
-  let lineY, band, card, controls, hud
+  let lineY, band, card, controls, hud, hudFinale
   if (short) {
     band = btn + 12
     card = { x: m, y: 6, w: w * 0.5 - m, h: band - 6 }
     controls = { x: w * 0.5, y: 6, w: w * 0.5 - m, h: band - 6, justify: 'flex-end' }
-    // the star counter at the start of the buttons' half, never over the sum
+    // the star counter at the start of the buttons' half, never over the sum;
+    // in the finale (the sum is gone) it moves to the sum's place, out of the
+    // way of the rocket flying to the moon
     hud = { x: w * 0.5 + 6, y: 10, size: 30, align: 'left' }
+    hudFinale = { ...hud, x: m + 6 }
     lineY = h - m - pr - 2
   } else {
     const cardH = clamp(h * 0.2, 104, 150)
     card = { x: m, y: 10, w: w - 2 * m, h: cardH }
     controls = { x: m, y: h - btn - 22, w: w - 2 * m, h: btn + 12, justify: 'center' }
     hud = { x: w - m, y: 12, size: 40, align: 'right' }
+    hudFinale = hud
     // the rocket in the air and the planet, in the middle of what is left
     const block = rh + arcH + pd + 24
     const top = card.y + card.h, bottom = controls.y
@@ -50,12 +54,14 @@ function wide(w, h, m) {
   const P = (n, off = 0) => ({ x: x0 + (n + 0.5) * cell, y: lineY - off })
   return {
     vertical: false, short, w, h, m, cell, pd, pr, rw, rh, arcH, btn, P, base: 0, lean: 1,
-    card, controls, hud,
+    card, controls, hud, hudFinale,
     nb: short ? clamp(card.h * 0.56, 40, 52) : clamp(card.h * 0.48, 50, 70),
     alien: short ? card.h * 0.9 : clamp(card.h * 0.95, 96, 140),
-    // the moon of the finale, high enough for the rocket to stand on it
+    // the moon of the finale, high enough for the rocket to stand on it; on a
+    // short screen well right of the middle, where the star counter stands
+    // during play
     moon: short
-      ? { x: w * 0.6, y: rh + 54 + 12, r: 54 }
+      ? { x: w * 0.76, y: rh + 54 + 12, r: 54 }
       : { x: w / 2, y: card.y + rh + clamp(h * 0.12, 56, 96) + 10, r: clamp(h * 0.12, 56, 96) },
   }
 }
@@ -77,12 +83,15 @@ function tall(w, h, m) {
   const controls = { x: px, y: h - 2 * btn - 34, w: pw, h: 2 * btn + 24, justify: 'center' }
   const P = (n, off = 0) => ({ x: lineX + off, y: y0 - (n + 0.5) * cell })
   const hud = { x: px + pw / 2, y: card.y + card.h + 10, size: 32, align: 'center' }
+  // in the finale the sum is gone and the counter moves up into its place:
+  // below it, a rocket flying from the upper planets to the moon passed under it
+  const hudFinale = { ...hud, y: card.y + 6 }
   // the moon of the finale below the star counter: the rocket and the
   // dancers stand on its top, the counter stays above them
   const moonR = Math.min(80, pw * 0.36)
   return {
     vertical: true, short: false, w, h, m, cell, pd, pr, rw, rh, arcH, btn, P, base: 90, lean: -1,
-    card, controls, hud,
+    card, controls, hud, hudFinale,
     // the longest sum ("10 − 3 = ▢", about five numbers wide) fits the card
     nb: clamp((pw - 40) / 5, 32, 46),
     alien: clamp(cardH * 0.5, 64, 116),
@@ -94,6 +103,18 @@ function tall(w, h, m) {
 export function bow(a, c, b, t) {
   const u = 1 - t
   return { x: u * u * a.x + 2 * u * t * c.x + t * t * b.x, y: u * u * a.y + 2 * u * t * c.y + t * t * b.y }
+}
+
+/**
+ * The finale's flight from where the rocket stands (its feet) to the top of
+ * the moon: the end and the bow's control point. On a phone held upright
+ * the bow never rises above the moon's top: a higher one took the rocket
+ * from the upper planets under the star counter.
+ */
+export function moonFlight(L, from) {
+  const to = { x: L.moon.x, y: L.moon.y - L.moon.r * 0.8 }
+  const c = { x: (from.x + to.x) / 2, y: Math.max(L.vertical ? to.y : L.rh * 0.9, Math.min(from.y, to.y) - L.rh * 1.2) }
+  return { to, c }
 }
 
 /** One hop from planet a to planet b: start, control point, end (the rocket's feet). */

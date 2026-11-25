@@ -122,6 +122,40 @@ export function gapsBetween(a, b) {
   return Array.from({ length: hi - lo }, (_, i) => lo + i)
 }
 
+/**
+ * The bonus stars a flight wins: only the flight of a right answer, and
+ * only the stars over the gaps it flew through. A miss wins nothing (a star
+ * for flying the wrong way was a reward for the mistake).
+ */
+export function starsWon(stars, task, landed) {
+  if (judge(task, landed) !== 'right') return []
+  const way = gapsBetween(task.from, landed)
+  return stars.filter(g => way.includes(g))
+}
+
+/**
+ * Where the rocket landed is said before the feedback, in one narration
+ * ("Sieben. Noch nicht."): a narration of its own was stopped by the
+ * feedback a millisecond later. A flight in one go (tap, pick) has not said
+ * it yet; a hop has said it, unless the tick was pressed while the rocket
+ * was still in the air (then the landing comes before the hop's word).
+ */
+export function landingLead(mode, saidByHop) {
+  return mode === 'tap' || mode === 'pick' || !saidByHop
+}
+
+/**
+ * The help of the tap levels. No hand on the answer planet before a miss
+ * (that solved the sum, and a hand gliding there showed a drag where a tap
+ * is wanted): the planets bounce one after the other, all of them alike,
+ * to say "tap one of us". After two misses the hand taps the end of the
+ * dashed way.
+ */
+export function tapHelp(mode, ghost) {
+  if (mode !== 'tap') return null
+  return ghost ? 'target' : 'wave'
+}
+
 /** A gap for a new bonus star: anywhere on the line, not where one is. */
 export function freeGap(taken, rnd = Math.random) {
   const free = Array.from({ length: TOP }, (_, i) => i).filter(g => !taken.includes(g))
