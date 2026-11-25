@@ -175,13 +175,16 @@ const board = {
  * `bump` makes it swing (a new task, or "look here" after a miss).
  */
 export function Sign({ wants, row, bump = 0, onTap }) {
+  const reduce = useReducedMotion()
   const two = wants.length > 1
   const one = (w, k) => {
     // on a narrow sign the amounts stand apart: numeral and fruit, the dots below
     const stack = two ? row : !row
-    const num = two ? 62 : row ? 84 : w.n >= 10 ? 86 : 104
-    const pic = two ? 42 : row ? 54 : w.n >= 10 ? 54 : 62
-    const pip = two ? 42 : row ? 62 : 70
+    // a ten frame is wide, and so is "10": both a little smaller, so the sign keeps its place
+    const frame = w.n > 6, ten = w.n >= 10
+    const num = two ? 62 : row ? (frame ? 72 : 84) : ten ? 80 : 104
+    const pic = two ? 42 : row ? (frame ? 48 : 54) : ten ? 50 : 62
+    const pip = two ? 42 : row ? (frame ? 52 : 62) : 70
     return (
       <div key={k} data-want={w.fruit} style={{ display: 'flex', flexDirection: stack ? 'column' : 'row', alignItems: 'center', justifyContent: 'center', gap: stack ? 4 : 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -196,7 +199,7 @@ export function Sign({ wants, row, bump = 0, onTap }) {
   return (
     <motion.div role="button" tabIndex={0} aria-label={`Schild: ${label}`} data-need={wants.map(w => w.n).join(',')} data-nosteer="1"
       onClick={onTap} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onTap?.() } }}
-      key={bump} initial={{ rotate: -7 }} animate={{ rotate: 0 }} transition={{ type: 'spring', stiffness: 260, damping: 7 }}
+      key={bump} initial={reduce ? false : { rotate: -7 }} animate={{ rotate: 0 }} transition={{ type: 'spring', stiffness: 260, damping: 7 }}
       style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, transformOrigin: '50% 0%', cursor: 'pointer', outlineOffset: 4 }}>
       <div aria-hidden="true" style={{ display: 'flex', justifyContent: 'space-around', alignSelf: 'stretch', height: row ? 12 : 16, marginBottom: -3 }}>
         {[0, 1].map(i => <span key={i} style={{ width: 6, background: '#c9a36b', borderLeft: `2px solid ${INK}`, borderRight: `2px solid ${INK}`, boxSizing: 'content-box' }} />)}
