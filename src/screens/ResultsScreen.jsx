@@ -181,11 +181,9 @@ export default function ResultsScreen() {
       } else if (proposal === 'easier') news.push(line('ergebnis/leichter'))
       else if (proposal === 'practise') news.push(line('ergebnis/ueben'))
     }
-    // Text only, not recorded yet: the narrator leaves these out (nothing
-    // waits for them); see lib/lumiLines.js for what Lumi can say
-    if (freshSticker) news.push({ text: 'Überraschung! Du hast alle Ideen von heute gespielt. Hier ist ein neuer Sticker für dein Album!' })
-    else if (main === moveBtn) news.push({ text: 'Lumi möchte sich bewegen! Machst du mit?' })
-    else if (main === ideaBtn) news.push({ text: 'Lumi hat noch eine Idee!' })
+    if (freshSticker) news.push(line('ergebnis/sticker-tag'))
+    else if (main === moveBtn) news.push(line('ergebnis/bewegen'))
+    else if (main === ideaBtn) news.push(line('ergebnis/noch-eine-idee'))
     const stop = afterNarration(() => {
       narrate([
         justPraised() ? null : praise(stars),
