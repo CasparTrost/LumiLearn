@@ -99,7 +99,6 @@ export default function ListenGame({ level = 1, onComplete }) {
   live.current = { L, reduce }
 
   const speakerRef = useRef(null)
-  const gapRef = useRef(null)
   const helpRef = useRef(null)
   const ringEls = useRef([])
   const bushEls = useRef({})
@@ -226,7 +225,9 @@ export default function ListenGame({ level = 1, onComplete }) {
   const tap = (b, el) => {
     if (g.phase === 'finale') { sfx.giggle(); return }
     const cur = g.bushes.find(x => x.id === b.id)
-    if (g.phase !== 'find' || !cur || cur.gone || !g.target) return
+    if (!cur || cur.gone) return
+    // too early (they are still hiding or swapping): the bush only rustles
+    if (g.phase !== 'find' || !g.target) { if (g.phase !== 'oops' && g.phase !== 'found') rustle(cur.id); return }
     if (cur.word === g.target.word) foundIt(cur, el)
     else wrongOne(cur, el)
   }
@@ -399,14 +400,6 @@ export default function ListenGame({ level = 1, onComplete }) {
     }
   }
 
-  // the hand taps between two bushes (tap a bush!) the first time; later it
-  // shows the loudspeaker or the sign; after two misses, the right bush
-  const gap = L && bushes.length > 1 ? (() => {
-    const alive = bushes.filter(b => !b.gone).map(b => b.slot).sort((a, b) => a - b)
-    const s = alive[Math.floor((alive.length - 1) / 2)]
-    return s != null && L.slots[s + 1] != null ? { x: (L.slots[s] + L.slots[s + 1]) / 2, y: L.ground - L.bh * 0.45 } : null
-  })() : null
-
   return (
     <div ref={juice.stage} data-game="huetchen" data-phase={phase} data-target={target?.word ?? ''} data-misses={misses}
       style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
@@ -435,7 +428,6 @@ export default function ListenGame({ level = 1, onComplete }) {
                 onTap={tap} />
             ))}
             {arrows && <SwapArrows L={L} a={arrows.a} b={arrows.b} />}
-            {gap && <span ref={gapRef} aria-hidden="true" style={{ position: 'absolute', left: gap.x, top: gap.y, width: 2, height: 2 }} />}
 
             {/* found things on their way to the row */}
             {flyers.map(f => {
@@ -456,8 +448,11 @@ export default function ListenGame({ level = 1, onComplete }) {
         )}
       </div>
 
-      <HintHand key={`gap-${g.k}-${g.call}`} to={gapRef} active={phase === 'find' && firstCall && misses === 0} delay={level <= 2 ? 3500 : 6000} />
-      <HintHand key={`say-${g.k}-${g.call}`} to={speakerRef} active={phase === 'find' && !firstCall && misses === 0} delay={8000} />
+      {/* a child who waits: the hand shows the loudspeaker (or the sign), to
+          hear the word again; after two misses it points at the right bush.
+          (A hand between two bushes, to say "tap a bush", looked like it
+          pointed at one of them: a hint at a guess.) */}
+      <HintHand key={`say-${g.k}-${g.call}`} to={speakerRef} active={phase === 'find' && misses === 0} delay={firstCall && level <= 2 ? 5000 : 8000} />
       <HintHand key={`help-${g.k}-${g.call}`} to={helpRef} active={phase === 'find' && misses >= 2 && !!helpBush} delay={600} />
       {bursts}
       {juice.layer}

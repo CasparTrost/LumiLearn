@@ -47,7 +47,7 @@ export function Bush({ L, b, mode, reduce, cheeky, onTap, setEl }) {
 
   // the thing: where it is, and how it gets there
   const thing = thingMotion(b.thing, Y, T, B, reduce)
-  const z = sw ? (sw.role === 'back' ? 1 : 5) : b.thing === 'out' || b.thing === 'peek' ? 4 : 2
+  const z = sw ? (sw.role === 'back' ? 1 : 5) : b.thing === 'out' || b.thing === 'peek' ? 4 : cheeky ? 3 : 2
   const breathe = mode === 'find' && !b.gone && !reduce
   const help = b.help && !reduce
 
@@ -66,10 +66,10 @@ export function Bush({ L, b, mode, reduce, cheeky, onTap, setEl }) {
       {/* the squirrel: pokes its head out from behind, sticks out its tongue, ducks */}
       {cheeky > 0 && !reduce && (
         <motion.div key={cheeky} aria-hidden="true" initial={{ y: B * 0.3, opacity: 0, rotate: 0 }}
-          animate={{ y: [B * 0.3, -B * 0.12, -B * 0.12, -B * 0.12, B * 0.3], opacity: [0, 1, 1, 1, 0], rotate: [0, -12, 10, -12, 0] }}
+          animate={{ y: [B * 0.3, -B * 0.22, -B * 0.22, -B * 0.22, B * 0.3], opacity: [0, 1, 1, 1, 0], rotate: [0, -12, 10, -12, 0] }}
           transition={{ duration: 1.7, times: [0, 0.2, 0.5, 0.8, 1] }}
           onAnimationStart={() => sfx.giggle()}
-          style={{ position: 'absolute', right: -B * 0.2, top: bh * 0.02, width: B * 0.44, pointerEvents: 'none' }}>
+          style={{ position: 'absolute', right: -B * 0.14, top: bh * 0.02, width: B * 0.44, pointerEvents: 'none' }}>
           <Art art="🐿️" size={B * 0.44} />
           <motion.span animate={{ scaleY: [0, 0, 1, 1, 0] }} transition={{ duration: 1.7, times: [0, 0.25, 0.35, 0.75, 0.85] }}
             style={{ position: 'absolute', left: '30%', top: '60%', width: Math.max(6, B * 0.05), height: Math.max(8, B * 0.07), borderRadius: '0 0 6px 6px', background: '#ff7a9a', border: `2px solid ${INK}`, borderTop: 'none', transformOrigin: '50% 0' }} />
@@ -109,7 +109,7 @@ export function Bush({ L, b, mode, reduce, cheeky, onTap, setEl }) {
 function thingMotion(st, Y, T, B, reduce) {
   const fast = { duration: 0.12 }
   if (reduce) {
-    const y = st === 'in' || st === 'gone' ? Y.hidden : st === 'help' ? Y.hidden - T * 0.7 : st === 'out' ? Y.top - T * 0.1 : Y.top
+    const y = st === 'in' || st === 'gone' ? Y.hidden : st === 'help' ? Y.hidden - T * 0.9 : st === 'out' ? Y.top - T * 0.1 : Y.top
     return { animate: { y, scale: 1, rotate: 0, opacity: st === 'gone' || st === 'leave' ? 0 : 1 }, transition: fast }
   }
   switch (st) {
@@ -133,7 +133,7 @@ function thingMotion(st, Y, T, B, reduce) {
     }
     case 'help': return {
       // the top of it peeks out of the leaves
-      animate: { y: [Y.hidden - T * 0.62, Y.hidden - T * 0.8, Y.hidden - T * 0.62], scale: 0.9, rotate: 0, opacity: 1 },
+      animate: { y: [Y.hidden - T * 0.82, Y.hidden - T * 1.0, Y.hidden - T * 0.82], scale: 0.9, rotate: 0, opacity: 1 },
       transition: { duration: 1.2, repeat: Infinity, ease: 'easeInOut' },
     }
     case 'leave': return {

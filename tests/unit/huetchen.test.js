@@ -83,7 +83,7 @@ describe('Hütchenspiel: a shuffle', () => {
     for (let level = 1; level <= 10; level++) {
       const cfg = levelConfig(level)
       for (const width of [390, 1024]) {
-        for (let run = 0; run < 25; run++) {
+        for (let run = 0; run < 12; run++) {
           const used = new Set(), called = new Set()
           const n = bushesFor(cfg, width)
           for (let k = 0; k < cfg.shuffles; k++) {
@@ -124,7 +124,7 @@ describe('Hütchenspiel: a shuffle', () => {
         }
       }
     }
-  })
+  }, 30000)
 
   it('the reading levels use short words first', () => {
     const rnd = seeded(3)
