@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { PxIcon } from '../../components/PixelUI.jsx'
 import { Art } from '../../components/play/index.js'
 import { pxButton, INK } from '../px.js'
+import KeepButtons from './KeepButtons.jsx'
 
 const btn = color => ({
   ...pxButton(color), color: INK, textShadow: 'none', minHeight: 48, padding: '4px 14px', fontSize: 16,
@@ -18,8 +19,13 @@ const heading = { fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 
  *
  * They used to be a row of emoji above the easel that ran off the right
  * edge without a sign that there was more, plus an album behind 💾.
+ *
+ * After the pages: the child's own pictures, and a tile to bring in a new
+ * one with a grown-up (`onAdd`: the camera with a lock, as the parent area).
+ * A picture from the wall can be saved and printed again (`linesOf(imgId)`:
+ * its page without paint, to print only the lines).
  */
-export default function PicturePanel({ images, current, sheetRatio, album, urls, onPick, onContinue, onEmpty, onClose }) {
+export default function PicturePanel({ images, current, sheetRatio, album, urls, linesOf, onPick, onAdd, onContinue, onEmpty, onClose }) {
   const [viewing, setViewing] = useState(null)
   const canContinue = viewing?.paint && images.some(i => i.id === viewing.imgId)
   // Sideways the pages stand in a block of three by three beside the wall:
@@ -52,11 +58,10 @@ export default function PicturePanel({ images, current, sheetRatio, album, urls,
             <div style={{ flex: 1, minHeight: 0, display: 'flex', justifyContent: 'center' }}>
               <img src={urls.get(viewing.id)} alt="Dein Bild" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', background: '#fff', border: `3px solid ${INK}`, borderRadius: 8 }} />
             </div>
-            {canContinue && (
-              <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <button onClick={() => onContinue(viewing)} style={btn('green')}>🖌️ Weitermalen</button>
-              </div>
-            )}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <KeepButtons picture={viewing.picture} linesSrc={linesOf?.(viewing.imgId) ?? null} size={48} labels={vp.w >= 480} />
+              {canContinue && <button onClick={() => onContinue(viewing)} style={btn('green')}>🖌️ Weitermalen</button>}
+            </div>
           </>
         ) : (
           <div style={{ overflowY: wide ? 'hidden' : 'auto', minHeight: 0, flex: wide ? 1 : undefined, display: 'flex', flexDirection: wide ? 'row' : 'column', gap: 10, padding: 2 }}>
@@ -72,10 +77,21 @@ export default function PicturePanel({ images, current, sheetRatio, album, urls,
                   boxShadow: '0 3px 0 rgba(42,27,61,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
                   {img.src
-                    ? <img src={img.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    ? <img src={img.src} alt="" style={{ width: '100%', height: '100%', objectFit: img.own ? 'contain' : 'cover', display: 'block' }} />
                     : <Art art={img.emoji} size={40} />}
                 </button>
               ))}
+              {onAdd && (
+                <button onClick={onAdd} aria-label="Eigenes Bild, mit einem Erwachsenen" style={{
+                  padding: 0, cursor: 'pointer', aspectRatio: `${sheetRatio}`, borderRadius: 8, position: 'relative',
+                  border: `3px dashed ${INK}`, background: 'var(--px-parch-light)',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
+                }}>
+                  <Art art="📷" size={38} />
+                  <Art art="➕" size={22} />
+                  <span style={{ position: 'absolute', right: 3, top: 3 }}><Art art="🔒" size={20} /></span>
+                </button>
+              )}
             </div>
 
             {/* the wall */}

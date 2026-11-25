@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import Confetti from '../../components/Confetti.jsx'
 import { Art } from '../../components/play/index.js'
 import { PxIcon } from '../../components/PixelUI.jsx'
+import KeepButtons from './KeepButtons.jsx'
 
 const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
@@ -43,9 +44,11 @@ const frame = b => ({
  *   sheet     { w, h } of the sheet in picture pixels
  *   stamps    [{ e, x, y, size }] in picture pixels
  *   earlier   up to four earlier pictures (URLs), hung beside it
+ *   png       the picture as a PNG (data URL), to save or print it
+ *   linesSrc  the page without paint (URL), to print only the lines
  *   onDone    the arrow was tapped: on to the home screen
  */
-export default function FinishWall({ picture, from, sheet, stamps = [], earlier = [], onDone }) {
+export default function FinishWall({ picture, png, linesSrc, from, sheet, stamps = [], earlier = [], onDone }) {
   const ref = useRef(null)
   const picRef = useRef(null)
   const [box, setBox] = useState(null)
@@ -112,6 +115,7 @@ export default function FinishWall({ picture, from, sheet, stamps = [], earlier 
   const k = pw / sheet.w
   const still = reduceMotion()
   const btn = Math.round(Math.min(84, Math.max(64, box.h * 0.13)))
+  const keepSize = Math.round(Math.min(60, Math.max(48, floor * 0.75)))
 
   return (
     <div ref={ref} style={{
@@ -165,6 +169,15 @@ export default function FinishWall({ picture, from, sheet, stamps = [], earlier 
       </motion.div>
 
       {party && !still && <Confetti position="absolute" count={44} zIndex={2} yFrom="-5vh" yTo="105vh" />}
+
+      {/* keep it: save as a picture, or print it (centred on the floor,
+          between the arrow and Lumi) */}
+      {png && (
+        <motion.div initial={still ? false : { opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.9 }}
+          style={{ position: 'absolute', left: 0, right: 0, bottom: Math.max(8, (floor - keepSize) / 2), zIndex: 3, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
+          <KeepButtons picture={png} linesSrc={linesSrc} size={keepSize} labels={box.w >= 600} style={{ pointerEvents: 'auto' }} />
+        </motion.div>
+      )}
 
       {/* on: a big green arrow on the floor, once the party is under way */}
       {onDone && (
