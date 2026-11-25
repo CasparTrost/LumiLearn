@@ -9,7 +9,7 @@ import { Art, useBursts, useJuice, HintHand } from '../components/play/index.js'
 import { useLater, useSize } from './gefuehle/hooks.js'
 import { rec, slug, wordRec, soundRec } from './buchstaben/voice.js'
 import Monster, { Balloon } from './buchstaben/Monster.jsx'
-import { planLevel, pickThing, layoutFor, spitSpot, scaleAt, MOUTH_Y, EYES_Y, MONSTER_RATIO } from './buchstaben/mampf.js'
+import { planLevel, pickThing, layoutFor, spitSpot, scaleAt, MOUTH_Y, EYES_Y, MONSTER_RATIO, BADGE } from './buchstaben/mampf.js'
 import './buchstaben/mampf.css'
 
 /**
@@ -116,6 +116,25 @@ function MonsterMampf({ level = 1, onComplete }) {
 
   // ── The stream of things ──────────────────────────────────────────────────
 
+  // With reduced motion nothing floats: a new thing appears in the place
+  // with the most room, never on top of another one
+  const freeSpot = () => {
+    const L = layRef.current
+    // not right at the edge, where the hint hand would not point at it
+    const edge = L.fw * 0.75, inner = Math.max(0, L.w - 2 * edge)
+    const n = Math.max(2, Math.floor(inner / (L.fw + 12)) + 1)
+    let best = null
+    L.lanes.forEach((_, lane) => {
+      for (let k = 0; k < n; k++) {
+        const x = edge + (inner * k) / (n - 1)
+        const room = Math.min(L.w, ...g.things.filter(t => t.lane === lane && !t.away).map(t => Math.abs(t.x - x)))
+        const score = room + Math.random() * 20
+        if (!best || score > best.score) best = { lane, x, room, score }
+      }
+    })
+    return best && best.room >= L.fw + 8 ? best : null
+  }
+
   // One more thing: at `lane`/`x` if given, otherwise it floats in from the
   // side, in the lane with the most room at its entrance. If every entrance
   // is taken right now, nothing is added (the loop tries again in a moment).
@@ -123,6 +142,11 @@ function MonsterMampf({ level = 1, onComplete }) {
     const L = layRef.current
     const targets = hungry().map(m => m.letter)
     if (!L || !targets.length) return
+    if (lane == null && reduce) {
+      const spot = freeSpot()
+      if (!spot) return
+      ;({ lane, x } = spot)
+    }
     if (lane == null) {
       const gates = L.lanes.map((_, i) => {
         const dir = L.dir(i), gate = dir > 0 ? -L.fw / 2 - 6 : L.w + L.fw / 2 + 6
@@ -149,12 +173,14 @@ function MonsterMampf({ level = 1, onComplete }) {
   const launch = () => {
     const L = layRef.current
     g.things = []
-    const n = cfg.count
-    // every second place first, so two things of one lane are far apart
-    const order = Array.from({ length: n }, (_, k) => k).sort((a, b) => (a % 2) - (b % 2) || a - b)
+    const n = cfg.count, lanes = L.lanes.length
+    // evenly over each lane, the lanes staggered, none right at the edge
+    const edge = L.fw * 0.75, inner = Math.max(0, L.w - 2 * edge)
     for (let k = 0; k < n; k++) {
-      const lane = k % L.lanes.length
-      addThing({ lane, x: clamp((L.w * (order[k] + 0.5)) / n, L.fw / 2 + 4, L.w - L.fw / 2 - 4), first: k === 0 })
+      const lane = k % lanes, j = Math.floor(k / lanes)
+      const inLane = Math.ceil((n - lane) / lanes)
+      const shift = lanes > 1 ? (lane % 2 ? 0.75 : 0.25) : 0.5
+      addThing({ lane, x: edge + (inner * (j + shift)) / inLane, first: k === 0 })
     }
     bump()
   }
@@ -196,7 +222,7 @@ function MonsterMampf({ level = 1, onComplete }) {
         const stale = reduce && g.phase === 'play' && t.t > 9 && !hungry().some(m => m.letter === t.letter)
         if (gone || stale) {
           g.things = g.things.filter(x => x !== t)
-          if (stale) addThing({ lane: t.lane, x: t.x })
+          if (stale) addThing()
           changed = true
           continue
         }
@@ -210,7 +236,7 @@ function MonsterMampf({ level = 1, onComplete }) {
     if (g.phase === 'play' && g.topUp > (reduce ? 1.2 : 0.12) && g.things.length < cfg.count) {
       g.topUp = 0
       const n = g.things.length
-      addThing(reduce ? { lane: n % L.lanes.length, x: L.w * (0.2 + 0.6 * Math.random()) } : undefined)
+      addThing()
       if (g.things.length !== n) changed = true
     }
     // the eyes follow the nearest thing that fits
@@ -294,8 +320,8 @@ function MonsterMampf({ level = 1, onComplete }) {
     if (fit) sayRight(undefined, { lead: [wordRec(t.word)] })
     else narrate([wordRec(t.word)])
     if (m.mood === 'hungry') m.mood = 'beg'
-    // the next one floats in by itself (with reduced motion it appears where this one was)
-    if (reduce) later(450, () => { if (g.phase === 'play' && g.things.length < cfg.count) { addThing({ lane: t.lane, x: t.x }); bump() } })
+    // the next one floats in by itself (with reduced motion it appears in a free place)
+    if (reduce) later(450, () => { if (g.phase === 'play' && g.things.length < cfg.count) { addThing(); bump() } })
     g.topUp = 0
     bump()
   }
@@ -453,8 +479,11 @@ function MonsterMampf({ level = 1, onComplete }) {
     const L = layRef.current, p = stagePoint(e)
     const m = monAt(p.x, p.y) ?? monAt(t.x, t.y + L.fh / 2 - L.disc / 2)
     if (m && playing()) { feed(t, m); return }
-    // let go in the air: it floats on from where it is
-    t.lane = L.lanes.reduce((best, y, i) => (Math.abs(y - t.y) < Math.abs(L.lanes[best] - t.y) ? i : best), 0)
+    // let go in the air: it floats on from where it is, or, if it would
+    // cover another thing there, from where it was picked up
+    const lane = L.lanes.reduce((best, y, i) => (Math.abs(y - t.y) < Math.abs(L.lanes[best] - t.y) ? i : best), 0)
+    const covers = g.things.some(o => o !== t && !o.away && o.lane === lane && Math.abs(o.x - t.x) < L.fw + 4)
+    if (covers) { t.x = d.tx; t.y = d.ty } else t.lane = lane
     t.oy = t.y - L.lanes[t.lane]
     g.picked = null
     bump()
@@ -667,7 +696,7 @@ function Spat({ s, reduce, lower }) {
   const { from, to, peak, thing } = s
   const D = reduce ? 0.02 : 1.15
   const letter = lower ? thing.letter.toLowerCase() : thing.letter
-  const badge = Math.round(to.size * 0.62)
+  const badge = Math.round(to.size * BADGE)
   return (
     <motion.div aria-hidden="true" data-spat={thing.letter}
       initial={{ x: from.x, y: from.y, scale: 0.4 }}

@@ -289,19 +289,26 @@ export function layoutFor(w, h, { duo = false, slots = 5 } = {}) {
  * Where a spat-out thing lands: on the ground beside its monster, on the
  * side away from the other one, as far out as there is room.
  * `cx` are the middles of the monsters on stage, `i` the one that spat,
- * `n` how many it has spat so far.
+ * `n` how many it has spat so far. Its letter badge sits on its outer side
+ * (`side`) and reaches `BADGE_OUT` × size beyond the plate: that is kept on
+ * screen too.
  */
+export const BADGE = 0.62
+export const BADGE_OUT = BADGE * 0.58
 export function spitSpot(lay, cx, i, n) {
   const side = cx.length > 1 ? (i === 0 ? -1 : 1) : (n % 2 === 0 ? 1 : -1)
+  const pads = size => [size / 2 + (side < 0 ? size * BADGE_OUT : 0) + 2, size / 2 + (side > 0 ? size * BADGE_OUT : 0) + 2]
   if (lay.front) {
     // no room beside it: on the grass in front of its feet
     const size = lay.front - 4
-    return { x: clamp(cx[i] + side * lay.mw * 0.24, size / 2 + 4, lay.w - size * 0.8), y: lay.h - 6 - size / 2, size, side }
+    const [l, r] = pads(size)
+    return { x: clamp(cx[i] + side * lay.mw * 0.24, l + 2, lay.w - r - 2), y: lay.h - 6 - size / 2, size, side }
   }
   const size = Math.round(lay.disc * 0.72)
+  const [l, r] = pads(size)
   const edge = cx[i] + side * (lay.mw / 2 + size / 2 + 2)
-  const lo = lay.band[0] + size / 2, hi = lay.band[1] - size / 2
+  const lo = lay.band[0] + l, hi = lay.band[1] - r
   // beside the monster where there is room, otherwise at its feet, at the edge
   const x = clamp(edge, Math.min(lo, hi), Math.max(lo, hi))
-  return { x: clamp(x, size / 2 + 2, lay.w - size / 2 - 2), y: lay.h - lay.ground - size / 2, size, side }
+  return { x: clamp(x, l, lay.w - r), y: lay.h - lay.ground - size / 2, size, side }
 }

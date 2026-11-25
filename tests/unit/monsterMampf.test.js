@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   WORDS, LETTERS, LEVELS, SAME, NEAR, PARTNER, levelConfig, planLevel, pickThing, needOf, thingsOf,
-  layoutFor, spitSpot, scaleAt, START_SCALE,
+  layoutFor, spitSpot, scaleAt, START_SCALE, BADGE_OUT,
 } from '../../src/games/buchstaben/mampf.js'
 import { wordRec, rec, slug } from '../../src/games/buchstaben/voice.js'
 import { hasEmojiArt, customName } from '../../src/lib/emojiArt.jsx'
@@ -206,13 +206,19 @@ describe('Monster-Mampf: the stage', () => {
       const L = layoutFor(w, h)
       for (let n = 0; n < 4; n++) {
         const s = spitSpot(L, L.monX, 0, n)
-        expect(s.x - s.size / 2, name).toBeGreaterThanOrEqual(0)
-        expect(s.x + s.size / 2, name).toBeLessThanOrEqual(w)
+        // the plate and the letter badge on its outer side
+        expect(s.x - s.size / 2 - (s.side < 0 ? s.size * BADGE_OUT : 0), name).toBeGreaterThanOrEqual(0)
+        expect(s.x + s.size / 2 + (s.side > 0 ? s.size * BADGE_OUT : 0), name).toBeLessThanOrEqual(w)
         expect(s.y + s.size / 2, name).toBeLessThanOrEqual(h)
       }
       const D = layoutFor(w, h, { duo: true, slots: 4 })
       expect(spitSpot(D, D.monX, 0, 0).x, name).toBeLessThan(D.monX[0])
       expect(spitSpot(D, D.monX, 1, 0).x, name).toBeGreaterThan(D.monX[1])
+      for (const i of [0, 1]) {
+        const s = spitSpot(D, D.monX, i, 0)
+        expect(s.x - s.size / 2 - (s.side < 0 ? s.size * BADGE_OUT : 0), name).toBeGreaterThanOrEqual(0)
+        expect(s.x + s.size / 2 + (s.side > 0 ? s.size * BADGE_OUT : 0), name).toBeLessThanOrEqual(w)
+      }
     }
   })
 
