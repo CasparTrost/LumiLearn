@@ -11,8 +11,8 @@ import { useLater } from './zahlen/stage.jsx'
 import { pxCard } from './px.js'
 import { THINGS, CAT, planLevel, levelConfig, tasksIn } from './schatten/data.js'
 import { layoutFor } from './schatten/layout.js'
-import { makeRoom, spawn, step, flee, gait, inLight, lookOf } from './schatten/sim.js'
-import { Backdrop, Furniture, hidesOf, FLOOR } from './schatten/Room.jsx'
+import { makeRoom, spawn, step, flee, gait, inLight, lookOf, floorOf } from './schatten/sim.js'
+import { Backdrop, Furniture, hidesOf } from './schatten/Room.jsx'
 import { Garland, Eyes, CeilingLamp, Bunting, Joker, slotAt } from './schatten/parts.jsx'
 import { gasp, lampOn, wakeSound } from './schatten/sound.js'
 
@@ -207,6 +207,16 @@ export default function ShadowGame({ level = 1, onComplete }) {
     s.sxCaught = cfg.mirror ? (s.sx < 0 ? -1 : 1) : 1
     s.tiltTo = cfg.tilt ? (Math.random() < 0.5 ? -1 : 1) * cfg.tilt : 0
     lift(s, w.geo)
+    // caught on top of another lit one: it slips aside, so both outlines show
+    const held = w.shadows.filter(o => o !== s && (o.state === 'caught' || o.state === 'flying' || o.state === 'found'))
+    for (let k = 0; k < 4; k++) {
+      const o = held.find(o => Math.hypot(o.x - (s.slideTo ?? s.x), (o.liftTo ?? o.y) - (s.liftTo ?? s.y)) < w.geo.S * 0.95)
+      if (!o) break
+      const dir = (s.slideTo ?? s.x) >= o.x ? 1 : -1
+      let x = o.x + dir * w.geo.S
+      if (x < w.geo.x0 || x > w.geo.x1) x = o.x - dir * w.geo.S
+      s.slideTo = clamp(x, w.geo.x0, w.geo.x1)
+    }
     s.hiding = false
     w.lastCaught = s.id
     if (!quiet) gasp(s.move === 'crawl' || s.move === 'fly' ? 1.25 : 1)
@@ -223,6 +233,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
     const w = W.current
     flee(s, w.beam, w.geo)
     s.liftTo = null
+    s.slideTo = null
     sfx.giggle()
     if (w.lastCaught === s.id) setCaughtId(null)
     bump()
@@ -308,8 +319,13 @@ export default function ShadowGame({ level = 1, onComplete }) {
     if (first) firstTry.current += 1
     setBusy(b => b.filter(x => x !== f.e))
     setCardsLeft(l => l.filter(x => x !== f.e))
-    setLamps(l => [...l, { id: s.id, x: s.x }])
-    w.lamps.push({ x: s.x, t0: w.t })
+    // a lamp over the spot, a little to the side if another one hangs there
+    const gap = clamp(S * 0.5, 34, 58) * 1.05
+    let lx = s.x
+    for (let k = 0; k < 6 && w.lamps.some(lp => Math.abs(lp.x - lx) < gap); k++) lx += (s.x < w.geo.W / 2 ? 1 : -1) * gap * 0.5
+    lx = clamp(lx, gap / 2, w.geo.W - gap / 2)
+    setLamps(l => [...l, { id: s.id, x: lx }])
+    w.lamps.push({ x: lx, t0: w.t })
     lampOn()
     hit(innerEls.current[s.id] ?? shadowEls.current[s.id])
     burst(shadowEls.current[s.id], 'stars', 10)
@@ -535,6 +551,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
         s.rotNow = rot
       } else if (s.state === 'caught' || s.state === 'flying') {
         if (s.liftTo != null) s.y += (s.liftTo - s.y) * Math.min(1, dt * 10)
+        if (s.slideTo != null) s.x += (s.slideTo - s.x) * Math.min(1, dt * 8)
         s.sx += (s.sxCaught - s.sx) * Math.min(1, dt * 8)
         s.rotNow = (s.rotNow ?? 0) + (s.tiltTo - (s.rotNow ?? 0)) * Math.min(1, dt * 8)
         rot = s.rotNow
@@ -620,12 +637,12 @@ export default function ShadowGame({ level = 1, onComplete }) {
         const hx = beam.x, hy = beam.y + beamR * 0.75 - torchSize * 0.3
         const gr = ctx.createLinearGradient(hx, hy, beam.x, beam.y)
         gr.addColorStop(0, `rgba(0,0,0,${0.55 * beam.a})`)
-        gr.addColorStop(1, `rgba(0,0,0,${0.25 * beam.a})`)
+        gr.addColorStop(1, `rgba(0,0,0,${0.15 * beam.a})`)
         ctx.fillStyle = gr
         ctx.beginPath()
         ctx.moveTo(hx - torchSize * 0.14, hy)
-        ctx.lineTo(beam.x - beamR * 0.92, beam.y)
-        ctx.lineTo(beam.x + beamR * 0.92, beam.y)
+        ctx.lineTo(beam.x - beamR * 0.55, beam.y)
+        ctx.lineTo(beam.x + beamR * 0.55, beam.y)
         ctx.lineTo(hx + torchSize * 0.14, hy)
         ctx.closePath(); ctx.fill()
         hole(beam.x, beam.y, beamR, beam.a, 0.42)
@@ -727,7 +744,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
                 <motion.canvas ref={canvasRef} aria-hidden="true" initial={false} animate={{ opacity: lit ? 0 : 1 }} transition={{ duration: lit ? 0.7 : 0.3 }}
                   style={{ position: 'absolute', left: 0, top: 0, width: L.room.w, height: L.room.h, pointerEvents: 'none' }} />
                 {!lit && <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-                  <div style={{ position: 'absolute', left: 0, right: 0, top: L.room.h * FLOOR, borderTop: '3px solid rgba(190,178,240,0.22)' }} />
+                  <div style={{ position: 'absolute', left: 0, right: 0, top: floorOf(L.room.w, L.room.h), borderTop: '3px solid rgba(190,178,240,0.22)' }} />
                   <Furniture theme={room.theme} W={L.room.w} H={L.room.h} mode="ghost" />
                 </div>}
                 {lit && <Bunting w={L.room.w} />}
@@ -794,7 +811,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
           </div>
 
           {/* The cards */}
-          <Cards L={L} cards={room.cards} left={cardsLeft} busy={busy} drag={drag} help={helpS?.e} boxRef={cardsBoxRef} cardEls={cardEls}
+          <Cards L={L} cards={room.cards} left={cardsLeft} busy={busy} drag={drag} help={helpS?.e} done={lit} boxRef={cardsBoxRef} cardEls={cardEls}
             onDown={onCardDown} onMove={onCardMove} onUp={onCardUp} reduce={reduce} />
 
           {/* in the air: cards, the found ones climbing to the garland, the dragged card */}
@@ -819,7 +836,7 @@ export default function ShadowGame({ level = 1, onComplete }) {
           ))}
           {drag && (
             <div ref={ghostRef} aria-hidden="true" style={{ position: 'absolute', left: 0, top: 0, zIndex: 22, pointerEvents: 'none', transform: 'translate(-999px,-999px)' }}>
-              <div style={{ width: L.cards.size, height: L.cards.size, ...pxCard('right'), display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 10px 18px rgba(0,0,0,0.35)' }}>
+              <div style={{ width: L.cards.size, height: L.cards.size, ...pxCard('selected'), display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 10px 18px rgba(0,0,0,0.35)' }}>
                 <Art art={drag.e} size={Math.round(L.cards.size * 0.74)} />
               </div>
             </div>
@@ -843,7 +860,7 @@ const lampDrop = H => Math.round(clamp(H * 0.06, 10, 36))
  * The cards: the things in colour, in fixed places (a card that found its
  * shadow leaves an empty place). Press and drag, or tap.
  */
-function Cards({ L, cards, left, busy, drag, help, boxRef, cardEls, onDown, onMove, onUp, reduce }) {
+function Cards({ L, cards, left, busy, drag, help, done, boxRef, cardEls, onDown, onMove, onUp, reduce }) {
   const { size, cols: maxCols } = L.cards
   const cols = L.side ? L.cards.cols : Math.min(maxCols, cards.length)
   const rows = Math.ceil(cards.length / cols)
@@ -867,7 +884,7 @@ function Cards({ L, cards, left, busy, drag, help, boxRef, cardEls, onDown, onMo
             transition={help === e ? { duration: 0.9, repeat: Infinity } : { duration: 0.2 }}
             style={{
               ...pxCard(), width: size, height: size, padding: 0, boxSizing: 'border-box', cursor: 'grab', touchAction: 'none',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: away ? 0.25 : 1, transition: 'opacity .15s',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: away ? 0.25 : done ? 0.45 : 1, transition: 'opacity .4s',
             }}>
             <Art art={e} size={Math.round(size * 0.74)} />
           </motion.button>

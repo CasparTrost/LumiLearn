@@ -32,12 +32,18 @@ const AIRBORNE = new Set(['fly', 'float'])
 export const isAirborne = move => AIRBORNE.has(move)
 
 /**
+ * Where the wall meets the floor: lower in a wide room, higher in a tall
+ * one (a phone held upright), so the floor has room for everything on it.
+ */
+export const floorOf = (W, H) => H * (W / H < 1 ? 0.46 : W / H < 1.4 ? 0.53 : 0.6)
+
+/**
  * The room as the shadows see it. W, H: its size; S: a shadow's size;
  * floor: where wall and floor meet (y); hides: the low furniture in front
  * ({ x, w, top }), behind which a thing on the floor can crouch.
  */
 export function makeRoom(W, H, S, hides = []) {
-  const floor = Math.round(H * 0.6)
+  const floor = Math.round(floorOf(W, H))
   return {
     W, H, S, floor, hides,
     x0: S * 0.55, x1: W - S * 0.55,
@@ -123,7 +129,7 @@ export function step(s, dt, room, speed, rnd = Math.random, others = []) {
   // keep a little apart from the others
   for (const o of others) {
     const ox = s.x - o.x, oy = s.y - o.y, od = Math.hypot(ox, oy)
-    const gap = room.S * 0.85
+    const gap = room.S
     if (od > 0 && od < gap) { const push = (gap - od) * 4 * dt; s.x += (ox / od) * push; s.y += (oy / od) * push * 0.5 }
   }
   const [y0, y1] = isAirborne(s.move) ? room.air : room.ground

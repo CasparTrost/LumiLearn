@@ -11,6 +11,8 @@
  * them (`hidesOf` tells the shadows where they are).
  */
 
+import { floorOf } from './sim.js'
+
 const SHADE = '#5d5478'
 const SHADE_EDGE = '#4a4264'
 const GHOST = 'rgba(190,178,240,0.34)'
@@ -381,11 +383,10 @@ const THEMES = {
   },
 }
 
-export const FLOOR = 0.6   // where the wall meets the floor (share of the height; sim.js makeRoom)
 
 /** Where every piece of a room goes, in px. */
 export function placePieces(theme, W, H) {
-  const floorY = H * FLOOR
+  const floorY = floorOf(W, H)
   return THEMES[theme].pieces.map((pc, i) => {
     let h = pc.h * H
     let w = h * pc.C.aspect
@@ -420,7 +421,7 @@ function Piece({ pc, mode }) {
 export function Backdrop({ theme, W, H, mode }) {
   const t = THEMES[theme]
   const lit = mode === 'lit'
-  const floorY = H * FLOOR
+  const floorY = floorOf(W, H)
   return (
     <div aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
       <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: floorY + 2, background: lit ? t.paper : '#ece6f4', transition: 'background .6s' }} />
