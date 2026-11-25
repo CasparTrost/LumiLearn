@@ -160,7 +160,52 @@ async function playShadows(page) {
   await page.context().close()
 }
 
-// 3c. Silben-Spaß (Frosch-Hüpfer): a level hopped through, a hop per
+// 3c. ABC-Abenteuer (Monster-Mampf): the four monsters of level 1 fed until
+// they are full, one wrong bite on the way, to the results
+{
+  const page = await newPage(SIZES.phone, save)
+  await page.goto(URL); await page.waitForTimeout(1500)
+  await page.getByRole('button', { name: /^ABC-Abenteuer, Level/ }).last().click()
+  const game = page.locator('[data-module="letter-intro"] [data-phase]')
+  await game.waitFor({ timeout: 10000 }).catch(() => problems.push('Monster-Mampf: no stage'))
+  // the hungry monster and what floats past, with where to tap
+  const look = () => page.evaluate(() => {
+    const m = document.querySelector('[data-monster][data-state="hungry"]')
+    if (document.querySelector('[data-phase]')?.dataset.phase !== 'play' || !m) return null
+    return {
+      letter: m.dataset.monster, bites: +m.dataset.bites, spat: document.querySelectorAll('[data-spat]').length,
+      things: [...document.querySelectorAll('[data-thing]')].map(t => {
+        const r = t.querySelector('.mm-plate').getBoundingClientRect()
+        return { letter: t.dataset.thing, x: r.left + r.width / 2, y: r.top + r.height / 2 }
+      }).filter(t => t.x > 60 && t.x < innerWidth - 60),
+    }
+  })
+  let missed = false
+  for (let i = 0; i < 500 && (await game.count()); i++) {
+    const s = await look()
+    // once, after a monster's first bite: a thing that does not fit is spat
+    // out again, and the monster is as hungry as before
+    const wrong = !missed && s?.bites === 1
+    const t = s?.things.find(t => (t.letter === s.letter) !== wrong)
+    if (!t) { await page.waitForTimeout(250); continue }
+    await page.mouse.click(t.x, t.y)
+    await page.waitForTimeout(wrong ? 2000 : 700)
+    if (wrong) {
+      missed = true
+      const after = await look()
+      if (after?.letter !== s.letter || after.bites !== 1) problems.push('Monster-Mampf: a wrong thing was eaten')
+      if (after && after.spat !== s.spat + 1) problems.push('Monster-Mampf: the wrong thing was not spat out')
+    }
+  }
+  await page.waitForTimeout(2500)
+  const text = await page.evaluate(() => document.body.innerText)
+  if (!/3 von 4 gleich beim ersten Mal richtig/.test(text)) problems.push(`Monster-Mampf: results not as expected: ${text.slice(0, 120).replace(/\n/g, ' | ')}`)
+  await check(page, 'Monster-Mampf results')
+  problems.push(...page.errors.map(e => `Monster-Mampf: ${e}`))
+  await page.context().close()
+}
+
+// 3d. Silben-Spaß (Frosch-Hüpfer): a level hopped through, a hop per
 // syllable and then ashore; one hop too many on the way, to the results
 {
   const page = await newPage(SIZES.phone, save)
@@ -193,7 +238,7 @@ async function playShadows(page) {
   await page.context().close()
 }
 
-// 3d. Sortier-Spaß (Fließband-Füttern): every thing off the belt by a tap on
+// 3e. Sortier-Spaß (Fließband-Füttern): every thing off the belt by a tap on
 // it and a tap on the monster that eats it; one thing goes to the wrong
 // monster first and is spat back; to the results
 {

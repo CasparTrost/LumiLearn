@@ -1,0 +1,20 @@
+/* Monster-Mampf: what moves by itself (the balloons swing, a thing that
+   helps glows). All of it stops for prefers-reduced-motion. */
+
+@keyframes mm-sway { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+.mm-sway { animation: mm-sway 3.4s ease-in-out infinite; transform-origin: 50% 12%; }
+
+@keyframes mm-glow {
+  0%, 100% { box-shadow: 0 0 0 4px var(--mm-glow), 0 0 12px 4px var(--mm-glow); }
+  50%      { box-shadow: 0 0 0 8px var(--mm-glow), 0 0 22px 10px var(--mm-glow); }
+}
+.mm-glow { animation: mm-glow 0.9s ease-in-out infinite; }
+
+.mm-thing { touch-action: none; cursor: pointer; -webkit-tap-highlight-color: transparent; outline: none; }
+.mm-thing:focus-visible .mm-plate, .mm-monster:focus-visible { outline: 4px solid #4aa3ff; outline-offset: 3px; }
+.mm-monster { cursor: pointer; -webkit-tap-highlight-color: transparent; outline: none; border-radius: 30%; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mm-sway { animation: none; }
+  .mm-glow { animation: none; box-shadow: 0 0 0 6px var(--mm-glow); }
+}
