@@ -1,0 +1,47 @@
+/* Anlaut-Angeln: what moves by itself in the pond */
+.ang-ripple {
+  position: absolute; width: 46px; height: 14px; margin: -7px 0 0 -23px;
+  border: 3px solid rgba(255, 255, 255, 0.75); border-radius: 50%;
+  animation: ang-ripple 4s ease-out infinite;
+}
+@keyframes ang-ripple { 0% { transform: scale(0.3); opacity: 0.9 } 70%, 100% { transform: scale(1.6); opacity: 0 } }
+
+.ang-rays {
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(105deg, rgba(255,255,255,0.10) 0 26px, transparent 26px 90px);
+  mask-image: linear-gradient(180deg, #000 0%, transparent 70%);
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, transparent 70%);
+}
+
+.ang-wave { animation: ang-wave 3s linear infinite; }
+@keyframes ang-wave { from { transform: translateX(0) } to { transform: translateX(-40px) } }
+
+.ang-weed { transform-origin: 50% 100%; animation: ang-weed 3.4s ease-in-out infinite alternate; }
+@keyframes ang-weed { from { transform: rotate(-6deg) } to { transform: rotate(7deg) } }
+
+/* bubbles from a swimmer */
+.ang-bubble {
+  position: absolute; width: 9px; height: 9px; border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.85); background: rgba(255, 255, 255, 0.25);
+  animation: ang-bubble 2.6s ease-in infinite; opacity: 0;
+}
+@keyframes ang-bubble { 0% { transform: translate(0, 0) scale(0.5); opacity: 0 } 15% { opacity: 1 } 100% { transform: translate(6px, -60px) scale(1.1); opacity: 0 } }
+[data-wet="1"] .ang-bubble, [data-dry="1"] .ang-bubble { display: none; }
+
+/* drips from the catch, out of the water */
+.ang-drip {
+  display: none; position: absolute; width: 9px; height: 12px;
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: #6cc3f5; border: 2px solid #2a1b3d;
+  animation: ang-drip 1.1s ease-in infinite; opacity: 0;
+}
+[data-wet="1"] .ang-drip { display: block; }
+@keyframes ang-drip { 0% { transform: translateY(0); opacity: 0 } 20% { opacity: 1 } 100% { transform: translateY(46px); opacity: 0 } }
+
+/* the float bobs on the surface */
+.ang-bob { animation: ang-bob 1.6s ease-in-out infinite; }
+@keyframes ang-bob { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(3px) } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ang-ripple, .ang-wave, .ang-weed, .ang-bob { animation: none; }
+  .ang-bubble, .ang-drip, .ang-ripple { display: none !important; }
+}

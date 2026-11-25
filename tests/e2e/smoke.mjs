@@ -339,6 +339,52 @@ async function playShadows(page) {
   await page.context().close()
 }
 
+// 3h. Anlaut-Detektiv (Anlaut-Angeln): level 1 fished to the results: a tap
+// on a swimmer hooks it, the first catch goes into the wrong bucket (the
+// frog hands it back) and then into the right one, like all the others
+{
+  const page = await newPage(SIZES.phone, save)
+  await page.goto(URL); await page.waitForTimeout(1500)
+  await page.getByRole('button', { name: /^Anlaut-Detektiv, Level/ }).last().click()
+  const game = page.locator('[data-game="angeln"]')
+  await game.waitFor({ timeout: 10000 }).catch(() => problems.push('Anlaut-Angeln: the game did not start'))
+  let wrong = false, sorted = 0
+  const t0 = Date.now()
+  while (Date.now() - t0 < 150000 && (await game.count())) {
+    const s = await page.evaluate(() => {
+      const root = document.querySelector('[data-game="angeln"]')
+      if (!root) return null
+      const held = root.querySelector('[data-swimmer="word"][data-wet="1"]')
+      const swimmer = [...root.querySelectorAll('[data-swimmer="word"]')].find(e => e.dataset.dry !== '1' && +getComputedStyle(e).opacity > 0.6)
+      const r = swimmer?.getBoundingClientRect()
+      return { phase: root.dataset.phase, held: held?.dataset.letter, letters: [...root.querySelectorAll('[data-bucket]')].map(b => b.dataset.bucket), at: r && { x: r.left + r.width / 2, y: r.top + r.height / 2 } }
+    })
+    if (!s) break
+    if (s.phase === 'hold' && s.held) {
+      const other = s.letters.find(l => l !== s.held)
+      if (!wrong && other) {
+        wrong = true
+        await page.locator(`[aria-label="Eimer ${other}"]`).click()
+        await page.waitForTimeout(2500)
+        if (!(await page.locator('[data-game="angeln"] [data-swimmer="word"][data-wet="1"]').count())) problems.push('Anlaut-Angeln: the frog did not hand the catch back')
+        continue
+      }
+      await page.locator(`[aria-label="Eimer ${s.held}"]`).click(); sorted++
+      await page.waitForTimeout(900)
+    } else if (s.phase === 'fish' && s.at) {
+      await page.mouse.click(s.at.x, s.at.y)
+      await page.waitForTimeout(1500)
+    } else await page.waitForTimeout(300)
+  }
+  await page.waitForTimeout(2500)
+  const text = await page.evaluate(() => document.body.innerText)
+  if (sorted < 6) problems.push(`Anlaut-Angeln: only ${sorted} catches sorted`)
+  if (!/5 von 6 gleich beim ersten Mal richtig/.test(text)) problems.push(`Anlaut-Angeln: results not as expected: ${text.slice(0, 120).replace(/\n/g, ' | ')}`)
+  await check(page, 'Anlaut-Angeln results')
+  problems.push(...page.errors.map(e => `Anlaut-Angeln: ${e}`))
+  await page.context().close()
+}
+
 // 4. Lumi's ideas for today: the last idea from the home screen, the
 // movement break the results suggest, the sticker, the album
 {
