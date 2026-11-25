@@ -496,8 +496,6 @@ function Sternbilder({ level = 1, onComplete }) {
                 // the rings and the glow stay inside the sky
                 const far = Math.max(1, Math.min(help ? 2.5 : 2, lay.ring[i]))
                 const glow = help ? [Math.min(1.1, far), Math.min(1.55, far)] : [Math.min(1.05, far), Math.min(1.3, far)]
-                // a star that has just popped in swings out a little first: the rings start when it has landed
-                const wait = help ? 0 : 0.5
                 return (
                   <motion.div key={i} initial={reduce ? false : { scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: i * 0.055, type: 'spring', stiffness: 380, damping: 17 }}
@@ -505,16 +503,23 @@ function Sternbilder({ level = 1, onComplete }) {
                     {/* the star to begin with, and the right one after two misses, send out rings */}
                     {beacon && (reduce
                       ? <span aria-hidden="true" style={{ position: 'absolute', inset: -9, borderRadius: '50%', border: `4px solid ${GOLD}` }} />
-                      : [0, 1, 2].map(k => k === 2
-                        ? <motion.span key={k} aria-hidden="true" initial={{ scale: 1, opacity: 0 }} animate={{ scale: [glow[0], glow[1], glow[0]], opacity: [0.55, 0.25, 0.55] }}
-                            transition={{ duration: help ? 0.7 : 1.2, repeat: Infinity, delay: wait }}
-                            style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: GOLD, pointerEvents: 'none' }} />
-                        : (
-                          <motion.span key={k} aria-hidden="true"
-                            initial={{ scale: 1, opacity: 0 }} animate={{ scale: [1, far], opacity: [0.9, 0] }}
-                            transition={{ duration: help ? 1 : 1.5, repeat: Infinity, delay: wait + k * (help ? 0.5 : 0.75), ease: 'easeOut' }}
-                            style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: `${help ? 5 : 4}px solid ${GOLD}`, pointerEvents: 'none' }} />
-                        )))}
+                      : (
+                        // a star that has just popped in swings out a little first:
+                        // its rings show when it has landed
+                        <motion.span aria-hidden="true" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: reached === 0 ? 0.5 : 0, duration: 0.25 }}
+                          style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+                          {[0, 1, 2].map(k => k === 2
+                            ? <motion.span key={k} animate={{ scale: [glow[0], glow[1], glow[0]], opacity: [0.55, 0.25, 0.55] }}
+                                transition={{ duration: help ? 0.7 : 1.2, repeat: Infinity }}
+                                style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: GOLD }} />
+                            : (
+                              <motion.span key={k}
+                                initial={{ scale: 1, opacity: 0.9 }} animate={{ scale: far, opacity: 0 }}
+                                transition={{ duration: help ? 1 : 1.5, repeat: Infinity, delay: k * (help ? 0.5 : 0.75), ease: 'easeOut' }}
+                                style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: `${help ? 5 : 4}px solid ${GOLD}` }} />
+                            ))}
+                        </motion.span>
+                      ))}
                     <motion.button type="button" ref={el => { starEls.current[i] = el }}
                       aria-label={`Stern ${value}`} data-star={state} data-value={value}
                       onClick={e => { if (e.detail === 0) onKeyStar(i) }}
