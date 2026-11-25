@@ -14,13 +14,16 @@
  * pictures (POSES, measured on the 384 × 384 pictures in
  * public/sprites/emoji/custom/lumi-*.webp) and the thing's own numbers:
  *
- *   slot   where it is worn: 'head', 'face' or 'neck' (one of each at a time)
- *   stars  the total of stars that unlocks it (0: there from the start)
+ *   slot   where it is worn: 'head', 'face', 'neck', 'back' or 'hold'
+ *          (one of each at a time, all five combined freely)
+ *   stars  not written: from the thing's place in ORDER (see stepStars)
  *   src    the picture, square, transparent
  *   at     the point of the picture [x, y] (0…1) that goes on the anchor:
  *            head  the top of Lumi's head, under the feather tuft
  *            face  the middle between Lumi's eyes
  *            neck  the middle of Lumi's neck line, under the head
+ *            back  the middle between the shoulders (drawn behind Lumi)
+ *            hold  the tip of the wing that holds it (sleeping: the floor beside Lumi)
  *   size   the picture's width as a share of the anchor's width (the head's
  *          width, the distance between the eyes, the width of the neck)
  *   rot    an extra tilt in degrees (optional)
@@ -47,24 +50,32 @@ export const POSES = {
     head: { x: 192, y: 56, rot: 0, w: 190 },
     face: { x: 191, y: 153, rot: 0, w: 100 },
     neck: { x: 192, y: 214, rot: 0, w: 180 },
+    back: { x: 192, y: 210, rot: 0, w: 210 },
+    hold: { x: 312, y: 268, rot: 0, w: 110 },
     tuft: [[140, 0], [262, 0], [262, 58], [230, 57], [192, 53], [154, 57], [140, 60]],
   },
   happy: {
     head: { x: 196, y: 62, rot: 3, w: 190 },
     face: { x: 193, y: 137, rot: 3, w: 104 },
     neck: { x: 196, y: 212, rot: 0, w: 180 },
+    back: { x: 196, y: 208, rot: 0, w: 200 },
+    hold: { x: 348, y: 178, rot: 12, w: 110 },
     tuft: [[150, 0], [270, 0], [270, 60], [235, 62], [196, 60], [160, 66], [150, 70]],
   },
   sad: {
     head: { x: 192, y: 66, rot: 3, w: 186 },
     face: { x: 189, y: 181, rot: 4, w: 98 },
     neck: { x: 190, y: 238, rot: 0, w: 170 },
+    back: { x: 190, y: 234, rot: 0, w: 190 },
+    hold: { x: 272, y: 300, rot: 0, w: 100 },
     tuft: [[150, 0], [260, 0], [260, 66], [230, 64], [192, 64], [160, 70], [150, 74]],
   },
   hmm: {
     head: { x: 190, y: 58, rot: -12, w: 180 },
     face: { x: 190, y: 138, rot: -16, w: 92 },
     neck: { x: 180, y: 228, rot: -4, w: 160 },
+    back: { x: 182, y: 224, rot: 0, w: 190 },
+    hold: { x: 90, y: 282, rot: 0, w: 100 },
     tuft: [[135, 0], [245, 0], [245, 58], [215, 60], [190, 58], [160, 66], [135, 70]],
     front: [[205, 196], [222, 186], [246, 196], [276, 232], [292, 262], [300, 300], [262, 306], [228, 268], [214, 236]],
   },
@@ -72,6 +83,8 @@ export const POSES = {
     head: { x: 190, y: 58, rot: -12, w: 180 },
     face: { x: 190, y: 138, rot: -16, w: 92 },
     neck: { x: 180, y: 228, rot: -4, w: 160 },
+    back: { x: 182, y: 224, rot: 0, w: 190 },
+    hold: { x: 90, y: 282, rot: 0, w: 100 },
     tuft: [[135, 0], [245, 0], [245, 58], [215, 60], [190, 58], [160, 66], [135, 70]],
     front: [[205, 196], [222, 186], [246, 196], [276, 232], [292, 262], [300, 300], [262, 306], [228, 268], [214, 236]],
   },
@@ -79,39 +92,60 @@ export const POSES = {
     head: { x: 188, y: 80, rot: -4, w: 210 },
     face: { x: 180, y: 190, rot: -12, w: 112 },
     neck: { x: 192, y: 252, rot: 0, w: 200 },
+    back: { x: 192, y: 232, rot: 0, w: 200 },
+    hold: { x: 352, y: 372, rot: 0, w: 110 },
     tuft: [[140, 0], [255, 0], [255, 78], [220, 80], [188, 78], [158, 84], [140, 88]],
   },
   wave: {
     head: { x: 212, y: 58, rot: 6, w: 185 },
     face: { x: 206, y: 145, rot: 6, w: 95 },
     neck: { x: 215, y: 220, rot: 3, w: 170 },
+    back: { x: 215, y: 216, rot: 0, w: 190 },
+    hold: { x: 322, y: 288, rot: 0, w: 105 },
     tuft: [[175, 0], [275, 0], [275, 60], [245, 60], [212, 56], [185, 64], [175, 70]],
   },
 }
 export const POSE_IDS = Object.keys(POSES)
 
 // ── The things ──────────────────────────────────────────────────────────────
-// The order is the order of unlocking. The first two are there from the
-// start (the wardrobe is never empty), then a new thing every game or two
-// (a round gives up to three stars), later a little slower. A new thing
-// continues the steps: the gap to the one before grows by one star.
-export const SLOTS = ['head', 'face', 'neck']
-const pic = id => `sprites/wardrobe/${id}.webp`
+// One file per place (wardrobe/head.js, face.js, neck.js, back.js, hold.js),
+// one line per thing. The stars that unlock a thing are not written there:
+// they come from the thing's place in ORDER below and one rule, so the list
+// can grow and be reordered without counting stars by hand. A thing in a
+// place's file that is not in ORDER yet comes after all the others (in the
+// order of the files), so a new picture shows up at once.
+import HEAD from './wardrobe/head.js'
+import FACE from './wardrobe/face.js'
+import NECK from './wardrobe/neck.js'
+import BACK from './wardrobe/back.js'
+import HOLD from './wardrobe/hold.js'
 
-export const WARDROBE = [
-  { id: 'muetze',       name: 'Bommelmütze',  slot: 'head', stars: 0,  src: pic('muetze'),       at: [0.5, 0.523], size: 1.18, box: [0.09, 0.17, 0.91, 0.84], tuft: 'hide' },
-  { id: 'sonnenbrille', name: 'Sonnenbrille', slot: 'face', stars: 0,  src: pic('sonnenbrille'), at: [0.5, 0.48], size: 2.15, box: [0, 0.34, 1, 0.68], say: 'wort/sonnenbrille' },
-  { id: 'schal',        name: 'Schal',        slot: 'neck', stars: 3,  src: pic('schal'),        at: [0.5, 0.3],  size: 1.12, box: [0.03, 0.22, 0.97, 0.78] },
-  { id: 'partyhut',     name: 'Partyhut',     slot: 'head', stars: 6,  src: pic('partyhut'),     at: [0.5, 0.84], size: 0.72, box: [0.21, 0.04, 0.8, 0.9], dx: -0.2, dy: 0.08, rot: -18 },
-  { id: 'herzbrille',   name: 'Herzbrille',   slot: 'face', stars: 10, src: pic('herzbrille'),   at: [0.5, 0.47], size: 2.2,  box: [0, 0.27, 1, 0.68] },
-  { id: 'blumenkranz',  name: 'Blumenkranz',  slot: 'head', stars: 15, src: pic('blumenkranz'),  at: [0.5, 0.56], size: 1.25, box: [0.04, 0.35, 0.96, 0.8], tuft: 'front' },
-  { id: 'fliege',       name: 'Fliege',       slot: 'neck', stars: 21, src: pic('fliege'),       at: [0.5, 0.44], size: 0.6,  box: [0.08, 0.31, 0.92, 0.7] },
-  { id: 'piratenhut',   name: 'Piratenhut',   slot: 'head', stars: 28, src: pic('piratenhut'),   at: [0.5, 0.53], size: 1.1,  box: [0.04, 0.15, 0.99, 0.84], tuft: 'hide' },
-  { id: 'rundbrille',   name: 'Runde Brille', slot: 'face', stars: 36, src: pic('rundbrille'),   at: [0.5, 0.5],  size: 2.1,  box: [0, 0.31, 1, 0.69], say: 'wort/brille' },
-  { id: 'zauberhut',    name: 'Zauberhut',    slot: 'head', stars: 45, src: pic('zauberhut'),    at: [0.5, 0.8],  size: 1.06, box: [0.05, 0.05, 0.95, 0.9], tuft: 'hide' },
-  { id: 'medaille',     name: 'Medaille',     slot: 'neck', stars: 55, src: pic('medaille'),     at: [0.5, 0.13], size: 0.8,  box: [0.15, 0.1, 0.85, 0.77] },
-  { id: 'krone',        name: 'Krone',        slot: 'head', stars: 66, src: pic('krone'),        at: [0.5, 0.66], size: 0.82, box: [0.08, 0.27, 0.93, 0.8], tuft: 'front', say: 'wort/krone' },
+export const SLOTS = ['head', 'face', 'neck', 'back', 'hold']
+
+/** The order of unlocking: the first two are there from the start. Mix the places. */
+export const ORDER = [
+  'muetze', 'sonnenbrille', 'schal', 'partyhut', 'herzbrille', 'blumenkranz', 'fliege', 'umhang',
+  'piratenhut', 'ballon', 'rundbrille', 'zauberhut', 'medaille', 'krone',
 ]
+
+/**
+ * The stars for the thing at place i of the order. The first two are free
+ * (the wardrobe is never empty); then the gap between two things starts at
+ * three stars (one good game) and grows by one star every six things:
+ * 3,3,3,3,3,3, 4,4,4,4,4,4, 5, … With 51 things the last one needs 323
+ * stars, about half of all the stars the games give (23 games with levels ×
+ * 10 levels × 3 stars = 690; tests/unit/wardrobe.test.js checks it).
+ */
+export function stepStars(i) {
+  let s = 0
+  for (let k = 0; k < i - 1; k++) s += 3 + Math.floor(k / 6)
+  return i < 2 ? 0 : s
+}
+
+const ALL = [...HEAD, ...FACE, ...NECK, ...BACK, ...HOLD]
+const rank = id => { const i = ORDER.indexOf(id); return i === -1 ? ORDER.length + ALL.findIndex(t => t.id === id) : i }
+/** Every thing, in the order of unlocking, with its stars. */
+export const WARDROBE = [...ALL].sort((a, b) => rank(a.id) - rank(b.id)).map((t, i) => ({ ...t, stars: stepStars(i) }))
 export const ITEM_BY_ID = Object.fromEntries(WARDROBE.map(t => [t.id, t]))
 
 // ── Unlocking ───────────────────────────────────────────────────────────────
@@ -130,7 +164,7 @@ export const unseenItems = (profile, stars) => unlockedItems(stars).filter(t => 
 
 /** What Lumi wears, cleaned: known things in their own slot only. */
 export function cleanOutfit(outfit) {
-  const out = { head: null, face: null, neck: null }
+  const out = Object.fromEntries(SLOTS.map(s => [s, null]))
   if (outfit && typeof outfit === 'object') {
     for (const s of SLOTS) if (ITEM_BY_ID[outfit[s]]?.slot === s) out[s] = outfit[s]
   }
@@ -192,15 +226,20 @@ export function figureLayers(pose, outfit) {
   const worn = wornItems(outfit)
   const bySlot = Object.fromEntries(worn.map(t => [t.slot, t]))
   const hat = bySlot.head
-  const layers = [{ kind: 'pose', clip: hat?.tuft === 'hide' && P.tuft ? `polygon(evenodd, 0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ${poly(P.tuft)}, ${poly([P.tuft[0]])}, 0% 0%)` : null }]
+  const layers = []
   const item = t => {
     const p = placeItem(t, pose)
     return { kind: 'item', id: t.id, src: t.src, left: pct(p.left), top: pct(p.top), size: pct(p.size), rot: p.rot, origin: `${p.ax * 100}% ${p.ay * 100}%` }
   }
+  // the back thing lies behind Lumi
+  if (bySlot.back) layers.push(item(bySlot.back))
+  layers.push({ kind: 'pose', clip: hat?.tuft === 'hide' && P.tuft ? `polygon(evenodd, 0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ${poly(P.tuft)}, ${poly([P.tuft[0]])}, 0% 0%)` : null })
   if (bySlot.neck) {
     layers.push(item(bySlot.neck))
     if (P.front) layers.push({ kind: 'pose', clip: `polygon(${poly(P.front)})` })
   }
+  // the held thing lies over Lumi, under what is on the face and head
+  if (bySlot.hold) layers.push(item(bySlot.hold))
   if (bySlot.face) layers.push(item(bySlot.face))
   if (hat) {
     layers.push(item(hat))

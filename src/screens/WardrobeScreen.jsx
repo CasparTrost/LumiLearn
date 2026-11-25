@@ -25,7 +25,7 @@ import { LINES, line } from '../lib/lumiLines.js'
 const rec = key => (LINES[key] ? line(key) : null)
 const REACTIONS = ['schrank/anziehen-1', 'schrank/anziehen-2', 'schrank/anziehen-3', 'schrank/anziehen-4']
 const nameLine = item => rec(`schrank/name-${item.id}`) ?? (item.say ? rec(item.say) : null)
-const SHELF_LABEL = { head: 'Für den Kopf', face: 'Für die Augen', neck: 'Für den Hals' }
+const SHELF_LABEL = { head: 'Für den Kopf', face: 'Fürs Gesicht', neck: 'Für den Hals', back: 'Für den Rücken', hold: 'Zum Festhalten' }
 
 function useViewport() {
   const get = () => ({ w: window.innerWidth, h: window.innerHeight })

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Lumi's wardrobe (src/lib/wardrobe/back.js): the superhero cape. Red
+       outside, yellow lining, a star clasp at the neck. Drawn behind Lumi:
+       it hangs from the shoulders and flares out wide, so it shows left and
+       right of Lumi's body down to the feet. The clasp is where the neck is.
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-umhang.svg public/sprites/wardrobe/umhang.webp 384 -->
+  <defs>
+    <linearGradient id="red" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#c9312c"/>
+      <stop offset="0.25" stop-color="#ef4b40"/>
+      <stop offset="0.75" stop-color="#ef4b40"/>
+      <stop offset="1" stop-color="#b52a26"/>
+    </linearGradient>
+  </defs>
+  <g stroke="#7b4a1e" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+    <!-- the cape: narrow at the shoulders, flaring wide, a wavy hem -->
+    <path d="M100 70 Q128 76 156 70 C200 96 236 132 250 176 Q230 188 206 178 Q186 190 164 180 Q146 190 128 182 Q110 190 92 180 Q70 190 50 178 Q26 188 6 176 C20 132 56 96 100 70 Z" fill="url(#red)"/>
+    <!-- the yellow lining turning out at both ends -->
+    <path d="M100 70 C64 92 26 128 8 172 Q18 180 30 178 C42 140 70 104 104 76 Z" fill="#ffd23a"/>
+    <path d="M156 70 C192 92 230 128 248 172 Q238 180 226 178 C214 140 186 104 152 76 Z" fill="#ffd23a"/>
+  </g>
+  <!-- folds and light -->
+  <g stroke="#a82420" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.55">
+    <path d="M104 92 C88 120 76 150 70 178"/><path d="M152 92 C168 120 180 150 186 178"/><path d="M128 92 L128 180"/>
+  </g>
+  <path d="M96 86 C76 104 58 128 44 160" stroke="#ff8a7a" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.6"/>
+  <!-- the collar and the star clasp -->
+  <path d="M92 66 Q128 82 164 66 L160 78 Q128 94 96 78 Z" fill="#c9312c" stroke="#7b4a1e" stroke-width="4.5" stroke-linejoin="round"/>
+  <path d="M128 62 l5.5 11 12 1.7 -8.7 8.5 2 12 -10.8 -5.7 -10.8 5.7 2 -12 -8.7 -8.5 12 -1.7 z" fill="#ffd23a" stroke="#7b4a1e" stroke-width="3.5" stroke-linejoin="round"/>
+</svg>

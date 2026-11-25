@@ -160,7 +160,7 @@ const wearable = p => {
   for (const k of Object.keys(o)) if (o[k] && !isUnlocked(ITEM_BY_ID[o[k]], stars)) o[k] = null
   return o
 }
-const freshWardrobe = () => ({ outfit: { head: null, face: null, neck: null }, wardrobeSeen: [], wardrobeTried: [], starsEver: 0 })
+const freshWardrobe = () => ({ outfit: cleanOutfit(null), wardrobeSeen: [], wardrobeTried: [], starsEver: 0 })
 
 // ── Lumis Ideen für heute ────────────────────────────────────────────────────
 // Der Tagesplan (lib/learning.js): vier Spiele und eine Bewegungspause,
