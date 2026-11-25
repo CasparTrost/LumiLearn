@@ -1,615 +1,723 @@
-import { useState, useCallback, useEffect, useLayoutEffect, useRef, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Art, Critter, useMood, DragArea, Draggable, DropZone, RoundTrail, HintHand, useIdle, useBursts } from '../components/play/index.js'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { AnimatePresence, animate, motion, motionValue, useAnimationFrame, useMotionValue, useReducedMotion, useTransform } from 'framer-motion'
+import { Art, HintHand, useBursts, useJuice } from '../components/play/index.js'
 import { sfx } from '../sfx.js'
-import { afterNarration, lockPreviews } from '../narrator.js'
-import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
+import { leaveGame, lockPreviews } from '../narrator.js'
+import { LINES, line } from '../lib/lumiLines.js'
+import { announce, sayRight, sayWrong } from '../lib/feedback.js'
 import { result } from '../lib/score.js'
 import { usePaused } from '../lib/pause.js'
-import { Pad, Water, Bank, Splash } from './frosch/Pond.jsx'
 import { voice, KEY } from './woerter/voice.js'
 import Finale from './woerter/Finale.jsx'
+import { Water, Greenery, Pad, HopSpot, Ring, Splash, Drops, Tongue, Stork, STORK_PECK } from './frosch/Pond.jsx'
+import { buildRounds, levelConfig } from './frosch/words.js'
+import { clamp, stageLayout, hopSpots, padCells, shelfSlots } from './frosch/layout.js'
+import { useLater, useStage } from './frosch/hooks.js'
 
 /**
- * Silben-Spaß: "Frosch-Hüpfen". A frog wants to get across the pond, to
- * the thing waiting on the other bank. It hops one lily pad per syllable,
- * and each pad shows its syllable as the frog lands ("BA – NA – NE").
- *   • Clapping rounds: the child says the word and claps it on the big clap
- *     button; every clap drops a lily pad into the pond. A moment after the
- *     last clap the frog sets off. Too few pads, and it splashes into the
- *     water; too many, and the pad left over sinks under it. Then it climbs
- *     out, the pads are washed away, and the child claps again.
- *   • Building rounds: the card above the pond shows the word with an arc
- *     under each syllable; the child lays the syllable pads in that order
- *     (drag, or tap) and the frog hops across them.
+ * Silben-Spaß — "Frosch-Hüpfer": splitting a word into syllables, and
+ * building a word from syllables
  *
- * Scientific basis:
- *   • Phonological Awareness (Adams 1990; Goswami 2001) — explicit manipulation
- *     of syllable units is the strongest predictor of early reading success.
- *   • Segmentation before blending — for four- to six-year-olds the core skill
- *     is hearing the parts of a spoken word (clapping them), so the first
- *     levels mix clapping rounds with building rounds.
- *   • Blending research — children who practice assembling syllables into
- *     words score significantly higher on later decoding tasks.
- *   • Worked-example effect — the picture of the object is a semantic scaffold
- *     that reduces cognitive load while learning.
+ * A frog wants to cross the pond to the thing on the far bank (a banana).
+ * Lumi says the word once.
+ *
+ *   • Hop rounds. Every tap on the pond is one hop: a lily pad comes up
+ *     under the frog, and Lumi says the next syllable as it lands ("Ba" …
+ *     "na" … "ne"). When the word is over, the child taps the thing and the
+ *     frog leaps ashore to it. One hop too many: no syllable is left, no pad
+ *     comes, splash. The thing tapped too early: the bank is still too far,
+ *     the frog falls short, splash. It swims back, climbs out, shakes itself
+ *     dry and starts again. From level 5 the hops are silent: the child has
+ *     to split the word itself.
+ *   • Build rounds. Lily pads with the word's syllables float in the pond
+ *     in mixed order (from level 7 with wrong ones among them). A tap makes
+ *     Lumi say the pad's syllable; if it is the one that comes next, the
+ *     frog hops onto it, and from the last one ashore. A wrong pad dips
+ *     under with a "blub" and comes up again. Hearing what a pad says is
+ *     free; only tapping a wrong pad a second time counts as a miss.
+ *
+ * The pond is laid out for the word (frosch/layout.js): the last syllable's
+ * pad is always one leap from the bank, so "too early" really is too far.
+ * What was reached collects on the far shore, a star for each flies to the
+ * counter (components/play/Juice.jsx). Flies cross the pond: a frog in the
+ * air near one snaps it, for a bonus star. A child who waits long hears the
+ * word again; then a stork wades up and taps what comes next with its beak.
+ * After two splashes the pads of the word come up by themselves, each saying
+ * its syllable, and stay.
+ *
+ * Why this: hearing and handling syllables is the first step of
+ * phonological awareness and one of the best predictors of learning to read
+ * (Adams 1990; Goswami & Bryant 1990). Segmenting comes before blending, and
+ * a movement per syllable (clapping, hopping) is how kindergartens teach
+ * it; here the hop is the game itself.
+ *
+ * The result: words crossed without a splash (hop rounds) or without
+ * tapping a wrong pad twice (build rounds).
  */
 
-// ── Word Data ──────────────────────────────────────────────────────────────────
-// 'HO-NIG 🍯': syllables in the right order and the picture. Every picture
-// shows exactly its word (KÜCHE was a frying pan, BRUDER any boy, STAUBSAUGER
-// a spiral). Words with a syllable that starts with CH or CK are left out:
-// on their own those sound wrong ("Che" as "Tsche").
-const parse = list => list.map(spec => {
-  const [parts, emoji] = spec.split(' ')
-  const syllables = parts.split('-')
-  const word = syllables.join('')
-  return { word, syllables, emoji, name: word[0] + word.slice(1).toLowerCase() }
-})
+const HOP_MS = 360
+const LEAP_MS = 560
+const TRAVEL_MS = 330          // a hop off the stage, a hop onto it
+const SETTLE_MS = 170          // after a landing, before the next hop
+const REPEAT_MS = 6500         // waiting this long: Lumi says the word once more
+const STORK_MS = 10000         // waiting this long: the stork sets out
+const STORK_WALK_S = 4.5       // and takes this long to arrive
+// Lines Lumi may get later; silent until they are recorded
+const TASK = { hop: 'frosch-huepfen', build: 'frosch-bauen', alone: 'frosch-allein' }
+let seq = 0
 
-// 2 syllables, mostly open ones
-const P1 = parse([
-  'HA-SE 🐰', 'NA-SE 👃', 'RO-SE 🌹', 'HO-SE 👖', 'E-SEL 🫏', 'I-GEL 🦔', 'TI-GER 🐯', 'LÖ-WE 🦁',
-  'VO-GEL 🐦', 'RE-GEN 🌧️', 'HO-NIG 🍯', 'BIE-NE 🐝', 'EU-LE 🦉', 'ZIE-GE 🐐', 'KRO-NE 👑', 'BE-SEN 🧹',
-  'FE-DER 🪶', 'AU-TO 🚗', 'BLU-ME 🌸', 'RAU-PE 🐛', 'KÄ-SE 🧀', 'SO-FA 🛋️', 'LA-MA 🦙', 'KI-WI 🥝',
-  'ZE-BRA 🦓', 'MÖH-RE 🥕', 'DO-SE 🥫',
-])
-// 2 syllables with a closed first syllable (double consonants)
-const P2 = parse([
-  'KAT-ZE 🐱', 'SON-NE ☀️', 'AF-FE 🐒', 'EN-TE 🦆', 'AP-FEL 🍎', 'TAS-SE ☕', 'BRIL-LE 👓', 'BIR-NE 🍐',
-  'GUR-KE 🥒', 'SPIN-NE 🕷️', 'KER-ZE 🕯️', 'ROB-BE 🦭', 'PIN-SEL 🖌️', 'KOF-FER 🧳', 'TEL-LER 🍽️', 'TROM-MEL 🥁',
-  'PAN-DA 🐼', 'PIZ-ZA 🍕', 'WAF-FEL 🧇', 'KÜR-BIS 🎃', 'DEL-FIN 🐬', 'TRAK-TOR 🚜', 'BUT-TER 🧈', 'WOL-KE ☁️',
-  'GEI-GE 🎻', 'PAL-ME 🌴', 'TOR-TE 🎂', 'KAK-TUS 🌵',
-])
-// 3 syllables (no "ng" split across two syllables: KÄN-GU-RU sounds
-// different in parts than in the word)
-const P3 = parse([
-  'BA-NA-NE 🍌', 'E-LE-FANT 🐘', 'TO-MA-TE 🍅', 'ME-LO-NE 🍈', 'ZI-TRO-NE 🍋', 'KA-ME-RA 📷', 'GI-RAF-FE 🦒',
-  'A-NA-NAS 🍍', 'RA-KE-TE 🚀', 'RO-BO-TER 🤖', 'PA-PRI-KA 🫑', 'PA-PA-GEI 🦜', 'KRO-KO-DIL 🐊', 'TROM-PE-TE 🎺',
-  'GI-TAR-RE 🎸', 'ERD-BEE-RE 🍓', 'SCHMET-TER-LING 🦋', 'SCHILD-KRÖ-TE 🐢', 'LA-TER-NE 🏮',
-])
-// 3 syllables, longer words and compounds
-const P4 = parse([
-  'FEU-ER-WEHR 🚒', 'ZAHN-BÜRS-TE 🪥', 'SU-PER-MARKT 🛒', 'TISCH-TEN-NIS 🏓', 'BRIEF-KAS-TEN 📬',
-  'LUFT-BAL-LON 🎈', 'RE-GEN-SCHIRM ☂️', 'AS-TRO-NAUT 👨‍🚀', 'KAR-TOF-FEL 🥔', 'HUB-SCHRAU-BER 🚁',
-  'PO-LI-ZIST 👮', 'WEIH-NACHTS-MANN 🎅', 'KA-RUS-SELL 🎠', 'HAM-BUR-GER 🍔', 'FLE-DER-MAUS 🦇',
-  'GO-RIL-LA 🦍', 'MI-KRO-FON 🎤', 'PRIN-ZES-SIN 👸', 'KO-KOS-NUSS 🥥', 'SPIN-NEN-NETZ 🕸️', 'BROK-KO-LI 🥦',
-])
-// 4 syllables (never more: five-syllable words were out of reach at this age)
-const P5 = parse([
-  'TA-SCHEN-LAM-PE 🔦', 'SEI-FEN-BLA-SE 🫧', 'SCHO-KO-LA-DE 🍫', 'SON-NEN-BLU-ME 🌻', 'RE-GEN-BO-GEN 🌈',
-  'OS-TER-HA-SE 🐰', 'KRAN-KEN-WA-GEN 🚑', 'A-VO-CA-DO 🥑', 'KO-A-LA-BÄR 🐨', 'AK-KOR-DE-ON 🪗',
-  'BA-DE-WAN-NE 🛁', 'MAN-DA-RI-NE 🍊', 'HEI-DEL-BEE-RE 🫐',
-])
-// One-syllable words, for the clapping rounds
-const ONE = parse([
-  'HUND 🐕', 'MAUS 🐭', 'FISCH 🐟', 'BAUM 🌳', 'KUH 🐄', 'BALL ⚽', 'STERN ⭐', 'BROT 🍞', 'BUCH 📖',
-  'ZUG 🚂', 'MOND 🌙', 'HUT 🎩', 'SCHAF 🐑', 'FROSCH 🐸', 'SCHUH 👟', 'EIS 🍦', 'HAUS 🏠', 'BUS 🚌',
-])
+export default function WordBuilderGame({ level = 1, onComplete }) {
+  const cfg = useMemo(() => levelConfig(level), [level])
+  const [rounds] = useState(() => buildRounds(level))
+  const total = rounds.length
+  const paused = usePaused()
+  const reduce = useReducedMotion()
+  const { later, afterSpeech } = useLater()
+  const [bursts, burst] = useBursts()
 
-// Every level its own mix (before, levels 1+2, 3+4 … played the same list):
-// clap = a clapping round before each building round, counting up to that
-// many syllables; extra = syllable tiles that do not belong to the word.
-const LEVELS = {
-  1:  { pool: P1,                clap: 3 },
-  2:  { pool: P2,                clap: 3 },
-  3:  { pool: P3,                clap: 4 },
-  4:  { pool: [...P1, ...P2],    extra: 1 },
-  5:  { pool: P3,                extra: 1 },
-  6:  { pool: P4 },
-  7:  { pool: P5 },
-  8:  { pool: [...P4, ...P5],    extra: 1 },
-  9:  { pool: P5,                extra: 2 },
-  10: { pool: [...P4, ...P5],    extra: 2, clap: 4 },
-}
-const ROUNDS = 8
-const ALL_SYLLABLES = [...new Set([P1, P2, P3, P4, P5].flat().flatMap(w => w.syllables))]
+  const rootRef = useRef(null)
+  const size = useStage(rootRef)
+  const L = useMemo(() => (size ? stageLayout(size.w, size.h, size.scale) : null), [size])
+  const juice = useJuice({ hudSize: L?.hudSize ?? 40 })
+  const { hit, miss, shake } = juice   // these three never change
 
-function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5) }
+  const [idx, setIdx] = useState(0)
+  const [phase, setPhaseState] = useState('intro')   // intro | play | busy | won | finale
+  const [hops, setHops] = useState(0)                // syllables behind the frog
+  const [up, setUp] = useState(0)                    // hop rounds: pads that have come up
+  const [shown, setShown] = useState(0)              // … and how many of them show their syllable
+  const [padFx, setPadFx] = useState({})             // per pad: { bump, dip, done }
+  const [help, setHelp] = useState(false)            // after two misses: the way is shown
+  const [hint, setHint] = useState(null)             // what the stork points at: 'spot' | 'thing' | a pad's id
+  const [frogMode, setFrogMode] = useState('sit')    // sit | under | swim
+  const [tongue, setTongue] = useState(null)
+  const [flyOn, setFlyOn] = useState(false)
+  const [stork, setStork] = useState(null)           // { flip, walking, peck }
+  const [shelf, setShelf] = useState([])             // what was reached, on the far shore
+  const [flyer, setFlyer] = useState(null)           // the thing on its way there
+  const [joy, setJoy] = useState(0)
+  const [fxs, setFxs] = useState([])                 // rings, splashes, drops
 
-// Clapping words spread over every count from 1 to max, so the answer is not
-// always the same number.
-function pickClapWords(n, max, usedEmoji) {
-  const candidates = [ONE, P1, P2, P3, P4, P5].flat()
-    .filter(w => w.syllables.length <= max && !usedEmoji.has(w.emoji))
-  const counts = shuffle(Array.from({ length: n }, (_, i) => (i % max) + 1))
-  const out = []
-  for (const c of counts) {
-    const free = candidates.filter(x => !out.some(o => o.emoji === x.emoji))
-    const w = shuffle(free.filter(x => x.syllables.length === c))[0] ?? shuffle(free)[0]
-    if (w) out.push(w)
+  const round = rounds[idx]
+  const n = round.syllables.length
+  const isHop = round.kind === 'hop'
+  const spots = useMemo(() => (L ? hopSpots(L, n) : null), [L, n])
+  const cells = useMemo(() => (L ? padCells(L, cfg.drift) : null), [L, cfg.drift])
+  const slots = useMemo(() => (L ? shelfSlots(L, total) : null), [L, total])
+  // build pads float about their places
+  const drift = useMemo(() => Object.fromEntries((round.pads ?? []).map(p => [p.id, { x: motionValue(0), y: motionValue(0) }])), [round])
+  // The hand shows the move in the first round of its kind, in the levels where it is new
+  const firstOfKind = rounds.findIndex(r => r.kind === round.kind) === idx
+  const hand = firstOfKind && (isHop ? level <= 2 : level <= 4)
+
+  // What the clock, the timers and the taps work on; the state above is its picture
+  const g = useRef({
+    phase: 'intro', hops: 0, next: 0, misses: 0, wrongRow: 0, heard: new Set(), done: new Set(), help: false,
+    air: false, lock: 0, queued: null, at: null, t: 0, idle: 0, repeated: false, fly: null, stork: null, firstTry: 0, started: -1,
+  }).current
+  const S = useRef({}).current
+  Object.assign(S, { L, round, n, isHop, spots, cells, slots, drift, cfg, idx, paused, reduce, hand })
+
+  const thingRef = useRef(null)
+  const bodyRef = useRef(null)
+  const aimRef = useRef(null)
+  const padEls = useRef({})
+
+  // The frog: where its feet are, how high it is in the air, how squashed
+  const fx = useMotionValue(-999), fy = useMotionValue(-999), lift = useMotionValue(0)
+  const sx = useMotionValue(1), sy = useMotionValue(1), rot = useMotionValue(0), zoom = useMotionValue(1)
+  const bodyY = useTransform(lift, v => -v)
+  const shade = useTransform(lift, v => Math.max(0.45, 1 - v / 240))
+  const flyX = useMotionValue(-99), flyY = useMotionValue(-99)
+  const storkX = useMotionValue(-999), storkY = useMotionValue(-999)
+
+  useEffect(() => leaveGame, [])
+
+  const setPhase = p => { g.phase = p; setPhaseState(p) }
+  const addFx = (kind, pt, sizeOf) => setFxs(l => [...l.slice(-7), { id: ++seq, kind, x: pt.x, y: pt.y, size: sizeOf }])
+  const endFx = id => setFxs(l => l.filter(f => f.id !== id))
+  const bumpPad = id => setPadFx(f => ({ ...f, [id]: { ...f[id], bump: (f[id]?.bump ?? 0) + 1 } }))
+
+  // Where a place is right now: a bank, a hop spot, a build pad, or a plain point
+  const padMiddle = id => {
+    const p = S.round.pads.find(x => x.id === id), b = S.cells.at(p), d = S.drift[id]
+    return { x: b.x + d.x.get(), y: b.y + d.y.get() }
   }
-  return out
-}
+  const pointOf = at => {
+    if (at === 'home') return S.L.home
+    if (at === 'goal') return S.L.goal
+    // on a pad the frog sits on the back half: the syllable is written on the front rim
+    if (at.spot != null) { const p = S.spots.at(at.spot); return { x: p.x, y: p.y - S.spots.pad.h * 0.12 } }
+    if (at.pad) { const p = padMiddle(at.pad); return { x: p.x, y: p.y - S.cells.pad.h * 0.12 } }
+    return at
+  }
+  useLayoutEffect(() => {
+    if (!L || g.air || !g.at) return
+    const p = pointOf(g.at)
+    fx.set(p.x); fy.set(p.y)
+  }, [L]) // eslint-disable-line react-hooks/exhaustive-deps
 
-function buildRounds(level) {
-  const cfg = LEVELS[level] ?? LEVELS[1]
-  const buildCount = cfg.clap ? ROUNDS / 2 : ROUNDS
-  // one picture per round: no two words with the same picture in a level
-  const build = shuffle(cfg.pool)
-    .filter((w, i, all) => all.findIndex(x => x.emoji === w.emoji) === i)
-    .slice(0, buildCount)
-  const seen = new Set(build.map(w => w.emoji))
-  const rounds = build.map(w => {
-    const extras = shuffle(ALL_SYLLABLES.filter(s => !w.syllables.includes(s))).slice(0, cfg.extra ?? 0)
-    return {
-      kind: 'build', ...w,
-      tiles: shuffle([
-        ...w.syllables.map((text, i) => ({ id: i, text })),
-        ...extras.map((text, i) => ({ id: 100 + i, text, extra: true })),
-      ]),
+  // ── The jump: a springy arc, a squash on landing ──
+  const jump = (at, { h = 60, ms = HOP_MS, spin = false, onLand } = {}) => {
+    const to = pointOf(at)
+    g.air = true
+    g.at = at
+    if (S.reduce) {
+      fx.set(to.x); fy.set(to.y)
+      later(120, () => { g.air = false; onLand?.() })
+      return
+    }
+    const d = ms / 1000, T = d + 0.24, land = d / T, rest = 1 - land
+    const times = [0, land * 0.2, land * 0.9, land + rest * 0.25, land + rest * 0.65, 1]
+    animate(fx, to.x, { duration: d, ease: 'linear' })
+    animate(fy, to.y, { duration: d, ease: 'linear' })
+    animate(lift, [0, h, 0], { duration: d, times: [0, 0.5, 1], ease: ['easeOut', 'easeIn'] })
+    animate(sy, [0.8, 1.16, 1.1, 0.76, 1.06, 1], { duration: T, times })
+    animate(sx, [1.16, 0.9, 0.94, 1.2, 0.97, 1], { duration: T, times })
+    // seen from above (a screen held upright) a jump comes towards the eye
+    if (!S.L.wide) animate(zoom, [1, 1.18, 1], { duration: d, times: [0, 0.5, 1] })
+    if (spin) animate(rot, [0, -360], { duration: d * 0.92, ease: 'easeInOut' }).then(() => rot.set(0))
+    later(ms, () => { g.air = false; onLand?.() })
+  }
+
+  // ── A tap asks for a move; one tap made in the air is kept for the landing ──
+  const act = () => {
+    g.idle = 0
+    const st = g.stork
+    if (st && st.state !== 'go') {
+      // the child is playing again: the stork turns round and wades off
+      st.state = 'go'
+      g.pinned = null
+      setHint(null)
+      setStork({ flip: !st.flip, walking: true, peck: 0 })
+    }
+  }
+  const run = q => (q === 'hop' ? hop() : q === 'leap' ? leap() : tapPad(q.pad))
+  const flush = () => {
+    const q = g.queued
+    g.queued = null
+    if (q && g.phase === 'play' && !g.air) run(q)
+  }
+  const request = q => {
+    if (g.phase !== 'play' || S.paused) return
+    act()
+    if (g.air) { g.queued = q; return }
+    const wait = g.lock - g.t
+    if (wait > 0) { g.queued = q; later(wait, flush); return }
+    run(q)
+  }
+
+  // ── Hop rounds ──
+  const hop = () => {
+    const k = g.hops + 1
+    if (k > S.n) {
+      // one hop too many: no syllable is left, no pad comes up
+      setPhase('busy')
+      jump({ spot: k }, { h: S.spots.lift, onLand: splash })
+      return
+    }
+    setUp(u => Math.max(u, k))
+    if (!g.help) sfx.pop()   // the pad pops up out of the water
+    if (S.cfg.speak || g.help) later(HOP_MS * 0.4, () => voice([KEY.syllable(S.round.syllables[k - 1])]))
+    jump({ spot: k }, { h: S.spots.lift, onLand: () => {
+      g.hops = k
+      g.lock = g.t + SETTLE_MS
+      setHops(k)
+      setShown(s => Math.max(s, k))
+      bumpPad(`h${k}`)
+      addFx('ring', S.spots.at(k), S.spots.pad.w * 1.25)
+      sfx.note(k - 1, S.cfg.speak || g.help ? 0.1 : 0.2)
+      later(SETTLE_MS, flush)
+    } })
+  }
+
+  const leap = () => {
+    setPhase('busy')
+    sfx.slideUp()
+    if (g.hops === S.n) jump('goal', { h: Math.max(S.spots.lift * 1.5, S.L.frog * 0.9), ms: LEAP_MS, spin: true, onLand: landed })
+    // too early: the bank is still too far away
+    else jump(S.spots.short(g.hops), { h: S.spots.lift * 1.35, ms: 470, onLand: splash })
+  }
+
+  // Into the water. The frog swims back to its bank, climbs out, shakes
+  // itself dry and starts again.
+  const splash = () => {
+    const { L } = S
+    g.misses += 1
+    g.queued = null
+    miss(bodyRef.current)
+    sfx.splash()
+    addFx('splash', { x: fx.get(), y: fy.get() }, L.frog)
+    setFrogMode('under')
+    if (!g.help) { setUp(0); setShown(0) }   // the wave washes the pads away
+    sayWrong(null, { onEnd: () => voice([KEY.word(S.round.name)]) })
+    const edge = L.wide ? { x: L.water.x + L.frog * 0.35, y: L.home.y + L.frog * 0.1 } : { x: L.home.x, y: L.water.y + L.water.h - L.frog * 0.05 }
+    later(520, () => {
+      setFrogMode('swim')
+      g.at = edge
+      if (S.reduce) { fx.set(edge.x); fy.set(edge.y); return }
+      animate(fx, edge.x, { duration: 0.8, ease: 'easeInOut' })
+      animate(fy, edge.y, { duration: 0.8, ease: 'easeInOut' })
+    })
+    later(1400, () => {
+      setFrogMode('sit')
+      sfx.boing()
+      jump('home', { h: S.L.frog * 0.45, ms: 260, onLand: () => {
+        if (!S.reduce) animate(rot, [0, -16, 14, -12, 10, -6, 0], { duration: 0.6 })
+        addFx('drops', S.L.home, S.L.frog)
+        later(650, () => {
+          g.hops = 0
+          setHops(0)
+          if (g.misses >= 2) showWay()
+          else setPhase('play')
+        })
+      } })
+    })
+  }
+
+  // After two splashes: the pads of the word come up by themselves, each
+  // saying its syllable, and stay. Now the child only has to follow them.
+  const showWay = () => {
+    g.help = true
+    setHelp(true)
+    const step = k => {
+      if (k > S.n) { later(200, () => setPhase('play')); return }
+      setUp(u => Math.max(u, k))
+      setShown(s => Math.max(s, k))
+      bumpPad(`h${k}`)
+      addFx('ring', S.spots.at(k), S.spots.pad.w * 1.25)
+      sfx.note(k - 1, 0.1)
+      voice([KEY.syllable(S.round.syllables[k - 1])])
+      later(640, () => step(k + 1))
+    }
+    later(150, () => step(1))
+  }
+
+  // ── Build rounds ──
+  const tapPad = id => {
+    const { round, cells: C, L: lay } = S
+    const p = round.pads.find(x => x.id === id)
+    if (!p) return
+    if (g.done.has(id)) { voice([KEY.syllable(p.text)]); return }
+    // By what it says, not which pad it is: either PA pad fits either place of PA-PA-GEI
+    if (p.text === round.syllables[g.next]) {
+      const k = ++g.next
+      g.done.add(id)
+      g.wrongRow = 0
+      setHops(k)
+      setHelp(g.misses >= 2)
+      setPadFx(f => ({ ...f, [id]: { ...f[id], done: true } }))
+      voice([KEY.syllable(p.text)])
+      const to = padMiddle(id), far = Math.hypot(to.x - fx.get(), to.y - fy.get())
+      jump({ pad: id }, { h: clamp(far * (lay.wide ? 0.34 : 0.2), lay.frog * 0.4, lay.frog * 1.2), ms: clamp(250 + far * 0.45, 320, 540), onLand: () => {
+        g.lock = g.t + SETTLE_MS
+        bumpPad(id)
+        addFx('ring', padMiddle(id), C.pad.w * 1.15)
+        sfx.note(k - 1, 0.1)
+        if (k < S.n) { later(SETTLE_MS, flush); return }
+        // the last syllable: from here it leaps ashore by itself
+        setPhase('busy')
+        later(480, () => {
+          sfx.slideUp()
+          jump('goal', { h: S.L.frog * 1.1, ms: LEAP_MS, spin: true, onLand: landed })
+        })
+      } })
+      return
+    }
+    // Not this one (yet): it says what it is, dips under and comes up again.
+    // Finding out what a pad says is free; tapping it wrongly again is a miss.
+    voice([KEY.syllable(p.text)])
+    setPadFx(f => ({ ...f, [id]: { ...f[id], dip: (f[id]?.dip ?? 0) + 1 } }))
+    g.wrongRow += 1
+    if (g.heard.has(id)) {
+      g.misses += 1
+      miss(padEls.current[id])
+      announce('wrong')
+    } else {
+      g.heard.add(id)
+      sfx.bonk()
+    }
+    setHelp(g.wrongRow >= 3 || g.misses >= 2)
+  }
+
+  // ── Ashore ──
+  const landed = () => {
+    const { round } = S
+    setPhase('won')
+    shake(0.6)
+    if (g.misses === 0) g.firstTry += 1
+    const { milestone } = hit(thingRef.current)
+    burst(thingRef.current, milestone ? 'confetti' : 'stars', milestone ? 18 : 9)
+    setJoy(j => j + 1)
+    const word = KEY.word(round.name) in LINES ? [line(KEY.word(round.name))] : []
+    const cheer = () => { sayRight(null, { lead: word }); afterSpeech(collect, 900) }
+    // silent hops: now the pads say the syllables, one after the other
+    if (S.isHop && !S.cfg.speak && !g.help) recap(1, cheer)
+    else cheer()
+  }
+  const recap = (k, done) => {
+    if (k > S.n) { later(100, done); return }
+    bumpPad(`h${k}`)
+    sfx.note(k - 1, 0.08)
+    voice([KEY.syllable(S.round.syllables[k - 1])])
+    later(580, () => recap(k + 1, done))
+  }
+  // The thing joins the others on the far shore
+  const collect = () => {
+    const { L: lay, slots: sl } = S
+    setFlyer({ id: S.idx, emoji: S.round.emoji, from: { x: lay.thingAt.x, y: lay.thingAt.y - lay.thing / 2 }, to: sl.slots[S.idx], size: lay.thing, scale: (sl.size * 0.86) / lay.thing })
+  }
+  const shelved = () => {
+    setFlyer(null)
+    setShelf(s => (s.length > S.idx ? s : [...s, S.round.emoji]))
+    sfx.pop()
+    later(260, () => (S.idx + 1 >= total ? setPhase('finale') : setIdx(i => i + 1)))
+  }
+
+  // ── A new word ──
+  const ready = !!L
+  useEffect(() => {
+    if (!ready || g.started === idx) return
+    g.started = idx
+    Object.assign(g, { hops: 0, next: 0, misses: 0, wrongRow: 0, heard: new Set(), done: new Set(), help: false, queued: null, idle: 0, repeated: false, fly: null, pinned: null })
+    setHops(0); setUp(0); setShown(0); setPadFx({}); setHelp(false); setHint(null); setFlyOn(false); setFrogMode('sit')
+    if (g.stork) { g.stork.state = 'go'; setStork({ flip: !g.stork.flip, walking: true, peck: 0 }) }
+    setPhase('intro')
+    lockPreviews()
+    // Lumi says the word (and, the first time, what to do)
+    const say = () => {
+      const task = firstOfKind ? KEY.task(isHop ? (cfg.speak ? TASK.hop : TASK.alone) : TASK.build) : null
+      voice([task, KEY.word(round.name)])
+      // a fly for the frog to snap, in most rounds
+      g.fly = (idx === 0 && level <= 2) || Math.random() > 0.62 ? null : { t: -(900 + Math.random() * 2200), life: isHop ? 10000 : 13000, seed: Math.random() * 6, on: false, gone: false }
+    }
+    // the pond is open once the word has been said
+    const open = () => afterSpeech(() => { if (g.phase === 'intro') setPhase('play') }, 300, 4000)
+    // The frog travels on: it hops off the stage beyond the far bank and
+    // comes in again at the near bank of the next pond (no leap back over
+    // the water, which it could not do), while Lumi says the next word.
+    const f = S.L.frog
+    const enter = () => {
+      const from = S.L.wide ? { x: -f, y: S.L.home.y } : { x: S.L.home.x, y: S.L.h + f * 1.1 }
+      fx.set(from.x); fy.set(from.y)
+      jump('home', { h: f * 0.5, ms: TRAVEL_MS, onLand: open })
+    }
+    if (idx === 0) {
+      later(250, () => { enter(); later(200, say) })
+    } else {
+      sfx.whoosh()
+      later(280, say)
+      jump(S.L.wide ? { x: S.L.w + f, y: S.L.goal.y } : { x: S.L.goal.x, y: -f * 0.3 }, { h: f * 0.5, ms: TRAVEL_MS, onLand: enter })
+    }
+  }, [idx, ready]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const tapThing = () => {
+    if (S.paused) return
+    if (g.phase === 'play' && S.isHop) { request('leap'); return }
+    if (g.phase === 'play' || g.phase === 'intro') {
+      // in a build round the thing just says its name again
+      act()
+      voice([KEY.word(S.round.name)])
+      setJoy(j => j + 1)
+    }
+  }
+
+  // ── What waits for the child: the fly, the stork ──
+  const flyAt = f => {
+    const { L: lay } = S
+    const W = lay.water, q = S.reduce ? 0.5 : f.t / f.life, s = f.t / 1000
+    if (S.isHop) {
+      // it comes towards the frog along its way, at the height of a jump
+      if (lay.wide) return { x: W.x + W.w * (1.04 - 1.1 * q), y: lay.rowY - lay.frog * 1.25 + Math.sin(s * 2.3 + f.seed) * lay.frog * 0.3 }
+      return { x: lay.rowX + Math.sin(s * 1.9 + f.seed) * lay.frog * 0.55, y: W.y + W.h * (-0.04 + 1.1 * q) - lay.frog * 0.5 }
+    }
+    return { x: W.x + W.w * (0.5 + 0.36 * Math.sin(s * 0.45 + f.seed)), y: W.y + W.h * (0.45 + 0.3 * Math.sin(s * 0.62 + f.seed * 2)) - lay.frog * 0.4 }
+  }
+  const snap = (p, mx, my) => {
+    g.fly.gone = true
+    setFlyOn(false)
+    setTongue({ id: ++seq, dx: p.x - mx, dy: p.y - my })
+    later(250, () => {
+      // a bonus star, nothing to do with the task
+      sfx.chomp()
+      hit(bodyRef.current, { silent: true })
+    })
+  }
+  const nextTarget = () => {
+    const { L: lay } = S
+    if (S.isHop) {
+      return g.hops < S.n
+        ? { id: 'spot', pt: S.spots.at(g.hops + 1) }
+        : { id: 'thing', pt: { x: lay.thingAt.x - lay.thing * 0.18, y: lay.thingAt.y - lay.thing * 0.42 } }
+    }
+    const p = S.round.pads.find(x => x.text === S.round.syllables[g.next] && !g.done.has(x.id))
+    return p ? { id: p.id, pt: padMiddle(p.id) } : null
+  }
+  const callStork = () => {
+    const { L: lay } = S
+    const t = nextTarget()
+    if (!t) return
+    const s = lay.stork
+    // It stands so that its beak, bent down, is on the target: on the side
+    // away from the frog, where there is room for it on the stage
+    const reach = STORK_PECK.x * s, frogX = fx.get()
+    let flip = Math.abs(frogX - t.pt.x) > 20 ? frogX < t.pt.x : t.pt.x < lay.w / 2
+    if (flip && t.pt.x + reach > lay.w - s * 0.3) flip = false
+    if (!flip && t.pt.x - reach < s * 0.3) flip = true
+    const dir = flip ? -1 : 1
+    const stand = { x: t.pt.x - dir * STORK_PECK.x * s, y: Math.min(lay.h - 4, t.pt.y - STORK_PECK.y * s) }
+    const from = { x: flip ? lay.w + s * 0.7 : -s * 0.7, y: lay.h - 6 }
+    if (t.id !== 'spot' && t.id !== 'thing') g.pinned = t.id   // the pad holds still for it
+    g.stork = { state: S.reduce ? 'peck' : 'come', x: S.reduce ? stand.x : from.x, y: S.reduce ? stand.y : from.y, tx: stand.x, ty: stand.y, ex: from.x, ey: from.y,
+      speed: Math.hypot(stand.x - from.x, stand.y - from.y) / STORK_WALK_S, flip, target: t.id, wait: 300, n: 0 }
+    storkX.set(g.stork.x); storkY.set(g.stork.y)
+    setStork({ flip, walking: !S.reduce, peck: 0 })
+    if (S.reduce) setHint(t.id)
+  }
+
+  // The game's clock. It stands still while the help is open.
+  useAnimationFrame(() => {
+    const { L: lay, round: r, cells: C } = S
+    // real time, also on a slow tablet (the frame loop's own delta is capped at 40 ms)
+    const now = performance.now(), dt = Math.min(now - (g.seen ?? now), 250)
+    g.seen = now
+    if (!lay || S.paused) return
+    g.t += dt
+
+    if (!S.isHop && !S.reduce) {
+      const w = (g.t / 1000) * (0.45 + S.cfg.drift * 0.3)
+      for (const p of r.pads) {
+        if (g.done.has(p.id) || g.pinned === p.id) continue
+        S.drift[p.id].x.set(Math.sin(w + p.phase) * C.amp)
+        S.drift[p.id].y.set(Math.cos(w * 0.8 + p.phase * 1.7) * C.amp * 0.7)
+      }
+    }
+
+    const f = g.fly
+    if (f && !f.gone && g.phase !== 'finale') {
+      f.t += dt
+      if (f.t >= 0) {
+        if (!f.on) { f.on = true; setFlyOn(true) }
+        const p = flyAt(f)
+        flyX.set(p.x); flyY.set(p.y)
+        if (f.t > f.life && !S.reduce) { f.gone = true; setFlyOn(false) }
+        else if (g.air && (S.reduce || lift.get() > 12) && g.phase !== 'intro') {
+          const mx = fx.get(), my = fy.get() - lift.get() - lay.frog * 0.5
+          if (Math.hypot(p.x - mx, p.y - my) < lay.frog * 0.62 + 18) snap(p, mx, my)
+        }
+      }
+    }
+
+    const st = g.stork
+    if (st) {
+      if (st.state === 'peck') {
+        st.wait -= dt
+        if (st.wait <= 0) {
+          st.wait = 1900
+          st.n += 1
+          sfx.flip()
+          setStork(v => v && { ...v, peck: st.n })
+        }
+      } else {
+        const go = st.state === 'go'
+        const tx = go ? st.ex : st.tx, ty = go ? st.ey : st.ty
+        const dx = tx - st.x, dy = ty - st.y, d = Math.hypot(dx, dy)
+        const stepLen = (st.speed * (go ? 3 : 1) * dt) / 1000
+        if (d <= stepLen || S.reduce) {
+          st.x = tx; st.y = ty
+          if (go) { g.stork = null; setStork(null) }
+          else { st.state = 'peck'; st.wait = 250; setHint(st.target); setStork(v => v && { ...v, walking: false }) }
+        } else { st.x += (dx / d) * stepLen; st.y += (dy / d) * stepLen }
+        storkX.set(st.x); storkY.set(st.y)
+      }
+    }
+
+    if (g.phase === 'play' && !g.air) {
+      g.idle += dt
+      if (!g.repeated && g.idle > REPEAT_MS) {
+        g.repeated = true
+        voice([KEY.word(r.name)])
+        setJoy(j => j + 1)
+      }
+      if (!g.stork && !S.hand && g.idle > STORK_MS) callStork()
     }
   })
-  if (!cfg.clap) return rounds
-  const claps = pickClapWords(ROUNDS / 2, cfg.clap, seen).map(w => ({ kind: 'clap', ...w, max: cfg.clap }))
-  return claps.flatMap((c, i) => [c, rounds[i]]).filter(Boolean)
-}
 
+  // ── The picture ──
+  const F = L?.frog ?? 80
+  const playing = phase === 'play'
+  const collected = shelf.length > idx || !!flyer
+  // where the hand points: the next hop, the thing, the next pad
+  let aim = null
+  if (L && playing && hand) {
+    if (isHop) aim = hops < n ? spots.at(hops + 1) : { x: L.thingAt.x, y: L.thingAt.y - L.thing * 0.45 }
+    else {
+      const p = round.pads.find(x => x.text === round.syllables[hops] && !padFx[x.id]?.done)
+      aim = p ? cells.at(p) : null
+    }
+  }
+  const thingGlow = hint === 'thing' || (help && isHop && playing && hops === n)
 
-// Where an element's middle is, in the coordinates of `root` (layout
-// pixels: the FitBox scale does not matter)
-function centerIn(el, root) {
-  let x = el.offsetWidth / 2, y = el.offsetHeight / 2
-  for (let e = el; e && e !== root; e = e.offsetParent) { x += e.offsetLeft; y += e.offsetTop }
-  return { x, y }
-}
-
-function useWidth(ref) {
-  const [w, setW] = useState(0)
-  useLayoutEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const measure = () => setW(el.clientWidth)
-    measure()
-    const ro = new ResizeObserver(measure)
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [ref])
-  return w
-}
-
-// A ref that looks its element up when it is needed (for the hint hand)
-const lazy = find => ({ get current() { return find() } })
-
-const HOP_MS = 720
-// The round trail stops short of the sun in the scene's top right corner
-const SUN_GAP = 'clamp(0px, calc((100vw - 700px) * 0.6), 190px)'
-const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-// After the last clap the frog waits this long, then jumps
-const CLAP_WAIT_MS = 1300
-// What a round starts with
-// (`demo`: after a wrong count the frog hops the right number of pads once;
-// `showClaps`: then the hand claps that many times)
-// (`carry`: the frog carries the thing home; `gone`: it left the far bank)
-const FRESH = { placed: [], slotMisses: 0, missed: false, claps: 0, solved: false, sunk: false, splash: null, dunk: false, demo: false, showClaps: 0, carry: false, gone: false }
-
-/**
- * The task as a picture card above the pond: the thing, and either a clap
- * with a "?" (how many claps?) or the word in its syllables with an arc
- * under each, the way first-graders mark syllables (Silbenbögen). Laid
- * syllables light up; after two misses the next one glows.
- */
-function TaskCard({ round, placed, glowNext, wide }) {
-  const pic = wide ? 64 : 48
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: wide ? 14 : 8, padding: '6px 16px', borderRadius: 22, flexShrink: 0,
-      background: '#fffdf7', border: '3px solid #2a1b3d', boxShadow: '0 5px 0 rgba(42,27,61,0.25)',
-    }}>
-      <Art art={round.emoji} size={pic} />
-      {round.kind === 'clap' ? (
-        <div aria-label="Wie oft klatschen?" style={{ display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: pic * 0.6, color: '#2a1b3d' }}>
-          <Art art=":px-klatschen:" size={pic * 0.8} />?
-        </div>
-      ) : (
-        <div aria-label={round.syllables.join('-')} style={{ display: 'flex', gap: 4 }}>
-          {round.syllables.map((syl, i) => {
-            const laid = i < placed, next = i === placed && glowNext
+    <div ref={rootRef} data-game="frosch" data-phase={phase} data-kind={round.kind} data-word={round.syllables.join('-')} data-round={idx} data-hops={hops} data-help={help ? 1 : 0}
+      style={{
+        position: 'relative', flex: 1, minHeight: 0, overflow: 'hidden', userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'manipulation',
+        background: 'linear-gradient(180deg, #a9e47c 0%, #8ad460 50%, #71c14c 100%)',
+      }}>
+      {L && (
+        <div ref={juice.stage} style={{ position: 'absolute', inset: 0 }}>
+          <Water box={L.water} wide={L.wide} />
+          <Greenery L={L} />
+
+          {/* The pond: in a hop round every tap on it is one hop */}
+          <button type="button" aria-label={isHop ? 'Hüpfen' : 'Teich'} onClick={() => S.isHop && request('hop')} tabIndex={isHop ? 0 : -1}
+            style={{ all: 'unset', position: 'absolute', inset: 0, zIndex: 1, cursor: isHop && playing ? 'pointer' : 'default', WebkitTapHighlightColor: 'transparent' }} />
+
+          {/* What was reached, on the far shore: one place for each word of the level */}
+          <div role="img" aria-label={`${shelf.length} von ${total} geschafft`} data-shelf={shelf.length}
+            style={{ position: 'absolute', left: L.shelf.cx - slots.width / 2 - 8, top: L.shelf.cy - slots.size / 2 - 5, width: slots.width + 16, height: slots.size + 10, boxSizing: 'border-box', zIndex: 2,
+              background: 'rgba(255,253,247,0.9)', border: '3px solid #2a1b3d', borderRadius: 999, boxShadow: '0 3px 0 rgba(42,27,61,0.3)', pointerEvents: 'none' }}>
+            {slots.slots.map((s, i) => (
+              <div key={i} style={{ position: 'absolute', left: s.x - (L.shelf.cx - slots.width / 2 - 8) - 3 - slots.size / 2, top: 2, width: slots.size, height: slots.size, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ position: 'absolute', inset: '14%', borderRadius: '50%', border: '2.5px dashed rgba(42,27,61,0.3)', background: 'rgba(42,27,61,0.05)', opacity: i < shelf.length ? 0 : 1 }} />
+                {i < shelf.length && (
+                  <motion.div initial={reduce ? false : { scale: 1.4 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 420, damping: 13 }} style={{ display: 'flex' }}>
+                    <Art art={shelf[i]} size={slots.size * 0.86} />
+                  </motion.div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Hop rounds: rings where the next hop lands, and the pads that came up */}
+          {isHop && playing && !help && hops <= n && (
+            <HopSpot key={`spot-${hops}`} pt={spots.at(hops + 1)} w={spots.pad.w * 0.9} hint={hint === 'spot'} />
+          )}
+          <AnimatePresence>
+            {isHop && phase !== 'finale' && Array.from({ length: up }, (_, i) => {
+              const k = i + 1, pt = spots.at(k)
+              return (
+                <motion.div key={`${idx}-h${k}`} data-pad={round.syllables[i]}
+                  initial={reduce ? { opacity: 0 } : { scale: 0.2, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={reduce ? { opacity: 0 } : { scale: 0.5, opacity: 0, y: 14 }}
+                  transition={{ type: 'spring', stiffness: 520, damping: 24 }}
+                  style={{ position: 'absolute', left: pt.x - spots.pad.w / 2, top: pt.y - spots.pad.h / 2, zIndex: 3, pointerEvents: 'none' }}>
+                  <Pad w={spots.pad.w} h={spots.pad.h} text={k <= shown ? round.syllables[i] : null} lit={k <= hops || phase === 'won'}
+                    glow={help && playing && k === hops + 1} bump={padFx[`h${k}`]?.bump} reduce={reduce} />
+                </motion.div>
+              )
+            })}
+          </AnimatePresence>
+
+          {/* Build rounds: the syllables float in the pond */}
+          {!isHop && phase !== 'finale' && round.pads.map((p, i) => {
+            const b = cells.at(p), f = padFx[p.id] ?? {}
+            const next = p.text === round.syllables[hops] && !f.done && round.pads.find(x => x.text === p.text && !padFx[x.id]?.done) === p
             return (
-              <motion.div key={i} animate={next ? { scale: [1, 1.12, 1] } : { scale: 1 }} transition={next ? { duration: 0.9, repeat: Infinity } : {}}
-                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0 3px', borderRadius: 8, background: next ? '#ffd34d' : 'transparent' }}>
-                <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: wide ? 26 : 18, letterSpacing: 1, color: laid ? '#2f8f3a' : '#2a1b3d' }}>{syl}</span>
-                <svg viewBox="0 0 40 10" width="100%" height={9} preserveAspectRatio="none" aria-hidden="true">
-                  <path d="M3 2 Q20 12 37 2" fill="none" stroke={laid ? '#2f8f3a' : '#ff8fb8'} strokeWidth={3} strokeLinecap="round" />
-                </svg>
+              <motion.div key={`${idx}-${p.id}`} style={{ position: 'absolute', left: b.x - cells.pad.w / 2, top: b.y - cells.pad.h / 2, x: drift[p.id].x, y: drift[p.id].y, zIndex: 3 }}>
+                <motion.button type="button" ref={el => { padEls.current[p.id] = el }} onClick={() => request({ pad: p.id })}
+                  aria-label={p.text} data-pad={p.text} data-state={f.done ? 'done' : 'float'}
+                  initial={reduce ? { opacity: 0 } : { scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: idx ? 0.3 + i * 0.09 : i * 0.09, type: 'spring', stiffness: 420, damping: 18 }}
+                  whileTap={f.done ? undefined : { scale: 0.93 }}
+                  style={{ all: 'unset', display: 'block', cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
+                  <Pad w={cells.pad.w} h={cells.pad.h} text={p.text} lit={!!f.done} bump={f.bump} dip={f.dip}
+                    glow={playing && next && (help || hint === p.id)} reduce={reduce} />
+                </motion.button>
               </motion.div>
             )
           })}
-        </div>
-      )}
-    </div>
-  )
-}
 
-// ── Main Game ──────────────────────────────────────────────────────────────
-export default function WordBuilderGame({ level = 1, onComplete }) {
-  const [rounds]   = useState(() => buildRounds(level))
-  const total      = rounds.length
-  const paused     = usePaused()
-  const [bursts, burst] = useBursts()
+          {fxs.filter(f => f.kind === 'ring').map(f => (
+            <div key={f.id} style={{ position: 'absolute', left: 0, top: 0, zIndex: 3, pointerEvents: 'none' }}><Ring x={f.x} y={f.y} size={f.size} onDone={() => endFx(f.id)} /></div>
+          ))}
 
-  const [idx,     setIdx]     = useState(0)
-  const [rs,      setRs]      = useState(FRESH)       // this round's state
-  const [hop,     setHop]     = useState(null)        // { route, i, ok } while the frog is on its way
-  const [frog,    setFrog]    = useState(null)        // { x, y, arc, from } where the frog is
-  const [said,    setSaid]    = useState({})          // pad key -> syllable shown once the frog landed on it
-  const [duck,    setDuck]    = useState(false)
-  const [streak,  setStreak]  = useState(0)
-  const [ready,   setReady]   = useState(false)       // the payoff is over: next round
-  const [finale,  setFinale]  = useState(false)
-  const [pile,    setPile]    = useState([])          // the things the frog brought home
-  const [beat,    setBeat]    = useState(0)           // the thing claps its word back, one bounce per syllable
-  const [frogMood,  setFrogMood]  = useMood()
-  const [thingMood, setThingMood] = useMood()
-  const firstTryRef = useRef(0)
-  const waterRef    = useRef(null)
-  const homeRef     = useRef(null)
-  const goalRef     = useRef(null)   // where the frog lands on the far bank
-  const thingRef    = useRef(null)
-  const clapRef     = useRef(null)
-  const trayRef     = useRef(null)
-  const padRefs     = useRef({})
-  const upd = patch => setRs(r => ({ ...r, ...patch }))
-
-  const round = rounds[idx]
-  const isBuild = round.kind === 'build'
-  const usedIds = useMemo(() => new Set(rs.placed.map(t => t.id)), [rs.placed])
-  const expected = isBuild ? round.syllables[rs.placed.length] : null
-  const busy = !!hop || rs.solved || rs.demo || finale
-
-  // Sizes from the width of the pond: a phone gets narrower banks
-  const waterW = useWidth(waterRef)
-  const wide   = waterW > 600
-  const bankW  = wide ? 130 : 48
-  const frogS  = wide ? 84 : 48
-  const thingS = wide ? 84 : 44
-  const laneW  = Math.max(120, waterW - bankW * 2)
-  // a phone has room below: a taller crossing, so the thing stands above
-  // the frog's landing place on the narrow bank
-  const rowH   = wide ? 86 : 92
-  const n      = isBuild ? round.syllables.length : rs.claps
-  const padW   = isBuild
-    ? Math.min(wide ? 118 : 96, laneW / n - 6)
-    : Math.min(wide ? 86 : 62, laneW / (round.max + 1) - 6)
-
-  // The frog on a pad, a bank or a point in the water
-  const frogTo = useCallback((pt, arc) => {
-    setFrog(f => ({ x: pt.x - frogS / 2, y: pt.y - frogS * 0.82, arc, from: f && { x: f.x, y: f.y } }))
-  }, [frogS])
-  const frogAt = useCallback((el, arc = false, dx = 0) => {
-    if (!el || !waterRef.current) return
-    const c = centerIn(el, waterRef.current)
-    frogTo({ x: c.x + dx, y: c.y }, arc)
-  }, [frogTo])
-  // On its bank at the start, after a change of size, and with a big jump
-  // home from the far bank when a new round starts
-  useLayoutEffect(() => { if (!hop) frogAt(homeRef.current) }, [waterW]) // eslint-disable-line react-hooks/exhaustive-deps
-  useLayoutEffect(() => { if (idx) frogAt(homeRef.current, true) }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // The task, at the start of every round: the card shows it; Lumi says the
-  // task once per kind of round and the word, when they are recorded
-  useEffect(() => {
-    lockPreviews()
-    sayTask()
-    setDuck(Math.random() < 0.3)
-    const firstOfKind = rounds.findIndex(r => r.kind === round.kind) === idx
-    voice([firstOfKind && KEY.task(isBuild ? 'frosch-bauen' : 'frosch-klatschen'), KEY.word(round.name)])
-  }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── The frog on its way: one hop per syllable ──
-  // route: [{ el | pt, syl, kind: 'pad' | 'bank' | 'water' | 'sink', key }]
-  useEffect(() => {
-    if (!hop || paused) return
-    const t = setTimeout(() => {
-      const step = hop.route[hop.i]
-      if (!step) { hopDone(hop.ok); return }
-      if (step.kind === 'clapback') {
-        // the thing bounces once per syllable, to a drum
-        setBeat(b => b + 1)
-        sfx.drum(step.n % 2 === 1)
-      } else if (step.kind === 'grab') {
-        upd({ carry: true, gone: true })
-        sfx.boing()
-      } else if (step.el) frogAt(step.el, true)
-      else frogTo(step.pt, true)
-      if (step.kind === 'back') sfx.step()
-      if (step.syl) {
-        voice([KEY.syllable(step.syl)])
-        if (step.key) setTimeout(() => setSaid(s => ({ ...s, [step.key]: step.syl })), 380)
-      }
-      if (step.kind === 'pad') {
-        sfx.drum(hop.i % 2 === 1)
-        if (step.el) setTimeout(() => burst(step.el, 'stars', 4), 380)
-      }
-      if (step.kind === 'bank') sfx.slideUp()
-      if (step.kind === 'water' || step.kind === 'sink') {
-        setTimeout(() => {
-          sfx.splash()
-          upd({ splash: { ...(step.pt ?? centerIn(step.el, waterRef.current)), id: Date.now() }, sunk: step.kind === 'sink' ? step.key : false, dunk: true })
-          setFrogMood('oops', 1600)
-        }, 380)
-      }
-      setHop(h => h && { ...h, i: h.i + 1 })
-    }, hop.route[hop.i]?.ms ?? (hop.i === 0 ? 150 : HOP_MS))
-    return () => clearTimeout(t)
-  }, [hop, paused]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Next round once the payoff has been seen, never while the help is open
-  useEffect(() => {
-    if (!ready || paused) return
-    setReady(false)
-    if (idx + 1 >= total) { setFinale(true); return }
-    setSaid({})
-    setBeat(0)
-    setRs(FRESH)
-    setIdx(i => i + 1)
-  }, [ready, paused]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  function hopDone(ok) {
-    setHop(null)
-    if (ok === 'demo') {
-      // the right number shown: back home, and now the child claps it
-      frogAt(homeRef.current, true)
-      setTimeout(() => { upd({ claps: 0, demo: false, showClaps: round.syllables.length }); setSaid({}) }, 600)
-      return
-    }
-    if (ok === 'home') {
-      // the thing joins the pile on the home bank
-      upd({ carry: false })
-      setPile(p => [...p, round.emoji])
-      sfx.coin()
-      if (homeRef.current) burst(homeRef.current, 'stars', 8)
-      afterNarration(() => setReady(true), { minMs: 700 })
-      return
-    }
-    if (ok) {
-      upd({ solved: true })
-      const firstTry = !rs.missed
-      if (firstTry) firstTryRef.current += 1
-      const s = firstTry ? streak + 1 : 0
-      setStreak(s)
-      setFrogMood(s >= 3 ? 'dance' : 'wow', 1800)
-      setThingMood('dance', 1600)
-      sfx.tada()
-      if (thingRef.current) burst(thingRef.current, 'confetti', s >= 3 ? 26 : 14)
-      sayRight(null, { onEnd: () => voice([KEY.word(round.name)]) })
-      // the thing claps its word back, the frog grabs it and hops home with it
-      const n = round.syllables.length
-      const pad = i => padRefs.current[isBuild ? `b-${i}` : `c-${i}`]
-      setHop({ ok: 'home', i: 0, route: [
-        ...round.syllables.map((_, i) => ({ kind: 'clapback', n: i, ms: i ? 380 : 700 })),
-        { kind: 'grab', ms: 500 },
-        ...Array.from({ length: n }, (_, k) => ({ el: pad(n - 1 - k), kind: 'back', ms: k ? 400 : 500 })),
-        { el: homeRef.current, kind: 'back', ms: 400 },
-      ] })
-      return
-    }
-    // back to the start, dripping; the claps are washed away …
-    frogAt(homeRef.current, true)
-    sayWrong()
-    if (isBuild) return
-    // … and the right number of pads appears, and the frog shows the way
-    const s = round.syllables.length
-    setTimeout(() => { upd({ dunk: false, sunk: false, claps: s, demo: true }); setSaid({}) }, 500)
-    setTimeout(() => setHop({ route: [
-      ...round.syllables.map((syl, i) => ({ el: padRefs.current[`c-${i}`], syl, kind: 'pad', key: `c-${i}` })),
-      { el: goalRef.current, kind: 'bank' },
-    ], i: 0, ok: 'demo' }), 1300)
-  }
-
-  // ── Clapping: every clap drops a lily pad into the pond ──
-  const clap = () => {
-    if (busy) return
-    if (rs.claps >= round.max) { sfx.boing(); return }
-    sfx.drum(rs.claps % 2 === 1)
-    if (clapRef.current) burst(clapRef.current, 'stars', 5)
-    upd({ claps: rs.claps + 1 })
-  }
-  // A moment after the last clap, the frog sets off
-  useEffect(() => {
-    if (isBuild || busy || !rs.claps || paused) return
-    const t = setTimeout(() => {
-      const s = round.syllables.length, c = rs.claps
-      const pads = Array.from({ length: c }, (_, i) => padRefs.current[`c-${i}`])
-      const route = []
-      for (let i = 0; i < Math.min(c, s); i++) route.push({ el: pads[i], syl: round.syllables[i], kind: 'pad', key: `c-${i}` })
-      if (c === s) route.push({ el: goalRef.current, kind: 'bank' })
-      else if (c < s) {
-        // out of pads with syllables left: into the water between the last pad and the bank
-        const a = centerIn(pads[c - 1], waterRef.current), b = centerIn(goalRef.current, waterRef.current)
-        route.push({ pt: { x: (a.x + b.x) / 2, y: a.y + 6 }, syl: round.syllables[c], kind: 'water' })
-      } else route.push({ el: pads[s], kind: 'sink', key: `c-${s}` })
-      if (c !== s) upd({ missed: true })
-      setHop({ route, i: 0, ok: c === s })
-    }, CLAP_WAIT_MS)
-    return () => clearTimeout(t)
-  }, [rs.claps, busy, paused]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Building: lay the next syllable pad ──
-  const dropTile = (tile) => {
-    if (busy) return false
-    // Check the syllable against the place it would fill. Comparing by text
-    // (not id) keeps words with a repeated syllable working: either PA pad
-    // fits either place of PA-PA-GEI.
-    if (tile.text !== expected) {
-      upd({ slotMisses: rs.slotMisses + 1, missed: true })
-      setFrogMood('oops', 1000)
-      sayWrong()
-      return false
-    }
-    const next = [...rs.placed, tile]
-    upd({ placed: next, slotMisses: 0 })
-    sfx.pop()
-    voice([KEY.syllable(tile.text)])
-    if (next.length < round.syllables.length) return true
-    // all laid: the frog hops across them and lands on the bank
-    setTimeout(() => setHop({ route: [
-      ...round.syllables.map((syl, i) => ({ el: padRefs.current[`b-${i}`], syl, kind: 'pad' })),
-      { el: goalRef.current, kind: 'bank' },
-    ], i: 0, ok: true }), 450)
-    return true
-  }
-
-  const lane = (count, i) => ({ left: `${((i + 1) / (count + 1)) * 100}%` })
-  const fill = (count, i) => ({ left: `${((i + 0.5) / count) * 100}%` })
-  const glowTile = isBuild && !rs.solved && rs.slotMisses >= 2
-    ? round.tiles.find(t => t.text === expected && !usedIds.has(t.id)) : null
-  const firstRound = idx === 0 || (isBuild && rounds.findIndex(r => r.kind === 'build') === idx)
-  // the tile the next place needs, for the hint hand
-  const needed = isBuild && !rs.solved ? round.tiles.find(t => t.text === expected && !usedIds.has(t.id)) : null
-  // Clapping rounds: before a miss the clap button only wiggles when the
-  // child waits (a hand tapping it would suggest a number); after a miss
-  // the hand claps exactly the right number of times
-  const clapIdle = useIdle(firstRound ? 2000 : 6000, !isBuild && !busy && rs.claps === 0 && !rs.showClaps)
-
-  return (
-    <div style={{
-      position: 'relative', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      padding: 'clamp(8px,1.8vw,20px) clamp(10px,3vw,32px)', gap: 'clamp(10px,2vw,18px)', userSelect: 'none',
-    }}>
-      <div style={{ width: '100%', maxWidth: 860, flexShrink: 0, paddingRight: SUN_GAP, boxSizing: 'border-box' }}>
-        <RoundTrail total={total} done={idx + (rs.solved ? 1 : 0)} walker="🐸" goal="🌸" />
-      </div>
-
-      <div style={{ marginBottom: 8 }}>
-        <TaskCard key={idx} round={round} placed={rs.placed.length} glowNext={!!glowTile} wide={wide} />
-      </div>
-
-      <DragArea autoTarget={isBuild ? `slot-${rs.placed.length}` : null} disabled={busy}>
-        <div ref={waterRef} data-word={round.syllables.join('-')} data-round={idx} style={{ position: 'relative', width: '100%', maxWidth: 900, flexShrink: 0 }}>
-          <Water>
-            {/* The crossing: the frog's bank, the pads, the other bank */}
-            <div style={{ position: 'relative', height: rowH + 40, padding: `20px ${bankW}px`, boxSizing: 'border-box' }}>
-              <Bank side="left" width={bankW}>
-                <div ref={homeRef} style={{ width: 10, height: 10 }} />
-                {/* what the frog brought home so far, a heap at its feet */}
-                <div aria-hidden="true" style={{ position: 'absolute', left: 0, right: 4, bottom: 4, display: 'flex', flexWrap: 'wrap-reverse', justifyContent: 'center', rowGap: wide ? 0 : -4, paddingLeft: wide ? 8 : 5 }}>
-                  {pile.map((e, i) => (
-                    <motion.div key={i} initial={{ y: -30, scale: 0.4 }} animate={{ y: 0, scale: 1 }} transition={{ type: 'spring', stiffness: 400, damping: 12 }}
-                      style={{ rotate: `${(i % 3 - 1) * 12}deg`, marginLeft: wide ? -8 : -5 }}>
-                      <Art art={e} size={wide ? 32 : 20} />
-                    </motion.div>
-                  ))}
-                </div>
-              </Bank>
-              <Bank side="right" width={bankW}>
-                {/* the thing, and the place next to (tablet) or below (phone) it where the frog lands */}
-                <div style={{ display: 'flex', flexDirection: wide ? 'row-reverse' : 'column', alignItems: 'center', gap: wide ? 0 : 4 }}>
-                  <motion.div ref={thingRef} key={`b${beat}`}
-                    animate={beat && !reduceMotion() ? { y: [0, -thingS * 0.35, 0], scaleY: [1, 1.1, 0.9, 1] } : {}}
-                    transition={{ duration: 0.34 }}
-                    style={{ display: 'flex', visibility: rs.gone ? 'hidden' : 'visible' }}>
-                    <Critter art={round.emoji} size={thingS} mood={thingMood} label={round.name}
-                      onTap={() => { setThingMood('wow', 900); voice([KEY.word(round.name)]) }} />
-                  </motion.div>
-                  <div ref={goalRef} style={{ width: wide ? 40 : 10, height: wide ? 10 : frogS * 0.9 }} />
-                </div>
-              </Bank>
-
-              <div style={{ position: 'relative', height: rowH }}>
-                {isBuild
-                  ? round.syllables.map((_, i) => (
-                    <div key={i} style={{ position: 'absolute', top: '50%', transform: 'translate(-50%, -50%)', ...fill(n, i) }}>
-                      <DropZone id={`slot-${i}`} onDrop={dropTile} label={`Platz ${i + 1}`}>
-                        {hover => (
-                          <div ref={el => { padRefs.current[`b-${i}`] = el }} style={{ transform: hover ? 'scale(1.1)' : undefined, transition: 'transform .15s' }}>
-                            <Pad w={padW} h={Math.max(60, padW * 0.6)} text={rs.placed[i]?.text} empty={!rs.placed[i]} glow={rs.solved}
-                              flower={i === n - 1 && !!rs.placed[i]} />
-                          </div>
-                        )}
-                      </DropZone>
-                    </div>
-                  ))
-                  : Array.from({ length: rs.claps }, (_, i) => (
-                    <motion.div key={`${idx}-${i}`} ref={el => { padRefs.current[`c-${i}`] = el }}
-                      initial={{ scale: 0, y: -30 }} animate={{ scale: 1, y: 0 }} transition={{ type: 'spring', stiffness: 420, damping: 14 }}
-                      style={{ position: 'absolute', top: '50%', marginTop: -padW * 0.31, marginLeft: -padW / 2, transition: 'left .3s ease-out', ...lane(rs.claps, i) }}>
-                      <Pad w={padW} sunk={!!rs.sunk} text={said[`c-${i}`]} glow={rs.solved} flower={i % 3 === 1} />
-                    </motion.div>
-                  ))}
+          {/* The thing on the far bank */}
+          {!collected && (
+            <motion.button type="button" key={`thing-${idx}`} ref={thingRef} onClick={tapThing} aria-label={round.name} data-thing={round.name}
+              initial={reduce ? { opacity: 0 } : { scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: idx ? 0.35 : 0, type: 'spring', stiffness: 380, damping: 16 }} whileTap={{ scale: 0.92 }}
+              style={{ all: 'unset', position: 'absolute', left: L.thingAt.x - L.thing / 2, top: L.thingAt.y - L.thing, width: L.thing, height: L.thing, zIndex: 4, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
+              <div aria-hidden="true" style={{ position: 'absolute', left: '18%', right: '18%', bottom: -L.thing * 0.03, height: L.thing * 0.1, borderRadius: '50%', background: 'rgba(42,27,61,0.18)' }} />
+              <div className={thingGlow ? 'fr-glow' : playing ? 'fr-bob' : undefined} style={{ width: '100%', height: '100%' }}>
+                <motion.div key={joy} animate={joy && !reduce ? { y: [0, -L.thing * 0.24, 0, -L.thing * 0.1, 0], scaleY: [1, 1.08, 0.92, 1.03, 1] } : {}} transition={{ duration: 0.6 }}
+                  style={{ display: 'flex', transformOrigin: '50% 100%' }}>
+                  <Art art={round.emoji} size={L.thing} />
+                </motion.div>
               </div>
-            </div>
+            </motion.button>
+          )}
 
-            {/* Clapping rounds: the clap button drops a pad per clap */}
-            {!isBuild && (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 22px' }}>
-                <motion.button ref={clapRef} type="button" onClick={clap} aria-label="Klatschen"
-                  whileTap={busy ? {} : { scale: 0.8, rotate: -8 }}
-                  animate={clapIdle && !reduceMotion()
-                    ? { opacity: 1, scale: [1, 1.14, 0.94, 1.08, 1], rotate: [0, -8, 8, -4, 0] }
-                    : { opacity: busy ? 0.5 : 1, scale: 1, rotate: 0 }}
-                  transition={clapIdle ? { duration: 0.9, repeat: Infinity, repeatDelay: 0.8 } : { duration: 0.2 }}
-                  style={{
-                    all: 'unset', cursor: busy ? 'default' : 'pointer', width: wide ? 112 : 92, height: wide ? 112 : 92, borderRadius: '50%',
-                    background: 'radial-gradient(circle at 40% 35%, #fff3b0, #ffc93c 70%)', border: '4px solid #2a1b3d',
-                    boxShadow: '0 6px 0 rgba(42,27,61,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                  <Art art=":px-klatschen:" size={wide ? 70 : 58} />
-                </motion.button>
-              </div>
-            )}
-
-            {/* Building rounds: the syllable pads float in the water below */}
-            {isBuild && (
-              <div ref={trayRef} style={{ display: 'flex', flexWrap: 'wrap', gap: wide ? 18 : 10, justifyContent: 'center', alignItems: 'center', padding: '6px 14px 22px' }}>
-                {round.tiles.map((tile, i) => {
-                  const used = usedIds.has(tile.id)
-                  const hinted = tile === glowTile
-                  return (
-                    <div key={`${idx}-${tile.id}`} className="fr-bob" style={{ animationDelay: `${i * -0.4}s`, visibility: used ? 'hidden' : 'visible' }}>
-                      <Draggable id={`${idx}-${tile.id}`} data={tile} label={tile.text} disabled={used} data-tile={tile.text}>
-                        <motion.div animate={hinted ? { scale: [1, 1.12, 1] } : { scale: 1 }} transition={hinted ? { duration: 1, repeat: Infinity } : {}}>
-                          <Pad w={wide ? 112 : 92} h={wide ? 66 : 62} text={tile.text} glow={hinted} />
-                        </motion.div>
-                      </Draggable>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-
-            {/* a duck paddles by now and then */}
-            {duck && (
-              <div key={'duck' + idx} className="fr-swim" aria-hidden="true"
-                style={{ position: 'absolute', left: 0, bottom: 2, pointerEvents: 'none', zIndex: 2 }}>
-                <Art art="🦆" size={wide ? 44 : 34} />
-              </div>
-            )}
-          </Water>
-
-          {/* The frog, above the water and the banks */}
-          {frog && (
-            <motion.div aria-hidden={busy}
-              initial={false}
-              animate={frog.arc && frog.from
-                // the hop's peak stays in the pond, clear of the card above
-                ? { x: [frog.from.x, frog.x], y: [frog.from.y, Math.max(Math.min(frog.from.y, frog.y) - frogS * 0.6, -frogS * 0.25), frog.y] }
-                : { x: frog.x, y: frog.y }}
-              transition={frog.arc ? { duration: 0.42, ease: 'easeOut', y: { duration: 0.42, times: [0, 0.45, 1] } } : { duration: 0 }}
-              style={{ position: 'absolute', left: 0, top: 0, width: frogS, height: frogS, zIndex: 5 }}>
-              <motion.div animate={rs.dunk ? { y: frogS * 0.35, scale: 0.75, opacity: 0.55 } : { y: 0, scale: 1, opacity: 1 }} transition={{ duration: 0.3 }}>
-                <Critter art="🐸" size={frogS} mood={frogMood} label="Frosch"
-                  accessory={rs.carry && (
-                    <div aria-hidden="true" style={{ position: 'absolute', left: '50%', top: -frogS * 0.42, marginLeft: -frogS * 0.32 }}>
-                      <Art art={round.emoji} size={frogS * 0.64} />
-                    </div>
-                  )} />
-              </motion.div>
+          {stork && (
+            <motion.div style={{ position: 'absolute', left: 0, top: 0, x: storkX, y: storkY, width: 0, height: 0, zIndex: 5, pointerEvents: 'none' }} data-stork={stork.walking ? 'walk' : 'peck'}>
+              <Stork size={L.stork} flip={stork.flip} walking={stork.walking} peck={stork.peck} reduce={reduce} />
             </motion.div>
           )}
-          <AnimatePresence>{rs.splash && <Splash key={rs.splash.id} x={rs.splash.x} y={rs.splash.y} />}</AnimatePresence>
-        </div>
-      </DragArea>
 
-      {/* The hand: clap (clapping rounds), or lay a pad (building rounds) */}
-      {isBuild
-        ? <HintHand key={`hand-${idx}`} from={lazy(() => trayRef.current?.querySelector(`[data-tile="${needed?.text}"]`))}
-            to={lazy(() => padRefs.current[`b-${rs.placed.length}`])}
-            active={!busy && !!needed} delay={glowTile ? 800 : firstRound ? 2000 : 6000} />
-        : <HintHand key={`clap-${idx}-${rs.showClaps}`} to={clapRef} repeat={rs.showClaps || 1}
-            active={!busy && rs.claps === 0 && rs.showClaps > 0} delay={1200} />}
-      {finale && <Finale items={rounds.map(r => r.emoji)} hero="🐸" onDone={() => onComplete(result(firstTryRef.current, total))} />}
+          {/* The frog (at the party it dances in the middle, see Finale) */}
+          <motion.div aria-hidden="true" style={{ position: 'absolute', left: 0, top: 0, x: fx, y: fy, width: 0, height: 0, zIndex: 6, pointerEvents: 'none', visibility: phase === 'finale' ? 'hidden' : 'visible' }}>
+            {frogMode === 'sit' && (
+              <motion.div style={{ position: 'absolute', left: -F * 0.32, top: -F * 0.07, width: F * 0.64, height: F * 0.15, borderRadius: '50%', background: 'rgba(20,40,80,0.22)', scale: shade }} />
+            )}
+            {frogMode === 'swim' && (
+              <div className="fr-ripple" style={{ position: 'absolute', left: -F * 0.5, top: -F * 0.22, width: F, height: F * 0.4, borderRadius: '50%', border: '3.5px solid #fff' }} />
+            )}
+            <motion.div style={{ position: 'absolute', left: -F / 2, top: -F * 0.93, width: F, height: F, y: bodyY }}>
+              <motion.div style={{ width: F, height: F, rotate: rot, scale: zoom }}>
+                <motion.div ref={bodyRef} style={{ position: 'relative', width: F, height: F, scaleX: sx, scaleY: sy, transformOrigin: '50% 94%' }}>
+                  {frogMode === 'swim'
+                    // only its head out of the water
+                    ? <div style={{ position: 'absolute', left: 0, top: F * 0.5, width: F, height: F * 0.45, overflow: 'hidden' }}><Art art="🐸" size={F} style={{ display: 'block' }} /></div>
+                    : <motion.div animate={frogMode === 'under' ? { opacity: 0, y: F * 0.3, scale: 0.8 } : { opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.2 }}>
+                        <Art art="🐸" size={F} style={{ display: 'block' }} />
+                      </motion.div>}
+                </motion.div>
+              </motion.div>
+              {/* the tongue comes out of its mouth, wherever the jump has carried it */}
+              {tongue && (
+                <div data-tongue style={{ position: 'absolute', left: F / 2, top: F * 0.43 }}>
+                  <Tongue key={tongue.id} dx={tongue.dx} dy={tongue.dy} fly={F * 0.4} onDone={() => setTongue(null)} />
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+
+          {/* A fly crossing the pond */}
+          <AnimatePresence>
+            {flyOn && phase !== 'finale' && (
+              <motion.div key="fly" aria-hidden="true" data-fly initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.12 } }}
+                style={{ position: 'absolute', left: 0, top: 0, x: flyX, y: flyY, width: 0, height: 0, zIndex: 7, pointerEvents: 'none' }}>
+                <div className="fr-buzz" style={{ position: 'absolute', left: -F * 0.2, top: -F * 0.2 }}><Art art="🪰" size={F * 0.4} /></div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {fxs.filter(f => f.kind !== 'ring').map(f => (
+            <div key={f.id} style={{ position: 'absolute', left: 0, top: 0, zIndex: 8, pointerEvents: 'none' }}>
+              {f.kind === 'splash' ? <Splash x={f.x} y={f.y} size={f.size} onDone={() => endFx(f.id)} /> : <Drops x={f.x} y={f.y} size={f.size} onDone={() => endFx(f.id)} />}
+            </div>
+          ))}
+
+          {flyer && (
+            <motion.div key={`flyer-${flyer.id}`} aria-hidden="true"
+              initial={{ x: flyer.from.x - flyer.size / 2, y: flyer.from.y - flyer.size / 2, scale: 1, rotate: 0 }}
+              animate={{ x: flyer.to.x - flyer.size / 2, y: [flyer.from.y - flyer.size / 2, Math.min(flyer.from.y, flyer.to.y) - flyer.size * 0.3, flyer.to.y - flyer.size / 2], scale: flyer.scale, rotate: reduce ? 0 : 360 }}
+              transition={{ duration: reduce ? 0.01 : 0.6, ease: 'easeInOut' }} onAnimationComplete={shelved}
+              style={{ position: 'absolute', left: 0, top: 0, width: flyer.size, height: flyer.size, zIndex: 9, pointerEvents: 'none' }}>
+              <Art art={flyer.emoji} size={flyer.size} />
+            </motion.div>
+          )}
+
+          {/* The star counter (Juice) */}
+          <div style={{ position: 'absolute', right: L.hud.right, top: L.hud.top, bottom: L.hud.bottom, zIndex: 9, display: 'flex', pointerEvents: 'none' }}>{juice.hud}</div>
+
+          {aim && <div ref={aimRef} aria-hidden="true" style={{ position: 'absolute', left: aim.x, top: aim.y, width: 2, height: 2, pointerEvents: 'none' }} />}
+        </div>
+      )}
+
+      <HintHand key={`${idx}-${hops}`} to={aimRef} active={playing && hand && !!aim} delay={hops ? 3200 : 2400} />
+      {phase === 'finale' && <Finale items={shelf} hero="🐸" onDone={() => onComplete(result(g.firstTry, total))} />}
       {bursts}
+      {juice.layer}
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { motion, AnimatePresence, useAnimationControls } from 'framer-motion'
+import { motion, useAnimationControls } from 'framer-motion'
 import { PxStar } from './PixelUI.jsx'
 import { lumiArt } from '../lib/assets.js'
 
@@ -7,7 +7,8 @@ const BASE = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '')
 
 /**
  * Lumi in a game's top bar, playing along: a jump and a burst of stars for
- * a right answer, a thoughtful tilt for a miss, a big cheer for a right
+ * a right answer, a thoughtful face and a tilt for a miss (no "?" bubble:
+ * nobody could say what it asked), a big cheer for a right
  * answer after a miss (the child kept going), a somersault for three right
  * in a row.
  *
@@ -42,7 +43,7 @@ export default function LumiBuddy({ size = 48 }) {
 
       if (kind === 'wrong') {
         inRow.current = 0
-        setMood('think')
+        setMood('oops')
         if (!reduce) controls.start({ rotate: [0, -12, 8, -4, 0], y: 0, transition: { duration: 0.7 } })
       } else {
         inRow.current = sameAnswer ? inRow.current : inRow.current + 1
@@ -70,17 +71,6 @@ export default function LumiBuddy({ size = 48 }) {
         src={src} alt="" draggable={false} animate={controls}
         style={{ width: size, height: size, display: 'block', objectFit: 'contain', filter: 'drop-shadow(0 3px 0 rgba(42,27,61,0.35))' }}
       />
-      <AnimatePresence>
-        {mood === 'think' && (
-          <motion.div key="q"
-            initial={{ opacity: 0, scale: 0.4, y: 4 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.4 }}
-            style={{
-              position: 'absolute', top: -6, right: -10, width: 22, height: 22, borderRadius: 11,
-              background: '#fff', border: '2px solid var(--px-ink)', color: 'var(--px-ink)',
-              fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 15, lineHeight: '18px', textAlign: 'center',
-            }}>?</motion.div>
-        )}
-      </AnimatePresence>
       {bursts.map(b => <Burst key={b.id} big={b.big} size={size} onDone={() => setBursts(x => x.filter(y => y.id !== b.id))} />)}
     </div>
   )

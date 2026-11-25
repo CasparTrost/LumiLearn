@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { motion } from 'framer-motion'
 import { Art } from './Critter.jsx'
 import { usePaused } from '../../lib/pause.js'
 
@@ -21,13 +20,43 @@ import { usePaused } from '../../lib/pause.js'
  * again. `active`
  * false (the task is solved, an animation runs) keeps it away. While the
  * game is paused (help open) it stays away too.
+ *
+ * The hand is where its target is, in every frame. It used to look for the
+ * target twice a second: on something that moves or changes (an animal that
+ * leaves its window, a floating bubble) it pointed at the old place for up
+ * to half a second. Now it reads the target's place while it is on screen
+ * (and only then: no hand, no work) and moves itself without a render. When
+ * the target is gone or hidden the hand is gone in the same frame; when
+ * `to` is another element now, it starts over there.
  */
 const REST_MS = 4000
+
+// One showing of the move: [share of the time, value] steps, eased between.
+// `go` is the way from `from` to `to` (0 → 1).
+const DRAG = {
+  ms: 2000, pause: 500,
+  go:      [[0, 0], [0.2, 0], [0.75, 1], [1, 1]],
+  opacity: [[0, 0], [0.2, 1], [0.75, 1], [1, 0]],
+  scale:   [[0, 1], [0.2, 0.85], [0.75, 0.85], [1, 1]],
+}
+const TAP = {
+  ms: 1400, pause: 500,
+  go:      [[0, 1], [1, 1]],
+  opacity: [[0, 0], [0.2, 1], [0.45, 1], [0.7, 1], [1, 0]],
+  scale:   [[0, 1], [0.2, 1], [0.45, 0.8], [0.7, 1], [1, 1]],
+}
+const ease = u => (u < 0.5 ? 2 * u * u : 1 - (2 - 2 * u) ** 2 / 2)
+function at(steps, u) {
+  for (let i = 1; i < steps.length; i++) {
+    const [u0, v0] = steps[i - 1], [u1, v1] = steps[i]
+    if (u <= u1) return v0 + (v1 - v0) * ease((u - u0) / (u1 - u0))
+  }
+  return steps[steps.length - 1][1]
+}
 
 export default function HintHand({ from, to, active = true, delay = 5000, repeat = 3 }) {
   const idle = useIdle(delay, active)
   const paused = usePaused()
-  const [box, setBox] = useState(null)
   const shown = active && idle && !paused
   // Shows the move `repeat` times, rests a few seconds, shows it again —
   // for as long as the child waits (a lost child who just waits needs it most)
@@ -44,54 +73,62 @@ export default function HintHand({ from, to, active = true, delay = 5000, repeat
   }, [shown, repeat, from])
   const show = shown && !resting
 
-  useEffect(() => {
-    if (!show) { setBox(null); return }
-    // On a 24 px grid: a target that drifts a little (a floating bubble)
-    // must not restart the hand every half second
-    const snap = p => p && { x: Math.round(p.x / 24) * 24, y: Math.round(p.y / 24) * 24 }
-    const measure = () => {
-      const t = snap(rectOf(to))
-      if (!t) { setBox(null); return }
-      const f = from ? snap(rectOf(from)) : null
-      setBox(b => (b && same(b.t, t) && same(b.f, f) ? b : { f, t }))
-    }
-    measure()
-    const id = setInterval(measure, 500)
-    return () => clearInterval(id)
-  }, [show, from, to])
+  const outer = useRef(null), inner = useRef(null)
+  // read in every frame: many games pass a new `to` object with each render
+  const ends = useRef({ from, to })
+  ends.current = { from, to }
+  const drag = !!from
 
-  if (!show || !box || typeof document === 'undefined') return null
-  const tx = box.t.x, ty = box.t.y
-  const fx = box.f?.x ?? tx, fy = box.f?.y ?? ty
-  const drag = !!box.f
-  const look = { position: 'fixed', left: 0, top: 0, zIndex: 9997, pointerEvents: 'none', marginLeft: -14, marginTop: -6, filter: 'drop-shadow(0 4px 3px rgba(42,27,61,0.35))' }
-  return createPortal(drag
-    ? <motion.div aria-hidden="true" key={`${round}-${fx}-${fy}-${tx}-${ty}`}
-        initial={{ x: fx, y: fy, opacity: 0, scale: 1 }}
-        animate={{ x: [fx, fx, tx, tx], y: [fy, fy, ty, ty], opacity: [0, 1, 1, 0], scale: [1, 0.85, 0.85, 1] }}
-        transition={{ duration: 2, times: [0, 0.2, 0.75, 1], repeat: repeat - 1, repeatDelay: 0.5, ease: 'easeInOut' }}
-        style={look}>
+  useEffect(() => {
+    if (!show) return
+    const move = drag ? DRAG : TAP
+    const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    let raf = 0, began = 0, seen = null, last = ''
+    const put = (el, key, v) => { if (el.style[key] !== v) el.style[key] = v }
+    const frame = now => {
+      raf = requestAnimationFrame(frame)
+      const box = outer.current, hand = inner.current
+      if (!box || !hand) return
+      const target = elOf(ends.current.to)
+      const t = middle(target)
+      // nothing to point at (gone, hidden): no hand, until there is again
+      if (!t) { seen = null; put(hand, 'opacity', '0'); return }
+      // a new target: the showing starts over there
+      if (target !== seen) { seen = target; began = now }
+      const f = (ends.current.from && middle(elOf(ends.current.from))) || t
+      const gone = now - began, len = move.ms + move.pause
+      const n = Math.floor(gone / len)
+      const u = n >= repeat ? 1 : Math.min(1, (gone - n * len) / move.ms)
+      const k = still ? 1 : at(move.go, u)
+      const pos = `translate(${Math.round(f.x + (t.x - f.x) * k)}px, ${Math.round(f.y + (t.y - f.y) * k)}px)`
+      if (pos !== last) { last = pos; box.style.transform = pos }
+      put(hand, 'opacity', String(Math.round(at(move.opacity, u) * 100) / 100))
+      put(hand, 'transform', `scale(${still ? 1 : Math.round(at(move.scale, u) * 1000) / 1000})`)
+    }
+    raf = requestAnimationFrame(frame)
+    return () => cancelAnimationFrame(raf)
+  }, [show, round, repeat, drag])
+
+  if (!show || typeof document === 'undefined') return null
+  return createPortal(
+    <div ref={outer} aria-hidden="true" data-hint-hand={drag ? 'drag' : 'tap'}
+      style={{ position: 'fixed', left: 0, top: 0, zIndex: 9997, pointerEvents: 'none', marginLeft: -14, marginTop: -6, filter: 'drop-shadow(0 4px 3px rgba(42,27,61,0.35))', willChange: 'transform' }}>
+      <div ref={inner} style={{ opacity: 0 }}>
         <Art art="👆" size={60} />
-      </motion.div>
-    // a tap: the hand follows a moving target smoothly instead of starting
-    // its tapping over each time the target drifts to a new spot
-    : <motion.div aria-hidden="true" key={round} initial={{ x: tx, y: ty }} animate={{ x: tx, y: ty }}
-        transition={{ duration: 0.45, ease: 'easeOut' }} style={look}>
-        <motion.div initial={{ opacity: 0, scale: 1 }} animate={{ opacity: [0, 1, 1, 1, 0], scale: [1, 1, 0.8, 1, 1] }}
-          transition={{ duration: 1.4, times: [0, 0.2, 0.45, 0.7, 1], repeat: repeat - 1, repeatDelay: 0.5, ease: 'easeInOut' }}>
-          <Art art="👆" size={60} />
-        </motion.div>
-      </motion.div>,
+      </div>
+    </div>,
     document.body,
   )
 }
 
-const same = (a, b) => (!a && !b) || (a && b && a.x === b.x && a.y === b.y)
+const elOf = t => t?.current ?? t
 
-// Middle of an element (a ref or an element) on screen
-function rectOf(t) {
-  const el = t?.current ?? t
-  if (!el?.getBoundingClientRect) return null
+// Middle of an element on screen, or null when there is nothing to point
+// at: it is not in the page any more, has no size, or cannot be seen
+// (display, visibility or opacity of it or of something around it)
+function middle(el) {
+  if (!el?.getBoundingClientRect || el.isConnected === false) return null
+  if (el.checkVisibility && !el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) return null
   const r = el.getBoundingClientRect()
   if (!r.width && !r.height) return null
   return { x: r.left + r.width / 2, y: r.top + r.height / 2 }

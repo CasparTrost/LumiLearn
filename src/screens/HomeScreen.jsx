@@ -75,6 +75,12 @@ export function nextIdea(journey) {
   return idx === -1 ? null : { idx, stop: stops[idx], mod: MODULE_BY_ID[stops[idx].moduleId] }
 }
 
+// Where a one-word title breaks on a narrow tile: at the joint of the two
+// words ("Gefühls-detektiv"). The browser's own hyphenation made
+// "Gefühlsdetek-tiv" and "Schattenrät-sel" of them.
+const JOINT = /^(Gefühls|Schatten|Buchstaben|Zahlen|Farben|Muster|Kuckucks|Hör)(?=[a-zäöü])/
+const tileTitle = title => title.replace(JOINT, '$1\u00ad')
+
 // ── A game tile ─────────────────────────────────────────────────────────────
 // All tiles the same size, in rows: the round picture says what the game is
 // (most children here can't read). The tile starts the game at the current
@@ -110,9 +116,9 @@ function GameTile({ mod, p, index, onPlay, onLevels }) {
         </div>
         {/* two lines' room for every title, so the rows line up */}
         <span style={{
-          fontFamily:'var(--font-heading)', fontWeight:700, fontSize:14, lineHeight:1.15, minHeight:'2.3em', hyphens:'auto', overflowWrap:'anywhere',
+          fontFamily:'var(--font-heading)', fontWeight:700, fontSize:14, lineHeight:1.15, minHeight:'2.3em', hyphens:'manual', overflowWrap:'anywhere',
           color:'var(--px-ink)', textAlign:'center', display:'flex', alignItems:'center', justifyContent:'center',
-        }}>{mod.title}</span>
+        }}>{tileTitle(mod.title)}</span>
       </motion.button>
       {/* another level, once there is more than one to choose from */}
       {canPick && (
@@ -125,6 +131,9 @@ function GameTile({ mod, p, index, onPlay, onLevels }) {
     </motion.div>
   )
 }
+
+// The counters under the name on a narrow phone
+const SMALL_CHIP = { minHeight:26, fontSize:15, gap:3, padding:'1px 6px 1px 4px' }
 
 // A soft colour per world, so the rows are easy to tell apart
 const WORLD_TINT = { zahlen: '#fff0c4', buchstaben: '#dcefff', denken: '#ebe3ff', gefuehle: '#ffe1ec', malen: '#e2f5d6' }
@@ -155,8 +164,12 @@ function WorldRow({ world, mods, progress, onPlay, onLevels, offset }) {
 // game in progress, something new, another review, and a movement break in
 // the middle. It is no longer a map to walk: Lumi just has the next idea,
 // and after all of them a sticker for the album as a surprise.
-function LumiIdea({ idea, plan, onPlay, onAlbum, stickers, narrow }) {
+function LumiIdea({ idea, plan, tileLevel, onPlay, onAlbum, stickers, narrow }) {
   const allDone = !idea
+  // The first idea of a day is a warm-up, one level below the game's tile, so
+  // that the day starts with a success (lib/learning.js). The card says
+  // which level it starts: it used to start a lower one without a word.
+  const warmup = idea?.stop.kind === 'warmup' && idea.stop.level < tileLevel
   return (
     <div style={{
       display:'flex', alignItems:'center', justifyContent: narrow ? 'flex-start' : 'center', flexWrap: narrow ? 'nowrap' : 'wrap',
@@ -174,10 +187,13 @@ function LumiIdea({ idea, plan, onPlay, onAlbum, stickers, narrow }) {
             <TileArt mod={idea.mod} size={narrow ? 44 : 72} />
             <div style={{ fontFamily:'var(--font-heading)', fontWeight:700, fontSize: narrow ? 18 : 'clamp(20px,3vw,28px)', color:'var(--px-ink)', lineHeight:1.1 }}>
               {idea.mod.title}
+              <div style={{ fontSize: narrow ? 14 : 16, fontWeight:600, lineHeight:1.2, marginTop:3, opacity:0.72 }}>
+                Level {idea.stop.level}{warmup ? ' zum Aufwärmen' : ''}
+              </div>
             </div>
           </div>
           <button className="px-btn px-btn--green px-btn--lg" onClick={onPlay}
-            aria-label={`Lumis Idee: ${idea.mod.title} spielen`} style={{ width:'100%' }}>
+            aria-label={`Lumis Idee: ${idea.mod.title}, Level ${idea.stop.level}${warmup ? ' zum Aufwärmen' : ''}, spielen`} style={{ width:'100%' }}>
             <PxIcon name="play" size={22} /> Spielen!
           </button>
         </>) : (<>
@@ -325,11 +341,26 @@ export default function HomeScreen() {
           aria-label="Profil wechseln"
         >{profile.avatar}</button>
         <div style={{ minWidth:0, flex:1 }}>
-          <div className="px-title hud-hide-sm" style={{ fontSize:'clamp(14px,2.4vw,16px)', lineHeight:1.2, letterSpacing:0, textShadow:'-1px -1px 0 var(--px-ink), 1px -1px 0 var(--px-ink), -1px 1px 0 var(--px-ink), 1px 2px 0 var(--px-ink)' }}>
+          <div className="px-title" style={{ fontSize:'clamp(14px,2.4vw,16px)', lineHeight:1.2, letterSpacing:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', textShadow:'-1px -1px 0 var(--px-ink), 1px -1px 0 var(--px-ink), -1px 1px 0 var(--px-ink), 1px 2px 0 var(--px-ink)' }}>
             {timeGreeting(t)},
           </div>
           <div className="px-title" style={{ fontSize:'clamp(18px,3.6vw,26px)', lineHeight:1.1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
             {profile.name}!
+          </div>
+          {/* A narrow phone has no room for the counters beside the name
+              (the greeting and the stars were simply left out there): they
+              sit under it, a little smaller. */}
+          <div className="hud-only-sm">
+            <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginTop:4 }}>
+              <div className="px-chip" aria-label={`${totalStarsCount} Sterne`} style={SMALL_CHIP}>
+                <PxStar size={16} /> {totalStarsCount}
+              </div>
+              {streak.count >= 2 && (
+                <div className="px-chip" aria-label={`${streak.count} Tage in Folge`} style={SMALL_CHIP}>
+                  <span className="px-chip-icon" style={{ width:16, height:16, fontSize:14, lineHeight:'16px', textAlign:'center' }}>🔥</span> {streak.count}
+                </div>
+              )}
+            </div>
           </div>
         </div>
         <div className="px-chip hud-hide-sm" title="Gesammelte Sterne" aria-label={`${totalStarsCount} Sterne`} style={{ flexShrink:0 }}>
@@ -337,7 +368,7 @@ export default function HomeScreen() {
         </div>
         {/* the streak from day two on, on every device */}
         {streak.count >= 2 && (
-          <div className="px-chip" title="Tage in Folge gespielt" aria-label={`${streak.count} Tage in Folge`} style={{ flexShrink:0 }}>
+          <div className="px-chip hud-hide-sm" title="Tage in Folge gespielt" aria-label={`${streak.count} Tage in Folge`} style={{ flexShrink:0 }}>
             <span className="px-chip-icon" style={{ fontSize:18, lineHeight:'22px', textAlign:'center' }}>🔥</span> {streak.count}
           </div>
         )}
@@ -381,7 +412,7 @@ export default function HomeScreen() {
           </div>
         </div>
       ) : (<>
-        <LumiIdea idea={idea} plan={plan} onPlay={playIdea} onAlbum={openAlbum} stickers={stickers} narrow={narrow} />
+        <LumiIdea idea={idea} plan={plan} tileLevel={idea ? progress[idea.mod.id]?.currentLevel ?? 1 : 1} onPlay={playIdea} onAlbum={openAlbum} stickers={stickers} narrow={narrow} />
 
         {/* ── The worlds, one row each ── */}
         <div style={{

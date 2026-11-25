@@ -126,7 +126,11 @@ export function planJourney({ mods, progress = {}, age = 5, maxLevels = {}, toda
 
   const due = dueSkills(progress, today).map(id => byId[id]).filter(Boolean)
   const started = learnable.filter(m => played(m) && !progress[m.id]?.completed)
-  const fresh = learnable.filter(m => !played(m) && fits(m))
+  // New games: the ones made for the child's age first, then in learning
+  // order (the same measure as recommend() in modules.js). Without it a
+  // new seven-year-old began like a four-year-old, counting to three.
+  const near = m => Math.abs(age - ((m.minAge ?? 4) + 1))
+  const fresh = learnable.filter(m => !played(m) && fits(m)).sort((a, b) => near(a) - near(b))
   const anyPlayed = learnable.filter(played)
 
   const stops = []
@@ -150,7 +154,7 @@ export function planJourney({ mods, progress = {}, age = 5, maxLevels = {}, toda
   if (rev) stops.push(stop(played(rev) ? 'review' : 'new', rev))
   // A new child: fill up with the first games of the learning path
   while (stops.filter(s => s.kind !== 'move').length < 4) {
-    const m = pick(learnable.filter(fits)) ?? pick(learnable)
+    const m = pick(fresh) ?? pick(learnable.filter(fits)) ?? pick(learnable)
     if (!m) break
     stops.push(stop(played(m) ? 'review' : 'new', m))
   }

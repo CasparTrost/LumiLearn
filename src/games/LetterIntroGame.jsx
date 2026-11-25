@@ -96,7 +96,7 @@ function MonsterMampf({ level = 1, onComplete }) {
     over: null,          // two monsters: the one a dragged thing is held over
     help: false,         // after two misses the fitting things glow
     cheer: false,        // the row hops when a monster joins it
-    drag: null, recent: [], tapSeq: 0, uid: 0, topUp: 0,
+    drag: null, recent: [], tapSeq: 0, uid: 0, topUp: 0, hintId: null,
   }))
 
   useEffect(() => leaveGame, [])
@@ -526,9 +526,12 @@ function MonsterMampf({ level = 1, onComplete }) {
       for (const t of g.things) {
         const m = hs.find(x => x.letter === t.letter)
         if (!m || t.away || !t.el || t.x < L.fw * 0.7 || t.x > L.w - L.fw * 0.7) continue
-        const d = t.id === g.picked ? -1 : Math.abs(t.x - L.w / 2)
+        // the picked thing first, then the one the hand already shows (the
+        // hand starts over when its target changes), then the most central
+        const d = t.id === g.picked ? -2 : t.id === g.hintId ? -1 : Math.abs(t.x - L.w / 2)
         if (!best || d < best.d) best = { d, t, m }
       }
+      g.hintId = best?.t.id ?? null
       return best
     }
     return {

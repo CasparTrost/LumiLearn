@@ -205,6 +205,73 @@ async function playShadows(page) {
   await page.context().close()
 }
 
+// 3d. Silben-Spaß (Frosch-Hüpfer): a level hopped through, a hop per
+// syllable and then ashore; one hop too many on the way, to the results
+{
+  const page = await newPage(SIZES.phone, save)
+  await page.goto(URL); await page.waitForTimeout(1500)
+  await page.getByRole('button', { name: /^Silben-Spaß, Level/ }).last().click()
+  const game = page.locator('[data-game="frosch"]')
+  await game.waitFor({ timeout: 10000 }).catch(() => problems.push('Frosch-Hüpfer: no pond'))
+  let splashed = false
+  for (let i = 0; i < 600 && (await game.count()); i++) {
+    const s = await game.evaluate(el => ({ ...el.dataset })).catch(() => null)
+    if (!s || s.phase !== 'play') { await page.waitForTimeout(200); continue }
+    const n = s.word.split('-').length, hops = Number(s.hops)
+    // once, in the second word: no syllable is left, no pad comes, the frog
+    // lands in the water and starts again from its bank
+    const over = !splashed && s.round === '1' && hops === n
+    if (over) splashed = true
+    if (hops < n || over) await page.getByRole('button', { name: 'Hüpfen' }).click({ timeout: 3000 }).catch(() => {})
+    else await page.locator('[data-thing]').click({ timeout: 3000 }).catch(() => {})
+    await page.waitForTimeout(650)
+    if (over) {
+      await page.waitForTimeout(3500)
+      if ((await game.getAttribute('data-hops').catch(() => null)) !== '0') problems.push('Frosch-Hüpfer: after a splash the frog is not back on its bank')
+    }
+  }
+  await page.waitForTimeout(2500)
+  const text = await page.evaluate(() => document.body.innerText)
+  if (!/5 von 6 gleich beim ersten Mal richtig/.test(text)) problems.push(`Frosch-Hüpfer: results not as expected: ${text.slice(0, 120).replace(/\n/g, ' | ')}`)
+  await check(page, 'Frosch-Hüpfer results')
+  problems.push(...page.errors.map(e => `Frosch-Hüpfer: ${e}`))
+  await page.context().close()
+}
+
+// 3e. Sortier-Spaß (Fließband-Füttern): every thing off the belt by a tap on
+// it and a tap on the monster that eats it; one thing goes to the wrong
+// monster first and is spat back; to the results
+{
+  const page = await newPage(SIZES.phone, save)
+  await page.goto(URL); await page.waitForTimeout(1500)
+  await page.getByRole('button', { name: /^Sortier-Spaß, Level/ }).last().click()
+  const game = page.locator('[data-module="sort"] [data-phase]')
+  await page.locator('[data-thing]').first().waitFor({ timeout: 10000 }).catch(() => problems.push('Fließband: nothing on the belt'))
+  let missed = false
+  for (let i = 0; i < 300 && (await game.count()); i++) {
+    const phase = await game.getAttribute('data-phase').catch(() => null)
+    const thing = page.locator('[data-thing][data-mode="belt"]').first()
+    if (phase !== 'play' || !(await thing.count())) { await page.waitForTimeout(250); continue }
+    const id = await thing.getAttribute('data-thing').catch(() => null)
+    const to = await thing.getAttribute('data-to').catch(() => null)
+    // the things ride and the monsters bob: no waiting for them to hold still
+    await thing.click({ force: true, timeout: 2000 }).catch(() => {})
+    await page.waitForTimeout(150)
+    if (!id || !(await page.locator(`[data-thing="${id}"][data-mode="picked"]`).count())) continue
+    const wrong = !missed && (await game.getAttribute('data-fed')) === '1'
+    if (wrong) missed = true
+    await page.locator(`[data-target="${wrong ? (to === '0' ? 1 : 0) : to}"]`).click({ force: true, timeout: 2000 }).catch(() => {})
+    await page.waitForTimeout(wrong ? 1800 : 900)
+    if (wrong && !(await page.locator(`[data-thing="${id}"]`).count())) problems.push('Fließband: the wrong monster kept the thing')
+  }
+  await page.waitForTimeout(2500)
+  const text = await page.evaluate(() => document.body.innerText)
+  if (!/7 von 8 gleich beim ersten Mal richtig/.test(text)) problems.push(`Fließband: results not as expected: ${text.slice(0, 120).replace(/\n/g, ' | ')}`)
+  await check(page, 'Fließband results')
+  problems.push(...page.errors.map(e => `Fließband: ${e}`))
+  await page.context().close()
+}
+
 // 4. Lumi's ideas for today: the last idea from the home screen, the
 // movement break the results suggest, the sticker, the album
 {

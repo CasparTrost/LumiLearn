@@ -23,6 +23,11 @@ let level    = null   // Vorrang dessen, was gerade läuft
 let lockedAt = 0      // seit wann Vorschauen gesperrt sind (0 = frei)
 let cancelAt = 0      // wann zuletzt abgebrochen wurde
 let voiceVolume = 1   // Lautstärke der Sprache, im Elternbereich einstellbar
+// The recording that was started last and when it ended (or started, while
+// it runs): the results screen asks, so that it does not praise a second
+// time right after the game did (screens/ResultsScreen.jsx).
+let said = { src: null, at: 0 }
+export const lastSaid = () => said
 
 // Nach einem Abbruch darf nicht sofort gesprochen werden: ruft man
 // speechSynthesis.speak() im selben Tick wie cancel(), verschluckt Chrome den
@@ -251,6 +256,7 @@ export function narrate(parts, { onEnd, skipIfSame = false, priority = 'normal' 
       audioEl = a
       let failed = false
       const hand = once(done, s, 15000)
+      said = { src: p.src, at: Date.now() }
       const onFail = () => {
         // error-Ereignis und abgelehntes play() kommen beide — nur einmal
         // ersatzweise sprechen, sonst sagt die Stimme alles doppelt
@@ -262,7 +268,7 @@ export function narrate(parts, { onEnd, skipIfSame = false, priority = 'normal' 
         if (p.text && !RECORDED_ONLY) speakPart(p, done, s); else hand()
       }
       a.addEventListener('error', onFail, { once: true })
-      a.addEventListener('ended', () => { if (!failed) hand() }, { once: true })
+      a.addEventListener('ended', () => { if (said.src === p.src) said = { src: p.src, at: Date.now() }; if (!failed) hand() }, { once: true })
       a.play().catch(onFail)
     } catch { if (p.text && !RECORDED_ONLY) speakPart(p, done, s); else done() }
   }
