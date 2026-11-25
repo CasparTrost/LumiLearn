@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { reducer, migrateToV2, initialState, saveData, farmPoints } from '../../src/AppContext.jsx'
+import { reducer, migrateToV2, initialState, saveData, farmPoints, needsHelpFirst } from '../../src/AppContext.jsx'
 import { MODULES } from '../../src/modules.js'
 
 const v2 = (profiles, extra = {}) => ({ version: 2, language: 'de', activeProfileId: Object.keys(profiles)[0], settings: {}, profiles, ...extra })
@@ -89,5 +89,31 @@ describe('profiles', () => {
     s = reducer(s, { type: 'DELETE_PROFILE', payload: 'p1' })
     expect(s.profiles.p1).toBeUndefined()
     expect(s.activeProfileId).toBe('p2')
+  })
+})
+
+describe('the help box the first time a game is played', () => {
+  const start = () => migrateToV2(v2({ p1: kid('p1', { numbers: { currentLevel: 2, levelStars: { 1: 3 }, plays: 1 } }) }))
+  it('is due for a game never played, not for one the child knows', () => {
+    const p = start().profiles.p1
+    expect(needsHelpFirst(p, 'maze')).toBe(true)
+    expect(needsHelpFirst(p, 'numbers')).toBe(false)
+    expect(needsHelpFirst(null, 'maze')).toBe(false)
+  })
+  it('is ticked off once per child and game, and survives saving', () => {
+    let s = reducer(start(), { type: 'HELP_SEEN', payload: 'maze' })
+    expect(needsHelpFirst(s.profiles.p1, 'maze')).toBe(false)
+    expect(needsHelpFirst(s.profiles.p1, 'clock')).toBe(true)
+    s = migrateToV2(JSON.parse(JSON.stringify(saveData(s))))
+    expect(needsHelpFirst(s.profiles.p1, 'maze')).toBe(false)
+    s = reducer(s, { type: 'ADD_PROFILE', payload: { name: 'Ben', age: 5, avatar: '🐻' } })
+    expect(needsHelpFirst(s.profiles[s.activeProfileId], 'maze')).toBe(true)
+  })
+  it('comes again for a game that was started over', () => {
+    let s = reducer(start(), { type: 'HELP_SEEN', payload: 'maze' })
+    s = reducer(s, { type: 'RESET_MODULE', payload: 'maze' })
+    expect(needsHelpFirst(s.profiles.p1, 'maze')).toBe(true)
+    s = reducer(s, { type: 'RESET_MODULE', payload: 'numbers' })
+    expect(needsHelpFirst(s.profiles.p1, 'numbers')).toBe(true)
   })
 })

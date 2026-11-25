@@ -29,9 +29,9 @@ export function sheetSize(w, h) {
 // detail: 0 fewer lines, 1 normal, 2 more lines. Sizes are in sheet pixels
 // (a sheet has 1.5 million); they scale with the picture's area.
 const LEVELS = [
-  { t: 168, speck: 160, gap: 30, tiny: 700, k: 5, minRegion: 0.006,  merge: 20 },
-  { t: 192, speck: 80,  gap: 40, tiny: 420, k: 7, minRegion: 0.0028, merge: 15 },
-  { t: 214, speck: 40,  gap: 50, tiny: 260, k: 9, minRegion: 0.0013, merge: 10 },
+  { t: 168, speck: 160, gap: 30, tiny: 700, k: 5, minRegion: 0.006,  merge: 20, edge: 22 },
+  { t: 192, speck: 80,  gap: 40, tiny: 420, k: 7, minRegion: 0.0028, merge: 15, edge: 14 },
+  { t: 214, speck: 40,  gap: 50, tiny: 260, k: 9, minRegion: 0.0013, merge: 10, edge: 10 },
 ]
 export const LINE_WIDTH = 5          // the thinnest a line ends up (the pages' lines are 5–9)
 
@@ -556,6 +556,126 @@ function majority(labels, w, h) {
   return out
 }
 
+// A few colours are not enough: a dark green tree in front of a light green
+// meadow is "green" twice, one colour, one region, and its crown was left
+// open at the bottom. So every area of one colour is cut where a clear edge
+// runs through it. The edge is a barrier; what it separates completely gets
+// a label of its own (an edge that ends in the middle of an area separates
+// nothing, so no line ends in the open), and the barrier's pixels then go to
+// the side they touch. `min`: the smallest area worth a cut.
+function splitAtEdges(labels, lab, w, h, strong, min) {
+  const n = w * h
+  const dE = (p, q) => Math.hypot(lab[p * 3] - lab[q * 3], lab[p * 3 + 1] - lab[q * 3 + 1], lab[p * 3 + 2] - lab[q * 3 + 2])
+  // The step across a pixel, three to each side (the picture was smoothed,
+  // an edge is some pixels wide) and seven to each side as well: where two
+  // areas meet, the colour is different near and far. A drawn line, an eye,
+  // a wrinkle has the same colour on both sides a little further out; it is
+  // no border between two areas and cuts nothing.
+  const barrier = new Uint8Array(n)
+  const step = (x, y, dx, dy, k) => dE(Math.max(0, y - k * dy) * w + Math.max(0, x - k * dx), Math.min(h - 1, y + k * dy) * w + Math.min(w - 1, x + k * dx))
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const gx = Math.min(step(x, y, 1, 0, 3), step(x, y, 1, 0, 7))
+    const gy = Math.min(step(x, y, 0, 1, 3), step(x, y, 0, 1, 7))
+    if (Math.max(gx, gy) >= strong) barrier[y * w + x] = 1
+  }
+  const out = new Int32Array(n).fill(-1)
+  const stack = new Int32Array(n)
+  let count = 0
+  // connected pixels of one colour; `open`: only those off the barrier
+  const flood = (s, open) => {
+    let top = 0
+    stack[top++] = s; out[s] = count
+    while (top) {
+      const p = stack[--top], x = p % w
+      for (const q of [x > 0 ? p - 1 : -1, x < w - 1 ? p + 1 : -1, p - w, p + w]) {
+        if (q >= 0 && q < n && out[q] < 0 && !(open && barrier[q]) && labels[q] === labels[s]) { out[q] = count; stack[top++] = q }
+      }
+    }
+    count++
+  }
+  for (let s = 0; s < n; s++) if (out[s] < 0 && !barrier[s]) flood(s, true)
+  // the barrier goes to the sides it touches, within its own colour: the
+  // border between two colours stays exactly where it was
+  for (let pass = 0, moved = 1; pass < 60 && moved; pass++) {
+    moved = 0
+    const prev = out.slice()
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const p = y * w + x
+      if (prev[p] >= 0) continue
+      for (const q of [x > 0 ? p - 1 : -1, x < w - 1 ? p + 1 : -1, y > 0 ? p - w : -1, y < h - 1 ? p + w : -1]) {
+        if (q >= 0 && prev[q] >= 0 && labels[q] === labels[p]) { out[p] = prev[q]; moved++; break }
+      }
+    }
+  }
+  // what lies in the barrier altogether (the blend of two colours along
+  // their border): a region of its own, as before
+  for (let s = 0; s < n; s++) if (out[s] < 0) flood(s, false)
+  // Only a cut with a real area on both sides counts. A busy picture is
+  // full of edges that pinch off crumbs; each crumb goes back to the area
+  // of its colour it was cut from (left alone, the crumbs were handed to
+  // any neighbour and tore the shapes apart).
+  const parent = Int32Array.from({ length: count }, (_, i) => i)
+  const find = a => { while (parent[a] !== a) a = parent[a] = parent[parent[a]]; return a }
+  for (let round = 0; round < 12; round++) {
+    const area = new Float64Array(count)
+    for (let p = 0; p < n; p++) area[find(out[p])]++
+    const shared = new Map()
+    const note = (a, b) => {
+      if (area[a] >= min) return
+      let m = shared.get(a)
+      if (!m) shared.set(a, m = new Map())
+      m.set(b, (m.get(b) ?? 0) + 1)
+    }
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const p = y * w + x, a = find(out[p])
+      for (const q of [x < w - 1 ? p + 1 : -1, y < h - 1 ? p + w : -1]) {
+        if (q < 0 || labels[q] !== labels[p]) continue
+        const b = find(out[q])
+        if (b !== a) { note(a, b); note(b, a) }
+      }
+    }
+    if (!shared.size) break
+    for (const [a, m] of shared) {
+      let best = -1, bn = 0
+      for (const [b, k] of m) if (k > bn) { bn = k; best = b }
+      const ra = find(a), rb = find(best)
+      if (ra !== rb) parent[ra] = rb
+    }
+  }
+  for (let p = 0; p < n; p++) out[p] = find(out[p])
+  // And a cut is an edge along its whole length. Eyes, nose and mouth in a
+  // row wall off half a face, with nothing but skin between them: where a
+  // quarter of the cut or more shows no step in colour, it is taken back.
+  const cuts = new Map()         // pair of parts -> [samples, samples with a clear step]
+  const across = (p, q, a, b, dp) => {
+    let pa = p, pb = q
+    for (let k = 1; k <= 3; k++) {
+      const na = p - k * dp, nb = q + k * dp
+      if (na < 0 || nb >= n || out[na] !== a || out[nb] !== b) break
+      if (dp === 1 && (((na / w) | 0) !== ((p / w) | 0) || ((nb / w) | 0) !== ((q / w) | 0))) break
+      pa = na; pb = nb
+    }
+    const key = a < b ? a * count + b : b * count + a
+    let e = cuts.get(key)
+    if (!e) cuts.set(key, e = [0, 0])
+    e[0]++
+    if (dE(pa, pb) >= strong * 0.75) e[1]++
+  }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const p = y * w + x, a = out[p]
+    if (x < w - 1 && out[p + 1] !== a && labels[p + 1] === labels[p]) across(p, p + 1, a, out[p + 1], 1)
+    if (y < h - 1 && out[p + w] !== a && labels[p + w] === labels[p]) across(p, p + w, a, out[p + w], w)
+  }
+  let undone = false
+  for (const [key, [all, clear]] of cuts) {
+    if (clear >= 0.75 * all) continue
+    const ra = find(Math.floor(key / count)), rb = find(key % count)
+    if (ra !== rb) { parent[ra] = rb; undone = true }
+  }
+  if (undone) for (let p = 0; p < n; p++) out[p] = find(out[p])
+  return out
+}
+
 // Regions smaller than `min` pixels go into the neighbour they share the
 // longest border with, until there are only regions worth colouring
 function mergeSmall(labels, w, h, min) {
@@ -629,7 +749,10 @@ function simplifyRegions(reg, lab, w, h, maxDiff) {
   }
   for (let r = 0; r < count; r++) if (area[r]) for (let c = 0; c < 3; c++) mean[r * 3 + c] /= area[r]
   const outline = new Uint8Array(count)
-  for (let r = 0; r < count; r++) outline[r] = area[r] && mean[r * 3] < 40 && area[r] < 2.4 * per[r] ? 1 : 0
+  // … and so does any band of up to three pixels, whatever its colour: the
+  // blend of two colours along their border. Its two sides would be two
+  // lines with nothing to colour in between, drawn as one fat line.
+  for (let r = 0; r < count; r++) outline[r] = area[r] && ((mean[r * 3] < 40 && area[r] < 2.4 * per[r]) || area[r] < 1.6 * per[r]) ? 1 : 0
   const out = Int32Array.from(reg)
   for (let pass = 0, left = 1; pass < 40 && left; pass++) {
     left = 0
@@ -643,16 +766,42 @@ function simplifyRegions(reg, lab, w, h, maxDiff) {
       if (got >= 0) out[p] = got; else left++
     }
   }
-  // neighbours of nearly one colour: one region
+  // Neighbours without a visible edge between them become one region. What
+  // counts is the step in colour across their shared border, a few pixels to
+  // each side: the bands of a sky's gradient differ in their mean colours and
+  // have no edge between them; a dark tree in front of a meadow has nearly the
+  // meadow's mean colour and a clear edge all round (by mean colours the two
+  // ran into one, and the tree's crown stayed open).
   const parent = Int32Array.from({ length: count }, (_, i) => i)
   const find = a => { while (parent[a] !== a) a = parent[a] = parent[parent[a]]; return a }
-  const dist = (a, b) => Math.hypot(mean[a * 3] - mean[b * 3], mean[a * 3 + 1] - mean[b * 3 + 1], mean[a * 3 + 2] - mean[b * 3 + 2])
+  const REACH = 3
+  const steps = new Map()        // pair of regions -> [sum of steps, samples]
+  const sample = (p, q, a, b, dp) => {
+    // out from the border, as far as both sides stay in their regions
+    let pa = p, pb = q
+    for (let k = 1; k <= REACH; k++) {
+      const na = p - k * dp, nb = q + k * dp
+      if (na < 0 || nb >= out.length || out[na] !== a || out[nb] !== b) break
+      if (dp === 1 && (((na / w) | 0) !== ((p / w) | 0) || ((nb / w) | 0) !== ((q / w) | 0))) break
+      pa = na; pb = nb
+    }
+    const d = Math.hypot(lab[pa * 3] - lab[pb * 3], lab[pa * 3 + 1] - lab[pb * 3 + 1], lab[pa * 3 + 2] - lab[pb * 3 + 2])
+    const key = a < b ? a * count + b : b * count + a
+    const e = steps.get(key)
+    if (e) { e[0] += d; e[1]++ } else steps.set(key, [d, 1])
+  }
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const p = y * w + x, a = out[p]
-    for (const q of [x < w - 1 ? p + 1 : -1, y < h - 1 ? p + w : -1]) {
-      if (q < 0 || out[q] === a || outline[a] || outline[out[q]]) continue
-      if (dist(a, out[q]) < maxDiff) { const ra = find(a), rb = find(out[q]); if (ra !== rb) parent[ra] = rb }
-    }
+    if (outline[a]) continue
+    if (x < w - 1 && out[p + 1] !== a && !outline[out[p + 1]]) sample(p, p + 1, a, out[p + 1], 1)
+    if (y < h - 1 && out[p + w] !== a && !outline[out[p + w]]) sample(p, p + w, a, out[p + w], w)
+  }
+  const far = (a, b) => Math.hypot(mean[a * 3] - mean[b * 3], mean[a * 3 + 1] - mean[b * 3 + 1], mean[a * 3 + 2] - mean[b * 3 + 2]) >= 2 * maxDiff
+  for (const [key, [sum, n]] of steps) {
+    const a = Math.floor(key / count), b = key % count
+    if (sum / n >= maxDiff || far(a, b)) continue
+    const ra = find(a), rb = find(b)
+    if (ra !== rb) parent[ra] = rb
   }
   for (let p = 0; p < out.length; p++) out[p] = find(out[p])
   return out
@@ -682,7 +831,9 @@ export function traceShapes(rgba, w, h, detail = 1) {
   for (let i = 0; i < sw * sh; i++) lab.set(toLab(ch[0][i], ch[1][i], ch[2][i]), i * 3)
   let labels = kmeans(lab, sw * sh, L.k)
   labels = majority(majority(labels, sw, sh), sw, sh)
-  let reg = mergeSmall(labels, sw, sh, Math.max(12, L.minRegion * sw * sh)) ?? labels
+  const minRegion = Math.max(12, L.minRegion * sw * sh)
+  labels = splitAtEdges(labels, lab, sw, sh, L.edge, minRegion)
+  let reg = mergeSmall(labels, sw, sh, minRegion) ?? labels
   reg = simplifyRegions(reg, lab, sw, sh, L.merge)
   // the borders between regions, both sides, smoothed and back at full size
   const edge = new Float32Array(sw * sh)

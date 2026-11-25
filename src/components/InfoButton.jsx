@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { narrate, stopNarration } from '../narrator.js'
+import { narrate, stopNarration, afterNarration } from '../narrator.js'
 import { MODULE_BY_ID } from '../modules.js'
 import { useFocusTrap } from '../hooks/useFocusTrap.js'
 import { helpLine } from '../lib/lumiLines.js'
+import { PxIcon } from './PixelUI.jsx'
 
 // Help per game. Read aloud when the dialog opens (most children who play
 // can't read yet), so the texts are written to be heard: short sentences,
@@ -21,7 +22,7 @@ const INFO = {
   words:           { emoji: '🃏', title: 'Memo-Welt', text: 'Dreh immer zwei Karten um: Zwei gleiche gehören dir. Ab Level drei spielst du abwechselnd mit Lumi. Wer mehr Paare hat, gewinnt. Ab Level fünf liegt eine Zauberkarte mit Augen dabei: Wer sie umdreht, sieht kurz alle Karten.' },
   patterns:        { emoji: '🥁', title: 'Musterpark', text: 'Die Tiere spielen der Reihe nach, ein Hocker ist leer. Hör gut zu: Wer fehlt? Setz das passende Tier auf den Hocker.' },
   shapes:          { emoji: '🎨', title: 'Farbenreich', text: 'Das Monster zeigt in seiner Denkblase, welche Farbe es haben möchte. Tippe auf die Farbflaschen, bis der Tank diese Farbe hat, und zieh dann am Hebel. Am Rad am Tank lässt du die Farbe wieder ab.' },
-  emotions:        { emoji: '😊', title: 'Gefühlswelt', text: 'Lumi zeigt dir ein Gesicht und sagt das Gefühl. Tippe alle Tiere an, die sich genauso fühlen. Tippst du auf das Schild, sagt Lumi das Gefühl noch einmal.' },
+  emotions:        { emoji: '😊', title: 'Gefühlswelt', text: 'Lumi zeigt dir ein Gesicht und sagt das Gefühl. Finde das Tier, das sich genauso fühlt, und tippe es an. Dann gehen alle Fenster zu, und gleich suchst du das nächste. Tippst du auf das Schild, sagt Lumi das Gefühl noch einmal.' },
   empathy:         { emoji: '🕵️‍♀️', title: 'Gefühlsdetektiv', text: 'Tippe auf die Lupe und schau, was passiert. Dann tippe auf das Gesicht, das passt. Und such aus, was dem Tier jetzt gut tut. Du siehst gleich, ob es hilft.' },
   maze:            { emoji: '🌀', title: 'Lumi-Labyrinth', text: 'Sammle alle Zaubertränke, dann geht das Tor auf. Der Drache bewacht seinen Weg: Lauf nicht in ihn hinein, sonst kostet es ein Herz. Ab Level 3 liegen drei Münzen versteckt; findest du alle, öffnet sich am Tor die Schatztruhe.' },
   shadows:         { emoji: '🌑', title: 'Schattenrätsel', text: 'Leuchte mit der Taschenlampe ins dunkle Zimmer. Ein Schatten im Licht bleibt stehen: Zieh das passende Bild darauf oder tippe es an. Die Glühbirne macht kurz alles hell, und die Katze läuft nur weg.' },
@@ -30,25 +31,56 @@ const INFO = {
   clock:           { emoji: '🕐', title: 'Kuckucksuhr', text: 'Dreh die Zeiger, bis die Uhr die Zeit von der Karte zeigt. Bei zwei Zeigern drückst du danach auf den Haken. Stehen drei Zeiten zur Wahl, tippst du die an, die die Uhr zeigt.' },
   words2:          { emoji: '🐸', title: 'Silben-Spaß', text: 'Sag das Wort und klatsch dazu: Jedes Klatschen ist ein Tipp ins Wasser, und der Frosch hüpft auf ein Seerosenblatt. Ist das Wort zu Ende, tippst du auf das Ding am Ufer, dann springt er hinüber. Manchmal legst du die Silben-Blätter der Reihe nach.' },
   weight:          { emoji: '🐭', title: 'Waage-Welt', text: 'Wirf etwas auf die Wippe: Je schwerer es ist, desto höher fliegt das Tier. Es soll genau bis zu seinem Futter kommen. Später zählst du Pakete zusammen. Dann vergleichst du zwei Sachen auf der Wippe und ordnest sie auf der Treppe von leicht nach schwer. Zum Schluss machst du die Wippe gerade.' },
-  'rocket-math':   { emoji: '🚀', title: 'Rechen-Rakete', text: 'Jeder Druck auf die Flamme ist ein Hüpfer zum nächsten Planeten. Hüpf so oft, wie die Rechnung sagt, und lande mit dem grünen Haken. Auf dem richtigen Planeten wohnt der Außerirdische. Später tippst du gleich auf den Planeten, auf dem die Rakete landet. Zum Schluss zeigst du mit den Zahlenblasen, wie viele Hüpfer es sind.' },
+  'rocket-math':   { emoji: '🚀', title: 'Rechen-Rakete', text: 'Rechne aus, wo die Rakete landet. Nimm sie mit dem Finger und flieg sie zu dem Planeten: Wo du loslässt, landet sie. Du kannst auch die Flamme drücken, dann hüpft sie einen Planeten weiter, mit der zweiten Flamme zurück, und der grüne Haken landet. Später tippst du gleich auf den richtigen Planeten, und zum Schluss zeigst du, wie viele Hüpfer es sind.' },
   'shapes-land':   { emoji: '🔷', title: 'Formen-Land', text: 'Die Eule zeigt dir in ihrer Lupe eine Form. Tippe im Bild alle Formen an, die so aussehen. Manchmal stellst du Formen der Größe nach auf, setzt eine Parade fort oder legst die passende Form auf ein Ding.' },
   'shape-build':   { emoji: '🧩', title: 'Formen-Werkstatt', text: 'Ein Tier wünscht sich etwas. Zieh die Formen an ihren Platz, bis es fertig ist. Mit dem Pfeil drehst du eine Form, und manchmal ist ein Teil zu viel. Am Ende darfst du selbst bauen.' },
   trace:           { emoji: '📝', title: 'Buchstaben-Spuren', text: 'Leg den Finger auf den grünen Punkt und fahre den Weg nach. Die Schnecke fährt mit und sammelt die Sterne. Fertige Buchstaben und Zahlen werden lebendig.' },
-  coloring:        { emoji: '🖍️', title: 'Mal-Atelier', text: 'Tippe auf eine Farbe und mal mit dem Finger, oder fülle eine Fläche mit dem Eimer. Probier den Regenbogen-Pinsel, den Glitzer und die Stempel! Mit Fertig hängt dein Bild an deiner Wand.' },
+  coloring:        { emoji: '🖍️', title: 'Mal-Atelier', text: 'Tippe auf eine Farbe und mal mit dem Finger, oder fülle eine Fläche mit dem Eimer. Probier den Regenbogen-Pinsel, den Glitzer und die Stempel! Mit Fertig hängt dein Bild an deiner Wand. Bei den Bildern kannst du mit einem Erwachsenen auch ein eigenes Bild zum Ausmalen holen. Fertige Bilder kannst du speichern oder drucken.' },
 }
 
-export default function InfoButton({ moduleId, onOpenChange }) {
-  const [open, setOpenState] = useState(false)
+/**
+ * The ? button and its help box.
+ *
+ *   first      the child plays this game for the first time: the box comes
+ *              up by itself, Lumi reads it, and it has to be ticked off (the
+ *              game starts only then; GameScreen). No tap outside closes it.
+ *   onConfirm  the box was ticked off
+ *   onLeave    the arrow back in that first box: not this game after all
+ */
+export default function InfoButton({ moduleId, onOpenChange, first = false, onConfirm, onLeave }) {
+  const [open, setOpenState] = useState(first)
+  const [must, setMust] = useState(first)       // the first time: to be ticked off
+  const [heard, setHeard] = useState(!first)    // Lumi has read it to the end
+  const waiting = useRef(null)
+  // A game that was rebuilt has a new help text; Lumi's recording of the
+  // old one would describe the old game (fresh: browser voice until the
+  // new text is recorded)
+  const read = () => narrate([(!help.fresh && helpLine(moduleId)) || { text: `${info.title}. ${info.text}` }])
   // Opening reads the help aloud and pauses the game (GameScreen passes
   // onOpenChange to its PauseContext); closing stops the reading.
   const setOpen = v => {
     setOpenState(v)
     onOpenChange?.(v)
-    // A game that was rebuilt has a new help text; Lumi's recording of the
-    // old one would describe the old game (fresh: browser voice until the
-    // new text is recorded)
-    if (v) narrate([(!help.fresh && helpLine(moduleId)) || { text: `${info.title}. ${info.text}` }])
+    if (v) read()
     else stopNarration()
+  }
+  // The first time: read it once the screen is there; the tick wakes up
+  // when Lumi is through (or cannot be heard at all)
+  const listen = () => {
+    waiting.current?.()
+    read()
+    waiting.current = afterNarration(() => setHeard(true), { minMs: 1500, maxMs: 45000 })
+  }
+  useEffect(() => {
+    setMust(first); setHeard(!first); setOpenState(first)
+    if (!first) return
+    const id = setTimeout(listen, 450)
+    return () => { clearTimeout(id); waiting.current?.(); waiting.current = null }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [first, moduleId])
+  const confirm = () => {
+    setOpen(false)
+    if (must) { setMust(false); onConfirm?.() }
   }
   const help = INFO[moduleId] ?? { emoji: '❓', title: 'Wie geht das?', text: 'Schau dir die Aufgabe an und tippe auf die richtige Antwort!' }
   // the name as on the tiles (modules.js), one spelling everywhere
@@ -56,7 +88,7 @@ export default function InfoButton({ moduleId, onOpenChange }) {
 
   // Escape closes the help, like a tap outside it; the focus stays inside
   // while it is open and goes back to the ? button afterwards
-  const trapRef = useFocusTrap(open, { onEscape: () => setOpen(false) })
+  const trapRef = useFocusTrap(open, { onEscape: () => { if (!must) setOpen(false) } })
 
   // A phone held sideways is lower than the dialog was tall (its picture
   // was cut off at the top and the button touched the edge): there the
@@ -84,7 +116,8 @@ export default function InfoButton({ moduleId, onOpenChange }) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18 }}
-            onClick={() => setOpen(false)}
+            onClick={() => { if (!must) setOpen(false) }}
+            data-help={must ? 'first' : 'open'}
             style={{
               position: 'fixed', inset: 0, zIndex: 900,
               background: 'rgba(42, 27, 61, 0.60)',
@@ -150,14 +183,32 @@ export default function InfoButton({ moduleId, onOpenChange }) {
                 {info.text}
               </div>
 
-              {/* Close button */}
-              <button
-                className="px-btn px-btn--green px-btn--md"
-                onClick={() => setOpen(false)}
-                style={{ marginTop: low ? 2 : 6, zIndex: 1 }}
-              >
-                Alles klar! 👍
-              </button>
+              {/* Close button. The first time it is the tick that starts the
+                  game: asleep while Lumi reads, then it beckons */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: low ? 2 : 6, zIndex: 1, flexBasis: low ? '100%' : 'auto' }}>
+                {must && (
+                  <button className="px-btn px-btn--parch px-btn--icon" onClick={listen} aria-label="Noch einmal vorlesen"
+                    style={{ fontSize: 24, lineHeight: 1, minWidth: 52, minHeight: 52 }}>
+                    🔊
+                  </button>
+                )}
+                <motion.button
+                  className={`px-btn px-btn--green ${must ? 'px-btn--lg' : 'px-btn--md'}`}
+                  onClick={confirm}
+                  disabled={must && !heard}
+                  data-help-ok=""
+                  animate={must && heard ? { scale: [1, 1.08, 1] } : { scale: 1 }}
+                  transition={must && heard ? { duration: 1.1, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.15 }}
+                >
+                  {must ? 'Los geht\u2019s! ✅' : 'Alles klar! 👍'}
+                </motion.button>
+              </div>
+              {must && onLeave && (
+                <button className="px-btn px-btn--wood px-btn--icon" onClick={() => { setOpen(false); onLeave() }} aria-label="Zurück zu den Spielen"
+                  style={{ position: 'absolute', left: 10, top: 10, zIndex: 2 }}>
+                  <PxIcon name="back" size={20} color="#fff" />
+                </button>
+              )}
             </motion.div>
           </motion.div>
         )}

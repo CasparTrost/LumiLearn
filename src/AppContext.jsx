@@ -94,6 +94,14 @@ export const missionDef = id => ALL_MISSIONS.find(m => m.id === id)
 // parents can switch games off (a world without games, no new game left).
 const hasPlayed = (profile, id) => (profile?.progress?.[id]?.plays ?? 0) > 0
   || Object.keys(profile?.progress?.[id]?.levelStars ?? {}).length > 0
+
+/**
+ * A game the child opens for the first time explains itself: the help box
+ * comes up by itself and has to be ticked off before the game starts
+ * (GameScreen). Ticked off once per child and game; a child who has played
+ * the game before knows it.
+ */
+export const needsHelpFirst = (profile, id) => !!profile && !profile.helpSeen?.[id] && !hasPlayed(profile, id)
 function missionPossible(m, profile) {
   if (!m) return false
   const mods = visibleModules(profile)
@@ -234,7 +242,16 @@ export function reducer(state, action) {
       return updateActiveProfile(state, p => ({
         ...p,
         progress: { ...p.progress, [id]: freshProgress() },
+        // a game started over explains itself again
+        helpSeen: { ...(p.helpSeen ?? {}), [id]: false },
       }), action.payload?.profileId)
+    }
+
+    // The help box of a game was ticked off (the first time it is played)
+    case 'HELP_SEEN': {
+      const id = action.payload
+      if (!id) return state
+      return updateActiveProfile(state, p => (p.helpSeen?.[id] ? p : { ...p, helpSeen: { ...(p.helpSeen ?? {}), [id]: true } }))
     }
 
     // Setting the level from the parent area only moves the starting point.
@@ -317,6 +334,7 @@ export function reducer(state, action) {
         lastPlayed: null,
         journey: null,
         stickers: [],
+        helpSeen: {},
       }
       reset.dailyMission = freshDay(todayStr(), reset)
       return { ...state, profiles: { ...state.profiles, [id]: reset } }

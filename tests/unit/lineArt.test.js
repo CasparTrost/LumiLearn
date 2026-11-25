@@ -197,6 +197,51 @@ describe('photos and cartoons', () => {
     expect(new Set([sky, sun, house, door, grass]).size).toBe(5)
   })
 
+  it('a dark tree in front of a meadow of nearly its colour is a shape of its own, the sky\'s gradient is one', () => {
+    // a landscape with many colours: the few colours the page is made of
+    // are used up by sky, sun and house, and tree and meadow are one "green"
+    let seed = 7
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647
+    const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * Math.min(1, Math.max(0, t)))
+    const w = 800, h = 600
+    const px = sheet(w, h)
+    const horizon = x => 345 - 45 * Math.sin((x / w) * Math.PI * 1.6)
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      put(px, w, x, y, y < horizon(x)
+        ? mix([120, 180, 240], [210, 230, 220], y / h)             // the sky, deep to pale
+        : mix([111, 176, 96], [61, 122, 58], (y - 310) / 290))     // the meadow, light to dark
+    }
+    disc(px, w, 655, 105, 55, [255, 220, 80])                      // the sun
+    rect(px, w, 260, 260, 450, 430, [214, 160, 110])               // the house
+    for (let y = 165; y < 260; y++) rect(px, w, 355 - (y - 165) * 1.2, y, 355 + (y - 165) * 1.2, y + 1, [170, 60, 50])
+    rect(px, w, 330, 340, 380, 430, [110, 70, 40])
+    rect(px, w, 280, 290, 320, 330, [170, 215, 240]); rect(px, w, 395, 290, 435, 330, [170, 215, 240])
+    rect(px, w, 565, 320, 590, 450, [105, 70, 40])                 // the trunk
+    // the crown: lit from the upper left, dark below, standing on the horizon
+    for (let y = 210; y <= 350; y++) for (let x = 510; x <= 650; x++) {
+      if (Math.hypot(x - 580, y - 280) <= 70) put(px, w, x, y, mix([80, 150, 82], [36, 98, 46], (Math.hypot(x - 560, y - 260) - 15) / 65))
+    }
+    // a photo is never sharp: soften it (5 × 5, twice)
+    for (let pass = 0; pass < 2; pass++) {
+      const src = px.slice()
+      for (let y = 2; y < h - 2; y++) for (let x = 2; x < w - 2; x++) for (let c = 0; c < 3; c++) {
+        let sum = 0
+        for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) sum += src[((y + dy) * w + x + dx) * 4 + c]
+        px[(y * w + x) * 4 + c] = sum / 25
+      }
+    }
+    for (let i = 0; i < px.length; i += 4) { const n = (rnd() - 0.5) * 30; px[i] += n; px[i + 1] += n; px[i + 2] += n }
+    // with fewer lines there are five colours at most: one green for certain
+    const res = toColoringPage(px, w, h, 0)
+    expect(res.kind).toBe('photo')
+    expect(res.ok).toBe(true)
+    const crown = area(res, 580, 270), meadow = area(res, 150, 520), sky = area(res, 150, 60)
+    expect(new Set([crown, meadow, sky]).size).toBe(3)
+    expect(area(res, 730, 250)).toBe(sky)                          // the sky: one area, no band across it
+    expect(area(res, 700, 460)).toBe(meadow)
+    expect(res.regions).toBeLessThan(14)
+  })
+
   it('a colour photo is not taken for line art, a page with lines is', () => {
     const px = cartoon()
     expect(looksLikeLineArt(evenLight(px, W, H), px)).toBe(false)

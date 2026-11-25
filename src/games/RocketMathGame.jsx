@@ -86,7 +86,7 @@ const SAY = {
   hop: 'rakete/huepf', back: 'rakete/zurueck', tap: 'rakete/tippen', howMany: 'rakete/wie-viele', fly: 'rakete/fliegen',
   far: 'rakete/zu-weit', short: 'rakete/zu-kurz', wrongway: 'rakete/andersrum',
 }
-// level 2: flying by hand (silent until 'rakete/fliegen' is recorded)
+// level 2: flying by hand
 const INTRO = { 1: 'hop', 2: 'fly', 4: 'back', 5: 'back', 7: 'tap', 9: 'hop', 10: 'howMany' }
 
 export default function RocketMathGame({ level = 1, onComplete }) {
@@ -824,7 +824,9 @@ export default function RocketMathGame({ level = 1, onComplete }) {
             onPointerDown={onRocketDown} onPointerMove={onRocketMove} onPointerUp={onRocketUp} onPointerCancel={onRocketUp}
             style={{
               position: 'absolute', left: 0, top: 0, width: L.rw, height: L.rh, x: rocketX, y: rocketY, rotate: rocketRot,
-              transformOrigin: '50% 100%', zIndex: 5, touchAction: 'none', cursor: dragging ? 'grabbing' : canHold ? 'grab' : 'default',
+              // flown by hand it is in front of everything: the sky is the whole
+              // screen, and the rocket never slips behind a button on the way
+              transformOrigin: '50% 100%', zIndex: dragging ? 7 : 5, touchAction: 'none', cursor: dragging ? 'grabbing' : canHold ? 'grab' : 'default',
             }}>
             {/* a finger-wide grip round the rocket */}
             <span aria-hidden="true" style={{ position: 'absolute', inset: -14 }} />
