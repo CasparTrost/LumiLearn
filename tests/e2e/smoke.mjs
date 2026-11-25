@@ -161,7 +161,8 @@ async function playShadows(page) {
 }
 
 // 3c. ABC-Abenteuer (Monster-Mampf): the four monsters of level 1 fed until
-// they are full, one wrong bite on the way, to the results
+// they are full, one wrong bite on the way, to the results: the result
+// counts bites (4 monsters x 5), one of them came after the wrong one
 {
   const page = await newPage(SIZES.phone, save)
   await page.goto(URL); await page.waitForTimeout(1500)
@@ -199,7 +200,7 @@ async function playShadows(page) {
   }
   await page.waitForTimeout(2500)
   const text = await page.evaluate(() => document.body.innerText)
-  if (!/3 von 4 gleich beim ersten Mal richtig/.test(text)) problems.push(`Monster-Mampf: results not as expected: ${text.slice(0, 120).replace(/\n/g, ' | ')}`)
+  if (!/19 von 20 gleich beim ersten Mal richtig/.test(text)) problems.push(`Monster-Mampf: results not as expected: ${text.slice(0, 120).replace(/\n/g, ' | ')}`)
   await check(page, 'Monster-Mampf results')
   problems.push(...page.errors.map(e => `Monster-Mampf: ${e}`))
   await page.context().close()
