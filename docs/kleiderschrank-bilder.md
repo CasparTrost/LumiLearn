@@ -1015,40 +1015,40 @@ Ohne Hose (Nr. 16) den Teil „and <BOTTOM>" und die Sätze über die Hose wegla
 ### Dino: Vorlage `docs/tripo-vorlagen/dino-posen.png`, `<FIGURE>` = `cartoon dinosaur`
 
 - [x] 1. `tripo-in/dressed/dino-ringelshirt-jeansshorts.png` (fertig)
-- [ ] 2. `tripo-in/dressed/dino-heldenshirt-skihose.png`
-- [ ] 3. `tripo-in/dressed/dino-fussballtrikot-flickenjeans.png`
-- [ ] 4. `tripo-in/dressed/dino-hawaiihemd-bastrock.png`
-- [ ] 5. `tripo-in/dressed/dino-katzenhoodie-regenbogenleggings.png`
-- [ ] 6. `tripo-in/dressed/dino-regenjacke-lederhose.png`
-- [ ] 7. `tripo-in/dressed/dino-bienenkostuem-tutu.png`
-- [ ] 8. `tripo-in/dressed/dino-ritterruestung-piratenhose.png`
-- [ ] 9. `tripo-in/dressed/dino-rettungsweste-entenbadehose.png`
-- [ ] 10. `tripo-in/dressed/dino-kochjacke-schottenrock.png`
-- [ ] 11. `tripo-in/dressed/dino-arztkittel-clownshose.png`
-- [ ] 12. `tripo-in/dressed/dino-astronautenjacke-prinzessinnenrock.png`
-- [ ] 13. `tripo-in/dressed/dino-skijacke-meerjungfrau.png`
-- [ ] 14. `tripo-in/dressed/dino-smoking-fussballshorts.png`
-- [ ] 15. `tripo-in/dressed/dino-rentierpulli-pyjamahose.png`
-- [ ] 16. `tripo-in/dressed/dino-sternenpyjama.png`
+- [x] 2. `tripo-in/dressed/dino-heldenshirt-skihose.png`
+- [x] 3. `tripo-in/dressed/dino-fussballtrikot-flickenjeans.png`
+- [x] 4. `tripo-in/dressed/dino-hawaiihemd-bastrock.png`
+- [x] 5. `tripo-in/dressed/dino-katzenhoodie-regenbogenleggings.png`
+- [x] 6. `tripo-in/dressed/dino-regenjacke-lederhose.png`
+- [x] 7. `tripo-in/dressed/dino-bienenkostuem-tutu.png`
+- [x] 8. `tripo-in/dressed/dino-ritterruestung-piratenhose.png`
+- [x] 9. `tripo-in/dressed/dino-rettungsweste-entenbadehose.png`
+- [x] 10. `tripo-in/dressed/dino-kochjacke-schottenrock.png`
+- [x] 11. `tripo-in/dressed/dino-arztkittel-clownshose.png`
+- [x] 12. `tripo-in/dressed/dino-astronautenjacke-prinzessinnenrock.png`
+- [x] 13. `tripo-in/dressed/dino-skijacke-meerjungfrau.png`
+- [x] 14. `tripo-in/dressed/dino-smoking-fussballshorts.png`
+- [x] 15. `tripo-in/dressed/dino-rentierpulli-pyjamahose.png`
+- [x] 16. `tripo-in/dressed/dino-sternenpyjama.png`
 
 ### Einhorn: Vorlage `docs/tripo-vorlagen/einhorn-posen.png`, `<FIGURE>` = `cartoon unicorn`
 
-- [ ] 1. `tripo-in/dressed/einhorn-ringelshirt-jeansshorts.png`
-- [ ] 2. `tripo-in/dressed/einhorn-heldenshirt-skihose.png`
-- [ ] 3. `tripo-in/dressed/einhorn-fussballtrikot-flickenjeans.png`
-- [ ] 4. `tripo-in/dressed/einhorn-hawaiihemd-bastrock.png`
-- [ ] 5. `tripo-in/dressed/einhorn-katzenhoodie-regenbogenleggings.png`
-- [ ] 6. `tripo-in/dressed/einhorn-regenjacke-lederhose.png`
-- [ ] 7. `tripo-in/dressed/einhorn-bienenkostuem-tutu.png`
-- [ ] 8. `tripo-in/dressed/einhorn-ritterruestung-piratenhose.png`
-- [ ] 9. `tripo-in/dressed/einhorn-rettungsweste-entenbadehose.png`
-- [ ] 10. `tripo-in/dressed/einhorn-kochjacke-schottenrock.png`
-- [ ] 11. `tripo-in/dressed/einhorn-arztkittel-clownshose.png`
-- [ ] 12. `tripo-in/dressed/einhorn-astronautenjacke-prinzessinnenrock.png`
-- [ ] 13. `tripo-in/dressed/einhorn-skijacke-meerjungfrau.png`
-- [ ] 14. `tripo-in/dressed/einhorn-smoking-fussballshorts.png`
-- [ ] 15. `tripo-in/dressed/einhorn-rentierpulli-pyjamahose.png`
-- [ ] 16. `tripo-in/dressed/einhorn-sternenpyjama.png`
+- [x] 1. `tripo-in/dressed/einhorn-ringelshirt-jeansshorts.png`
+- [x] 2. `tripo-in/dressed/einhorn-heldenshirt-skihose.png`
+- [x] 3. `tripo-in/dressed/einhorn-fussballtrikot-flickenjeans.png`
+- [x] 4. `tripo-in/dressed/einhorn-hawaiihemd-bastrock.png`
+- [x] 5. `tripo-in/dressed/einhorn-katzenhoodie-regenbogenleggings.png`
+- [x] 6. `tripo-in/dressed/einhorn-regenjacke-lederhose.png`
+- [x] 7. `tripo-in/dressed/einhorn-bienenkostuem-tutu.png`
+- [x] 8. `tripo-in/dressed/einhorn-ritterruestung-piratenhose.png`
+- [x] 9. `tripo-in/dressed/einhorn-rettungsweste-entenbadehose.png`
+- [x] 10. `tripo-in/dressed/einhorn-kochjacke-schottenrock.png`
+- [x] 11. `tripo-in/dressed/einhorn-arztkittel-clownshose.png`
+- [x] 12. `tripo-in/dressed/einhorn-astronautenjacke-prinzessinnenrock.png`
+- [x] 13. `tripo-in/dressed/einhorn-skijacke-meerjungfrau.png`
+- [x] 14. `tripo-in/dressed/einhorn-smoking-fussballshorts.png`
+- [x] 15. `tripo-in/dressed/einhorn-rentierpulli-pyjamahose.png`
+- [x] 16. `tripo-in/dressed/einhorn-sternenpyjama.png`
 
 ### Drache: Vorlage `docs/tripo-vorlagen/drache-posen.png`, `<FIGURE>` = `cartoon dragon`
 
