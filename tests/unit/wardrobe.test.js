@@ -142,9 +142,9 @@ describe('the pictures', () => {
     for (const p of POSE_IDS) for (const t of WARDROBE) {
       const pl = placeItem(t, p), A = POSES[p][t.slot]
       // (shoes: from the left foot, a step beside the middle; a shoe is
-      // placed by its sole, a little below the anchor)
+      // placed by its sole, a little below the anchor; sitting, on the foot in front)
       const ax = t.slot === 'shoes' ? A.x - A.step : A.x
-      expect(Math.hypot(pl.x - ax, pl.y - A.y), `${t.id} on ${p}`).toBeLessThan(A.w * (t.slot === 'shoes' ? 0.45 : 0.3))
+      expect(Math.hypot(pl.x - ax, pl.y - A.y), `${t.id} on ${p}`).toBeLessThan(A.w * (t.slot === 'shoes' ? 0.55 : 0.3))
     }
   })
   it('wings sit on the back: below the eyes, at the sides of the body, drawn in two halves', () => {
@@ -164,6 +164,25 @@ describe('the pictures', () => {
       expect(back.map(l => l.id), p).toEqual([t.id, `${t.id}-right`])
       expect(back[0].rot).toBeLessThan(back[1].rot)
     }
+  })
+  it('clothes: standing, the shoes under the trousers under the top; sitting, the shoes in front', () => {
+    const outfit = { top: 'ringelshirt', bottom: 'jeansshorts', shoes: 'turnschuhe' }
+    const at = (layers, id) => layers.findIndex(l => l.id === id)
+    const lastAt = (layers, id) => layers.map(l => l.id).lastIndexOf(id)
+    for (const p of POSE_IDS.filter(p => !POSES[p].feet)) {
+      const L = figureLayers(p, outfit).layers
+      expect(at(L, 'turnschuhe'), p).toBeGreaterThan(-1)
+      expect(at(L, 'turnschuhe-right'), p).toBeLessThan(at(L, 'jeansshorts'))
+      expect(at(L, 'jeansshorts'), p).toBeLessThan(at(L, 'ringelshirt'))
+      // nothing of a shoe is drawn again over the clothes
+      expect(L.filter(l => String(l.id).startsWith('turnschuhe')).length, p).toBe(2)
+    }
+    const S = figureLayers('sleep', outfit).layers
+    const shoeLast = Math.max(...S.map((l, i) => (String(l.id).startsWith('turnschuhe') ? i : -1)))
+    expect(shoeLast).toBeGreaterThan(at(S, 'jeansshorts'))
+    expect(shoeLast).toBeGreaterThan(lastAt(S, 'ringelshirt'))
+    // the mermaid's tail: no shoes at all
+    expect(figureLayers('idle', { bottom: 'meerjungfrau', shoes: 'turnschuhe' }).layers.some(l => String(l.id).startsWith('turnschuhe'))).toBe(false)
   })
   it('the layers: a covering hat cuts the tuft out, a crown draws it again on top', () => {
     const hat = figureLayers('idle', { head: 'muetze' }).layers

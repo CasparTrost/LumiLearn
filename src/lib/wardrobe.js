@@ -360,22 +360,32 @@ export function figureLayers(pose, outfit) {
   // feet Lumi sits on stay in front of them), the shoes, one on each foot
   // (the pair picture cut in two), and the top over them, its hem over the
   // waistband; the wings lie in front of the clothes again
-  if (bySlot.bottom) {
-    layers.push(item(bySlot.bottom))
-    for (const f of P.feet ?? []) layers.push(clipTo(f))
-  }
   // (a mermaid's tail has no feet: shoes stay in the wardrobe while it is worn)
   if (bySlot.shoes && bySlot.bottom?.feet === false) delete bySlot.shoes
-  if (bySlot.shoes) {
-    layers.push({ ...item(bySlot.shoes, 'l'), clip: 'inset(0 50% 0 0)' })
-    layers.push({ ...item(bySlot.shoes, 'r'), id: `${bySlot.shoes.id}-right`, part: true, clip: 'inset(0 0 0 50%)' })
+  const shoes = () => bySlot.shoes ? [
+    { ...item(bySlot.shoes, 'l'), clip: 'inset(0 50% 0 0)' },
+    { ...item(bySlot.shoes, 'r'), id: `${bySlot.shoes.id}-right`, part: true, clip: 'inset(0 0 0 50%)' },
+  ] : []
+  if (!P.feet) {
+    // standing: the shoes are worn under the trousers (a trouser leg or a
+    // skirt's hem lies over the shoe's opening), the top over both
+    layers.push(...shoes())
+    if (bySlot.bottom) layers.push(item(bySlot.bottom))
+  } else {
+    // sitting: the feet stick out to the front, in front of the trousers;
+    // the shoes on them, and both again in front of the top
+    if (bySlot.bottom) {
+      layers.push(item(bySlot.bottom))
+      // (a mermaid's tail: no feet in front of it)
+      if (bySlot.bottom.feet !== false) for (const f of P.feet) layers.push(clipTo(f))
+    }
+    layers.push(...shoes())
   }
   if (bySlot.top) layers.push(item(bySlot.top))
   if ((bySlot.top || bySlot.bottom) && P.wings) for (const w of P.wings) layers.push(clipTo(w))
-  // (sitting, Lumi's feet are in front of the body and the clothes: the shoes too)
-  if (bySlot.top && P.feet) {
+  if (bySlot.top && P.feet && bySlot.bottom?.feet !== false) {
     for (const f of P.feet) layers.push(clipTo(f))
-    if (bySlot.shoes) layers.push(...layers.filter(l => l.kind === 'item' && (l.id === bySlot.shoes.id || l.id === `${bySlot.shoes.id}-right`)).map(l => ({ ...l, id: `${l.id}-again`, part: true })))
+    layers.push(...shoes().map(l => ({ ...l, id: `${bySlot.shoes.id}-${l.part ? 'right-' : ''}again`, part: true })))
   }
   // the part of a back thing that lies in FRONT of Lumi (a cape's collar
   // and clasp): the same picture again, cut to its `over` polygon
