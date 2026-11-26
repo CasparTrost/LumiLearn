@@ -104,7 +104,7 @@ export function comingSteps(profile, stars) {
 }
 
 /** A fresh child: nothing chosen yet (drawn as the chick), nothing won, nothing waiting. */
-export const freshShapes = () => ({ shapes: [], shape: null, shapeWait: false, shapePicked: false })
+export const freshShapes = () => ({ shapes: [], shape: null, shapeWait: false, shapePicked: false, shapeOffersClosed: 0 })
 
 // ── Drawing ─────────────────────────────────────────────────────────────────
 export const SHAPE_POSE_IDS = ['idle', 'happy', 'sad', 'hmm', 'think', 'wave', 'sleep']
@@ -131,3 +131,10 @@ export const currentShape = () => current
 
 /** Children offered the free first choice in this app session (offered once per app open, never forced). */
 export const offeredFirst = new Set()
+/**
+ * The free first choice opens by itself on the home screen (once per app
+ * open), until the child has closed it twice without choosing; after that
+ * only the present beside Lumi offers it.
+ */
+export const OFFER_CLOSED_MAX = 2
+export const offerFirstByItself = profile => firstChoiceOwed(profile) && (profile.shapeOffersClosed ?? 0) < OFFER_CLOSED_MAX

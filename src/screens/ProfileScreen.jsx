@@ -9,7 +9,6 @@ import { sayNumber } from '../tts.js'
 import { line } from '../lib/lumiLines.js'
 import { ChildLumi } from '../components/ShapeFigure.jsx'
 import { Ring } from './ShapesScreen.jsx'
-import { SHAPE_BY_ID } from '../lib/shapes.js'
 import { LINES } from '../lib/lumiLines.js'
 
 // The app is made for children from 4 to 7
@@ -73,7 +72,7 @@ function useViewport() {
   return v
 }
 
-function CreateProfileForm({ shape, onBack, onSave, onCancel, showCancel }) {
+function CreateProfileForm({ shape, onBack, onSave, onCancel, showCancel, defaultName = 'Kind' }) {
   const t = useT()
   const [name, setName] = useState('')
   const [age, setAge] = useState(null)
@@ -87,7 +86,9 @@ function CreateProfileForm({ shape, onBack, onSave, onCancel, showCancel }) {
     setAge(a)
     narrate([{ src: AGE_CLIP[a] && `audio/zahlen-entdecken/${AGE_CLIP[a]}.mp3`, text: `${sayNumber(a)}!` }])
   }
-  const save = () => onSave({ name: name.trim() || SHAPE_BY_ID[shape]?.name || 'Kind', age, shape })
+  // no name typed: "Kind", "Kind 2" … (not the shape's name: that changes
+  // when Lumi changes, and "Einhorn" as a child's name confused parents)
+  const save = () => onSave({ name: name.trim() || defaultName, age, shape })
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:'clamp(12px,2.5dvh,22px)' }}>
@@ -158,6 +159,15 @@ function CreateProfileForm({ shape, onBack, onSave, onCancel, showCancel }) {
       )}
     </div>
   )
+}
+
+// A child without a typed name: "Kind", then "Kind 2", "Kind 3" … (the first free one)
+export function nextKidName(profiles) {
+  const names = new Set(profiles.map(p => p.name))
+  if (!names.has('Kind')) return 'Kind'
+  let n = 2
+  while (names.has(`Kind ${n}`)) n++
+  return `Kind ${n}`
 }
 
 export default function ProfileScreen() {
@@ -252,7 +262,7 @@ export default function ProfileScreen() {
               initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-20 }}
               style={{ display:'flex', flexDirection:'column', alignItems:'stretch', gap:'clamp(8px,1.6dvh,14px)' }}
             >
-              <CreateProfileForm shape={newShape} onBack={() => setNewShape(null)} onSave={createProfile} onCancel={cancelCreate} showCancel={profiles.length > 0} />
+              <CreateProfileForm shape={newShape} onBack={() => setNewShape(null)} onSave={createProfile} onCancel={cancelCreate} showCancel={profiles.length > 0} defaultName={nextKidName(profiles)} />
             </motion.div>
           )}
         </AnimatePresence>

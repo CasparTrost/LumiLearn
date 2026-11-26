@@ -6,12 +6,13 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   SHAPES, SHAPE_IDS, CHICK, SHAPE_POSE_IDS, STEPS, shapesEarned, cleanShapes, cleanShape, drawnShape, firstChoiceOwed,
-  shapesOwed, shapesToCome, comingSteps, shapeLayers, shapeSrc, wearsClothes, setCurrentShape, currentShape,
+  shapesOwed, shapesToCome, comingSteps, shapeLayers, shapeSrc, wearsClothes, setCurrentShape, currentShape, offerFirstByItself,
 } from '../../src/lib/shapes.js'
 import { WARDROBE, POSE_IDS } from '../../src/lib/wardrobe.js'
 import { lumiArt } from '../../src/lib/assets.js'
 import { reducer, migrateToV2, initialState, profileWardrobeStars } from '../../src/AppContext.jsx'
 import { LINES, RECORD_LATER } from '../../src/lib/lumiLines.js'
+import { nextKidName } from '../../src/screens/ProfileScreen.jsx'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
@@ -174,6 +175,25 @@ describe('the shapes in the reducer', () => {
     expect(p().shapes).toEqual(['dino', CHICK])
     expect(shapesToCome(p()).map(x => x.id)).toEqual(['einhorn', 'drache', 'roboter'])
     expect(Object.values(comingSteps(p(), 21)).map(x => x.step)).toEqual([70, 155, 260])
+  })
+  it('the free first choice stops opening by itself after it was closed twice; choosing ends it', () => {
+    let s = load(kid(30))
+    expect(offerFirstByItself(me(s))).toBe(true)
+    s = reducer(s, { type: 'SHAPE_OFFER_CLOSED' })
+    expect(offerFirstByItself(me(s))).toBe(true)
+    s = reducer(s, { type: 'SHAPE_OFFER_CLOSED' })
+    expect(offerFirstByItself(me(s))).toBe(false)
+    expect(firstChoiceOwed(me(s))).toBe(true)          // the present still offers it
+    expect(me(load(me(s))).shapeOffersClosed).toBe(2)  // saved
+    s = first(s, 'dino')
+    expect(reducer(s, { type: 'SHAPE_OFFER_CLOSED' })).toBe(s)
+    expect(offerFirstByItself(me(s))).toBe(false)
+    expect(me(reducer(s, { type: 'RESET_PROFILE', payload: 'p1' })).shapeOffersClosed).toBe(0)
+  })
+  it('a child without a typed name is "Kind", then "Kind 2" …, never its shape', () => {
+    expect(nextKidName([])).toBe('Kind')
+    expect(nextKidName([{ name: 'Kind' }])).toBe('Kind 2')
+    expect(nextKidName([{ name: 'Kind' }, { name: 'Kind 2' }, { name: 'Mia' }])).toBe('Kind 3')
   })
   it('choosing who Lumi is: only a shape owned; the same again changes nothing', () => {
     let s = first(load(kid(10)), 'dino')

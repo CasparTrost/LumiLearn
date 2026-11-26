@@ -18,7 +18,7 @@ import { hearable } from '../lib/hearable.js'
 import { lazyWithReload } from '../lib/lazyWithReload.js'
 import { journeyArt, asset } from '../lib/assets.js'
 import { unseenItems } from '../lib/wardrobe.js'
-import { shapesOwed, firstChoiceOwed, offeredFirst } from '../lib/shapes.js'
+import { shapesOwed, firstChoiceOwed, offeredFirst, offerFirstByItself } from '../lib/shapes.js'
 import { ShapesIcon, ChildLumi } from '../components/ShapeFigure.jsx'
 import { WORLDS, MODULE_BY_ID, recommend, sortForAge, visibleModules } from '../modules.js'
 import { prefetchGame, isGameLoaded, ensureGame } from './GameScreen.jsx'
@@ -344,12 +344,16 @@ export default function HomeScreen() {
 
   // Greeting — once per app open and child
   // A child from before Lumi's shapes is offered the free first choice once
-  // per app open: the ring opens by itself. Leaving it keeps the chick for
-  // now; the present beside Lumi stays until the child has chosen.
+  // per app open: after the home screen was there for a moment, the ring
+  // opens by itself. Leaving it keeps the chick for now and the present
+  // beside Lumi stays; closed twice, it no longer opens by itself.
   useEffect(() => {
-    if (!activeProfile || !firstChoiceOwed(activeProfile) || offeredFirst.has(activeProfile.id) || timeUp) return
-    offeredFirst.add(activeProfile.id)
-    const id = setTimeout(() => { stopNarration(); dispatch({ type:'NAVIGATE', payload:'shapes' }) }, 700)
+    if (!activeProfile || !offerFirstByItself(activeProfile) || offeredFirst.has(activeProfile.id) || timeUp) return
+    const id = setTimeout(() => {
+      offeredFirst.add(activeProfile.id)
+      stopNarration()
+      dispatch({ type:'NAVIGATE', payload:'shapes' })
+    }, 1500)
     return () => clearTimeout(id)
   }, [activeProfile?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
