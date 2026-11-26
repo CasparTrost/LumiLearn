@@ -995,26 +995,26 @@ Ohne Hose (Nr. 16) den Teil „and <BOTTOM>" und die Sätze über die Hose wegla
 
 ### Lumi, das Küken: Vorlage `docs/tripo-vorlagen/chick-posen.png`, `<FIGURE>` = `cartoon chick`
 
-- [ ] 1. `tripo-in/dressed/chick-ringelshirt-jeansshorts.png`
-- [ ] 2. `tripo-in/dressed/chick-heldenshirt-skihose.png`
-- [ ] 3. `tripo-in/dressed/chick-fussballtrikot-flickenjeans.png`
-- [ ] 4. `tripo-in/dressed/chick-hawaiihemd-bastrock.png`
-- [ ] 5. `tripo-in/dressed/chick-katzenhoodie-regenbogenleggings.png`
-- [ ] 6. `tripo-in/dressed/chick-regenjacke-lederhose.png`
-- [ ] 7. `tripo-in/dressed/chick-bienenkostuem-tutu.png`
-- [ ] 8. `tripo-in/dressed/chick-ritterruestung-piratenhose.png`
-- [ ] 9. `tripo-in/dressed/chick-rettungsweste-entenbadehose.png`
-- [ ] 10. `tripo-in/dressed/chick-kochjacke-schottenrock.png`
-- [ ] 11. `tripo-in/dressed/chick-arztkittel-clownshose.png`
-- [ ] 12. `tripo-in/dressed/chick-astronautenjacke-prinzessinnenrock.png`
-- [ ] 13. `tripo-in/dressed/chick-skijacke-meerjungfrau.png`
-- [ ] 14. `tripo-in/dressed/chick-smoking-fussballshorts.png`
-- [ ] 15. `tripo-in/dressed/chick-rentierpulli-pyjamahose.png`
-- [ ] 16. `tripo-in/dressed/chick-sternenpyjama.png`
+- [x] 1. `tripo-in/dressed/chick-ringelshirt-jeansshorts.png`
+- [x] 2. `tripo-in/dressed/chick-heldenshirt-skihose.png`
+- [x] 3. `tripo-in/dressed/chick-fussballtrikot-flickenjeans.png`
+- [x] 4. `tripo-in/dressed/chick-hawaiihemd-bastrock.png`
+- [x] 5. `tripo-in/dressed/chick-katzenhoodie-regenbogenleggings.png`
+- [x] 6. `tripo-in/dressed/chick-regenjacke-lederhose.png`
+- [x] 7. `tripo-in/dressed/chick-bienenkostuem-tutu.png`
+- [x] 8. `tripo-in/dressed/chick-ritterruestung-piratenhose.png`
+- [x] 9. `tripo-in/dressed/chick-rettungsweste-entenbadehose.png`
+- [x] 10. `tripo-in/dressed/chick-kochjacke-schottenrock.png`
+- [x] 11. `tripo-in/dressed/chick-arztkittel-clownshose.png`
+- [x] 12. `tripo-in/dressed/chick-astronautenjacke-prinzessinnenrock.png`
+- [x] 13. `tripo-in/dressed/chick-skijacke-meerjungfrau.png`
+- [x] 14. `tripo-in/dressed/chick-smoking-fussballshorts.png`
+- [x] 15. `tripo-in/dressed/chick-rentierpulli-pyjamahose.png`
+- [x] 16. `tripo-in/dressed/chick-sternenpyjama.png`
 
 ### Dino: Vorlage `docs/tripo-vorlagen/dino-posen.png`, `<FIGURE>` = `cartoon dinosaur`
 
-- [ ] 1. `tripo-in/dressed/dino-ringelshirt-jeansshorts.png` (fertig)
+- [x] 1. `tripo-in/dressed/dino-ringelshirt-jeansshorts.png` (fertig)
 - [ ] 2. `tripo-in/dressed/dino-heldenshirt-skihose.png`
 - [ ] 3. `tripo-in/dressed/dino-fussballtrikot-flickenjeans.png`
 - [ ] 4. `tripo-in/dressed/dino-hawaiihemd-bastrock.png`
