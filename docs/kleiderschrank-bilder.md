@@ -1052,39 +1052,39 @@ Ohne Hose (Nr. 16) den Teil „and <BOTTOM>" und die Sätze über die Hose wegla
 
 ### Drache: Vorlage `docs/tripo-vorlagen/drache-posen.png`, `<FIGURE>` = `cartoon dragon`
 
-- [ ] 1. `tripo-in/dressed/drache-ringelshirt-jeansshorts.png`
-- [ ] 2. `tripo-in/dressed/drache-heldenshirt-skihose.png`
-- [ ] 3. `tripo-in/dressed/drache-fussballtrikot-flickenjeans.png`
-- [ ] 4. `tripo-in/dressed/drache-hawaiihemd-bastrock.png`
-- [ ] 5. `tripo-in/dressed/drache-katzenhoodie-regenbogenleggings.png`
-- [ ] 6. `tripo-in/dressed/drache-regenjacke-lederhose.png`
-- [ ] 7. `tripo-in/dressed/drache-bienenkostuem-tutu.png`
-- [ ] 8. `tripo-in/dressed/drache-ritterruestung-piratenhose.png`
-- [ ] 9. `tripo-in/dressed/drache-rettungsweste-entenbadehose.png`
-- [ ] 10. `tripo-in/dressed/drache-kochjacke-schottenrock.png`
-- [ ] 11. `tripo-in/dressed/drache-arztkittel-clownshose.png`
-- [ ] 12. `tripo-in/dressed/drache-astronautenjacke-prinzessinnenrock.png`
-- [ ] 13. `tripo-in/dressed/drache-skijacke-meerjungfrau.png`
-- [ ] 14. `tripo-in/dressed/drache-smoking-fussballshorts.png`
-- [ ] 15. `tripo-in/dressed/drache-rentierpulli-pyjamahose.png`
-- [ ] 16. `tripo-in/dressed/drache-sternenpyjama.png`
+- [x] 1. `tripo-in/dressed/drache-ringelshirt-jeansshorts.png`
+- [x] 2. `tripo-in/dressed/drache-heldenshirt-skihose.png`
+- [x] 3. `tripo-in/dressed/drache-fussballtrikot-flickenjeans.png`
+- [x] 4. `tripo-in/dressed/drache-hawaiihemd-bastrock.png`
+- [x] 5. `tripo-in/dressed/drache-katzenhoodie-regenbogenleggings.png`
+- [x] 6. `tripo-in/dressed/drache-regenjacke-lederhose.png`
+- [x] 7. `tripo-in/dressed/drache-bienenkostuem-tutu.png`
+- [x] 8. `tripo-in/dressed/drache-ritterruestung-piratenhose.png`
+- [x] 9. `tripo-in/dressed/drache-rettungsweste-entenbadehose.png`
+- [x] 10. `tripo-in/dressed/drache-kochjacke-schottenrock.png`
+- [x] 11. `tripo-in/dressed/drache-arztkittel-clownshose.png`
+- [x] 12. `tripo-in/dressed/drache-astronautenjacke-prinzessinnenrock.png`
+- [x] 13. `tripo-in/dressed/drache-skijacke-meerjungfrau.png`
+- [x] 14. `tripo-in/dressed/drache-smoking-fussballshorts.png`
+- [x] 15. `tripo-in/dressed/drache-rentierpulli-pyjamahose.png`
+- [x] 16. `tripo-in/dressed/drache-sternenpyjama.png`
 
 ### Roboter: Vorlage `docs/tripo-vorlagen/roboter-posen.png`, `<FIGURE>` = `cartoon robot`
 
-- [ ] 1. `tripo-in/dressed/roboter-ringelshirt-jeansshorts.png`
-- [ ] 2. `tripo-in/dressed/roboter-heldenshirt-skihose.png`
-- [ ] 3. `tripo-in/dressed/roboter-fussballtrikot-flickenjeans.png`
-- [ ] 4. `tripo-in/dressed/roboter-hawaiihemd-bastrock.png`
-- [ ] 5. `tripo-in/dressed/roboter-katzenhoodie-regenbogenleggings.png`
-- [ ] 6. `tripo-in/dressed/roboter-regenjacke-lederhose.png`
-- [ ] 7. `tripo-in/dressed/roboter-bienenkostuem-tutu.png`
-- [ ] 8. `tripo-in/dressed/roboter-ritterruestung-piratenhose.png`
-- [ ] 9. `tripo-in/dressed/roboter-rettungsweste-entenbadehose.png`
-- [ ] 10. `tripo-in/dressed/roboter-kochjacke-schottenrock.png`
-- [ ] 11. `tripo-in/dressed/roboter-arztkittel-clownshose.png`
-- [ ] 12. `tripo-in/dressed/roboter-astronautenjacke-prinzessinnenrock.png`
-- [ ] 13. `tripo-in/dressed/roboter-skijacke-meerjungfrau.png`
-- [ ] 14. `tripo-in/dressed/roboter-smoking-fussballshorts.png`
-- [ ] 15. `tripo-in/dressed/roboter-rentierpulli-pyjamahose.png`
-- [ ] 16. `tripo-in/dressed/roboter-sternenpyjama.png`
+- [x] 1. `tripo-in/dressed/roboter-ringelshirt-jeansshorts.png`
+- [x] 2. `tripo-in/dressed/roboter-heldenshirt-skihose.png`
+- [x] 3. `tripo-in/dressed/roboter-fussballtrikot-flickenjeans.png`
+- [x] 4. `tripo-in/dressed/roboter-hawaiihemd-bastrock.png`
+- [x] 5. `tripo-in/dressed/roboter-katzenhoodie-regenbogenleggings.png`
+- [x] 6. `tripo-in/dressed/roboter-regenjacke-lederhose.png`
+- [x] 7. `tripo-in/dressed/roboter-bienenkostuem-tutu.png`
+- [x] 8. `tripo-in/dressed/roboter-ritterruestung-piratenhose.png`
+- [x] 9. `tripo-in/dressed/roboter-rettungsweste-entenbadehose.png`
+- [x] 10. `tripo-in/dressed/roboter-kochjacke-schottenrock.png`
+- [x] 11. `tripo-in/dressed/roboter-arztkittel-clownshose.png`
+- [x] 12. `tripo-in/dressed/roboter-astronautenjacke-prinzessinnenrock.png`
+- [x] 13. `tripo-in/dressed/roboter-skijacke-meerjungfrau.png`
+- [x] 14. `tripo-in/dressed/roboter-smoking-fussballshorts.png`
+- [x] 15. `tripo-in/dressed/roboter-rentierpulli-pyjamahose.png`
+- [x] 16. `tripo-in/dressed/roboter-sternenpyjama.png`
 
