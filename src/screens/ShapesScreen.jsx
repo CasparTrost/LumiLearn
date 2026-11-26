@@ -6,7 +6,8 @@ import MusicButton from '../components/MusicControls.jsx'
 import LumiFigure from '../components/LumiFigure.jsx'
 import { ShapeFigure } from '../components/ShapeFigure.jsx'
 import { Art, useBursts } from '../components/play/index.js'
-import { SHAPES, CHICK, cleanShapes, cleanShape, comingSteps, firstChoiceOwed, shapesOwed, offeredFirst } from '../lib/shapes.js'
+import { SHAPES, CHICK, cleanShapes, cleanShape, comingSteps, firstChoiceOwed, shapesOwed, offeredFirst, shapeSrc } from '../lib/shapes.js'
+import { asset } from '../lib/assets.js'
 import { narrate, stopNarration } from '../narrator.js'
 import { sfx } from '../sfx.js'
 import { LINES, line } from '../lib/lumiLines.js'
@@ -132,6 +133,11 @@ export function Ring({ w, h, start, kind, coming = {}, stars = 0, poof, onChoose
   const R = sideways ? Math.min(w * 0.3, 300)   : wide ? Math.min(w * 0.32, 400) : w * 0.31
   const step = Math.max(80, R * 0.9)    // pixels of drag for one shape
 
+  // the pictures a shape shows when it comes to the front, loaded at once
+  // (a shape arriving in front blinked away while its waving picture loaded)
+  useEffect(() => {
+    for (const s of SHAPES) for (const p of ['idle', 'wave', 'happy']) { const im = new Image(); im.src = asset(shapeSrc(s.id, p)) }
+  }, [])
   const rot = useMotionValue(start)
   const [at, setAt] = useState(start)        // the shape in front (index, endless)
   useMotionValueEvent(rot, 'change', v => { const r = Math.round(v); if (r !== at) setAt(r) })
