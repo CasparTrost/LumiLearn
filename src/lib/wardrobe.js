@@ -82,7 +82,7 @@ export const POSES = {
   },
   happy: {
     head: { x: 192, y: 62, rot: 2, w: 190 },
-    face: { x: 193, y: 137, rot: 3, w: 104 },
+    face: { x: 193, y: 136, rot: 6, w: 104 },
     neck: { x: 193, y: 210, rot: 0, w: 180 },
     back: { x: 193, y: 208, rot: 0, w: 200 },
     hold: { x: 332, y: 194, rot: 2, w: 95 },

@@ -150,7 +150,8 @@ describe('the pictures', () => {
     }
   })
   it('wings sit on the back: below the eyes, at the sides of the body, drawn in two halves', () => {
-    const wings = WARDROBE.filter(t => t.slot === 'back' && t.spread)
+    // (the rocket pack is spread a little too, but stands up beside the head)
+    const wings = WARDROBE.filter(t => t.slot === 'back' && t.spread && t.id !== 'rakete')
     expect(wings.map(t => t.id).sort()).toEqual(['drache', 'engel', 'fee', 'schmetterling'])
     for (const p of POSE_IDS) for (const t of wings) {
       // the outer top corners of the two turned halves (the inner ones lie
