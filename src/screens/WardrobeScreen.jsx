@@ -34,6 +34,8 @@ const REACTIONS = ['schrank/anziehen-1', 'schrank/anziehen-2', 'schrank/anziehen
 const SHELF_LABEL = { head: 'Für den Kopf', face: 'Fürs Gesicht', neck: 'Für den Hals', back: 'Für den Rücken', hold: 'Zum Festhalten' }
 // presents shown per place before the pile
 const WRAPPED_SHOWN = 2
+// the picture a place shows as a grey shadow while nothing of it is owned
+const PLACE_SHAPE = { back: 'engel' }
 // things that glow as new at most
 const FRESH_SHOWN = 3
 // the tiles: as big as fits, never smaller than this
@@ -76,6 +78,9 @@ export default function WardrobeScreen() {
   const wishTimer = useRef(null)
   const reaction = useRef(Math.floor(Math.random() * REACTIONS.length))
   const worn = useRef(0), takenOff = useRef(0), toldWrapped = useRef(false)
+  // Lumi is saying something about a thing just put on: a tab tapped now
+  // does not cut it off (the place announcement is skipped that once)
+  const commenting = useRef(0)
 
   const { w, h } = useViewport()
   const wide = w > h || w >= 700
@@ -183,7 +188,11 @@ export default function WardrobeScreen() {
       // a child tries on ten things in a row, and ten sentences are too many
       if (worn.current++ % 3 === 0) {
         reaction.current = (reaction.current + 1) % REACTIONS.length
-        narrate([rec(REACTIONS[reaction.current])])
+        const r = rec(REACTIONS[reaction.current])
+        if (r) {
+          commenting.current = Date.now()
+          narrate([r], { onEnd: () => { commenting.current = 0 } })
+        }
       }
     } else {
       sfx.pop()
@@ -205,6 +214,7 @@ export default function WardrobeScreen() {
     sfx.pop()
     setWish(null)
     setTab(slot)
+    if (Date.now() - commenting.current < 4000) { commenting.current = 0; return }
     narrate([rec(`schrank/platz-${slot}`)])
   }
 
@@ -321,7 +331,8 @@ export default function WardrobeScreen() {
  * there is new, a green dot while Lumi wears something of it.
  */
 function PlaceTab({ slot, size, side, active, fresh, worn, stars, onTap }) {
-  const first = WARDROBE.find(t => t.slot === slot)
+  // the shape that says the place (for the back: wings, a cape alone read as a skirt)
+  const first = ITEM_BY_ID[PLACE_SHAPE[slot]] ?? WARDROBE.find(t => t.slot === slot)
   const owned = ITEM_BY_ID[worn] ?? WARDROBE.find(t => t.slot === slot && isUnlocked(t, stars))
   const rep = owned ?? first
   return (
@@ -461,7 +472,9 @@ function Thing({ item, size, stars, worn, fresh, next, lastStep = 0, shake, onTa
         )}
         {next && slots && (
           <span aria-hidden="true" data-progress={`${got}/${span}`} style={{ position: 'absolute', left: 0, right: 0, bottom: 2, display: 'flex', justifyContent: 'center', gap: 1 }}>
-            {Array.from({ length: span }, (_, i) => <PxStar key={i} size={Math.min(19, Math.floor((size - 10) / span) - 1)} off={i >= got} />)}
+            {Array.from({ length: span }, (_, i) => i < got
+              ? <PxStar key={i} size={Math.min(19, Math.floor((size - 10) / span) - 1)} />
+              : <StarOutline key={i} size={Math.min(19, Math.floor((size - 10) / span) - 1)} />)}
           </span>
         )}
         {next && !slots && (
@@ -471,5 +484,14 @@ function Thing({ item, size, stars, worn, fresh, next, lastStep = 0, shake, onTa
         )}
       </span>
     </motion.button>
+  )
+}
+
+/** A star still to come: a clear dark outline on white (a grey star vanished on the shelf). */
+function StarOutline({ size }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} style={{ display: 'block', flexShrink: 0 }}>
+      <path d="M12 2l3 6.3 6.9.9-5 4.8 1.3 6.8L12 17.5l-6.2 3.3 1.3-6.8-5-4.8 6.9-.9z" fill="#fff" stroke="#2a1b3d" strokeWidth="2" strokeLinejoin="round" />
+    </svg>
   )
 }

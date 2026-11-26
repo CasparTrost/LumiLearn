@@ -165,7 +165,9 @@ function Lumi({ scene, at, px, gx, sx, reduce }) {
     pos = at(80, FLOOR - 46, 52); mood = 'sleep'
     act = reduce ? {} : { scaleY: [1, 1.04, 1], transition: { duration: 2.4, repeat: Infinity } }
   } else if (id === 'baden') {
-    pos = at(96, FLOOR - 26, 56); mood = 'happy'
+    // sitting up in the tub: head and shoulders above the rim (lower,
+    // only the tip of the tuft showed)
+    pos = at(98, FLOOR - 58, 64); mood = 'happy'
     act = reduce ? {} : { rotate: [-5, 5, -5], transition: { duration: 1.2, repeat: Infinity } }
   } else if (id === 'kindergarten') {
     pos = at(sx - 4, 194, 46); mood = 'wave'

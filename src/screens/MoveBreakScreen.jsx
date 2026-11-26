@@ -52,7 +52,7 @@ export function movesFor(seedText) {
   return [...out, BREATH]
 }
 
-function Figure({ pic, beat }) {
+function Figure({ pic, beat, box = 'min(60vw, 280px)' }) {
   const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
   const frog = pic === 'frog'
   const anim = reduce ? {} : {
@@ -66,7 +66,7 @@ function Figure({ pic, beat }) {
   }[pic]
   const dur = { frog: beat / 1000, clap: beat / 1000, stamp: beat / 1000, stretch: 3, fly: 2, turn: 4, breath: 6 }[pic] ?? 2
   return (
-    <div style={{ position: 'relative', width: 'min(60vw, 280px)', height: 'min(60vw, 280px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+    <div style={{ position: 'relative', width: box, height: box, flexShrink: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
       {pic === 'breath' && (
         <motion.div aria-hidden="true" animate={reduce ? {} : { scale: [0.7, 1.15, 0.7], opacity: [0.35, 0.7, 0.35] }} transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
           style={{ position: 'absolute', inset: '6%', borderRadius: '50%', background: 'radial-gradient(circle, #bfe9ff 0%, rgba(191,233,255,0) 70%)' }} />
@@ -144,6 +144,11 @@ export default function MoveBreakScreen() {
   }
 
   const m = moves[step]
+  // A phone held sideways: Lumi beside the card (above it, the card was
+  // below the edge of the screen)
+  const sideways = typeof window !== 'undefined' && window.innerWidth > window.innerHeight && window.innerHeight < 500
+  const row = sideways ? { flexDirection: 'row', gap: 20 } : { flexDirection: 'column', gap: 16 }
+  const box = sideways ? 'min(40vw, 62vh, 280px)' : undefined
   return (
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: 'linear-gradient(180deg, #bfe9ff 0%, #e6f8d8 70%, #c7ec9f 100%)', overflow: 'hidden' }}>
       <HudBar>
@@ -151,12 +156,13 @@ export default function MoveBreakScreen() {
         <span className="px-title" style={{ flex: 1, fontSize: 'clamp(18px,3vw,28px)' }}>Bewegungspause</span>
         {!finished && <button className="px-btn px-btn--parch px-btn--sm" onClick={skip}>Überspringen</button>}
       </HudBar>
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, padding: 16, textAlign: 'center' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: sideways ? 8 : 18, padding: sideways ? '8px 16px' : 16, textAlign: 'center' }}>
         {finished && <Confetti count={40} yFrom="-5vh" yTo="110vh" />}
         <AnimatePresence mode="wait">
           {finished ? (
-            <motion.div key="done" initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-              <Figure pic="clap" beat={700} />
+            <motion.div key="done" initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} style={{ display: 'flex', ...row, alignItems: 'center' }}>
+              <Figure pic="clap" beat={700} box={box} />
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
               <div className="px-title" style={{ fontSize: 'clamp(26px,5vw,40px)' }}>Super gemacht!</div>
               {sticker && STICKER_BY_EMOJI[sticker] && (
                 <motion.div initial={{ scale: 0, rotate: -20 }} animate={{ scale: 1, rotate: 0 }} transition={{ delay: 0.5, type: 'spring', stiffness: 260, damping: 12 }}
@@ -167,11 +173,13 @@ export default function MoveBreakScreen() {
                 </motion.div>
               )}
               <button className="px-btn px-btn--green px-btn--lg" onClick={goOn}><PxIcon name="play" size={22} /> Weiter spielen</button>
+              </div>
             </motion.div>
           ) : m && (
             <motion.div key={m.id} initial={{ x: 80, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -80, opacity: 0 }}
-              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-              <Figure pic={m.pic} beat={m.beat} />
+              style={{ display: 'flex', ...row, alignItems: 'center' }}>
+              <Figure pic={m.pic} beat={m.beat} box={box} />
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
               <div className="px-panel" style={{ padding: '10px 16px', maxWidth: 520, fontFamily: 'var(--font-heading)', fontSize: 'clamp(18px,3vw,24px)', fontWeight: 700, color: 'var(--px-ink)' }}>
                 {m.say.text}
               </div>
@@ -183,6 +191,7 @@ export default function MoveBreakScreen() {
                   ))}
                 </div>
               )}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

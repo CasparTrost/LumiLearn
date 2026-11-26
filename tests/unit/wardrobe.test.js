@@ -274,6 +274,15 @@ describe('stars and saves', () => {
     // a broken count starts from the stars the child has
     expect(p.starsEver).toBe(open.stars)
   })
+  it('a thing taken out of the wardrobe (the umbrella) simply goes from an old save', () => {
+    const p = me(load(kid(400, { outfit: { hold: 'schirm', head: 'muetze' }, wardrobeSeen: ['schirm', 'muetze'], wardrobeTried: ['schirm'] })))
+    expect(p.outfit).toEqual({ ...NONE, head: 'muetze' })
+    expect(p.wardrobeSeen).toEqual(['muetze'])
+    expect(p.wardrobeTried).toEqual([])
+    expect(ITEM_BY_ID.schirm).toBeUndefined()
+    // the lantern that took its place leaves Lumi almost its size
+    for (const pose of POSE_IDS) expect(figureLayers(pose, { hold: 'laterne' }).scale, pose).toBeGreaterThanOrEqual(0.94)
+  })
   it('what Lumi wears is saved with the rest', () => {
     const t = WARDROBE[2]
     const s = wear(load(kid(t.stars)), t.id)

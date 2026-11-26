@@ -526,14 +526,14 @@ Prompt:
 a paper pinwheel with four blades in red, blue, yellow and green on a wooden stick, upright. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
 ```
 
-### 51. Regenschirm (Hand) → `tripo-in/wardrobe/schirm.png`
+### 51. Laterne (Hand) → `tripo-in/wardrobe/laterne.png`
 
-Offener Regenschirm, gelb-blau, mit rotem Griff.
+Runde Kinderlaterne aus Papier, warm gelb-orange mit lachendem Sonnengesicht, an einem kurzen Holzstab hängend.
 
 Prompt:
 
 ```
-an open umbrella with yellow and blue panels and a red curved handle, upright. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+a round children's paper lantern, warm yellow and orange with a smiling sun face and gold caps on top and bottom, hanging on a short wire from the tip of a short wooden stick. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
 ```
 
 ---

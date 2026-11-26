@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Lumi's wardrobe (src/lib/wardrobe/hold.js): a children's lantern on a
+       stick (Laterne). A round paper lantern, warm yellow-orange with a
+       smiling sun face, gold caps top and bottom, hanging on a short wire
+       from the tip of a wooden stick. Lumi holds the stick at its lower end
+       (the grip, low in the picture).
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-laterne.svg public/sprites/wardrobe/laterne.webp 384 -->
+  <defs>
+    <radialGradient id="glow" cx="0.45" cy="0.42" r="0.62">
+      <stop offset="0" stop-color="#fff6c2"/>
+      <stop offset="0.55" stop-color="#ffc23a"/>
+      <stop offset="1" stop-color="#ff8a2a"/>
+    </radialGradient>
+    <radialGradient id="halo" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fff3a0" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#fff3a0" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <!-- the stick, from the grip up to its tip with a little hook -->
+  <path d="M120 248 C122 180 132 90 150 26 Q156 14 166 22" stroke="#7b4a1e" stroke-width="13" fill="none" stroke-linecap="round"/>
+  <path d="M120 248 C122 180 132 90 150 26 Q156 14 166 22" stroke="#d99a5a" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <!-- the wire -->
+  <path d="M166 22 L166 58" stroke="#7b4a1e" stroke-width="4" stroke-linecap="round"/>
+  <!-- a soft glow round the lantern -->
+  <circle cx="166" cy="124" r="78" fill="url(#halo)"/>
+  <!-- the lantern: a round paper ball with ribs, gold caps -->
+  <ellipse cx="166" cy="124" rx="58" ry="54" fill="url(#glow)" stroke="#7b4a1e" stroke-width="5"/>
+  <g stroke="#e0782a" stroke-width="3" fill="none" opacity="0.7">
+    <path d="M166 72 C130 92 130 156 166 176"/><path d="M166 72 C202 92 202 156 166 176"/>
+    <path d="M166 72 C148 92 148 156 166 176" opacity="0.6"/><path d="M166 72 C184 92 184 156 166 176" opacity="0.6"/>
+  </g>
+  <rect x="140" y="58" width="52" height="16" rx="6" fill="#ffd23a" stroke="#7b4a1e" stroke-width="4.5"/>
+  <rect x="144" y="172" width="44" height="14" rx="6" fill="#ffd23a" stroke="#7b4a1e" stroke-width="4.5"/>
+  <!-- a little tassel -->
+  <path d="M166 186 L166 200" stroke="#7b4a1e" stroke-width="4" stroke-linecap="round"/>
+  <path d="M160 198 L172 198 L170 214 L162 214 Z" fill="#e5483f" stroke="#7b4a1e" stroke-width="3" stroke-linejoin="round"/>
+  <!-- the sun face -->
+  <g stroke="#7b4a1e" stroke-width="4" stroke-linecap="round" fill="none">
+    <path d="M146 116 Q151 110 156 116"/><path d="M176 116 Q181 110 186 116"/>
+    <path d="M150 136 Q166 150 182 136"/>
+  </g>
+  <circle cx="144" cy="132" r="6" fill="#ff8a6a" opacity="0.7"/>
+  <circle cx="188" cy="132" r="6" fill="#ff8a6a" opacity="0.7"/>
+  <path d="M130 100 C136 88 148 82 158 80" stroke="#ffffff" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.7"/>
+</svg>

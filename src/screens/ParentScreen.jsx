@@ -480,7 +480,7 @@ export default function ParentScreen({ onClose }) {
           <div className="px-panel" style={{ ...SECTION, background:'#ffe9e4' }}>
             <div style={H2}>{name} zurücksetzen</div>
             <div style={{ ...SMALL, marginBottom:10 }}>
-              Löscht alle Spielstände, Sterne, die Serie und die Sticker von {name}. Andere Kinder sind nicht betroffen.
+              Löscht alle Spielstände, Sterne, die Serie, die Sticker und Lumis Sachen im Kleiderschrank von {name}. Andere Kinder sind nicht betroffen.
             </div>
             <button className="px-btn px-btn--red px-btn--md" onClick={resetProfile}>{name} zurücksetzen</button>
           </div>
