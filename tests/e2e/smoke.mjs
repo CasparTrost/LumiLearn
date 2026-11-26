@@ -799,7 +799,7 @@ async function playShadows(page, { wrongOnce = false } = {}) {
       await page.goto(URL); await page.waitForTimeout(1200)
       await page.getByRole('button', { name: /^Lumis Kleiderschrank/ }).click(); await page.waitForTimeout(1500)
       for (const slot of SLOTS) {
-        await page.locator(`[data-tab="${slot}"]`).click(); await page.waitForTimeout(600)
+        await page.locator(`[data-tab="${slot}"]`).click(); await page.waitForTimeout(900)
         const r = await page.$eval('[data-shelf]', el => ({ tile: +el.dataset.tile, over: el.scrollHeight - el.clientHeight, n: el.querySelectorAll('[data-thing]').length }))
         const want = WARDROBE.filter(t => t.slot === slot).length
         if (r.n !== want) problems.push(`${where}: ${r.n} of ${want} things on ${slot}`)

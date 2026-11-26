@@ -142,10 +142,15 @@ export default function WardrobeScreen() {
   useEffect(() => {
     const el = shelfRef.current
     if (!el) return
+    // a new place starts at the top (the last one may have been scrolled down)
+    if (el.dataset.shelfTab !== tab) { el.dataset.shelfTab = tab; el.scrollTop = 0 }
     const check = () => setMore(el.scrollHeight - el.clientHeight - el.scrollTop > 6)
     check()
+    // (again once the new shelf has settled: a check right at the tab
+    // change could miss a shelf a few pixels too tall)
+    const later = setTimeout(check, 350)
     el.addEventListener('scroll', check)
-    return () => el.removeEventListener('scroll', check)
+    return () => { clearTimeout(later); el.removeEventListener('scroll', check) }
   }, [tab, tile, room, count])
   const scrollMore = () => {
     const el = shelfRef.current
