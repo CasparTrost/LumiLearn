@@ -187,7 +187,8 @@ function Lumi({ scene, at, px, gx, sx, reduce }) {
       transition={{ type: 'spring', stiffness: 320, damping: 16 }}
       style={{ ...pos, pointerEvents: 'none' }}>
       <motion.div animate={act} style={{ transformOrigin: origin, position: 'relative', width: '100%', height: '100%' }}>
-        <Art art="lumi" mood={mood} size={pos.width} />
+        {/* in bed and in the bath without hat, glasses or a balloon (Lumis Kleiderschrank) */}
+        <Art art="lumi" mood={mood} size={pos.width} plain={id === 'wake' || id === 'schlafen' || id === 'baden'} />
         {id === 'kindergarten' && (
           <div style={{ position: 'absolute', right: -px(12), bottom: px(4) }}><Art art="🎒" size={px(24)} /></div>
         )}

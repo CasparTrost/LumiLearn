@@ -217,6 +217,27 @@ describe('stars and saves', () => {
     expect(me(s).outfit[t.slot]).toBe(t.id)
     expect(wear(s, WARDROBE[5].id)).not.toBe(s)
   })
+  it('the wardrobe counts the stars ever earned: a reset game played again moves it on at once', () => {
+    let s = load(kid(30))
+    expect(profileWardrobeStars(me(s))).toBe(30)
+    s = reducer(s, { type: 'RESET_MODULE', payload: 'shapes-land' })
+    expect(profileWardrobeStars(me(s))).toBe(30)
+    // the same level of the reset game again: its stars count again
+    s = finish(s, 2, 'shapes-land', 1)
+    expect(profileWardrobeStars(me(s))).toBe(32)
+    expect(s.gameResult.newWear).toEqual(unlockedBetween(30, 32).map(t => t.id))
+    // plain play and a better result add what they add, a worse one nothing
+    s = finish(s, 3, 'shapes-land', 1)
+    expect(profileWardrobeStars(me(s))).toBe(33)
+    s = finish(s, 1, 'shapes-land', 1)
+    expect(profileWardrobeStars(me(s))).toBe(33)
+    s = finish(s, 2, 'numbers', 1)
+    expect(profileWardrobeStars(me(s))).toBe(35)
+  })
+  it('an old save with a stored count starts from the larger of it and the stars it has', () => {
+    expect(me(load(kid(20, { starsEver: 50 }))).starsEver).toBe(50)
+    expect(me(load(kid(20, { starsEver: 5 }))).starsEver).toBe(20)
+  })
   it('"start over" for the child (parent area) empties the wardrobe too', () => {
     const t = WARDROBE[6]
     let s = wear(load(kid(t.stars)), t.id)
@@ -239,7 +260,8 @@ describe('stars and saves', () => {
     expect(p.outfit).toEqual({ ...NONE, [open.slot]: open.id })
     expect(p.wardrobeSeen).toEqual([open.id])
     expect(p.wardrobeTried).toEqual([])
-    expect(p.starsEver).toBe(0)
+    // a broken count starts from the stars the child has
+    expect(p.starsEver).toBe(open.stars)
   })
   it('what Lumi wears is saved with the rest', () => {
     const t = WARDROBE[2]

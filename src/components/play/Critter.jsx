@@ -21,9 +21,10 @@ export function artSrc(art, mood = 'idle') {
 }
 
 /** A picture of a thing: the cartoon art for an emoji, or the emoji itself. */
-export function Art({ art, size = 64, style, alt = '', mood }) {
+export function Art({ art, size = 64, style, alt = '', mood, plain = false }) {
   // Lumi wears what the child chose in the wardrobe (components/LumiFigure.jsx)
-  if (art === 'lumi') return <LumiFigure mood={mood} size={size} style={style} alt={alt} />
+  // (`plain`: Lumi in bed or in the bath wears nothing of it)
+  if (art === 'lumi') return <LumiFigure mood={mood} size={size} style={style} alt={alt} outfit={plain ? null : undefined} />
   const src = artSrc(art, mood)
   if (!src) return <span role={alt ? 'img' : undefined} aria-label={alt || undefined} style={{ fontSize: size * 0.82, lineHeight: 1, ...style }}>{art}</span>
   return <img src={src} alt={alt} draggable={false}
