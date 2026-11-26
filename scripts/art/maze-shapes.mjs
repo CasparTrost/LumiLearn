@@ -24,6 +24,11 @@ const MAZE = join(ROOT, 'public/sprites/maze')
 const SHAPES = join(ROOT, 'public/sprites/shapes')
 const IDS = ['dino', 'einhorn', 'drache', 'roboter']
 const COLOURS = 18
+// per shape: a light rim outside the outline and a lighter body (the green
+// dino vanished on the green maze path)
+// (the rim 2 px wide: the maze draws the 64 px sprite at about 30 px, and a
+// 1-px rim fell apart into dots)
+const LOOK = { dino: { rim: [255, 248, 222], rimW: 2, lighten: [[255, 240, 150], 0.45] } }
 const FRAMES = 10
 const url = f => 'data:image/png;base64,' + readFileSync(f).toString('base64')
 const webp = f => 'data:image/webp;base64,' + readFileSync(f).toString('base64')
@@ -52,7 +57,7 @@ const chick = await pg.evaluate(async src => {
 console.log('chick figure', chick.box, 'outline', chick.ink)
 
 for (const id of IDS) {
-  const out = await pg.evaluate(async ({ srcs, box, ink, FRAMES, COLOURS, id }) => {
+  const out = await pg.evaluate(async ({ srcs, box, ink, FRAMES, COLOURS, id, look }) => {
     const load = async s => { const i = new Image(); i.src = s; await i.decode(); return i }
     const pics = { idle: await load(srcs.idle), happy: await load(srcs.happy) }
     // the figure's box in the 512 picture (alpha)
@@ -97,6 +102,11 @@ for (const id of IDS) {
       cent = sum.map((s, j) => (s[3] ? [s[0] / s[3], s[1] / s[3], s[2] / s[3]] : cent[j]))
     }
     cent = cent.map(c2 => c2.map(Math.round))
+    // a lighter body: green colours mixed a step towards cream/yellow
+    if (look.lighten) {
+      const [to, k] = look.lighten
+      cent = cent.map(c2 => (c2[1] > c2[0] + 15 && c2[1] > c2[2] + 15 ? c2.map((v, j) => Math.round(v + (to[j] - v) * k)) : c2))
+    }
     // pixel art of a smooth frame: hard alpha, the palette, the outline
     const pixel = im => {
       const d = new Uint8ClampedArray(im.data)
@@ -117,6 +127,26 @@ for (const id of IDS) {
         const edge = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => { const xx = x + dx, yy = y + dy; return xx < 0 || yy < 0 || xx > 63 || yy > 63 || !on[yy * 64 + xx] })
         if (edge) { d[i * 4] = ink[0]; d[i * 4 + 1] = ink[1]; d[i * 4 + 2] = ink[2] }
       }
+      // a light rim outside the outline
+      if (look.rim) {
+        const rim = []
+        for (let y = 0; y < 64; y++) for (let x = 0; x < 64; x++) {
+          const i = y * 64 + x
+          if (on[i]) continue
+          if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => { const xx = x + dx, yy = y + dy; return xx >= 0 && yy >= 0 && xx < 64 && yy < 64 && on[yy * 64 + xx] })) rim.push(i)
+        }
+        for (const i of rim) { d[i * 4] = look.rim[0]; d[i * 4 + 1] = look.rim[1]; d[i * 4 + 2] = look.rim[2]; d[i * 4 + 3] = 255 }
+        if ((look.rimW ?? 1) > 1) {
+          const two = []
+          const isRim = new Uint8Array(64 * 64); for (const i of rim) isRim[i] = 1
+          for (let y = 0; y < 64; y++) for (let x = 0; x < 64; x++) {
+            const i = y * 64 + x
+            if (on[i] || isRim[i]) continue
+            if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => { const xx = x + dx, yy = y + dy; return xx >= 0 && yy >= 0 && xx < 64 && yy < 64 && isRim[yy * 64 + xx] })) two.push(i)
+          }
+          for (const i of two) { d[i * 4] = look.rim[0]; d[i * 4 + 1] = look.rim[1]; d[i * 4 + 2] = look.rim[2]; d[i * 4 + 3] = 255 }
+        }
+      }
       return d
     }
     const toUrl = (frames) => {
@@ -134,7 +164,7 @@ for (const id of IDS) {
       walk.push(pixel(frame(pics.idle, { rot: 5 * Math.sin(t), bob: -Math.round(2 * step), sx: 1 + 0.03 * (1 - step), sy: 1 - 0.04 * (1 - step) })))
     }
     return { idle: toUrl([pixel(smoothIdle)]), happy: toUrl([pixel(smoothHappy)]), walk: toUrl(walk), colours: cent.length }
-  }, { srcs: { idle: webp(join(SHAPES, `${id}-idle.webp`)), happy: webp(join(SHAPES, `${id}-happy.webp`)) }, box: chick.box, ink: chick.ink, FRAMES, COLOURS, id })
+  }, { srcs: { idle: webp(join(SHAPES, `${id}-idle.webp`)), happy: webp(join(SHAPES, `${id}-happy.webp`)) }, box: chick.box, ink: chick.ink, FRAMES, COLOURS, id, look: LOOK[id] ?? {} })
   for (const k of ['idle', 'happy', 'walk']) writeFileSync(join(MAZE, `${id}_${k}.png`), Buffer.from(out[k].split(',')[1], 'base64'))
   console.log('wrote', id, 'idle, happy, walk')
 }
