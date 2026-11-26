@@ -218,6 +218,18 @@ export function cutPose(T, A, W, P, opts = { bottom: true, erase: false }) {
   // (where the template has no figure, whatever is not Tripo's ground is new:
   // a pale wing or a white coat over the template's white)
   for (let p = 0; p < N; p++) if (!reach[p] && (changedWithin(2, p) || (A[p] < 24 && !white(p)))) changed[p] = 1
+  // A white garment over a cream or pale figure (a chef's jacket on the
+  // unicorn): Tripo's white is the ground's own white, the figure's is not
+  // (it is warmer or greyer). Where Tripo has the ground's white and the
+  // template has nothing that white within 2 px, it is new.
+  const dG = (X, i) => Math.abs(X[i] - G[0]) + Math.abs(X[i + 1] - G[1]) + Math.abs(X[i + 2] - G[2])
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    const p = y * S + x
+    if (reach[p] || changed[p] || A[p] < 200 || dG(W, p * 3) > 12) continue
+    let near = false
+    for (let e = -2; e <= 2 && !near; e++) for (let d = -2; d <= 2; d++) { const X = x + d, Y = y + e; if (X >= 0 && Y >= 0 && X < S && Y < S && dG(T, (Y * S + X) * 3) <= 12) { near = true; break } }
+    if (!near) changed[p] = 1
+  }
   // white enclosed by the figure is the ground too (a gap between an arm and
   // the body) where the template has no figure either and what encloses it
   // is mostly the figure's own; enclosed by clothes it is clothes (a white
@@ -335,6 +347,32 @@ export function cutPose(T, A, W, P, opts = { bottom: true, erase: false }) {
   for (const p of seedT) add(hT, p)
   for (const p of seedB) add(hB, p)
   const nT = seedT.length || 1, nB = seedB.length || 1
+  // A white sleeve over a white arm (a chef's jacket on the unicorn or the
+  // robot) has the arm's colour, so the arm stayed the figure's. An arm of
+  // the figure (its poses file) that Tripo dressed (much of it changed: the
+  // sleeve's outline and folds; much of it white in the top's own colours)
+  // gives its white and changed part, joined to the clothes, to the top. A
+  // hand (pink, blue) is no white and unchanged: it stays the figure's.
+  {
+    const headY = P.neck.y * k - 12
+    const { comps } = components(own.map((v, p) => (v && !bg[p] && !m[p] && p >= headY * S ? 1 : 0)))
+    const isWhite = p => { const r = W[p * 3], g = W[p * 3 + 1], b = W[p * 3 + 2]; return Math.min(r, g, b) > 200 && Math.max(r, g, b) - Math.min(r, g, b) < 30 }
+    const topLike = p => hT[q(p)] / nT > 0.01 && hT[q(p)] / nT > hB[q(p)] / (seedB.length || 1)
+    const added = new Uint8Array(N)
+    for (const c of comps.slice(1)) {
+      if (c.length < 40) continue
+      // an arm Tripo dressed: much of it changed (the sleeve's outline and
+      // folds), and white in the top's own colours
+      const ch = c.filter(p => changed[p]).length, wh = c.filter(p => isWhite(p) && topLike(p)).length
+      if (ch < 0.12 * c.length || wh < 0.3 * c.length) continue
+      for (const p of c) if ((isWhite(p) && topLike(p)) || changed[p]) added[p] = 1
+    }
+    // closed, and only next to the clothes: the sleeve, not a hand
+    const shut = erode(dilate(added, 2), 2)
+    const st = []
+    for (let p = 0; p < N; p++) if (m[p]) st.push(p)
+    while (st.length) n4(st.pop(), q2 => { if (shut[q2] && !m[q2] && !bg[q2]) { m[q2] = 1; st.push(q2) } })
+  }
   let prob = new Float32Array(N)
   for (let p = 0; p < N; p++) {
     if (!m[p]) continue
