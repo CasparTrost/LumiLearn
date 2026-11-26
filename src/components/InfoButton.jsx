@@ -64,7 +64,7 @@ export default function InfoButton({ moduleId, onOpenChange, first = false, onCo
     if (v) read()
     else stopNarration()
   }
-  // The first time: read it once the screen is there; the tick wakes up
+  // The first time: read it once the screen is there; the tick beckons
   // when Lumi is through (or cannot be heard at all)
   const listen = () => {
     waiting.current?.()
@@ -184,7 +184,9 @@ export default function InfoButton({ moduleId, onOpenChange, first = false, onCo
               </div>
 
               {/* Close button. The first time it is the tick that starts the
-                  game: asleep while Lumi reads, then it beckons */}
+                  game: green and ready at once (a child that knows the game
+                  need not wait for the reading); when Lumi is through, it
+                  beckons */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: low ? 2 : 6, zIndex: 1, flexBasis: low ? '100%' : 'auto' }}>
                 {must && (
                   <button className="px-btn px-btn--parch px-btn--icon" onClick={listen} aria-label="Noch einmal vorlesen"
@@ -195,7 +197,6 @@ export default function InfoButton({ moduleId, onOpenChange, first = false, onCo
                 <motion.button
                   className={`px-btn px-btn--green ${must ? 'px-btn--lg' : 'px-btn--md'}`}
                   onClick={confirm}
-                  disabled={must && !heard}
                   data-help-ok=""
                   animate={must && heard ? { scale: [1, 1.08, 1] } : { scale: 1 }}
                   transition={must && heard ? { duration: 1.1, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.15 }}

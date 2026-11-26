@@ -686,8 +686,8 @@ async function playShadows(page, { wrongOnce = false } = {}) {
     if (!(await box.count())) problems.push('first help: a tap outside closed the box')
     const ok = page.locator('[data-help-ok]')
     await ok.waitFor({ state: 'visible' })
-    for (let i = 0; i < 120 && await ok.isDisabled(); i++) await page.waitForTimeout(500)
-    if (await ok.isDisabled()) problems.push('first help: the tick never woke up')
+    // green and ready at once: a child need not wait for the reading
+    if (await ok.isDisabled()) problems.push('first help: the tick is not ready at once')
     await ok.click({ force: true }); await page.waitForTimeout(1800)
     if (await box.count()) problems.push('first help: the box stayed after the tick')
     if (!(await page.locator('.pl-game button').count())) problems.push('first help: no game after the tick')
