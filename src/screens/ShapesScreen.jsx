@@ -31,8 +31,8 @@ import { LINES, line } from '../lib/lumiLines.js'
  *           next one's bar fills); one whose stars are reached but that
  *           waits for the next game shows a "play" sign instead
  *
- * Lumi's sentences here (gestalt/…) are not recorded yet: the narrator
- * skips them while their file is missing; the screen works without words.
+ * Lumi's sentences here (gestalt/…) are recorded; the screen works without
+ * them as well (a missing recording is skipped).
  */
 const rec = key => (LINES[key] ? line(key) : null)
 const N = SHAPES.length
@@ -62,7 +62,13 @@ export default function ShapesScreen() {
   const [mode, setMode] = useState(() => (first ? 'first' : owed > 0 ? 'choose' : 'place'))
   const coming = comingSteps(profile, stars)
 
-  const home = () => { stopNarration(); dispatch({ type: 'NAVIGATE', payload: 'home' }) }
+  const chosen = useRef(false)
+  const home = () => {
+    stopNarration()
+    // the free first choice closed without choosing (counted: it stops opening by itself)
+    if (mode === 'first' && !chosen.current) dispatch({ type: 'SHAPE_OFFER_CLOSED' })
+    dispatch({ type: 'NAVIGATE', payload: 'home' })
+  }
   useEffect(() => {
     if (first && profile) offeredFirst.add(profile.id)
     const t = setTimeout(() => { if (mode !== 'place') narrate([rec('gestalt/aussuchen')]) }, 500)
@@ -84,6 +90,7 @@ export default function ShapesScreen() {
     if (k === 'current' || k === 'shadow' || Date.now() - lock.current < 1200) return
     lock.current = Date.now()
     stopNarration()
+    chosen.current = true
     if (mode === 'first') dispatch({ type: 'SHAPE_FIRST', payload: id })
     else if (k === 'free') dispatch({ type: 'SHAPE_CHOOSE', payload: id })
     else dispatch({ type: 'SHAPE_SET', payload: id })
@@ -128,8 +135,8 @@ export function Ring({ w, h, start, kind, coming = {}, stars = 0, poof, onChoose
   // the shape in front, and how far the ones behind rise (seen from above;
   // flatter on a phone held sideways)
   const upright = !sideways && !wide
-  const front = Math.round(Math.max(110, Math.min(sideways ? stageH * 0.86 : stageH / 1.45, wide ? Math.min(w * 0.36, 380) : w * 0.56, 380)))
-  const lift = sideways ? front * 0.1 : upright ? front * 0.42 : front * 0.22
+  const front = Math.round(Math.max(110, Math.min(sideways ? stageH * 0.86 : stageH / 1.45, wide ? Math.min(w * 0.36, 380) : w * 0.64, 380)))
+  const lift = sideways ? front * 0.1 : upright ? front * 0.56 : front * 0.22
   const R = sideways ? Math.min(w * 0.3, 300)   : wide ? Math.min(w * 0.32, 400) : w * 0.31
   const step = Math.max(80, R * 0.9)    // pixels of drag for one shape
 
@@ -242,7 +249,7 @@ export function Ring({ w, h, start, kind, coming = {}, stars = 0, poof, onChoose
         style={{ position: 'relative', height: stageH, marginTop: sideways ? 4 : 12, touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none', cursor: 'grab', overflow: 'visible' }}>
         {/* the turntable */}
         <div aria-hidden="true" style={{
-          position: 'absolute', left: '50%', top: base - lift * 2 - front * 0.06, width: Math.min(w - 12, R * 2 + front * 0.7), height: lift * 2 + front * 0.2, transform: 'translateX(-50%)',
+          position: 'absolute', left: '50%', top: base - lift * 2 - front * 0.13, width: Math.min(w - 12, R * 2 + front * 0.7), height: lift * 2 + front * 0.27, transform: 'translateX(-50%)',
           borderRadius: '50%', background: 'radial-gradient(ellipse at 50% 40%, #d8f0b8 0%, #a8d982 60%, #7fb85c 100%)', border: '4px solid var(--px-ink)', boxShadow: '0 8px 0 rgba(42,27,61,0.25)',
         }} />
         {/* the light on the one in front */}
@@ -326,7 +333,8 @@ function RingItem({ i, shape, rot, R, fall, lift, size, base, cx, reduce, front,
           transition={{ duration: shake ? 0.5 : 0.8, ease: 'easeOut' }}
           style={{ width: '100%', height: '100%', transformOrigin: '50% 100%', filter: shadow ? 'none' : 'drop-shadow(0 4px 0 rgba(42,27,61,0.2))' }}>
           {shadow
-            ? <ShapeFigure id={shape.id} size={size} style={{ display: 'block', filter: 'brightness(0) invert(0.72)' }} />
+            // a shape to come: a light grey shadow, smaller than the shapes owned
+            ? <ShapeFigure id={shape.id} size={size} style={{ display: 'block', filter: 'brightness(0) invert(0.86)', transform: 'scale(0.84)', transformOrigin: '50% 100%' }} />
             : shape.id === CHICK
               ? <LumiFigure shape={null} outfit={outfit} mood={mood} size={size} style={{ display: 'block' }} />
               : <ShapeFigure id={shape.id} mood={mood} size={size} style={{ display: 'block' }} />}

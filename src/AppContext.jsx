@@ -452,6 +452,14 @@ export function reducer(state, action) {
       return updateActiveProfile(state, q => ({ ...q, shapes: cleanShapes([...cleanShapes(q.shapes), id]), shape: id, shapePicked: true, shapeWait: true }))
     }
 
+    // The free first choice was closed without choosing (it stops opening
+    // by itself after the second time, lib/shapes.js offerFirstByItself)
+    case 'SHAPE_OFFER_CLOSED': {
+      const p = state.profiles[state.activeProfileId]
+      if (!p || p.shapePicked) return state
+      return updateActiveProfile(state, q => ({ ...q, shapeOffersClosed: (q.shapeOffersClosed ?? 0) + 1 }))
+    }
+
     // A shape won with stars: only while one is owed and only one not owned
     // yet; Lumi takes it at once, and the next one waits for the next game.
     case 'SHAPE_CHOOSE': {
@@ -763,6 +771,7 @@ export function migrateToV2(data) {
         shapePicked: p.shapePicked === true,
         shape: p.shapePicked === true ? cleanShape(p.shape, p.shapes) : null,
         shapeWait: p.shapeWait === true,
+        shapeOffersClosed: Number.isFinite(p.shapeOffersClosed) ? Math.max(0, p.shapeOffersClosed) : 0,
       })
       // old saves: never below the stars the child has now
       profiles[id].starsEver = profileWardrobeStars(profiles[id])
