@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, Suspense } from 'react'
+import { useState, useEffect, useLayoutEffect, useMemo, useRef, Suspense } from 'react'
 import { motion } from 'framer-motion'
 import { useApp, MAX_LEVELS, hasLevels, todayMs, profileWardrobeStars } from '../AppContext.jsx'
 import { useT } from '../i18n.js'
@@ -287,6 +287,30 @@ function LumiIdea({ idea, plan, tileLevel, onPlay, onAlbum, stickers, narrow, sh
   )
 }
 
+// The child's name in the bar: whole, a little smaller where a long name
+// would be cut ("Ch…" on a small phone); only below 11 px does it end in "…"
+function FitName({ name }) {
+  const ref = useRef(null)
+  const [w, setW] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1024))
+  useEffect(() => {
+    const on = () => setW(window.innerWidth)
+    window.addEventListener('resize', on)
+    return () => window.removeEventListener('resize', on)
+  }, [])
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    let f = Math.min(26, Math.max(18, w * 0.036))
+    el.style.fontSize = `${f}px`
+    while (el.scrollWidth > el.clientWidth + 1 && f > 11) { f -= 1; el.style.fontSize = `${f}px` }
+  }, [name, w])
+  return (
+    <div ref={ref} className="px-title" style={{ fontSize:'clamp(18px,3.6vw,26px)', lineHeight:1.1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+      {name}!
+    </div>
+  )
+}
+
 // A phone in portrait: Lumi and the idea stack, a little smaller
 function useNarrow(q = '(max-width: 600px)') {
   const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia?.(q).matches)
@@ -436,12 +460,12 @@ export default function HomeScreen() {
         >{/* the child's picture: its own Lumi, in its shape and clothes */}
           <ChildLumi profile={activeProfile} size={narrow ? 36 : 46} /></button>
         <div style={{ minWidth:0, flex:1 }}>
-          <div className="px-title" style={{ fontSize:'clamp(14px,2.4vw,16px)', lineHeight:1.2, letterSpacing:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', textShadow:'-1px -1px 0 var(--px-ink), 1px -1px 0 var(--px-ink), -1px 1px 0 var(--px-ink), 1px 2px 0 var(--px-ink)' }}>
+          {/* the greeting only where it fits whole (on a phone it was cut to
+              "Guten Na…"; a child who cannot read needs only its name) */}
+          <div className="px-title hud-hide-sm" style={{ fontSize:'clamp(14px,2.4vw,16px)', lineHeight:1.2, letterSpacing:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', textShadow:'-1px -1px 0 var(--px-ink), 1px -1px 0 var(--px-ink), -1px 1px 0 var(--px-ink), 1px 2px 0 var(--px-ink)' }}>
             {timeGreeting(t)},
           </div>
-          <div className="px-title" style={{ fontSize:'clamp(18px,3.6vw,26px)', lineHeight:1.1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-            {profile.name}!
-          </div>
+          <FitName name={profile.name} />
           {/* A narrow phone has no room for the counters beside the name
               (the greeting and the stars were simply left out there): they
               sit under it, a little smaller. */}
