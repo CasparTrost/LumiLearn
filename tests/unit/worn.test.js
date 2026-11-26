@@ -81,6 +81,8 @@ describe('clothes painted onto the figure', () => {
     // wornFit marks only the things listed
     const f = wornFit('dino', ['tutu'], { tutu: { size: 2 }, muetze: { size: 3 } })
     expect(f).toEqual({ tutu: { size: 2, worn: 'dino' }, muetze: { size: 3 } })
-    expect(POSES.idle).toBeTruthy()
+    // the chick: its list (lib/wardrobe/chick-worn.js) goes the same way
+    expect(figureLayers('wave', PILOT, POSES, wornFit('chick', ['ringelshirt'])).layers.find(l => l.id === 'ringelshirt').src)
+      .toBe('sprites/wardrobe/worn/chick/ringelshirt-wave.webp')
   })
 })

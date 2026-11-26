@@ -201,6 +201,7 @@ import HOLD from './wardrobe/hold.js'
 import TOP from './wardrobe/top.js'
 import BOTTOM from './wardrobe/bottom.js'
 import SHOES from './wardrobe/shoes.js'
+import CHICK_WORN from './wardrobe/chick-worn.js'
 
 export const SLOTS = ['head', 'face', 'neck', 'back', 'hold', 'top', 'bottom', 'shoes']
 
@@ -404,6 +405,8 @@ export function fitted(item, fit = {}) {
  * (lib/shapes/<figure>-worn.js) in its fit.
  */
 export const wornFit = (figure, ids, fit = {}) => ({ ...fit, ...Object.fromEntries(ids.map(id => [id, { ...fit[id], worn: figure }])) })
+// the chick's own fit: only the things painted onto it
+const CHICK_FIT = wornFit('chick', CHICK_WORN)
 export const wornSrc = (item, pose) => `sprites/wardrobe/worn/${item.worn}/${item.id}-${pose}.webp`
 
 // Asleep (the sleeping picture, wherever it is shown), Lumi takes off what
@@ -411,7 +414,7 @@ export const wornSrc = (item, pose) => `sprites/wardrobe/worn/${item.worn}/${ite
 export const ASLEEP_OFF = ['face', 'hold']
 export const asleep = pose => pose === 'sleep'
 
-export function figureLayers(pose, outfit, poses = POSES, fit = {}) {
+export function figureLayers(pose, outfit, poses = POSES, fit = poses === POSES ? CHICK_FIT : {}) {
   const P = poses[pose] ?? poses.idle
   const worn = wornItems(outfit).filter(t => !(asleep(pose) && ASLEEP_OFF.includes(t.slot)))
     .map(t => fitted(t, fit)).filter(t => !t.hide)

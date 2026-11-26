@@ -17,9 +17,9 @@
 // Writes public/sprites/wardrobe/worn/<figure>/<thing>-<pose>.webp (512 px,
 // transparent, the frame of public/sprites/shapes/<figure>-<pose>.webp) for
 // the top and the bottom, and adds both to src/lib/shapes/<figure>-worn.js,
-// the list the figure's fit file reads (`worn: true`: drawn from these
-// pictures, see figureLayers in src/lib/wardrobe.js). For the chick the list
-// is src/lib/wardrobe/chick-worn.js.
+// the list the figure's fit file reads (wornFit in src/lib/wardrobe.js marks
+// them `worn`: drawn from these pictures, see figureLayers). For the chick the
+// list is src/lib/wardrobe/chick-worn.js, read by lib/wardrobe.js itself.
 //
 // The steps, per pose:
 //  1. Registration: Tripo redraws the figure a pixel or two off. The shift and
@@ -29,13 +29,21 @@
 //     nearby (2 px), not the white ground; cleaned (opening, only the large
 //     parts, closing), white stripes inside filled; the hands that stick out
 //     stay the template's (they are the same colour as before, so not cut).
-//     The rim towards the white ground is un-mixed from the white (no halo)
-//     and the edge feathered by a pixel.
+//     The rim towards the white ground is un-mixed from the white (no halo),
+//     the edge towards a hand or the head feathered by a pixel. Where Tripo
+//     drew the body a little narrower than the template, the garment's edge
+//     is warped out onto the template's outline (no sliver of bare body).
 //  3. Top and bottom: the colours of the chest and of the hips are learnt,
 //     each pixel goes to the more likely one, smoothed over its
 //     neighbourhood; parts cut off from their side change sides. The top's
-//     hem over the waistband stays with the top; the bottom gets a dark rim
-//     where the hem covered it (seen when it is worn without that top).
+//     hem over the waistband stays with the top. Where they meet, each gets
+//     a thin rim of its own outline colour (seen when one is worn without
+//     the other).
+//
+// Proof pictures: --debug shows per pose the masks (red top, blue bottom,
+// yellow changed but left out), the cut clothes on the pose picture on a
+// coloured ground, the clothes alone, and Tripo's picture beside the result
+// zoomed twice. Look at them before committing the pictures.
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -272,7 +280,13 @@ export function cutPose(T, A, W, P) {
       // the largest part counts as seeded too
       let li = 0; for (let i = 1; i < comps.length; i++) if (!li || comps[i].length > comps[li].length) li = i
       if (li) keep.add(li)
-      for (let i = 1; i < comps.length; i++) if (!keep.has(i) && comps[i].length < 2500) for (const p of comps[i]) { mine[p] = 0; other[p] = 1 }
+      // (only small ones: a large part keeps its colour's side, like a trouser
+      // leg that the sitting feet cut off from the rest)
+      for (let i = 1; i < comps.length; i++) {
+        if (keep.has(i)) continue
+        const c = comps[i], sure = c.reduce((a, p) => a + Math.abs(prob[p] - 0.5), 0) / c.length
+        if (c.length < 300 || sure < 0.12) for (const p of c) { mine[p] = 0; other[p] = 1 }
+      }
     }
   }
 
@@ -318,13 +332,13 @@ export function cutPose(T, A, W, P) {
   const rimPx = []
   for (let p = 0; p < N; p++) if (m[p]) { let r2 = false; n4(p, q => { if (bg[q]) r2 = true }); if (r2) rimPx.push(p) }
   // outwards: the gap, each pixel with its nearest rim pixel
-  const srcOut = new Int32Array(N).fill(-1), depth = new Uint8Array(N)
+  const srcOut = new Int32Array(N).fill(-1)
   for (const p of rimPx) srcOut[p] = p
   let front = rimPx.slice()
   const eligible = q => !m[q] && bg[q] && A[q] > 24 && nearOther[q] > 2
   for (let k2 = 1; k2 <= GAP && front.length; k2++) {
     const next = []
-    for (const p of front) n4(p, q => { if (srcOut[q] < 0 && eligible(q)) { srcOut[q] = srcOut[p]; depth[q] = k2; next.push(q) } })
+    for (const p of front) n4(p, q => { if (srcOut[q] < 0 && eligible(q)) { srcOut[q] = srcOut[p]; next.push(q) } })
     front = next
   }
   // inwards: the band
@@ -416,17 +430,30 @@ export function cutPose(T, A, W, P) {
     }
     return out
   }
-  // the bottom where the top's hem covered it: a dark rim of the bottom's own outline colour
-  const rim = new Array(N)
-  const nearTop = distance(isTop, 2)
-  let dark = null, dl = 1e9
-  for (const p of seedB) { const l = lum(W, p * 3); if (l < dl) { dl = l; dark = [W[p * 3], W[p * 3 + 1], W[p * 3 + 2]] } }
-  for (let p = 0; p < N; p++) if (isBot[p] && nearTop[p] <= 2 && nearTop[p] > 0) {
-    // only where the top lies above it (the hem), not beside it (a sleeve)
-    const up = p - 3 * S >= 0 && isTop[p - 3 * S]
-    if (up && dark) rim[p] = dark
+  // Where top and bottom meet (the hem over the waistband), each gets a thin
+  // rim of its own outline colour, so either worn alone (or with another
+  // thing) ends in a line, not in a cut: the bottom where the hem covered it,
+  // the top's hem where it lay on the bottom. Worn together it is hidden or
+  // the hem's own line.
+  const outline = sel => {
+    const px = []
+    for (let p = 0; p < N; p++) if (sel[p] && nearBg[p] <= 1) px.push(p)
+    if (!px.length) return null
+    px.sort((u, v) => lum(RGB, u * 3) - lum(RGB, v * 3))
+    const q2 = px[Math.floor(px.length * 0.1)]
+    return [RGB[q2 * 3], RGB[q2 * 3 + 1], RGB[q2 * 3 + 2]]
   }
-  return { top: mk(1), bottom: mk(2, rim), masks: { bg, changed, m, isTop, isBot, seedT, seedB } }
+  const seam = (mine, other, below) => {
+    const rim = new Array(N), near = distance(other, 2), dark = outline(mine)
+    if (!dark) return rim
+    for (let p = 0; p < N; p++) if (mine[p] && near[p] > 0 && near[p] <= 2) {
+      // only across the hem (the other above, or below), not beside it (a sleeve)
+      const q2 = p + (below ? 3 : -3) * S
+      if (q2 >= 0 && q2 < N && other[q2]) rim[p] = dark
+    }
+    return rim
+  }
+  return { top: mk(1, seam(isTop, isBot, true)), bottom: mk(2, seam(isBot, isTop, false)), masks: { bg, changed, m, isTop, isBot, seedT, seedB } }
 }
 
 // ── the command ──
@@ -475,7 +502,7 @@ async function main() {
   let ids = []
   if (existsSync(listFile)) ids = [...readFileSync(listFile, 'utf8').matchAll(/^\s*'([^']+)',$/gm)].map(x => x[1])
   ids = [...new Set([...ids, topId, bottomId])].sort()
-  writeFileSync(listFile, `// Things ${chick ? 'the chick' : `the ${figure}`} wears as painted on it by Tripo: drawn from\n// public/sprites/wardrobe/worn/${figure}/<id>-<pose>.webp over the pose picture\n// (\`worn: true\`, see figureLayers in ../wardrobe.js). Written by\n// scripts/art/worn-from-sheet.mjs; one line per thing.\nexport default [\n${ids.map(id => `  '${id}',`).join('\n')}\n]\n`)
+  writeFileSync(listFile, `// Things ${chick ? 'the chick' : `the ${figure}`} wears as painted on it by Tripo: drawn from\n// public/sprites/wardrobe/worn/${figure}/<id>-<pose>.webp over the pose picture\n// (\`worn\`, see wornFit in ../wardrobe.js). Written by\n// scripts/art/worn-from-sheet.mjs; one line per thing.\nexport default [\n${ids.map(id => `  '${id}',`).join('\n')}\n]\n`)
   console.log('wrote', outDir, 'and', listFile)
 }
 
