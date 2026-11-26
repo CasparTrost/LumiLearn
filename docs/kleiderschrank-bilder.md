@@ -552,6 +552,18 @@ durchscheinenden Gläser und die Löcher bleiben). Eingepasst auf alle sieben Bi
 Flügel (Schmetterling, Engel, Fee, Drache) werden in zwei Hälften seitlich nach außen gedreht (`spread` in
 `src/lib/wardrobe.js`): aufrecht neben dem Kopf sahen sie wie Ohren aus.
 
+## Neue Plätze: Oberteil, Unterteil, Schuhe
+
+Eingebaut als drei eigene Plätze (`top`, `bottom`, `shoes` in `src/lib/wardrobe/top.js`, `bottom.js`, `shoes.js`),
+frei kombinierbar mit den fünf alten: 16 Oberteile, 15 Hosen und Röcke, 15 Paar Schuhe. Die Bilder werden nicht
+neu gemalt, sondern auf Lumi gestaucht (`sy`: Oberteil und Hose werden flacher, damit sie zum runden Küken passen).
+Die Flügel werden über das Oberteil noch einmal gezeichnet (`wings` je Bild in `POSES`), die Hose liegt unter dem
+Saum des Oberteils, die Schuhe sind das Paarbild in zwei Hälften, je eine auf einem Fuß (`step` in `POSES`). Im
+Sitzen (Schlafen) liegen Lumis Füße vor dem Bauch und werden mit den Schuhen über die Kleider gezeichnet. Der
+Meerjungfrauen-Schwanz hat keine Füße: mit ihm bleiben die Schuhe im Schrank (`feet: false`). Die Reiter-Bilder
+sagen den Platz: Ringelshirt, Jeansshorts, Turnschuhe. Die Handschuhe (Boxhandschuhe, Ofenhandschuhe) sind noch
+nicht eingebaut.
+
 ## Noch bestellen
 
 Elf Dinge sind noch gemalt und wirken neben den Tripo-Bildern flacher (dicke braune Kontur, kaum Glanz). Am

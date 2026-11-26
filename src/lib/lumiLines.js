@@ -1256,12 +1256,14 @@ export const LINES = {
   'schrank/platz-neck': 'Für den Hals!',
   'schrank/platz-back': 'Für den Rücken!',
   'schrank/platz-hold': 'Zum Festhalten!',
+  'schrank/platz-top': 'Für den Bauch!',
+  'schrank/platz-bottom': 'Für die Beine!',
+  'schrank/platz-shoes': 'Für die Füße!',
   // Lumi verwandelt sich (screens/ShapesScreen.jsx). NOT recorded yet: the
   // narrator skips a recording that is missing, the screens work without
   // them (tests/unit/lumiLines.test.js lets them wait under RECORD_LATER)
   'gestalt/neu': 'Juhu! Ich kann mich verwandeln! Tippe auf das Geschenk!',
   'gestalt/aussuchen': 'Wie soll ich aussehen? Dreh und tippe auf den grünen Haken!',
-  'gestalt/sicher': 'So? Dann tippe auf den grünen Haken!',
   'gestalt/chick': 'Ich bin wieder ein Küken!',
   'gestalt/dino': 'Schau mal, ich bin jetzt ein Dino!',
   'gestalt/einhorn': 'Schau mal, ich bin jetzt ein Einhorn!',

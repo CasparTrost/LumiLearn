@@ -690,8 +690,8 @@ async function playShadows(page, { wrongOnce = false } = {}) {
     if (!(await box.count())) problems.push('first help: a tap outside closed the box')
     const ok = page.locator('[data-help-ok]')
     await ok.waitFor({ state: 'visible' })
-    for (let i = 0; i < 120 && await ok.isDisabled(); i++) await page.waitForTimeout(500)
-    if (await ok.isDisabled()) problems.push('first help: the tick never woke up')
+    // green and ready at once: a child need not wait for the reading
+    if (await ok.isDisabled()) problems.push('first help: the tick is not ready at once')
     await ok.click({ force: true }); await page.waitForTimeout(1800)
     if (await box.count()) problems.push('first help: the box stayed after the tick')
     if (!(await page.locator('.pl-game button').count())) problems.push('first help: no game after the tick')
@@ -803,7 +803,7 @@ async function playShadows(page, { wrongOnce = false } = {}) {
       await page.goto(URL); await page.waitForTimeout(1200)
       await page.getByRole('button', { name: /^Lumis Kleiderschrank/ }).click(); await page.waitForTimeout(1500)
       for (const slot of SLOTS) {
-        await page.locator(`[data-tab="${slot}"]`).click(); await page.waitForTimeout(600)
+        await page.locator(`[data-tab="${slot}"]`).click(); await page.waitForTimeout(900)
         const r = await page.$eval('[data-shelf]', el => ({ tile: +el.dataset.tile, over: el.scrollHeight - el.clientHeight, n: el.querySelectorAll('[data-thing]').length }))
         const want = WARDROBE.filter(t => t.slot === slot).length
         if (r.n !== want) problems.push(`${where}: ${r.n} of ${want} things on ${slot}`)

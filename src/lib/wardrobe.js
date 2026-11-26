@@ -14,8 +14,8 @@
  * pictures (POSES, measured on the 384 × 384 pictures in
  * public/sprites/emoji/custom/lumi-*.webp) and the thing's own numbers:
  *
- *   slot   where it is worn: 'head', 'face', 'neck', 'back' or 'hold'
- *          (one of each at a time, all five combined freely)
+ *   slot   where it is worn: 'head', 'face', 'neck', 'back', 'hold', 'top',
+ *          'bottom' or 'shoes' (one of each at a time, all eight combined freely)
  *   stars  not written: from the thing's place in ORDER (see stepStars)
  *   src    the picture, square, transparent
  *   at     the point of the picture [x, y] (0…1) that goes on the anchor:
@@ -25,6 +25,12 @@
  *            back  the middle between the shoulders (drawn behind Lumi)
  *            hold  the tip of the wing that holds it (sleeping: the floor beside
  *                  Lumi); the wing tip (`grip` of the picture) is drawn over it
+ *            top   the middle of the neck line (a shirt's collar); the wings
+ *                  (`wings` of the picture) are drawn again over it
+ *            bottom the waist; under the top's hem
+ *            shoes one foot: the middle between the feet a `step` to the side;
+ *                  `at` is a point of the LEFT shoe of the pair picture, the
+ *                  right shoe is the other half, mirrored about the middle
  *   size   the picture's width as a share of the anchor's width (the head's
  *          width, the distance between the eyes, the width of the neck)
  *   rot    an extra tilt in degrees (optional)
@@ -41,6 +47,9 @@
  *          also per pose: pose: { sleep: { behind: false } })
  *   over   back things only: a polygon of the picture [[x, y], …] (0…1) that is
  *          drawn again in front of Lumi (a cape's collar and clasp)
+ *   sy     clothes only: the picture's height as a share of its width (a
+ *          shirt squashed to Lumi's round body; also per pose)
+ *   feet   bottoms only: false hides the shoes (a mermaid's tail)
  *   spread back things only: a pair of wings, in degrees. The picture is cut
  *          in two at `at` and each half turned outwards and down about that
  *          point, so the wings stand out at the sides of the body, below the
@@ -63,7 +72,11 @@ export const POSES = {
     back: { x: 192, y: 210, rot: 0, w: 210 },
     hold: { x: 308, y: 280, rot: 12, w: 105 },
     grip: [[290, 246], [306, 250], [320, 270], [330, 294], [324, 308], [306, 304], [292, 286], [286, 264]],
+    top: { x: 192, y: 216, rot: 0, w: 175 },
+    bottom: { x: 192, y: 295, rot: 0, w: 172 },
+    shoes: { x: 191, y: 357, rot: 0, w: 55, step: 44 },
     tuft: [[140, 0], [262, 0], [262, 58], [230, 57], [192, 53], [154, 57], [140, 60]],
+    wings: [[[106, 216], [82, 238], [62, 268], [60, 284], [72, 298], [98, 302], [118, 290], [124, 262], [120, 232]], [[279, 216], [302, 238], [322, 268], [324, 284], [312, 298], [286, 302], [266, 290], [262, 262], [266, 232]]],
   },
   happy: {
     head: { x: 196, y: 62, rot: 3, w: 190 },
@@ -72,7 +85,11 @@ export const POSES = {
     back: { x: 196, y: 208, rot: 0, w: 200 },
     hold: { x: 332, y: 194, rot: 2, w: 95 },
     grip: [[318, 160], [336, 146], [352, 150], [358, 170], [346, 200], [328, 214], [314, 206], [312, 184]],
+    top: { x: 192, y: 214, rot: 0, w: 185 },
+    bottom: { x: 190, y: 292, rot: 0, w: 185 },
+    shoes: { x: 189, y: 356, rot: 0, w: 60, step: 57 },
     tuft: [[150, 0], [270, 0], [270, 60], [235, 62], [196, 60], [160, 66], [150, 70]],
+    wings: [[[118, 212], [100, 200], [80, 172], [58, 152], [34, 148], [30, 172], [42, 200], [60, 218], [90, 226], [112, 226]], [[266, 212], [285, 190], [300, 160], [322, 140], [345, 150], [352, 175], [340, 205], [315, 228], [290, 235], [270, 230]]],
   },
   sad: {
     head: { x: 192, y: 66, rot: 3, w: 186 },
@@ -81,7 +98,11 @@ export const POSES = {
     back: { x: 190, y: 234, rot: 0, w: 190 },
     hold: { x: 272, y: 300, rot: 24, w: 100 },
     grip: [[244, 264], [262, 258], [280, 270], [288, 292], [282, 314], [264, 316], [250, 300], [242, 282]],
+    top: { x: 190, y: 242, rot: 0, w: 170 },
+    bottom: { x: 190, y: 298, rot: 0, w: 172 },
+    shoes: { x: 190, y: 355, rot: 0, w: 50, step: 38 },
     tuft: [[150, 0], [260, 0], [260, 66], [230, 64], [192, 64], [160, 70], [150, 74]],
+    wings: [[[104, 256], [115, 246], [142, 250], [165, 264], [178, 290], [174, 306], [148, 306], [118, 296], [104, 280]], [[276, 256], [265, 246], [238, 250], [215, 264], [202, 290], [206, 306], [232, 306], [262, 296], [276, 280]]],
   },
   hmm: {
     head: { x: 190, y: 58, rot: -12, w: 180 },
@@ -90,7 +111,11 @@ export const POSES = {
     back: { x: 182, y: 224, rot: 0, w: 190 },
     hold: { x: 88, y: 286, rot: -20, w: 100 },
     grip: [[104, 250], [88, 254], [72, 276], [66, 300], [74, 314], [92, 310], [104, 292], [108, 270]],
+    top: { x: 188, y: 226, rot: -4, w: 165 },
+    bottom: { x: 190, y: 296, rot: 0, w: 170 },
+    shoes: { x: 188, y: 355, rot: 0, w: 60, step: 43 },
     tuft: [[135, 0], [245, 0], [245, 58], [215, 60], [190, 58], [160, 66], [135, 70]],
+    wings: [[[112, 226], [96, 234], [82, 252], [80, 272], [88, 288], [108, 298], [124, 294], [128, 262], [124, 236]], [[205, 196], [222, 186], [246, 196], [276, 232], [292, 262], [300, 300], [262, 306], [228, 268], [214, 236]]],
     front: [[205, 196], [222, 186], [246, 196], [276, 232], [292, 262], [300, 300], [262, 306], [228, 268], [214, 236]],
   },
   think: {
@@ -100,7 +125,11 @@ export const POSES = {
     back: { x: 182, y: 224, rot: 0, w: 190 },
     hold: { x: 88, y: 286, rot: -20, w: 100 },
     grip: [[104, 250], [88, 254], [72, 276], [66, 300], [74, 314], [92, 310], [104, 292], [108, 270]],
+    top: { x: 188, y: 226, rot: -4, w: 165 },
+    bottom: { x: 190, y: 296, rot: 0, w: 170 },
+    shoes: { x: 188, y: 355, rot: 0, w: 60, step: 43 },
     tuft: [[135, 0], [245, 0], [245, 58], [215, 60], [190, 58], [160, 66], [135, 70]],
+    wings: [[[112, 226], [96, 234], [82, 252], [80, 272], [88, 288], [108, 298], [124, 294], [128, 262], [124, 236]], [[205, 196], [222, 186], [246, 196], [276, 232], [292, 262], [300, 300], [262, 306], [228, 268], [214, 236]]],
     front: [[205, 196], [222, 186], [246, 196], [276, 232], [292, 262], [300, 300], [262, 306], [228, 268], [214, 236]],
   },
   sleep: {
@@ -109,7 +138,12 @@ export const POSES = {
     neck: { x: 192, y: 252, rot: 0, w: 200 },
     back: { x: 192, y: 232, rot: 0, w: 200 },
     hold: { x: 338, y: 360, rot: 0, w: 84 },
+    top: { x: 184, y: 250, rot: 0, w: 220 },
+    bottom: { x: 184, y: 315, rot: 0, w: 225 },
+    shoes: { x: 182, y: 338, rot: 0, w: 65, step: 79 },
     tuft: [[140, 0], [255, 0], [255, 78], [220, 80], [188, 78], [158, 84], [140, 88]],
+    wings: [[[70, 262], [80, 252], [110, 256], [140, 270], [160, 300], [158, 318], [130, 318], [95, 300], [72, 282]], [[288, 262], [278, 254], [250, 256], [222, 268], [200, 292], [204, 312], [232, 312], [268, 300], [290, 282]]],
+    feet: [[[72, 318], [100, 305], [130, 310], [138, 340], [130, 370], [100, 372], [75, 350]], [[230, 318], [260, 305], [290, 312], [295, 340], [280, 370], [250, 372], [228, 350]]],
   },
   wave: {
     head: { x: 212, y: 58, rot: 6, w: 185 },
@@ -118,7 +152,11 @@ export const POSES = {
     back: { x: 215, y: 216, rot: 0, w: 190 },
     hold: { x: 314, y: 290, rot: 12, w: 100 },
     grip: [[300, 254], [316, 260], [330, 282], [334, 304], [326, 318], [308, 312], [296, 292], [292, 270]],
+    top: { x: 205, y: 222, rot: 3, w: 170 },
+    bottom: { x: 205, y: 295, rot: 0, w: 165 },
+    shoes: { x: 210, y: 352, rot: 0, w: 58, step: 47 },
     tuft: [[175, 0], [275, 0], [275, 60], [245, 60], [212, 56], [185, 64], [175, 70]],
+    wings: [[[125, 252], [110, 245], [85, 225], [65, 200], [58, 170], [62, 150], [78, 125], [100, 130], [118, 165], [135, 205], [138, 240]], [[262, 212], [280, 215], [305, 240], [325, 265], [328, 295], [312, 300], [290, 290], [268, 270], [260, 240]]],
   },
 }
 export const POSE_IDS = Object.keys(POSES)
@@ -135,8 +173,11 @@ import FACE from './wardrobe/face.js'
 import NECK from './wardrobe/neck.js'
 import BACK from './wardrobe/back.js'
 import HOLD from './wardrobe/hold.js'
+import TOP from './wardrobe/top.js'
+import BOTTOM from './wardrobe/bottom.js'
+import SHOES from './wardrobe/shoes.js'
 
-export const SLOTS = ['head', 'face', 'neck', 'back', 'hold']
+export const SLOTS = ['head', 'face', 'neck', 'back', 'hold', 'top', 'bottom', 'shoes']
 
 /**
  * The order of unlocking: the first two are there from the start. The
@@ -145,35 +186,41 @@ export const SLOTS = ['head', 'face', 'neck', 'back', 'hold']
  * in the wardrobe, so it has to say the place (wings for the back: a cape
  * alone read as a skirt); after them each place's things are spread evenly
  * over the rest, never two of one place in a row, the red hats far apart,
- * the crown last. A place with many things
- * comes often (a hat about every 15 stars), the back with its seven things
- * least often (late in the list every 50 to 70 stars).
+ * the crown last. The first top, trousers and shoes come within the first
+ * 30 stars. A place with many things comes often (a hat about every 20
+ * stars), the back with its seven things least often (late in the list
+ * every 60 to 90 stars).
  */
 export const ORDER = [
-  'muetze', 'sonnenbrille', 'ballon', 'schal', 'partyhut', 'schmetterling', 'herzbrille', 'zauberstab', 'katzenohren', 'fliege',
-  'blumenkranz', 'clownsnase', 'perlenkette', 'lolli', 'piratenhut', 'umhang', 'basecap', 'sternbrille', 'halstuch', 'hasenohren',
-  'blume', 'propellermuetze', 'heldenmaske', 'medaille', 'engel', 'kochmuetze', 'zuckerwatte', 'cowboyhut', 'spiralbrille', 'kopfhoerer',
-  'einhornreif', 'rundbrille', 'feuerwehrhelm', 'gloeckchen', 'fee', 'faehnchen', 'eierschale', 'taucherbrille', 'zauberhut', 'blumenkette',
-  'antennen', 'eis', 'drache', 'brille3d', 'kamera', 'strohhut', 'monokel', 'tortenhut', 'krawatte', 'ukulele',
-  'matrosenmuetze', 'rakete', 'fliegenpilz', 'federmaske', 'halskrause', 'diadem', 'windrad', 'zylinder', 'skibrille', 'herzkette',
-  'heiligenschein', 'pfau', 'weihnachtsmuetze', 'laterne', 'schnurrbart', 'doktorhut', 'sternabzeichen', 'krone',
+  'muetze', 'sonnenbrille', 'ballon', 'schal', 'partyhut', 'schmetterling', 'ringelshirt', 'herzbrille', 'jeansshorts', 'zauberstab',
+  'turnschuhe', 'katzenohren', 'fliege', 'blumenkranz', 'heldenshirt', 'fussballshorts', 'gummistiefel', 'clownsnase', 'perlenkette', 'lolli',
+  'piratenhut', 'umhang', 'fussballtrikot', 'tutu', 'hasenpantoffeln', 'basecap', 'sternbrille', 'halstuch', 'hasenohren', 'hawaiihemd',
+  'entenbadehose', 'ballettschuhe', 'blume', 'propellermuetze', 'heldenmaske', 'medaille', 'katzenhoodie', 'engel', 'lederhose', 'flipflops',
+  'kochmuetze', 'regenjacke', 'cowboyhut', 'zuckerwatte', 'spiralbrille', 'kopfhoerer', 'bastrock', 'cowboystiefel', 'einhornreif', 'bienenkostuem',
+  'pyjamahose', 'rollschuhe', 'feuerwehrhelm', 'rundbrille', 'gloeckchen', 'fee', 'ritterruestung', 'faehnchen', 'eierschale', 'piratenhose',
+  'clownsschuhe', 'zauberhut', 'taucherbrille', 'blumenkette', 'rettungsweste', 'schottenrock', 'monsterpfoten', 'antennen', 'eis', 'sternenpyjama',
+  'drache', 'brille3d', 'kamera', 'strohhut', 'flickenjeans', 'holzschuhe', 'kochjacke', 'tortenhut', 'prinzessinnenrock', 'flossen',
+  'monokel', 'krawatte', 'ukulele', 'matrosenmuetze', 'arztkittel', 'fliegenpilz', 'rakete', 'regenbogenleggings', 'wanderstiefel', 'astronautenjacke',
+  'federmaske', 'halskrause', 'diadem', 'windrad', 'clownshose', 'schlittschuhe', 'zylinder', 'skijacke', 'skibrille', 'herzkette',
+  'heiligenschein', 'skihose', 'elfenschuhe', 'smoking', 'pfau', 'weihnachtsmuetze', 'laterne', 'schnurrbart', 'sternabzeichen', 'meerjungfrau',
+  'astronautenstiefel', 'doktorhut', 'rentierpulli', 'krone',
 ]
 
 /**
  * The stars for the thing at place i of the order. The first two are free
  * (the wardrobe is never empty); then the gap between two things starts at
- * three stars (one good game) and grows by one star every twelve things:
- * twelve times 3, twelve times 4, … With 68 things the last one needs 348
- * stars, about half of all the stars the games give (23 games with levels ×
- * 10 levels × 3 stars = 690; tests/unit/wardrobe.test.js checks it).
+ * three stars (one good game) and grows by one star every 42 things:
+ * 42 times 3, 42 times 4, … With 114 things the last one needs 434
+ * stars, about two thirds of all the stars the games give (23 games with
+ * levels × 10 levels × 3 stars = 690; tests/unit/wardrobe.test.js checks it).
  */
 export function stepStars(i) {
   let s = 0
-  for (let k = 0; k < i - 1; k++) s += 3 + Math.floor(k / 12)
+  for (let k = 0; k < i - 1; k++) s += 3 + Math.floor(k / 42)
   return i < 2 ? 0 : s
 }
 
-const ALL = [...HEAD, ...FACE, ...NECK, ...BACK, ...HOLD]
+const ALL = [...HEAD, ...FACE, ...NECK, ...BACK, ...HOLD, ...TOP, ...BOTTOM, ...SHOES]
 const rank = id => { const i = ORDER.indexOf(id); return i === -1 ? ORDER.length + ALL.findIndex(t => t.id === id) : i }
 /** Every thing, in the order of unlocking, with its stars. */
 export const WARDROBE = [...ALL].sort((a, b) => rank(a.id) - rank(b.id)).map((t, i) => ({ ...t, stars: stepStars(i) }))
@@ -217,20 +264,34 @@ export const lumiPose = mood => LUMI_POSE[mood] ?? 'idle'
 const pct = v => `${+(v / POSE_SIZE * 100).toFixed(3)}%`
 const poly = pts => pts.map(([x, y]) => `${pct(x)} ${pct(y)}`).join(', ')
 
-/** Where an item lies on a picture: its square, tilt and the point it turns round. */
-export function placeItem(item, pose) {
+/**
+ * Where an item lies on a picture: its box (`size` wide, `h` high: a
+ * picture squashed by `sy`), tilt and the point it turns round. Shoes are
+ * placed twice: `side` 'l' is the left half of the pair picture on the left
+ * foot, 'r' the right half on the right foot (`at` mirrored).
+ */
+export function placeItem(item, pose, side = 'l') {
   const P = POSES[pose] ?? POSES.idle
-  const A = P[item.slot]
+  let A = P[item.slot]
   const t = item.pose?.[pose] ?? {}
   const W = A.w * item.size * (t.size ?? 1)
-  // the item's own shift (a share of the anchor's width, along its tilt)
+  const H = W * (t.sy ?? item.sy ?? 1)
+  const r = side === 'r' ? -1 : 1
+  let [ax, ay] = item.at
+  if (item.slot === 'shoes') {
+    // the foot: the middle between the feet, a step to the side
+    const fr = (A.rot ?? 0) * Math.PI / 180
+    A = { ...A, x: A.x - r * A.step * Math.cos(fr), y: A.y - r * A.step * Math.sin(fr) }
+    if (side === 'r') ax = 1 - ax
+  }
+  // the item's own shift (a share of the anchor's width, along its tilt;
+  // mirrored for the right shoe)
   const ar = (A.rot ?? 0) * Math.PI / 180
-  const sx = (item.dx ?? 0) * A.w, sy = (item.dy ?? 0) * A.w
-  const x = A.x + sx * Math.cos(ar) - sy * Math.sin(ar) + (t.dx ?? 0)
-  const y = A.y + sx * Math.sin(ar) + sy * Math.cos(ar) + (t.dy ?? 0)
-  const rot = (A.rot ?? 0) + (item.rot ?? 0) + (t.rot ?? 0)
-  const [ax, ay] = item.at
-  return { left: x - ax * W, top: y - ay * W, size: W, rot, x, y, ax, ay }
+  const sx = r * ((item.dx ?? 0) * A.w + (t.dx ?? 0)), sy = (item.dy ?? 0) * A.w + (t.dy ?? 0)
+  const x = A.x + sx * Math.cos(ar) - sy * Math.sin(ar)
+  const y = A.y + sx * Math.sin(ar) + sy * Math.cos(ar)
+  const rot = (A.rot ?? 0) + r * ((item.rot ?? 0) + (t.rot ?? 0))
+  return { left: x - ax * W, top: y - ay * H, size: W, h: H, rot, x, y, ax, ay }
 }
 
 /**
@@ -238,15 +299,20 @@ export function placeItem(item, pose) {
  * (a pair of wings spread apart: the corners of both halves).
  */
 export function itemCorners(item, pose) {
-  const p = placeItem(item, pose)
   const [x0, y0, x1, y1] = item.box ?? [0, 0, 1, 1]
-  const turn = (pts, deg) => {
+  const turnAt = (p, pts, deg) => {
     const r = deg * Math.PI / 180, c = Math.cos(r), s = Math.sin(r)
     return pts.map(([u, v]) => {
-      const dx = p.left + u * p.size - p.x, dy = p.top + v * p.size - p.y
+      const dx = p.left + u * p.size - p.x, dy = p.top + v * p.h - p.y
       return [p.x + dx * c - dy * s, p.y + dx * s + dy * c]
     })
   }
+  if (item.slot === 'shoes') {
+    const l = placeItem(item, pose, 'l'), r = placeItem(item, pose, 'r')
+    return [...turnAt(l, [[x0, y0], [0.5, y0], [0.5, y1], [x0, y1]], l.rot), ...turnAt(r, [[0.5, y0], [x1, y0], [x1, y1], [0.5, y1]], r.rot)]
+  }
+  const p = placeItem(item, pose)
+  const turn = (pts, deg) => turnAt(p, pts, deg)
   const sp = spreadOf(item, pose)
   if (!sp) return turn([[x0, y0], [x1, y0], [x1, y1], [x0, y1]], p.rot)
   const m = p.ax, y2 = Math.min(y1, spreadKeep(item))
@@ -270,10 +336,11 @@ export function figureLayers(pose, outfit) {
   const bySlot = Object.fromEntries(worn.map(t => [t.slot, t]))
   const hat = bySlot.head
   const layers = []
-  const item = t => {
-    const p = placeItem(t, pose)
-    return { kind: 'item', id: t.id, src: t.src, left: pct(p.left), top: pct(p.top), size: pct(p.size), rot: p.rot, origin: `${p.ax * 100}% ${p.ay * 100}%` }
+  const item = (t, side) => {
+    const p = placeItem(t, pose, side)
+    return { kind: 'item', id: t.id, src: t.src, left: pct(p.left), top: pct(p.top), size: pct(p.size), h: pct(p.h), rot: p.rot, origin: `${+(p.ax * 100).toFixed(2)}% ${+(p.ay * 100).toFixed(2)}%` }
   }
+  const clipTo = pts => ({ kind: 'pose', clip: `polygon(${poly(pts)})` })
   // the back thing lies behind Lumi, and a held thing that leans behind
   // Lumi (`behind`: an open umbrella over the shoulder)
   const behindHold = bySlot.hold && (bySlot.hold.pose?.[pose]?.behind ?? bySlot.hold.behind)
@@ -289,6 +356,37 @@ export function figureLayers(pose, outfit) {
   } else if (bySlot.back) layers.push(item(bySlot.back))
   if (behindHold) layers.push(item(bySlot.hold))
   layers.push({ kind: 'pose', clip: hat?.tuft === 'hide' && P.tuft ? `polygon(evenodd, 0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ${poly(P.tuft)}, ${poly([P.tuft[0]])}, 0% 0%)` : null })
+  // the clothes: trousers or a skirt over the lower body and the legs (the
+  // feet Lumi sits on stay in front of them), the shoes, one on each foot
+  // (the pair picture cut in two), and the top over them, its hem over the
+  // waistband; the wings lie in front of the clothes again
+  // (a mermaid's tail has no feet: shoes stay in the wardrobe while it is worn)
+  if (bySlot.shoes && bySlot.bottom?.feet === false) delete bySlot.shoes
+  const shoes = () => bySlot.shoes ? [
+    { ...item(bySlot.shoes, 'l'), clip: 'inset(0 50% 0 0)' },
+    { ...item(bySlot.shoes, 'r'), id: `${bySlot.shoes.id}-right`, part: true, clip: 'inset(0 0 0 50%)' },
+  ] : []
+  if (!P.feet) {
+    // standing: the shoes are worn under the trousers (a trouser leg or a
+    // skirt's hem lies over the shoe's opening), the top over both
+    layers.push(...shoes())
+    if (bySlot.bottom) layers.push(item(bySlot.bottom))
+  } else {
+    // sitting: the feet stick out to the front, in front of the trousers;
+    // the shoes on them, and both again in front of the top
+    if (bySlot.bottom) {
+      layers.push(item(bySlot.bottom))
+      // (a mermaid's tail: no feet in front of it)
+      if (bySlot.bottom.feet !== false) for (const f of P.feet) layers.push(clipTo(f))
+    }
+    layers.push(...shoes())
+  }
+  if (bySlot.top) layers.push(item(bySlot.top))
+  if ((bySlot.top || bySlot.bottom) && P.wings) for (const w of P.wings) layers.push(clipTo(w))
+  if (bySlot.top && P.feet && bySlot.bottom?.feet !== false) {
+    for (const f of P.feet) layers.push(clipTo(f))
+    layers.push(...shoes().map(l => ({ ...l, id: `${bySlot.shoes.id}-${l.part ? 'right-' : ''}again`, part: true })))
+  }
   // the part of a back thing that lies in FRONT of Lumi (a cape's collar
   // and clasp): the same picture again, cut to its `over` polygon
   if (bySlot.back?.over) {
