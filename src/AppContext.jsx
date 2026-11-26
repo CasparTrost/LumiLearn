@@ -389,7 +389,7 @@ export function reducer(state, action) {
     }
 
     case 'NAVIGATE':
-      return { ...state, screen: action.payload, ...(action.create ? { profileCreate: true } : { profileCreate: false }) }
+      return { ...state, screen: action.payload, ...(action.create ? { profileCreate: true } : { profileCreate: false }), wardrobeFocus: action.focus ?? null }
 
     case 'START_GAME':
       return { ...state, screen: 'game', currentGame: action.payload }

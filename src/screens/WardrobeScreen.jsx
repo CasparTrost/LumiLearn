@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useApp, profileWardrobeStars } from '../AppContext.jsx'
 import { HudBar, PxIcon, PxStar } from '../components/PixelUI.jsx'
@@ -6,7 +6,7 @@ import MusicButton from '../components/MusicControls.jsx'
 import LumiFigure from '../components/LumiFigure.jsx'
 import { Critter, Art, useMood, useBursts } from '../components/play/index.js'
 import { asset } from '../lib/assets.js'
-import { SLOTS, WARDROBE, isUnlocked, stepBefore, cleanOutfit } from '../lib/wardrobe.js'
+import { SLOTS, WARDROBE, ITEM_BY_ID, isUnlocked, cleanOutfit } from '../lib/wardrobe.js'
 import { narrate, stopNarration } from '../narrator.js'
 import { sfx } from '../sfx.js'
 import { LINES, line } from '../lib/lumiLines.js'
@@ -34,6 +34,11 @@ const REACTIONS = ['schrank/anziehen-1', 'schrank/anziehen-2', 'schrank/anziehen
 const SHELF_LABEL = { head: 'Für den Kopf', face: 'Fürs Gesicht', neck: 'Für den Hals', back: 'Für den Rücken', hold: 'Zum Festhalten' }
 // presents shown per place before the pile
 const WRAPPED_SHOWN = 2
+// things that glow as new at most
+const FRESH_SHOWN = 3
+// the tiles: as big as fits, never smaller than this
+const TILE_MAX = 92, TILE_MIN = 64
+const rowGap = t => Math.round(t * 0.16) + 8
 
 function useViewport() {
   const get = () => ({ w: window.innerWidth, h: window.innerHeight })
@@ -52,9 +57,17 @@ export default function WardrobeScreen() {
   const stars = profileWardrobeStars(profile)
   const outfit = cleanOutfit(profile?.outfit)
   const tried = profile?.wardrobeTried ?? []
-  const isFresh = t => isUnlocked(t, stars) && !tried.includes(t.id)
-  // the place with something new opens first
-  const [tab, setTab] = useState(() => WARDROBE.find(isFresh)?.slot ?? 'head')
+  // "new" means something: only the newest three things not tried on yet
+  // glow (an old save or many stars at once would make every tile glow)
+  const freshIds = WARDROBE.filter(t => isUnlocked(t, stars) && !tried.includes(t.id)).slice(-FRESH_SHOWN).map(t => t.id)
+  const isFresh = t => freshIds.includes(t.id)
+  // opens on the place of the thing just won (results screen), else of the
+  // newest thing not seen yet, else of the newest one not tried on
+  const [tab, setTab] = useState(() => {
+    const seen = profile?.wardrobeSeen ?? []
+    const unseen = WARDROBE.filter(t => isUnlocked(t, stars) && !seen.includes(t.id))
+    return ITEM_BY_ID[state.wardrobeFocus]?.slot ?? unseen.at(-1)?.slot ?? ITEM_BY_ID[freshIds.at(-1)]?.slot ?? 'head'
+  })
   const [mood, setMood] = useMood('wave')
   const [wish, setWish] = useState(null)       // the stars still missing for a tapped present
   const [shake, setShake] = useState(null)
@@ -66,18 +79,65 @@ export default function WardrobeScreen() {
 
   const { w, h } = useViewport()
   const wide = w > h || w >= 700
+  // a phone held sideways: the tabs stand at the side of the wardrobe, so
+  // the whole height is left for the shelf
+  const sideTabs = wide && h < 560
   const hud = w < 521 ? 72 : 80
-  const stageW = wide ? Math.min(440, Math.max(220, w * 0.4), Math.max(220, h - hud)) : w
-  const stageH = wide ? h - hud : Math.min(300, Math.round(h * 0.33))
+  const stageW = wide ? Math.min(440, Math.max(220, w * 0.4), Math.max(220, h - hud - (sideTabs ? 50 : 0))) : w
+  const stageH = wide ? h - hud : Math.min(290, Math.round(h * 0.31))
   const lumi = Math.round(wide ? Math.min(stageW * 0.8, stageH * 0.7, 340) : stageH * 0.76)
-  const tabSize = Math.round(Math.max(52, Math.min(76, ((wide ? w - stageW : w) - 40) / 5 - 10, h < 430 ? 56 : 76)))
-  const tile = w < 420 ? 74 : h < 430 ? 76 : 92
+  const tabSize = sideTabs
+    ? Math.round(Math.max(48, Math.min(64, (h - hud - 24) / 5 - 10)))
+    : Math.round(Math.max(52, Math.min(76, ((wide ? w - stageW : w) - 40) / 5 - 10)))
 
   const items = WARDROBE.filter(t => t.slot === tab)
   const open = items.filter(t => isUnlocked(t, stars))
   const wrapped = items.filter(t => !isUnlocked(t, stars))
   const pile = wrapped.slice(WRAPPED_SHOWN)
   const anyWorn = SLOTS.some(s => outfit[s])
+  // the last step passed: the next present fills from there
+  const lastStep = Math.max(0, ...WARDROBE.filter(t => t.stars <= stars).map(t => t.stars))
+
+  // Every thing of a place on the shelf at once: the tiles are as big as
+  // the shelf allows (TILE_MAX … TILE_MIN). Only where even the smallest do
+  // not fit, the shelf scrolls, and a big arrow at its foot says so.
+  const shelfRef = useRef(null)
+  const [room, setRoom] = useState({ w: 0, h: 0 })
+  useLayoutEffect(() => {
+    const el = shelfRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const measure = () => {
+      const cs = getComputedStyle(el)
+      const pw = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)
+      const ph = el.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom)
+      setRoom(r => (r.w === pw && r.h === ph ? r : { w: pw, h: ph }))
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  const count = open.length + Math.min(WRAPPED_SHOWN, wrapped.length) + (pile.length ? 1 : 0)
+  const fits = t => {
+    const cols = Math.max(1, Math.floor((room.w + 10) / (t + 10)))
+    const rows = Math.ceil(count / cols)
+    return rows * t + (rows - 1) * rowGap(t) <= room.h
+  }
+  let tile = TILE_MAX
+  while (tile > TILE_MIN && !fits(tile)) tile -= 2
+  const [more, setMore] = useState(false)
+  useEffect(() => {
+    const el = shelfRef.current
+    if (!el) return
+    const check = () => setMore(el.scrollHeight - el.clientHeight - el.scrollTop > 6)
+    check()
+    el.addEventListener('scroll', check)
+    return () => el.removeEventListener('scroll', check)
+  }, [tab, tile, room, count])
+  const scrollMore = () => {
+    const el = shelfRef.current
+    el?.scrollBy?.({ top: tile + rowGap(tile), behavior: 'smooth' })
+  }
 
   // Opened: what is unlocked is seen now (the sign on the home button goes),
   // Lumi waves and says what to do
@@ -116,7 +176,8 @@ export default function WardrobeScreen() {
     if (on) {
       sfx.boing()
       setTimeout(() => sfx.sparkle(), 220)
-      setMood('happy', 1500)
+      // a hop on the spot (the spin of 'happy' swung Lumi out of the stage)
+      setMood('hop', 1200)
       setTimeout(() => burst(headPoint(), 'stars', 12), 120)
       // Lumi says something about every third thing (the first one always):
       // a child tries on ten things in a row, and ten sentences are too many
@@ -175,11 +236,14 @@ export default function WardrobeScreen() {
               <Critter art="lumi" size={lumi} mood={mood} label="Lumi" shadow={false} />
               {/* a tapped present: the stars still missing, in a bubble beside Lumi's head */}
               {wish && (
-                <motion.div key={wish} initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 380, damping: 18 }}
-                  style={{ position: 'absolute', left: '74%', top: '6%', zIndex: 5, transformOrigin: '0% 60%', background: '#fffdf7', border: '3px solid var(--px-ink)', borderRadius: 16, padding: '6px 8px', boxShadow: '0 4px 0 rgba(42,27,61,0.3)' }}>
-                  <MissingStars n={wish} />
-                  <span aria-hidden="true" style={{ position: 'absolute', left: -13, top: '50%', marginTop: -9, width: 0, height: 0, borderStyle: 'solid', borderWidth: '9px 13px 9px 0', borderColor: 'transparent #2a1b3d transparent transparent' }} />
-                </motion.div>
+                // (at Lumi's feet: beside the head it lay over the hat)
+                <div style={{ position: 'absolute', left: '50%', bottom: -lumi * 0.08, transform: 'translateX(-50%)', zIndex: 5 }}>
+                  <motion.div key={wish} data-wish={wish} initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 380, damping: 18 }}
+                    style={{ position: 'relative', transformOrigin: '50% 0%', background: '#fffdf7', border: '3px solid var(--px-ink)', borderRadius: 16, padding: '6px 10px', boxShadow: '0 4px 0 rgba(42,27,61,0.3)' }}>
+                    <MissingStars n={wish} />
+                    <span aria-hidden="true" style={{ position: 'absolute', top: -13, left: '50%', marginLeft: -9, width: 0, height: 0, borderStyle: 'solid', borderWidth: '0 9px 13px 9px', borderColor: 'transparent transparent #2a1b3d transparent' }} />
+                  </motion.div>
+                </div>
               )}
             </div>
           </div>
@@ -197,31 +261,35 @@ export default function WardrobeScreen() {
         </div>
 
         {/* ── The wardrobe: five picture tabs, one place at a time ── */}
-        <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', padding: wide ? '10px clamp(10px,2vw,22px) 12px' : '8px 10px 10px' }}>
-          <div role="tablist" aria-label="Wo Lumi es trägt" style={{ display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'flex-end', paddingInline: 6, flexShrink: 0, position: 'relative', zIndex: 2 }}>
+        <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: sideTabs ? 'row' : 'column', padding: sideTabs ? '8px 10px 8px 6px' : wide ? '10px clamp(10px,2vw,22px) 12px' : '8px 10px 10px' }}>
+          <div role="tablist" aria-label="Wo Lumi es trägt" aria-orientation={sideTabs ? 'vertical' : 'horizontal'} style={{
+            display: 'flex', flexDirection: sideTabs ? 'column' : 'row', gap: sideTabs ? 6 : 8, justifyContent: 'center',
+            alignItems: sideTabs ? 'flex-end' : 'flex-end', [sideTabs ? 'paddingBlock' : 'paddingInline']: 6, flexShrink: 0, position: 'relative', zIndex: 2,
+          }}>
             {SLOTS.map(slot => (
-              <PlaceTab key={slot} slot={slot} size={tabSize} active={slot === tab} fresh={WARDROBE.some(t => t.slot === slot && isFresh(t))}
-                worn={!!outfit[slot]} onTap={() => pickTab(slot)} />
+              <PlaceTab key={slot} slot={slot} size={tabSize} side={sideTabs} active={slot === tab} fresh={WARDROBE.some(t => t.slot === slot && isFresh(t))}
+                worn={outfit[slot]} stars={stars} onTap={() => pickTab(slot)} />
             ))}
           </div>
           <div style={{
-            flex: 1, minHeight: 0, maxWidth: 680, width: '100%', margin: '-4px auto 0', borderRadius: 22, border: '4px solid var(--px-ink)', padding: 'clamp(8px,1.4vw,12px)',
+            flex: 1, minHeight: 0, minWidth: 0, maxWidth: 680, width: '100%', margin: sideTabs ? '0 auto 0 -4px' : '-4px auto 0', borderRadius: 22, border: '4px solid var(--px-ink)',
+            padding: sideTabs ? 6 : 'clamp(6px,1.4vw,12px)',
             background: 'linear-gradient(90deg, #a8652c 0%, #c27a3a 12%, #c98443 50%, #c27a3a 88%, #a8652c 100%)',
-            boxShadow: '0 6px 0 rgba(42,27,61,0.3)', display: 'flex',
+            boxShadow: '0 6px 0 rgba(42,27,61,0.3)', display: 'flex', position: 'relative',
           }}>
-            <section role="tabpanel" aria-label={SHELF_LABEL[tab]} data-shelf={tab} key={tab} style={{
+            <section ref={shelfRef} role="tabpanel" aria-label={SHELF_LABEL[tab]} data-shelf={tab} data-tile={tile} style={{
               flex: 1, minHeight: 0, overflow: 'auto', borderRadius: 12, border: '3px solid var(--px-ink)',
-              background: 'repeating-linear-gradient(180deg, #fbeacb 0px, #fbeacb ' + (tile + 6) + 'px, #b06c32 ' + (tile + 6) + 'px, #8a4f22 ' + (tile + 20) + 'px)',
-              backgroundPosition: '0 12px', padding: '12px 10px',
+              background: `repeating-linear-gradient(180deg, #fbeacb 0px, #fbeacb ${tile + 2}px, #b06c32 ${tile + 2}px, #8a4f22 ${tile + rowGap(tile)}px)`,
+              backgroundPosition: `0 ${sideTabs ? 8 : 10}px`, padding: sideTabs ? '8px 8px' : '10px 10px',
             }}>
-              <motion.div initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.25 }}
-                style={{ display: 'flex', flexWrap: 'wrap', gap: '20px 10px', justifyContent: 'flex-start' }}>
+              <motion.div key={tab} initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.25 }}
+                style={{ display: 'flex', flexWrap: 'wrap', gap: `${rowGap(tile)}px 10px`, justifyContent: 'flex-start' }}>
                 {open.map(item => (
                   <Thing key={item.id} item={item} size={tile} stars={stars}
                     worn={outfit[tab] === item.id} fresh={isFresh(item)} shake={null} onTap={() => tap(item)} />
                 ))}
                 {wrapped.slice(0, WRAPPED_SHOWN).map((item, i) => (
-                  <Thing key={item.id} item={item} size={tile} stars={stars} next={i === 0}
+                  <Thing key={item.id} item={item} size={tile} stars={stars} next={i === 0} lastStep={lastStep}
                     shake={shake?.startsWith(item.id) ? shake : null} onTap={() => tap(item)} />
                 ))}
                 {pile.length > 0 && (
@@ -229,6 +297,14 @@ export default function WardrobeScreen() {
                 )}
               </motion.div>
             </section>
+            {/* more below: a big bouncing arrow that scrolls the shelf on */}
+            {more && (
+              <motion.button type="button" onClick={scrollMore} aria-label="Weiter unten gibt es mehr" data-more
+                animate={{ y: [0, 6, 0] }} transition={{ duration: 1, repeat: Infinity }}
+                style={{ position: 'absolute', left: '50%', bottom: -14, marginLeft: -30, width: 60, height: 48, borderRadius: 24, border: '4px solid var(--px-ink)', background: '#ffc93c', boxShadow: '0 4px 0 rgba(42,27,61,0.35)', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3 }}>
+                <svg viewBox="0 0 24 24" width="30" height="30"><path d="M5 9 L12 16 L19 9" stroke="#2a1b3d" strokeWidth="3.6" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </motion.button>
+            )}
           </div>
         </div>
       </div>
@@ -237,21 +313,39 @@ export default function WardrobeScreen() {
   )
 }
 
-/** A tab for a place: the picture of its first thing; a sparkle when something there is new. */
-function PlaceTab({ slot, size, active, fresh, worn, onTap }) {
-  const rep = WARDROBE.find(t => t.slot === slot)
+/**
+ * A tab for a place: what Lumi wears there, else the first thing of the
+ * place the child owns; a place with nothing owned yet shows its first
+ * thing as a grey shadow with a present (the five shapes stay apart, and
+ * nothing is shown in colour that is not there). A sparkle when something
+ * there is new, a green dot while Lumi wears something of it.
+ */
+function PlaceTab({ slot, size, side, active, fresh, worn, stars, onTap }) {
+  const first = WARDROBE.find(t => t.slot === slot)
+  const owned = ITEM_BY_ID[worn] ?? WARDROBE.find(t => t.slot === slot && isUnlocked(t, stars))
+  const rep = owned ?? first
   return (
     <motion.button type="button" role="tab" aria-selected={active} aria-label={`${SHELF_LABEL[slot]}${fresh ? ', etwas Neues' : ''}`} data-tab={slot}
       onClick={onTap} whileTap={{ scale: 0.92 }}
-      animate={{ y: active ? 0 : 6 }}
+      data-owned={owned ? '1' : undefined}
+      animate={side ? { x: active ? 0 : 6 } : { y: active ? 0 : 6 }}
       style={{
-        all: 'unset', boxSizing: 'border-box', cursor: 'pointer', position: 'relative', width: size + 8, height: size + (active ? 14 : 6),
-        borderRadius: '16px 16px 0 0', border: '4px solid var(--px-ink)', borderBottom: active ? '4px solid #c98443' : '4px solid var(--px-ink)',
+        all: 'unset', boxSizing: 'border-box', cursor: 'pointer', position: 'relative',
+        width: side ? size + (active ? 14 : 6) : size + 8, height: side ? size + 4 : size + (active ? 14 : 6),
+        borderRadius: side ? '16px 0 0 16px' : '16px 16px 0 0', border: '4px solid var(--px-ink)',
+        [side ? 'borderRight' : 'borderBottom']: active ? '4px solid #c98443' : '4px solid var(--px-ink)',
         background: active ? 'linear-gradient(180deg, #fff8e2, #f6dca8)' : 'linear-gradient(180deg, #e9c48e, #c99a60)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', paddingBottom: active ? 6 : 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', [side ? 'paddingRight' : 'paddingBottom']: active ? 6 : 0,
         boxShadow: active ? '0 -3px 0 rgba(255,255,255,0.6) inset' : 'none',
       }}>
-      {rep && <span style={{ opacity: active ? 1 : 0.75 }}><ThingPic item={rep} size={size - 10} /></span>}
+      {rep && (
+        <span style={{ position: 'relative', opacity: owned ? (active ? 1 : 0.8) : 0.45, filter: owned ? undefined : 'brightness(0)' }}>
+          <ThingPic item={rep} size={size - 10} />
+        </span>
+      )}
+      {!owned && (
+        <span aria-hidden="true" style={{ position: 'absolute', right: 2, bottom: 2 }}><Art art="🎁" size={Math.round(size * 0.36)} /></span>
+      )}
       {worn && (
         <span aria-hidden="true" style={{ position: 'absolute', left: -6, top: -6, width: 18, height: 18, borderRadius: '50%', background: '#3aa63a', border: '3px solid #fff' }} />
       )}
@@ -283,12 +377,19 @@ function Pile({ n, size, shake, onTap }) {
   )
 }
 
-/** The stars still missing for a present: as many stars as are missing (five and a "+" for more). */
+/**
+ * The stars still missing for a present: up to five as star pictures to
+ * count; more as one star and the number, like the tags on the presents.
+ */
 function MissingStars({ n }) {
+  if (n > 5) return (
+    <span role="img" aria-label={`Noch ${n} Sterne`} style={{ display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 24, lineHeight: '26px', color: 'var(--px-ink)' }}>
+      <PxStar size={26} />{n}
+    </span>
+  )
   return (
-    <span role="img" aria-label={`Noch ${n} Sterne`} style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(n, 3)}, 22px)`, gap: 3, alignItems: 'center' }}>
-      {Array.from({ length: Math.min(n, 5) }, (_, i) => <PxStar key={i} size={22} />)}
-      {n > 5 && <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 20, lineHeight: '22px', textAlign: 'center', color: 'var(--px-ink)' }}>+</span>}
+    <span role="img" aria-label={`Noch ${n} Sterne`} style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+      {Array.from({ length: n }, (_, i) => <PxStar key={i} size={22} />)}
     </span>
   )
 }
@@ -311,10 +412,14 @@ export function ThingPic({ item, size }) {
  * Lumi wears it, a glow while it is new) or a present still wrapped, with
  * the stars it needs; the next present fills up as the stars come.
  */
-function Thing({ item, size, stars, worn, fresh, next, shake, onTap }) {
+function Thing({ item, size, stars, worn, fresh, next, lastStep = 0, shake, onTap }) {
   const open = isUnlocked(item, stars)
-  const from = stepBefore(item)
-  const share = next ? Math.max(0.08, Math.min(1, (stars - from) / (item.stars - from))) : 0
+  // almost there, from the last step passed: up to five stars as outlines
+  // that fill, more as a bar with the real share (empty is empty)
+  const span = Math.max(1, item.stars - lastStep)
+  const got = Math.max(0, Math.min(span, stars - lastStep))
+  const share = next ? got / span : 0
+  const slots = next && span <= 5
   return (
     <motion.button type="button" onClick={onTap}
       aria-label={open ? `${item.name}${worn ? ', trägt Lumi' : ''}${fresh ? ', neu' : ''}` : `Geschenk, ${item.stars} Sterne`}
@@ -354,9 +459,13 @@ function Thing({ item, size, stars, worn, fresh, next, shake, onTap }) {
             background: 'var(--px-ink)', color: '#fff', borderRadius: 10, padding: '1px 7px 1px 4px', fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 15, lineHeight: '20px',
           }}><PxStar size={15} />{item.stars}</span>
         )}
-        {next && (
-          // almost there: the bar fills with the stars collected since the last present
-          <span aria-hidden="true" data-progress={Math.round(share * 100)} style={{ position: 'absolute', left: 7, right: 7, bottom: 4, height: 11, borderRadius: 6, background: '#fff', overflow: 'hidden', border: '2px solid var(--px-ink)' }}>
+        {next && slots && (
+          <span aria-hidden="true" data-progress={`${got}/${span}`} style={{ position: 'absolute', left: 0, right: 0, bottom: 2, display: 'flex', justifyContent: 'center', gap: 1 }}>
+            {Array.from({ length: span }, (_, i) => <PxStar key={i} size={Math.min(15, Math.floor((size - 12) / span) - 1)} off={i >= got} />)}
+          </span>
+        )}
+        {next && !slots && (
+          <span aria-hidden="true" data-progress={`${got}/${span}`} style={{ position: 'absolute', left: 7, right: 7, bottom: 4, height: 11, borderRadius: 6, background: '#fff', overflow: 'hidden', border: '2px solid var(--px-ink)' }}>
             <span style={{ display: 'block', height: '100%', width: `${share * 100}%`, background: 'linear-gradient(90deg, #ffe680, #ffc93c)' }} />
           </span>
         )}
