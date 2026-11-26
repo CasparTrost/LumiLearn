@@ -79,7 +79,7 @@ describe('clothes painted onto the figure', () => {
 })
 
 describe('every figure wears every top and bottom painted on it (none laid the old way)', () => {
-  const FIGURES = ['dino']
+  const FIGURES = ['chick', 'dino', 'einhorn', 'drache', 'roboter']
   const layersOf = (f, pose, outfit) => (f === 'chick' ? figureLayers(pose, outfit) : shapeLayers(f, pose, outfit)).layers
   const CLOTHES = WARDROBE.filter(t => t.slot === 'top' || t.slot === 'bottom')
   for (const f of FIGURES) {
