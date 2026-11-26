@@ -14,10 +14,9 @@
 //   FIGURE=<shape id> (lib/shapes.js) draws on another figure with its own
 //   anchors (`poses` of the shape; the chick's POSES while a shape has none).
 //   POSES=idle,sleep draws only these poses.
-import { writeFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { tmpdir } from 'node:os'
 import { chromium } from 'playwright'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -28,7 +27,10 @@ const rows = what.startsWith('combo:')
   ? what.slice(6).split(';').map(c => Object.fromEntries(c.split('+').map(id => [W.ITEM_BY_ID[id].slot, id])))
   : (what === 'all' ? W.WARDROBE : what.startsWith('slot:') ? W.WARDROBE.filter(t => t.slot === what.slice(5)) : what.split(',').map(id => W.ITEM_BY_ID[id]))
     .map(t => ({ [t.slot]: t.id }))
-const file = p => pathToFileURL(join(ROOT, 'public', p)).href
+// the pictures come from public/ over http, as in the app (a mask picture
+// does not load from a file:// address: the figure vanished under a mermaid's tail)
+const ORIGIN = 'http://wardrobe-fit.local/'
+const file = p => ORIGIN + p
 const SH = await import(pathToFileURL(join(ROOT, 'src/lib/shapes.js')).href)
 const FIG = process.env.FIGURE || 'chick'
 // the figure's anchors (the chick's while a shape's file is empty) and corrections
@@ -51,11 +53,15 @@ function figure(pose, outfit) {
   return `<div style="position:relative;width:${size}px;height:${size}px;outline:1px dashed #0002"><div style="position:absolute;inset:0;transform:scale(${scale});transform-origin:50% 100%">${inner}</div>${marks}</div>`
 }
 const html = (debug ? [{}] : rows).map(o => `<div style="display:flex;gap:6px;align-items:center"><div style="width:110px;font:12px sans-serif;overflow-wrap:anywhere">${Object.values(o).join(' + ') || 'anchors'}</div>${POSE_LIST.map(p => figure(p, o)).join('')}</div>`).join('')
-const page = join(tmpdir(), `wardrobe-fit-${process.pid}.html`)
-writeFileSync(page, `<body style="margin:0;padding:6px;background:#bfe3f5;display:flex;flex-direction:column;gap:6px">${html}</body>`)
+const body = `<body style="margin:0;padding:6px;background:#bfe3f5;display:flex;flex-direction:column;gap:6px">${html}</body>`
 const browser = await chromium.launch()
 const pg = await browser.newPage({ deviceScaleFactor: +(process.env.DPR || 1), viewport: { width: 120 + POSE_LIST.length * (size + 6), height: 400 } })
-await pg.goto(pathToFileURL(page).href)
+await pg.route(`${ORIGIN}**`, route => {
+  const path = decodeURIComponent(new URL(route.request().url()).pathname.slice(1))
+  if (!path) return route.fulfill({ contentType: 'text/html', body })
+  try { route.fulfill({ body: readFileSync(join(ROOT, 'public', path)), contentType: path.endsWith('.webp') ? 'image/webp' : 'image/png' }) } catch { route.fulfill({ status: 404 }) }
+})
+await pg.goto(ORIGIN)
 await pg.waitForTimeout(500)
 await pg.screenshot({ path: out, fullPage: true })
 await browser.close()

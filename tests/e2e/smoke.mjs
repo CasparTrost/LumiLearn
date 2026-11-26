@@ -711,15 +711,18 @@ async function playShadows(page, { wrongOnce = false } = {}) {
 }
 
 // 7. Lumis Kleiderschrank. A child without stars finds the sign on the
-// button, five picture tabs, the free thing glowing on the first one, at
+// button, seven picture tabs, the free thing glowing on the first one, at
 // most two wrapped presents per place and a pile for the rest. A child with
 // enough stars puts on the first thing of every place (one tab after the
-// other), Lumi wears all five in the wardrobe and in a game's top bar, and
+// other), Lumi wears all seven in the wardrobe and in a game's top bar (an
+// outfit as its painted top and bottom), and
 // the plain-Lumi button takes everything off at once. The things are read
 // from the list (src/lib/wardrobe.js), so the test follows its order.
 {
   const firstOf = slot => WARDROBE.find(t => t.slot === slot)
   const allFive = Math.max(...SLOTS.map(s => firstOf(s).stars))
+  // what Lumi shows of a thing: an outfit is drawn as its top and its bottom
+  const drawnOf = t => (t.slot === 'outfit' ? [t.bottom, t.top].filter(Boolean) : [t.id])
   // stars spread over a few games, three a level
   const progressWith = n => {
     const ids = ['shapes-land', 'rhyme', 'listen', 'shadows', 'sort', 'clock']
@@ -771,9 +774,9 @@ async function playShadows(page, { wrongOnce = false } = {}) {
           await page.locator(`[data-tab="${slot}"]`).click(); await page.waitForTimeout(500)
           await page.locator(`[data-thing="${firstOf(slot).id}"]`).click(); await page.waitForTimeout(1600)
         }
-        const all = SLOTS.map(s => firstOf(s).id).sort()
+        const all = SLOTS.flatMap(s => drawnOf(firstOf(s))).sort()
         if (String(await worn()) !== String(all)) problems.push(`${where}: Lumi wears ${await worn()}, not ${all}`)
-        await check(page, `${where}, all five on`)
+        await check(page, `${where}, all seven on`)
         await page.getByRole('button', { name: 'Zur Startseite' }).click(); await page.waitForTimeout(1200)
         if (await page.locator('[data-wardrobe-new]').count()) problems.push(`${where}: the sign stayed after the visit`)
         await page.getByRole('button', { name: /^Zahlenland(?:, Level|\. Spielen$)/ }).last().click(); await page.waitForTimeout(2000)
