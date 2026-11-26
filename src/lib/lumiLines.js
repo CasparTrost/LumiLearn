@@ -1259,9 +1259,7 @@ export const LINES = {
   'schrank/platz-top': 'Für den Bauch!',
   'schrank/platz-bottom': 'Für die Beine!',
   'schrank/platz-shoes': 'Für die Füße!',
-  // Lumi verwandelt sich (screens/ShapesScreen.jsx). NOT recorded yet: the
-  // narrator skips a recording that is missing, the screens work without
-  // them (tests/unit/lumiLines.test.js lets them wait under RECORD_LATER)
+  // Lumi verwandelt sich (screens/ShapesScreen.jsx)
   'gestalt/neu': 'Juhu! Ich kann mich verwandeln! Tippe auf das Geschenk!',
   'gestalt/aussuchen': 'Wie soll ich aussehen? Dreh und tippe auf den grünen Haken!',
   'gestalt/chick': 'Ich bin wieder ein Küken!',
@@ -1271,8 +1269,11 @@ export const LINES = {
   'gestalt/roboter': 'Schau mal, ich bin jetzt ein Roboter!',
 }
 
-/** Sentences written but not recorded yet (the narrator skips them while their file is missing). */
-export const RECORD_LATER = /^gestalt\//
+/**
+ * Sentences written but not recorded yet (the narrator skips them while
+ * their file is missing; tests/unit/lumiLines.test.js lets them wait). None now.
+ */
+export const RECORD_LATER = /(?!)/
 
 /** The recording of a sentence, with its text for the browser voice. */
 export function line(key) {

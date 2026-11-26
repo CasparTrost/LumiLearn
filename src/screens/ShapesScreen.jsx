@@ -31,8 +31,8 @@ import { LINES, line } from '../lib/lumiLines.js'
  *           next one's bar fills); one whose stars are reached but that
  *           waits for the next game shows a "play" sign instead
  *
- * Lumi's sentences here (gestalt/…) are not recorded yet: the narrator
- * skips them while their file is missing; the screen works without words.
+ * Lumi's sentences here (gestalt/…) are recorded; the screen works without
+ * them as well (a missing recording is skipped).
  */
 const rec = key => (LINES[key] ? line(key) : null)
 const N = SHAPES.length

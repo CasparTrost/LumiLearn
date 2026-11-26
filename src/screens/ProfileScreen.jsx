@@ -15,7 +15,7 @@ import { LINES } from '../lib/lumiLines.js'
 export const AGES = [4, 5, 6, 7]
 
 const SAY_AGE  = line('menue/wie-alt')
-// not recorded yet (lib/lumiLines.js RECORD_LATER): skipped while missing
+// Lumi's sentences for the choice (looked up: a missing one is left out)
 const SAY_SHAPE = LINES['gestalt/aussuchen'] ? line('gestalt/aussuchen') : null
 const SAY_SHAPE_IS = id => (LINES[`gestalt/${id}`] ? line(`gestalt/${id}`) : null)
 const SAY_WHO  = line('menue/wer-spielt-heute')

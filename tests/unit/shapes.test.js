@@ -11,7 +11,7 @@ import {
 import { WARDROBE, POSE_IDS } from '../../src/lib/wardrobe.js'
 import { lumiArt } from '../../src/lib/assets.js'
 import { reducer, migrateToV2, initialState, profileWardrobeStars } from '../../src/AppContext.jsx'
-import { LINES, RECORD_LATER } from '../../src/lib/lumiLines.js'
+import { LINES } from '../../src/lib/lumiLines.js'
 import { nextKidName } from '../../src/screens/ProfileScreen.jsx'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -52,11 +52,12 @@ describe('the shapes and their pictures', () => {
     expect(lumiArt('happy')).toMatch(/sprites\/emoji\/custom\/lumi-happy\.webp$/)
     setCurrentShape(null)
   })
-  it('Lumi speaks: at most eight new sentences, one per shape, all waiting to be recorded', () => {
+  it('Lumi speaks: at most eight new sentences, one per shape, all recorded', () => {
     const keys = Object.keys(LINES).filter(k => k.startsWith('gestalt/'))
     expect(keys.length).toBeLessThanOrEqual(8)
     for (const s of SHAPES) expect(LINES[`gestalt/${s.id}`], s.id).toContain(s.name)
-    for (const k of keys) expect(RECORD_LATER.test(k), k).toBe(true)
+    // recorded
+    for (const k of keys) expect(existsSync(join(ROOT, 'public', `audio/lumi/${k}.mp3`)), k).toBe(true)
     expect(Object.keys(LINES).some(k => k.startsWith('freunde/'))).toBe(false)
   })
 })
