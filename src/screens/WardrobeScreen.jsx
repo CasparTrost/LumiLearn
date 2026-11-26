@@ -270,6 +270,8 @@ export default function WardrobeScreen() {
         display: 'flex', flexDirection: side ? 'column' : 'row', gap: TAB_GAP + (side ? 0 : 2), justifyContent: 'center',
         alignItems: { top: 'flex-end', bottom: 'flex-start', left: 'flex-end', right: 'flex-start' }[edge],
         [side ? 'paddingBlock' : 'paddingInline']: 6, flexShrink: 0, position: 'relative', zIndex: 2, alignSelf: 'center',
+        // as deep as an open tab, open or not: the shelf never moves
+        [side ? 'width' : 'height']: tabSize + 14,
       }}>
         {tabLines[i].map(slot => (
           <PlaceTab key={slot} slot={slot} size={tabSize} edge={edge} active={slot === tab} fresh={WARDROBE.some(t => t.slot === slot && isFresh(t))}
