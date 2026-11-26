@@ -26,7 +26,7 @@
  * … { x, y, rot, w } in pixels of the 512 square). Until then it is drawn
  * without clothes, never with them at the chick's anchors (wearsClothes).
  */
-import { POSES, SLOTS, figureLayers, fitted, itemCorners, ITEM_BY_ID } from './wardrobe.js'
+import { POSES, SLOTS, figureLayers, fitted, itemCorners, ITEM_BY_ID, CHICK_FIT } from './wardrobe.js'
 import DINO_POSES from './shapes/dino-poses.js'
 import DINO_FIT from './shapes/dino-fit.js'
 import EINHORN_POSES from './shapes/einhorn-poses.js'
@@ -131,7 +131,7 @@ export const posesComplete = poses => SHAPE_POSE_IDS.every(p => SLOTS.every(sl =
 export const wearsClothes = id => !id || id === CHICK || posesComplete(SHAPE_BY_ID[id]?.poses)
 /** The anchors and corrections of a figure (the chick: lib/wardrobe.js POSES, none). */
 export const posesOf = id => (!id || id === CHICK || !SHAPE_BY_ID[id] ? POSES : SHAPE_BY_ID[id].poses)
-export const fitOf = id => (!id || id === CHICK ? {} : SHAPE_BY_ID[id]?.fit ?? {})
+export const fitOf = id => (!id || id === CHICK ? CHICK_FIT : SHAPE_BY_ID[id]?.fit ?? {})
 
 /**
  * Everything drawn for a shape in one pose, bottom to top: figureLayers of
@@ -154,7 +154,7 @@ export function wornTop(id, pose, outfit = null) {
   let top = bare
   const item = outfit?.head && ITEM_BY_ID[outfit.head]
   if (item && (!own || wearsClothes(id))) {
-    const t = own ? fitted(item, fitOf(id)) : item
+    const t = fitted(item, fitOf(id))
     if (!t.hide) top = Math.min(top, ...itemCorners(t, pose in set ? pose : 'idle', set).map(c => c[1]))
   }
   const scale = Math.min(1, own ? shapeLayers(id, pose, outfit).scale : figureLayers(pose in set ? pose : 'idle', outfit).scale)

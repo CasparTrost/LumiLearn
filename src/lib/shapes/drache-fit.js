@@ -6,7 +6,7 @@ import SHOES from '../wardrobe/shoes.js'
 import BOTTOM from '../wardrobe/bottom.js'
 import { ownTop } from '../wardrobe/top.js'
 import WORN from './drache-worn.js'
-import { wornFit } from '../wardrobe.js'
+import { wornFit, offFace } from '../wardrobe.js'
 import POSES from './drache-poses.js'
 
 // The dragon's head stands a little higher in its square than the chick's
@@ -78,6 +78,34 @@ const FIT = {
   hawaiihemd: ownTop('drache', 'hawaiihemd', { at: [0.5, 0.23], size: 1.5, sy: 0.49, box: [0.05, 0.2, 0.95, 0.8] }, { sleep: { size: 0.95 } }),
 }
 
+// Off the eyes and the mouth (offFace in ../wardrobe.js; checked by
+// tests/unit/wardrobe-eyes.test.js): per thing and pose the pixels a hat goes
+// up, or a held thing's turn. Cheering and waving, its eyes are high in the face, right under
+// the hats' brims: the hats a little higher. Cheering, the paw holds things up
+// beside the eye: they lean outward.
+const OFF_FACE = {
+  muetze: { happy: 6, wave: { up: 7, size: 0.98 } },
+  piratenhut: { idle: 3, happy: 9, wave: 8 },
+  basecap: { idle: 7, happy: 12, hmm: 2, think: 2, wave: 9 },
+  propellermuetze: { idle: 3, happy: 8, wave: 8 },
+  kochmuetze: { idle: 6, happy: 12, wave: 12 },
+  cowboyhut: { happy: 2, wave: 3 },
+  einhornreif: { idle: 3, happy: 8, wave: 4 },
+  feuerwehrhelm: { happy: 2, wave: 3 },
+  eierschale: { happy: 4, wave: 5 },
+  zauberhut: { idle: 5, happy: 11, wave: 11 },
+  strohhut: { happy: 2, wave: 3 },
+  matrosenmuetze: { happy: 2, wave: 2 },
+  fliegenpilz: { happy: 3, wave: 3 },
+  zylinder: { idle: 6, happy: 12, wave: 12 },
+  weihnachtsmuetze: { idle: 5, happy: 12, wave: 8 },
+  doktorhut: { happy: 4 },
+  krone: { happy: 6, wave: 6 },
+  zuckerwatte: { happy: { rot: 17 } },
+  eis: { happy: { rot: 7 } },
+  ukulele: { happy: { rot: 22 } },
+}
+
 // Things Tripo painted onto the drache (scripts/art/worn-from-sheet.mjs): drawn
 // from their own picture per pose over the pose picture, not placed by anchors
-export default wornFit('drache', WORN, FIT)
+export default wornFit('drache', WORN, offFace(FIT, OFF_FACE))

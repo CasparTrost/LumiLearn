@@ -8,7 +8,7 @@ import FACE from '../wardrobe/face.js'
 import { ownTop } from '../wardrobe/top.js'
 import POSES from './dino-poses.js'
 import WORN from './dino-worn.js'
-import { wornFit } from '../wardrobe.js'
+import { wornFit, offFace } from '../wardrobe.js'
 
 // The dino's head hardly turns when it thinks (the chick's does): every hat
 // sits as on the front views, not tilted like the chick's, only lifted off
@@ -80,6 +80,29 @@ const FIT = {
   hawaiihemd: ownTop('dino', 'hawaiihemd', { at: [0.5, 0.23], size: 1.25, sy: 0.5, box: [0.05, 0.18, 0.95, 0.82] }, { sad: { size: 1.1, dy: -14 } }),
 }
 
+// Off the eyes and the mouth (offFace in ../wardrobe.js; checked by
+// tests/unit/wardrobe-eyes.test.js): per thing and pose the pixels a hat goes
+// up, or a held thing's turn. Waving, its eyes open wide right under the brim; the tall hats sit low
+// on its round head. Cheering, the paw holds things up beside the eye: an ice
+// cream, candy floss and the ukulele lean outward, off the eye.
+const OFF_FACE = {
+  muetze: { wave: 6 },
+  piratenhut: { wave: 5 },
+  basecap: { idle: 3, hmm: 2, think: 2, wave: 4 },
+  propellermuetze: { wave: 5 },
+  kochmuetze: { idle: 6, hmm: 4, think: 4, wave: { up: 8, size: 0.98 } },
+  cowboyhut: { wave: 2 },
+  feuerwehrhelm: { wave: 2 },
+  zauberhut: { idle: 5, hmm: 3, think: 3, wave: 8 },
+  matrosenmuetze: { wave: 2 },
+  zylinder: { idle: 6, hmm: 4, think: 4, wave: 10 },
+  weihnachtsmuetze: { idle: 4, hmm: 3, think: 3 },
+  lolli: { happy: { rot: 8 } },
+  zuckerwatte: { happy: { rot: 22 } },
+  eis: { happy: { rot: 22 } },
+  ukulele: { happy: { rot: 27 } },
+}
+
 // Things Tripo painted onto the dino (scripts/art/worn-from-sheet.mjs): drawn
 // from their own picture per pose over the pose picture, not placed by anchors
-export default wornFit('dino', WORN, FIT)
+export default wornFit('dino', WORN, offFace(FIT, OFF_FACE))
