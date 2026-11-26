@@ -44,10 +44,11 @@ export const SHAPE_BY_ID = Object.fromEntries(SHAPES.map(s => [s.id, s]))
 /**
  * The stars at which one more shape may be won (after the free first one).
  * The first after about two days of play (a good game gives three stars, a
- * day four or five games), then further apart. None lies on a step of the
- * wardrobe (tests/unit/shapes.test.js), so a shape and a thing to wear
- * seldom come with the same game; when they do, the shape comes first on
- * the results screen and the wardrobe keeps its sign on the home screen.
+ * day four or five games), then further apart. None lies exactly on a step
+ * of the wardrobe (tests/unit/shapes.test.js), but the wardrobe has a thing
+ * every 3 to 7 stars, so the game that reaches a step usually brings a thing
+ * to wear too: the results screen then shows the new shape as its big
+ * thing and the wardrobe's new thing in its usual row below.
  */
 export const STEPS = [20, 70, 155, 260]
 

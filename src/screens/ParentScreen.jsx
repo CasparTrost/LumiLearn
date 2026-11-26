@@ -141,7 +141,7 @@ export default function ParentScreen({ onClose }) {
 
   const resetProfile = () => setConfirm({
     title: `${name} komplett zurücksetzen?`,
-    text: `Alle Spielstände, Sterne, die Serie, die Sticker, Lumis Sachen im Kleiderschrank und Lumis Figuren (Lumi wird wieder ein Küken) von ${name} werden gelöscht. Andere Kinder sind nicht betroffen.`,
+    text: `Alle Spielstände, Sterne, die Serie, die Sticker, Lumis Sachen im Kleiderschrank und Lumis Figuren von ${name} werden gelöscht; danach sucht sich ${name} seinen Lumi neu aus. Andere Kinder sind nicht betroffen.`,
     yesLabel: 'Zurücksetzen',
     onYes: () => { dispatch({ type: 'RESET_PROFILE', payload: view.id }); showToast(`${name} zurückgesetzt`) },
   })
@@ -469,7 +469,7 @@ export default function ParentScreen({ onClose }) {
           <div className="px-panel" style={{ ...SECTION, background:'#ffe9e4' }}>
             <div style={H2}>{name} zurücksetzen</div>
             <div style={{ ...SMALL, marginBottom:10 }}>
-              Löscht alle Spielstände, Sterne, die Serie, die Sticker, Lumis Sachen im Kleiderschrank und Lumis Figuren von {name} (Lumi wird wieder ein Küken). Andere Kinder sind nicht betroffen.
+              Löscht alle Spielstände, Sterne, die Serie, die Sticker, Lumis Sachen im Kleiderschrank und Lumis Figuren von {name}; danach sucht sich {name} seinen Lumi neu aus. Andere Kinder sind nicht betroffen.
             </div>
             <button className="px-btn px-btn--red px-btn--md" onClick={resetProfile}>{name} zurücksetzen</button>
           </div>

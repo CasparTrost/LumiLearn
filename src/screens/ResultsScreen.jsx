@@ -266,10 +266,16 @@ export default function ResultsScreen() {
         ...(fit.scale < 1 ? { transform: `scale(${fit.scale})`, marginBlock: -Math.ceil(fit.need * (1 - fit.scale) / 2) } : null),
       }}>
       {/* the party: Lumi and friends dance; the friends are smaller than Lumi on every screen */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, zIndex: 2, flexShrink: 0, width: sideways && shapeNews ? Math.min(330, vw - 520) : undefined }}>
       <div aria-hidden="true" style={{ display: 'flex', alignItems: 'flex-end', gap: 'clamp(4px,2vw,20px)', marginBottom: sideways ? 0 : -12, zIndex: 2, flexShrink: 0 }}>
         {friends[0] && <PartyFriend art={friends[0]} delay={0.5} size={Math.round(lumiSize * 0.6)} />}
-        <Critter art="lumi" size={lumiSize} mood={lumiMood} />
+        <Critter art="lumi" size={sideways && shapeNews ? Math.round(lumiSize * 0.7) : lumiSize} mood={lumiMood} />
         {friends[1] && <PartyFriend art={friends[1]} delay={0.8} size={Math.round(lumiSize * 0.6)} flip />}
+      </div>
+      {/* a phone held sideways: the new shape beside the card, under Lumi */}
+      {shapeNews && sideways && (
+        <ShapeSurprise shapes={shapesToCome(profile)} fresh={newShape} ready={showButtons} wide onOpen={() => { stopNarration(); dispatch({ type: 'NAVIGATE', payload: 'shapes' }) }} />
+      )}
       </div>
 
       <motion.div
@@ -280,8 +286,8 @@ export default function ResultsScreen() {
         style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'clamp(8px,1.6dvh,14px)', zIndex: 1, width: '100%', maxWidth: 500, padding: 'clamp(14px,2.4dvh,26px) clamp(14px,4vw,28px)' }}
       >
         {/* a new shape for Lumi: the big thing of this screen, first */}
-        {shapeNews && (
-          <ShapeSurprise shapes={shapesToCome(profile)} fresh={newShape} ready={showButtons} wide={sideways} onOpen={() => { stopNarration(); dispatch({ type: 'NAVIGATE', payload: 'shapes' }) }} />
+        {shapeNews && !sideways && (
+          <ShapeSurprise shapes={shapesToCome(profile)} fresh={newShape} ready={showButtons} onOpen={() => { stopNarration(); dispatch({ type: 'NAVIGATE', payload: 'shapes' }) }} />
         )}
         <div style={{ fontFamily: 'var(--font-heading)', fontSize: shapeNews ? 'clamp(22px, 5vw, 30px)' : 'clamp(26px, 6vw, 38px)', fontWeight: 700, color: 'var(--px-ink)', textAlign: 'center', lineHeight: 1.15 }}>
           {msg}
@@ -329,7 +335,7 @@ export default function ResultsScreen() {
           </button>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
             {secondary.map(b => (
-              <button key={b.label} className="px-btn px-btn--gold px-btn--md" onClick={b.onClick}>
+              <button key={b.label} className={`px-btn ${shapeNews ? 'px-btn--parch' : 'px-btn--gold'} px-btn--md`} onClick={b.onClick}>
                 {b.art ? <TileArt mod={b.art} size={28} bare /> : b.icon} {b.label}
               </button>
             ))}
