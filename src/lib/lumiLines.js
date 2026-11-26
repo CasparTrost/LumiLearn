@@ -1256,6 +1256,9 @@ export const LINES = {
   'schrank/platz-neck': 'Für den Hals!',
   'schrank/platz-back': 'Für den Rücken!',
   'schrank/platz-hold': 'Zum Festhalten!',
+  'schrank/platz-top': 'Für den Bauch!',
+  'schrank/platz-bottom': 'Für die Beine!',
+  'schrank/platz-shoes': 'Für die Füße!',
   // Lumis Freunde (screens/FriendsScreen.jsx). NOT recorded yet: the
   // narrator skips a recording that is missing, the screens work without
   // them (tests/unit/lumiLines.test.js lets them wait under RECORD_LATER)
