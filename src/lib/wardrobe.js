@@ -47,6 +47,8 @@
  *          also per pose: pose: { sleep: { behind: false } })
  *   over   back things only: a polygon of the picture [[x, y], …] (0…1) that is
  *          drawn again in front of Lumi (a cape's collar and clasp)
+ *   cut    the picture is drawn down to this share of its height only (also
+ *          per pose: a scarf's end over the feet when Lumi sits)
  *   sy     clothes only: the picture's height as a share of its width (a
  *          shirt squashed to Lumi's round body; also per pose)
  *   feet   bottoms only: false hides the shoes (a mermaid's tail)
@@ -68,7 +70,7 @@ export const POSES = {
   idle: {
     head: { x: 192, y: 57, rot: 0, w: 190 },
     face: { x: 191, y: 153, rot: 0, w: 100 },
-    neck: { x: 192, y: 214, rot: 0, w: 180 },
+    neck: { x: 192, y: 212, rot: 0, w: 176 },
     back: { x: 192, y: 210, rot: 0, w: 210 },
     hold: { x: 308, y: 280, rot: 12, w: 105 },
     grip: [[290, 246], [306, 250], [320, 270], [330, 294], [324, 308], [306, 304], [292, 286], [286, 264]],
@@ -81,8 +83,8 @@ export const POSES = {
   happy: {
     head: { x: 192, y: 62, rot: 2, w: 190 },
     face: { x: 193, y: 137, rot: 3, w: 104 },
-    neck: { x: 196, y: 212, rot: 0, w: 180 },
-    back: { x: 196, y: 208, rot: 0, w: 200 },
+    neck: { x: 193, y: 210, rot: 0, w: 180 },
+    back: { x: 193, y: 208, rot: 0, w: 200 },
     hold: { x: 332, y: 194, rot: 2, w: 95 },
     grip: [[318, 160], [336, 146], [352, 150], [358, 170], [346, 200], [328, 214], [314, 206], [312, 184]],
     top: { x: 192, y: 214, rot: 0, w: 185 },
@@ -94,8 +96,8 @@ export const POSES = {
   sad: {
     head: { x: 192, y: 66, rot: 2, w: 186 },
     face: { x: 189, y: 181, rot: 4, w: 98 },
-    neck: { x: 190, y: 238, rot: 0, w: 170 },
-    back: { x: 190, y: 234, rot: 0, w: 190 },
+    neck: { x: 190, y: 230, rot: 0, w: 166 },
+    back: { x: 190, y: 228, rot: 0, w: 190 },
     hold: { x: 272, y: 300, rot: 24, w: 100 },
     grip: [[244, 264], [262, 258], [280, 270], [288, 292], [282, 314], [264, 316], [250, 300], [242, 282]],
     top: { x: 190, y: 242, rot: 0, w: 170 },
@@ -107,8 +109,8 @@ export const POSES = {
   hmm: {
     head: { x: 184, y: 60, rot: -5, w: 180 },
     face: { x: 190, y: 138, rot: -16, w: 92 },
-    neck: { x: 180, y: 228, rot: -4, w: 160 },
-    back: { x: 182, y: 224, rot: 0, w: 190 },
+    neck: { x: 186, y: 224, rot: -3, w: 164 },
+    back: { x: 186, y: 222, rot: 0, w: 190 },
     hold: { x: 88, y: 286, rot: -20, w: 100 },
     grip: [[104, 250], [88, 254], [72, 276], [66, 300], [74, 314], [92, 310], [104, 292], [108, 270]],
     top: { x: 188, y: 226, rot: -4, w: 165 },
@@ -121,8 +123,8 @@ export const POSES = {
   think: {
     head: { x: 184, y: 60, rot: -5, w: 180 },
     face: { x: 190, y: 138, rot: -16, w: 92 },
-    neck: { x: 180, y: 228, rot: -4, w: 160 },
-    back: { x: 182, y: 224, rot: 0, w: 190 },
+    neck: { x: 186, y: 224, rot: -3, w: 164 },
+    back: { x: 186, y: 222, rot: 0, w: 190 },
     hold: { x: 88, y: 286, rot: -20, w: 100 },
     grip: [[104, 250], [88, 254], [72, 276], [66, 300], [74, 314], [92, 310], [104, 292], [108, 270]],
     top: { x: 188, y: 226, rot: -4, w: 165 },
@@ -135,10 +137,10 @@ export const POSES = {
   sleep: {
     head: { x: 182, y: 82, rot: -3, w: 210 },
     face: { x: 180, y: 190, rot: -12, w: 112 },
-    neck: { x: 192, y: 252, rot: 0, w: 200 },
-    back: { x: 192, y: 232, rot: 0, w: 200 },
+    neck: { x: 184, y: 236, rot: -3, w: 186 },
+    back: { x: 186, y: 232, rot: 0, w: 200 },
     hold: { x: 338, y: 360, rot: 0, w: 84 },
-    top: { x: 184, y: 250, rot: 0, w: 220 },
+    top: { x: 184, y: 238, rot: 0, w: 220 },
     bottom: { x: 184, y: 315, rot: 0, w: 225 },
     shoes: { x: 182, y: 338, rot: 0, w: 65, step: 79 },
     tuft: [[140, 0], [255, 0], [255, 78], [220, 80], [188, 78], [158, 84], [140, 88]],
@@ -148,8 +150,8 @@ export const POSES = {
   wave: {
     head: { x: 208, y: 58, rot: 5, w: 185 },
     face: { x: 206, y: 145, rot: 6, w: 95 },
-    neck: { x: 215, y: 220, rot: 3, w: 170 },
-    back: { x: 215, y: 216, rot: 0, w: 190 },
+    neck: { x: 210, y: 218, rot: 3, w: 170 },
+    back: { x: 210, y: 216, rot: 0, w: 190 },
     hold: { x: 314, y: 290, rot: 12, w: 100 },
     grip: [[300, 254], [316, 260], [330, 282], [334, 304], [326, 318], [308, 312], [296, 292], [292, 270]],
     top: { x: 205, y: 222, rot: 3, w: 170 },
@@ -299,7 +301,8 @@ export function placeItem(item, pose, side = 'l') {
  * (a pair of wings spread apart: the corners of both halves).
  */
 export function itemCorners(item, pose) {
-  const [x0, y0, x1, y1] = item.box ?? [0, 0, 1, 1]
+  const [x0, y0, x1, yb] = item.box ?? [0, 0, 1, 1]
+  const y1 = Math.min(yb, cutOf(item, pose))
   const turnAt = (p, pts, deg) => {
     const r = deg * Math.PI / 180, c = Math.cos(r), s = Math.sin(r)
     return pts.map(([u, v]) => {
@@ -318,6 +321,9 @@ export function itemCorners(item, pose) {
   const m = p.ax, y2 = Math.min(y1, spreadKeep(item))
   return [...turn([[x0, y0], [m, y0], [m, y2], [x0, y2]], p.rot - sp), ...turn([[m, y0], [x1, y0], [x1, y2], [m, y2]], p.rot + sp)]
 }
+// `cut`: the picture is drawn only down to this share of its height (a
+// scarf's long end would hang over the feet Lumi sits on)
+const cutOf = (item, pose) => item.pose?.[pose]?.cut ?? item.cut ?? 1
 const spreadOf = (item, pose) => [].concat(item.pose?.[pose]?.spread ?? item.spread ?? 0)[0]
 // how far down the spread halves are drawn (share of the picture)
 const spreadKeep = item => [].concat(item.spread ?? 0)[1] ?? 1
@@ -338,7 +344,8 @@ export function figureLayers(pose, outfit) {
   const layers = []
   const item = (t, side) => {
     const p = placeItem(t, pose, side)
-    return { kind: 'item', id: t.id, src: t.src, left: pct(p.left), top: pct(p.top), size: pct(p.size), h: pct(p.h), rot: p.rot, origin: `${+(p.ax * 100).toFixed(2)}% ${+(p.ay * 100).toFixed(2)}%` }
+    const cut = cutOf(t, pose)
+    return { kind: 'item', id: t.id, src: t.src, left: pct(p.left), top: pct(p.top), size: pct(p.size), h: pct(p.h), rot: p.rot, origin: `${+(p.ax * 100).toFixed(2)}% ${+(p.ay * 100).toFixed(2)}%`, ...(cut < 1 ? { clip: `inset(0 0 ${+((1 - cut) * 100).toFixed(2)}% 0)` } : null) }
   }
   const clipTo = pts => ({ kind: 'pose', clip: `polygon(${poly(pts)})` })
   // the back thing lies behind Lumi, and a held thing that leans behind
