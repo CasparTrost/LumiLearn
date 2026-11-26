@@ -1,5 +1,123 @@
-// Lumi as roboter: anchors and polygons per pose for the wardrobe's things,
-// like POSES in ../wardrobe.js (in the 384 × 384 units of the square, though
-// the picture is 512 px). Empty until measured: the shape wears nothing until
-// all seven poses have all eight anchors (../shapes.js wearsClothes).
-export default {}
+// Lumi as the robot (lib/shapes.js): the anchors and polygons of each of its
+// seven pictures, in the same form and the same 384 × 384 square as the
+// chick's POSES in lib/wardrobe.js (the 512 px pictures drawn into it).
+// Measured with scripts/art/wardrobe-anchors.mjs FIGURE=roboter.
+//
+//   head   the top of the helmet; tuft: the antenna (hidden under a
+//          covering hat, drawn again over a crown or a headband)
+//   wings  the arms and mitten hands, drawn again over clothes
+//   grip   the mitten that holds; soles: the boots cut away under shoes
+//   feet   sitting: the boots in front of the body
+const mirror = pts => pts.map(([x, y]) => [384 - x, y])
+
+const POSES = {
+  idle: {
+    head: { x: 192, y: 70, rot: 0, w: 192 },
+    face: { x: 192, y: 146, rot: 0, w: 100 },
+    neck: { x: 192, y: 214, rot: 0, w: 150 },
+    back: { x: 192, y: 220, rot: 0, w: 190 },
+    hold: { x: 292, y: 274, rot: 12, w: 95 },
+    grip: [[272, 252], [300, 250], [318, 268], [318, 296], [300, 305], [278, 298], [270, 275]],
+    top: { x: 192, y: 216, rot: 0, w: 160 },
+    bottom: { x: 192, y: 292, rot: 0, w: 160 },
+    shoes: { x: 192, y: 362, rot: 0, w: 70, step: 48 },
+    soles: [[108, 336], [282, 336], [282, 384], [108, 384]],
+    tuft: [[168, 6], [216, 6], [216, 66], [168, 66]],
+    wings: [
+      [[96, 212], [124, 210], [130, 236], [115, 258], [112, 300], [90, 306], [66, 292], [64, 262], [86, 246]],
+      mirror([[96, 212], [124, 210], [130, 236], [115, 258], [112, 300], [90, 306], [66, 292], [64, 262], [86, 246]]),
+    ],
+  },
+  happy: {
+    head: { x: 192, y: 70, rot: 0, w: 192 },
+    face: { x: 192, y: 150, rot: 0, w: 104 },
+    neck: { x: 192, y: 216, rot: 0, w: 150 },
+    back: { x: 192, y: 222, rot: 0, w: 190 },
+    hold: { x: 308, y: 182, rot: -10, w: 95 },
+    grip: [[290, 160], [318, 158], [332, 175], [328, 200], [306, 208], [290, 195]],
+    top: { x: 192, y: 220, rot: 0, w: 160 },
+    bottom: { x: 192, y: 292, rot: 0, w: 160 },
+    shoes: { x: 192, y: 362, rot: 0, w: 70, step: 52 },
+    soles: [[104, 336], [290, 336], [290, 384], [104, 384]],
+    tuft: [[168, 6], [216, 6], [216, 66], [168, 66]],
+    wings: [
+      [[58, 165], [95, 158], [114, 185], [134, 214], [142, 242], [122, 250], [100, 226], [68, 206]],
+      mirror([[58, 165], [95, 158], [114, 185], [134, 214], [142, 242], [122, 250], [100, 226], [68, 206]]),
+    ],
+  },
+  sad: {
+    head: { x: 192, y: 70, rot: 0, w: 192 },
+    face: { x: 192, y: 166, rot: 0, w: 104 },
+    neck: { x: 192, y: 232, rot: 0, w: 140 },
+    back: { x: 192, y: 236, rot: 0, w: 180 },
+    hold: { x: 218, y: 284, rot: 46, w: 92 },
+    grip: [[195, 262], [225, 258], [245, 272], [242, 300], [220, 310], [200, 298]],
+    top: { x: 192, y: 236, rot: 0, w: 150 },
+    bottom: { x: 192, y: 300, rot: 0, w: 150 },
+    shoes: { x: 192, y: 362, rot: 0, w: 66, step: 46 },
+    soles: [[110, 336], [276, 336], [276, 384], [110, 384]],
+    tuft: [[168, 6], [216, 6], [216, 66], [168, 66]],
+    wings: [
+      [[130, 225], [160, 222], [172, 250], [184, 262], [198, 270], [192, 306], [160, 312], [138, 292], [126, 256]],
+      mirror([[130, 225], [160, 222], [172, 250], [184, 262], [198, 270], [192, 306], [160, 312], [138, 292], [126, 256]]),
+    ],
+  },
+  hmm: {
+    head: { x: 180, y: 70, rot: -4, w: 192 },
+    face: { x: 186, y: 150, rot: -6, w: 96 },
+    neck: { x: 182, y: 216, rot: 0, w: 140 },
+    back: { x: 182, y: 222, rot: 0, w: 180 },
+    hold: { x: 196, y: 272, rot: 52, w: 92 },
+    grip: [[160, 250], [192, 248], [205, 265], [198, 286], [170, 290], [158, 270]],
+    top: { x: 182, y: 220, rot: 0, w: 148 },
+    bottom: { x: 184, y: 292, rot: 0, w: 152 },
+    shoes: { x: 188, y: 362, rot: 0, w: 66, step: 50 },
+    soles: [[104, 336], [282, 336], [282, 384], [104, 384]],
+    tuft: [[148, 6], [196, 6], [196, 68], [148, 68]],
+    front: [[156, 196], [182, 188], [200, 202], [198, 232], [172, 246], [150, 234]],
+    wings: [
+      [[156, 196], [182, 188], [200, 202], [198, 232], [172, 246], [150, 234]],
+      [[126, 222], [162, 228], [200, 244], [212, 270], [196, 288], [160, 288], [132, 262]],
+      [[230, 214], [256, 218], [264, 242], [244, 264], [222, 252]],
+    ],
+  },
+  wave: {
+    head: { x: 194, y: 68, rot: 0, w: 192 },
+    face: { x: 192, y: 150, rot: 0, w: 100 },
+    neck: { x: 194, y: 214, rot: 0, w: 150 },
+    back: { x: 194, y: 220, rot: 0, w: 185 },
+    hold: { x: 92, y: 272, rot: -15, w: 92 },
+    grip: [[72, 252], [100, 250], [115, 265], [110, 292], [88, 300], [70, 286]],
+    top: { x: 194, y: 220, rot: 0, w: 155 },
+    bottom: { x: 194, y: 292, rot: 0, w: 155 },
+    shoes: { x: 194, y: 362, rot: 0, w: 66, step: 50 },
+    soles: [[110, 336], [284, 336], [284, 384], [110, 384]],
+    tuft: [[170, 6], [218, 6], [218, 66], [170, 66]],
+    wings: [
+      [[118, 212], [142, 218], [132, 248], [112, 266], [110, 296], [80, 302], [64, 282], [90, 250]],
+      [[260, 215], [278, 205], [290, 175], [310, 164], [332, 180], [322, 210], [300, 226], [280, 242], [262, 240]],
+    ],
+  },
+  sleep: {
+    head: { x: 210, y: 118, rot: 3, w: 192 },
+    face: { x: 207, y: 210, rot: 0, w: 104 },
+    neck: { x: 205, y: 268, rot: 0, w: 140 },
+    back: { x: 205, y: 252, rot: 0, w: 180 },
+    hold: { x: 330, y: 360, rot: 0, w: 84 },
+    top: { x: 205, y: 270, rot: 0, w: 150 },
+    bottom: { x: 205, y: 308, rot: 0, w: 200 },
+    shoes: { x: 205, y: 344, rot: 0, w: 68, step: 95 },
+    tuft: [[188, 50], [236, 50], [236, 116], [188, 116]],
+    wings: [
+      [[150, 274], [180, 272], [196, 300], [186, 330], [160, 330], [148, 300]],
+      [[245, 274], [272, 278], [276, 300], [262, 330], [238, 330], [230, 300]],
+    ],
+    feet: [
+      [[88, 320], [130, 300], [165, 312], [175, 345], [165, 370], [125, 375], [92, 358]],
+      [[255, 310], [290, 298], [325, 315], [330, 350], [318, 372], [275, 375], [255, 350]],
+    ],
+  },
+}
+// thinking is the same picture as hmm, with the "?"
+POSES.think = POSES.hmm
+export default POSES
