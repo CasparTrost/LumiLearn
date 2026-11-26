@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Lumi's wardrobe (src/lib/wardrobe.js): star glasses. Two fat stars
+       with a purple frame, tipped a little outwards, and lightly tinted
+       lenses that let Lumi's eyes show. The middle of the bridge is the
+       middle of the picture.
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-sternbrille.svg public/sprites/wardrobe/sternbrille.webp 384 -->
+  <defs>
+    <linearGradient id="lens" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#d8c8ff" stop-opacity="0.22"/>
+    </linearGradient>
+  </defs>
+  <!-- arms -->
+  <path d="M12 116 L2 104" stroke="#7b4a1e" stroke-width="13" stroke-linecap="round"/>
+  <path d="M12 116 L2 104" stroke="#8f5cf0" stroke-width="7" stroke-linecap="round"/>
+  <path d="M244 116 L254 104" stroke="#7b4a1e" stroke-width="13" stroke-linecap="round"/>
+  <path d="M244 116 L254 104" stroke="#8f5cf0" stroke-width="7" stroke-linecap="round"/>
+  <!-- the bridge -->
+  <path d="M110 110 Q128 98 146 110" stroke="#7b4a1e" stroke-width="13" fill="none" stroke-linecap="round"/>
+  <path d="M110 110 Q128 98 146 110" stroke="#8f5cf0" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <!-- frames: thick purple stars -->
+  <g stroke-linejoin="round">
+    <path d="M56.2 72.5 L80 98 L114.3 103.5 L97.5 133.9 L102.9 168.3 L68.7 161.7 L37.7 177.4 L33.4 142.9 L8.9 118.3 L40.4 103.5 Z" fill="none" stroke="#7b4a1e" stroke-width="21"/>
+    <path d="M56.2 72.5 L80 98 L114.3 103.5 L97.5 133.9 L102.9 168.3 L68.7 161.7 L37.7 177.4 L33.4 142.9 L8.9 118.3 L40.4 103.5 Z" fill="url(#lens)" stroke="#8f5cf0" stroke-width="12"/>
+    <path d="M57.8 83.6 L76.8 104 L104.3 108.4 L90.8 132.7 L95.1 160.2 L67.8 154.9 L43 167.6 L39.6 139.9 L19.9 120.2 L45.1 108.4 Z" fill="none" stroke="#7b4a1e" stroke-width="2.5"/>
+    <path d="M199.8 72.5 L215.6 103.5 L247.1 118.3 L222.6 142.9 L218.3 177.4 L187.3 161.7 L153.1 168.3 L158.5 133.9 L141.7 103.5 L176 98 Z" fill="none" stroke="#7b4a1e" stroke-width="21"/>
+    <path d="M199.8 72.5 L215.6 103.5 L247.1 118.3 L222.6 142.9 L218.3 177.4 L187.3 161.7 L153.1 168.3 L158.5 133.9 L141.7 103.5 L176 98 Z" fill="url(#lens)" stroke="#8f5cf0" stroke-width="12"/>
+    <path d="M198.2 83.6 L210.9 108.4 L236.1 120.2 L216.4 139.9 L213 167.6 L188.2 154.9 L160.9 160.2 L165.2 132.7 L151.7 108.4 L179.2 104 Z" fill="none" stroke="#7b4a1e" stroke-width="2.5"/>
+  </g>
+  <!-- light on the frames and a glint on the glass -->
+  <path d="M46 84 L54 74" stroke="#d9c4ff" stroke-width="4" stroke-linecap="round"/>
+  <path d="M190 80 L198 72" stroke="#d9c4ff" stroke-width="4" stroke-linecap="round"/>
+  <path d="M30 120 L46 108" stroke="#ffffff" stroke-width="6" stroke-linecap="round" opacity="0.8"/>
+  <path d="M158 112 L172 102" stroke="#ffffff" stroke-width="6" stroke-linecap="round" opacity="0.8"/>
+  <!-- two little twinkles -->
+  <path d="M118 66 Q120 76 128 78 Q120 80 118 90 Q116 80 108 78 Q116 76 118 66 Z" fill="#ffffff" stroke="#8f5cf0" stroke-width="2.5" stroke-linejoin="round"/>
+  <path d="M238 172 Q239 178 244 179 Q239 180 238 186 Q237 180 232 179 Q237 178 238 172 Z" fill="#ffffff" stroke="#8f5cf0" stroke-width="2" stroke-linejoin="round"/>
+</svg>
