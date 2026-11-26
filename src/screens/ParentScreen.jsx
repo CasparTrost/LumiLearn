@@ -120,7 +120,7 @@ export default function ParentScreen({ onClose }) {
   // Resetting a game took one tap on a red button next to the level select.
   const resetModule = (id) => setConfirm({
     title: `${moduleTitle(id)} zurücksetzen?`,
-    text: `Alle Sterne und Level von ${name} in diesem Spiel werden gelöscht. Lumis Sachen im Kleiderschrank bleiben.`,
+    text: `Alle Sterne und Level von ${name} in diesem Spiel werden gelöscht. Lumis Sachen im Kleiderschrank und Lumis Freunde bleiben.`,
     yesLabel: 'Zurücksetzen',
     onYes: () => { dispatch({ type: 'RESET_MODULE', payload: { id, profileId: view.id } }); showToast(`${moduleTitle(id)} zurückgesetzt`) },
   })
@@ -152,7 +152,7 @@ export default function ParentScreen({ onClose }) {
 
   const resetProfile = () => setConfirm({
     title: `${name} komplett zurücksetzen?`,
-    text: `Alle Spielstände, Sterne, die Serie, die Sticker und Lumis Sachen im Kleiderschrank von ${name} werden gelöscht. Andere Kinder sind nicht betroffen.`,
+    text: `Alle Spielstände, Sterne, die Serie, die Sticker, Lumis Sachen im Kleiderschrank und Lumis Freunde von ${name} werden gelöscht. Andere Kinder sind nicht betroffen.`,
     yesLabel: 'Zurücksetzen',
     onYes: () => { dispatch({ type: 'RESET_PROFILE', payload: view.id }); showToast(`${name} zurückgesetzt`) },
   })
@@ -480,7 +480,7 @@ export default function ParentScreen({ onClose }) {
           <div className="px-panel" style={{ ...SECTION, background:'#ffe9e4' }}>
             <div style={H2}>{name} zurücksetzen</div>
             <div style={{ ...SMALL, marginBottom:10 }}>
-              Löscht alle Spielstände, Sterne, die Serie, die Sticker und Lumis Sachen im Kleiderschrank von {name}. Andere Kinder sind nicht betroffen.
+              Löscht alle Spielstände, Sterne, die Serie, die Sticker, Lumis Sachen im Kleiderschrank und Lumis Freunde von {name}. Andere Kinder sind nicht betroffen.
             </div>
             <button className="px-btn px-btn--red px-btn--md" onClick={resetProfile}>{name} zurücksetzen</button>
           </div>

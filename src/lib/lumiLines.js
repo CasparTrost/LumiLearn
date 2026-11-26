@@ -1256,7 +1256,21 @@ export const LINES = {
   'schrank/platz-neck': 'Für den Hals!',
   'schrank/platz-back': 'Für den Rücken!',
   'schrank/platz-hold': 'Zum Festhalten!',
+  // Lumis Freunde (screens/FriendsScreen.jsx). NOT recorded yet: the
+  // narrator skips a recording that is missing, the screens work without
+  // them (tests/unit/lumiLines.test.js lets them wait under RECORD_LATER)
+  'freunde/neu': 'Juhu! Ein neuer Freund möchte bei mir einziehen. Tippe auf das Geschenk!',
+  'freunde/einzug': 'Meine Freunde sind da! Einer darf bei uns einziehen. Tippe auf einen!',
+  'freunde/sicher': 'Der soll es sein? Dann tippe auf den grünen Haken!',
+  'freunde/hallo-dino': 'Hallo Dino! Schön, dass du bei uns wohnst!',
+  'freunde/hallo-einhorn': 'Hallo Einhorn! Schön, dass du bei uns wohnst!',
+  'freunde/hallo-drache': 'Hallo Drache! Schön, dass du bei uns wohnst!',
+  'freunde/hallo-roboter': 'Hallo Roboter! Schön, dass du bei uns wohnst!',
+  'freunde/wer-kommt-mit': 'Wer kommt heute mit? Tippe auf einen Freund!',
 }
+
+/** Sentences written but not recorded yet (the narrator skips them while their file is missing). */
+export const RECORD_LATER = /^freunde\//
 
 /** The recording of a sentence, with its text for the browser voice. */
 export function line(key) {
