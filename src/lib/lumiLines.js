@@ -1259,6 +1259,7 @@ export const LINES = {
   'schrank/platz-top': 'Für den Bauch!',
   'schrank/platz-bottom': 'Für die Beine!',
   'schrank/platz-shoes': 'Für die Füße!',
+  'schrank/platz-outfit': 'Etwas zum Anziehen!',
   // Lumi verwandelt sich (screens/ShapesScreen.jsx)
   'gestalt/neu': 'Juhu! Ich kann mich verwandeln! Tippe auf das Geschenk!',
   'gestalt/aussuchen': 'Wie soll ich aussehen? Dreh und tippe auf den grünen Haken!',
