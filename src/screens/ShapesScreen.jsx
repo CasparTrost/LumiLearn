@@ -8,9 +8,10 @@ import { ShapeFigure } from '../components/ShapeFigure.jsx'
 import { Art, useBursts } from '../components/play/index.js'
 import { SHAPES, CHICK, cleanShapes, cleanShape, comingSteps, firstChoiceOwed, shapesOwed, offeredFirst, shapeSrc } from '../lib/shapes.js'
 import { asset } from '../lib/assets.js'
-import { narrate, stopNarration } from '../narrator.js'
+import { narrate, stopNarration, afterNarration } from '../narrator.js'
 import { sfx } from '../sfx.js'
 import { LINES, line } from '../lib/lumiLines.js'
+import { lumiPose } from '../lib/wardrobe.js'
 
 /**
  * Lumi verwandelt sich (lib/shapes.js): who Lumi is. All five shapes stand
@@ -38,6 +39,60 @@ const rec = key => (LINES[key] ? line(key) : null)
 const N = SHAPES.length
 const mod = (a, n) => ((a % n) + n) % n
 const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+
+// Which shape a tap hits: the drawn picture, not its square (the squares
+// overlap; the one in front used to take the taps meant for the shapes
+// beside it). Each picture is read once into a small canvas; a point hits
+// when the picture is opaque there or within a few pixels of it.
+const alphaCache = new Map()
+function alphaOf(src) {
+  if (alphaCache.has(src)) return alphaCache.get(src)
+  const entry = { data: null }
+  alphaCache.set(src, entry)
+  const im = new Image()
+  im.onload = () => {
+    try {
+      const n = 96, c = document.createElement('canvas')
+      c.width = n; c.height = n
+      const g = c.getContext('2d', { willReadFrequently: true })
+      g.drawImage(im, 0, 0, n, n)
+      entry.data = g.getImageData(0, 0, n, n).data
+      entry.n = n
+    } catch { entry.data = null }
+  }
+  im.src = asset(src)
+  return entry
+}
+function drawnAt(src, u, v) {
+  if (u < 0 || u > 1 || v < 0 || v > 1) return false
+  const a = alphaOf(src)
+  // not loaded yet: the middle of the square counts
+  if (!a.data) return Math.abs(u - 0.5) < 0.32 && v > 0.12
+  const n = a.n, r = 3
+  const cx = Math.round(u * (n - 1)), cy = Math.round(v * (n - 1))
+  for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+    const x = cx + dx, y = cy + dy
+    if (x < 0 || y < 0 || x >= n || y >= n) continue
+    if (a.data[(y * n + x) * 4 + 3] > 40) return true
+  }
+  return false
+}
+/** The ring item under a point: the front-most whose drawn picture is there. */
+export function hitRingItem(root, x, y) {
+  if (!root) return null
+  const items = [...root.querySelectorAll('[data-ring-item]')]
+    .map(el => ({ el, z: +getComputedStyle(el).zIndex || 0 }))
+    .sort((a, b) => b.z - a.z)
+  for (const { el } of items) {
+    const r = el.getBoundingClientRect()
+    if (!r.width) continue
+    let u = (x - r.left) / r.width, v = (y - r.top) / r.height
+    // a shadow is drawn smaller, standing on the same spot
+    if (el.dataset.kind === 'shadow') { u = 0.5 + (u - 0.5) / 0.84; v = 1 - (1 - v) / 0.84 }
+    if (drawnAt(el.dataset.src, u, v)) return el
+  }
+  return null
+}
 
 function useViewport() {
   const get = () => ({ w: window.innerWidth, h: window.innerHeight })
@@ -95,9 +150,14 @@ export default function ShapesScreen() {
     else if (k === 'free') dispatch({ type: 'SHAPE_CHOOSE', payload: id })
     else dispatch({ type: 'SHAPE_SET', payload: id })
     setPoof({ id, at: Date.now() })
-    setTimeout(() => narrate([rec(`gestalt/${id}`)]), 450)
-    if (mode === 'first') setTimeout(home, 2800)
-    else if (mode === 'choose') setMode('place')
+    // the first choice: the chick is new, not "again" (gestalt/chick is for turning back)
+    const say = mode === 'first' && id === CHICK && LINES['gestalt/kueken-neu'] ? 'gestalt/kueken-neu' : `gestalt/${id}`
+    setTimeout(() => {
+      narrate([rec(say)])
+      // the first choice goes home once the sentence is said (and the show seen)
+      if (mode === 'first') afterNarration(home, { minMs: 2350, maxMs: 7000 })
+    }, 450)
+    if (mode === 'choose') setMode('place')
   }
 
   const { w, h } = useViewport()
@@ -121,7 +181,8 @@ export default function ShapesScreen() {
         </span>
         <MusicButton />
       </HudBar>
-      <Ring w={w} h={h - hud} start={start} kind={kind} coming={coming} stars={stars} poof={poof} onChoose={choose} />
+      {/* the shape Lumi is now wears the child's clothes; the others stand plain ("this one is me") */}
+      <Ring w={w} h={h - hud} start={start} kind={kind} coming={coming} stars={stars} poof={poof} onChoose={choose} outfit={profile?.outfit ?? null} />
     </div>
   )
 }
@@ -179,9 +240,10 @@ export function Ring({ w, h, start, kind, coming = {}, stars = 0, poof, onChoose
   // dragging: the ring follows the finger and snaps to the nearest shape; a
   // quick swipe turns it by one; a touch that hardly moves is a tap
   const drag = useRef(null)
+  const ringRef = useRef(null)
   const down = e => {
     if (e.button !== undefined && e.button !== 0) return
-    drag.current = { x: e.clientX, r: rot.get(), t: Date.now(), moved: false, target: e.target }
+    drag.current = { x: e.clientX, y: e.clientY, r: rot.get(), t: Date.now(), moved: false }
     rot.stop()
     e.currentTarget.setPointerCapture?.(e.pointerId)
   }
@@ -197,7 +259,7 @@ export function Ring({ w, h, start, kind, coming = {}, stars = 0, poof, onChoose
     drag.current = null
     if (!d) return
     if (!d.moved) {
-      const item = d.target?.closest?.('[data-ring-item]')
+      const item = hitRingItem(ringRef.current, d.x, d.y)
       if (item) {
         const i = +item.dataset.ringItem
         if (i === mod(Math.round(rot.get()), N)) frontTap(SHAPES[i].id)
@@ -239,12 +301,23 @@ export function Ring({ w, h, start, kind, coming = {}, stars = 0, poof, onChoose
   }, [poof]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const k = kind(frontShape.id)
+  // the tick confirms only on a tap that does not move (a drag that starts
+  // on it never chooses); a key press on it (no pointer) does
+  const press = useRef(null)
+  const tickDown = e => { press.current = { x: e.clientX, y: e.clientY } }
+  const tickClick = e => {
+    const p = press.current
+    press.current = null
+    if (e.detail !== 0 && p && Math.hypot(e.clientX - p.x, e.clientY - p.y) > 8) return
+    if (e.detail !== 0 && !p) return
+    onChoose(frontShape.id)
+  }
   // the feet of the shape in front: the ring in the middle of its room
   const above = Math.max(front * 1.04, 2 * lift + front * 0.5), below = front * 0.16
   const base = Math.round(Math.min(stageH - below, (stageH + above - below) / 2 + (upright ? stageH * 0.12 : 0)))
   return (
     <div style={{ flex: 1, minHeight: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>
-      <div data-ring={frontShape.id} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={() => { drag.current = null; turn(0) }}
+      <div ref={ringRef} data-ring={frontShape.id} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={() => { drag.current = null; turn(0) }}
         role="group" aria-roledescription="Karussell" aria-label="Lumis Figuren"
         style={{ position: 'relative', height: stageH, marginTop: sideways ? 4 : 12, touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none', cursor: 'grab', overflow: 'visible' }}>
         {/* the turntable */}
@@ -278,7 +351,7 @@ export function Ring({ w, h, start, kind, coming = {}, stars = 0, poof, onChoose
         {upright && <Arrow side="right" onClick={() => turn(1)} top={ACTION / 2} sideways />}
         <AnimatePresence mode="wait">
           {(k === 'free' || k === 'owned') && (
-            <motion.button key={`ok-${frontShape.id}`} type="button" onClick={() => onChoose(frontShape.id)} aria-label={`${frontShape.name}: so soll Lumi aussehen`} data-confirm={frontShape.id}
+            <motion.button key={`ok-${frontShape.id}`} type="button" onPointerDown={tickDown} onClick={tickClick} aria-label={`${frontShape.name}: so soll Lumi aussehen`} data-confirm={frontShape.id}
               initial={{ scale: 0 }} animate={{ scale: [1, 1.08, 1] }} exit={{ scale: 0, transition: { duration: 0.12 } }}
               transition={{ scale: { duration: 1.2, repeat: Infinity, delay: 0.3 } }} whileTap={{ scale: 0.9 }}
               style={{ all: 'unset', boxSizing: 'border-box', cursor: 'pointer', width: 76, height: 76, borderRadius: '50%', background: 'radial-gradient(circle at 35% 30%, #8fe87e, #3aa63a 70%)', border: '4px solid var(--px-ink)', boxShadow: '0 5px 0 rgba(42,27,61,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -318,8 +391,11 @@ function RingItem({ i, shape, rot, R, fall, lift, size, base, cx, reduce, front,
   const zIndex = useTransform(rot, v => Math.round(depth(v) * 100))
   const shadow = kind === 'shadow'
   const mood = front ? (kind === 'current' ? 'happy' : 'wave') : 'idle'
+  // only the shape Lumi is now is dressed
+  const wear = kind === 'current' ? outfit ?? null : null
   return (
     <motion.div data-ring-item={i} data-shape={shape.id} data-kind={kind} data-front={front ? '1' : undefined} ref={innerRef}
+      data-src={shapeSrc(shape.id === CHICK ? null : shape.id, lumiPose(mood))}
       aria-label={shadow ? `Geschenk${coming?.step ? `, ${coming.step} Sterne` : ''}` : `${shape.name}${kind === 'current' ? ', das ist Lumi' : ''}`}
       style={{ position: 'absolute', left: 0, top: 0, width: size, height: size, x, y, scale, zIndex, transformOrigin: '50% 100%', cursor: front ? 'default' : 'pointer' }}>
       <motion.div key={front ? `f${reduce ? i : ''}` : 'b'} initial={reduce && front ? { opacity: 0 } : false} animate={reduce ? { opacity: 1 } : undefined}
@@ -336,11 +412,12 @@ function RingItem({ i, shape, rot, R, fall, lift, size, base, cx, reduce, front,
             // a shape to come: a light grey shadow, smaller than the shapes owned
             ? <ShapeFigure id={shape.id} size={size} style={{ display: 'block', filter: 'brightness(0) invert(0.86)', transform: 'scale(0.84)', transformOrigin: '50% 100%' }} />
             : shape.id === CHICK
-              ? <LumiFigure shape={null} outfit={outfit} mood={mood} size={size} style={{ display: 'block' }} />
-              : <ShapeFigure id={shape.id} mood={mood} size={size} style={{ display: 'block' }} />}
+              ? <LumiFigure shape={null} outfit={wear} mood={mood} size={size} style={{ display: 'block' }} />
+              : <ShapeFigure id={shape.id} mood={mood} size={size} outfit={wear} style={{ display: 'block' }} />}
         </motion.div>
         {kind === 'current' && (
-          <span aria-hidden="true" style={{ position: 'absolute', right: '6%', top: '8%', width: Math.max(30, size * 0.16), height: Math.max(30, size * 0.16), borderRadius: '50%', background: '#3aa63a', border: '3px solid #fff', color: '#fff', fontWeight: 800, fontSize: Math.max(18, size * 0.1), display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 0 rgba(42,27,61,0.35)' }}>✓</span>
+          // on the green ring at its feet, in front of it: it belongs to this shape and covers none behind
+          <span aria-hidden="true" data-current-tick style={{ position: 'absolute', left: '50%', bottom: '-9%', transform: 'translateX(-50%)', zIndex: 2, width: Math.max(30, size * 0.16), height: Math.max(30, size * 0.16), borderRadius: '50%', background: '#3aa63a', border: '3px solid #fff', color: '#fff', fontWeight: 800, fontSize: Math.max(18, size * 0.1), display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 0 rgba(42,27,61,0.35)' }}>✓</span>
         )}
         {shadow && <ShadowSign c={coming} stars={stars} size={size} />}
         {poof && <Poof key={poof} size={size} />}

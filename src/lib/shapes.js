@@ -26,7 +26,7 @@
  * … { x, y, rot, w } in pixels of the 512 square). Until then it is drawn
  * without clothes, never with them at the chick's anchors (wearsClothes).
  */
-import { POSES, SLOTS, figureLayers } from './wardrobe.js'
+import { POSES, SLOTS, figureLayers, fitted, itemCorners, ITEM_BY_ID } from './wardrobe.js'
 import DINO_POSES from './shapes/dino-poses.js'
 import DINO_FIT from './shapes/dino-fit.js'
 import EINHORN_POSES from './shapes/einhorn-poses.js'
@@ -139,6 +139,29 @@ export const fitOf = id => (!id || id === CHICK ? {} : SHAPE_BY_ID[id]?.fit ?? {
  * layer carrying its `src`. Only the picture while the shape's poses file is
  * not complete.
  */
+/**
+ * How far up Lumi reaches in a pose, as a share of its square from the top:
+ * `bare` its own head (horn, antenna, tuft), `top` with what it wears on
+ * the head (a tall hat reaches higher). The mood marks (rain cloud, hearts)
+ * go above `top`, so they never sit on a hat.
+ */
+export function wornTop(id, pose, outfit = null) {
+  const own = !!id && id !== CHICK
+  const set = own ? posesOf(id) : POSES
+  const P = set?.[pose] ?? set?.idle
+  if (!P?.tuft) return null
+  const bare = Math.min(...P.tuft.map(q => q[1]))
+  let top = bare
+  const item = outfit?.head && ITEM_BY_ID[outfit.head]
+  if (item && (!own || wearsClothes(id))) {
+    const t = own ? fitted(item, fitOf(id)) : item
+    if (!t.hide) top = Math.min(top, ...itemCorners(t, pose in set ? pose : 'idle', set).map(c => c[1]))
+  }
+  const scale = Math.min(1, own ? shapeLayers(id, pose, outfit).scale : figureLayers(pose in set ? pose : 'idle', outfit).scale)
+  const at = y => 1 - (1 - y / 384) * scale
+  return { bare: at(bare), top: at(top) }
+}
+
 export function shapeLayers(id, pose, outfit = null) {
   const p = SHAPE_POSE_IDS.includes(pose) ? pose : 'idle'
   const src = shapeSrc(id, p)
