@@ -51,6 +51,9 @@ describe('another figure wears the wardrobe', () => {
     const bare = SHAPES.find(s => s.id !== CHICK && !wearsClothes(s.id))
     if (bare) expect(shapeLayers(bare.id, 'idle', { head: 'muetze' }).layers).toHaveLength(1)
   })
+  it('the dino and the dragon wear clothes (one missing anchor would silently take them all off)', () => {
+    for (const id of ['dino', 'drache']) expect(wearsClothes(id), id).toBe(true)
+  })
 })
 
 // Every shape that wears clothes: each thing on each pose stays in the
