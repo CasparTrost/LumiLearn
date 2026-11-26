@@ -24,11 +24,12 @@ const BASE = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '')
  *
  * The friend that comes along (Lumis Freunde) sits beside Lumi and is glad
  * or thoughtful with it, but only where the bar has room for it: from
- * FRIEND_MIN_WIDTH on. On a phone held upright the bar has about 36 px
- * left (back, game picture, Lumi, level, music, help), not enough for a
- * friend without squeezing the rest.
+ * FRIEND_MIN_WIDTH on (a tablet held upright, a phone held sideways). On a
+ * phone held upright the bar has about 36 px left (back, game picture,
+ * Lumi, level, music, help), not enough for a friend without squeezing the
+ * rest; below 768 px the friend cut the game's name in half of the games.
  */
-export const FRIEND_MIN_WIDTH = 600
+export const FRIEND_MIN_WIDTH = 768
 const roomForFriend = () => typeof window !== 'undefined' && window.innerWidth >= FRIEND_MIN_WIDTH
 export default function LumiBuddy({ size = 48 }) {
   const controls = useAnimationControls()

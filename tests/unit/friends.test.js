@@ -10,6 +10,7 @@ import {
 } from '../../src/lib/friends.js'
 import { WARDROBE, lumiPose } from '../../src/lib/wardrobe.js'
 import { reducer, migrateToV2, initialState, profileWardrobeStars } from '../../src/AppContext.jsx'
+import { LINES, RECORD_LATER } from '../../src/lib/lumiLines.js'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
@@ -37,6 +38,12 @@ describe('the friends and their pictures', () => {
       expect(friendPose(mood), mood).toBe(lp === 'hmm' ? 'think' : lp)
     }
     expect(FRIEND_POSE_IDS).toContain(friendPose('hmm'))
+  })
+  it("Lumi speaks for them: at most eight sentences, one hello per friend", () => {
+    const keys = Object.keys(LINES).filter(k => k.startsWith('freunde/'))
+    expect(keys.length).toBeLessThanOrEqual(8)
+    for (const f of FRIENDS) expect(LINES[`freunde/hallo-${f.id}`], f.id).toContain(f.name)
+    for (const k of keys) expect(RECORD_LATER.test(k), k).toBe(true)
   })
   it('the drawing is layered like Lumi\'s, ready for clothes later', () => {
     const { layers, scale } = friendLayers('dino', 'wave')

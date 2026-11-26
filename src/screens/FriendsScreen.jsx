@@ -97,12 +97,15 @@ function Choose({ candidates, w, h, onChosen }) {
   const wide = w > h || w >= 700
   const n = candidates.length
   const lumiSize = Math.round(wide ? Math.min(220, h * 0.42, w * 0.2) : Math.min(140, h * 0.18))
-  // the friends: a row (two rows of two on a phone held upright)
-  const cols = wide ? n : Math.min(2, n)
-  const rows = Math.ceil(n / cols)
-  const roomW = (wide ? w - lumiSize - 60 : w - 24) / cols - 12
-  const roomH = (wide ? h - 30 : h - lumiSize - 60) / rows - 84
-  const cell = Math.round(Math.max(96, Math.min(220, roomW, roomH)))
+  // the friends: in a row, or two rows where that makes them bigger (a
+  // phone held upright always two by two)
+  const size = c => {
+    const roomW = (wide ? w - lumiSize - 60 : w - 24) / c - 12
+    const roomH = (wide ? h - 30 : h - lumiSize - 60) / Math.ceil(n / c) - 84
+    return Math.min(240, roomW, roomH)
+  }
+  const cols = !wide ? Math.min(2, n) : size(n) >= size(Math.ceil(n / 2)) ? n : Math.ceil(n / 2)
+  const cell = Math.round(Math.max(96, size(cols)))
 
   const pick = id => {
     if (id === picked) return
