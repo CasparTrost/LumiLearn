@@ -1261,7 +1261,7 @@ export const LINES = {
   // them (tests/unit/lumiLines.test.js lets them wait under RECORD_LATER)
   'freunde/neu': 'Juhu! Ein neuer Freund möchte bei mir einziehen. Tippe auf das Geschenk!',
   'freunde/einzug': 'Meine Freunde sind da! Einer darf bei uns einziehen. Tippe auf einen!',
-  'freunde/sicher': 'Der soll es sein? Dann tippe auf den grünen Haken!',
+  'freunde/sicher': 'Soll dieser Freund bei uns wohnen? Dann tippe auf den grünen Haken!',
   'freunde/hallo-dino': 'Hallo Dino! Schön, dass du bei uns wohnst!',
   'freunde/hallo-einhorn': 'Hallo Einhorn! Schön, dass du bei uns wohnst!',
   'freunde/hallo-drache': 'Hallo Drache! Schön, dass du bei uns wohnst!',
