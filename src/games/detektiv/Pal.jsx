@@ -1,6 +1,7 @@
 import { useId } from 'react'
 import { motion } from 'framer-motion'
 import { ShapeFigure, useLumiShape } from '../../components/ShapeFigure.jsx'
+import { posesOf, wearsClothes } from '../../lib/shapes.js'
 
 /**
  * The animal friends of Gefühlsdetektiv, and Lumi the detective.
@@ -393,7 +394,20 @@ const SHAPE_MOOD = {
   sad: 'sad', oops: 'hmm', scared: 'hmm', surprised: 'hmm', shy: 'hmm', curious: 'think', bored: 'idle', angry: 'sad',
   tired: 'sleep', asleep: 'sleep', scold: 'idle', neutral: 'idle',
 }
-// the cap: where its brim sits (share of the square), its width; per pose a shift
+// the cap: from the shape's head anchor (lib/shapes/<id>-poses.js) once its
+// anchors are measured, like the wardrobe's hats: brim on the anchor, as wide
+// as the head, turned with it; the horn or antenna (`tuft`) pokes out where
+// it is taller than the cap. Until a shape is measured, by hand: where the
+// brim sits (share of the square), its width, per pose a shift.
+const ANCHOR_SIZE = 384
+function capFromAnchors(shape, pose) {
+  if (!wearsClothes(shape)) return null
+  const P = posesOf(shape)?.[pose] ?? posesOf(shape)?.idle
+  if (!P?.head) return null
+  const A = P.head
+  return { x: A.x / ANCHOR_SIZE, y: A.y / ANCHOR_SIZE, w: A.w * 0.92 / ANCHOR_SIZE, rot: A.rot ?? 0, tuft: shape === 'einhorn',
+    hand: P.hold ? [P.hold.x / ANCHOR_SIZE, P.hold.y / ANCHOR_SIZE] : null }
+}
 const CAP = {
   dino:    { y: 0.2, w: 0.5, pose: { sleep: { dy: 0.08, dx: 0.05 } } },
   einhorn: { y: 0.21, w: 0.5, horn: [0.43, 0.57, 0.17], pose: { sad: { dy: -0.02 }, sleep: { dy: 0.095 } } },
@@ -422,19 +436,28 @@ function ShapeDetective({ shape, feel, strength, size, flip, hold, hat, still })
   // the picture a little bigger than the box, feet on its floor: the
   // shapes' pictures have more room around them than the drawn chick
   const F = h * 1.22
+  const A = capFromAnchors(shape, pose)
   const c = CAP[shape] ?? CAP.dino
   const t = c.pose?.[pose] ?? {}
-  const capW = F * c.w, capH = capW * 42 / 92
-  const hand = SHAPE_HAND[hold?.at] ?? SHAPE_HAND.holdR
+  const capW = F * (A ? A.w : c.w), capH = capW * 42 / 92
+  const capX = A ? A.x * F : F / 2 + (t.dx ?? 0) * F
+  const capY = A ? A.y * F : (c.y + (t.dy ?? 0)) * F
+  // the held thing: in the hand of the shape's picture (its hold anchor) where measured
+  const hand = (hold?.at === 'holdR' || !hold?.at) && A?.hand ? A.hand : SHAPE_HAND[hold?.at] ?? SHAPE_HAND.holdR
   return (
     <motion.div key={feel} {...m} data-detective={shape} style={{ position: 'relative', width: size, height: h, transformOrigin: '50% 100%' }}>
       <div style={{ position: 'absolute', left: (size - F) / 2, top: h - F * 0.985, width: F, height: F, transform: flip ? 'scaleX(-1)' : undefined }}>
         <ShapeFigure id={shape} mood={mood} size={F} style={{ display: 'block' }} />
         {hat && (<>
-          <div style={{ position: 'absolute', left: F / 2 - capW / 2 + (t.dx ?? 0) * F, top: (c.y + (t.dy ?? 0)) * F - capH * 0.86, width: capW, height: capH }}>
+          <div data-cap style={{ position: 'absolute', left: capX - capW / 2, top: capY - capH * 0.86, width: capW, height: capH, transform: A?.rot ? `rotate(${A.rot}deg)` : undefined, transformOrigin: '50% 86%' }}>
             <DetectiveCap />
           </div>
-          {c.horn && (
+          {A?.tuft && (
+            // the horn pokes out of the cap
+            <ShapeFigure id={shape} mood={mood} size={F}
+              style={{ position: 'absolute', inset: 0, clipPath: `inset(0 ${+((1 - A.x - 0.065) * 100).toFixed(2)}% ${+((1 - A.y + 0.03) * 100).toFixed(2)}% ${+((A.x - 0.065) * 100).toFixed(2)}%)` }} />
+          )}
+          {!A && c.horn && (
             // the horn pokes out of the cap
             <ShapeFigure id={shape} mood={mood} size={F}
               style={{ position: 'absolute', inset: 0, clipPath: `polygon(${c.horn[0] * 100}% 0%, ${c.horn[1] * 100}% 0%, ${c.horn[1] * 100}% ${(c.horn[2] + (t.dy ?? 0)) * 100}%, ${c.horn[0] * 100}% ${(c.horn[2] + (t.dy ?? 0)) * 100}%)` }} />
