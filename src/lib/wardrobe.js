@@ -37,6 +37,10 @@
  *            'front'  it pokes up out of the hat (a crown, a wreath)
  *            none     the hat sits beside it (the party hat, worn aslant)
  *   pose   small corrections for single pictures { sleep: { dx, dy, rot, size } }
+ *   behind held things only: drawn behind Lumi (an umbrella over the shoulder;
+ *          also per pose: pose: { sleep: { behind: false } })
+ *   over   back things only: a polygon of the picture [[x, y], …] (0…1) that is
+ *          drawn again in front of Lumi (a cape's collar and clasp)
  */
 
 // ── Lumi's pictures ─────────────────────────────────────────────────────────
@@ -130,18 +134,19 @@ export const SLOTS = ['head', 'face', 'neck', 'back', 'hold']
 
 /**
  * The order of unlocking: the first two are there from the start. The
- * places take turns (never two hats in a row, the red hats far apart), the
- * first things are the ones a child likes at once (a hat, glasses, a
- * balloon, a cape), the crown comes last.
+ * first ten are the ones a child likes at once (a hat, glasses, a balloon,
+ * a cape …); after them each place's things are spread evenly over the
+ * rest, so no place waits much longer than another (late in the list a
+ * place comes about every 50 stars), never two hats in a row, the red hats
+ * far apart, the crown last.
  */
 export const ORDER = [
-  'muetze', 'sonnenbrille', 'ballon', 'schal', 'partyhut', 'umhang', 'herzbrille', 'zauberstab',
-  'katzenohren', 'fliege', 'schmetterling', 'clownsnase', 'lolli', 'blumenkranz', 'perlenkette', 'sternbrille',
-  'piratenhut', 'blume', 'engel', 'halstuch', 'basecap', 'heldenmaske', 'faehnchen', 'hasenohren',
-  'medaille', 'rundbrille', 'kochmuetze', 'fee', 'eis', 'gloeckchen', 'cowboyhut', 'taucherbrille',
-  'blumenkette', 'windrad', 'feuerwehrhelm', 'drache', 'monokel', 'krawatte', 'zauberhut', 'schirm',
-  'skibrille', 'herzkette', 'strohhut', 'rakete', 'matrosenmuetze', 'schnurrbart', 'zylinder', 'sternabzeichen',
-  'weihnachtsmuetze', 'pfau', 'krone',
+  'muetze', 'sonnenbrille', 'ballon', 'schal', 'partyhut', 'umhang', 'herzbrille', 'zauberstab', 'katzenohren', 'fliege',
+  'blumenkranz', 'clownsnase', 'perlenkette', 'schmetterling', 'lolli', 'piratenhut', 'sternbrille', 'halstuch', 'basecap', 'engel',
+  'blume', 'hasenohren', 'heldenmaske', 'medaille', 'kochmuetze', 'fee', 'faehnchen', 'rundbrille', 'gloeckchen', 'cowboyhut',
+  'taucherbrille', 'feuerwehrhelm', 'blumenkette', 'drache', 'eis', 'zauberhut', 'monokel', 'krawatte', 'strohhut', 'rakete',
+  'windrad', 'matrosenmuetze', 'skibrille', 'herzkette', 'zylinder', 'pfau', 'schirm', 'schnurrbart', 'weihnachtsmuetze', 'sternabzeichen',
+  'krone',
 ]
 
 /**
@@ -247,16 +252,27 @@ export function figureLayers(pose, outfit) {
     const p = placeItem(t, pose)
     return { kind: 'item', id: t.id, src: t.src, left: pct(p.left), top: pct(p.top), size: pct(p.size), rot: p.rot, origin: `${p.ax * 100}% ${p.ay * 100}%` }
   }
-  // the back thing lies behind Lumi
+  // the back thing lies behind Lumi, and a held thing that leans behind
+  // Lumi (`behind`: an open umbrella over the shoulder)
+  const behindHold = bySlot.hold && (bySlot.hold.pose?.[pose]?.behind ?? bySlot.hold.behind)
   if (bySlot.back) layers.push(item(bySlot.back))
+  if (behindHold) layers.push(item(bySlot.hold))
   layers.push({ kind: 'pose', clip: hat?.tuft === 'hide' && P.tuft ? `polygon(evenodd, 0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ${poly(P.tuft)}, ${poly([P.tuft[0]])}, 0% 0%)` : null })
+  // the part of a back thing that lies in FRONT of Lumi (a cape's collar
+  // and clasp): the same picture again, cut to its `over` polygon
+  if (bySlot.back?.over) {
+    const clip = `polygon(${bySlot.back.over.map(([x, y]) => `${+(x * 100).toFixed(2)}% ${+(y * 100).toFixed(2)}%`).join(', ')})`
+    layers.push({ ...item(bySlot.back), id: `${bySlot.back.id}-over`, over: true, clip })
+    // the wing at the chin (thinking) stays in front of it
+    if (P.front && !bySlot.neck) layers.push({ kind: 'pose', clip: `polygon(${poly(P.front)})` })
+  }
   if (bySlot.neck) {
     layers.push(item(bySlot.neck))
     if (P.front) layers.push({ kind: 'pose', clip: `polygon(${poly(P.front)})` })
   }
   // the held thing lies over Lumi; the tip of the holding wing is drawn
   // again over its stick or string, so the wing holds it
-  if (bySlot.hold) {
+  if (bySlot.hold && !behindHold) {
     layers.push(item(bySlot.hold))
     if (P.grip) layers.push({ kind: 'pose', clip: `polygon(${poly(P.grip)})` })
   }

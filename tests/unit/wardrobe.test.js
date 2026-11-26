@@ -58,6 +58,17 @@ describe('the steps', () => {
     // whatever the list holds, its last thing comes well before all stars
     expect(WARDROBE.at(-1).stars).toBeLessThan(MAX_STARS * 0.6)
   })
+  it('the order mixes the places: never two hats in a row, red hats apart, no place waits too long, the crown last', () => {
+    for (let i = 1; i < WARDROBE.length; i++) expect(WARDROBE[i].slot === 'head' && WARDROBE[i - 1].slot === 'head', WARDROBE[i].id).toBe(false)
+    const at = id => WARDROBE.findIndex(t => t.id === id)
+    const red = ['muetze', 'feuerwehrhelm', 'weihnachtsmuetze'].map(at).filter(i => i >= 0).sort((a, b) => a - b)
+    for (let i = 1; i < red.length; i++) expect(red[i] - red[i - 1]).toBeGreaterThanOrEqual(10)
+    expect(WARDROBE.filter(t => ORDER.includes(t.id)).at(-1).id).toBe('krone')
+    for (const sl of SLOTS) {
+      const st = WARDROBE.filter(t => ORDER.includes(t.id) && t.slot === sl).map(t => t.stars)
+      for (let i = 1; i < st.length; i++) expect(st[i] - st[i - 1], `${sl} at ${st[i]}`).toBeLessThanOrEqual(60)
+    }
+  })
   it('what a new total unlocks, the next present and where its bar starts', () => {
     const [a, b, c] = [WARDROBE[2], WARDROBE[3], WARDROBE[4]]
     expect(unlockedBetween(a.stars - 1, a.stars).map(t => t.id)).toEqual([a.id])
@@ -97,10 +108,10 @@ describe('the pictures', () => {
       expect(POSES[p].face.y).toBeLessThan(POSES[p].neck.y)
     }
   })
-  it('every thing on every picture stays in the square (Lumi gets a little smaller for a tall hat, never tiny)', () => {
+  it('every thing on every picture stays in the square (Lumi gets at most 12 % smaller)', () => {
     for (const p of POSE_IDS) for (const t of WARDROBE) {
       const { scale } = figureLayers(p, { [t.slot]: t.id })
-      expect(scale, `${t.id} on ${p}`).toBeGreaterThan(0.7)
+      expect(scale, `${t.id} on ${p}`).toBeGreaterThanOrEqual(0.88)
       for (const [x, y] of itemCorners(t, p)) {
         // scaled about the middle of the bottom edge
         const sx = POSE_SIZE / 2 + (x - POSE_SIZE / 2) * scale, sy = POSE_SIZE - (POSE_SIZE - y) * scale
