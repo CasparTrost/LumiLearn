@@ -1,12 +1,14 @@
 // Lumi as the dino: corrections per thing, merged over the thing's own fields
 // when the dino wears it ({ [id]: { size, at, dx, dy, rot, sy, pose: { sleep: {…} }, hide } }).
-// `hide: true`: the thing is not drawn on the dino.
+// `hide: true`: the thing is not drawn on the dino. `worn`: see wornFit in ../wardrobe.js.
 import HEAD from '../wardrobe/head.js'
 import SHOES from '../wardrobe/shoes.js'
 import BOTTOM from '../wardrobe/bottom.js'
 import FACE from '../wardrobe/face.js'
 import { ownTop } from '../wardrobe/top.js'
 import POSES from './dino-poses.js'
+import WORN from './dino-worn.js'
+import { wornFit } from '../wardrobe.js'
 
 // The dino's head hardly turns when it thinks (the chick's does): every hat
 // sits as on the front views, not tilted like the chick's, only lifted off
@@ -59,7 +61,7 @@ const sitting = Object.fromEntries(BOTTOM.filter(t => t.feet !== false).map(t =>
   return [t.id, { ...f, pose: { sleep: sit(t, SKIRTS.includes(t.id) ? SKIRT_LAP : SHORTS.includes(t.id) ? SHORT_LAP : LAP, f) } }]
 }))
 
-export default {
+const FIT = {
   ...hats,
   ...glasses,
   ...shoes,
@@ -77,3 +79,7 @@ export default {
   ringelshirt: ownTop('dino', 'ringelshirt', { at: [0.5, 0.29], size: 1.42, sy: 0.6, box: [0.05, 0.24, 0.95, 0.76] }, { sad: { size: 1.1, dy: -14 }, sleep: { size: 0.92 } }),
   hawaiihemd: ownTop('dino', 'hawaiihemd', { at: [0.5, 0.23], size: 1.25, sy: 0.5, box: [0.05, 0.18, 0.95, 0.82] }, { sad: { size: 1.1, dy: -14 } }),
 }
+
+// Things Tripo painted onto the dino (scripts/art/worn-from-sheet.mjs): drawn
+// from their own picture per pose over the pose picture, not placed by anchors
+export default wornFit('dino', WORN, FIT)

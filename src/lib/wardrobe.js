@@ -392,6 +392,20 @@ export function fitted(item, fit = {}) {
   return { ...item, ...f, pose }
 }
 
+/**
+ * Clothes painted onto a figure: Tripo dressed all seven poses of the figure
+ * at once, and scripts/art/worn-from-sheet.mjs cut the top and the bottom out
+ * per pose, in the frame of the pose picture. Such a thing (`worn`: the
+ * figure whose pictures it has) is drawn from
+ * public/sprites/wardrobe/worn/<figure>/<id>-<pose>.webp over the whole
+ * square, not placed by anchors: its sleeves follow the arms, its legs the
+ * sitting legs. The figure's arms and tail are not drawn again over it.
+ * `wornFit(figure, ids, fit)` marks the things of a figure's list
+ * (lib/shapes/<figure>-worn.js) in its fit.
+ */
+export const wornFit = (figure, ids, fit = {}) => ({ ...fit, ...Object.fromEntries(ids.map(id => [id, { ...fit[id], worn: figure }])) })
+export const wornSrc = (item, pose) => `sprites/wardrobe/worn/${item.worn}/${item.id}-${pose}.webp`
+
 // Asleep (the sleeping picture, wherever it is shown), Lumi takes off what
 // makes no sense with closed eyes: glasses and masks, and what it holds.
 export const ASLEEP_OFF = ['face', 'hold']
@@ -405,6 +419,8 @@ export function figureLayers(pose, outfit, poses = POSES, fit = {}) {
   const hat = bySlot.head
   const layers = []
   const item = (t, side) => {
+    // painted onto the figure: its own picture over the whole square
+    if (t.worn) return { kind: 'item', id: t.id, src: wornSrc(t, poses[pose] ? pose : 'idle'),left: '0%', top: '0%', size: '100%', h: '100%', rot: 0, origin: '50% 50%', worn: true }
     const p = placeItem(t, pose, side, poses)
     const cut = cutOf(t, pose), top = cutTopOf(t, pose)
     return { kind: 'item', id: t.id, src: t.src, left: pct(p.left), top: pct(p.top), size: pct(p.size), h: pct(p.h), rot: p.rot, origin: `${+(p.ax * 100).toFixed(2)}% ${+(p.ay * 100).toFixed(2)}%`, ...(cut < 1 || top > 0 ? { clip: `inset(${+(top * 100).toFixed(2)}% 0 ${+((1 - cut) * 100).toFixed(2)}% 0)` } : null), ...(t.edge ? { filter: EDGE } : null) }
@@ -446,6 +462,11 @@ export function figureLayers(pose, outfit, poses = POSES, fit = {}) {
     { ...item(bySlot.shoes, 'l'), clip: 'inset(0 50% 0 0)' },
     { ...item(bySlot.shoes, 'r'), id: `${bySlot.shoes.id}-right`, part: true, clip: 'inset(0 0 0 50%)' },
   ] : []
+  // clothes painted onto the figure (`worn`, see wornFit) already have the
+  // arms, the tail and the feet in front of them: the figure's polygons are
+  // drawn again only over clothes laid on it (and below a painted top)
+  const laidTop = bySlot.top && !bySlot.top.worn, laidBottom = bySlot.bottom && !bySlot.bottom.worn
+  const again = list => { for (const w of list ?? []) layers.push(clipTo(w)) }
   if (!P.feet) {
     // standing: the shoes are worn under the trousers (a trouser leg or a
     // skirt's hem lies over the shoe's opening), the top over both
@@ -457,14 +478,23 @@ export function figureLayers(pose, outfit, poses = POSES, fit = {}) {
     if (bySlot.bottom) {
       layers.push(item(bySlot.bottom))
       // (a mermaid's tail: no feet in front of it)
-      if (bySlot.bottom.feet !== false) for (const f of P.feet) layers.push(clipTo(f))
+      if (laidBottom && bySlot.bottom.feet !== false) again(P.feet)
     }
     layers.push(...shoes())
   }
-  if (bySlot.top) layers.push(item(bySlot.top))
-  if ((bySlot.top || bySlot.bottom) && P.wings) for (const w of P.wings) layers.push(clipTo(w))
-  // a tail lies over trousers, skirts and the hem of a top
-  if ((bySlot.top || bySlot.bottom) && P.tail) for (const w of P.tail) layers.push(clipTo(w))
+  if (bySlot.top?.worn) {
+    // a painted top over a laid bottom: the arms and the tail over the
+    // bottom first, the top's sleeves over the arms
+    if (laidBottom) { again(P.wings); again(P.tail) }
+    layers.push(item(bySlot.top))
+  } else {
+    if (bySlot.top) layers.push(item(bySlot.top))
+    if (laidTop || laidBottom) {
+      again(P.wings)
+      // a tail lies over trousers, skirts and the hem of a top
+      again(P.tail)
+    }
+  }
   // the part of a back thing that lies in FRONT of Lumi (a cape's collar
   // and clasp): the same picture again, cut to its `over` polygon
   if (bySlot.back?.over) {
@@ -487,8 +517,9 @@ export function figureLayers(pose, outfit, poses = POSES, fit = {}) {
   }
   // sitting, the feet (and the shoes on them) lie in front of the top and
   // of what hangs from the neck (a scarf's end ended on the shoes)
+  // (a painted top has them in front already, unless the bottom was laid on)
   if ((bySlot.top || bySlot.neck) && P.feet && bySlot.bottom?.feet !== false) {
-    for (const f of P.feet) layers.push(clipTo(f))
+    if (laidTop || bySlot.neck || (bySlot.top && laidBottom)) again(P.feet)
     if (bySlot.shoes) layers.push(...shoes().map(l => ({ ...l, id: `${bySlot.shoes.id}-${l.part ? 'right-' : ''}again`, part: true })))
   }
   // the held thing lies over Lumi; the tip of the holding wing is drawn
@@ -505,7 +536,7 @@ export function figureLayers(pose, outfit, poses = POSES, fit = {}) {
   // room in the square: the lowest scale that keeps every corner inside
   let scale = 1
   const S = POSE_SIZE, M = 2
-  for (const t of worn) for (const [x, y] of itemCorners(t, pose, poses)) {
+  for (const t of worn.filter(t => !t.worn)) for (const [x, y] of itemCorners(t, pose, poses)) {
     if (y < M) scale = Math.min(scale, (S - M) / (S - y))
     if (x < M) scale = Math.min(scale, (S / 2 - M) / (S / 2 - x))
     if (x > S - M) scale = Math.min(scale, (S / 2 - M) / (x - S / 2))
