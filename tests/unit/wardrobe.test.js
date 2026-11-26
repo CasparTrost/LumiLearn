@@ -132,7 +132,9 @@ describe('the pictures', () => {
     const TALL = ['zauberhut', 'zylinder', 'kochmuetze', 'partyhut', 'hasenohren', 'einhornreif']
     for (const p of POSE_IDS) for (const t of WARDROBE) {
       if (p === 'sleep' && ['face', 'hold'].includes(t.slot)) continue
-      const { scale } = figureLayers(p, { [t.slot]: t.id })
+      const { scale, layers } = figureLayers(p, { [t.slot]: t.id })
+      // (clothes painted onto the chick fill its own square: tests/unit/worn.test.js)
+      if (layers.find(l => l.id === t.id)?.worn) continue
       expect(scale, `${t.id} on ${p}`).toBeGreaterThanOrEqual(TALL.includes(t.id) ? 0.82 : 0.88)
       for (const [x, y] of itemCorners(t, p)) {
         // scaled about the middle of the bottom edge
