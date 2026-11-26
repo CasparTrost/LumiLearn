@@ -838,3 +838,48 @@ a small round friendly toy robot mascot standing upright, light blue and white r
 ```
 a small round friendly toy robot mascot standing upright, light blue and white rounded body, big round head with a little antenna with a yellow ball on top, big round dark eyes with white highlights, two small pink cheek lights, short arms with round mitten hands, short legs, friendly little smile, sleeping, sitting on the ground, eyes closed, a little Zzz next to its head, full body. cute children's app cartoon illustration, soft flat shading with gentle highlights, clean thin slightly darker outline, friendly rounded proportions, big head, bright warm colors, front view, centered, transparent background, no ground shadow, no text.
 ```
+
+---
+
+# Probe: Oberteile passend für jede Figur
+
+Oberteile wirken auf den Figuren oft aufgeklebt, weil ein flach gemaltes Hemd nicht zur Körperform eines Kükens,
+Dinos oder Roboters passt. Probe: zwei Oberteile, je einmal für jede der fünf Figuren gemalt (10 Bilder). Erst
+wenn die Probe gut aussieht, folgen die übrigen 14 Oberteile (weitere 70 Bilder).
+
+## So sollen die Bilder aussehen
+
+- **Vorbild-Bild:** das stehende Bild der Figur (Tabelle unten) als Bild-Vorlage an Tripo geben.
+- **Nur das Kleidungsstück**, ohne die Figur: so, wie es aussähe, wenn genau diese Figur es von vorn trägt.
+  Breite, Länge und Rundung passen zu Brust und Bauch dieser Figur; die Ärmel sitzen dort, wo die Arme bzw.
+  Flügel der Figur ansetzen; der Halsausschnitt sitzt unter ihrem Kopf.
+- Gleicher Stil wie die bisherigen Tripo-Bilder (weiche Cartoon-Optik, dünne etwas dunklere Kontur).
+- PNG, transparenter Hintergrund, quadratisch, mindestens 512 × 512 Pixel, das Kleidungsstück mittig.
+- Ablage: `tripo-in/tops/<figur>-<oberteil>.png`, im Zweig `tripo-kleiderschrank`, committen und pushen.
+- Nichts kaufen; reicht das Guthaben nicht, aufhören und dem Nutzer sagen, wie viele fehlen.
+
+## Die Figuren (Vorbild-Bilder)
+
+| Figur | Datei | Körper |
+|---|---|---|
+| kueken | `public/sprites/emoji/custom/lumi-idle.webp` | rundes Küken, Flügel seitlich, kein Hals |
+| dino | `public/sprites/shapes/dino-idle.webp` | runder Bauch, kurze Ärmchen vorn, Rückenzacken |
+| einhorn | `public/sprites/shapes/einhorn-idle.webp` | steht aufrecht, schmaler Oberkörper, Vorderbeine als Arme |
+| drache | `public/sprites/shapes/drache-idle.webp` | runder Bauch, Arme seitlich, Flügel am Rücken |
+| roboter | `public/sprites/shapes/roboter-idle.webp` | runder Rumpf mit Brustlicht, Arme als Röhren mit Fäustlingen |
+
+## Die zehn Probebilder
+
+Für jede Figur (kueken, dino, einhorn, drache, roboter) je eins:
+
+- `tripo-in/tops/<figur>-ringelshirt.png`
+
+```
+a blue and white striped long sleeve sailor shirt, only the shirt, shaped exactly to be worn by the character in the reference image, seen from the front: width, length and roundness of the shirt follow that character's chest and belly, the sleeves start where its arms start, the neckline sits right under its head; no character visible, cute children's app cartoon illustration, soft flat shading with gentle highlights, clean thin slightly darker outline, centered, transparent background, no ground shadow, no text.
+```
+
+- `tripo-in/tops/<figur>-hawaiihemd.png`
+
+```
+a turquoise hawaiian shirt with red and orange hibiscus flowers, short sleeves, open collar, only the shirt, shaped exactly to be worn by the character in the reference image, seen from the front: width, length and roundness of the shirt follow that character's chest and belly, the sleeves start where its arms start, the neckline sits right under its head; no character visible, cute children's app cartoon illustration, soft flat shading with gentle highlights, clean thin slightly darker outline, centered, transparent background, no ground shadow, no text.
+```
