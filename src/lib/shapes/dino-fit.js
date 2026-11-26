@@ -5,6 +5,7 @@ import HEAD from '../wardrobe/head.js'
 import SHOES from '../wardrobe/shoes.js'
 import BOTTOM from '../wardrobe/bottom.js'
 import FACE from '../wardrobe/face.js'
+import { ownTop } from '../wardrobe/top.js'
 
 // The dino's head hardly turns when it thinks (the chick's does): every hat
 // sits as on the front views, not tilted like the chick's, only lifted off
@@ -53,4 +54,7 @@ export default {
   tutu: { ...short.tutu, pose: { sleep: { size: 0.55, dy: -8 } } },
   // sitting, the tail lies in the lap, not spread over the floor
   meerjungfrau: { pose: { sleep: { dy: -20, size: 1.75, sy: 0.3 } } },
+  // tops painted for the dino (wardrobe/top.js ownTop)
+  ringelshirt: ownTop('dino', 'ringelshirt', { at: [0.5, 0.29], size: 1.42, sy: 0.6, box: [0.05, 0.24, 0.95, 0.76] }, { sad: { size: 1.1, dy: -14 }, sleep: { size: 0.92 } }),
+  hawaiihemd: ownTop('dino', 'hawaiihemd', { at: [0.5, 0.23], size: 1.25, sy: 0.5, box: [0.05, 0.18, 0.95, 0.82] }, { sad: { size: 1.1, dy: -14 } }),
 }

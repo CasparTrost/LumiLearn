@@ -4,6 +4,7 @@
 import HEAD from '../wardrobe/head.js'
 import SHOES from '../wardrobe/shoes.js'
 import BOTTOM from '../wardrobe/bottom.js'
+import { ownTop } from '../wardrobe/top.js'
 
 // The dragon's head stands a little higher in its square than the chick's
 // and its eyes sit high under the brow: every hat sits higher and a little
@@ -51,4 +52,7 @@ export default {
   // the moustache right under the nostrils, above the open mouth (the
   // chick's lowered it laughing and waving: on the dragon it hung on the chin)
   schnurrbart: { pose: { idle: { dy: -6 }, happy: { dy: -4 }, sad: { dy: -4 }, wave: { dy: -4 } } },
+  // tops painted for the dragon (wardrobe/top.js ownTop)
+  ringelshirt: ownTop('drache', 'ringelshirt', { at: [0.5, 0.29], size: 1.62, sy: 0.57, box: [0.05, 0.25, 0.95, 0.75] }, { sleep: { size: 0.85 } }),
+  hawaiihemd: ownTop('drache', 'hawaiihemd', { at: [0.5, 0.23], size: 1.5, sy: 0.49, box: [0.05, 0.2, 0.95, 0.8] }, { sleep: { size: 0.95 } }),
 }
