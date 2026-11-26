@@ -13,7 +13,7 @@ const soles = (x, y, w, step) => [[x - step - w, y + 4], [x + step + w, y + 4], 
 
 const thinking = {
   head: { x: 182, y: 58, rot: -6, w: 190 },
-  face: { x: 199, y: 128, rot: -16, w: 92 },
+  face: { x: 197, y: 122, rot: -12, w: 92 },
   neck: { x: 192, y: 212, rot: -3, w: 165 },
   back: { x: 192, y: 212, rot: 0, w: 190 },
   hold: { x: 108, y: 285, rot: -15, w: 90 },
