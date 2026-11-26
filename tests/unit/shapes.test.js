@@ -53,7 +53,8 @@ describe('the shapes and their pictures', () => {
     expect(shapeLayers('dino', 'nope').layers[0].src).toBe('sprites/shapes/dino-idle.webp')
     expect(wearsClothes(CHICK)).toBe(true)
     expect(wearsClothes(null)).toBe(true)
-    // (a shape wears clothes once its anchors are measured: tests/unit/shape-fit.test.js)
+    // (a shape wears clothes once its poses file is complete: tests/unit/shape-fit.test.js)
+    for (const s of SHAPES.filter(x => x.id !== CHICK)) expect(wearsClothes(s.id), s.id).toBe(Object.keys(s.poses ?? {}).length === 7)
   })
   it("lumiArt (pictures outside React) follows the playing child's shape", () => {
     setCurrentShape('drache')

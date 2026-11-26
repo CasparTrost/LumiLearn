@@ -2,7 +2,7 @@
 // its own anchors (shapes/<id>-poses.js) and corrections per thing
 // (shapes/<id>-fit.js) going into figureLayers (lib/wardrobe.js).
 import { describe, it, expect } from 'vitest'
-import { POSES, figureLayers, fitted, placeItem, ITEM_BY_ID } from '../../src/lib/wardrobe.js'
+import { POSES, WARDROBE, figureLayers, fitted, placeItem, ITEM_BY_ID } from '../../src/lib/wardrobe.js'
 import { SHAPES, CHICK, posesComplete, wearsClothes, posesOf, fitOf, shapeLayers } from '../../src/lib/shapes.js'
 
 const items = layers => layers.filter(l => l.kind === 'item').map(l => l.id)
@@ -52,3 +52,23 @@ describe('another figure wears the wardrobe', () => {
     if (bare) expect(shapeLayers(bare.id, 'idle', { head: 'muetze' }).layers).toHaveLength(1)
   })
 })
+
+// Every shape that wears clothes: each thing on each pose stays in the
+// square, the shape shrinks no more than the chick may, asleep nothing on
+// the face and nothing held.
+const TALL = ['zauberhut', 'zylinder', 'kochmuetze', 'partyhut', 'hasenohren', 'einhornreif']
+for (const s of SHAPES.filter(x => x.id !== CHICK && wearsClothes(x.id))) {
+  describe(`${s.id} wears every thing`, () => {
+    it('in the square, within the shrink limits', () => {
+      for (const p of Object.keys(s.poses)) for (const t of WARDROBE) {
+        if (p === 'sleep' && ['face', 'hold'].includes(t.slot)) continue
+        const { scale } = figureLayers(p, { [t.slot]: t.id }, s.poses, s.fit)
+        expect(scale, `${t.id} on ${p}`).toBeGreaterThanOrEqual(TALL.includes(t.id) ? 0.82 : 0.88)
+      }
+    })
+    it('asleep: no face thing, nothing held', () => {
+      const ids = items(figureLayers('sleep', { face: 'sonnenbrille', hold: 'ballon', head: 'krone' }, s.poses, s.fit).layers)
+      expect(ids).toEqual(['krone'])
+    })
+  })
+}
