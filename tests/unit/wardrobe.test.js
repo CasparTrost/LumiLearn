@@ -127,10 +127,12 @@ describe('the pictures', () => {
       expect(POSES[p].face.y).toBeLessThan(POSES[p].neck.y)
     }
   })
-  it('every thing on every picture stays in the square (Lumi gets at most 12 % smaller)', () => {
+  it('every thing on every picture stays in the square (Lumi gets at most 12 % smaller, 18 % under a tall hat)', () => {
+    // (a tall hat worn at its true size: a doll's hat perched on the head looked wrong)
+    const TALL = ['zauberhut', 'zylinder', 'kochmuetze', 'partyhut', 'hasenohren', 'einhornreif']
     for (const p of POSE_IDS) for (const t of WARDROBE) {
       const { scale } = figureLayers(p, { [t.slot]: t.id })
-      expect(scale, `${t.id} on ${p}`).toBeGreaterThanOrEqual(0.88)
+      expect(scale, `${t.id} on ${p}`).toBeGreaterThanOrEqual(TALL.includes(t.id) ? 0.82 : 0.88)
       for (const [x, y] of itemCorners(t, p)) {
         // scaled about the middle of the bottom edge
         const sx = POSE_SIZE / 2 + (x - POSE_SIZE / 2) * scale, sy = POSE_SIZE - (POSE_SIZE - y) * scale
