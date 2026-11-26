@@ -1,7 +1,7 @@
 // Browser smoke test against a production build (npm run build; npx vite preview).
 // Fresh child on a phone through onboarding; every game opened at phone,
 // tablet and desktop size; one game played to the results; Lumi's ideas to the sticker; Lumi's
-// wardrobe and Lumi dressed in a game; the app and
+// wardrobe and Lumi dressed in a game; Lumis Freunde chosen and along; the app and
 // unopened games started again without a network. Fails on page
 // errors, pictures that don't load, sideways scrolling and buttons off the
 // screen.
@@ -10,6 +10,7 @@
 // CHROMIUM=/path/to/chrome uses a browser other than Playwright's own.
 import { chromium } from 'playwright'
 import { WARDROBE, SLOTS } from '../../src/lib/wardrobe.js'
+import { STEPS, FRIEND_IDS } from '../../src/lib/friends.js'
 
 const URL = process.env.URL ?? 'http://localhost:4173/LumiLearn/'
 const SIZES = { phone: [360, 740], tablet: [1024, 768], desktop: [1440, 900] }
@@ -767,6 +768,81 @@ async function playShadows(page, { wrongOnce = false } = {}) {
         await page.locator('[data-undress]').click(); await page.waitForTimeout(1000)
         if ((await worn()).length) problems.push(`${where}: still worn after "everything off": ${await worn()}`)
       }
+    } catch (e) { problems.push(`${where}: ${String(e).split('\n')[0]}`) }
+    problems.push(...page.errors.map(e => `${where}: ${e}`))
+    await page.context().close()
+  }
+}
+
+// 8. Lumis Freunde. A child that reached the first step finds a present
+// beside Lumi and the sign on the button; the friends stand side by side,
+// a tap brings one forward, a tap on another changes the choice (nothing
+// is decided yet), the green tick confirms; the friend moves in, comes
+// along at once and stands beside Lumi at home. In a game bar it shows
+// only where there is room (not on a phone held upright). In the place a
+// friend is taken along with a tap and left at home with a second one.
+{
+  const withStars = n => {
+    const levelStars = {}
+    for (let l = 1; n > 0; l++) { levelStars[l] = Math.min(3, n); n -= 3 }
+    return { 'shapes-land': { currentLevel: 1, levelStars, plays: 1 } }
+  }
+  const kidWith = (stars, more = {}) => {
+    const k = structuredClone(save)
+    Object.assign(k.profiles.p1, { progress: withStars(stars), ...more })
+    return k
+  }
+  // 8a: choosing on a phone held upright
+  {
+    const where = 'friends (choosing, phone)'
+    const page = await newPage([390, 844], kidWith(STEPS[0] + 2))
+    try {
+      await page.goto(URL); await page.waitForTimeout(1500)
+      if (!(await page.locator('[data-friends-owed]').count())) problems.push(`${where}: no sign on the friends button`)
+      await check(page, `${where}, home`)
+      await page.locator('[data-friend-present]').click(); await page.waitForTimeout(1500)
+      if ((await page.locator('[data-candidate]').count()) !== FRIEND_IDS.length) problems.push(`${where}: not all ${FRIEND_IDS.length} friends to choose from`)
+      await check(page, where)
+      await page.locator('[data-candidate="dino"]').click(); await page.waitForTimeout(600)
+      await page.locator('[data-candidate="einhorn"]').click(); await page.waitForTimeout(900)
+      if (await page.locator('[data-move-in]').count()) problems.push(`${where}: a tap on a friend decided without the tick`)
+      if ((await page.locator('[data-confirm]').count()) !== 1 || !(await page.locator('[data-confirm="einhorn"]').count())) problems.push(`${where}: the tick is not under the friend tapped last`)
+      await check(page, `${where}, one chosen`)
+      await page.locator('[data-confirm="einhorn"]').click({ force: true }); await page.waitForTimeout(1000)
+      if (!(await page.locator('[data-move-in="einhorn"]').count())) problems.push(`${where}: no moving-in show`)
+      await page.waitForTimeout(3600)
+      if ((await page.locator('[data-friend-card="einhorn"]').getAttribute('data-state')) !== 'along') problems.push(`${where}: the new friend does not come along`)
+      if ((await page.locator('[data-friend-card][data-state="shadow"]').count()) !== FRIEND_IDS.length - 1) problems.push(`${where}: not ${FRIEND_IDS.length - 1} shadows left`)
+      await check(page, `${where}, the place`)
+      await page.getByRole('button', { name: 'Zur Startseite' }).click(); await page.waitForTimeout(1500)
+      if (!(await page.locator('[data-companion="einhorn"]').count())) problems.push(`${where}: the friend is not beside Lumi at home`)
+      if (await page.locator('[data-friends-owed], [data-friend-present]').count()) problems.push(`${where}: the sign stayed after choosing`)
+      await check(page, `${where}, home with the friend`)
+      await page.getByRole('button', { name: /^Zahlenland(?:, Level|\. Spielen$)/ }).last().click(); await page.waitForTimeout(2000)
+      if (await page.locator('[data-companion]').count()) problems.push(`${where}: a friend squeezed into the game bar of a phone`)
+    } catch (e) { problems.push(`${where}: ${String(e).split('\n')[0]}`) }
+    problems.push(...page.errors.map(e => `${where}: ${e}`))
+    await page.context().close()
+  }
+  // 8b: the place on a phone held sideways and the game bar of a tablet
+  for (const [size, tag] of [[[844, 390], 'phone sideways'], [SIZES.tablet, 'tablet']]) {
+    const where = `friends (place, ${tag})`
+    const page = await newPage(size, kidWith(STEPS[1] + 5, { friends: ['dino', 'drache'], friendAlong: 'dino', friendWait: true }))
+    try {
+      await page.goto(URL); await page.waitForTimeout(1500)
+      await page.getByRole('button', { name: /^Lumis Freunde/ }).click(); await page.waitForTimeout(1500)
+      await check(page, where)
+      await page.locator('[data-friend-card="drache"]').click(); await page.waitForTimeout(800)
+      const states = await page.$$eval('[data-friend-card]', b => b.map(x => `${x.dataset.friendCard}:${x.dataset.state}`).join(' '))
+      if (states !== 'dino:home einhorn:shadow drache:along roboter:shadow') problems.push(`${where}: after a tap ${states}`)
+      await page.locator('[data-friend-card="drache"]').click(); await page.waitForTimeout(800)
+      if (await page.locator('[data-friend-card][data-state="along"]').count()) problems.push(`${where}: still one along after the second tap`)
+      await page.locator('[data-friend-card="dino"]').click(); await page.waitForTimeout(800)
+      await check(page, `${where}, one along`)
+      await page.getByRole('button', { name: 'Zur Startseite' }).click(); await page.waitForTimeout(1200)
+      await page.getByRole('button', { name: /^Zahlenland(?:, Level|\. Spielen$)/ }).last().click(); await page.waitForTimeout(2000)
+      if (!(await page.locator('[data-companion="dino"]').count())) problems.push(`${where}: no friend in the game bar`)
+      await check(page, `${where} → game`)
     } catch (e) { problems.push(`${where}: ${String(e).split('\n')[0]}`) }
     problems.push(...page.errors.map(e => `${where}: ${e}`))
     await page.context().close()
