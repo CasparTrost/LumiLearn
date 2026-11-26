@@ -43,6 +43,7 @@ const FRESH_SHOWN = 3
 // the tiles: as big as fits, never smaller than this
 const TILE_MAX = 92, TILE_MIN = 64
 const rowGap = t => Math.round(t * 0.16) + 8
+const ROW_GAP_MIN = 8
 
 function useViewport() {
   const get = () => ({ w: window.innerWidth, h: window.innerHeight })
@@ -100,6 +101,10 @@ export default function WardrobeScreen() {
     ? Math.round(Math.max(44, Math.min(64, (h - hud - 24) / TABS_PER_LINE - TAB_GAP - 4)))
     : Math.round(Math.max(44, Math.min(TAB_LINES > 1 ? 62 : 76, ((wide ? w - stageW : w) - 40) / TABS_PER_LINE - 10)))
 
+  // the line of tabs with the open one stands next to the shelf (as with
+  // the tabs of a card index), so the open tab and its shelf are one piece
+  const tabLines = Array.from({ length: TAB_LINES }, (_, i) => SLOTS.slice(i * TABS_PER_LINE, (i + 1) * TABS_PER_LINE))
+  const tabOrder = [...tabLines.filter(l => !l.includes(tab)), ...tabLines.filter(l => l.includes(tab))].flat()
   const items = WARDROBE.filter(t => t.slot === tab)
   const open = items.filter(t => isUnlocked(t, stars))
   const wrapped = items.filter(t => !isUnlocked(t, stars))
@@ -131,13 +136,16 @@ export default function WardrobeScreen() {
     return () => ro.disconnect()
   }, [])
   const count = open.length + shown.length + (pile.length ? 1 : 0)
-  const fits = t => {
+  const fits = (t, gap = rowGap(t)) => {
     const cols = Math.max(1, Math.floor((room.w + 10) / (t + 10)))
     const rows = Math.ceil(count / cols)
-    return rows * t + (rows - 1) * rowGap(t) <= room.h
+    return rows * t + (rows - 1) * gap <= room.h
   }
   let tile = TILE_MAX
   while (tile > TILE_MIN && !fits(tile)) tile -= 2
+  // a few pixels too tall even at the smallest tiles: the shelves move
+  // closer together rather than hide a sliver behind the "more" arrow
+  const gap = fits(tile) || !fits(tile, ROW_GAP_MIN) ? rowGap(tile) : ROW_GAP_MIN
   const [more, setMore] = useState(false)
   useEffect(() => {
     const el = shelfRef.current
@@ -151,10 +159,10 @@ export default function WardrobeScreen() {
     const later = setTimeout(check, 350)
     el.addEventListener('scroll', check)
     return () => { clearTimeout(later); el.removeEventListener('scroll', check) }
-  }, [tab, tile, room, count])
+  }, [tab, tile, gap, room, count])
   const scrollMore = () => {
     const el = shelfRef.current
-    el?.scrollBy?.({ top: tile + rowGap(tile), behavior: 'smooth' })
+    el?.scrollBy?.({ top: tile + gap, behavior: 'smooth' })
   }
 
   // Opened: what is unlocked is seen now (the sign on the home button goes),
@@ -304,7 +312,7 @@ export default function WardrobeScreen() {
               ? { height: TABS_PER_LINE * (tabSize + 4) + (TABS_PER_LINE - 1) * TAB_GAP + 12, alignSelf: 'center' }
               : { maxWidth: TABS_PER_LINE * (tabSize + 8) + (TABS_PER_LINE - 1) * (TAB_GAP + 2) + 12, alignSelf: 'center' }),
           }}>
-            {SLOTS.map(slot => (
+            {tabOrder.map(slot => (
               <PlaceTab key={slot} slot={slot} size={tabSize} side={sideTabs} active={slot === tab} fresh={WARDROBE.some(t => t.slot === slot && isFresh(t))}
                 worn={!!outfit[slot]} stars={stars} onTap={() => pickTab(slot)} />
             ))}
@@ -317,11 +325,11 @@ export default function WardrobeScreen() {
           }}>
             <section ref={shelfRef} role="tabpanel" aria-label={SHELF_LABEL[tab]} data-shelf={tab} data-tile={tile} style={{
               flex: 1, minHeight: 0, overflow: 'auto', borderRadius: 12, border: '3px solid var(--px-ink)',
-              background: `repeating-linear-gradient(180deg, #fbeacb 0px, #fbeacb ${tile + 2}px, #b06c32 ${tile + 2}px, #8a4f22 ${tile + rowGap(tile)}px)`,
+              background: `repeating-linear-gradient(180deg, #fbeacb 0px, #fbeacb ${tile + 2}px, #b06c32 ${tile + 2}px, #8a4f22 ${tile + gap}px)`,
               backgroundPosition: `0 ${sideTabs ? 8 : 10}px`, padding: sideTabs ? '8px 8px' : '10px 10px',
             }}>
               <motion.div key={tab} initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.25 }}
-                style={{ display: 'flex', flexWrap: 'wrap', gap: `${rowGap(tile)}px 10px`, justifyContent: 'flex-start' }}>
+                style={{ display: 'flex', flexWrap: 'wrap', gap: `${gap}px 10px`, justifyContent: 'flex-start' }}>
                 {open.map(item => (
                   <Thing key={item.id} item={item} size={tile} stars={stars}
                     worn={outfit[tab] === item.id} fresh={isFresh(item)} shake={null} onTap={() => tap(item)} />
@@ -356,9 +364,9 @@ export default function WardrobeScreen() {
  * A tab for a place: always the first thing of the place (a hat, glasses,
  * a scarf, wings, a balloon), so a tab never changes its picture: the thing
  * Lumi wears said the place badly (a clown's nose beside the balloon, a
- * cape like a skirt). A grey shadow with a present while nothing of the
+ * cape like a skirt). A faded grey picture with a present while nothing of the
  * place is owned (the first thing is the first one owned, so nothing is
- * shown in colour that is not there). A sparkle when something there is
+ * shown in colour that is not there; a black shadow of a pair of shoes read as two blobs). A sparkle when something there is
  * new, a green dot while Lumi wears something of it.
  */
 function PlaceTab({ slot, size, side, active, fresh, worn, stars, onTap }) {
@@ -366,7 +374,7 @@ function PlaceTab({ slot, size, side, active, fresh, worn, stars, onTap }) {
   const owned = !!rep && isUnlocked(rep, stars)
   return (
     <motion.button type="button" role="tab" aria-selected={active} aria-label={`${SHELF_LABEL[slot]}${fresh ? ', etwas Neues' : ''}`} data-tab={slot}
-      onClick={onTap} whileTap={{ scale: 0.92 }}
+      onClick={onTap} whileTap={{ scale: 0.92 }} layout
       data-owned={owned ? '1' : undefined}
       animate={side ? { x: active ? 0 : 6 } : { y: active ? 0 : 6 }}
       style={{
@@ -379,7 +387,7 @@ function PlaceTab({ slot, size, side, active, fresh, worn, stars, onTap }) {
         boxShadow: active ? '0 -3px 0 rgba(255,255,255,0.6) inset' : 'none',
       }}>
       {rep && (
-        <span style={{ position: 'relative', opacity: owned ? (active ? 1 : 0.8) : 0.45, filter: owned ? undefined : 'brightness(0)' }}>
+        <span style={{ position: 'relative', opacity: owned ? (active ? 1 : 0.8) : 0.45, filter: owned ? undefined : 'grayscale(1) contrast(0.8)' }}>
           <ThingPic item={rep} size={size - 10} />
         </span>
       )}

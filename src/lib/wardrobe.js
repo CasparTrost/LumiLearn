@@ -199,21 +199,20 @@ export const SLOTS = ['head', 'face', 'neck', 'back', 'hold', 'top', 'bottom', '
  * over the rest, never two of one place in a row, the red hats far apart,
  * the crown last. The first top, trousers and shoes come within the first
  * 30 stars. A place with many things comes often (a hat about every 20
- * stars), the back with its seven things least often (late in the list
- * every 60 to 90 stars).
+ * stars), the back with its seven things least often (every 45 to 75 stars).
  */
 export const ORDER = [
   'muetze', 'sonnenbrille', 'ballon', 'schal', 'partyhut', 'schmetterling', 'ringelshirt', 'herzbrille', 'jeansshorts', 'zauberstab',
-  'turnschuhe', 'katzenohren', 'fliege', 'blumenkranz', 'heldenshirt', 'fussballshorts', 'gummistiefel', 'clownsnase', 'perlenkette', 'lolli',
-  'piratenhut', 'umhang', 'fussballtrikot', 'tutu', 'hasenpantoffeln', 'basecap', 'sternbrille', 'halstuch', 'hasenohren', 'hawaiihemd',
-  'entenbadehose', 'ballettschuhe', 'blume', 'propellermuetze', 'heldenmaske', 'medaille', 'katzenhoodie', 'engel', 'lederhose', 'flipflops',
-  'kochmuetze', 'regenjacke', 'cowboyhut', 'zuckerwatte', 'spiralbrille', 'kopfhoerer', 'bastrock', 'cowboystiefel', 'einhornreif', 'bienenkostuem',
-  'pyjamahose', 'rollschuhe', 'feuerwehrhelm', 'rundbrille', 'gloeckchen', 'fee', 'ritterruestung', 'faehnchen', 'eierschale', 'piratenhose',
-  'clownsschuhe', 'zauberhut', 'taucherbrille', 'blumenkette', 'rettungsweste', 'schottenrock', 'monsterpfoten', 'antennen', 'eis', 'sternenpyjama',
-  'drache', 'brille3d', 'kamera', 'strohhut', 'flickenjeans', 'holzschuhe', 'kochjacke', 'tortenhut', 'prinzessinnenrock', 'flossen',
-  'monokel', 'krawatte', 'ukulele', 'matrosenmuetze', 'arztkittel', 'fliegenpilz', 'rakete', 'regenbogenleggings', 'wanderstiefel', 'astronautenjacke',
-  'federmaske', 'halskrause', 'diadem', 'windrad', 'clownshose', 'schlittschuhe', 'zylinder', 'skijacke', 'skibrille', 'herzkette',
-  'heiligenschein', 'skihose', 'elfenschuhe', 'smoking', 'pfau', 'weihnachtsmuetze', 'laterne', 'schnurrbart', 'sternabzeichen', 'meerjungfrau',
+  'turnschuhe', 'katzenohren', 'fliege', 'blumenkranz', 'heldenshirt', 'fussballshorts', 'gummistiefel', 'clownsnase', 'perlenkette', 'piratenhut',
+  'lolli', 'fussballtrikot', 'tutu', 'hasenpantoffeln', 'basecap', 'umhang', 'sternbrille', 'halstuch', 'hasenohren', 'hawaiihemd',
+  'entenbadehose', 'ballettschuhe', 'propellermuetze', 'blume', 'katzenhoodie', 'heldenmaske', 'medaille', 'lederhose', 'flipflops', 'kochmuetze',
+  'engel', 'regenjacke', 'cowboyhut', 'bastrock', 'cowboystiefel', 'spiralbrille', 'kopfhoerer', 'zuckerwatte', 'einhornreif', 'bienenkostuem',
+  'pyjamahose', 'rollschuhe', 'feuerwehrhelm', 'rundbrille', 'gloeckchen', 'ritterruestung', 'eierschale', 'fee', 'faehnchen', 'piratenhose',
+  'clownsschuhe', 'zauberhut', 'rettungsweste', 'taucherbrille', 'blumenkette', 'schottenrock', 'monsterpfoten', 'antennen', 'sternenpyjama', 'eis',
+  'strohhut', 'brille3d', 'kamera', 'flickenjeans', 'holzschuhe', 'drache', 'kochjacke', 'tortenhut', 'prinzessinnenrock', 'flossen',
+  'matrosenmuetze', 'monokel', 'krawatte', 'arztkittel', 'ukulele', 'fliegenpilz', 'regenbogenleggings', 'wanderstiefel', 'astronautenjacke', 'diadem',
+  'federmaske', 'halskrause', 'rakete', 'clownshose', 'schlittschuhe', 'zylinder', 'skijacke', 'windrad', 'skibrille', 'herzkette',
+  'heiligenschein', 'skihose', 'elfenschuhe', 'smoking', 'weihnachtsmuetze', 'pfau', 'laterne', 'schnurrbart', 'sternabzeichen', 'meerjungfrau',
   'astronautenstiefel', 'doktorhut', 'rentierpulli', 'krone',
 ]
 
@@ -256,8 +255,23 @@ export function cleanOutfit(outfit) {
   const out = Object.fromEntries(SLOTS.map(s => [s, null]))
   if (outfit && typeof outfit === 'object') {
     for (const s of SLOTS) if (ITEM_BY_ID[outfit[s]]?.slot === s) out[s] = outfit[s]
+    // (an old save with shoes and a mermaid's tail: the tail stays)
+    if (out.shoes && ITEM_BY_ID[out.bottom]?.feet === false) out.shoes = null
   }
   return out
+}
+/**
+ * Put a thing on (or take it off when it is worn): one per place. Things
+ * that cannot go together take each other off: shoes and a mermaid's tail
+ * (a bottom with `feet: false`), so nothing is "worn" that does not show.
+ */
+export function wearToggle(outfit, item) {
+  const o = cleanOutfit(outfit)
+  if (o[item.slot] === item.id) return { ...o, [item.slot]: null }
+  const next = { ...o, [item.slot]: item.id }
+  if (item.slot === 'shoes' && ITEM_BY_ID[o.bottom]?.feet === false) next.bottom = null
+  if (item.slot === 'bottom' && item.feet === false) next.shoes = null
+  return next
 }
 export const wornItems = outfit => (outfit ? SLOTS.map(s => ITEM_BY_ID[outfit[s]]).filter(t => t && SLOTS.includes(t.slot) && outfit[t.slot] === t.id) : [])
 

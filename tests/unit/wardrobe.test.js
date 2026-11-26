@@ -78,8 +78,8 @@ describe('the steps', () => {
     expect(WARDROBE.filter(t => ORDER.includes(t.id)).at(-1).id).toBe('krone')
     for (const sl of SLOTS) {
       const st = WARDROBE.filter(t => ORDER.includes(t.id) && t.slot === sl).map(t => t.stars)
-      // (the back has the fewest things: late in the list it comes every 60 to 90 stars)
-      for (let i = 1; i < st.length; i++) expect(st[i] - st[i - 1], `${sl} at ${st[i]}`).toBeLessThanOrEqual(sl === 'back' ? 95 : sl === 'hold' ? 70 : 50)
+      // (the back has the fewest things: it comes every 45 to 75 stars)
+      for (let i = 1; i < st.length; i++) expect(st[i] - st[i - 1], `${sl} at ${st[i]}`).toBeLessThanOrEqual(sl === 'back' ? 75 : sl === 'hold' ? 65 : 46)
       // a child gets something of every place within the first 40 stars
       expect(WARDROBE.find(t => t.slot === sl).stars, sl).toBeLessThanOrEqual(40)
     }
@@ -260,6 +260,21 @@ describe('wearing', () => {
     s = reducer(s, { type: 'WARDROBE_UNDRESS' })
     expect(me(s).outfit).toEqual(NONE)
     expect(reducer(s, { type: 'WARDROBE_UNDRESS' })).toBe(s)
+  })
+  it('shoes and the mermaid\'s tail take each other off: nothing is worn that does not show', () => {
+    let s = load(kid(1000))
+    s = wear(s, 'turnschuhe')
+    s = wear(s, 'meerjungfrau')
+    expect(me(s).outfit.bottom).toBe('meerjungfrau')
+    expect(me(s).outfit.shoes).toBe(null)
+    s = wear(s, 'gummistiefel')
+    expect(me(s).outfit.shoes).toBe('gummistiefel')
+    expect(me(s).outfit.bottom).toBe(null)
+    // other bottoms keep the shoes
+    s = wear(s, 'jeansshorts')
+    expect(me(s).outfit).toMatchObject({ bottom: 'jeansshorts', shoes: 'gummistiefel' })
+    // an old save with both keeps the tail
+    expect(cleanOutfit({ bottom: 'meerjungfrau', shoes: 'turnschuhe' })).toMatchObject({ bottom: 'meerjungfrau', shoes: null })
   })
   it('a wrapped present cannot be put on, nor an unknown thing', () => {
     const s = load(kid(5))

@@ -4,7 +4,7 @@ import { MODULES, MODULE_BY_ID, visibleModules, sortForAge } from './modules.js'
 import { ENGLISH_ENABLED } from './i18n.js'
 import { updateSkill, nextLevel, ratioOf, journeyFor, nextStopIndex } from './lib/learning.js'
 import { stickerForDay } from './lib/stickers.js'
-import { ITEM_BY_ID, isUnlocked, unlockedBetween, unlockedItems, wardrobeStars, cleanOutfit } from './lib/wardrobe.js'
+import { ITEM_BY_ID, isUnlocked, unlockedBetween, unlockedItems, wardrobeStars, cleanOutfit, wearToggle } from './lib/wardrobe.js'
 import { SHAPE_BY_ID, cleanShapes, cleanShape, drawnShape, freshShapes, shapesOwed, setCurrentShape } from './lib/shapes.js'
 
 export const AppContext = createContext(null)
@@ -417,7 +417,7 @@ export function reducer(state, action) {
         const on = outfit[item.slot] !== item.id
         return {
           ...p,
-          outfit: { ...outfit, [item.slot]: on ? item.id : null },
+          outfit: wearToggle(outfit, item),
           wardrobeTried: on ? knownIds([...(p.wardrobeTried ?? []), item.id]) : knownIds(p.wardrobeTried),
           wardrobeSeen: knownIds([...(p.wardrobeSeen ?? []), item.id]),
         }
