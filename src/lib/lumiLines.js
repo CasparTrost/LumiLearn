@@ -1263,6 +1263,7 @@ export const LINES = {
   'gestalt/neu': 'Juhu! Ich kann mich verwandeln! Tippe auf das Geschenk!',
   'gestalt/aussuchen': 'Wie soll ich aussehen? Dreh und tippe auf den grünen Haken!',
   'gestalt/chick': 'Ich bin wieder ein Küken!',
+  'gestalt/kueken-neu': 'Juhu, ich bin ein Küken!',
   'gestalt/dino': 'Schau mal, ich bin jetzt ein Dino!',
   'gestalt/einhorn': 'Schau mal, ich bin jetzt ein Einhorn!',
   'gestalt/drache': 'Schau mal, ich bin jetzt ein Drache!',
