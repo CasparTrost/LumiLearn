@@ -41,6 +41,12 @@
  *          also per pose: pose: { sleep: { behind: false } })
  *   over   back things only: a polygon of the picture [[x, y], …] (0…1) that is
  *          drawn again in front of Lumi (a cape's collar and clasp)
+ *   spread back things only: a pair of wings, in degrees. The picture is cut
+ *          in two at `at` and each half turned outwards and down about that
+ *          point, so the wings stand out at the sides of the body, below the
+ *          head (wings drawn rising beside the head read as ears). As
+ *          [degrees, keep]: only the picture down to `keep` (0…1) is drawn
+ *          (the lower wings would peep out between Lumi's feet)
  */
 
 // ── Lumi's pictures ─────────────────────────────────────────────────────────
@@ -137,31 +143,33 @@ export const SLOTS = ['head', 'face', 'neck', 'back', 'hold']
  * first ten are the ones a child likes at once (a hat, glasses, a balloon,
  * wings …), and the first thing of each place is the picture on its tab
  * in the wardrobe, so it has to say the place (wings for the back: a cape
- * alone read as a skirt); after them each place's things are spread evenly over the
- * rest, so no place waits much longer than another (late in the list a
- * place comes about every 50 stars), never two hats in a row, the red hats
- * far apart, the crown last.
+ * alone read as a skirt); after them each place's things are spread evenly
+ * over the rest, never two of one place in a row, the red hats far apart,
+ * the crown last. A place with many things
+ * comes often (a hat about every 15 stars), the back with its seven things
+ * least often (late in the list every 50 to 70 stars).
  */
 export const ORDER = [
   'muetze', 'sonnenbrille', 'ballon', 'schal', 'partyhut', 'schmetterling', 'herzbrille', 'zauberstab', 'katzenohren', 'fliege',
-  'blumenkranz', 'clownsnase', 'perlenkette', 'umhang', 'lolli', 'piratenhut', 'sternbrille', 'halstuch', 'basecap', 'engel',
-  'blume', 'hasenohren', 'heldenmaske', 'medaille', 'kochmuetze', 'fee', 'faehnchen', 'rundbrille', 'gloeckchen', 'cowboyhut',
-  'taucherbrille', 'feuerwehrhelm', 'blumenkette', 'drache', 'eis', 'zauberhut', 'monokel', 'krawatte', 'strohhut', 'rakete',
-  'windrad', 'matrosenmuetze', 'skibrille', 'herzkette', 'zylinder', 'pfau', 'laterne', 'schnurrbart', 'weihnachtsmuetze', 'sternabzeichen',
-  'krone',
+  'blumenkranz', 'clownsnase', 'perlenkette', 'lolli', 'piratenhut', 'umhang', 'basecap', 'sternbrille', 'halstuch', 'hasenohren',
+  'blume', 'propellermuetze', 'heldenmaske', 'medaille', 'engel', 'kochmuetze', 'zuckerwatte', 'cowboyhut', 'spiralbrille', 'kopfhoerer',
+  'einhornreif', 'rundbrille', 'feuerwehrhelm', 'gloeckchen', 'fee', 'faehnchen', 'eierschale', 'taucherbrille', 'zauberhut', 'blumenkette',
+  'antennen', 'eis', 'drache', 'brille3d', 'kamera', 'strohhut', 'monokel', 'tortenhut', 'krawatte', 'ukulele',
+  'matrosenmuetze', 'rakete', 'fliegenpilz', 'federmaske', 'halskrause', 'diadem', 'windrad', 'zylinder', 'skibrille', 'herzkette',
+  'heiligenschein', 'pfau', 'weihnachtsmuetze', 'laterne', 'schnurrbart', 'doktorhut', 'sternabzeichen', 'krone',
 ]
 
 /**
  * The stars for the thing at place i of the order. The first two are free
  * (the wardrobe is never empty); then the gap between two things starts at
- * three stars (one good game) and grows by one star every six things:
- * 3,3,3,3,3,3, 4,4,4,4,4,4, 5, … With 51 things the last one needs 323
+ * three stars (one good game) and grows by one star every twelve things:
+ * twelve times 3, twelve times 4, … With 68 things the last one needs 348
  * stars, about half of all the stars the games give (23 games with levels ×
  * 10 levels × 3 stars = 690; tests/unit/wardrobe.test.js checks it).
  */
 export function stepStars(i) {
   let s = 0
-  for (let k = 0; k < i - 1; k++) s += 3 + Math.floor(k / 6)
+  for (let k = 0; k < i - 1; k++) s += 3 + Math.floor(k / 12)
   return i < 2 ? 0 : s
 }
 
@@ -225,16 +233,28 @@ export function placeItem(item, pose) {
   return { left: x - ax * W, top: y - ay * W, size: W, rot, x, y, ax, ay }
 }
 
-/** The drawn part of a placed item, turned: its corners in picture pixels. */
+/**
+ * The drawn part of a placed item, turned: its corners in picture pixels
+ * (a pair of wings spread apart: the corners of both halves).
+ */
 export function itemCorners(item, pose) {
   const p = placeItem(item, pose)
   const [x0, y0, x1, y1] = item.box ?? [0, 0, 1, 1]
-  const r = p.rot * Math.PI / 180, c = Math.cos(r), s = Math.sin(r)
-  return [[x0, y0], [x1, y0], [x1, y1], [x0, y1]].map(([u, v]) => {
-    const dx = p.left + u * p.size - p.x, dy = p.top + v * p.size - p.y
-    return [p.x + dx * c - dy * s, p.y + dx * s + dy * c]
-  })
+  const turn = (pts, deg) => {
+    const r = deg * Math.PI / 180, c = Math.cos(r), s = Math.sin(r)
+    return pts.map(([u, v]) => {
+      const dx = p.left + u * p.size - p.x, dy = p.top + v * p.size - p.y
+      return [p.x + dx * c - dy * s, p.y + dx * s + dy * c]
+    })
+  }
+  const sp = spreadOf(item, pose)
+  if (!sp) return turn([[x0, y0], [x1, y0], [x1, y1], [x0, y1]], p.rot)
+  const m = p.ax, y2 = Math.min(y1, spreadKeep(item))
+  return [...turn([[x0, y0], [m, y0], [m, y2], [x0, y2]], p.rot - sp), ...turn([[m, y0], [x1, y0], [x1, y2], [m, y2]], p.rot + sp)]
 }
+const spreadOf = (item, pose) => [].concat(item.pose?.[pose]?.spread ?? item.spread ?? 0)[0]
+// how far down the spread halves are drawn (share of the picture)
+const spreadKeep = item => [].concat(item.spread ?? 0)[1] ?? 1
 
 /**
  * Everything drawn for Lumi in one pose with what Lumi wears, bottom to
@@ -257,7 +277,16 @@ export function figureLayers(pose, outfit) {
   // the back thing lies behind Lumi, and a held thing that leans behind
   // Lumi (`behind`: an open umbrella over the shoulder)
   const behindHold = bySlot.hold && (bySlot.hold.pose?.[pose]?.behind ?? bySlot.hold.behind)
-  if (bySlot.back) layers.push(item(bySlot.back))
+  // wings spread apart (`spread`): each half of the picture turned outwards
+  // and down about the middle of the back, so they stand out at the sides of
+  // the body instead of rising beside the head like ears
+  const sp = bySlot.back && spreadOf(bySlot.back, pose)
+  if (sp) {
+    const b = item(bySlot.back), r = b.rot, cut = +(bySlot.back.at[0] * 100).toFixed(2)
+    const low = +(100 - spreadKeep(bySlot.back) * 100).toFixed(2)
+    layers.push({ ...b, rot: r - sp, clip: `inset(0 ${+(100 - cut).toFixed(2)}% ${low}% 0)` })
+    layers.push({ ...b, id: `${b.id}-right`, part: true, rot: r + sp, clip: `inset(0 0 ${low}% ${cut}%)` })
+  } else if (bySlot.back) layers.push(item(bySlot.back))
   if (behindHold) layers.push(item(bySlot.hold))
   layers.push({ kind: 'pose', clip: hat?.tuft === 'hide' && P.tuft ? `polygon(evenodd, 0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ${poly(P.tuft)}, ${poly([P.tuft[0]])}, 0% 0%)` : null })
   // the part of a back thing that lies in FRONT of Lumi (a cape's collar

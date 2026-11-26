@@ -1,7 +1,7 @@
 // Lumis Kleiderschrank (src/lib/wardrobe.js): the steps that unlock things,
 // the pictures and anchors, and what the reducer keeps per child.
 import { describe, it, expect } from 'vitest'
-import { existsSync } from 'node:fs'
+import { existsSync, statSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -51,29 +51,34 @@ describe('the steps', () => {
     expect(free.length).toBe(2)
     expect(new Set(free.map(t => t.slot)).size).toBe(2)
   })
-  it('the rule: quickly at first (a good game each), slower later, the 51st at about half of all stars', () => {
+  it('the rule: quickly at first (a good game each), slower later, the last at about half of all stars', () => {
     expect(stepStars(0)).toBe(0)
     expect(stepStars(1)).toBe(0)
     expect(stepStars(2)).toBe(3)
-    for (let i = 3; i < 80; i++) {
+    // the first dozen steps are one good game each
+    for (let i = 3; i < 14; i++) expect(stepStars(i) - stepStars(i - 1)).toBe(3)
+    for (let i = 3; i < 100; i++) {
       expect(stepStars(i)).toBeGreaterThan(stepStars(i - 1))
       expect(stepStars(i) - stepStars(i - 1)).toBeGreaterThanOrEqual(stepStars(i - 1) - stepStars(Math.max(1, i - 2)))
     }
     expect(MAX_STARS).toBeGreaterThan(600)
-    expect(stepStars(50) / MAX_STARS).toBeGreaterThan(0.4)
-    expect(stepStars(50) / MAX_STARS).toBeLessThan(0.55)
-    // whatever the list holds, its last thing comes well before all stars
-    expect(WARDROBE.at(-1).stars).toBeLessThan(MAX_STARS * 0.6)
+    // the last thing of the five places needs about half of all stars
+    const last = WARDROBE.at(-1).stars / MAX_STARS
+    expect(last).toBeGreaterThanOrEqual(0.45)
+    expect(last).toBeLessThanOrEqual(0.55)
   })
-  it('the order mixes the places: never two hats in a row, red hats apart, no place waits too long, the crown last', () => {
-    for (let i = 1; i < WARDROBE.length; i++) expect(WARDROBE[i].slot === 'head' && WARDROBE[i - 1].slot === 'head', WARDROBE[i].id).toBe(false)
+  it('the order mixes the places: never two of one place in a row, red hats apart, no place waits too long, the crown last', () => {
+    for (let i = 1; i < WARDROBE.length; i++) expect(WARDROBE[i].slot === WARDROBE[i - 1].slot, WARDROBE[i].id).toBe(false)
     const at = id => WARDROBE.findIndex(t => t.id === id)
     const red = ['muetze', 'feuerwehrhelm', 'weihnachtsmuetze'].map(at).filter(i => i >= 0).sort((a, b) => a - b)
     for (let i = 1; i < red.length; i++) expect(red[i] - red[i - 1]).toBeGreaterThanOrEqual(10)
     expect(WARDROBE.filter(t => ORDER.includes(t.id)).at(-1).id).toBe('krone')
     for (const sl of SLOTS) {
       const st = WARDROBE.filter(t => ORDER.includes(t.id) && t.slot === sl).map(t => t.stars)
-      for (let i = 1; i < st.length; i++) expect(st[i] - st[i - 1], `${sl} at ${st[i]}`).toBeLessThanOrEqual(60)
+      // (the back has the fewest things: late in the list it comes every 50 to 70 stars)
+      for (let i = 1; i < st.length; i++) expect(st[i] - st[i - 1], `${sl} at ${st[i]}`).toBeLessThanOrEqual(sl === 'head' ? 35 : 72)
+      // every place's first thing comes among the first six
+      expect(WARDROBE.findIndex(t => t.slot === sl), sl).toBeLessThan(6)
     }
   })
   it('what a new total unlocks, the next present and where its bar starts', () => {
@@ -92,10 +97,14 @@ describe('the pictures', () => {
   it('every place has its recorded announcement', () => {
     for (const slot of SLOTS) expect(LINES[`schrank/platz-${slot}`], slot).toBeTruthy()
   })
-  it('every thing has its picture and its drawing', () => {
+  it('every thing has its picture: made with Tripo, or still drawn (until its Tripo picture comes)', () => {
+    const drawn = ['ballon', 'umhang', 'zauberstab', 'lolli', 'engel', 'blume', 'fee', 'faehnchen', 'drache', 'windrad', 'pfau']
     for (const t of WARDROBE) {
-      expect(existsSync(join(ROOT, 'public', t.src)), t.src).toBe(true)
-      expect(existsSync(join(ROOT, 'scripts', 'art', `schrank-${t.id}.svg`)), t.id).toBe(true)
+      const file = join(ROOT, 'public', t.src)
+      expect(existsSync(file), t.src).toBe(true)
+      // 512 px webp, small (a Tripo picture is about 15 to 45 KB)
+      expect(statSync(file).size, t.src).toBeLessThan(60 * 1024)
+      expect(existsSync(join(ROOT, 'scripts', 'art', `schrank-${t.id}.svg`)), t.id).toBe(drawn.includes(t.id))
       expect(SLOTS).toContain(t.slot)
       for (const v of [...t.at, ...t.box]) expect(v >= 0 && v <= 1, t.id).toBe(true)
     }
@@ -130,6 +139,24 @@ describe('the pictures', () => {
     for (const p of POSE_IDS) for (const t of WARDROBE) {
       const pl = placeItem(t, p), A = POSES[p][t.slot]
       expect(Math.hypot(pl.x - A.x, pl.y - A.y), `${t.id} on ${p}`).toBeLessThan(A.w * 0.3)
+    }
+  })
+  it('wings sit on the back: below the eyes, at the sides of the body, drawn in two halves', () => {
+    const wings = WARDROBE.filter(t => t.slot === 'back' && t.spread)
+    expect(wings.map(t => t.id).sort()).toEqual(['drache', 'engel', 'fee', 'schmetterling'])
+    for (const p of POSE_IDS) for (const t of wings) {
+      // the outer top corners of the two turned halves (the inner ones lie
+      // behind Lumi): an earlier pair rose beside the head and read as two
+      // big ears. (Corners of the picture: a little above the wing itself.)
+      const P = POSES[p], c = itemCorners(t, p)
+      expect(c.length).toBe(8)
+      expect(Math.min(c[0][1], c[5][1]), `${t.id} on ${p}`).toBeGreaterThan(P.face.y - 10)
+      // and they stand out at both sides of the body
+      expect(c[0][0], `${t.id} on ${p}`).toBeLessThan(P.back.x - P.back.w * 0.6)
+      expect(c[5][0], `${t.id} on ${p}`).toBeGreaterThan(P.back.x + P.back.w * 0.6)
+      const back = figureLayers(p, { back: t.id }).layers.filter(l => l.kind === 'item')
+      expect(back.map(l => l.id), p).toEqual([t.id, `${t.id}-right`])
+      expect(back[0].rot).toBeLessThan(back[1].rot)
     }
   })
   it('the layers: a covering hat cuts the tuft out, a crown draws it again on top', () => {
