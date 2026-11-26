@@ -538,6 +538,118 @@ a round children's paper lantern, warm yellow and orange with a smiling sun face
 
 ---
 
+## Eingebaut (Stand: Tripo-Bilder im Kleiderschrank)
+
+Von den 69 Tripo-Bildern sind die der fünf alten Plätze eingebaut: 40 gemalte Dinge sind durch ihr Tripo-Bild
+ersetzt (`schmetterlingsfluegel.png` → `schmetterling`, `jetpack.png` → `rakete`, `eistuete.png` → `eis`), dazu
+17 neue Dinge: Propellermütze, Eierschale, Einhorn-Haarreif (`einhorn.png`), Tortenhut, Fliegenpilz-Hut, Antennen,
+Diadem, Heiligenschein, Doktorhut (Kopf); Spiralbrille, 3D-Brille, Federmaske (`maske-venedig.png`) (Gesicht);
+Kopfhörer, Halskrause, Kamera (Hals); Zuckerwatte, Ukulele (Hand). Umgewandelt mit
+`node scripts/art/png-to-webp.mjs public/sprites/wardrobe <bild.png>=<id> …` (512 px webp, unter 60 KB, die
+durchscheinenden Gläser und die Löcher bleiben). Eingepasst auf alle sieben Bilder von Lumi in
+`src/lib/wardrobe/*.js`; ansehen mit `node scripts/art/wardrobe-fit.mjs out.png 240 <id>`.
+
+Flügel (Schmetterling, Engel, Fee, Drache) werden in zwei Hälften seitlich nach außen gedreht (`spread` in
+`src/lib/wardrobe.js`): aufrecht neben dem Kopf sahen sie wie Ohren aus.
+
+## Noch bestellen
+
+Elf Dinge sind noch gemalt und wirken neben den Tripo-Bildern flacher (dicke braune Kontur, kaum Glanz). Am
+meisten fallen Umhang (liest sich wie ein Rock), Drachen-, Engels- und Feenflügel und die Pfauenfedern auf;
+Ballon, Lolli, Sonnenblume, Windrad, Zauberstab und Fähnchen gehen zur Not. Gleiche Regeln wie oben, Lumi als
+Stil-Vorbild, Ablage `tripo-in/wardrobe/<name>.png`. Flügel: ausgebreitet zur Seite, sie werden hinter Lumi
+gezeichnet und in der Mitte geteilt.
+
+### Luftballon (Hand) → `tripo-in/wardrobe/ballon.png`
+
+Prompt:
+
+```
+a shiny round red party balloon with a soft glossy highlight, a small knot and a thin curly string hanging straight down, the string as long as the balloon is tall. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### Umhang (Rücken) → `tripo-in/wardrobe/umhang.png`
+
+Prompt:
+
+```
+a superhero cape seen from the front as if worn, a short golden collar with a round gold star clasp in the middle, the bright red cape spreading out wide to both sides with yellow lining showing at the edges, flowing wider towards a wavy hem. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### Zauberstab (Hand) → `tripo-in/wardrobe/zauberstab.png`
+
+Prompt:
+
+```
+a magic wand, a slim purple stick with a gold tip at the bottom and a big glossy gold star on top, three tiny sparkles around the star, upright. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### Lolli (Hand) → `tripo-in/wardrobe/lolli.png`
+
+Prompt:
+
+```
+a big round flat lollipop with a pink and white swirl and a glossy highlight on a white stick, upright. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### Engelsflügel (Rücken) → `tripo-in/wardrobe/engel.png`
+
+Prompt:
+
+```
+a pair of soft white angel wings with layered rounded feathers and gentle pale blue shading, spread out to both sides and slightly upwards, symmetrical, a small gap in the middle. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### Sonnenblume (Hand) → `tripo-in/wardrobe/blume.png`
+
+Prompt:
+
+```
+a sunflower with bright yellow petals, a brown seed centre and a long green stem with two leaves, upright. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### Feenflügel (Rücken) → `tripo-in/wardrobe/fee.png`
+
+Prompt:
+
+```
+a pair of delicate see-through fairy wings in mint and lilac with tiny white glitter dots, two tall upper wings and two short lower wings, spread out to both sides, the wings half transparent. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### Fähnchen (Hand) → `tripo-in/wardrobe/faehnchen.png`
+
+Prompt:
+
+```
+a little pennant flag, a wavy turquoise triangle with a yellow star on a wooden stick with a gold knob on top, upright. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### Drachenflügel (Rücken) → `tripo-in/wardrobe/drache.png`
+
+Prompt:
+
+```
+a pair of friendly little green dragon wings with rounded scalloped edges, light green membranes and darker green ribs, no claws or spikes, spread out to both sides, symmetrical. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### Windrad (Hand) → `tripo-in/wardrobe/windrad.png`
+
+Prompt:
+
+```
+a paper pinwheel with four curled blades in red, blue, yellow and green and a gold pin in the middle, on a wooden stick, upright. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### Pfauenfedern (Rücken) → `tripo-in/wardrobe/pfau.png`
+
+Prompt:
+
+```
+a peacock tail fan, nine long green-teal feathers spread in a half wheel, each with a gold, blue and navy eye spot at its tip, the fan wider than tall. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+---
+
 # Lumis Freunde (vier neue Figuren)
 
 Vier Freunde, die Kinder sich mit ihren Sternen als Begleiter aussuchen können. Lumi bleibt die Figur, die spricht und
