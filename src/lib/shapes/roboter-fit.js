@@ -2,8 +2,10 @@
 // when this shape wears it ({ [id]: { size, at, dx, dy, rot, sy, pose: { sleep: {…} }, hide } }).
 // `hide: true`: the thing is not drawn on this shape.
 import { ownTop } from '../wardrobe/top.js'
+import WORN from './roboter-worn.js'
+import { wornFit } from '../wardrobe.js'
 
-export default {
+const FIT = {
   // crown and diadem cover the antenna (poking up through their middle it
   // looked broken)
   diadem: { tuft: 'hide' },
@@ -21,3 +23,7 @@ export default {
   ringelshirt: ownTop('roboter', 'ringelshirt', { at: [0.5, 0.29], size: 1.69, sy: 0.52, box: [0.05, 0.24, 0.95, 0.76] }, { sad: { size: 0.88 }, hmm: { size: 0.92 }, think: { size: 0.92 }, sleep: { size: 0.85 } }),
   hawaiihemd: ownTop('roboter', 'hawaiihemd', { at: [0.5, 0.21], size: 1.46, sy: 0.46, box: [0.05, 0.18, 0.95, 0.82] }, { sad: { size: 0.9 }, sleep: { size: 0.9, dy: -6 } }),
 }
+
+// Things Tripo painted onto the roboter (scripts/art/worn-from-sheet.mjs): drawn
+// from their own picture per pose over the pose picture, not placed by anchors
+export default wornFit('roboter', WORN, FIT)

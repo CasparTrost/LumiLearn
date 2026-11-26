@@ -5,6 +5,8 @@ import HEAD from '../wardrobe/head.js'
 import SHOES from '../wardrobe/shoes.js'
 import BOTTOM from '../wardrobe/bottom.js'
 import { ownTop } from '../wardrobe/top.js'
+import WORN from './drache-worn.js'
+import { wornFit } from '../wardrobe.js'
 import POSES from './drache-poses.js'
 
 // The dragon's head stands a little higher in its square than the chick's
@@ -52,7 +54,7 @@ const sitting = Object.fromEntries(BOTTOM.filter(t => t.feet !== false).map(t =>
   return [t.id, { ...f, pose: { sleep: sit(t, SKIRTS.includes(t.id) ? SKIRT : SHORTS.includes(t.id) ? SHORT : LAP, f) } }]
 }))
 
-export default {
+const FIT = {
   ...sitting,
   ...hats,
   // sitting, the tail lies in the lap, not spread over the floor
@@ -75,3 +77,7 @@ export default {
   ringelshirt: ownTop('drache', 'ringelshirt', { at: [0.5, 0.29], size: 1.62, sy: 0.57, box: [0.05, 0.25, 0.95, 0.75] }, { sleep: { size: 0.85 } }),
   hawaiihemd: ownTop('drache', 'hawaiihemd', { at: [0.5, 0.23], size: 1.5, sy: 0.49, box: [0.05, 0.2, 0.95, 0.8] }, { sleep: { size: 0.95 } }),
 }
+
+// Things Tripo painted onto the drache (scripts/art/worn-from-sheet.mjs): drawn
+// from their own picture per pose over the pose picture, not placed by anchors
+export default wornFit('drache', WORN, FIT)

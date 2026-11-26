@@ -2,7 +2,7 @@
 // a sheet Tripo dressed (scripts/art/worn-from-sheet.mjs) and drawn over the
 // pose picture whole, in the right layer, the figure's arms and tail not drawn
 // again over them.
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { existsSync, statSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -85,4 +85,31 @@ describe('clothes painted onto the figure', () => {
     expect(figureLayers('wave', PILOT, POSES, wornFit('chick', ['ringelshirt'])).layers.find(l => l.id === 'ringelshirt').src)
       .toBe('sprites/wardrobe/worn/chick/ringelshirt-wave.webp')
   })
+})
+
+describe('every figure reads its list, so a new sheet needs only the one command', () => {
+  const FIGURES = ['chick', 'dino', 'einhorn', 'drache', 'roboter']
+  const listOf = f => (f === 'chick' ? '../../src/lib/wardrobe/chick-worn.js' : `../../src/lib/shapes/${f}-worn.js`)
+  it('a list per figure, where scripts/art/worn-from-sheet.mjs writes it', () => {
+    for (const f of FIGURES) expect(existsSync(join(ROOT, 'tests/unit', listOf(f))), f).toBe(true)
+  })
+  for (const f of FIGURES) {
+    it(`a thing in the ${f}'s list is drawn from its painted pictures`, async () => {
+      vi.resetModules()
+      vi.doMock(listOf(f), () => ({ default: ['ringelshirt', 'tutu'] }))
+      try {
+        const Wm = await import('../../src/lib/wardrobe.js')
+        const Sm = await import('../../src/lib/shapes.js')
+        const outfit = { top: 'ringelshirt', bottom: 'tutu' }
+        const { layers } = f === 'chick' ? Wm.figureLayers('sad', outfit) : Sm.shapeLayers(f, 'sad', outfit)
+        const src = id => layers.find(l => l.id === id).src
+        expect(src('ringelshirt')).toBe(`sprites/wardrobe/worn/${f}/ringelshirt-sad.webp`)
+        expect(src('tutu')).toBe(`sprites/wardrobe/worn/${f}/tutu-sad.webp`)
+        expect(ids(layers)).toEqual(['pose', 'tutu', 'ringelshirt'])
+      } finally {
+        vi.doUnmock(listOf(f))
+        vi.resetModules()
+      }
+    })
+  }
 })

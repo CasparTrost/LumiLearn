@@ -2,8 +2,10 @@
 // when this shape wears it ({ [id]: { size, at, dx, dy, rot, sy, pose: { sleep: {…} }, hide } }).
 // `hide: true`: the thing is not drawn on this shape.
 import { ownTop } from '../wardrobe/top.js'
+import WORN from './einhorn-worn.js'
+import { wornFit } from '../wardrobe.js'
 
-export default {
+const FIT = {
   // the unicorn headband's horn stood on top of the unicorn's own: the own
   // horn and ears go under it (cat and bunny ears keep the own ears and horn:
   // hiding them left a gap above the headband)
@@ -28,3 +30,7 @@ export default {
   ringelshirt: ownTop('einhorn', 'ringelshirt', { at: [0.5, 0.26], size: 1.55, sy: 0.53, box: [0.05, 0.22, 0.95, 0.78] }, { sleep: { size: 0.92 } }),
   hawaiihemd: ownTop('einhorn', 'hawaiihemd', { at: [0.5, 0.17], size: 1.39, sy: 0.45, box: [0.05, 0.14, 0.95, 0.86] }),
 }
+
+// Things Tripo painted onto the einhorn (scripts/art/worn-from-sheet.mjs): drawn
+// from their own picture per pose over the pose picture, not placed by anchors
+export default wornFit('einhorn', WORN, FIT)
