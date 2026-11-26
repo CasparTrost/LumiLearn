@@ -137,7 +137,7 @@ export default function Critter({
       </motion.button>
       {/* Lumi's sleeping picture has its own Zzz: a second one sat on top of it */}
       <div aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', transform: raise ? `translateY(${-raise}px)` : undefined }}>
-        <MoodMark mood={art === 'lumi' && shown === 'sleep' ? 'idle' : shown} size={size} tickle={tickle} />
+        <MoodMark mood={art === 'lumi' && shown === 'sleep' ? 'idle' : shown} size={size} tickle={tickle} hat={hatOn} />
       </div>
       {wish && <Wish side={wishSide} size={size} style={hatOn && wishSide === 'top' ? { marginBottom: size * 0.11 } : undefined}>{wish}</Wish>}
       {children}
@@ -169,7 +169,9 @@ function useSpeaking(on) {
 // They stay inside the character's own box, never above it: a game that
 // clips its stage (Zahlen entdecken) cut off hearts above the head.
 const MARK_TOP = 0.12
-function MoodMark({ mood, size, tickle }) {
+// `hat`: Lumi wears something on its head. The hearts rise above it, not
+// through it (they started at the head and crossed a top hat's front).
+function MoodMark({ mood, size, tickle, hat = false }) {
   const s = size
   return (
     <AnimatePresence>
@@ -177,8 +179,8 @@ function MoodMark({ mood, size, tickle }) {
         <motion.div key={`h${tickle}`} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} exit={{ opacity: 0 }}>
           {[-0.3, 0, 0.3].map((dx, i) => (
             <motion.svg key={i} viewBox="-2 -2.5 24 22" width={s * 0.18} height={s * 0.16}
-              initial={{ x: s * 0.41 + dx * s, y: s * 0.3, opacity: 0, scale: 0.5 }}
-              animate={{ y: s * (0.1 - i * 0.035), opacity: [0, 1, 0], scale: 1 }}
+              initial={{ x: s * 0.41 + dx * s, y: s * (hat ? -0.05 : 0.3), opacity: 0, scale: 0.5 }}
+              animate={{ y: s * ((hat ? -0.13 : 0.1) - i * 0.035), opacity: [0, 1, 0], scale: 1 }}
               transition={{ duration: 1.2, delay: i * 0.12 }}
               style={{ position: 'absolute', left: 0, top: 0 }}>
               <path d="M10 17 C2 11 0 7 0 4.5 A4.5 4.5 0 0 1 10 3 A4.5 4.5 0 0 1 20 4.5 C20 7 18 11 10 17Z" fill="#ff5b8a" stroke="#2a1b3d" strokeWidth="1.5" />

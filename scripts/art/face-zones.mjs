@@ -5,6 +5,7 @@
 //
 //   node scripts/art/face-zones.mjs            writes tests/unit/face-zones.json
 //   node scripts/art/face-zones.mjs out.png    also a picture of the zones found
+//   node scripts/art/face-zones.mjs signs      prints the "?" and "Zzz" polygons (`sign`)
 //
 // Eyes: the two big dark blobs (pupil or closed-eye arc) nearest the face
 // anchor's eye points, filled row by row and grown by 2 px (the outline of the
@@ -31,6 +32,54 @@ writeFileSync(page, '<canvas id=c width=384 height=384></canvas>')
 const browser = await chromium.launch()
 const pg = await browser.newPage()
 await pg.goto(pathToFileURL(page).href)
+
+// `signs`: the "?" and the "Zzz" painted beside the head on the thinking and
+// the sleeping picture (every piece apart from the figure itself): one
+// polygon each, its outline grown by up to 3 px but never onto the figure.
+// Printed for the `sign` of the poses (lib/wardrobe.js POSES, shapes/<id>-poses.js).
+if (out === 'signs') {
+  for (const fig of SH.SHAPE_IDS) for (const pose of ['think', 'sleep']) {
+    const polys = await pg.evaluate(async src => {
+      const img = new Image(); img.src = src; await img.decode()
+      const x = document.getElementById('c').getContext('2d'); x.clearRect(0, 0, 384, 384); x.drawImage(img, 0, 0, 384, 384)
+      const d = x.getImageData(0, 0, 384, 384).data, N = 384
+      const seen = new Int32Array(N * N).fill(-1), comps = []
+      for (let i = 0; i < N * N; i++) if (d[4 * i + 3] > 30 && seen[i] < 0) {
+        const id = comps.length, q = [i], px = []; seen[i] = id
+        while (q.length) {
+          const k = q.pop(); px.push(k); const xx = k % N, yy = (k / N) | 0
+          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+            const a = xx + dx, b = yy + dy, kk = b * N + a
+            if (a >= 0 && b >= 0 && a < N && b < N && d[4 * kk + 3] > 30 && seen[kk] < 0) { seen[kk] = id; q.push(kk) }
+          }
+        }
+        comps.push(px)
+      }
+      const main = comps.reduce((a, c, i) => (c.length > comps[a].length ? i : a), 0)
+      const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+      const hull = pts => {
+        pts.sort((a, b) => a[0] - b[0] || a[1] - b[1]); const lo = [], up = []
+        for (const p of pts) { while (lo.length >= 2 && cross(lo.at(-2), lo.at(-1), p) <= 0) lo.pop(); lo.push(p) }
+        for (const p of pts.reverse()) { while (up.length >= 2 && cross(up.at(-2), up.at(-1), p) <= 0) up.pop(); up.push(p) }
+        return lo.slice(0, -1).concat(up.slice(0, -1))
+      }
+      const inside = (pts, x, y) => { let c = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, yi] = pts[i], [xj, yj] = pts[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c } return c }
+      // fewer corners: drop the one that adds least (under 6 px²)
+      const simple = p => { for (;;) { let bi = -1, ba = 6; p.forEach((b, i) => { const a = p.at(i - 1), c = p[(i + 1) % p.length]; const ar = Math.abs(cross(a, b, c)) / 2; if (ar < ba) { ba = ar; bi = i } }); if (bi < 0 || p.length <= 5) return p; p.splice(bi, 1) } }
+      return comps.filter((c, i) => i !== main && c.length >= 25).map(c => {
+        const h = hull(c.flatMap(k => { const xx = k % N, yy = (k / N) | 0; return [[xx, yy], [xx + 1, yy], [xx, yy + 1], [xx + 1, yy + 1]] }))
+        const cx = h.reduce((s, p) => s + p[0], 0) / h.length, cy = h.reduce((s, p) => s + p[1], 0) / h.length
+        for (const g of [3, 2, 1, 0]) {
+          const poly = h.map(([x, y]) => { const l = Math.hypot(x - cx, y - cy) || 1; return [Math.round(x + (x - cx) / l * g), Math.round(y + (y - cy) / l * g)] })
+          if (g === 0 || !comps[main].some(k => inside(poly, k % N + 0.5, ((k / N) | 0) + 0.5))) return simple(poly)
+        }
+      })
+    }, dataUrl(SH.shapeSrc(fig, pose)))
+    console.log(fig, pose, JSON.stringify(polys).replace(/,/g, ', '))
+  }
+  await browser.close()
+  process.exit(0)
+}
 
 // eyes and mouth of one picture, as row spans [y, x0, x1] in the 384 square
 const findZones = (src, face, chick) => pg.evaluate(async ([src, face, chick]) => {

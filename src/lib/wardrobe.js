@@ -75,7 +75,10 @@
 // the neck, optional), wings (drawn again over clothes), soles (cut away
 // under shoes standing) and feet (only where the feet lie in front of the
 // body, sitting); another figure may add tail (drawn again over clothes)
-// and ownWings (cut away under wings worn). Measured on the 384 × 384
+// and ownWings (cut away under wings worn). think and sleep have `sign`: the
+// "?" and the "Zzz" painted beside the head, one polygon per piece, drawn
+// again over what is worn (scripts/art/face-zones.mjs signs finds them).
+// Measured on the 384 × 384
 // square; scripts/art/
 // wardrobe-anchors.mjs draws plain test shapes on them.
 // Per picture: the three anchors { x, y, rot, w } in picture pixels, the
@@ -153,6 +156,7 @@ export const POSES = {
     shoes: { x: 188, y: 355, rot: 0, w: 60, step: 43 },
     soles: [[85, 357], [291, 357], [291, 384], [85, 384]],
     tuft: [[135, 0], [245, 0], [245, 58], [215, 60], [190, 58], [160, 66], [135, 70]],
+    sign: [[[271, 34], [277, 27], [283, 24], [298, 24], [306, 27], [312, 32], [318, 41], [318, 53], [314, 60], [289, 91], [281, 95], [274, 95], [268, 88]]],
     wings: [[[112, 226], [96, 234], [82, 252], [80, 272], [88, 288], [108, 298], [124, 294], [128, 262], [124, 236]], [[205, 196], [222, 186], [246, 196], [276, 232], [292, 262], [300, 300], [262, 306], [228, 268], [214, 236]]],
     front: [[205, 196], [222, 186], [246, 196], [276, 232], [292, 262], [300, 300], [262, 306], [228, 268], [214, 236]],
   },
@@ -166,6 +170,7 @@ export const POSES = {
     bottom: { x: 184, y: 315, rot: 0, w: 225 },
     shoes: { x: 182, y: 338, rot: 0, w: 65, step: 79 },
     tuft: [[140, 0], [255, 0], [255, 78], [220, 80], [188, 78], [158, 84], [140, 88]],
+    sign: [[[298, 32], [307, 26], [318, 22], [329, 21], [335, 24], [344, 52], [343, 61], [338, 65], [329, 69], [320, 71], [312, 71], [307, 68], [298, 40]], [[276, 66], [282, 60], [296, 55], [303, 55], [315, 77], [315, 82], [310, 88], [297, 94], [289, 94], [286, 91], [276, 70]], [[266, 92], [270, 88], [280, 83], [286, 85], [294, 98], [294, 103], [289, 109], [281, 112], [276, 112], [272, 108], [266, 98]]],
     wings: [[[70, 262], [80, 252], [110, 256], [140, 270], [160, 300], [158, 318], [130, 318], [95, 300], [72, 282]], [[288, 262], [278, 254], [250, 256], [222, 268], [200, 292], [204, 312], [232, 312], [268, 300], [290, 282]]],
     feet: [[[72, 318], [100, 305], [130, 310], [138, 340], [130, 370], [100, 372], [75, 350]], [[230, 318], [260, 305], [290, 312], [295, 340], [280, 370], [250, 372], [228, 350]]],
   },
@@ -561,6 +566,9 @@ export function figureLayers(pose, outfit, poses = POSES, fit = poses === POSES 
     layers.push(item(hat))
     if (hat.tuft === 'front' && P.tuft) layers.push({ kind: 'pose', clip: `polygon(${poly(P.tuft)})` })
   }
+  // the "?" (thinking) and the "Zzz" (asleep) painted into the picture beside
+  // the head: drawn again over a head thing, a wide hat's brim never hides them
+  if (hat && P.sign) again(P.sign)
   // room in the square: the lowest scale that keeps every corner inside
   let scale = 1
   const S = POSE_SIZE, M = 2

@@ -8,7 +8,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { WARDROBE, placeItem, fitted, ASLEEP_OFF } from '../../src/lib/wardrobe.js'
+import { WARDROBE, placeItem, fitted, figureLayers, ASLEEP_OFF } from '../../src/lib/wardrobe.js'
 import { SHAPE_IDS, SHAPE_POSE_IDS, posesOf, fitOf } from '../../src/lib/shapes.js'
 
 const DATA = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'face-zones.json'), 'utf8'))
@@ -70,6 +70,18 @@ describe('nothing on the eyes or the mouth', () => {
     // a crown pulled down over the face
     const low = { ...WARDROBE.find(t => t.id === 'krone'), dy: 0.45 }
     expect(covered('chick', 'idle', low).eyes).toBeGreaterThan(100)
+  })
+  it('the "?" and the "Zzz" painted beside the head are drawn again over a hat, on every figure', () => {
+    for (const f of SHAPE_IDS) for (const p of ['think', 'sleep']) {
+      const P = posesOf(f)[p]
+      expect(P.sign?.length, `${f} ${p}`).toBeGreaterThan(0)
+      const { layers } = figureLayers(p, { head: 'strohhut' }, posesOf(f), fitOf(f))
+      const last = layers.slice(-P.sign.length)
+      expect(last.every(l => l.kind === 'pose' && l.clip?.startsWith('polygon(')), `${f} ${p}`).toBe(true)
+      expect(layers.findIndex(l => l.id === 'strohhut')).toBeLessThan(layers.length - P.sign.length)
+    }
+    // the other pictures have no sign
+    expect(posesOf('chick').hmm.sign).toBeUndefined()
   })
   for (const slot of ['head', 'hold']) {
     it(`no ${slot} thing covers an eye or the mouth (${THINGS.filter(t => t.slot === slot).length} things × 5 figures × 7 poses)`, () => {
