@@ -28,8 +28,6 @@ export const translations = {
     'profile.addLearner': 'Neues Kind',
     'profile.create': 'Hallo! Ich bin Lumi.',
     'profile.ageLabel': 'Jahre',
-    'profile.pickCharacter': 'Welches Tier möchtest du sein?',
-    'profile.whoDoYouWant': 'Tippe auf ein Bild.',
     'profile.whatsName': 'Name (für Eltern, freiwillig)',
     'profile.namePlaceholder': 'Name eintippen',
     'profile.howOld': 'Wie alt bist du?',
@@ -37,7 +35,7 @@ export const translations = {
     'profile.tellUs': 'Tippe auf die Zahl.',
     'profile.next': 'Weiter',
     'profile.letsGo': 'Los geht’s!',
-    'profile.back': 'Anderes Tier',
+    'profile.back': 'Anderer Lumi',
     'profile.cancel': 'Abbrechen',
 
     'home.new': 'Neu',

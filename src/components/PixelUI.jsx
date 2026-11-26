@@ -6,12 +6,13 @@ export const uiSpr  = f => BASE.replace(/\/$/, '') + '/sprites/ui/' + f
 
 /**
  * Lumi (components/LumiFigure.jsx); `happy` shows the cheering pose. Lumi
- * wears what the playing child chose in the wardrobe; `outfit={null}`
- * where no child is meant (choosing who plays).
+ * wears what the playing child chose in the wardrobe, in the shape it
+ * chose; `outfit={null}` where no child is meant (choosing who plays): the
+ * chick, plain.
  */
 export function PixelLumi({ size = 96, happy = false, bob = true, style, outfit }) {
   return (
-    <LumiFigure mood={happy ? 'happy' : 'idle'} size={size} outfit={outfit} alt="Lumi"
+    <LumiFigure mood={happy ? 'happy' : 'idle'} size={size} outfit={outfit} shape={outfit === null ? null : undefined} alt="Lumi"
       className={bob ? 'px-bob' : undefined}
       style={{ display: 'block', filter: 'drop-shadow(0 4px 0 rgba(42,27,61,0.35))', ...style }} />
   )

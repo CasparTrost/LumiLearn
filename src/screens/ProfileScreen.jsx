@@ -1,167 +1,155 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useApp } from '../AppContext.jsx'
 import { useT } from '../i18n.js'
 import { PixelLumi, PxIcon, uiSpr } from '../components/PixelUI.jsx'
-import { narrate } from '../narrator.js'
+import { narrate, stopNarration } from '../narrator.js'
 import { hearable } from '../lib/hearable.js'
 import { sayNumber } from '../tts.js'
 import { line } from '../lib/lumiLines.js'
-import { Art } from '../components/play/index.js'
+import { ChildLumi } from '../components/ShapeFigure.jsx'
+import { Ring } from './ShapesScreen.jsx'
+import { SHAPE_BY_ID } from '../lib/shapes.js'
+import { LINES } from '../lib/lumiLines.js'
 
-// The animals a child can be, with the name Lumi says when it is tapped and
-// the name a profile gets when nobody types one in.
-export const AVATAR_INFO = [
-  { e: '🐻', name: 'Bär',   art: 'der' }, { e: '🐼', name: 'Panda',   art: 'der' },
-  { e: '🦁', name: 'Löwe',  art: 'der' }, { e: '🐨', name: 'Koala',   art: 'der' },
-  { e: '🦊', name: 'Fuchs', art: 'der' }, { e: '🐧', name: 'Pinguin', art: 'der' },
-  { e: '🦋', name: 'Schmetterling', art: 'der' }, { e: '🐬', name: 'Delfin', art: 'der' },
-  { e: '🦄', name: 'Einhorn', art: 'das' }, { e: '🐸', name: 'Frosch', art: 'der' },
-  { e: '🐙', name: 'Krake', art: 'die' }, { e: '🐯', name: 'Tiger',  art: 'der' },
-  { e: '🐮', name: 'Kuh',   art: 'die' }, { e: '🐷', name: 'Schwein', art: 'das' },
-  { e: '🐔', name: 'Huhn',  art: 'das' }, { e: '🦉', name: 'Eule',    art: 'die' },
-]
-export const AVATARS = AVATAR_INFO.map(a => a.e)
-export const avatarName = e => AVATAR_INFO.find(a => a.e === e)?.name ?? 'Kind'
-const sayAvatar = e => { const a = AVATAR_INFO.find(x => x.e === e); return a ? `${a.art[0].toUpperCase()}${a.art.slice(1)} ${a.name}!` : '' }
 // The app is made for children from 4 to 7
 export const AGES = [4, 5, 6, 7]
 
-const SAY_PICK = line('menue/welches-tier')
 const SAY_AGE  = line('menue/wie-alt')
+// not recorded yet (lib/lumiLines.js RECORD_LATER): skipped while missing
+const SAY_SHAPE = LINES['gestalt/aussuchen'] ? line('gestalt/aussuchen') : null
+const SAY_SHAPE_IS = id => (LINES[`gestalt/${id}`] ? line(`gestalt/${id}`) : null)
 const SAY_WHO  = line('menue/wer-spielt-heute')
 // the ages as recorded numbers (public/audio/zahlen-entdecken)
 const AGE_CLIP = { 4: 'vier', 5: 'fuenf', 6: 'sechs', 7: 'sieben' }
 
-// Avatar tiles are sized by the height as well, so the grid fits on a small
-// phone without scrolling (the size is in pixel.css, .avatar-tile). The
-// picture is sized as a share of its tile, not by a font size: the font size
-// was a calc() over min() with dvh, the pictures (1.15em) hung on it, and on
-// an iPhone they did not show at all.
+// Creating a child: first it chooses its Lumi on the ring (ShapeStart,
+// full screen; this is the free first choice of lib/shapes.js), then the
+// age and "Los geht's!". The name is for the parents and may stay empty —
+// typing it was impossible for a child who can't write yet, and blocked
+// the start. (The animal pictures to choose from are gone: the child's
+// picture is its Lumi now.)
+function ShapeStart({ onChosen, onCancel }) {
+  const { w, h } = useViewport()
+  const [poof, setPoof] = useState(null)
+  const lock = useRef(0)
+  useEffect(() => {
+    const id = setTimeout(() => narrate([SAY_SHAPE]), 400)
+    return () => clearTimeout(id)
+  }, [])
+  const choose = id => {
+    if (Date.now() - lock.current < 1200) return
+    lock.current = Date.now()
+    stopNarration()
+    setPoof({ id, at: Date.now() })
+    setTimeout(() => narrate([SAY_SHAPE_IS(id)]), 400)
+    setTimeout(() => onChosen(id), 1300)
+  }
+  const top = w < 521 ? 64 : 76
+  return (
+    <div data-shape-start style={{ position:'fixed', inset:0, zIndex:5, display:'flex', flexDirection:'column', overflow:'hidden', overscrollBehavior:'contain',
+      background:'radial-gradient(ellipse at 50% 70%, #fff6d6 0%, #ffe2a6 45%, #e9b873 100%)' }}>
+      <div style={{ height: top, display:'flex', alignItems:'center', justifyContent:'center', gap:10, padding:'0 12px', position:'relative' }}>
+        {onCancel && (
+          <button className="px-btn px-btn--parch px-btn--icon" onClick={onCancel} aria-label="Abbrechen" style={{ position:'absolute', left:12 }}>
+            <PxIcon name="back" size={20} color="var(--px-ink)" />
+          </button>
+        )}
+        <span className="px-title" style={{ fontSize:'clamp(20px,4.5vw,30px)', textAlign:'center' }}>Wie sieht dein Lumi aus?</span>
+      </div>
+      <Ring w={w} h={h - top} start={0} kind={() => 'free'} poof={poof} onChoose={choose} outfit={null} />
+    </div>
+  )
+}
 
-// Two short steps: tap an animal (that already moves on), then the age and
-// "Los geht's!". The name is for the parents and may stay empty — typing it
-// was impossible for a child who can't write yet, and blocked the start.
-function CreateProfileForm({ onSave, onCancel, showCancel }) {
+function useViewport() {
+  const get = () => ({ w: window.innerWidth, h: window.innerHeight })
+  const [v, setV] = useState(get)
+  useEffect(() => {
+    const on = () => setV(get())
+    window.addEventListener('resize', on)
+    return () => window.removeEventListener('resize', on)
+  }, [])
+  return v
+}
+
+function CreateProfileForm({ shape, onBack, onSave, onCancel, showCancel }) {
   const t = useT()
   const [name, setName] = useState('')
   const [age, setAge] = useState(null)
-  const [avatar, setAvatar] = useState(null)
-  const [step, setStep] = useState(0)
 
   useEffect(() => {
-    const id = setTimeout(() => narrate([step === 0 ? SAY_PICK : SAY_AGE]), 350)
+    const id = setTimeout(() => narrate([SAY_AGE]), 350)
     return () => clearTimeout(id)
-  }, [step])
+  }, [])
 
-  const pickAvatar = (a) => {
-    setAvatar(a)
-    narrate([{ text: sayAvatar(a) }])
-    setTimeout(() => setStep(1), 650)
-  }
   const pickAge = (a) => {
     setAge(a)
     narrate([{ src: AGE_CLIP[a] && `audio/zahlen-entdecken/${AGE_CLIP[a]}.mp3`, text: `${sayNumber(a)}!` }])
   }
-  const save = () => onSave({ name: name.trim() || avatarName(avatar), age, avatar })
+  const save = () => onSave({ name: name.trim() || SHAPE_BY_ID[shape]?.name || 'Kind', age, shape })
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:'clamp(12px,2.5dvh,22px)' }}>
-      <AnimatePresence mode="wait">
-        {step === 0 ? (
-          <motion.div key="step0"
-            initial={{ opacity:0, x:40 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-40 }}
-            transition={{ duration:0.25 }}
-            style={{ display:'flex', flexDirection:'column', gap:'clamp(10px,2dvh,18px)', alignItems:'center' }}
-          >
-            <div style={{ textAlign:'center' }}>
-              <div className="px-title" style={{ fontSize:'clamp(21px,5vw,30px)', lineHeight:1.15 }}>
-                {t('profile.pickCharacter')}
-              </div>
-              <div className="px-title" style={{ fontSize:17, marginTop:6 }}>
-                {t('profile.whoDoYouWant')}
-              </div>
+      <motion.div key="age"
+        initial={{ opacity:0, x:40 }} animate={{ opacity:1, x:0 }}
+        transition={{ duration:0.25 }}
+        style={{ display:'flex', flexDirection:'column', gap:'clamp(12px,2.5dvh,20px)' }}
+      >
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:14 }}>
+          {/* the Lumi just chosen; a tap goes back to the ring */}
+          <button className="px-btn px-btn--gold" onClick={onBack}
+            aria-label={t('profile.back')} title={t('profile.back')}
+            style={{ width:84, height:84, padding:0, overflow:'hidden' }}>
+            <ChildLumi profile={{ id: 'new', shape, shapes: [shape] }} size={74} />
+          </button>
+          <div style={{ textAlign:'left' }}>
+            <div className="px-title" style={{ fontSize:'clamp(21px,5vw,30px)', lineHeight:1.15 }}>
+              {t('profile.almostThere')}
             </div>
-
-            <div className="avatar-grid">
-              {AVATARS.map(a => {
-                const sel = avatar === a
-                return (
-                  <button key={a}
-                    className={`px-btn avatar-tile ${sel ? 'px-btn--gold' : 'px-btn--parch'}`}
-                    onClick={() => pickAvatar(a)}
-                    {...hearable(sayAvatar(a))}
-                    aria-label={avatarName(a)}
-                    aria-pressed={sel}
-                    style={{ padding:0, lineHeight:1 }}
-                  >
-                    <Art art={a} size={96} style={{ width:'62%', height:'62%', objectFit:'contain' }} />
-                  </button>
-                )
-              })}
+            <div className="px-title" style={{ fontSize:17, marginTop:4 }}>
+              {t('profile.tellUs')}
             </div>
-          </motion.div>
-        ) : (
-          <motion.div key="step1"
-            initial={{ opacity:0, x:40 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-40 }}
-            transition={{ duration:0.25 }}
-            style={{ display:'flex', flexDirection:'column', gap:'clamp(12px,2.5dvh,20px)' }}
-          >
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:14 }}>
-              <button className="px-btn px-btn--gold" onClick={() => setStep(0)}
-                aria-label={t('profile.back')} title={t('profile.back')}
-                style={{ width:76, height:76, padding:0, fontSize:42, lineHeight:1 }}>
-                {avatar}
-              </button>
-              <div style={{ textAlign:'left' }}>
-                <div className="px-title" style={{ fontSize:'clamp(21px,5vw,30px)', lineHeight:1.15 }}>
-                  {t('profile.almostThere')}
-                </div>
-                <div className="px-title" style={{ fontSize:17, marginTop:4 }}>
-                  {t('profile.tellUs')}
-                </div>
-              </div>
-            </div>
+          </div>
+        </div>
 
-            {/* Age */}
-            <div style={{ display:'flex', gap:10 }}>
-              {AGES.map(a => (
-                <button key={a}
-                  className={`px-btn ${age === a ? 'px-btn--gold' : 'px-btn--parch'}`}
-                  onClick={() => pickAge(a)}
-                  {...hearable(sayNumber(a))}
-                  aria-pressed={age === a}
-                  style={{ flex:1, minHeight:'clamp(56px,9dvh,72px)', fontSize:30 }}
-                >
-                  {a}
-                </button>
-              ))}
-            </div>
-
-            {/* Name, for the parents */}
-            <label style={{ display:'flex', flexDirection:'column', gap:6 }}>
-              <span className="px-title" style={{ fontSize:15 }}>{t('profile.whatsName')}</span>
-              <input
-                type="text" value={name} maxLength={20}
-                placeholder={t('profile.namePlaceholder')}
-                onChange={e => setName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && save()}
-                style={{
-                  width:'100%', padding:'12px 16px', fontSize:20, minHeight:52,
-                  fontFamily:'var(--font-heading)', fontWeight:600, borderRadius:10,
-                  border:'3px solid var(--px-ink)', outline:'none',
-                  background:'var(--px-parch)', color:'var(--px-ink)', boxSizing:'border-box',
-                  boxShadow:'inset 0 3px 0 rgba(42,27,61,0.12)',
-                }}
-              />
-            </label>
-
-            <button className="px-btn px-btn--green px-btn--lg" onClick={save} style={{ width:'100%' }}>
-              <PxIcon name="play" size={20} /> {t('profile.letsGo')}
+        {/* Age */}
+        <div style={{ display:'flex', gap:10 }}>
+          {AGES.map(a => (
+            <button key={a}
+              className={`px-btn ${age === a ? 'px-btn--gold' : 'px-btn--parch'}`}
+              onClick={() => pickAge(a)}
+              {...hearable(sayNumber(a))}
+              aria-pressed={age === a}
+              style={{ flex:1, minHeight:'clamp(56px,9dvh,72px)', fontSize:30 }}
+            >
+              {a}
             </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          ))}
+        </div>
+
+        {/* Name, for the parents */}
+        <label style={{ display:'flex', flexDirection:'column', gap:6 }}>
+          <span className="px-title" style={{ fontSize:15 }}>{t('profile.whatsName')}</span>
+          <input
+            type="text" value={name} maxLength={20}
+            placeholder={t('profile.namePlaceholder')}
+            onChange={e => setName(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && save()}
+            style={{
+              width:'100%', padding:'12px 16px', fontSize:20, minHeight:52,
+              fontFamily:'var(--font-heading)', fontWeight:600, borderRadius:10,
+              border:'3px solid var(--px-ink)', outline:'none',
+              background:'var(--px-parch)', color:'var(--px-ink)', boxSizing:'border-box',
+              boxShadow:'inset 0 3px 0 rgba(42,27,61,0.12)',
+            }}
+          />
+        </label>
+
+        <button className="px-btn px-btn--green px-btn--lg" onClick={save} style={{ width:'100%' }}>
+          <PxIcon name="play" size={20} /> {t('profile.letsGo')}
+        </button>
+      </motion.div>
 
       {showCancel && (
         <button className="px-btn px-btn--parch px-btn--sm" onClick={onCancel} style={{ alignSelf:'center' }}>
@@ -180,6 +168,8 @@ export default function ProfileScreen() {
   const profiles = Array.isArray(profilesObj) ? profilesObj : Object.values(profilesObj)
   // "Neues Kind" in the profile switcher goes straight to the form
   const [mode, setMode] = useState(profiles.length === 0 || state.profileCreate ? 'create' : 'select')
+  // the Lumi the new child chose on the ring (then the age)
+  const [newShape, setNewShape] = useState(null)
 
   useEffect(() => {
     if (mode !== 'select') return
@@ -198,9 +188,13 @@ export default function ProfileScreen() {
   }
 
   const cancelCreate = () => {
+    setNewShape(null)
     if (state.profileCreate && state.activeProfileId) dispatch({ type: 'NAVIGATE', payload: 'home' })
     else setMode('select')
   }
+
+  // creating a child starts with its Lumi, on the whole screen
+  if (mode === 'create' && !newShape) return <ShapeStart onChosen={setNewShape} onCancel={profiles.length > 0 ? cancelCreate : null} />
 
   return (
     <div style={{
@@ -237,8 +231,8 @@ export default function ProfileScreen() {
                     {...hearable(p.name)}
                     style={{ display:'flex', alignItems:'center', gap:16, padding:'12px 16px', cursor:'pointer', textAlign:'left', flexShrink:0 }}
                   >
-                    <div className="px-btn px-btn--gold" aria-hidden="true" style={{ width:60, height:60, padding:0, fontSize:36, flexShrink:0, pointerEvents:'none' }}>
-                      {p.avatar}
+                    <div className="px-btn px-btn--gold" aria-hidden="true" style={{ width:60, height:60, padding:0, flexShrink:0, pointerEvents:'none' }}>
+                      <ChildLumi profile={p} size={50} />
                     </div>
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ fontFamily:'var(--font-heading)', fontSize:24, color:'var(--px-ink)', fontWeight:700, lineHeight:1.2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</div>
@@ -258,8 +252,7 @@ export default function ProfileScreen() {
               initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-20 }}
               style={{ display:'flex', flexDirection:'column', alignItems:'stretch', gap:'clamp(8px,1.6dvh,14px)' }}
             >
-              <PixelLumi size={64} outfit={null} style={{ margin:'0 auto' }} />
-              <CreateProfileForm onSave={createProfile} onCancel={cancelCreate} showCancel={profiles.length > 0} />
+              <CreateProfileForm shape={newShape} onBack={() => setNewShape(null)} onSave={createProfile} onCancel={cancelCreate} showCancel={profiles.length > 0} />
             </motion.div>
           )}
         </AnimatePresence>
