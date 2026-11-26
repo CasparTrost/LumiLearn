@@ -64,6 +64,16 @@
  */
 
 // ── Lumi's pictures ─────────────────────────────────────────────────────────
+// POSES is the chick's set. Every drawing function takes another set as its
+// last argument (`poses`), so another figure (lib/shapes.js) plugs in its
+// own: per pose the anchors head, face, neck, back, hold, top, bottom,
+// shoes ({ x, y, rot, w }, shoes also `step`, the distance of a foot from
+// the middle), and the polygons tuft (what pokes up above the head), grip
+// (the wing tip that holds; not needed asleep), front (a wing in front of
+// the neck, optional), wings (drawn again over clothes), soles (cut away
+// under shoes standing) and feet (only where the feet lie in front of the
+// body, sitting). Measured on the 384 × 384 square; scripts/art/
+// wardrobe-anchors.mjs draws plain test shapes on them.
 // Per picture: the three anchors { x, y, rot, w } in picture pixels, the
 // feather tuft above the head (a polygon: hidden under a hat or drawn again
 // over it) and parts that lie in front of what is worn round the neck (the
@@ -295,8 +305,8 @@ const poly = pts => pts.map(([x, y]) => `${pct(x)} ${pct(y)}`).join(', ')
  * placed twice: `side` 'l' is the left half of the pair picture on the left
  * foot, 'r' the right half on the right foot (`at` mirrored).
  */
-export function placeItem(item, pose, side = 'l') {
-  const P = POSES[pose] ?? POSES.idle
+export function placeItem(item, pose, side = 'l', poses = POSES) {
+  const P = poses[pose] ?? poses.idle
   let A = P[item.slot]
   const t = item.pose?.[pose] ?? {}
   const W = A.w * item.size * (t.size ?? 1)
@@ -323,7 +333,7 @@ export function placeItem(item, pose, side = 'l') {
  * The drawn part of a placed item, turned: its corners in picture pixels
  * (a pair of wings spread apart: the corners of both halves).
  */
-export function itemCorners(item, pose) {
+export function itemCorners(item, pose, poses = POSES) {
   const [x0, yt, x1, yb] = item.box ?? [0, 0, 1, 1]
   const y0 = Math.max(yt, cutTopOf(item, pose)), y1 = Math.min(yb, cutOf(item, pose))
   const turnAt = (p, pts, deg) => {
@@ -334,10 +344,10 @@ export function itemCorners(item, pose) {
     })
   }
   if (item.slot === 'shoes') {
-    const l = placeItem(item, pose, 'l'), r = placeItem(item, pose, 'r')
+    const l = placeItem(item, pose, 'l', poses), r = placeItem(item, pose, 'r', poses)
     return [...turnAt(l, [[x0, y0], [0.5, y0], [0.5, y1], [x0, y1]], l.rot), ...turnAt(r, [[0.5, y0], [x1, y0], [x1, y1], [0.5, y1]], r.rot)]
   }
-  const p = placeItem(item, pose)
+  const p = placeItem(item, pose, 'l', poses)
   const turn = (pts, deg) => turnAt(p, pts, deg)
   const sp = spreadOf(item, pose)
   if (!sp) return turn([[x0, y0], [x1, y0], [x1, y1], [x0, y1]], p.rot)
@@ -370,14 +380,14 @@ const spreadKeep = item => [].concat(item.spread ?? 0)[1] ?? 1
 export const ASLEEP_OFF = ['face', 'hold']
 export const asleep = pose => pose === 'sleep'
 
-export function figureLayers(pose, outfit) {
-  const P = POSES[pose] ?? POSES.idle
+export function figureLayers(pose, outfit, poses = POSES) {
+  const P = poses[pose] ?? poses.idle
   const worn = wornItems(outfit).filter(t => !(asleep(pose) && ASLEEP_OFF.includes(t.slot)))
   const bySlot = Object.fromEntries(worn.map(t => [t.slot, t]))
   const hat = bySlot.head
   const layers = []
   const item = (t, side) => {
-    const p = placeItem(t, pose, side)
+    const p = placeItem(t, pose, side, poses)
     const cut = cutOf(t, pose), top = cutTopOf(t, pose)
     return { kind: 'item', id: t.id, src: t.src, left: pct(p.left), top: pct(p.top), size: pct(p.size), h: pct(p.h), rot: p.rot, origin: `${+(p.ax * 100).toFixed(2)}% ${+(p.ay * 100).toFixed(2)}%`, ...(cut < 1 || top > 0 ? { clip: `inset(${+(top * 100).toFixed(2)}% 0 ${+((1 - cut) * 100).toFixed(2)}% 0)` } : null), ...(t.edge ? { filter: EDGE } : null) }
   }
@@ -460,7 +470,7 @@ export function figureLayers(pose, outfit) {
   // room in the square: the lowest scale that keeps every corner inside
   let scale = 1
   const S = POSE_SIZE, M = 2
-  for (const t of worn) for (const [x, y] of itemCorners(t, pose)) {
+  for (const t of worn) for (const [x, y] of itemCorners(t, pose, poses)) {
     if (y < M) scale = Math.min(scale, (S - M) / (S - y))
     if (x < M) scale = Math.min(scale, (S / 2 - M) / (S / 2 - x))
     if (x > S - M) scale = Math.min(scale, (S / 2 - M) / (x - S / 2))
