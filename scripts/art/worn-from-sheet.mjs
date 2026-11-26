@@ -81,6 +81,9 @@ const OUT = { size: 384, q0: 0.85, qMin: 0.7, kb: 6 }
 const KEEP_TAIL = ['einhorn']
 // the figures whose own tail stays beside the mermaid's fin when they sit
 const SIT_TAIL = ['dino', 'drache']
+// the figures whose top, sitting, loses the bits of the bottom it took
+// close round the feet (see cutPose)
+const SIT_BITS = ['chick']
 const FEET_UP = { chick: 16, dino: 16, drache: 18, einhorn: 0, roboter: 10 }
 
 // ── pixels in and out (Chromium's canvas: no image library is installed) ──
@@ -399,7 +402,10 @@ export function cutPose(T, A, W, P, opts = { bottom: true, erase: false }) {
       for (const p of c) n4(p, q => { if (bg[q]) touchesBg = true })
       // (above the neck only small holes, closed in by the clothes and off
       // the face: the gaps in a white fur collar on the white unicorn)
-      if (touchesBg || c.some(border) || (c.some(p => p < headY * S) && (c.length >= 600 || c.some(p => face0[p])))) continue
+      // (a large one only when much of it lies above: a fur collar's half,
+      // reaching a pixel or two over the neck line, is the collar's)
+      const above = c.filter(p => p < headY * S).length
+      if (touchesBg || c.some(border) || (above && ((c.length >= 600 && above > 0.15 * c.length) || c.some(p => face0[p])))) continue
       if (!opts.erase && c.filter(p => feetZone[p] && A[p] > 200).length > 30) continue
       const mine = c.filter(p => own[p]).length
       // (a mermaid's fin over the old tail: its pale inside, close to the
@@ -447,6 +453,20 @@ export function cutPose(T, A, W, P, opts = { bottom: true, erase: false }) {
     const tiny = new Uint8Array(N)
     for (const c of comps.slice(1)) if (c.length < 80) for (const p of c) tiny[p] = 1
     for (let p = 0; p < N; p++) if (rest[p] && touch[p] && (!solid[p] || tiny[p])) m[p] = 1
+  }
+  // Small holes still left inside the clothes above the hips (bars of the
+  // unicorn's cream neck in a white fur collar, cut apart by Tripo's fur
+  // strokes): closed in by the clothes all round, off the figure's own
+  // arms and hands and the face, they are clothes
+  {
+    const headY = P.neck.y * k - 12, hipY = P.bottom.y * k
+    const { comps } = components(m.map((v, p) => (!v && !bg[p] ? 1 : 0)))
+    for (const c of comps.slice(1)) {
+      if (c.length >= 400 || c.some(p => border(p) || face0[p] || own[p] || p < headY * S || p >= hipY * S)) continue
+      let open = false
+      for (const p of c) n4(p, q => { if (bg[q]) open = true })
+      if (!open) for (const p of c) m[p] = 1
+    }
   }
 
   // Thin parts where the template has no figure (Tripo's soft grey shading
@@ -694,7 +714,23 @@ export function cutPose(T, A, W, P, opts = { bottom: true, erase: false }) {
       const poly = dilate(polygons(P.feet.map(pl => pl.map(([x, y]) => [x * k, y * k]))), 3)
       const inner = erode(poly, 10)
       const grown = flood(Array.from({ length: N }, (_, p) => p).filter(p => inner[p]), p => poly[p] && A[p] > 24 && lum(T, p * 3) > 110)
+      // Where Tripo dressed the legs (the trousers painted over them, up to
+      // the soles), the trousers cover them as painted: only what Tripo shows
+      // bare stays the figure's (the soles, the paws); the shoes are drawn
+      // over the bottom sitting, so they show whole all the same
+      const cloth = isBot.map((v, p) => (v && hB[q(p)] / nB > 0.002 ? 1 : 0))
+      const dressed = and(erode(dilate(cloth, 3), 3), isBot)
+      let nIn = 0, nCloth = 0
+      for (let p = 0; p < N; p++) if (grown[p]) { nIn++; if (dressed[p]) nCloth++ }
       feet.set(dilate(grown, 4))
+      if (nCloth > 0.1 * nIn) {
+        const bare = grown.map((v, p) => (v && !dressed[p] ? 1 : 0))
+        // (the largest bare parts only: the soles, not crumbs between stripes)
+        const { comps } = components(bare)
+        const keep = new Uint8Array(N)
+        for (const c of comps.slice(1)) if (c.length >= 150) for (const p of c) keep[p] = 1
+        feet.fill(0); feet.set(dilate(keep, 3))
+      }
     }
     else if (P.soles) {
       const up = (FEET_UP[opts.figure] ?? 0) * k
@@ -951,9 +987,11 @@ export function cutPose(T, A, W, P, opts = { bottom: true, erase: false }) {
       if (lab2[p] !== 2) continue
       const x = p % S, y = (p - x) / S
       if (Math.abs(x - cx) > half || y < footTop - 45 || y > footTop + 6) continue
-      const l = lum(RGB2, p * 3), r = RGB2[p * 3], g = RGB2[p * 3 + 1], b = RGB2[p * 3 + 2]
+      const l = lum(RGB2, p * 3)
       if (l < 80) dark[p] = 1
-      else if (l > 225 && Math.max(r, g, b) - Math.min(r, g, b) < 30 && A[p] > 200 && lum(T, p * 3) < 225) pale[p] = 1
+      // (white as Tripo painted it, or as the warp at the edge left it)
+      const whiteAt = (X, i) => lum(X, i) > 225 && Math.max(X[i], X[i + 1], X[i + 2]) - Math.min(X[i], X[i + 1], X[i + 2]) < 30
+      if (A[p] > 200 && lum(T, p * 3) < 225 && (whiteAt(RGB2, p * 3) || whiteAt(W, p * 3))) pale[p] = 1
     }
     // (thick dark only: an outline 2 px wide does not survive the erosion)
     const thick = dilate(erode(dark, 2), 3)
@@ -963,8 +1001,29 @@ export function cutPose(T, A, W, P, opts = { bottom: true, erase: false }) {
     // garment's lower edge; a dark pouch or a button inside the cloth not)
     const { comps } = components(cand)
     // and narrow: the gap is a slit, a pouch hanging between the legs is wide
+    // (Tripo's white ground in the notch, with the dark round it, may be as
+    // wide as the gap between the feet: white is never a pouch)
     const wideOf = c => { let a = S, b = 0; for (const p of c) { a = Math.min(a, p % S); b = Math.max(b, p % S) } return b - a }
-    for (const c of comps.slice(1)) if (wideOf(c) < 0.45 * half && c.some(p => p + S < N && (lab2[p + S] !== 2 || feet[p + S]) && !cand[p + S])) for (const p of c) crotch[p] = 1
+    const narrow = c => wideOf(c) < (c.filter(p => pale[p]).length >= 0.4 * c.length ? 2 : 0.45) * half
+    for (const c of comps.slice(1)) if (narrow(c) && c.some(p => p + S < N && (lab2[p + S] !== 2 || feet[p + S]) && !cand[p + S])) for (const p of c) crotch[p] = 1
+    // Tripo's white ground in the notch at the crotch (the gap between the
+    // trouser legs, painted where the template has the body) goes however
+    // wide it is (white is never a pouch) when it reaches, within a few
+    // pixels (past the trousers' own outline), the ground or the feet
+    // below; with the grey of its soft edge. The trousers' dark outline
+    // round it stays, as their edge.
+    {
+      const { comps: pc } = components(pale)
+      const open = p => { for (let e = 1; e <= 8; e++) { const q = p + e * S; if (q >= N) return true; if (lab2[q] !== 2 || feet[q]) return true } return false }
+      // (not on a white bottom: white shorts are that white at the hips too)
+      const wh = p => lum(W, p * 3) > 215 && Math.max(W[p * 3], W[p * 3 + 1], W[p * 3 + 2]) - Math.min(W[p * 3], W[p * 3 + 1], W[p * 3 + 2]) < 30
+      const whiteBottom = seedB.filter(wh).length > 0.25 * seedB.length
+      if (!whiteBottom) for (const c of pc.slice(1)) if (c.some(open)) {
+        for (const p of c) crotch[p] = 1
+        const ring = dilate(c.reduce((m2, p) => { m2[p] = 1; return m2 }, new Uint8Array(N)), 1)
+        for (let p = 0; p < N; p++) if (ring[p] && lab2[p] === 2 && lum(RGB2, p * 3) > 150 && Math.max(RGB2[p * 3], RGB2[p * 3 + 1], RGB2[p * 3 + 2]) - Math.min(RGB2[p * 3], RGB2[p * 3 + 1], RGB2[p * 3 + 2]) < 30) crotch[p] = 1
+      }
+    }
   }
   // Thin bits where the template has no figure, left hanging once the feet
   // are cut out (the soft grey edge of a long trouser leg between the
@@ -979,6 +1038,15 @@ export function cutPose(T, A, W, P, opts = { bottom: true, erase: false }) {
   // (sitting with its own tail beside a mermaid: no rim of the fin's colour
   // round the tail)
   const tailRim = sitTail ? dilate(ownTail, 3).map((v, p) => (v && !ownTail[p] ? 1 : 0)) : new Uint8Array(N)
+  // Where the top meets the bottom, each picture's edge is soft once scaled
+  // (to 384 px, and again in the app): over each other they let the pose
+  // picture through as a thin line (the chick's golden outline across its
+  // jacket). The bottom, drawn under the top, goes on 3 px under it, so the
+  // top's soft edge lies on cloth
+  const underTop = (() => {
+    const near = distance(lab2.map(v => (v === 2 ? 1 : 0)), 3)
+    return lab2.map((v, p) => (v === 1 && near[p] > 0 && near[p] <= 3 ? 1 : 0))
+  })()
   const mk = (layer, rimFrom) => {
     const sel = lab.map(v => (v === layer ? 1 : 0))
     const out = { w: S, h: S, data: new Uint8ClampedArray(N * 4) }
@@ -998,6 +1066,7 @@ export function cutPose(T, A, W, P, opts = { bottom: true, erase: false }) {
         // not the bare belly)
         rgb = [T[p * 3], T[p * 3 + 1], T[p * 3 + 2]]; a = A[p] > 200 ? 1 : A[p] / 255
       } else if (lab2[p] === layer) { rgb = [RGB2[p * 3], RGB2[p * 3 + 1], RGB2[p * 3 + 2]]; a = AL2[p]; if (rimFrom && rimFrom[p]) rgb = rimFrom[p] }
+      else if (layer === 2 && underTop[p]) { rgb = [RGB2[p * 3], RGB2[p * 3 + 1], RGB2[p * 3 + 2]]; a = AL2[p] }
       else if (other[p]) {
         // just outside towards a hand or the head: a faint fringe of the nearest colour inside
         const c = cov(sel, x, y) * 0.6
@@ -1047,6 +1116,63 @@ export function cutPose(T, A, W, P, opts = { bottom: true, erase: false }) {
     if (dark) for (let p = 0; p < N; p++) if (lab2[p] === 2 && !feet[p] && near[p] > 0 && near[p] <= 2) botRim[p] = dark
   }
   const topPic = mk(1, null), botPic = mk(2, botRim)
+  // A mermaid's fin: Tripo's white ground left as a rim along a gap between
+  // the fin and the body (a white U beside the dino's tail): white or pale
+  // grey next to the cleared gap is ground, not cloth (the fin's own pale
+  // inside is cyan)
+  if (opts.erase) {
+    const clear = new Uint8Array(N)
+    for (let p = 0; p < N; p++) if (botPic.data[p * 4 + 3] < 24) clear[p] = 1
+    const nearClear = dilate(clear, 3), wh = new Uint8Array(N)
+    for (let p = 0; p < N; p++) {
+      const o = p * 4, d = botPic.data
+      if (!ownTail[p] && d[o + 3] >= 24 && 0.3 * d[o] + 0.59 * d[o + 1] + 0.11 * d[o + 2] > 185 && Math.max(d[o], d[o + 1], d[o + 2]) - Math.min(d[o], d[o + 1], d[o + 2]) < 30) wh[p] = 1
+    }
+    const goneW = new Uint8Array(N)
+    // (the whitish parts touching the gap, and all of each such part)
+    const lab3 = components(wh)
+    for (const c of lab3.comps.slice(1)) if (c.length >= 15 && c.some(p => nearClear[p])) for (const p of c) goneW[p] = 1
+    const soft = dilate(goneW, 1)
+    for (let p = 0; p < N; p++) if (goneW[p]) botPic.data[p * 4 + 3] = 0
+    else if (soft[p] && botPic.data[p * 4 + 3] && lum(botPic.data, p * 4) > 170) botPic.data[p * 4 + 3] >>= 1
+    // (and the old tail under it, in the pose picture, is cut away with it:
+    // no sliver of it shows there instead; the arms and hands stay)
+    const wide = dilate(goneW, 3)
+    for (let p = 0; p < N; p++) if (wide[p] && !arms[p] && !ownTail[p] && topPic.data[p * 4 + 3] < 100 && Math.floor(p / S) > P.neck.y * k) erase.data[p * 4 + 3] = 0
+  }
+  // Sitting, what of the bottom the feet (and the arms resting beside them)
+  // cut off from the trousers is jagged bits round the feet (a patch on the
+  // knee, a sliver of the hem): gone; the figure's own leg shows there
+  if (opts.bottom && !opts.erase && P.feet) {
+    const solid = new Uint8Array(N)
+    for (let p = 0; p < N; p++) if (botPic.data[p * 4 + 3] > 100 && !inFront[p]) solid[p] = 1
+    const { comps } = components(solid)
+    let big = 0
+    for (let i = 1; i < comps.length; i++) if (!big || comps[i].length > comps[big].length) big = i
+    const zone = dilate(feet, 16), gone = new Uint8Array(N)
+    for (let i = 1; i < comps.length; i++) if (i !== big && comps[i].length < 2500 && comps[i].filter(p => zone[p]).length > 0.5 * comps[i].length) for (const p of comps[i]) gone[p] = 1
+    const rim = dilate(gone, 2), keep = dilate(solid.map((v, p) => (v && !gone[p] ? 1 : 0)), 1)
+    for (let p = 0; p < N; p++) if (!inFront[p] && (gone[p] || (rim[p] && !keep[p]))) botPic.data[p * 4 + 3] = 0
+    // (and such bits the top took, under the arms resting on the legs: apart
+    // from the top's cloth once the arms it carries are left out)
+    const solidT = new Uint8Array(N)
+    for (let p = 0; p < N; p++) if (topPic.data[p * 4 + 3] > 100 && !inFront[p]) solidT[p] = 1
+    const ct = components(solidT).comps
+    let bigT = 0
+    for (let i = 1; i < ct.length; i++) if (!bigT || ct[i].length > ct[bigT].length) bigT = i
+    const goneT = new Uint8Array(N)
+    for (let i = 1; i < ct.length; i++) if (i !== bigT && ct[i].length < 2500 && ct[i].filter(p => zone[p]).length > 0.5 * ct[i].length) for (const p of ct[i]) goneT[p] = 1
+    // (the chick, its wings resting on its knees: close round the feet, what
+    // is in the bottom's colours rather than the top's, or small bits in
+    // none of the top's colours, a knee patch; on the robot the same test
+    // cut holes into a hoodie above the boots, so it is the chick's only)
+    const ring = SIT_BITS.includes(opts.figure) ? dilate(feet, 10) : new Uint8Array(N)
+    const odd = new Uint8Array(N)
+    for (let p = 0; p < N; p++) if (solidT[p] && ring[p]) { const a = hT[q(p)] / nT, b = hB[q(p)] / nB; if (b > 0.002 && b > 2 * a) goneT[p] = 1; else if (!(a > 0.003 && a > b)) odd[p] = 1 }
+    for (const c of components(odd).comps.slice(1)) if (c.length < 300) for (const p of c) goneT[p] = 1
+    const rimT = dilate(goneT, 2), keepT = dilate(solidT.map((v, p) => (v && !goneT[p] ? 1 : 0)), 1)
+    for (let p = 0; p < N; p++) if (!inFront[p] && (goneT[p] || (rimT[p] && !keepT[p]))) topPic.data[p * 4 + 3] = 0
+  }
   const ownParts = dilate(polygons([...(P.wings ?? []), ...(P.ownWings ?? []), ...(P.tail ?? []), ...(P.feet ?? [])].map(pl => pl.map(([x, y]) => [x * k, y * k]))), 4)
   dropStray(topPic, botPic, faceBox(opts.zones, opts.figure, opts.pose), ownParts, P.neck.y * k - 6)
   return { erase, top: topPic, bottom: botPic, masks: { gone, bg, changed, m, isTop, isBot, seedT, seedB, prob: prob0, extra: inFront.map((v, p) => v | feet[p] | ownTail[p]) } }
