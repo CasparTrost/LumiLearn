@@ -614,6 +614,25 @@ export function cutPose(T, A, W, P, opts = { bottom: true, erase: false }) {
   if (opts.bottom && !opts.erase && P.feet) {
     const shut = erode(dilate(isBot, 18), 18)
     for (let p = 0; p < N; p++) if (shut[p] && !m[p] && !bg[p] && A[p] > 200 && !own[p]) { isBot[p] = 1; m[p] = 1 }
+    // When that is not enough (only the pattern was found), the lap is
+    // taken whole as Tripo painted it: from the bottom's pixels over
+    // everything that is not a dark line, so the trousers' own dark outline
+    // is the edge (with the outline itself), below the top, off the arms,
+    // hands and feet. Used only when it adds much (a bottom in the figure's
+    // colour); a bottom of its own colour was found whole already.
+    const nb = isBot.reduce((a, v) => a + v, 0)
+    if (nb) {
+      let y0 = S; for (let p = 0; p < N; p++) if (isBot[p]) y0 = Math.min(y0, Math.floor(p / S))
+      const darkW = p => lum(W, p * 3) < 75
+      const feetHere = dilate(polygons(P.feet.map(pl => pl.map(([x, y]) => [x * k, y * k]))), 2)
+      const pass = p => !isBot[p] && !isTop[p] && !darkW(p) && !bg[p] && A[p] > 200 && !own[p] && !feetHere[p] && Math.floor(p / S) >= y0 - 4
+      const lap = flood(Array.from({ length: N }, (_, p) => p).filter(p => isBot[p]), p => isBot[p] || pass(p))
+      let add = 0; for (let p = 0; p < N; p++) if (lap[p] && !isBot[p]) add++
+      if (add > 0.6 * nb && add < 6 * nb) {
+        const edge = dilate(lap, 3)
+        for (let p = 0; p < N; p++) if (lap[p] || (edge[p] && darkW(p) && !isTop[p] && !bg[p] && !own[p] && !feetHere[p] && A[p] > 200)) { isBot[p] = 1; m[p] = 1 }
+      }
+    }
   }
   // a sheet with a top only (a pyjama top): only the top
   if (!opts.bottom) {
