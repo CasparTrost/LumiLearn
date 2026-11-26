@@ -12,6 +12,6 @@ export default [
   { id: 'lolli',      name: 'Lolli',      slot: 'hold', src: 'sprites/wardrobe/lolli.webp',      at: [0.5, 0.9],  size: 1.4,  box: [0.23, 0.06, 0.77, 0.98], say: 'wort/lolli' },
   { id: 'faehnchen',  name: 'Fähnchen',   slot: 'hold', src: 'sprites/wardrobe/faehnchen.webp',  at: [0.5, 0.9],  size: 1.35, box: [0.45, 0.05, 0.94, 0.98] },
   { id: 'schirm',     name: 'Regenschirm', slot: 'hold', src: 'sprites/wardrobe/schirm.webp',    at: [0.45, 0.9], size: 1.35, box: [0.04, 0.06, 0.96, 0.96], say: 'wort/regenschirm' },
-  { id: 'eis',        name: 'Eis',        slot: 'hold', src: 'sprites/wardrobe/eis.webp',        at: [0.5, 0.8],  size: 1.2,  box: [0.28, 0.07, 0.72, 0.97], say: 'wort/eis' },
+  { id: 'eis',        name: 'Eis',        slot: 'hold', src: 'sprites/wardrobe/eis.webp',        at: [0.5, 0.8],  size: 1.7,  box: [0.28, 0.07, 0.72, 0.97], say: 'wort/eis' },
   { id: 'windrad',    name: 'Windrad',    slot: 'hold', src: 'sprites/wardrobe/windrad.webp',    at: [0.5, 0.9],  size: 1.5,  box: [0.24, 0.05, 0.77, 0.98] },
 ]
