@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useApp, todayMs } from '../AppContext.jsx'
+import { useApp, todayMs, profileWardrobeStars } from '../AppContext.jsx'
 import { PxStar, PxIcon } from '../components/PixelUI.jsx'
 import Confetti from '../components/Confetti.jsx'
 import TileArt from '../components/TileArt.jsx'
@@ -18,6 +18,8 @@ import { LINES, line } from '../lib/lumiLines.js'
 import { ITEM_BY_ID } from '../lib/wardrobe.js'
 import { asset } from '../lib/assets.js'
 import { ThingPic } from './WardrobeScreen.jsx'
+import { friendsOwed, friendsToCome } from '../lib/friends.js'
+import { FriendCompanion, FriendFigure, useFriendAlong } from '../components/FriendFigure.jsx'
 
 // One star means the level is done — the texts say so. Whether the next
 // level is announced is decided below (`opened`).
@@ -70,6 +72,11 @@ export default function ResultsScreen() {
   const streakCount    = gameResult?.streakCount ?? 0
   // this round's stars unlocked something in Lumi's wardrobe (lib/wardrobe.js)
   const newWear        = (gameResult?.newWear ?? []).map(id => ITEM_BY_ID[id]).filter(Boolean)
+  // a friend may move in now (lib/friends.js): it comes first, the
+  // wardrobe's new thing keeps its sign on the home screen
+  const newFriend      = !!gameResult?.newFriend && friendsOwed(profile, profileWardrobeStars(profile)) > 0
+  // the friend that comes along celebrates with Lumi
+  const companion      = useFriendAlong()
   // what Lumi suggests next (lib/learning.js): the next level, the same one
   // to practise, or the one before
   const suggested      = gameResult?.suggestedLevel ?? nextLevel ?? level
@@ -142,7 +149,8 @@ export default function ResultsScreen() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const friends = useMemo(() => {
     const pool = [...FRIENDS].sort(() => Math.random() - 0.5)
-    return pool.slice(0, stars >= 3 ? 2 : stars >= 2 ? 1 : 0)
+    // with Lumi's own friend along, one guest less
+    return pool.slice(0, Math.max(0, (stars >= 3 ? 2 : stars >= 2 ? 1 : 0) - (companion ? 1 : 0)))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const go = (lv) => dispatch({ type: 'START_GAME', payload: { moduleId, level: lv } })
@@ -193,7 +201,7 @@ export default function ResultsScreen() {
       else if (proposal === 'practise') news.push(line('ergebnis/ueben'))
     }
     // not recorded yet: skipped while missing
-    const wearNews = newWear.length ? optional('schrank/neu') : null
+    const wearNews = newFriend ? optional('freunde/neu') : newWear.length ? optional('schrank/neu') : null
     if (wearNews) news.push(wearNews)
     if (freshSticker) news.push(line('ergebnis/sticker-tag'))
     else if (main === moveBtn) news.push(line('ergebnis/bewegen'))
@@ -207,7 +215,7 @@ export default function ResultsScreen() {
     return () => { clearTimeout(tm); stop(); stopNarration() }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const lumiMood = stars >= 2 || newWear.length ? 'dance' : stars >= 1 ? 'happy' : 'idle'
+  const lumiMood = stars >= 2 || newWear.length || newFriend ? 'dance' : stars >= 1 ? 'happy' : 'idle'
   // A phone held sideways: the party stands beside the card, and Lumi (in
   // what it wears from the wardrobe) can be big there; above the card it
   // was about 45 px tall
@@ -254,9 +262,13 @@ export default function ResultsScreen() {
       }}>
       {/* the party: Lumi and friends dance; the friends are smaller than Lumi on every screen */}
       <div aria-hidden="true" style={{ display: 'flex', alignItems: 'flex-end', gap: 'clamp(4px,2vw,20px)', marginBottom: sideways ? 0 : -12, zIndex: 2, flexShrink: 0 }}>
-        {friends[0] && <PartyFriend art={friends[0]} delay={0.5} size={Math.round(lumiSize * 0.6)} />}
+        {companion
+          ? <motion.div initial={{ x: -lumiSize * 0.8, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.4, type: 'spring', stiffness: 200, damping: 14 }} style={{ marginRight: -lumiSize * 0.1 }}>
+              <FriendCompanion id={companion} mood={lumiMood} size={Math.round(lumiSize * 0.92)} delay={0.3} />
+            </motion.div>
+          : friends[0] && <PartyFriend art={friends[0]} delay={0.5} size={Math.round(lumiSize * 0.6)} />}
         <Critter art="lumi" size={lumiSize} mood={lumiMood} />
-        {friends[1] && <PartyFriend art={friends[1]} delay={0.8} size={Math.round(lumiSize * 0.6)} flip />}
+        {(companion ? friends[0] : friends[1]) && <PartyFriend art={companion ? friends[0] : friends[1]} delay={0.8} size={Math.round(lumiSize * 0.6)} flip />}
       </div>
 
       <motion.div
@@ -296,7 +308,10 @@ export default function ResultsScreen() {
           {sticker && <StickerSurprise emoji={sticker} />}
         </AnimatePresence>
 
-        {newWear.length > 0 && (
+        {newFriend && (
+          <FriendSurprise friends={friendsToCome(profile)} ready={showButtons} onOpen={() => { stopNarration(); dispatch({ type: 'NAVIGATE', payload: 'friends' }) }} />
+        )}
+        {newWear.length > 0 && !newFriend && (
           <WearSurprise items={newWear} ready={showButtons} onOpen={() => { stopNarration(); dispatch({ type: 'NAVIGATE', payload: 'wardrobe', focus: newWear[newWear.length - 1].id }) }} />
         )}
 
@@ -363,6 +378,42 @@ function WearSurprise({ items, ready, onOpen }) {
       </div>
       <span className="px-btn px-btn--gold px-btn--md" aria-hidden="true" style={{ pointerEvents: 'none', gap: 6, padding: '0 12px' }}>
         <img src={asset('sprites/emoji/custom/kleiderschrank.webp')} alt="" style={{ width: 34, height: 34 }} /> Anziehen!
+      </span>
+    </motion.button>
+  )
+}
+
+// A friend may move in: a present pops open and the friends still to come
+// peek out and wave. One tap on it leads to Lumis Freunde to choose.
+function FriendSurprise({ friends, ready, onOpen }) {
+  useEffect(() => { const t = setTimeout(() => sfx.sparkle(), 900); return () => clearTimeout(t) }, [])
+  const shown = friends.slice(0, 4)
+  return (
+    <motion.button type="button" onClick={onOpen} disabled={!ready} data-friend-surprise={shown.map(f => f.id).join(' ')}
+      aria-label="Ein Freund möchte einziehen. Zu Lumis Freunden"
+      initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.5, type: 'spring', stiffness: 260, damping: 14 }}
+      whileTap={{ scale: 0.95 }}
+      style={{
+        all: 'unset', boxSizing: 'border-box', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px 6px 8px',
+        borderRadius: 16, background: '#fff1c9', border: '3px solid var(--px-ink)', boxShadow: '0 4px 0 rgba(42,27,61,0.3)', minHeight: 76,
+      }}>
+      <div style={{ position: 'relative', width: 64, height: 64, flexShrink: 0 }}>
+        <motion.div initial={{ scale: 1, opacity: 1 }} animate={{ scale: [1, 1.15, 0], opacity: [1, 1, 0], rotate: [0, -10, 10, 0] }} transition={{ delay: 0.7, duration: 0.6 }}
+          style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Art art="🎁" size={56} />
+        </motion.div>
+      </div>
+      {/* the friends that could come peek out of the present and wave */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', marginLeft: -66 }}>
+        {shown.map((f, i) => (
+          <motion.div key={f.id} initial={{ scale: 0, y: 14 }} animate={{ scale: [0, 1.2, 1], y: [14, -6, 0] }} transition={{ delay: 1.15 + i * 0.12, duration: 0.5 }}
+            style={{ marginLeft: i ? -12 : 0 }}>
+            <FriendFigure id={f.id} mood="wave" size={58} />
+          </motion.div>
+        ))}
+      </div>
+      <span className="px-btn px-btn--gold px-btn--md" aria-hidden="true" style={{ pointerEvents: 'none', padding: '0 12px', width: 50, minWidth: 50, justifyContent: 'center' }}>
+        <svg viewBox="0 0 24 24" width="28" height="28"><path d="M8 4 L16 12 L8 20" stroke="#2a1b3d" strokeWidth="3.6" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </span>
     </motion.button>
   )

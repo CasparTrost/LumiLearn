@@ -18,6 +18,8 @@ import { hearable } from '../lib/hearable.js'
 import { lazyWithReload } from '../lib/lazyWithReload.js'
 import { journeyArt, asset } from '../lib/assets.js'
 import { unseenItems } from '../lib/wardrobe.js'
+import { friendsOwed } from '../lib/friends.js'
+import { FriendCompanion, FriendsIcon, useFriendAlong } from '../components/FriendFigure.jsx'
 import { WORLDS, MODULE_BY_ID, recommend, sortForAge, visibleModules } from '../modules.js'
 import { prefetchGame, isGameLoaded, ensureGame } from './GameScreen.jsx'
 import { line, gameLine } from '../lib/lumiLines.js'
@@ -141,8 +143,8 @@ function WardrobeButton({ fresh, onClick, small }) {
       aria-label={fresh ? 'Lumis Kleiderschrank, etwas Neues' : 'Lumis Kleiderschrank'} title="Lumis Kleiderschrank"
       animate={fresh ? { rotate: [0, 0, 0, 0, -8, 8, -5, 0] } : { rotate: 0 }}
       transition={fresh ? { duration: 2.6, repeat: Infinity } : { duration: 0.2 }}
-      style={{ flexShrink:0, width: small ? 48 : 56, height: small ? 48 : 56, padding:0, position:'relative', overflow:'visible' }}>
-      <img src={asset('sprites/emoji/custom/kleiderschrank.webp')} alt="" style={{ width: small ? 36 : 42, height: small ? 36 : 42 }} />
+      style={{ flexShrink:0, width: small ? 44 : 56, height: small ? 44 : 56, padding:0, position:'relative', overflow:'visible' }}>
+      <img src={asset('sprites/emoji/custom/kleiderschrank.webp')} alt="" style={{ width: small ? 34 : 42, height: small ? 34 : 42 }} />
       {fresh && (
         <motion.span aria-hidden="true" animate={{ scale:[1, 1.25, 1] }} transition={{ duration:1.2, repeat:Infinity }}
           style={{ position:'absolute', right:-8, top:-8, width:26, height:26, borderRadius:'50%', background:'#ff5b8a', border:'3px solid #fff',
@@ -150,6 +152,44 @@ function WardrobeButton({ fresh, onClick, small }) {
           ✨
         </motion.span>
       )}
+    </motion.button>
+  )
+}
+
+// Lumis Freunde, beside the wardrobe. A friend may move in: the same sign
+// and wiggle as the wardrobe's, until the child has chosen.
+function FriendsButton({ owed, onClick, small }) {
+  return (
+    <motion.button className="px-btn px-btn--parch px-btn--icon" onClick={onClick} data-friends-owed={owed ? '1' : undefined}
+      aria-label={owed ? 'Lumis Freunde, ein Freund möchte einziehen' : 'Lumis Freunde'} title="Lumis Freunde"
+      animate={owed ? { rotate: [0, 0, 0, 0, -8, 8, -5, 0] } : { rotate: 0 }}
+      transition={owed ? { duration: 2.6, repeat: Infinity, delay: 1.3 } : { duration: 0.2 }}
+      style={{ flexShrink:0, width: small ? 44 : 56, height: small ? 44 : 56, padding:0, position:'relative', overflow:'visible' }}>
+      <FriendsIcon size={small ? 36 : 42} />
+      {owed && (
+        <motion.span aria-hidden="true" animate={{ scale:[1, 1.25, 1] }} transition={{ duration:1.2, repeat:Infinity }}
+          style={{ position:'absolute', right:-8, top:-8, width:26, height:26, borderRadius:'50%', background:'#ff5b8a', border:'3px solid #fff',
+            boxShadow:'0 2px 0 rgba(42,27,61,0.4)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, lineHeight:1 }}>
+          ✨
+        </motion.span>
+      )}
+    </motion.button>
+  )
+}
+
+// A friend may move in: a present beside Lumi that wiggles and sparkles
+// until the child has chosen (a tap opens Lumis Freunde)
+function FriendPresent({ size, onClick }) {
+  return (
+    <motion.button type="button" onClick={onClick} aria-label="Ein Freund möchte einziehen" data-friend-present
+      initial={{ scale: 0 }} animate={{ scale: 1, rotate: [0, 0, -9, 9, -6, 4, 0] }}
+      transition={{ scale: { type:'spring', stiffness:260, damping:14, delay:0.6 }, rotate: { duration:1.6, repeat:Infinity, repeatDelay:0.8 } }}
+      whileTap={{ scale: 0.9 }}
+      style={{ all:'unset', cursor:'pointer', position:'relative', width:size, height:size, flexShrink:0, display:'flex', alignItems:'flex-end', justifyContent:'center', transformOrigin:'50% 100%' }}>
+      <span aria-hidden="true" style={{ position:'absolute', inset:'8% 4% 0', borderRadius:'50%', background:'radial-gradient(circle, rgba(255,226,120,0.85) 0%, rgba(255,226,120,0) 70%)' }} />
+      <Art art="🎁" size={Math.round(size * 0.78)} style={{ position:'relative' }} />
+      <motion.span aria-hidden="true" animate={{ scale:[0.8, 1.2, 0.8], opacity:[0.6, 1, 0.6] }} transition={{ duration:1.2, repeat:Infinity }}
+        style={{ position:'absolute', right:0, top:'4%', fontSize: Math.round(size * 0.26), lineHeight:1 }}>✨</motion.span>
     </motion.button>
   )
 }
@@ -186,7 +226,7 @@ function WorldRow({ world, mods, progress, onPlay, onLevels, offset }) {
 // game in progress, something new, another review, and a movement break in
 // the middle. It is no longer a map to walk: Lumi just has the next idea,
 // and after all of them a sticker for the album as a surprise.
-function LumiIdea({ idea, plan, tileLevel, onPlay, onAlbum, stickers, narrow }) {
+function LumiIdea({ idea, plan, tileLevel, onPlay, onAlbum, stickers, narrow, friend, friendOwed, onFriends }) {
   const allDone = !idea
   // The first idea of a day is a warm-up, one level below the game's tile, so
   // that the day starts with a success (lib/learning.js). The card says
@@ -197,10 +237,23 @@ function LumiIdea({ idea, plan, tileLevel, onPlay, onAlbum, stickers, narrow }) 
       display:'flex', alignItems:'center', justifyContent: narrow ? 'flex-start' : 'center', flexWrap: narrow ? 'nowrap' : 'wrap',
       gap:'clamp(8px,3vw,40px)', padding:'clamp(8px,2vw,20px) clamp(10px,3vw,16px) 0',
     }}>
-      <div style={{ paddingTop: narrow ? 62 : 90, paddingLeft: narrow ? 12 : 0, flexShrink: 0 }}>
-        <Critter art="lumi" size={narrow ? 92 : 170} mood={allDone ? 'dance' : 'idle'} talks label="Lumi"
-          wish={idea ? <TileArt mod={idea.mod} size={narrow ? 40 : 60} bare /> : <Art art="⭐" size={narrow ? 34 : 52} />}
-          wishSide="top" />
+      <div style={{ paddingTop: narrow ? 62 : 90, paddingLeft: narrow ? 4 : 0, flexShrink: 0, display:'flex', alignItems:'flex-end' }}>
+        {/* the friend that comes along stands beside Lumi (a little behind
+            it on a phone); a friend that may move in waits as a present */}
+        {friendOwed ? (
+          <div style={{ marginRight: narrow ? -10 : 4, position:'relative', zIndex:1 }}>
+            <FriendPresent size={narrow ? 56 : 104} onClick={onFriends} />
+          </div>
+        ) : friend ? (
+          <div style={{ marginRight: narrow ? -26 : -14, position:'relative', zIndex:0 }}>
+            <FriendCompanion id={friend} mood={allDone ? 'dance' : 'idle'} size={narrow ? 80 : 150} />
+          </div>
+        ) : null}
+        <div style={{ position:'relative', zIndex:1 }}>
+          <Critter art="lumi" size={narrow ? 92 : 170} mood={allDone ? 'dance' : 'idle'} talks label="Lumi"
+            wish={idea ? <TileArt mod={idea.mod} size={narrow ? 40 : 60} bare /> : <Art art="⭐" size={narrow ? 34 : 52} />}
+            wishSide="top" />
+        </div>
       </div>
       <motion.div initial={{ scale:0.8, opacity:0 }} animate={{ scale:1, opacity:1 }} transition={{ type:'spring', stiffness:260, damping:18, delay:0.2 }}
         className="px-panel" style={{ padding: narrow ? '10px 12px' : '14px 18px', display:'flex', flexDirection:'column', alignItems:'center', gap:10, minWidth: narrow ? 0 : 280, flex: narrow ? '1 1 0' : undefined }}>
@@ -345,6 +398,10 @@ export default function HomeScreen() {
   // Lumis Kleiderschrank: the one sign on its button when something new waits
   const newWear = activeProfile ? unseenItems(activeProfile, profileWardrobeStars(activeProfile)).length : 0
   const openWardrobe = () => { stopNarration(); dispatch({ type:'NAVIGATE', payload:'wardrobe' }) }
+  // Lumis Freunde: the friend that comes along, and one that may move in
+  const friend = useFriendAlong()
+  const friendOwed = activeProfile ? friendsOwed(activeProfile, profileWardrobeStars(activeProfile)) > 0 : false
+  const openFriends = () => { stopNarration(); dispatch({ type:'NAVIGATE', payload:'friends' }) }
 
   return (
     // overflow-x clip, not hidden: hidden made this div a scroll container,
@@ -357,11 +414,13 @@ export default function HomeScreen() {
       </div>
 
       {/* ── HUD ── */}
-      <HudBar style={{ position:'sticky', top:0, zIndex:20 }}>
+      {/* on a phone the buttons are 44 px and closer together: with Lumis
+          Freunde beside the wardrobe the name had no room left */}
+      <HudBar style={{ position:'sticky', top:0, zIndex:20, ...(narrow ? { gap:5, paddingLeft:8, paddingRight:8 } : null) }}>
         <button
           className="px-btn px-btn--parch"
           onClick={() => setShowSwitcher(true)}
-          style={{ width:56, height:56, padding:0, fontSize:32, lineHeight:1, flexShrink:0 }}
+          style={{ width: narrow ? 44 : 56, height: narrow ? 44 : 56, padding:0, fontSize: narrow ? 26 : 32, lineHeight:1, flexShrink:0 }}
           title="Profil wechseln"
           aria-label="Profil wechseln"
         >{profile.avatar}</button>
@@ -398,10 +457,11 @@ export default function HomeScreen() {
           </div>
         )}
         <button className="px-btn px-btn--parch px-btn--icon" onClick={openAlbum}
-          aria-label={`Mein Album, ${stickers} Sticker`} title="Mein Album" style={{ flexShrink:0, width: narrow ? 48 : 56, height: narrow ? 48 : 56, padding:0 }}>
-          <img src={journeyArt('album.png')} alt="" style={{ width: narrow ? 32 : 36, height: narrow ? 32 : 36, imageRendering:'pixelated' }} />
+          aria-label={`Mein Album, ${stickers} Sticker`} title="Mein Album" style={{ flexShrink:0, width: narrow ? 44 : 56, height: narrow ? 44 : 56, padding:0 }}>
+          <img src={journeyArt('album.png')} alt="" style={{ width: narrow ? 30 : 36, height: narrow ? 30 : 36, imageRendering:'pixelated' }} />
         </button>
         <WardrobeButton fresh={newWear > 0} onClick={openWardrobe} small={narrow} />
+        <FriendsButton owed={friendOwed} onClick={openFriends} small={narrow} />
         <MusicButton />
         <button
           className="px-btn px-btn--wood px-btn--icon"
@@ -424,7 +484,11 @@ export default function HomeScreen() {
         // ── Daily time is up ──
         <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
           <div className="px-panel" style={{ maxWidth:440, width:'100%', padding:'24px 20px', textAlign:'center', display:'flex', flexDirection:'column', alignItems:'center', gap:14 }}>
-            <LumiCharacter mood="sleepy" size={120} />
+            <div style={{ display:'flex', alignItems:'flex-end' }}>
+              {/* the friend that comes along sleeps too */}
+              <FriendCompanion mood="sleep" size={100} style={{ marginRight:-10 }} />
+              <LumiCharacter mood="sleepy" size={120} />
+            </div>
             <div style={{ fontFamily:'var(--font-heading)', fontSize:28, fontWeight:700, color:'var(--px-ink)' }}>
               Für heute ist Schluss!
             </div>
@@ -438,7 +502,8 @@ export default function HomeScreen() {
           </div>
         </div>
       ) : (<>
-        <LumiIdea idea={idea} plan={plan} tileLevel={idea ? progress[idea.mod.id]?.currentLevel ?? 1 : 1} onPlay={playIdea} onAlbum={openAlbum} stickers={stickers} narrow={narrow} />
+        <LumiIdea idea={idea} plan={plan} tileLevel={idea ? progress[idea.mod.id]?.currentLevel ?? 1 : 1} onPlay={playIdea} onAlbum={openAlbum} stickers={stickers} narrow={narrow}
+          friend={friend} friendOwed={friendOwed} onFriends={openFriends} />
 
         {/* ── The worlds, one row each ── */}
         <div style={{

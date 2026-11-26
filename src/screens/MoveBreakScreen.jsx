@@ -5,6 +5,7 @@ import { HudBar, PxIcon } from '../components/PixelUI.jsx'
 import Confetti from '../components/Confetti.jsx'
 import { journeyArt } from '../lib/assets.js'
 import LumiFigure from '../components/LumiFigure.jsx'
+import { FriendFigure, useFriendAlong } from '../components/FriendFigure.jsx'
 import { narrate, stopNarration } from '../narrator.js'
 import { sayNumber } from '../tts.js'
 import { sfx } from '../sfx.js'
@@ -53,6 +54,7 @@ export function movesFor(seedText) {
 }
 
 function Figure({ pic, beat, box = 'min(60vw, 280px)', swing = 60 }) {
+  const friend = useFriendAlong()
   const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
   const frog = pic === 'frog'
   const anim = reduce ? {} : {
@@ -75,13 +77,21 @@ function Figure({ pic, beat, box = 'min(60vw, 280px)', swing = 60 }) {
         <motion.img src={journeyArt('move.png')} alt="" draggable={false}
           animate={anim} transition={{ duration: dur, repeat: Infinity, ease: 'easeInOut' }}
           style={{ width: '78%', height: '78%', imageRendering: 'pixelated', filter: 'drop-shadow(0 6px 0 rgba(42,27,61,0.3))', transformOrigin: '50% 100%' }} />
-      ) : (
-        // Lumi does the moves along, in what the child chose in the wardrobe
+      ) : (<>
+        {/* the friend that comes along does the moves too, beside Lumi and
+            a moment later (Lumi stands a little to the side then) */}
+        {friend && (
+          <motion.div animate={anim} transition={{ duration: dur, repeat: Infinity, ease: 'easeInOut', delay: 0.25 }}
+            style={{ position: 'absolute', left: '-2%', bottom: 0, width: '50%', height: '50%', filter: 'drop-shadow(0 5px 0 rgba(42,27,61,0.25))', transformOrigin: '50% 100%' }}>
+            <FriendFigure id={friend} mood="happy" size="100%" style={{ display: 'block', height: '100%' }} />
+          </motion.div>
+        )}
+        {/* Lumi does the moves along, in what the child chose in the wardrobe */}
         <motion.div animate={anim} transition={{ duration: dur, repeat: Infinity, ease: 'easeInOut' }}
-          style={{ width: '78%', height: '78%', filter: 'drop-shadow(0 6px 0 rgba(42,27,61,0.3))', transformOrigin: '50% 100%' }}>
+          style={{ width: friend ? '64%' : '78%', height: friend ? '64%' : '78%', marginLeft: friend ? '36%' : 0, filter: 'drop-shadow(0 6px 0 rgba(42,27,61,0.3))', transformOrigin: '50% 100%' }}>
           <LumiFigure mood="happy" size="100%" style={{ display: 'block', height: '100%' }} />
         </motion.div>
-      )}
+      </>)}
       <div aria-hidden="true" style={{ position: 'absolute', bottom: -6, width: '50%', height: 14, borderRadius: '50%', background: 'rgba(42,27,61,0.18)' }} />
     </div>
   )
