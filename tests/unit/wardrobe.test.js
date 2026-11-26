@@ -39,6 +39,13 @@ describe('the steps', () => {
     expect(listed).toEqual(ORDER)
     expect(WARDROBE.slice(0, ORDER.length).map(t => t.id)).toEqual(ORDER)
   })
+  it('the first thing of each place is the picture on its tab: one that says the place', () => {
+    // (the tab shows it in colour once it is owned: it is the first thing
+    // of its place a child gets, and for the back it is wings, not the cape)
+    const first = Object.fromEntries(SLOTS.map(s => [s, WARDROBE.find(t => t.slot === s)]))
+    for (const s of SLOTS) expect(first[s].stars, s).toBe(Math.min(...WARDROBE.filter(t => t.slot === s).map(t => t.stars)))
+    expect(SLOTS.map(s => first[s].id)).toEqual(['muetze', 'sonnenbrille', 'schal', 'schmetterling', 'ballon'])
+  })
   it('two things at once from the start, in different places: the wardrobe is never empty', () => {
     const free = unlockedItems(0)
     expect(free.length).toBe(2)

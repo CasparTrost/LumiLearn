@@ -135,14 +135,16 @@ export const SLOTS = ['head', 'face', 'neck', 'back', 'hold']
 /**
  * The order of unlocking: the first two are there from the start. The
  * first ten are the ones a child likes at once (a hat, glasses, a balloon,
- * a cape …); after them each place's things are spread evenly over the
+ * wings …), and the first thing of each place is the picture on its tab
+ * in the wardrobe, so it has to say the place (wings for the back: a cape
+ * alone read as a skirt); after them each place's things are spread evenly over the
  * rest, so no place waits much longer than another (late in the list a
  * place comes about every 50 stars), never two hats in a row, the red hats
  * far apart, the crown last.
  */
 export const ORDER = [
-  'muetze', 'sonnenbrille', 'ballon', 'schal', 'partyhut', 'umhang', 'herzbrille', 'zauberstab', 'katzenohren', 'fliege',
-  'blumenkranz', 'clownsnase', 'perlenkette', 'schmetterling', 'lolli', 'piratenhut', 'sternbrille', 'halstuch', 'basecap', 'engel',
+  'muetze', 'sonnenbrille', 'ballon', 'schal', 'partyhut', 'schmetterling', 'herzbrille', 'zauberstab', 'katzenohren', 'fliege',
+  'blumenkranz', 'clownsnase', 'perlenkette', 'umhang', 'lolli', 'piratenhut', 'sternbrille', 'halstuch', 'basecap', 'engel',
   'blume', 'hasenohren', 'heldenmaske', 'medaille', 'kochmuetze', 'fee', 'faehnchen', 'rundbrille', 'gloeckchen', 'cowboyhut',
   'taucherbrille', 'feuerwehrhelm', 'blumenkette', 'drache', 'eis', 'zauberhut', 'monokel', 'krawatte', 'strohhut', 'rakete',
   'windrad', 'matrosenmuetze', 'skibrille', 'herzkette', 'zylinder', 'pfau', 'laterne', 'schnurrbart', 'weihnachtsmuetze', 'sternabzeichen',

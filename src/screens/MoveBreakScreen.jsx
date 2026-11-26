@@ -52,13 +52,13 @@ export function movesFor(seedText) {
   return [...out, BREATH]
 }
 
-function Figure({ pic, beat, box = 'min(60vw, 280px)' }) {
+function Figure({ pic, beat, box = 'min(60vw, 280px)', swing = 60 }) {
   const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
   const frog = pic === 'frog'
   const anim = reduce ? {} : {
     frog:    { y: [0, -90, 0], scaleY: [1, 1.1, 0.9, 1] },
     stretch: { scaleY: [1, 1.35, 1.35, 1], y: [0, -20, -20, 0] },
-    fly:     { x: [-60, 60, -60], rotate: [-12, 12, -12] },
+    fly:     { x: [-swing, swing, -swing], rotate: [-12, 12, -12] },
     clap:    { scale: [1, 1.18, 1] },
     turn:    { rotateY: [0, 360] },
     stamp:   { y: [0, -24, 6, 0], rotate: [-4, 4, -4] },
@@ -178,7 +178,7 @@ export default function MoveBreakScreen() {
           ) : m && (
             <motion.div key={m.id} initial={{ x: 80, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -80, opacity: 0 }}
               style={{ display: 'flex', ...row, alignItems: 'center' }}>
-              <Figure pic={m.pic} beat={m.beat} box={box} />
+              <Figure pic={m.pic} beat={m.beat} box={box} swing={sideways ? 22 : 60} />
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
               <div className="px-panel" style={{ padding: '10px 16px', maxWidth: 520, fontFamily: 'var(--font-heading)', fontSize: 'clamp(18px,3vw,24px)', fontWeight: 700, color: 'var(--px-ink)' }}>
                 {m.say.text}
