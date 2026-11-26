@@ -52,7 +52,7 @@ export const POSES = {
     face: { x: 191, y: 153, rot: 0, w: 100 },
     neck: { x: 192, y: 214, rot: 0, w: 180 },
     back: { x: 192, y: 210, rot: 0, w: 210 },
-    hold: { x: 308, y: 280, rot: 20, w: 110 },
+    hold: { x: 308, y: 280, rot: 12, w: 105 },
     grip: [[290, 246], [306, 250], [320, 270], [330, 294], [324, 308], [306, 304], [292, 286], [286, 264]],
     tuft: [[140, 0], [262, 0], [262, 58], [230, 57], [192, 53], [154, 57], [140, 60]],
   },
@@ -61,7 +61,7 @@ export const POSES = {
     face: { x: 193, y: 137, rot: 3, w: 104 },
     neck: { x: 196, y: 212, rot: 0, w: 180 },
     back: { x: 196, y: 208, rot: 0, w: 200 },
-    hold: { x: 334, y: 192, rot: 16, w: 110 },
+    hold: { x: 332, y: 194, rot: 2, w: 95 },
     grip: [[318, 160], [336, 146], [352, 150], [358, 170], [346, 200], [328, 214], [314, 206], [312, 184]],
     tuft: [[150, 0], [270, 0], [270, 60], [235, 62], [196, 60], [160, 66], [150, 70]],
   },
@@ -99,7 +99,7 @@ export const POSES = {
     face: { x: 180, y: 190, rot: -12, w: 112 },
     neck: { x: 192, y: 252, rot: 0, w: 200 },
     back: { x: 192, y: 232, rot: 0, w: 200 },
-    hold: { x: 350, y: 358, rot: 6, w: 110 },
+    hold: { x: 338, y: 360, rot: 0, w: 84 },
     tuft: [[140, 0], [255, 0], [255, 78], [220, 80], [188, 78], [158, 84], [140, 88]],
   },
   wave: {
@@ -107,7 +107,7 @@ export const POSES = {
     face: { x: 206, y: 145, rot: 6, w: 95 },
     neck: { x: 215, y: 220, rot: 3, w: 170 },
     back: { x: 215, y: 216, rot: 0, w: 190 },
-    hold: { x: 314, y: 290, rot: 20, w: 105 },
+    hold: { x: 314, y: 290, rot: 12, w: 100 },
     grip: [[300, 254], [316, 260], [330, 282], [334, 304], [326, 318], [308, 312], [296, 292], [292, 270]],
     tuft: [[175, 0], [275, 0], [275, 60], [245, 60], [212, 56], [185, 64], [175, 70]],
   },
@@ -129,11 +129,20 @@ import HOLD from './wardrobe/hold.js'
 
 export const SLOTS = ['head', 'face', 'neck', 'back', 'hold']
 
-/** The order of unlocking: the first two are there from the start. Mix the places. */
+/**
+ * The order of unlocking: the first two are there from the start. The
+ * places take turns (never two hats in a row, the red hats far apart), the
+ * first things are the ones a child likes at once (a hat, glasses, a
+ * balloon, a cape), the crown comes last.
+ */
 export const ORDER = [
   'muetze', 'sonnenbrille', 'ballon', 'schal', 'partyhut', 'umhang', 'herzbrille', 'zauberstab',
-  'blumenkranz', 'fliege', 'schmetterling', 'lolli', 'piratenhut', 'rundbrille', 'blume', 'engel',
-  'medaille', 'zauberhut', 'faehnchen', 'fee', 'eis', 'krone', 'drache', 'windrad', 'rakete', 'schirm', 'pfau',
+  'katzenohren', 'fliege', 'schmetterling', 'clownsnase', 'lolli', 'blumenkranz', 'perlenkette', 'sternbrille',
+  'piratenhut', 'blume', 'engel', 'halstuch', 'basecap', 'heldenmaske', 'faehnchen', 'hasenohren',
+  'medaille', 'rundbrille', 'kochmuetze', 'fee', 'eis', 'gloeckchen', 'cowboyhut', 'taucherbrille',
+  'blumenkette', 'windrad', 'feuerwehrhelm', 'drache', 'monokel', 'krawatte', 'zauberhut', 'schirm',
+  'skibrille', 'herzkette', 'strohhut', 'rakete', 'matrosenmuetze', 'schnurrbart', 'zylinder', 'sternabzeichen',
+  'weihnachtsmuetze', 'pfau', 'krone',
 ]
 
 /**
