@@ -385,3 +385,182 @@ Prompt:
 ```
 a golden star badge hanging on a blue ribbon that forms a V shape. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
 ```
+
+---
+
+# Lumis Freunde (vier neue Figuren)
+
+Vier Freunde, die Kinder sich mit ihren Sternen als Begleiter aussuchen können. Lumi bleibt die Figur, die spricht und
+erklärt; die Freunde spielen mit. Jeder Freund braucht dieselben sechs Bilder wie Lumi.
+
+## So sollen die Figuren aussehen
+
+- **Wie Lumi gebaut:** klein, rund, großer Kopf, steht aufrecht, ganze Figur von vorn, große dunkle Augen mit
+  Glanzlicht, rosige Wangen. Stil-Vorbild: `public/sprites/emoji/custom/lumi-idle.webp`.
+- **Alle sechs Bilder einer Figur zeigen dieselbe Figur:** gleiche Form, Farben und Proportionen. Deshalb zuerst das
+  Bild „steht" erzeugen und, wenn Tripo ein Vorbild-Bild annimmt, dieses Bild als Vorbild für die anderen fünf geben.
+- **Format wie Lumis Bilder:** PNG mit transparentem Hintergrund, quadratisch, mindestens 512 × 512 Pixel, die Figur
+  mittig, etwa 85 % der Höhe, kein Bodenschatten, kein Text (das kleine Fragezeichen und das Zzz gehören zum Bild).
+- **Ablage:** `tripo-in/friends/<figur>-<pose>.png`, im selben Zweig `tripo-kleiderschrank` committen und pushen.
+- Reihenfolge: erst von JEDER Figur das Bild „steht" machen und dem Nutzer zeigen; die übrigen Posen erst, wenn er
+  die vier Figuren gut findet.
+
+## Dino
+
+Ein kleiner, runder Baby-Dino: hellgrün mit cremefarbenem Bauch, kleine runde orange Zacken vom Kopf über den Rücken, kurzer Schwanz.
+
+### Dino – steht, freundlich → `tripo-in/friends/dino-idle.png`
+
+```
+a small chubby baby dinosaur mascot standing upright on two short legs, light green body with a cream belly, a row of small rounded orange spikes from the top of its head down its back, short tail, tiny arms, big dark eyes with white highlights, rosy cheeks, friendly little smile, neutral standing pose, gentle smile, arms at its sides, full body. cute children's app cartoon illustration, soft flat shading with gentle highlights, clean thin slightly darker outline, friendly rounded proportions, big head, bright warm colors, front view, centered, transparent background, no ground shadow, no text.
+```
+
+### Dino – jubelt → `tripo-in/friends/dino-happy.png`
+
+```
+a small chubby baby dinosaur mascot standing upright on two short legs, light green body with a cream belly, a row of small rounded orange spikes from the top of its head down its back, short tail, tiny arms, big dark eyes with white highlights, rosy cheeks, friendly little smile, cheering with both arms raised, eyes closed in joy, big open smile, full body. cute children's app cartoon illustration, soft flat shading with gentle highlights, clean thin slightly darker outline, friendly rounded proportions, big head, bright warm colors, front view, centered, transparent background, no ground shadow, no text.
+```
+
+### Dino – traurig → `tripo-in/friends/dino-sad.png`
+
+```
+a small chubby baby dinosaur mascot standing upright on two short legs, light green body with a cream belly, a row of small rounded orange spikes from the top of its head down its back, short tail, tiny arms, big dark eyes with white highlights, rosy cheeks, friendly little smile, sad, head slightly down, teary eyes, small frown, full body. cute children's app cartoon illustration, soft flat shading with gentle highlights, clean thin slightly darker outline, friendly rounded proportions, big head, bright warm colors, front view, centered, transparent background, no ground shadow, no text.
+```
+
+### Dino – überlegt → `tripo-in/friends/dino-think.png`
+
+```
+a small chubby baby dinosaur mascot standing upright on two short legs, light green body with a cream belly, a row of small rounded orange spikes from the top of its head down its back, short tail, tiny arms, big dark eyes with white highlights, rosy cheeks, friendly little smile, thinking, one hand at its chin, eyes looking up, a small question mark next to its head, full body. cute children's app cartoon illustration, soft flat shading with gentle highlights, clean thin slightly darker outline, friendly rounded proportions, big head, bright warm colors, front view, centered, transparent background, no ground shadow, no text.
+```
+
+### Dino – winkt → `tripo-in/friends/dino-wave.png`
+
+```
+a small chubby baby dinosaur mascot standing upright on two short legs, light green body with a cream belly, a row of small rounded orange spikes from the top of its head down its back, short tail, tiny arms, big dark eyes with white highlights, rosy cheeks, friendly little smile, waving hello with one raised hand, big smile, full body. cute children's app cartoon illustration, soft flat shading with gentle highlights, clean thin slightly darker outline, friendly rounded proportions, big head, bright warm colors, front view, centered, transparent background, no ground shadow, no text.
+```
+
+### Dino – schläft → `tripo-in/friends/dino-sleep.png`
+
+```
+a small chubby baby dinosaur mascot standing upright on two short legs, light green body with a cream belly, a row of small rounded orange spikes from the top of its head down its back, short tail, tiny arms, big dark eyes with white highlights, rosy cheeks, friendly little smile, sleeping, sitting on the ground, eyes closed, a little Zzz next to its head, full body. cute children's app cartoon illustration, soft flat shading with gentle highlights, clean thin slightly darker outline, friendly rounded proportions, big head, bright warm colors, front view, centered, transparent background, no ground shadow, no text.
+```
+
+## Einhorn
+
+Ein kleines, rundes Baby-Einhorn, das aufrecht steht: weiß, Mähne und Schweif in Pastell-Regenbogenfarben, kleines goldenes Horn.
+
+### Einhorn – steht, freundlich → `tripo-in/friends/einhorn-idle.png`
+
+```
+a small chubby baby unicorn mascot standing upright on two short hind legs, white body, fluffy pastel rainbow mane and tail in pink, purple and light blue, a small golden spiral horn, small pink hooves, short front legs like arms, big dark eyes with white highlights, rosy cheeks, friendly little smile, neutral standing pose, gentle smile, arms at its sides, full body. cute children's app cartoon illustration, soft flat shading with gentle highlights, clean thin slightly darker outline, friendly rounded proportions, big head, bright warm colors, front view, centered, transparent background, no ground shadow, no text.
+```
+
+### Einhorn – jubelt → `tripo-in/friends/einhorn-happy.png`
+
+```
+a small chubby baby unicorn mascot standing upright on two short hind legs, white body, fluffy pastel rainbow mane and tail in pink, purple and light blue, a small golden spiral horn, small pink hooves, short front legs like arms, big dark eyes with white highlights, rosy cheeks, friendly little smile, cheering with both arms raised, eyes closed in joy, big open smile, full body. cute children's app cartoon illustration, soft flat shading with gentle highlights, clean thin slightly darker outline, friendly rounded proportions, big head, bright warm colors, front view, centered, transparent background, no ground shadow, no text.
+```
+
+### Einhorn – traurig → `tripo-in/friends/einhorn-sad.png`
+
+```
+a small chubby baby unicorn mascot standing upright on two short hind legs, white body, fluffy pastel rainbow mane and tail in pink, purple and light blue, a small golden spiral horn, small pink hooves, short front legs like arms, big dark eyes with white highlights, rosy cheeks, friendly little smile, sad, head slightly down, teary eyes, small frown, full body. cute children's app cartoon illustration, soft flat shading with gentle highlights, clean thin slightly darker outline, friendly rounded proportions, big head, bright warm colors, front view, centered, transparent background, no ground shadow, no text.
+```
+
+### Einhorn – überlegt → `tripo-in/friends/einhorn-think.png`
+
+```
+a small chubby baby unicorn mascot standing upright on two short hind legs, white body, fluffy pastel rainbow mane and tail in pink, purple and light blue, a small golden spiral horn, small pink hooves, short front legs like arms, big dark eyes with white highlights, rosy cheeks, friendly little smile, thinking, one hand at its chin, eyes looking up, a small question mark next to its head, full body. cute children's app cartoon illustration, soft flat shading with gentle highlights, clean thin slightly darker outline, friendly rounded proportions, big head, bright warm colors, front view, centered, transparent background, no ground shadow, no text.
+```
+
+### Einhorn – winkt → `tripo-in/friends/einhorn-wave.png`
+
+```
+a small chubby baby unicorn mascot standing upright on two short hind legs, white body, fluffy pastel rainbow mane and tail in pink, purple and light blue, a small golden spiral horn, small pink hooves, short front legs like arms, big dark eyes with white highlights, rosy cheeks, friendly little smile, waving hello with one raised hand, big smile, full body. cute children's app cartoon illustration, soft flat shading with gentle highlights, clean thin slightly darker outline, friendly rounded proportions, big head, bright warm colors, front view, centered, transparent background, no ground shadow, no text.
+```
+
+### Einhorn – schläft → `tripo-in/friends/einhorn-sleep.png`
+
+```
+a small chubby baby unicorn mascot standing upright on two short hind legs, white body, fluffy pastel rainbow mane and tail in pink, purple and light blue, a small golden spiral horn, small pink hooves, short front legs like arms, big dark eyes with white highlights, rosy cheeks, friendly little smile, sleeping, sitting on the ground, eyes closed, a little Zzz next to its head, full body. cute children's app cartoon illustration, soft flat shading with gentle highlights, clean thin slightly darker outline, friendly rounded proportions, big head, bright warm colors, front view, centered, transparent background, no ground shadow, no text.
+```
+
+## Drache
+
+Ein kleiner, runder Baby-Drache: rot-orange mit gelbem Bauch, zwei winzige Flügel, zwei kleine runde Hörner, kurzer Schwanz mit Pfeilspitze. Freundlich, kein Feuer.
+
+### Drache – steht, freundlich → `tripo-in/friends/drache-idle.png`
+
+```
+a small chubby baby dragon mascot standing upright on two short legs, red-orange body with a yellow belly, two tiny wings on its back, two small rounded horns, short tail with a small arrow tip, tiny arms, big dark eyes with white highlights, rosy cheeks, friendly little smile, not scary, no fire, neutral standing pose, gentle smile, arms at its sides, full body. cute children's app cartoon illustration, soft flat shading with gentle highlights, clean thin slightly darker outline, friendly rounded proportions, big head, bright warm colors, front view, centered, transparent background, no ground shadow, no text.
+```
+
+### Drache – jubelt → `tripo-in/friends/drache-happy.png`
+
+```
+a small chubby baby dragon mascot standing upright on two short legs, red-orange body with a yellow belly, two tiny wings on its back, two small rounded horns, short tail with a small arrow tip, tiny arms, big dark eyes with white highlights, rosy cheeks, friendly little smile, not scary, no fire, cheering with both arms raised, eyes closed in joy, big open smile, full body. cute children's app cartoon illustration, soft flat shading with gentle highlights, clean thin slightly darker outline, friendly rounded proportions, big head, bright warm colors, front view, centered, transparent background, no ground shadow, no text.
+```
+
+### Drache – traurig → `tripo-in/friends/drache-sad.png`
+
+```
+a small chubby baby dragon mascot standing upright on two short legs, red-orange body with a yellow belly, two tiny wings on its back, two small rounded horns, short tail with a small arrow tip, tiny arms, big dark eyes with white highlights, rosy cheeks, friendly little smile, not scary, no fire, sad, head slightly down, teary eyes, small frown, full body. cute children's app cartoon illustration, soft flat shading with gentle highlights, clean thin slightly darker outline, friendly rounded proportions, big head, bright warm colors, front view, centered, transparent background, no ground shadow, no text.
+```
+
+### Drache – überlegt → `tripo-in/friends/drache-think.png`
+
+```
+a small chubby baby dragon mascot standing upright on two short legs, red-orange body with a yellow belly, two tiny wings on its back, two small rounded horns, short tail with a small arrow tip, tiny arms, big dark eyes with white highlights, rosy cheeks, friendly little smile, not scary, no fire, thinking, one hand at its chin, eyes looking up, a small question mark next to its head, full body. cute children's app cartoon illustration, soft flat shading with gentle highlights, clean thin slightly darker outline, friendly rounded proportions, big head, bright warm colors, front view, centered, transparent background, no ground shadow, no text.
+```
+
+### Drache – winkt → `tripo-in/friends/drache-wave.png`
+
+```
+a small chubby baby dragon mascot standing upright on two short legs, red-orange body with a yellow belly, two tiny wings on its back, two small rounded horns, short tail with a small arrow tip, tiny arms, big dark eyes with white highlights, rosy cheeks, friendly little smile, not scary, no fire, waving hello with one raised hand, big smile, full body. cute children's app cartoon illustration, soft flat shading with gentle highlights, clean thin slightly darker outline, friendly rounded proportions, big head, bright warm colors, front view, centered, transparent background, no ground shadow, no text.
+```
+
+### Drache – schläft → `tripo-in/friends/drache-sleep.png`
+
+```
+a small chubby baby dragon mascot standing upright on two short legs, red-orange body with a yellow belly, two tiny wings on its back, two small rounded horns, short tail with a small arrow tip, tiny arms, big dark eyes with white highlights, rosy cheeks, friendly little smile, not scary, no fire, sleeping, sitting on the ground, eyes closed, a little Zzz next to its head, full body. cute children's app cartoon illustration, soft flat shading with gentle highlights, clean thin slightly darker outline, friendly rounded proportions, big head, bright warm colors, front view, centered, transparent background, no ground shadow, no text.
+```
+
+## Roboter
+
+Ein kleiner, runder Spielzeug-Roboter: hellblau und weiß, runder Kopf mit kleiner Antenne und gelber Kugel, große runde Augen, kurze Arme und Beine.
+
+### Roboter – steht, freundlich → `tripo-in/friends/roboter-idle.png`
+
+```
+a small round friendly toy robot mascot standing upright, light blue and white rounded body, big round head with a little antenna with a yellow ball on top, big round dark eyes with white highlights, two small pink cheek lights, short arms with round mitten hands, short legs, friendly little smile, neutral standing pose, gentle smile, arms at its sides, full body. cute children's app cartoon illustration, soft flat shading with gentle highlights, clean thin slightly darker outline, friendly rounded proportions, big head, bright warm colors, front view, centered, transparent background, no ground shadow, no text.
+```
+
+### Roboter – jubelt → `tripo-in/friends/roboter-happy.png`
+
+```
+a small round friendly toy robot mascot standing upright, light blue and white rounded body, big round head with a little antenna with a yellow ball on top, big round dark eyes with white highlights, two small pink cheek lights, short arms with round mitten hands, short legs, friendly little smile, cheering with both arms raised, eyes closed in joy, big open smile, full body. cute children's app cartoon illustration, soft flat shading with gentle highlights, clean thin slightly darker outline, friendly rounded proportions, big head, bright warm colors, front view, centered, transparent background, no ground shadow, no text.
+```
+
+### Roboter – traurig → `tripo-in/friends/roboter-sad.png`
+
+```
+a small round friendly toy robot mascot standing upright, light blue and white rounded body, big round head with a little antenna with a yellow ball on top, big round dark eyes with white highlights, two small pink cheek lights, short arms with round mitten hands, short legs, friendly little smile, sad, head slightly down, teary eyes, small frown, full body. cute children's app cartoon illustration, soft flat shading with gentle highlights, clean thin slightly darker outline, friendly rounded proportions, big head, bright warm colors, front view, centered, transparent background, no ground shadow, no text.
+```
+
+### Roboter – überlegt → `tripo-in/friends/roboter-think.png`
+
+```
+a small round friendly toy robot mascot standing upright, light blue and white rounded body, big round head with a little antenna with a yellow ball on top, big round dark eyes with white highlights, two small pink cheek lights, short arms with round mitten hands, short legs, friendly little smile, thinking, one hand at its chin, eyes looking up, a small question mark next to its head, full body. cute children's app cartoon illustration, soft flat shading with gentle highlights, clean thin slightly darker outline, friendly rounded proportions, big head, bright warm colors, front view, centered, transparent background, no ground shadow, no text.
+```
+
+### Roboter – winkt → `tripo-in/friends/roboter-wave.png`
+
+```
+a small round friendly toy robot mascot standing upright, light blue and white rounded body, big round head with a little antenna with a yellow ball on top, big round dark eyes with white highlights, two small pink cheek lights, short arms with round mitten hands, short legs, friendly little smile, waving hello with one raised hand, big smile, full body. cute children's app cartoon illustration, soft flat shading with gentle highlights, clean thin slightly darker outline, friendly rounded proportions, big head, bright warm colors, front view, centered, transparent background, no ground shadow, no text.
+```
+
+### Roboter – schläft → `tripo-in/friends/roboter-sleep.png`
+
+```
+a small round friendly toy robot mascot standing upright, light blue and white rounded body, big round head with a little antenna with a yellow ball on top, big round dark eyes with white highlights, two small pink cheek lights, short arms with round mitten hands, short legs, friendly little smile, sleeping, sitting on the ground, eyes closed, a little Zzz next to its head, full body. cute children's app cartoon illustration, soft flat shading with gentle highlights, clean thin slightly darker outline, friendly rounded proportions, big head, bright warm colors, front view, centered, transparent background, no ground shadow, no text.
+```
