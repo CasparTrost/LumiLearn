@@ -83,7 +83,9 @@ export default function WardrobeScreen() {
   // Lumi waves and says what to do
   useEffect(() => {
     dispatch({ type: 'WARDROBE_SEEN' })
-    const t = setTimeout(() => narrate([rec('schrank/willkommen')]), 500)
+    // (the explanation only until the child has tried on a few things:
+    // it knows the wardrobe then, and six seconds at every visit are too many)
+    const t = setTimeout(() => { if (tried.length < 3) narrate([rec('schrank/willkommen')]) }, 500)
     return () => { clearTimeout(t); clearTimeout(wishTimer.current); stopNarration() }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
