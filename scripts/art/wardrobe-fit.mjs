@@ -9,7 +9,7 @@
 //   what   'all' (default), 'slot:head', 'krone,schal' (each alone) or
 //          'combo:krone+schal+umhang;muetze+ballon' (worn together, one row each)
 //   debug  'debug': the anchors (red), the tuft (blue) and the parts in
-//          front of neck things (green) instead of things
+//          front of neck things (green), the holding wing tip (magenta) instead of things
 //   DPR=3 in the environment draws at three times the pixels (small sizes).
 import { writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
@@ -36,7 +36,7 @@ function figure(pose, outfit) {
   if (debug) {
     const P = W.POSES[pose]
     const pts = a => a.map(([x, y]) => `${x},${y}`).join(' ')
-    marks = `<svg viewBox="0 0 384 384" style="position:absolute;inset:0;width:100%;height:100%">${W.SLOTS.map(s => { const a = P[s]; return `<circle cx="${a.x}" cy="${a.y}" r="4" fill="red"/><line x1="${a.x - a.w / 2}" y1="${a.y}" x2="${a.x + a.w / 2}" y2="${a.y}" stroke="red" stroke-width="2" transform="rotate(${a.rot} ${a.x} ${a.y})"/><text x="${a.x + 6}" y="${a.y - 6}" font-size="14" fill="red">${s}</text>` }).join('')}<polygon points="${pts(P.tuft)}" fill="none" stroke="blue" stroke-width="2"/>${P.front ? `<polygon points="${pts(P.front)}" fill="none" stroke="green" stroke-width="2"/>` : ''}</svg>`
+    marks = `<svg viewBox="0 0 384 384" style="position:absolute;inset:0;width:100%;height:100%">${W.SLOTS.map(s => { const a = P[s]; return `<circle cx="${a.x}" cy="${a.y}" r="4" fill="red"/><line x1="${a.x - a.w / 2}" y1="${a.y}" x2="${a.x + a.w / 2}" y2="${a.y}" stroke="red" stroke-width="2" transform="rotate(${a.rot} ${a.x} ${a.y})"/><text x="${a.x + 6}" y="${a.y - 6}" font-size="14" fill="red">${s}</text>` }).join('')}<polygon points="${pts(P.tuft)}" fill="none" stroke="blue" stroke-width="2"/>${P.front ? `<polygon points="${pts(P.front)}" fill="none" stroke="green" stroke-width="2"/>` : ''}${P.grip ? `<polygon points="${pts(P.grip)}" fill="none" stroke="magenta" stroke-width="2"/>` : ''}</svg>`
   }
   return `<div style="position:relative;width:${size}px;height:${size}px;outline:1px dashed #0002"><div style="position:absolute;inset:0;transform:scale(${scale});transform-origin:50% 100%">${inner}</div>${marks}</div>`
 }

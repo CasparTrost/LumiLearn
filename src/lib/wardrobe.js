@@ -23,7 +23,8 @@
  *            face  the middle between Lumi's eyes
  *            neck  the middle of Lumi's neck line, under the head
  *            back  the middle between the shoulders (drawn behind Lumi)
- *            hold  the tip of the wing that holds it (sleeping: the floor beside Lumi)
+ *            hold  the tip of the wing that holds it (sleeping: the floor beside
+ *                  Lumi); the wing tip (`grip` of the picture) is drawn over it
  *   size   the picture's width as a share of the anchor's width (the head's
  *          width, the distance between the eyes, the width of the neck)
  *   rot    an extra tilt in degrees (optional)
@@ -51,7 +52,8 @@ export const POSES = {
     face: { x: 191, y: 153, rot: 0, w: 100 },
     neck: { x: 192, y: 214, rot: 0, w: 180 },
     back: { x: 192, y: 210, rot: 0, w: 210 },
-    hold: { x: 318, y: 292, rot: 12, w: 110 },
+    hold: { x: 308, y: 280, rot: 20, w: 110 },
+    grip: [[290, 246], [306, 250], [320, 270], [330, 294], [324, 308], [306, 304], [292, 286], [286, 264]],
     tuft: [[140, 0], [262, 0], [262, 58], [230, 57], [192, 53], [154, 57], [140, 60]],
   },
   happy: {
@@ -59,7 +61,8 @@ export const POSES = {
     face: { x: 193, y: 137, rot: 3, w: 104 },
     neck: { x: 196, y: 212, rot: 0, w: 180 },
     back: { x: 196, y: 208, rot: 0, w: 200 },
-    hold: { x: 350, y: 180, rot: 14, w: 110 },
+    hold: { x: 334, y: 192, rot: 16, w: 110 },
+    grip: [[318, 160], [336, 146], [352, 150], [358, 170], [346, 200], [328, 214], [314, 206], [312, 184]],
     tuft: [[150, 0], [270, 0], [270, 60], [235, 62], [196, 60], [160, 66], [150, 70]],
   },
   sad: {
@@ -67,7 +70,8 @@ export const POSES = {
     face: { x: 189, y: 181, rot: 4, w: 98 },
     neck: { x: 190, y: 238, rot: 0, w: 170 },
     back: { x: 190, y: 234, rot: 0, w: 190 },
-    hold: { x: 290, y: 318, rot: 16, w: 100 },
+    hold: { x: 272, y: 300, rot: 24, w: 100 },
+    grip: [[244, 264], [262, 258], [280, 270], [288, 292], [282, 314], [264, 316], [250, 300], [242, 282]],
     tuft: [[150, 0], [260, 0], [260, 66], [230, 64], [192, 64], [160, 70], [150, 74]],
   },
   hmm: {
@@ -75,7 +79,8 @@ export const POSES = {
     face: { x: 190, y: 138, rot: -16, w: 92 },
     neck: { x: 180, y: 228, rot: -4, w: 160 },
     back: { x: 182, y: 224, rot: 0, w: 190 },
-    hold: { x: 76, y: 300, rot: -14, w: 100 },
+    hold: { x: 88, y: 286, rot: -20, w: 100 },
+    grip: [[104, 250], [88, 254], [72, 276], [66, 300], [74, 314], [92, 310], [104, 292], [108, 270]],
     tuft: [[135, 0], [245, 0], [245, 58], [215, 60], [190, 58], [160, 66], [135, 70]],
     front: [[205, 196], [222, 186], [246, 196], [276, 232], [292, 262], [300, 300], [262, 306], [228, 268], [214, 236]],
   },
@@ -84,7 +89,8 @@ export const POSES = {
     face: { x: 190, y: 138, rot: -16, w: 92 },
     neck: { x: 180, y: 228, rot: -4, w: 160 },
     back: { x: 182, y: 224, rot: 0, w: 190 },
-    hold: { x: 76, y: 300, rot: -14, w: 100 },
+    hold: { x: 88, y: 286, rot: -20, w: 100 },
+    grip: [[104, 250], [88, 254], [72, 276], [66, 300], [74, 314], [92, 310], [104, 292], [108, 270]],
     tuft: [[135, 0], [245, 0], [245, 58], [215, 60], [190, 58], [160, 66], [135, 70]],
     front: [[205, 196], [222, 186], [246, 196], [276, 232], [292, 262], [300, 300], [262, 306], [228, 268], [214, 236]],
   },
@@ -101,7 +107,8 @@ export const POSES = {
     face: { x: 206, y: 145, rot: 6, w: 95 },
     neck: { x: 215, y: 220, rot: 3, w: 170 },
     back: { x: 215, y: 216, rot: 0, w: 190 },
-    hold: { x: 330, y: 302, rot: 12, w: 105 },
+    hold: { x: 314, y: 290, rot: 20, w: 105 },
+    grip: [[300, 254], [316, 260], [330, 282], [334, 304], [326, 318], [308, 312], [296, 292], [292, 270]],
     tuft: [[175, 0], [275, 0], [275, 60], [245, 60], [212, 56], [185, 64], [175, 70]],
   },
 }
@@ -239,8 +246,12 @@ export function figureLayers(pose, outfit) {
     layers.push(item(bySlot.neck))
     if (P.front) layers.push({ kind: 'pose', clip: `polygon(${poly(P.front)})` })
   }
-  // the held thing lies over Lumi, under what is on the face and head
-  if (bySlot.hold) layers.push(item(bySlot.hold))
+  // the held thing lies over Lumi; the tip of the holding wing is drawn
+  // again over its stick or string, so the wing holds it
+  if (bySlot.hold) {
+    layers.push(item(bySlot.hold))
+    if (P.grip) layers.push({ kind: 'pose', clip: `polygon(${poly(P.grip)})` })
+  }
   if (bySlot.face) layers.push(item(bySlot.face))
   if (hat) {
     layers.push(item(hat))
