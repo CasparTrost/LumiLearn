@@ -5,6 +5,7 @@ import { ENGLISH_ENABLED } from './i18n.js'
 import { updateSkill, nextLevel, ratioOf, journeyFor, nextStopIndex } from './lib/learning.js'
 import { stickerForDay } from './lib/stickers.js'
 import { ITEM_BY_ID, isUnlocked, unlockedBetween, unlockedItems, wardrobeStars, cleanOutfit } from './lib/wardrobe.js'
+import { FRIEND_BY_ID, cleanFriends, cleanAlong, freshFriends, friendsOwed } from './lib/friends.js'
 
 export const AppContext = createContext(null)
 
@@ -207,6 +208,9 @@ function freshProfile(overrides = {}) {
     // Lumis Kleiderschrank: what Lumi wears, the things seen in the
     // wardrobe and tried on once, the highest total of stars
     ...freshWardrobe(),
+    // Lumis Freunde (lib/friends.js): the friends that moved in (in order),
+    // the one that comes along, and whether the next one waits for a game
+    ...freshFriends(),
     ...overrides,
   }
 }
@@ -358,6 +362,7 @@ export function reducer(state, action) {
         stickers: [],
         helpSeen: {},
         ...freshWardrobe(),
+        ...freshFriends(),
       }
       reset.dailyMission = freshDay(todayStr(), reset)
       // today's ideas planned again at once: the parent area lies over the
@@ -432,6 +437,28 @@ export function reducer(state, action) {
       const seen = knownIds(p.wardrobeSeen)
       if (ids.every(id => seen.includes(id))) return state
       return updateActiveProfile(state, q => ({ ...q, wardrobeSeen: knownIds([...seen, ...ids]) }))
+    }
+
+    // Lumis Freunde (lib/friends.js): the child chose the friend that moves
+    // in. Only while one is owed and only one still to come; it comes along
+    // at once, and the next one owed waits for the next game played.
+    case 'FRIEND_CHOOSE': {
+      const id = action.payload
+      const p = state.profiles[state.activeProfileId]
+      if (!p || !FRIEND_BY_ID[id] || cleanFriends(p.friends).includes(id)) return state
+      if (!friendsOwed(p, profileWardrobeStars(p))) return state
+      return updateActiveProfile(state, q => ({ ...q, friends: [...cleanFriends(q.friends), id], friendAlong: id, friendWait: true }))
+    }
+
+    // A friend that moved in comes along (a tap in Lumis Freunde), a second
+    // tap leaves it at home; one at a time, or none (payload null)
+    case 'FRIEND_ALONG': {
+      const p = state.profiles[state.activeProfileId]
+      if (!p) return state
+      const id = action.payload
+      if (id !== null && !cleanFriends(p.friends).includes(id)) return state
+      const along = id === null || cleanAlong(p.friendAlong, p.friends) === id ? null : id
+      return along === (p.friendAlong ?? null) ? state : updateActiveProfile(state, q => ({ ...q, friendAlong: along }))
     }
 
     // The movement break of today's journey (screens/MoveBreakScreen.jsx)
@@ -587,6 +614,11 @@ export function reducer(state, action) {
       const earned = Math.max(0, sumStars(newLevelStars) - sumStars(prevLevelStars))
       updatedProfile.starsEver = Math.max(wardrobeBefore + earned, totalStars(updatedProfile.progress))
       const newWear = unlockedBetween(wardrobeBefore, updatedProfile.starsEver).map(t => t.id)
+      // a friend may move in: a new step reached, or the next one that
+      // waited for this game (lib/friends.js friendsOwed)
+      const friendBefore = friendsOwed(profile, wardrobeBefore)
+      updatedProfile.friendWait = false
+      const newFriend = !friendBefore && friendsOwed(updatedProfile, updatedProfile.starsEver) > 0
 
       return {
         ...state,
@@ -611,6 +643,7 @@ export function reducer(state, action) {
           streakCount: streak.count,
           streakGrew: st.lastDate !== today,
           newWear,
+          newFriend,
           farmBefore: farmPoints(profile),
           farmAfter:  farmPoints(updatedProfile),
         },
@@ -710,6 +743,11 @@ export function migrateToV2(data) {
         wardrobeSeen: knownIds(p.wardrobeSeen),
         wardrobeTried: knownIds(p.wardrobeTried),
         starsEver: Number.isFinite(p.starsEver) ? Math.max(0, p.starsEver) : 0,
+        // the friends: saves from before them have none; a child with many
+        // stars is owed them one at a time (lib/friends.js friendsOwed)
+        friends: cleanFriends(p.friends),
+        friendAlong: cleanAlong(p.friendAlong, p.friends),
+        friendWait: p.friendWait === true,
       })
       // old saves: never below the stars the child has now
       profiles[id].starsEver = profileWardrobeStars(profiles[id])
