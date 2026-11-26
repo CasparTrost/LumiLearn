@@ -203,10 +203,11 @@ export default function ResultsScreen() {
       else if (proposal === 'practise') news.push(line('ergebnis/ueben'))
     }
     // not recorded yet: skipped while missing
-    // a new shape first (also one still waiting), the wardrobe's new thing after it
+    // a new shape first (also one still waiting), the wardrobe's new thing
+    // after it: both are on the screen, so Lumi says both, one after the other
     const shapeLine = shapeNews ? optional('gestalt/neu') : null
     if (shapeLine) news.push(shapeLine)
-    const wearNews = newWear.length && !shapeNews ? optional('schrank/neu') : null
+    const wearNews = newWear.length ? optional('schrank/neu') : null
     if (wearNews) news.push(wearNews)
     if (freshSticker) news.push(line('ergebnis/sticker-tag'))
     else if (main === moveBtn) news.push(line('ergebnis/bewegen'))

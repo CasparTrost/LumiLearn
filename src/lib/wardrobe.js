@@ -281,22 +281,40 @@ export const stepBefore = item => Math.max(0, ...WARDROBE.filter(t => t.stars < 
 export const unseenItems = (profile, stars) => unlockedItems(stars).filter(t => !(profile?.wardrobeSeen ?? []).includes(t.id))
 
 // Saves from before the outfits wore a top and a bottom on their own: each
-// stands for the outfit it belongs to
+// stands for the outfit it belongs to. The order of unlocking changed with
+// the outfits (a cheap old bottom can belong to a late outfit now), so an
+// old save is read at the child's stars: a part whose outfit is still
+// wrapped is neither worn nor "seen" (its sparkle comes when it unlocks).
 const OUTFIT_OF = Object.fromEntries(OUTFITS.flatMap(o => [o.top, o.bottom].filter(Boolean).map(id => [id, o.id])))
 const outfitOfPart = (id, part) => (PART_BY_ID[id]?.part === part ? OUTFIT_OF[id] : null)
 /**
  * A list of things saved (seen, tried on), cleaned: known things only, each
- * once; a top or a bottom of an old save counts as its outfit.
+ * once; a top or a bottom of an old save counts as its outfit. With the
+ * child's `stars` (loading a save): only things unlocked at them.
  */
-export const knownIds = list => (Array.isArray(list) ? Array.from(new Set(list.map(id => OUTFIT_OF[id] ?? id).filter(id => ITEM_BY_ID[id]))) : [])
+export const knownIds = (list, stars = Infinity) => (Array.isArray(list)
+  ? Array.from(new Set(list.map(id => OUTFIT_OF[id] ?? id).filter(id => isUnlocked(ITEM_BY_ID[id], stars))))
+  : [])
 
-/** What Lumi wears, cleaned: known things in their own slot only. */
-export function cleanOutfit(outfit) {
+/**
+ * The outfit an old save with a top and/or a bottom wears at the child's
+ * `stars`: the outfit of its top (else of its bottom); if that one is still
+ * wrapped, the earliest unlocked outfit with a part the child wore; else
+ * none (nothing wrapped is ever worn).
+ */
+export function outfitOfOld(top, bottom, stars = Infinity) {
+  const had = [outfitOfPart(top, 'top'), outfitOfPart(bottom, 'bottom')].filter(Boolean).map(id => ITEM_BY_ID[id])
+  if (had[0] && isUnlocked(had[0], stars)) return had[0].id
+  return had.filter(t => isUnlocked(t, stars)).sort((a, b) => a.stars - b.stars)[0]?.id ?? null
+}
+
+/** What Lumi wears, cleaned: known things in their own slot only (an old save: read at the child's `stars`). */
+export function cleanOutfit(outfit, stars = Infinity) {
   const out = Object.fromEntries(SLOTS.map(s => [s, null]))
   if (outfit && typeof outfit === 'object') {
     for (const s of SLOTS) if (ITEM_BY_ID[outfit[s]]?.slot === s) out[s] = outfit[s]
     // an old save with a top and/or a bottom: the outfit of the top, else of the bottom
-    if (!out.outfit) out.outfit = outfitOfPart(outfit.top, 'top') ?? outfitOfPart(outfit.bottom, 'bottom') ?? null
+    if (!out.outfit) out.outfit = outfitOfOld(outfit.top, outfit.bottom, stars)
     // (an old save with shoes and a mermaid's tail: the tail stays)
     if (out.shoes && ITEM_BY_ID[out.outfit]?.feet === false) out.shoes = null
   }
