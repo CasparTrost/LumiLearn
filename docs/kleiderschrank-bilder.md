@@ -883,3 +883,54 @@ a blue and white striped long sleeve sailor shirt, only the shirt, shaped exactl
 ```
 a turquoise hawaiian shirt with red and orange hibiscus flowers, short sleeves, open collar, only the shirt, shaped exactly to be worn by the character in the reference image, seen from the front: width, length and roundness of the shirt follow that character's chest and belly, the sleeves start where its arms start, the neckline sits right under its head; no character visible, cute children's app cartoon illustration, soft flat shading with gentle highlights, clean thin slightly darker outline, centered, transparent background, no ground shadow, no text.
 ```
+
+---
+
+# Probe 2: Oberteil und Hose direkt auf die Figur gemalt, alle sieben Posen auf einem Bild
+
+Darübergelegte Oberteile und Hosen passen nicht zu den Posen: Ärmel folgen den Armen nicht, Hosenbeine nicht den
+Beinen. Deshalb sollen Oberteil und Hose jetzt **direkt auf die Figur gemalt** werden, und zwar alle sieben Posen
+einer Figur **auf einem einzigen Bild**. Aus dem fertigen Bild schneidet die Cloud-Sitzung die Kleidung pro Pose
+heraus.
+
+## Die Vorlage
+
+`docs/tripo-vorlagen/<figur>-posen.png` (2048 × 1024 Pixel, weißer Hintergrund): die sieben Posen der Figur in einem
+festen Raster, 4 Spalten × 2 Reihen zu je 512 × 512 Pixeln. Reihe 1: steht, jubelt, traurig, überlegt (hmm);
+Reihe 2: überlegt (denkt), schläft (sitzt), winkt; das achte Feld bleibt leer.
+Figuren: `chick` (Lumi, das Küken), `dino`, `einhorn`, `drache`, `roboter`.
+
+## So soll das Ergebnis sein (sehr wichtig)
+
+- **Die Vorlage bearbeiten, nicht neu malen:** Das Ergebnis ist genau die Vorlage, nur dass jede der sieben Figuren
+  jetzt das Oberteil und die Hose trägt. Jede Figur bleibt in Größe, Lage, Pose, Gesicht, Farben und Umriss genau
+  gleich und an genau derselben Stelle im Raster. Bildgröße 2048 × 1024, weißer Hintergrund, nichts kommt dazu.
+  Kann Tripo ein Bild so nicht bearbeiten (es malt die Figuren neu, verschiebt oder verändert sie), dann aufhören
+  und dem Nutzer genau das sagen.
+- **Die Kleidung folgt dem Körper in jeder Pose:**
+  - Das Oberteil bedeckt Brust und Bauch bis zur Hüfte; der Kragen sitzt direkt unter dem Kopf.
+  - Jeder Ärmel liegt auf seinem Arm, so wie der Arm in dieser Pose liegt: beim Jubeln und Winken geht der Ärmel
+    mit dem erhobenen Arm nach oben, beim Überlegen liegt der Ärmel auf dem Arm an der Wange, beim Traurigsein auf
+    den Armen vor dem Bauch. Hände und Pfoten schauen aus dem Ärmel heraus.
+  - Die Hose sitzt an Hüfte und Beinen, jedes Hosenbein auf seinem Bein; die Füße schauen unten heraus. Beim
+    Schlafen sitzt die Figur: die Hose liegt auf dem Schoß, die Hosenbeine folgen den Beinen nach vorn.
+  - Ein Schwanz, Rückenzacken und Flügel bleiben frei und liegen über der Kleidung, wo sie vor dem Körper sind.
+- Gleicher Stil wie bisher: weiche Cartoon-Optik, dünne etwas dunklere Kontur, keine Schatten auf dem Boden.
+- Höchstens zwei Versuche; das bessere Ergebnis speichern.
+
+## Probe (1 Bild)
+
+- Vorlage: `docs/tripo-vorlagen/dino-posen.png`
+- Kleidung: das **Ringelshirt** (blau-weiß gestreift, lange Ärmel, Vorbild `tripo-in/tops/dino-ringelshirt.png`
+  im Zweig `tripo-kleiderschrank`) und die **Jeans-Shorts** (Vorbild `tripo-in/wardrobe/jeansshorts.png`).
+- Speichern unter `tripo-in/dressed/dino-ringelshirt-jeansshorts.png`, im Zweig `tripo-kleiderschrank` committen und
+  pushen, dem Nutzer Bescheid geben.
+
+Prompt (mit der Vorlage als zu bearbeitendem Bild und den beiden Kleidungsstücken als Vorbildern):
+
+```
+Edit this image, do not redraw it: the seven cartoon dinosaurs stay exactly the same - same size, same position in the grid, same pose, same face, same colors and outline, white background, image size unchanged. Only dress each of the seven in the blue-and-white striped long-sleeve sailor shirt and the blue denim shorts from the reference images. In every pose the clothes follow the body: the shirt covers chest and belly down to the hips with the collar right under the head; each sleeve lies on its arm exactly as the arm is posed (raised arm: the sleeve goes up with it; hand at the cheek: the sleeve lies along that arm), the hands stick out of the sleeves; the shorts sit on the hips and each leg of the shorts on its leg, the feet stick out below; the sitting dinosaur wears the shorts on its lap. Tail and back spikes stay uncovered. Same soft cartoon style with a thin darker outline, no ground shadow, no text.
+```
+
+Wenn die Probe gut aussieht, folgen pro Figur 16 Bilder (jedes Oberteil zusammen mit einer Hose), also 80 Bilder
+für alle fünf Figuren.
