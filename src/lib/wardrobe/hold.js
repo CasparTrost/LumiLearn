@@ -6,12 +6,12 @@
 // there (not in ORDER yet: last).
 // Picture: public/sprites/wardrobe/<id>.webp, from scripts/art/schrank-<id>.svg.
 export default [
-  { id: 'ballon',     name: 'Luftballon', slot: 'hold', src: 'sprites/wardrobe/ballon.webp',     at: [0.5, 0.97], size: 1.8,  box: [0.26, 0.02, 0.74, 0.98], say: 'wort/luftballon' },
+  { id: 'ballon',     name: 'Luftballon', slot: 'hold', src: 'sprites/wardrobe/ballon.webp',     at: [0.5, 0.97], size: 1.8,  box: [0.26, 0.02, 0.74, 0.98] },
   { id: 'zauberstab', name: 'Zauberstab', slot: 'hold', src: 'sprites/wardrobe/zauberstab.webp', at: [0.5, 0.9],  size: 1.5,  box: [0.18, 0.05, 0.87, 0.98] },
-  { id: 'blume',      name: 'Sonnenblume', slot: 'hold', src: 'sprites/wardrobe/blume.webp',     at: [0.5, 0.9],  size: 1.5,  box: [0.25, 0.05, 0.76, 0.98], say: 'wort/sonnenblume' },
-  { id: 'lolli',      name: 'Lolli',      slot: 'hold', src: 'sprites/wardrobe/lolli.webp',      at: [0.5, 0.9],  size: 1.4,  box: [0.23, 0.06, 0.77, 0.98], say: 'wort/lolli' },
+  { id: 'blume',      name: 'Sonnenblume', slot: 'hold', src: 'sprites/wardrobe/blume.webp',     at: [0.5, 0.9],  size: 1.5,  box: [0.25, 0.05, 0.76, 0.98] },
+  { id: 'lolli',      name: 'Lolli',      slot: 'hold', src: 'sprites/wardrobe/lolli.webp',      at: [0.5, 0.9],  size: 1.4,  box: [0.23, 0.06, 0.77, 0.98] },
   { id: 'faehnchen',  name: 'Fähnchen',   slot: 'hold', src: 'sprites/wardrobe/faehnchen.webp',  at: [0.5, 0.9],  size: 1.35, box: [0.45, 0.05, 0.94, 0.98] },
-  { id: 'schirm',     name: 'Regenschirm', slot: 'hold', src: 'sprites/wardrobe/schirm.webp',    at: [0.45, 0.9], size: 1.35, box: [0.04, 0.06, 0.96, 0.96], say: 'wort/regenschirm' },
-  { id: 'eis',        name: 'Eis',        slot: 'hold', src: 'sprites/wardrobe/eis.webp',        at: [0.5, 0.8],  size: 1.7,  box: [0.28, 0.07, 0.72, 0.97], say: 'wort/eis', pose: { sleep: { size: 0.9 } } },
+  { id: 'schirm',     name: 'Regenschirm', slot: 'hold', src: 'sprites/wardrobe/schirm.webp',    at: [0.45, 0.9], size: 1.35, box: [0.04, 0.06, 0.96, 0.96] },
+  { id: 'eis',        name: 'Eis',        slot: 'hold', src: 'sprites/wardrobe/eis.webp',        at: [0.5, 0.8],  size: 1.7,  box: [0.28, 0.07, 0.72, 0.97], pose: { sleep: { size: 0.9 } } },
   { id: 'windrad',    name: 'Windrad',    slot: 'hold', src: 'sprites/wardrobe/windrad.webp',    at: [0.5, 0.9],  size: 1.5,  box: [0.24, 0.05, 0.77, 0.98] },
 ]

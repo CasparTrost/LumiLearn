@@ -71,8 +71,8 @@ describe('the steps', () => {
 })
 
 describe('the pictures', () => {
-  it('a recorded name a thing borrows exists', () => {
-    for (const t of WARDROBE) if (t.say) expect(LINES[t.say], t.id).toBeTruthy()
+  it('every place has its recorded announcement', () => {
+    for (const slot of SLOTS) expect(LINES[`schrank/platz-${slot}`], slot).toBeTruthy()
   })
   it('every thing has its picture and its drawing', () => {
     for (const t of WARDROBE) {

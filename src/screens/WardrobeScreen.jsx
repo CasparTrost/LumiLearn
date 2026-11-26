@@ -31,7 +31,6 @@ import { LINES, line } from '../lib/lumiLines.js'
  */
 const rec = key => (LINES[key] ? line(key) : null)
 const REACTIONS = ['schrank/anziehen-1', 'schrank/anziehen-2', 'schrank/anziehen-3', 'schrank/anziehen-4']
-const nameLine = item => rec(`schrank/name-${item.id}`) ?? (item.say ? rec(item.say) : null)
 const SHELF_LABEL = { head: 'Für den Kopf', face: 'Fürs Gesicht', neck: 'Für den Hals', back: 'Für den Rücken', hold: 'Zum Festhalten' }
 // presents shown per place before the pile
 const WRAPPED_SHOWN = 2
@@ -63,6 +62,7 @@ export default function WardrobeScreen() {
   const lumiRef = useRef(null)
   const wishTimer = useRef(null)
   const reaction = useRef(Math.floor(Math.random() * REACTIONS.length))
+  const worn = useRef(0), takenOff = useRef(0), toldWrapped = useRef(false)
 
   const { w, h } = useViewport()
   const wide = w > h || w >= 700
@@ -102,7 +102,8 @@ export default function WardrobeScreen() {
     setWish(item.stars - stars)
     clearTimeout(wishTimer.current)
     wishTimer.current = setTimeout(() => setWish(null), 2600)
-    narrate([rec('schrank/eingepackt')])
+    // said once a visit; after that the bubble with the stars says it
+    if (!toldWrapped.current) { toldWrapped.current = true; narrate([rec('schrank/eingepackt')]) }
   }
 
   const tap = item => {
@@ -115,12 +116,16 @@ export default function WardrobeScreen() {
       setTimeout(() => sfx.sparkle(), 220)
       setMood('happy', 1500)
       setTimeout(() => burst(headPoint(), 'stars', 12), 120)
-      reaction.current = (reaction.current + 1) % REACTIONS.length
-      narrate([nameLine(item), rec(REACTIONS[reaction.current])])
+      // Lumi says something about every third thing (the first one always):
+      // a child tries on ten things in a row, and ten sentences are too many
+      if (worn.current++ % 3 === 0) {
+        reaction.current = (reaction.current + 1) % REACTIONS.length
+        narrate([rec(REACTIONS[reaction.current])])
+      }
     } else {
       sfx.pop()
       setMood('wow', 900)
-      narrate([rec('schrank/ausziehen')])
+      if (takenOff.current++ % 3 === 0) narrate([rec('schrank/ausziehen')])
     }
   }
 
@@ -137,6 +142,7 @@ export default function WardrobeScreen() {
     sfx.pop()
     setWish(null)
     setTab(slot)
+    narrate([rec(`schrank/platz-${slot}`)])
   }
 
   return (

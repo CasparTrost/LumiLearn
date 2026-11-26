@@ -37,7 +37,6 @@
  *            'front'  it pokes up out of the hat (a crown, a wreath)
  *            none     the hat sits beside it (the party hat, worn aslant)
  *   pose   small corrections for single pictures { sleep: { dx, dy, rot, size } }
- *   say    the key of the recorded name (lib/lumiLines.js), when there is one
  */
 
 // ── Lumi's pictures ─────────────────────────────────────────────────────────

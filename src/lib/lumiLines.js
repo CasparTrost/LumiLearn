@@ -1242,6 +1242,20 @@ export const LINES = {
   'atelier/zeichnet': 'Ich zeichne die Linien. Einen Moment!',
   'atelier/eigenes-da': 'Fertig! Jetzt kannst du dein Bild ausmalen.',
   'atelier/geht-nicht': 'Aus diesem Bild kann ich leider kein Malbild machen. Probier ein anderes!',
+  'schrank/willkommen': 'Das ist mein Kleiderschrank! Tippe auf ein Ding, dann ziehe ich es an. Tippst du noch einmal, ziehe ich es wieder aus.',
+  'schrank/neu': 'Juhu, ein Geschenk für mich! Tippe auf den Kleiderschrank, dann probieren wir es an!',
+  'schrank/anziehen-1': 'Wie sehe ich aus?',
+  'schrank/anziehen-2': 'Oh, das gefällt mir!',
+  'schrank/anziehen-3': 'Schick, oder?',
+  'schrank/anziehen-4': 'Das passt genau!',
+  'schrank/ausziehen': 'Und wieder aus!',
+  'schrank/alles-aus': 'Alles aus! Jetzt bin ich wieder ganz ich.',
+  'schrank/eingepackt': 'Das ist noch eingepackt. Sammle Sterne in den Spielen, dann packen wir es aus!',
+  'schrank/platz-head': 'Für den Kopf!',
+  'schrank/platz-face': 'Fürs Gesicht!',
+  'schrank/platz-neck': 'Für den Hals!',
+  'schrank/platz-back': 'Für den Rücken!',
+  'schrank/platz-hold': 'Zum Festhalten!',
 }
 
 /** The recording of a sentence, with its text for the browser voice. */
