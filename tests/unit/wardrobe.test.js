@@ -9,6 +9,7 @@ import {
   figureLayers, itemCorners, placeItem, cleanOutfit, wornItems, lumiPose, unseenItems,
 } from '../../src/lib/wardrobe.js'
 import { reducer, migrateToV2, initialState, profileWardrobeStars, MAX_LEVELS, hasLevels } from '../../src/AppContext.jsx'
+import { LINES } from '../../src/lib/lumiLines.js'
 import HEAD from '../../src/lib/wardrobe/head.js'
 import FACE from '../../src/lib/wardrobe/face.js'
 import NECK from '../../src/lib/wardrobe/neck.js'
@@ -70,6 +71,9 @@ describe('the steps', () => {
 })
 
 describe('the pictures', () => {
+  it('a recorded name a thing borrows exists', () => {
+    for (const t of WARDROBE) if (t.say) expect(LINES[t.say], t.id).toBeTruthy()
+  })
   it('every thing has its picture and its drawing', () => {
     for (const t of WARDROBE) {
       expect(existsSync(join(ROOT, 'public', t.src)), t.src).toBe(true)
