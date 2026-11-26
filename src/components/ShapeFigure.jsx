@@ -1,8 +1,8 @@
 import { useContext } from 'react'
 import { AppContext } from '../AppContext.jsx'
 import { asset } from '../lib/assets.js'
-import { lumiPose } from '../lib/wardrobe.js'
-import { drawnShape, shapeLayers, wearsClothes } from '../lib/shapes.js'
+import { lumiPose, figureLayers, POSES } from '../lib/wardrobe.js'
+import { drawnShape, shapeLayers, wearsClothes, posesOf } from '../lib/shapes.js'
 import LumiFigure from './LumiFigure.jsx'
 
 /**
@@ -61,19 +61,40 @@ export const childColour = profile => {
 
 /**
  * A child's picture: its own Lumi, in its shape and with its clothes, drawn
- * live from the profile (head and shoulders, so a hat shows at 44 px), on
- * the child's colour. A child that has not chosen its Lumi yet is the
- * chick. (`profile.avatar`, the animal of before, stays in the save but is
- * no longer shown.)
+ * live from the profile, on the child's colour. A child that has not chosen
+ * its Lumi yet is the chick. (`profile.avatar`, the animal of before, stays
+ * in the save but is no longer shown.)
+ *
+ * Framed on the face, not on the whole figure: the eyes always at the same
+ * height (EYE_AT from the top) and the face always the same size (FACE_W of
+ * the square), whatever is worn. A tall hat is cut at the top edge instead
+ * of shrinking the face, so the shape stays easy to tell (the unicorn's
+ * horn, ears and mane, the robot's ear pieces, the dragon's horns).
  */
+const EYE_AT = 0.58
+const FACE_W = 0.44
+export function childFrame(shape, outfit) {
+  const own = shape && shape !== 'chick'
+  const face = (own ? posesOf(shape) : POSES).idle.face
+  // the figure shrinks under a tall hat (standing on the same spot): the face with it
+  const scale = own ? shapeLayers(shape, 'idle', outfit).scale : figureLayers('idle', outfit).scale
+  const k = Math.min(1, scale)
+  const zoom = FACE_W * 384 / (face.w * k) // the figure's square, in squares of the picture
+  return {
+    zoom,
+    left: 0.5 - (192 + (face.x - 192) * k) / 384 * zoom,
+    top: EYE_AT - (384 - (384 - face.y) * k) / 384 * zoom,
+  }
+}
+
 export function ChildLumi({ profile, size = 56, style }) {
   const shape = drawnShape(profile)
   const outfit = wearsClothes(shape) ? profile?.outfit ?? null : null
-  const inner = size / 0.64
+  const f = childFrame(shape, outfit)
   return (
     <span aria-hidden="true" data-child-lumi={shape ?? 'chick'}
       style={{ position: 'relative', display: 'block', width: size, height: size, flexShrink: 0, overflow: 'hidden', borderRadius: '22%', background: childColour(profile), ...style }}>
-      <LumiFigure shape={shape} outfit={outfit} size={inner} style={{ position: 'absolute', left: (size - inner) / 2, top: size * 0.02 }} />
+      <LumiFigure shape={shape} outfit={outfit} size={size * f.zoom} style={{ position: 'absolute', left: size * f.left, top: size * f.top }} />
     </span>
   )
 }
