@@ -3,21 +3,28 @@ import { motion } from 'framer-motion'
 import { useApp, profileWardrobeStars } from '../AppContext.jsx'
 import { HudBar, PxIcon, PxStar } from '../components/PixelUI.jsx'
 import MusicButton from '../components/MusicControls.jsx'
+import LumiFigure from '../components/LumiFigure.jsx'
 import { Critter, Art, useMood, useBursts } from '../components/play/index.js'
 import { asset } from '../lib/assets.js'
-import { SLOTS, WARDROBE, isUnlocked, nextLocked, stepBefore, cleanOutfit } from '../lib/wardrobe.js'
+import { SLOTS, WARDROBE, isUnlocked, stepBefore, cleanOutfit } from '../lib/wardrobe.js'
 import { narrate, stopNarration } from '../narrator.js'
 import { sfx } from '../sfx.js'
 import { LINES, line } from '../lib/lumiLines.js'
 
 /**
  * Lumis Kleiderschrank (lib/wardrobe.js): the stars a child collected
- * unlock things for Lumi to wear. Lumi stands large on the left (on top on
- * a phone held upright) and the wardrobe holds three shelves, from the top
- * down where a thing is worn: head, face, neck. A tap puts a thing on with
- * a little show, a second tap takes it off. Things still to come are
- * wrapped presents with the stars they need; the next one shows how far
- * there is to go. Nothing is spent, nothing can be lost.
+ * unlock things for Lumi to wear, five places combined freely: head, face,
+ * neck, back and something to hold. Lumi stands large on the left (on top
+ * on a phone held upright). The wardrobe shows ONE place at a time: five
+ * big picture tabs above it choose the place (a five-year-old cannot scan
+ * fifty things in one list). A tap on a thing puts it on with a little
+ * show, a second tap takes it off; the button beside Lumi (a plain Lumi)
+ * takes everything off at once.
+ *
+ * Things still to come are wrapped presents with the stars they need: per
+ * place the next two, and a pile with the number of the others. The first
+ * present of a place fills up as the stars come. Nothing is spent, nothing
+ * can be lost.
  *
  * Lumi's sentences here are not recorded yet: they are looked up and left
  * out while missing (the screen works without words).
@@ -26,6 +33,8 @@ const rec = key => (LINES[key] ? line(key) : null)
 const REACTIONS = ['schrank/anziehen-1', 'schrank/anziehen-2', 'schrank/anziehen-3', 'schrank/anziehen-4']
 const nameLine = item => rec(`schrank/name-${item.id}`) ?? (item.say ? rec(item.say) : null)
 const SHELF_LABEL = { head: 'Für den Kopf', face: 'Fürs Gesicht', neck: 'Für den Hals', back: 'Für den Rücken', hold: 'Zum Festhalten' }
+// presents shown per place before the pile
+const WRAPPED_SHOWN = 2
 
 function useViewport() {
   const get = () => ({ w: window.innerWidth, h: window.innerHeight })
@@ -44,7 +53,9 @@ export default function WardrobeScreen() {
   const stars = profileWardrobeStars(profile)
   const outfit = cleanOutfit(profile?.outfit)
   const tried = profile?.wardrobeTried ?? []
-  const next = nextLocked(stars)
+  const isFresh = t => isUnlocked(t, stars) && !tried.includes(t.id)
+  // the place with something new opens first
+  const [tab, setTab] = useState(() => WARDROBE.find(isFresh)?.slot ?? 'head')
   const [mood, setMood] = useMood('wave')
   const [wish, setWish] = useState(null)       // the stars still missing for a tapped present
   const [shake, setShake] = useState(null)
@@ -57,12 +68,16 @@ export default function WardrobeScreen() {
   const wide = w > h || w >= 700
   const hud = w < 521 ? 72 : 80
   const stageW = wide ? Math.min(440, Math.max(220, w * 0.4), Math.max(220, h - hud)) : w
-  const stageH = wide ? h - hud : Math.min(300, Math.round(h * 0.34))
-  const lumi = Math.round(wide ? Math.min(stageW * 0.8, stageH * 0.7, 340) : stageH * 0.78)
-  // the places: as big as fits, the longest shelf in one row where it can
-  const shelfW = Math.min(640, (wide ? w - stageW : w) - 2 * Math.min(22, Math.max(10, w * 0.02))) - 2 * (4 + 12) - 2 * (3 + 8)
-  const most = Math.max(...SLOTS.map(sl => WARDROBE.filter(t => t.slot === sl).length))
-  const tile = Math.round(Math.max(h < 430 ? 58 : 68, Math.min(92, (shelfW - (most - 1) * 10) / most)))
+  const stageH = wide ? h - hud : Math.min(300, Math.round(h * 0.33))
+  const lumi = Math.round(wide ? Math.min(stageW * 0.8, stageH * 0.7, 340) : stageH * 0.76)
+  const tabSize = Math.round(Math.max(52, Math.min(76, ((wide ? w - stageW : w) - 40) / 5 - 10, h < 430 ? 56 : 76)))
+  const tile = w < 420 ? 74 : h < 430 ? 76 : 92
+
+  const items = WARDROBE.filter(t => t.slot === tab)
+  const open = items.filter(t => isUnlocked(t, stars))
+  const wrapped = items.filter(t => !isUnlocked(t, stars))
+  const pile = wrapped.slice(WRAPPED_SHOWN)
+  const anyWorn = SLOTS.some(s => outfit[s])
 
   // Opened: what is unlocked is seen now (the sign on the home button goes),
   // Lumi waves and says what to do
@@ -79,19 +94,20 @@ export default function WardrobeScreen() {
     return r ? { x: r.left + r.width / 2, y: r.top + r.height * 0.3 } : undefined
   }
 
+  // still wrapped: it shakes, and Lumi shows how many stars are missing
+  const wrappedTap = (item, key) => {
+    setShake(key + Date.now())
+    sfx.bump()
+    setMood('hmm', 1600)
+    setWish(item.stars - stars)
+    clearTimeout(wishTimer.current)
+    wishTimer.current = setTimeout(() => setWish(null), 2600)
+    narrate([rec('schrank/eingepackt')])
+  }
+
   const tap = item => {
     setWish(null)
-    if (!isUnlocked(item, stars)) {
-      // still wrapped: it shakes, and Lumi shows how many stars are missing
-      setShake(item.id + Date.now())
-      sfx.bump()
-      setMood('hmm', 1600)
-      setWish(item.stars - stars)
-      clearTimeout(wishTimer.current)
-      wishTimer.current = setTimeout(() => setWish(null), 2600)
-      narrate([rec('schrank/eingepackt')])
-      return
-    }
+    if (!isUnlocked(item, stars)) return wrappedTap(item, item.id)
     const on = outfit[item.slot] !== item.id
     dispatch({ type: 'WARDROBE_WEAR', payload: item.id })
     if (on) {
@@ -106,6 +122,21 @@ export default function WardrobeScreen() {
       setMood('wow', 900)
       narrate([rec('schrank/ausziehen')])
     }
+  }
+
+  const undress = () => {
+    setWish(null)
+    dispatch({ type: 'WARDROBE_UNDRESS' })
+    sfx.whoosh()
+    setMood('wow', 900)
+    narrate([rec('schrank/alles-aus')])
+  }
+
+  const pickTab = slot => {
+    if (slot === tab) return
+    sfx.pop()
+    setWish(null)
+    setTab(slot)
   }
 
   return (
@@ -144,37 +175,103 @@ export default function WardrobeScreen() {
               )}
             </div>
           </div>
+          {/* everything off at once: a plain Lumi */}
+          {anyWorn && (
+            <motion.button type="button" className="px-btn px-btn--parch" onClick={undress} aria-label="Alles ausziehen" data-undress
+              initial={{ scale: 0 }} animate={{ scale: 1 }} whileTap={{ scale: 0.9 }}
+              style={{ position: 'absolute', left: 10, top: 10, width: 60, height: 60, padding: 0, zIndex: 6 }}>
+              <LumiFigure outfit={null} size={46} style={{ display: 'block' }} />
+              <span aria-hidden="true" style={{ position: 'absolute', right: -6, bottom: -6, width: 26, height: 26, borderRadius: '50%', background: '#fff', border: '3px solid var(--px-ink)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg viewBox="0 0 20 20" width="16" height="16"><path d="M5 5 L15 15 M15 5 L5 15" stroke="#e5483f" strokeWidth="3.4" strokeLinecap="round" /></svg>
+              </span>
+            </motion.button>
+          )}
         </div>
 
-        {/* ── The wardrobe: three shelves, head to neck ── */}
-        <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: 'auto', padding: 'clamp(10px,2vw,22px)' }}>
-          <div style={{
-            maxWidth: 640, margin: '0 auto', borderRadius: 22, border: '4px solid var(--px-ink)', padding: 'clamp(8px,1.4vw,12px)',
-            background: 'linear-gradient(90deg, #a8652c 0%, #c27a3a 12%, #c98443 50%, #c27a3a 88%, #a8652c 100%)',
-            boxShadow: '0 6px 0 rgba(42,27,61,0.3)', display: 'flex', flexDirection: 'column', gap: 'clamp(8px,1.4vw,12px)',
-          }}>
+        {/* ── The wardrobe: five picture tabs, one place at a time ── */}
+        <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', padding: wide ? '10px clamp(10px,2vw,22px) 12px' : '8px 10px 10px' }}>
+          <div role="tablist" aria-label="Wo Lumi es trägt" style={{ display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'flex-end', paddingInline: 6, flexShrink: 0, position: 'relative', zIndex: 2 }}>
             {SLOTS.map(slot => (
-              <section key={slot} aria-label={SHELF_LABEL[slot]} style={{
-                position: 'relative', borderRadius: 12, border: '3px solid var(--px-ink)', overflow: 'hidden',
-                background: 'linear-gradient(180deg, #f4dcb4 0%, #fbeacb 60%, #f2d6a6 100%)',
-                padding: `10px 8px ${8 + 12}px`,
-              }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px 10px', justifyContent: 'flex-start', position: 'relative', zIndex: 1 }}>
-                  {WARDROBE.filter(t => t.slot === slot).map(item => (
-                    <Thing key={item.id} item={item} size={tile} stars={stars}
-                      worn={outfit[slot] === item.id} fresh={isUnlocked(item, stars) && !tried.includes(item.id)}
-                      next={next?.id === item.id} shake={shake?.startsWith(item.id) ? shake : null} onTap={() => tap(item)} />
-                  ))}
-                </div>
-                {/* the shelf board the things stand on */}
-                <div aria-hidden="true" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 14, background: 'linear-gradient(180deg, #d99a5a 0%, #b06c32 60%, #8a4f22 100%)', borderTop: '3px solid var(--px-ink)' }} />
-              </section>
+              <PlaceTab key={slot} slot={slot} size={tabSize} active={slot === tab} fresh={WARDROBE.some(t => t.slot === slot && isFresh(t))}
+                worn={!!outfit[slot]} onTap={() => pickTab(slot)} />
             ))}
+          </div>
+          <div style={{
+            flex: 1, minHeight: 0, maxWidth: 680, width: '100%', margin: '-4px auto 0', borderRadius: 22, border: '4px solid var(--px-ink)', padding: 'clamp(8px,1.4vw,12px)',
+            background: 'linear-gradient(90deg, #a8652c 0%, #c27a3a 12%, #c98443 50%, #c27a3a 88%, #a8652c 100%)',
+            boxShadow: '0 6px 0 rgba(42,27,61,0.3)', display: 'flex',
+          }}>
+            <section role="tabpanel" aria-label={SHELF_LABEL[tab]} data-shelf={tab} key={tab} style={{
+              flex: 1, minHeight: 0, overflow: 'auto', borderRadius: 12, border: '3px solid var(--px-ink)',
+              background: 'repeating-linear-gradient(180deg, #fbeacb 0px, #fbeacb ' + (tile + 6) + 'px, #b06c32 ' + (tile + 6) + 'px, #8a4f22 ' + (tile + 20) + 'px)',
+              backgroundPosition: '0 12px', padding: '12px 10px',
+            }}>
+              <motion.div initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.25 }}
+                style={{ display: 'flex', flexWrap: 'wrap', gap: '20px 10px', justifyContent: 'flex-start' }}>
+                {open.map(item => (
+                  <Thing key={item.id} item={item} size={tile} stars={stars}
+                    worn={outfit[tab] === item.id} fresh={isFresh(item)} shake={null} onTap={() => tap(item)} />
+                ))}
+                {wrapped.slice(0, WRAPPED_SHOWN).map((item, i) => (
+                  <Thing key={item.id} item={item} size={tile} stars={stars} next={i === 0}
+                    shake={shake?.startsWith(item.id) ? shake : null} onTap={() => tap(item)} />
+                ))}
+                {pile.length > 0 && (
+                  <Pile n={pile.length} size={tile} shake={shake?.startsWith('pile') ? shake : null} onTap={() => { setWish(null); wrappedTap(pile[0], 'pile') }} />
+                )}
+              </motion.div>
+            </section>
           </div>
         </div>
       </div>
       {bursts}
     </div>
+  )
+}
+
+/** A tab for a place: the picture of its first thing; a sparkle when something there is new. */
+function PlaceTab({ slot, size, active, fresh, worn, onTap }) {
+  const rep = WARDROBE.find(t => t.slot === slot)
+  return (
+    <motion.button type="button" role="tab" aria-selected={active} aria-label={`${SHELF_LABEL[slot]}${fresh ? ', etwas Neues' : ''}`} data-tab={slot}
+      onClick={onTap} whileTap={{ scale: 0.92 }}
+      animate={{ y: active ? 0 : 6 }}
+      style={{
+        all: 'unset', boxSizing: 'border-box', cursor: 'pointer', position: 'relative', width: size + 8, height: size + (active ? 14 : 6),
+        borderRadius: '16px 16px 0 0', border: '4px solid var(--px-ink)', borderBottom: active ? '4px solid #c98443' : '4px solid var(--px-ink)',
+        background: active ? 'linear-gradient(180deg, #fff8e2, #f6dca8)' : 'linear-gradient(180deg, #e9c48e, #c99a60)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', paddingBottom: active ? 6 : 0,
+        boxShadow: active ? '0 -3px 0 rgba(255,255,255,0.6) inset' : 'none',
+      }}>
+      {rep && <span style={{ opacity: active ? 1 : 0.75 }}><ThingPic item={rep} size={size - 10} /></span>}
+      {worn && (
+        <span aria-hidden="true" style={{ position: 'absolute', left: -6, top: -6, width: 18, height: 18, borderRadius: '50%', background: '#3aa63a', border: '3px solid #fff' }} />
+      )}
+      {fresh && (
+        <motion.span aria-hidden="true" animate={{ scale: [1, 1.25, 1] }} transition={{ duration: 1.2, repeat: Infinity }}
+          style={{ position: 'absolute', right: -8, top: -8, width: 24, height: 24, borderRadius: '50%', background: '#ff5b8a', border: '3px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, lineHeight: 1 }}>✨</motion.span>
+      )}
+    </motion.button>
+  )
+}
+
+/** More presents waiting in this place: a little pile and how many. */
+function Pile({ n, size, shake, onTap }) {
+  return (
+    <motion.button type="button" onClick={onTap} aria-label={`Noch ${n} Geschenke`} data-pile={n}
+      whileTap={{ scale: 0.9 }} key={shake ?? 'still'} animate={shake ? { rotate: [0, -10, 9, -6, 4, 0] } : { rotate: 0 }} transition={{ duration: 0.5 }}
+      style={{
+        all: 'unset', boxSizing: 'border-box', cursor: 'pointer', position: 'relative', width: size, height: size, flexShrink: 0,
+        borderRadius: 18, border: '3px dashed rgba(42,27,61,0.35)', background: 'rgba(255,255,255,0.35)',
+      }}>
+      <span aria-hidden="true" style={{ position: 'absolute', left: '8%', top: '30%' }}><Art art="🎁" size={Math.round(size * 0.4)} /></span>
+      <span aria-hidden="true" style={{ position: 'absolute', right: '8%', top: '30%' }}><Art art="🎁" size={Math.round(size * 0.4)} /></span>
+      <span aria-hidden="true" style={{ position: 'absolute', left: '50%', top: '4%', transform: 'translateX(-50%)' }}><Art art="🎁" size={Math.round(size * 0.44)} /></span>
+      <span aria-hidden="true" style={{
+        position: 'absolute', bottom: 5, left: '50%', transform: 'translateX(-50%)', background: 'var(--px-ink)', color: '#fff', borderRadius: 10,
+        padding: '1px 8px', fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 15, lineHeight: '20px',
+      }}>+{n}</span>
+    </motion.button>
   )
 }
 

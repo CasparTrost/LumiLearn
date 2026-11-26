@@ -58,13 +58,14 @@ describe('the steps', () => {
     expect(WARDROBE.at(-1).stars).toBeLessThan(MAX_STARS * 0.6)
   })
   it('what a new total unlocks, the next present and where its bar starts', () => {
-    expect(unlockedBetween(5, 8).map(t => t.id)).toEqual(['partyhut'])
-    expect(unlockedBetween(8, 8)).toEqual([])
-    expect(unlockedBetween(0, 12).map(t => t.id)).toEqual(['schal', 'partyhut', 'herzbrille', 'blumenkranz'])
-    expect(nextLocked(12).id).toBe('fliege')
-    expect(stepBefore(ITEM_BY_ID.fliege)).toBe(12)
+    const [a, b, c] = [WARDROBE[2], WARDROBE[3], WARDROBE[4]]
+    expect(unlockedBetween(a.stars - 1, a.stars).map(t => t.id)).toEqual([a.id])
+    expect(unlockedBetween(a.stars, a.stars)).toEqual([])
+    expect(unlockedBetween(0, c.stars).map(t => t.id)).toEqual([a.id, b.id, c.id])
+    expect(nextLocked(b.stars).id).toBe(c.id)
+    expect(stepBefore(c)).toBe(b.stars)
     expect(nextLocked(10_000)).toBe(null)
-    expect(unseenItems({ wardrobeSeen: ['muetze'] }, 3).map(t => t.id)).toEqual(['sonnenbrille', 'schal'])
+    expect(unseenItems({ wardrobeSeen: [WARDROBE[0].id] }, a.stars).map(t => t.id)).toEqual([WARDROBE[1].id, a.id])
   })
 })
 
@@ -134,6 +135,8 @@ describe('the pictures', () => {
 })
 
 // ── the reducer ──
+// Written against the order, not against names: the order changes as the
+// wardrobe grows.
 const kid = (stars, more = {}) => {
   const levelStars = {}
   for (let l = 1, left = stars; left > 0; l++) { levelStars[l] = Math.min(3, left); left -= 3 }
@@ -142,35 +145,45 @@ const kid = (stars, more = {}) => {
 const load = p => ({ ...initialState, ...migrateToV2({ version: 2, activeProfileId: 'p1', settings: {}, profiles: { p1: p } }), screen: 'home' })
 const wear = (s, id) => reducer(s, { type: 'WARDROBE_WEAR', payload: id })
 const me = s => s.profiles.p1
+const free = WARDROBE[0]
+// the first thing of each place, and the stars that open all five
+const firstOf = slot => WARDROBE.find(t => t.slot === slot)
+const allFive = Math.max(...SLOTS.map(sl => firstOf(sl).stars))
+// a second thing for the place of `t`, opened later
+const laterIn = t => WARDROBE.find(x => x.slot === t.slot && x.stars > t.stars)
 
 describe('wearing', () => {
   it('a tap puts a thing on, a second tap takes it off; it counts as tried', () => {
     let s = load(kid(0))
-    s = wear(s, 'muetze')
-    expect(me(s).outfit).toEqual({ ...NONE, head: 'muetze' })
-    expect(me(s).wardrobeTried).toEqual(['muetze'])
-    s = wear(s, 'muetze')
-    expect(me(s).outfit.head).toBe(null)
-    expect(me(s).wardrobeTried).toEqual(['muetze'])
+    s = wear(s, free.id)
+    expect(me(s).outfit).toEqual({ ...NONE, [free.slot]: free.id })
+    expect(me(s).wardrobeTried).toEqual([free.id])
+    s = wear(s, free.id)
+    expect(me(s).outfit[free.slot]).toBe(null)
+    expect(me(s).wardrobeTried).toEqual([free.id])
   })
-  it('one thing per place, five places at once', () => {
-    let all = load(kid(30))
-    all = wear(wear(wear(wear(wear(all, 'piratenhut'), 'herzbrille'), 'fliege'), 'umhang'), 'ballon')
-    expect(me(all).outfit).toEqual({ head: 'piratenhut', face: 'herzbrille', neck: 'fliege', back: 'umhang', hold: 'ballon' })
-    let s = load(kid(12))
-    s = wear(wear(wear(wear(s, 'muetze'), 'sonnenbrille'), 'schal'), 'partyhut')
-    expect(me(s).outfit).toEqual({ ...NONE, head: 'partyhut', face: 'sonnenbrille', neck: 'schal' })
+  it('one thing per place, five places at once, and everything off at once', () => {
+    const second = laterIn(free)
+    let s = load(kid(Math.max(allFive, second.stars)))
+    for (const sl of SLOTS) s = wear(s, firstOf(sl).id)
+    expect(me(s).outfit).toEqual(Object.fromEntries(SLOTS.map(sl => [sl, firstOf(sl).id])))
+    s = wear(s, second.id)
+    expect(me(s).outfit[free.slot]).toBe(second.id)
+    s = reducer(s, { type: 'WARDROBE_UNDRESS' })
+    expect(me(s).outfit).toEqual(NONE)
+    expect(reducer(s, { type: 'WARDROBE_UNDRESS' })).toBe(s)
   })
   it('a wrapped present cannot be put on, nor an unknown thing', () => {
     const s = load(kid(5))
-    expect(wear(s, 'krone')).toBe(s)
+    expect(wear(s, WARDROBE.at(-1).id)).toBe(s)
     expect(wear(s, 'no-such-thing')).toBe(s)
   })
   it('opening the wardrobe marks the unlocked things seen (the sign goes)', () => {
-    let s = load(kid(6))
-    expect(unseenItems(me(s), profileWardrobeStars(me(s))).length).toBe(4)
+    const n = 4, stars = WARDROBE[n - 1].stars
+    let s = load(kid(stars))
+    expect(unseenItems(me(s), profileWardrobeStars(me(s))).length).toBe(n)
     s = reducer(s, { type: 'WARDROBE_SEEN' })
-    expect(me(s).wardrobeSeen).toEqual(['muetze', 'sonnenbrille', 'schal', 'partyhut'])
+    expect(me(s).wardrobeSeen).toEqual(WARDROBE.slice(0, n).map(t => t.id))
     expect(reducer(s, { type: 'WARDROBE_SEEN' })).toBe(s)
   })
 })
@@ -178,28 +191,31 @@ describe('wearing', () => {
 describe('stars and saves', () => {
   const finish = (s, stars, moduleId = 'numbers', level = 1) => reducer({ ...s, currentGame: { moduleId, level } },
     { type: 'FINISH_GAME', payload: { moduleId, level, stars, score: stars === 3 ? 4 : 2, total: 4 } })
+  const step = WARDROBE[3]   // 3 stars before it is reached by a 3-star round from 2 below
   it('a round that reaches a step tells the results screen what is new', () => {
-    const s = finish(load(kid(5)), 3)
-    expect(s.gameResult.newWear).toEqual(['partyhut'])
-    expect(me(s).starsEver).toBe(8)
-    expect(finish(s, 1, 'numbers', 2).gameResult.newWear).toEqual(['herzbrille'])
+    const s = finish(load(kid(step.stars - 2)), 3)
+    expect(s.gameResult.newWear).toEqual([step.id])
+    expect(me(s).starsEver).toBe(step.stars + 1)
+    expect(finish(s, 1, 'numbers', 2).gameResult.newWear).toEqual(unlockedBetween(step.stars + 1, step.stars + 2).map(t => t.id))
   })
   it('a better result on a level counts only the stars it adds', () => {
-    const s1 = finish(load(kid(4)), 1)
+    const s1 = finish(load(kid(step.stars - 3)), 1)
     expect(s1.gameResult.newWear).toEqual([])
     const s = finish(s1, 3)
-    expect(profileWardrobeStars(me(s))).toBe(7)
-    expect(s.gameResult.newWear).toEqual(['partyhut'])
+    expect(profileWardrobeStars(me(s))).toBe(step.stars)
+    expect(s.gameResult.newWear).toEqual([step.id])
   })
   it('a game started over in the parent area takes nothing away', () => {
-    let s = wear(load(kid(16)), 'blumenkranz')
+    const t = WARDROBE[6]
+    let s = wear(load(kid(t.stars)), t.id)
     s = reducer(s, { type: 'RESET_MODULE', payload: 'shapes-land' })
-    expect(profileWardrobeStars(me(s))).toBe(16)
-    expect(me(s).outfit.head).toBe('blumenkranz')
-    expect(wear(s, 'herzbrille')).not.toBe(s)
+    expect(profileWardrobeStars(me(s))).toBe(t.stars)
+    expect(me(s).outfit[t.slot]).toBe(t.id)
+    expect(wear(s, WARDROBE[5].id)).not.toBe(s)
   })
   it('"start over" for the child (parent area) empties the wardrobe too', () => {
-    let s = wear(wear(load(kid(16)), 'blumenkranz'), 'schal')
+    const t = WARDROBE[6]
+    let s = wear(load(kid(t.stars)), t.id)
     s = reducer(reducer(s, { type: 'WARDROBE_SEEN' }), { type: 'RESET_PROFILE', payload: 'p1' })
     expect(me(s).outfit).toEqual(NONE)
     expect(me(s).wardrobeSeen).toEqual([])
@@ -213,15 +229,18 @@ describe('stars and saves', () => {
     expect(profileWardrobeStars(p)).toBe(20)
   })
   it('a save that says otherwise is cleaned: unknown things, wrong places, things not unlocked', () => {
-    const p = me(load(kid(4, { outfit: { head: 'krone', face: 'schal', neck: 'schal' }, wardrobeSeen: ['schal', 'nope'], wardrobeTried: 'x', starsEver: 'lots' })))
-    expect(p.outfit).toEqual({ ...NONE, neck: 'schal' })
-    expect(p.wardrobeSeen).toEqual(['schal'])
+    const open = WARDROBE[2], locked = WARDROBE.at(-1)
+    const wrongPlace = SLOTS.find(sl => sl !== open.slot && sl !== locked.slot)
+    const p = me(load(kid(open.stars, { outfit: { [locked.slot]: locked.id, [wrongPlace]: open.id, [open.slot]: open.id }, wardrobeSeen: [open.id, 'nope'], wardrobeTried: 'x', starsEver: 'lots' })))
+    expect(p.outfit).toEqual({ ...NONE, [open.slot]: open.id })
+    expect(p.wardrobeSeen).toEqual([open.id])
     expect(p.wardrobeTried).toEqual([])
     expect(p.starsEver).toBe(0)
   })
   it('what Lumi wears is saved with the rest', () => {
-    const s = wear(load(kid(3)), 'schal')
+    const t = WARDROBE[2]
+    const s = wear(load(kid(t.stars)), t.id)
     const again = migrateToV2({ version: 2, activeProfileId: 'p1', settings: {}, profiles: s.profiles })
-    expect(again.profiles.p1.outfit.neck).toBe('schal')
+    expect(again.profiles.p1.outfit[t.slot]).toBe(t.id)
   })
 })

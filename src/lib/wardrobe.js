@@ -51,7 +51,7 @@ export const POSES = {
     face: { x: 191, y: 153, rot: 0, w: 100 },
     neck: { x: 192, y: 214, rot: 0, w: 180 },
     back: { x: 192, y: 210, rot: 0, w: 210 },
-    hold: { x: 312, y: 268, rot: 0, w: 110 },
+    hold: { x: 318, y: 292, rot: 12, w: 110 },
     tuft: [[140, 0], [262, 0], [262, 58], [230, 57], [192, 53], [154, 57], [140, 60]],
   },
   happy: {
@@ -59,7 +59,7 @@ export const POSES = {
     face: { x: 193, y: 137, rot: 3, w: 104 },
     neck: { x: 196, y: 212, rot: 0, w: 180 },
     back: { x: 196, y: 208, rot: 0, w: 200 },
-    hold: { x: 348, y: 178, rot: 12, w: 110 },
+    hold: { x: 350, y: 180, rot: 14, w: 110 },
     tuft: [[150, 0], [270, 0], [270, 60], [235, 62], [196, 60], [160, 66], [150, 70]],
   },
   sad: {
@@ -67,7 +67,7 @@ export const POSES = {
     face: { x: 189, y: 181, rot: 4, w: 98 },
     neck: { x: 190, y: 238, rot: 0, w: 170 },
     back: { x: 190, y: 234, rot: 0, w: 190 },
-    hold: { x: 272, y: 300, rot: 0, w: 100 },
+    hold: { x: 290, y: 318, rot: 16, w: 100 },
     tuft: [[150, 0], [260, 0], [260, 66], [230, 64], [192, 64], [160, 70], [150, 74]],
   },
   hmm: {
@@ -75,7 +75,7 @@ export const POSES = {
     face: { x: 190, y: 138, rot: -16, w: 92 },
     neck: { x: 180, y: 228, rot: -4, w: 160 },
     back: { x: 182, y: 224, rot: 0, w: 190 },
-    hold: { x: 90, y: 282, rot: 0, w: 100 },
+    hold: { x: 76, y: 300, rot: -14, w: 100 },
     tuft: [[135, 0], [245, 0], [245, 58], [215, 60], [190, 58], [160, 66], [135, 70]],
     front: [[205, 196], [222, 186], [246, 196], [276, 232], [292, 262], [300, 300], [262, 306], [228, 268], [214, 236]],
   },
@@ -84,7 +84,7 @@ export const POSES = {
     face: { x: 190, y: 138, rot: -16, w: 92 },
     neck: { x: 180, y: 228, rot: -4, w: 160 },
     back: { x: 182, y: 224, rot: 0, w: 190 },
-    hold: { x: 90, y: 282, rot: 0, w: 100 },
+    hold: { x: 76, y: 300, rot: -14, w: 100 },
     tuft: [[135, 0], [245, 0], [245, 58], [215, 60], [190, 58], [160, 66], [135, 70]],
     front: [[205, 196], [222, 186], [246, 196], [276, 232], [292, 262], [300, 300], [262, 306], [228, 268], [214, 236]],
   },
@@ -93,7 +93,7 @@ export const POSES = {
     face: { x: 180, y: 190, rot: -12, w: 112 },
     neck: { x: 192, y: 252, rot: 0, w: 200 },
     back: { x: 192, y: 232, rot: 0, w: 200 },
-    hold: { x: 352, y: 372, rot: 0, w: 110 },
+    hold: { x: 350, y: 358, rot: 6, w: 110 },
     tuft: [[140, 0], [255, 0], [255, 78], [220, 80], [188, 78], [158, 84], [140, 88]],
   },
   wave: {
@@ -101,7 +101,7 @@ export const POSES = {
     face: { x: 206, y: 145, rot: 6, w: 95 },
     neck: { x: 215, y: 220, rot: 3, w: 170 },
     back: { x: 215, y: 216, rot: 0, w: 190 },
-    hold: { x: 322, y: 288, rot: 0, w: 105 },
+    hold: { x: 330, y: 302, rot: 12, w: 105 },
     tuft: [[175, 0], [275, 0], [275, 60], [245, 60], [212, 56], [185, 64], [175, 70]],
   },
 }
@@ -124,8 +124,9 @@ export const SLOTS = ['head', 'face', 'neck', 'back', 'hold']
 
 /** The order of unlocking: the first two are there from the start. Mix the places. */
 export const ORDER = [
-  'muetze', 'sonnenbrille', 'schal', 'partyhut', 'herzbrille', 'blumenkranz', 'fliege', 'umhang',
-  'piratenhut', 'ballon', 'rundbrille', 'zauberhut', 'medaille', 'krone',
+  'muetze', 'sonnenbrille', 'ballon', 'schal', 'partyhut', 'umhang', 'herzbrille', 'zauberstab',
+  'blumenkranz', 'fliege', 'schmetterling', 'lolli', 'piratenhut', 'rundbrille', 'blume', 'engel',
+  'medaille', 'zauberhut', 'faehnchen', 'fee', 'eis', 'krone', 'drache', 'windrad', 'rakete', 'schirm', 'pfau',
 ]
 
 /**

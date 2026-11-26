@@ -393,7 +393,8 @@ export function reducer(state, action) {
       return { ...state, screen: 'game', currentGame: action.payload }
 
     // Lumis Kleiderschrank: a tap on a thing puts it on, a second tap takes
-    // it off; one thing per place (head, face, neck). Locked things stay off.
+    // it off; one thing per place (head, face, neck, back, hold). Locked
+    // things stay off.
     case 'WARDROBE_WEAR': {
       const item = ITEM_BY_ID[action.payload]
       const p0 = state.profiles[state.activeProfileId]
@@ -408,6 +409,13 @@ export function reducer(state, action) {
           wardrobeSeen: knownIds([...(p.wardrobeSeen ?? []), item.id]),
         }
       })
+    }
+
+    // Everything off at once (the plain Lumi beside Lumi in the wardrobe)
+    case 'WARDROBE_UNDRESS': {
+      const p = state.profiles[state.activeProfileId]
+      if (!p || !Object.values(cleanOutfit(p.outfit)).some(Boolean)) return state
+      return updateActiveProfile(state, q => ({ ...q, outfit: cleanOutfit(null) }))
     }
 
     // The wardrobe was opened: what is unlocked has been seen (the sign on

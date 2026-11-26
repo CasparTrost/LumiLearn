@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Lumi's wardrobe (src/lib/wardrobe/back.js): fairy wings. Long, see-
+       through mint and lilac wings with glittering dots, tall upper wings
+       and short lower ones. Drawn behind Lumi; the middle of the picture
+       is between the shoulders.
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-fee.svg public/sprites/wardrobe/fee.webp 384 -->
+  <defs>
+    <linearGradient id="u" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#c9b8ff" stop-opacity="0.95"/><stop offset="1" stop-color="#a8f0e0" stop-opacity="0.85"/></linearGradient>
+    <linearGradient id="l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c9b8ff" stop-opacity="0.95"/><stop offset="1" stop-color="#ffc6e6" stop-opacity="0.9"/></linearGradient>
+  </defs>
+  <g stroke="#7b4a1e" stroke-width="4.5" stroke-linejoin="round">
+    <path d="M120 128 C100 90 70 30 40 14 C22 6 14 30 22 56 C32 90 70 120 120 136 Z" fill="url(#u)"/>
+    <path d="M136 128 C156 90 186 30 216 14 C234 6 242 30 234 56 C224 90 186 120 136 136 Z" fill="url(#u)"/>
+    <path d="M120 140 C90 150 60 176 58 204 C58 222 80 224 96 206 C110 190 118 166 122 146 Z" fill="url(#l)"/>
+    <path d="M136 140 C166 150 196 176 198 204 C198 222 176 224 160 206 C146 190 138 166 134 146 Z" fill="url(#l)"/>
+  </g>
+  <g stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.8">
+    <path d="M112 122 C90 90 62 50 40 28"/><path d="M144 122 C166 90 194 50 216 28"/>
+  </g>
+  <g fill="#ffffff">
+    <circle cx="44" cy="44" r="4"/><circle cx="66" cy="80" r="3"/><circle cx="212" cy="44" r="4"/><circle cx="190" cy="80" r="3"/>
+    <circle cx="78" cy="196" r="3"/><circle cx="178" cy="196" r="3"/>
+  </g>
+  <g fill="#ffe14d" stroke="#7b4a1e" stroke-width="2">
+    <path d="M32 92 l3 6 6 1 -4.5 4 1 6 -5.5 -3 -5.5 3 1 -6 -4.5 -4 6 -1 z"/>
+    <path d="M224 92 l3 6 6 1 -4.5 4 1 6 -5.5 -3 -5.5 3 1 -6 -4.5 -4 6 -1 z"/>
+  </g>
+</svg>
