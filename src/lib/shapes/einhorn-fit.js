@@ -6,6 +6,11 @@ export default {
   // horn and ears go under it (cat and bunny ears keep the own ears and horn:
   // hiding them left a gap above the headband)
   einhornreif: { tuft: 'hide' },
+  // cat and bunny ears: the band's ears lie over the unicorn's own ears
+  // (one pair of ears; drawn again in front, its own ears stood beside them)
+  // and the horn stands in front of the band
+  katzenohren: { tuft: null, size: 1.2, dy: 0.06 },
+  hasenohren: { tuft: null, size: 1.4, dy: 0.04 },
   // a diadem lets the horn come through, like a crown
   diadem: { tuft: 'front' },
   // white things on the white unicorn: a thin dark outline
@@ -15,4 +20,6 @@ export default {
   astronautenstiefel: { edge: true },
   // the rockets' flames reached below the square when the unicorn cheers
   rakete: { pose: { happy: { dy: -6 } } },
+  // the mermaid's tail asleep: narrower than on the chick, between the hooves
+  meerjungfrau: { pose: { sleep: { size: 1.3, sy: 0.4, dy: -16 } } },
 }
