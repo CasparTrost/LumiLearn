@@ -752,16 +752,21 @@ export function migrateToV2(data) {
     // freshProfile and ensureDay; nothing saved is overwritten.
     const profiles = {}
     for (const [id, p] of Object.entries(data.profiles || {})) {
+      const progress = { ...Object.fromEntries(ALL_MODULE_IDS.map(mid => [mid, freshProgress()])), ...migrateProgress(p.progress) }
+      const starsEver = Number.isFinite(p.starsEver) ? Math.max(0, p.starsEver) : 0
+      // (an old save's top and bottom are read at the child's stars: what
+      // they stand for now may still be wrapped)
+      const stars = wardrobeStars({ starsEver }, totalStars(progress))
       profiles[id] = dropRetired({
         ...freshProfile({ id }),
         ...p,
-        progress: { ...Object.fromEntries(ALL_MODULE_IDS.map(mid => [mid, freshProgress()])), ...migrateProgress(p.progress) },
+        progress,
         hiddenGames: cleanHidden(p.hiddenGames),
         // the wardrobe: saves from before it start with Lumi wearing nothing
-        outfit: cleanOutfit(p.outfit),
-        wardrobeSeen: knownIds(p.wardrobeSeen),
-        wardrobeTried: knownIds(p.wardrobeTried),
-        starsEver: Number.isFinite(p.starsEver) ? Math.max(0, p.starsEver) : 0,
+        outfit: cleanOutfit(p.outfit, stars),
+        wardrobeSeen: knownIds(p.wardrobeSeen, stars),
+        wardrobeTried: knownIds(p.wardrobeTried, stars),
+        starsEver,
         // Lumi's shapes: a save from before them is offered the free first
         // choice (the chick until then); after it, the shapes its stars
         // cover come one game at a time (lib/shapes.js shapesOwed). A save
