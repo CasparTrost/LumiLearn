@@ -3,6 +3,7 @@
 // `hide: true`: the thing is not drawn on the dragon.
 import HEAD from '../wardrobe/head.js'
 import SHOES from '../wardrobe/shoes.js'
+import BOTTOM from '../wardrobe/bottom.js'
 
 // The dragon's head stands a little higher in its square than the chick's
 // and its eyes sit high under the brow: every hat sits higher and a little
@@ -22,16 +23,31 @@ hats.muetze = { pose: { hmm: { ...straight, size: 0.85 }, think: { ...straight, 
 hats.diadem = { pose: { hmm: { ...straight, dy: -4 }, think: { ...straight, dy: -4 } } }
 hats.doktorhut = { pose: { hmm: { ...straight, size: 0.84 }, think: { ...straight, size: 0.84 } } }
 
+// Its legs are short: the chick's shorts reached its feet and stuck out at
+// both hips. They are made narrower and shorter (as wide as its hips, as
+// long as its thighs).
+const SHORTS = ['jeansshorts', 'fussballshorts', 'entenbadehose', 'lederhose']
+const shorts = Object.fromEntries(BOTTOM.filter(t => SHORTS.includes(t.id)).map(t => [t.id, { size: +(t.size * 0.85).toFixed(3), sy: +(t.sy * 0.8 / 0.85).toFixed(3) }]))
+
 export default {
+  ...shorts,
   ...hats,
   // sitting, the tail lies in the lap, not spread over the floor
-  meerjungfrau: { pose: { sleep: { dy: -10, size: 1.2, sy: 0.4 } } },
-  // sitting, its feet are smaller than the chick's: the shoes too
-  ...Object.fromEntries(SHOES.map(t => [t.id, { pose: { sleep: { size: 0.85, dy: 4 } } }])),
+  // sitting, the skirts sit higher, at the waist under its arms: the hem
+  // stands out over its thighs on both sides
+  ...Object.fromEntries(['tutu', 'bastrock', 'schottenrock', 'prinzessinnenrock'].map(id => [id, { pose: { sleep: { dy: -26, size: 0.95 } } }])),
+  meerjungfrau: { pose: { sleep: { dy: -16, size: 1.6, sy: 0.32 } } },
+  // sitting, its big soles face the front: the shoes as big as the feet, over them
+  ...Object.fromEntries(SHOES.map(t => [t.id, { pose: { sleep: { size: 1.02, dy: 0 } } }])),
   ...Object.fromEntries(Object.entries(tall).map(([id, f]) => [id, { ...(hats[id] ?? {}), ...f }])),
   // the crown sits around the head: horns and crest stand behind its front
   // band (drawn over it, the crest covered its jewels)
   krone: { ...hats.krone, tuft: null },
+  // its paw closes over the cone with the arm raised or hanging: the cone
+  // held near its tip, so no loose tip sticks out under the paw
+  eis: { pose: { happy: { dy: -20 }, sad: { dy: -20 } } },
+  // the balloon leans out beside the head on its string, not on the cheek
+  ballon: { pose: { idle: { rot: 16 }, sad: { rot: 18 }, wave: { rot: 16 }, hmm: { rot: -14 }, think: { rot: -14 } } },
   // the moustache right under the nostrils, above the open mouth (the
   // chick's lowered it laughing and waving: on the dragon it hung on the chin)
   schnurrbart: { pose: { idle: { dy: -6 }, happy: { dy: -4 }, sad: { dy: -4 }, wave: { dy: -4 } } },
