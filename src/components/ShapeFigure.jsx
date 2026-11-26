@@ -87,9 +87,17 @@ export function childFrame(shape, outfit) {
   }
 }
 
+/**
+ * What Lumi wears in the child's picture: all but the face thing. Glasses, a
+ * mask, a clown's nose or a moustache under a hat left too little of the face
+ * to tell the figure (a robot in a chef's hat and a hero's mask); the hat
+ * stays, it is what makes the picture the child's own.
+ */
+export const pictureOutfit = outfit => (outfit ? { ...outfit, face: null } : null)
+
 export function ChildLumi({ profile, size = 56, style }) {
   const shape = drawnShape(profile)
-  const outfit = wearsClothes(shape) ? profile?.outfit ?? null : null
+  const outfit = wearsClothes(shape) ? pictureOutfit(profile?.outfit) : null
   const f = childFrame(shape, outfit)
   return (
     <span aria-hidden="true" data-child-lumi={shape ?? 'chick'}

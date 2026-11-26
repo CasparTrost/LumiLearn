@@ -52,6 +52,11 @@ export function movesFor(seedText) {
   return [...out, BREATH]
 }
 
+// Lumi's picture for each move: arms up to stretch tall and to clap, one wing
+// up to fly and wave, standing as usual to turn and stamp, and to breathe
+// (with a gentle sway, never asleep)
+export const MOVE_MOOD = { stretch: 'happy', fly: 'wave', clap: 'happy', turn: 'wave', stamp: 'idle', breath: 'idle' }
+
 function Figure({ pic, beat, box = 'min(60vw, 280px)', swing = 60 }) {
   const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
   const frog = pic === 'frog'
@@ -62,7 +67,7 @@ function Figure({ pic, beat, box = 'min(60vw, 280px)', swing = 60 }) {
     clap:    { scale: [1, 1.18, 1] },
     turn:    { rotateY: [0, 360] },
     stamp:   { y: [0, -24, 6, 0], rotate: [-4, 4, -4] },
-    breath:  { scale: [1, 1.25, 1] },
+    breath:  { scale: [1, 1.12, 1], rotate: [0, -3, 0, 3, 0] },
   }[pic]
   const dur = { frog: beat / 1000, clap: beat / 1000, stamp: beat / 1000, stretch: 3, fly: 2, turn: 4, breath: 6 }[pic] ?? 2
   return (
@@ -79,7 +84,7 @@ function Figure({ pic, beat, box = 'min(60vw, 280px)', swing = 60 }) {
         // Lumi does the moves along, in what the child chose in the wardrobe
         <motion.div animate={anim} transition={{ duration: dur, repeat: Infinity, ease: 'easeInOut' }}
           style={{ width: '78%', height: '78%', filter: 'drop-shadow(0 6px 0 rgba(42,27,61,0.3))', transformOrigin: '50% 100%' }}>
-          <LumiFigure mood="happy" size="100%" style={{ display: 'block', height: '100%' }} />
+          <LumiFigure mood={MOVE_MOOD[pic] ?? 'happy'} size="100%" style={{ display: 'block', height: '100%' }} />
         </motion.div>
       )}
       <div aria-hidden="true" style={{ position: 'absolute', bottom: -6, width: '50%', height: 14, borderRadius: '50%', background: 'rgba(42,27,61,0.18)' }} />
@@ -154,7 +159,7 @@ export default function MoveBreakScreen() {
       <HudBar>
         <button className="px-btn px-btn--wood px-btn--icon" onClick={home} aria-label="Zur Startseite"><PxIcon name="back" size={20} color="#fff" /></button>
         <span className="px-title" style={{ flex: 1, fontSize: 'clamp(18px,3vw,28px)' }}>Bewegungspause</span>
-        {!finished && <button className="px-btn px-btn--parch px-btn--sm" onClick={skip}>Überspringen</button>}
+        {!finished && <button className="px-btn px-btn--parch px-btn--sm" onClick={skip} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><PxIcon name="skip" size={16} /> Überspringen</button>}
       </HudBar>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: sideways ? 8 : 18, padding: sideways ? '8px 16px' : 16, textAlign: 'center' }}>
         {finished && <Confetti count={40} yFrom="-5vh" yTo="110vh" />}

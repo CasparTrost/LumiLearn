@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useApp } from '../AppContext.jsx'
 import { useT } from '../i18n.js'
-import { PixelLumi, PxIcon, uiSpr } from '../components/PixelUI.jsx'
+import { PxIcon, uiSpr } from '../components/PixelUI.jsx'
 import { narrate, stopNarration, afterNarration } from '../narrator.js'
 import { hearable } from '../lib/hearable.js'
 import { sayNumber } from '../tts.js'
@@ -232,8 +232,10 @@ export default function ProfileScreen() {
               style={{ display:'flex', flexDirection:'column', gap: flat ? 8 : 14 }}
             >
               <div style={{ textAlign:'center', marginBottom: flat ? 0 : 4 }}>
-                {!flat && <PixelLumi size={84} outfit={null} style={{ margin: '0 auto' }} />}
-                <h1 className="px-title" style={{ fontSize: flat ? 24 : 'clamp(24px,6vw,36px)', marginTop: flat ? 0 : 10, marginBottom: flat ? 2 : 6 }}>
+                {/* No figure above the question: a big chick stood here in every
+                    family, also where no child's Lumi is a chick. Lumi's voice asks
+                    (SAY_WHO), and every child finds its own Lumi on its button below. */}
+                <h1 className="px-title" style={{ fontSize: flat ? 24 : 'clamp(24px,6vw,36px)', marginTop: 0, marginBottom: flat ? 2 : 6 }}>
                   {t('profile.who')}
                 </h1>
                 <p className="px-title" style={{ fontSize: flat ? 15 : 17, margin: flat ? 0 : undefined }}>
@@ -243,7 +245,7 @@ export default function ProfileScreen() {
 
               <div data-picker-list style={flat
                 ? { display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, maxHeight:'calc(100dvh - 124px)', overflowY:'auto', padding:'2px 2px 6px' }
-                : { display:'flex', flexDirection:'column', gap:12, maxHeight:'58dvh', overflowY:'auto', padding:'2px 2px 8px' }}>
+                : { display:'flex', flexDirection:'column', gap:12, maxHeight:'min(68dvh, calc(100dvh - 240px))', overflowY:'auto', padding:'2px 2px 8px' }}>
                 {profiles.map((p, i) => (
                   <motion.button key={p.id ?? i}
                     className="px-panel"

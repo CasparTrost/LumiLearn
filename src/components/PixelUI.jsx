@@ -75,6 +75,17 @@ const ICONS = {
     'XXX....',
     'X......',
   ],
+  // skip ahead: two arrows to a bar (a parent's button: Überspringen)
+  skip: [
+    'X...X...XX',
+    'XX..XX..XX',
+    'XXX.XXX.XX',
+    'XXXXXXXXXX',
+    'XXXXXXXXXX',
+    'XXX.XXX.XX',
+    'XX..XX..XX',
+    'X...X...XX',
+  ],
   back: [
     '...X....',
     '..XX....',
