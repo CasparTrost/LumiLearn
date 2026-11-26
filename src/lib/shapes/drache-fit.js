@@ -2,6 +2,7 @@
 // fields when the dragon wears it ({ [id]: { size, at, dx, dy, rot, sy, pose: { sleep: {…} }, hide } }).
 // `hide: true`: the thing is not drawn on the dragon.
 import HEAD from '../wardrobe/head.js'
+import SHOES from '../wardrobe/shoes.js'
 
 // The dragon's head stands a little higher in its square than the chick's:
 // the tall hats (and the doctor's hat) a little smaller, so it shrinks no
@@ -17,5 +18,7 @@ export default {
   ...hats,
   // sitting, the tail lies in the lap, not spread over the floor
   meerjungfrau: { pose: { sleep: { dy: -10, size: 1.2, sy: 0.4 } } },
+  // sitting, its feet are smaller than the chick's: the shoes too
+  ...Object.fromEntries(SHOES.map(t => [t.id, { pose: { sleep: { size: 0.85, dy: 4 } } }])),
   ...Object.fromEntries(Object.entries(tall).map(([id, f]) => [id, { ...(hats[id] ?? {}), ...f }])),
 }
