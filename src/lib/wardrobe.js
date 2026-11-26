@@ -284,7 +284,8 @@ export const unseenItems = (profile, stars) => unlockedItems(stars).filter(t => 
 // stands for the outfit it belongs to. The order of unlocking changed with
 // the outfits (a cheap old bottom can belong to a late outfit now), so an
 // old save is read at the child's stars: a part whose outfit is still
-// wrapped is neither worn nor "seen" (its sparkle comes when it unlocks).
+// wrapped is neither worn nor "seen" (its sparkle comes when it unlocks),
+// but a child who wore clothes is not left without any (outfitOfOld).
 const OUTFIT_OF = Object.fromEntries(OUTFITS.flatMap(o => [o.top, o.bottom].filter(Boolean).map(id => [id, o.id])))
 const outfitOfPart = (id, part) => (PART_BY_ID[id]?.part === part ? OUTFIT_OF[id] : null)
 /**
@@ -296,16 +297,21 @@ export const knownIds = (list, stars = Infinity) => (Array.isArray(list)
   ? Array.from(new Set(list.map(id => OUTFIT_OF[id] ?? id).filter(id => isUnlocked(ITEM_BY_ID[id], stars))))
   : [])
 
+const OUTFIT_ITEMS = WARDROBE.filter(t => t.slot === 'outfit')
+const earliestOpen = (list, stars) => list.filter(t => isUnlocked(t, stars)).sort((a, b) => a.stars - b.stars)[0]?.id ?? null
 /**
  * The outfit an old save with a top and/or a bottom wears at the child's
- * `stars`: the outfit of its top (else of its bottom); if that one is still
- * wrapped, the earliest unlocked outfit with a part the child wore; else
- * none (nothing wrapped is ever worn).
+ * `stars`, so a child who wore clothes keeps clothes on: the outfit of its
+ * top (else of its bottom) when unlocked; else the earliest unlocked outfit
+ * with one of the two parts; else the cheapest unlocked outfit. Never a
+ * wrapped one: with no outfit unlocked yet (below 15 stars) none. A part in
+ * the wrong place, or one not known, counts as nothing worn.
  */
 export function outfitOfOld(top, bottom, stars = Infinity) {
   const had = [outfitOfPart(top, 'top'), outfitOfPart(bottom, 'bottom')].filter(Boolean).map(id => ITEM_BY_ID[id])
-  if (had[0] && isUnlocked(had[0], stars)) return had[0].id
-  return had.filter(t => isUnlocked(t, stars)).sort((a, b) => a.stars - b.stars)[0]?.id ?? null
+  if (!had.length) return null
+  if (isUnlocked(had[0], stars)) return had[0].id
+  return earliestOpen(had, stars) ?? earliestOpen(OUTFIT_ITEMS, stars)
 }
 
 /** What Lumi wears, cleaned: known things in their own slot only (an old save: read at the child's `stars`). */

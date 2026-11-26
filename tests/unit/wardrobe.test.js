@@ -455,25 +455,48 @@ describe('stars and saves', () => {
     expect(p.outfit).toEqual({ ...NONE, outfit: 'outfit-regenjacke', shoes: 'gummistiefel' })
     expect(p.wardrobeSeen).toEqual(['outfit-regenjacke', 'krone'])
     expect(p.wardrobeTried).toEqual(['outfit-regenjacke'])
-    // an outfit not unlocked yet is not worn (its stars come from the new order)
+    // an outfit not unlocked yet is not worn (its stars come from the new
+    // order): the child keeps clothes on, the cheapest unlocked outfit
     const few = me(load(kid(ITEM_BY_ID['outfit-regenjacke'].stars - 1, { outfit: { top: 'regenjacke', head: 'muetze' } })))
-    expect(few.outfit).toEqual({ ...NONE, head: 'muetze' })
+    expect(few.outfit).toEqual({ ...NONE, outfit: 'outfit-ringelshirt', head: 'muetze' })
   })
   it('an old save keeps what it wore where a part of it is unlocked, and never wears or "sees" a wrapped outfit', () => {
     const at = id => ITEM_BY_ID[id].stars
     // the old cheap shorts belong to the smoking now (much later): below it
-    // nothing is worn, from its stars on the smoking
-    expect(cleanOutfit({ bottom: 'fussballshorts' }, 50)).toEqual(NONE)
+    // the child keeps clothes on, the cheapest unlocked outfit; from its
+    // stars on the smoking
+    expect(cleanOutfit({ bottom: 'fussballshorts' }, 50)).toEqual({ ...NONE, outfit: 'outfit-ringelshirt' })
+    expect(cleanOutfit({ bottom: 'fussballshorts', head: 'muetze' }, 50)).toEqual({ ...NONE, outfit: 'outfit-ringelshirt', head: 'muetze' })
     expect(cleanOutfit({ bottom: 'fussballshorts' }, at('outfit-smoking'))).toEqual({ ...NONE, outfit: 'outfit-smoking' })
+    // no outfit unlocked yet at all (below the first, 15 stars): none, never a wrapped one
+    expect(at('outfit-ringelshirt')).toBe(Math.min(...WARDROBE.filter(t => t.slot === 'outfit').map(t => t.stars)))
+    expect(cleanOutfit({ bottom: 'fussballshorts', head: 'muetze' }, at('outfit-ringelshirt') - 1)).toEqual({ ...NONE, head: 'muetze' })
+    expect(cleanOutfit({ top: 'smoking', bottom: 'jeansshorts' }, at('outfit-ringelshirt') - 1)).toEqual(NONE)
+    expect(cleanOutfit({ bottom: 'fussballshorts' }, 0)).toEqual(NONE)
+    // the top's outfit wrapped, the bottom's unlocked: the bottom's, not the
+    // cheapest of all
+    expect(cleanOutfit({ top: 'rentierpulli', bottom: 'tutu' }, at('outfit-bienenkostuem'))).toEqual({ ...NONE, outfit: 'outfit-bienenkostuem' })
+    expect(cleanOutfit({ top: 'smoking', bottom: 'lederhose' }, at('outfit-skijacke'))).toEqual({ ...NONE, outfit: 'outfit-regenjacke' })
+    // only the bottom, its outfit wrapped, others unlocked: the cheapest (the ringelshirt, 15 stars), not a later one
+    expect(cleanOutfit({ bottom: 'pyjamahose' }, at('outfit-smoking'))).toEqual({ ...NONE, outfit: 'outfit-ringelshirt' })
+    // a part in the wrong place or not known: nothing was worn, nothing is put on
+    expect(cleanOutfit({ top: 'fussballshorts' }, 50)).toEqual(NONE)
+    expect(cleanOutfit({ top: 'bogus', bottom: 'nope' }, 690)).toEqual(NONE)
+    // whatever an old save wore, at any stars: never anything wrapped
+    for (const top of [null, ...TOP.map(t => t.id)]) for (const bottom of [null, ...BOTTOM.map(t => t.id)]) for (const stars of [0, 14, 15, 50, 200, 365, 690]) {
+      const o = cleanOutfit({ top, bottom }, stars).outfit
+      if (top || bottom) expect(!!o, `${top}+${bottom}@${stars}`).toBe(stars >= at('outfit-ringelshirt'))
+      if (o) expect(ITEM_BY_ID[o].stars, `${top}+${bottom}@${stars}`).toBeLessThanOrEqual(stars)
+    }
     // the top's outfit still wrapped: the bottom's (unlocked) outfit instead
     expect(at('outfit-rentierpulli')).toBeGreaterThan(at('outfit-ringelshirt'))
     expect(cleanOutfit({ top: 'rentierpulli', bottom: 'jeansshorts' }, 50)).toEqual({ ...NONE, outfit: 'outfit-ringelshirt' })
     // both unlocked: the top's outfit, as before
     expect(cleanOutfit({ top: 'heldenshirt', bottom: 'jeansshorts' }, 50)).toEqual({ ...NONE, outfit: 'outfit-heldenshirt' })
-    // neither unlocked: the place stays empty, the rest is kept
-    expect(cleanOutfit({ top: 'smoking', bottom: 'tutu', head: 'muetze' }, 100)).toEqual({ ...NONE, head: 'muetze' })
-    // a mermaid's tail still wrapped takes no shoes off
-    expect(cleanOutfit({ bottom: 'meerjungfrau', shoes: 'turnschuhe' }, 100)).toEqual({ ...NONE, shoes: 'turnschuhe' })
+    // neither unlocked: the cheapest unlocked outfit, the rest is kept
+    expect(cleanOutfit({ top: 'smoking', bottom: 'tutu', head: 'muetze' }, 100)).toEqual({ ...NONE, outfit: 'outfit-ringelshirt', head: 'muetze' })
+    // a mermaid's tail still wrapped takes no shoes off (the outfit put on instead has legs)
+    expect(cleanOutfit({ bottom: 'meerjungfrau', shoes: 'turnschuhe' }, 100)).toEqual({ ...NONE, outfit: 'outfit-ringelshirt', shoes: 'turnschuhe' })
     expect(cleanOutfit({ bottom: 'meerjungfrau', shoes: 'turnschuhe' }, at('outfit-skijacke'))).toEqual({ ...NONE, outfit: 'outfit-skijacke' })
     // the lists: a part of a wrapped outfit counts for nothing yet
     expect(knownIds(['tutu', 'jeansshorts', 'muetze'], 50)).toEqual(['outfit-ringelshirt', 'muetze'])
@@ -482,7 +505,14 @@ describe('stars and saves', () => {
     // loaded at 50 stars (the old shorts unlocked at 42 before the outfits)
     const old = { outfit: { top: 'rentierpulli', bottom: 'fussballshorts', head: 'muetze' }, wardrobeSeen: ['tutu', 'fussballshorts', 'jeansshorts', 'muetze'], wardrobeTried: ['tutu', 'jeansshorts'] }
     let s = load(kid(50, old))
-    expect(me(s).outfit).toEqual({ ...NONE, head: 'muetze' })
+    // both old parts' outfits wrapped: clothes on all the same, the cheapest unlocked
+    expect(me(s).outfit).toEqual({ ...NONE, outfit: 'outfit-ringelshirt', head: 'muetze' })
+    // the same with the old shorts alone (the case of the check: shorts and a cap at 50)
+    expect(me(load(kid(50, { outfit: { bottom: 'fussballshorts', head: 'muetze' } }))).outfit).toEqual({ ...NONE, outfit: 'outfit-ringelshirt', head: 'muetze' })
+    // below the first outfit's stars nothing is put on, and nothing wrapped is seen
+    const tiny = me(load(kid(10, { outfit: { bottom: 'fussballshorts', head: 'muetze' }, wardrobeSeen: ['fussballshorts', 'jeansshorts', 'muetze'] })))
+    expect(tiny.outfit).toEqual({ ...NONE, head: 'muetze' })
+    expect(tiny.wardrobeSeen).toEqual(['muetze'])
     expect(me(s).wardrobeSeen).toEqual(['outfit-ringelshirt', 'muetze'])
     expect(me(s).wardrobeTried).toEqual(['outfit-ringelshirt'])
     // nothing locked worn anywhere
