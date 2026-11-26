@@ -23,7 +23,7 @@ Chrome des Nutzers). Ziel: für jedes Ding unten EIN Bild erzeugen und unter dem
 
 ## Die Dinge
 
-Es kommen noch rund 15 Dinge dazu (für den Rücken und für die Hand).
+Alle 51 Dinge des Kleiderschranks: Kopf, Gesicht, Hals, Rücken (wird HINTER Lumi gezeichnet) und Hand.
 Vor dem Start `git pull` ausführen und diese Datei neu lesen.
 
 ### 1. Bommelmütze (Kopf) → `tripo-in/wardrobe/muetze.png`
@@ -384,6 +384,156 @@ Prompt:
 
 ```
 a golden star badge hanging on a blue ribbon that forms a V shape. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 37. Umhang (Rücken) → `tripo-in/wardrobe/umhang.png`
+
+Roter Superhelden-Umhang mit gelbem Futter und kleinem Goldstern am Kragen.
+
+Prompt:
+
+```
+a superhero cape, bright red outside with a yellow lining and a small gold star clasp at the collar, flaring wide towards a slightly wavy hem. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 38. Schmetterlingsflügel (Rücken) → `tripo-in/wardrobe/schmetterling.png`
+
+Orange Schmetterlingsflügel mit rosa Unterflügeln und cremefarbenen Punkten.
+
+Prompt:
+
+```
+a pair of butterfly wings, large orange upper wings and small pink lower wings with round cream spots, spread symmetrically. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 39. Engelsflügel (Rücken) → `tripo-in/wardrobe/engel.png`
+
+Weiche weiße Engelsflügel.
+
+Prompt:
+
+```
+a pair of soft white angel wings with gentle blue feather shading, rising up and out symmetrically. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 40. Feenflügel (Rücken) → `tripo-in/wardrobe/fee.png`
+
+Zarte, durchscheinende Feenflügel in Mint und Flieder mit Glitzerpunkten.
+
+Prompt:
+
+```
+a pair of delicate see-through fairy wings in mint and lilac with tiny white glitter dots, tall upper wings and short lower wings. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 41. Drachenflügel (Rücken) → `tripo-in/wardrobe/drache.png`
+
+Kleine grüne, freundliche Drachenflügel mit runden Kanten.
+
+Prompt:
+
+```
+a pair of friendly little green dragon wings with rounded scalloped edges and light green membranes, no claws or spikes, spread symmetrically. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 42. Raketenrucksack (Rücken) → `tripo-in/wardrobe/rakete.png`
+
+Zwei kleine weiße Raketen mit roten Spitzen an einem blauen Gurt, darunter Flammen.
+
+Prompt:
+
+```
+a rocket backpack, two small white rockets with red tips and red fins joined by a blue strap, soft orange flames below. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 43. Pfauenfedern (Rücken) → `tripo-in/wardrobe/pfau.png`
+
+Ein Fächer aus neun grün-blauen Pfauenfedern mit Augen an den Spitzen.
+
+Prompt:
+
+```
+a peacock tail fan, nine long green-teal feathers spread in a half wheel, each with a gold, blue and navy eye spot at its tip. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 44. Luftballon (Hand) → `tripo-in/wardrobe/ballon.png`
+
+Roter Luftballon mit Schnur.
+
+Prompt:
+
+```
+a shiny red party balloon with a small knot and a curly brown string hanging straight down. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 45. Zauberstab (Hand) → `tripo-in/wardrobe/zauberstab.png`
+
+Lila Stab mit goldenem Stern und drei Funken.
+
+Prompt:
+
+```
+a magic wand, a purple stick with a glossy gold star on top and three tiny sparkles around it, upright. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 46. Sonnenblume (Hand) → `tripo-in/wardrobe/blume.png`
+
+Sonnenblume mit langem grünem Stiel und zwei Blättern.
+
+Prompt:
+
+```
+a sunflower with bright yellow petals, a brown seed centre and a long green stem with two leaves, upright. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 47. Lolli (Hand) → `tripo-in/wardrobe/lolli.png`
+
+Großer runder Lolli, rosa-weiß gedreht, am weißen Stiel.
+
+Prompt:
+
+```
+a big round lollipop with a pink and white swirl on a white stick, upright. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 48. Fähnchen (Hand) → `tripo-in/wardrobe/faehnchen.png`
+
+Türkises Wimpel-Fähnchen mit gelbem Stern an einem Holzstab.
+
+Prompt:
+
+```
+a little pennant flag, a wavy turquoise triangle with a yellow star on a wooden stick with a gold knob on top, upright. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 49. Eis (Hand) → `tripo-in/wardrobe/eis.png`
+
+Eiswaffel mit einer mintgrünen und einer rosa Kugel und einer Kirsche.
+
+Prompt:
+
+```
+an ice cream cone with a waffle cone, a mint scoop and a pink scoop and a cherry on top, upright. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 50. Windrad (Hand) → `tripo-in/wardrobe/windrad.png`
+
+Windrad mit vier Flügeln in Rot, Blau, Gelb und Grün am Holzstab.
+
+Prompt:
+
+```
+a paper pinwheel with four blades in red, blue, yellow and green on a wooden stick, upright. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
+```
+
+### 51. Regenschirm (Hand) → `tripo-in/wardrobe/schirm.png`
+
+Offener Regenschirm, gelb-blau, mit rotem Griff.
+
+Prompt:
+
+```
+an open umbrella with yellow and blue panels and a red curved handle, upright. cute children's app cartoon illustration in the style of a soft storybook sticker, soft shading with gentle highlights, clean thin slightly darker outline, friendly rounded shapes, bright warm colors, single object only, nobody wearing it, no head, no mannequin, straight front view at eye level, symmetrical, centered, fills most of the picture, transparent background, no ground shadow, no text.
 ```
 
 ---
