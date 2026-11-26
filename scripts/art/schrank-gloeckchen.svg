@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Lumi's wardrobe (src/lib/wardrobe.js): the little bell. A violet
+       ribbon round the neck with a small bow, a shiny golden bell with its
+       clapper hanging from it. The middle of the ribbon is the neck.
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-gloeckchen.svg public/sprites/wardrobe/gloeckchen.webp 384 -->
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffe98a"/>
+      <stop offset="0.45" stop-color="#ffc21e"/>
+      <stop offset="1" stop-color="#d0800e"/>
+    </linearGradient>
+    <linearGradient id="ribbon" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b48aff"/>
+      <stop offset="1" stop-color="#8456e6"/>
+    </linearGradient>
+  </defs>
+  <!-- the ribbon round the neck -->
+  <path d="M26 30 C70 62 186 62 230 30 L232 48 C188 82 68 82 24 48 Z" fill="url(#ribbon)" stroke="#7b4a1e" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M40 40 C80 64 176 64 216 40" stroke="#dcc8ff" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+  <!-- the bell -->
+  <path d="M128 82 C104 82 94 100 92 122 C90 142 86 154 74 164 C72 170 76 174 84 174 L172 174 C180 174 184 170 182 164 C170 154 166 142 164 122 C162 100 152 82 128 82 Z" fill="url(#gold)" stroke="#7b4a1e" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M80 166 L176 166" stroke="#d0800e" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="128" cy="184" r="12" fill="#e9a21c" stroke="#7b4a1e" stroke-width="5"/>
+  <path d="M106 140 C106 118 110 104 120 96" stroke="#ffffff" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.85"/>
+  <!-- the little bow on top -->
+  <g stroke="#7b4a1e" stroke-width="4.5" stroke-linejoin="round">
+    <path d="M128 74 C116 60 96 58 94 70 C92 82 112 86 128 78 Z" fill="url(#ribbon)"/>
+    <path d="M128 74 C140 60 160 58 162 70 C164 82 144 86 128 78 Z" fill="url(#ribbon)"/>
+    <rect x="120" y="68" width="16" height="16" rx="5" fill="#9a6cf2"/>
+  </g>
+</svg>

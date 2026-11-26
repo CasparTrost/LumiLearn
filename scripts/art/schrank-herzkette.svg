@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Lumi's wardrobe (src/lib/wardrobe.js): the heart locket. A fine gold
+       chain and a shiny pink heart in a gold rim, with the little ring it
+       hangs on. The middle between the two upper ends is the neck.
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-herzkette.svg public/sprites/wardrobe/herzkette.webp 384 -->
+  <defs>
+    <radialGradient id="pink" cx="0.35" cy="0.3" r="0.8">
+      <stop offset="0" stop-color="#ffb3d1"/>
+      <stop offset="0.5" stop-color="#ff5c98"/>
+      <stop offset="1" stop-color="#d42f6e"/>
+    </radialGradient>
+  </defs>
+  <!-- the chain -->
+  <path d="M40 28 Q128 168 216 28" fill="none" stroke="#7b4a1e" stroke-width="11.5" stroke-linecap="round" stroke-dasharray="0.1 11"/>
+  <path d="M40 28 Q128 168 216 28" fill="none" stroke="#ffcb3a" stroke-width="6" stroke-linecap="round" stroke-dasharray="0.1 11"/>
+  <!-- the ring -->
+  <circle cx="128" cy="98" r="9" fill="none" stroke="#7b4a1e" stroke-width="10"/>
+  <circle cx="128" cy="98" r="9" fill="none" stroke="#ffcb3a" stroke-width="5"/>
+  <!-- the heart -->
+  <path d="M128 206 C88 180 70 158 70 136 C70 118 82 108 98 108 C112 108 122 116 128 128 C134 116 144 108 158 108 C174 108 186 118 186 136 C186 158 168 180 128 206 Z" fill="#ffcb3a" stroke="#7b4a1e" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M128 192 C96 172 82 154 82 137 C82 124 90 118 100 118 C112 118 120 126 128 138 C136 126 144 118 156 118 C166 118 174 124 174 137 C174 154 160 172 128 192 Z" fill="url(#pink)" stroke="#c0861a" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M92 138 C92 128 98 124 106 126" stroke="#ffffff" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.9"/>
+  <circle cx="150" cy="132" r="4" fill="#ffffff" opacity="0.75"/>
+</svg>

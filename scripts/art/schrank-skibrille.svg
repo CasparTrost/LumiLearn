@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Lumi's wardrobe (src/lib/wardrobe.js): ski goggles. A big round
+       white frame round one wide lens, shimmering orange to pink to violet
+       (light enough that Lumi's eyes show through), and a wide striped
+       strap to the sides. The middle between the eyes is the middle of
+       the picture.
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-skibrille.svg public/sprites/wardrobe/skibrille.webp 384 -->
+  <defs>
+    <linearGradient id="glass" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="#ffb347" stop-opacity="0.45"/>
+      <stop offset="0.5" stop-color="#ff6fae" stop-opacity="0.42"/>
+      <stop offset="1" stop-color="#8f6cff" stop-opacity="0.42"/>
+    </linearGradient>
+    <linearGradient id="frame" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#d9e2ee"/>
+    </linearGradient>
+    <pattern id="strap" width="20" height="40" patternUnits="userSpaceOnUse">
+      <rect width="20" height="40" fill="#e5483f"/>
+      <rect x="10" width="10" height="40" fill="#2f6fe0"/>
+    </pattern>
+  </defs>
+  <!-- the strap, reaching back to the sides -->
+  <path d="M22 104 L0 98 L0 150 L22 154 Z" fill="url(#strap)" stroke="#7b4a1e" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M234 104 L256 98 L256 150 L234 154 Z" fill="url(#strap)" stroke="#7b4a1e" stroke-width="5" stroke-linejoin="round"/>
+  <!-- the frame -->
+  <path fill-rule="evenodd" d="M14 122 C14 84 46 66 128 66 C210 66 242 84 242 122 C242 166 222 190 186 190 C160 190 150 176 142 166 Q128 156 114 166 C106 176 96 190 70 190 C34 190 14 166 14 122 Z M30 124 C30 94 56 82 128 82 C200 82 226 94 226 124 C226 158 210 174 184 174 C164 174 156 164 148 154 Q128 140 108 154 C100 164 92 174 72 174 C46 174 30 158 30 124 Z" fill="url(#frame)" stroke="#7b4a1e" stroke-width="5" stroke-linejoin="round"/>
+  <!-- the lens -->
+  <path d="M30 124 C30 94 56 82 128 82 C200 82 226 94 226 124 C226 158 210 174 184 174 C164 174 156 164 148 154 Q128 140 108 154 C100 164 92 174 72 174 C46 174 30 158 30 124 Z" fill="url(#glass)" stroke="#7b4a1e" stroke-width="3.5" stroke-linejoin="round"/>
+  <!-- the shine: one wide bright stripe across the lens -->
+  <path d="M44 132 C58 104 88 92 120 90" stroke="#ffffff" stroke-width="8" fill="none" stroke-linecap="round" opacity="0.75"/>
+  <path d="M168 92 C190 94 208 102 214 114" stroke="#ffffff" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.6"/>
+  <!-- a little vent on the top of the frame -->
+  <path d="M100 74 L156 74" stroke="#9fb2c8" stroke-width="4" stroke-linecap="round" stroke-dasharray="0.1 9"/>
+</svg>

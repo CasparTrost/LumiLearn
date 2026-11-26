@@ -219,7 +219,7 @@ export default function ProfileScreen() {
               style={{ display:'flex', flexDirection:'column', gap:14 }}
             >
               <div style={{ textAlign:'center', marginBottom:4 }}>
-                <PixelLumi size={84} style={{ margin: '0 auto' }} />
+                <PixelLumi size={84} outfit={null} style={{ margin: '0 auto' }} />
                 <h1 className="px-title" style={{ fontSize:'clamp(24px,6vw,36px)', marginTop:10, marginBottom:6 }}>
                   {t('profile.who')}
                 </h1>
@@ -258,7 +258,7 @@ export default function ProfileScreen() {
               initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-20 }}
               style={{ display:'flex', flexDirection:'column', alignItems:'stretch', gap:'clamp(8px,1.6dvh,14px)' }}
             >
-              <PixelLumi size={64} style={{ margin:'0 auto' }} />
+              <PixelLumi size={64} outfit={null} style={{ margin:'0 auto' }} />
               <CreateProfileForm onSave={createProfile} onCancel={cancelCreate} showCancel={profiles.length > 0} />
             </motion.div>
           )}

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Lumi's wardrobe (src/lib/wardrobe/back.js): angel wings. White
+       feathered wings rising up and out on both sides, soft blue shadow.
+       Drawn behind Lumi; the middle of the picture is between the shoulders.
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-engel.svg public/sprites/wardrobe/engel.webp 384 -->
+  <defs>
+    <linearGradient id="w" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#dfe9ff"/></linearGradient>
+    <g id="wing">
+      <path d="M0 0 C-20 -30 -60 -70 -110 -84 C-118 -60 -112 -30 -100 -14 C-112 -4 -110 14 -96 22 C-104 34 -96 50 -80 52 C-80 64 -62 72 -48 64 C-36 70 -18 62 -12 48 C-6 34 -2 16 0 0 Z"/>
+    </g>
+  </defs>
+  <g stroke="#7b4a1e" stroke-width="5" stroke-linejoin="round" fill="url(#w)">
+    <use href="#wing" transform="translate(120 132)"/>
+    <use href="#wing" transform="translate(136 132) scale(-1 1)"/>
+  </g>
+  <g stroke="#9fb6e6" stroke-width="3.5" fill="none" stroke-linecap="round">
+    <path d="M110 124 C90 108 64 88 30 72"/><path d="M104 140 C84 132 60 124 34 118"/><path d="M100 156 C84 156 66 160 50 170"/>
+    <path d="M146 124 C166 108 192 88 226 72"/><path d="M152 140 C172 132 196 124 222 118"/><path d="M156 156 C172 156 190 160 206 170"/>
+  </g>
+</svg>

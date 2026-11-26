@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Lumi's wardrobe (src/lib/wardrobe.js): the scarf. A knitted green
+       and cream striped scarf wound once round the neck (a soft roll that
+       curves with the body), one short end hanging down in front on the
+       left, with a fringe. The middle of the upper edge is the neck.
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-schal.svg public/sprites/wardrobe/schal.webp 384 -->
+  <defs>
+    <pattern id="stripes" width="256" height="26" patternUnits="userSpaceOnUse" patternTransform="rotate(-4)">
+      <rect width="256" height="26" fill="#3fbf8a"/>
+      <rect y="13" width="256" height="13" fill="#fff1d2"/>
+    </pattern>
+    <pattern id="stripesV" width="24" height="256" patternUnits="userSpaceOnUse">
+      <rect width="24" height="256" fill="#3fbf8a"/>
+      <rect x="12" width="12" height="256" fill="#fff1d2"/>
+    </pattern>
+    <linearGradient id="roll" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.28"/>
+      <stop offset="0.45" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#1a4a3a" stop-opacity="0.28"/>
+    </linearGradient>
+    <linearGradient id="shade" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#1a4a3a" stop-opacity="0.05"/>
+      <stop offset="1" stop-color="#1a4a3a" stop-opacity="0.25"/>
+    </linearGradient>
+  </defs>
+  <!-- the end hanging down in front, on the left, behind the roll -->
+  <path d="M62 104 L112 108 C114 132 116 156 114 176 L72 180 C70 156 66 128 62 104 Z" fill="url(#stripes)" stroke="#7b4a1e" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M62 104 L112 108 C114 132 116 156 114 176 L72 180 C70 156 66 128 62 104 Z" fill="url(#shade)"/>
+  <!-- fringe -->
+  <g stroke="#7b4a1e" stroke-width="7" stroke-linecap="round"><path d="M78 181 L77 196"/><path d="M89 180 L89 198"/><path d="M100 179 L101 196"/><path d="M110 178 L112 192"/></g>
+  <g stroke="#3fbf8a" stroke-width="3.5" stroke-linecap="round"><path d="M78 181 L77 196"/><path d="M89 180 L89 198"/><path d="M100 179 L101 196"/><path d="M110 178 L112 192"/></g>
+  <!-- the roll round the neck, curving down in the middle -->
+  <path d="M20 62 C56 86 200 86 236 62 C248 80 244 104 230 114 C192 136 64 136 26 114 C12 104 8 80 20 62 Z" fill="url(#stripesV)" stroke="#7b4a1e" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M20 62 C56 86 200 86 236 62 C248 80 244 104 230 114 C192 136 64 136 26 114 C12 104 8 80 20 62 Z" fill="url(#roll)"/>
+  <!-- a fold where the end comes out from under the roll -->
+  <path d="M60 118 C74 126 98 128 114 122" stroke="#7b4a1e" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.7"/>
+  <path d="M30 74 C70 94 186 94 226 74" stroke="#ffffff" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.4"/>
+</svg>

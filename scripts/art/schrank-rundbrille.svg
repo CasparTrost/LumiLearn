@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Lumi's wardrobe (src/lib/wardrobe.js): round glasses. Two big round
+       clear lenses in a thin green frame: Lumi looks clever and its eyes
+       stay to be seen. The middle of the bridge is the middle of the picture.
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-rundbrille.svg public/sprites/wardrobe/rundbrille.webp 384 -->
+  <defs>
+    <radialGradient id="glass" cx="0.35" cy="0.3" r="0.8">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#bfe6ff" stop-opacity="0.18"/>
+    </radialGradient>
+  </defs>
+  <!-- arms -->
+  <path d="M20 124 L4 112" stroke="#7b4a1e" stroke-width="12" stroke-linecap="round"/>
+  <path d="M20 124 L4 112" stroke="#3fae6a" stroke-width="6" stroke-linecap="round"/>
+  <path d="M236 124 L252 112" stroke="#7b4a1e" stroke-width="12" stroke-linecap="round"/>
+  <path d="M236 124 L252 112" stroke="#3fae6a" stroke-width="6" stroke-linecap="round"/>
+  <!-- the bridge, a little arch -->
+  <path d="M106 124 Q128 106 150 124" stroke="#7b4a1e" stroke-width="12" fill="none" stroke-linecap="round"/>
+  <path d="M106 124 Q128 106 150 124" stroke="#3fae6a" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <!-- the rims -->
+  <circle cx="64" cy="128" r="44" fill="url(#glass)" stroke="#7b4a1e" stroke-width="16"/>
+  <circle cx="64" cy="128" r="44" fill="none" stroke="#3fae6a" stroke-width="9"/>
+  <circle cx="192" cy="128" r="44" fill="url(#glass)" stroke="#7b4a1e" stroke-width="16"/>
+  <circle cx="192" cy="128" r="44" fill="none" stroke="#3fae6a" stroke-width="9"/>
+  <!-- light on the rims and a glint on the glass -->
+  <path d="M30 112 A38 38 0 0 1 56 88" stroke="#9fe6b8" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+  <path d="M158 112 A38 38 0 0 1 184 88" stroke="#9fe6b8" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+  <path d="M40 120 L56 104" stroke="#ffffff" stroke-width="6" stroke-linecap="round" opacity="0.75"/>
+  <path d="M168 120 L184 104" stroke="#ffffff" stroke-width="6" stroke-linecap="round" opacity="0.75"/>
+</svg>

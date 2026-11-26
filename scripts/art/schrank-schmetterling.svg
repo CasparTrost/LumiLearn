@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Lumi's wardrobe (src/lib/wardrobe/back.js): butterfly wings. Orange
+       and pink with round spots, two big wings above and two small ones
+       below on each side. Drawn behind Lumi; the middle of the picture is
+       between Lumi's shoulders.
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-schmetterling.svg public/sprites/wardrobe/schmetterling.webp 384 -->
+  <defs>
+    <radialGradient id="up" cx="0.5" cy="0.6" r="0.7"><stop offset="0" stop-color="#ffd36a"/><stop offset="0.6" stop-color="#ff9a3c"/><stop offset="1" stop-color="#f0644a"/></radialGradient>
+    <radialGradient id="lo" cx="0.5" cy="0.3" r="0.8"><stop offset="0" stop-color="#ffc0dc"/><stop offset="1" stop-color="#ff6fa8"/></radialGradient>
+  </defs>
+  <g stroke="#7b4a1e" stroke-width="5" stroke-linejoin="round">
+    <!-- upper wings -->
+    <path d="M118 120 C96 70 56 28 22 36 C2 42 4 84 22 112 C40 138 86 140 118 128 Z" fill="url(#up)"/>
+    <path d="M138 120 C160 70 200 28 234 36 C254 42 252 84 234 112 C216 138 170 140 138 128 Z" fill="url(#up)"/>
+    <!-- lower wings -->
+    <path d="M118 134 C90 140 52 158 46 190 C42 218 74 226 96 206 C112 190 120 160 122 140 Z" fill="url(#lo)"/>
+    <path d="M138 134 C166 140 204 158 210 190 C214 218 182 226 160 206 C144 190 136 160 134 140 Z" fill="url(#lo)"/>
+  </g>
+  <!-- spots -->
+  <g fill="#fff4d6" stroke="#7b4a1e" stroke-width="3">
+    <circle cx="46" cy="72" r="13"/><circle cx="210" cy="72" r="13"/>
+    <circle cx="80" cy="108" r="8"/><circle cx="176" cy="108" r="8"/>
+    <circle cx="74" cy="196" r="9"/><circle cx="182" cy="196" r="9"/>
+  </g>
+  <g stroke="#c84a2e" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.6">
+    <path d="M114 122 C90 100 64 70 40 50"/><path d="M142 122 C166 100 192 70 216 50"/>
+  </g>
+  <path d="M30 56 C40 46 54 44 64 46" stroke="#ffffff" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.7"/>
+  <path d="M226 56 C216 46 202 44 192 46" stroke="#ffffff" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.7"/>
+</svg>

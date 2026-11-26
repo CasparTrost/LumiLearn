@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Lumi's wardrobe (src/lib/wardrobe.js): the flower garland (a lei).
+       Seven big five-petalled flowers in pink, orange, violet and white with green leaves between them, hanging in a curve. The middle
+       between the two upper ends is the neck.
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-blumenkette.svg public/sprites/wardrobe/blumenkette.webp 384 -->
+  <defs>
+    <path id="leaf" d="M0 -4 C8 -14 22 -12 28 0 C22 12 8 14 0 4 Z" fill="#4cc06a" stroke="#7b4a1e" stroke-width="3.5" stroke-linejoin="round"/>
+    <g id="flower">
+      <path d="M0 -6 C-10 -14 -8 -26 0 -26 C8 -26 10 -14 0 -6 Z" stroke="#7b4a1e" stroke-width="3.5" stroke-linejoin="round"/>
+      <path d="M0 -6 C-10 -14 -8 -26 0 -26 C8 -26 10 -14 0 -6 Z" transform="rotate(72)" stroke="#7b4a1e" stroke-width="3.5" stroke-linejoin="round"/>
+      <path d="M0 -6 C-10 -14 -8 -26 0 -26 C8 -26 10 -14 0 -6 Z" transform="rotate(144)" stroke="#7b4a1e" stroke-width="3.5" stroke-linejoin="round"/>
+      <path d="M0 -6 C-10 -14 -8 -26 0 -26 C8 -26 10 -14 0 -6 Z" transform="rotate(216)" stroke="#7b4a1e" stroke-width="3.5" stroke-linejoin="round"/>
+      <path d="M0 -6 C-10 -14 -8 -26 0 -26 C8 -26 10 -14 0 -6 Z" transform="rotate(288)" stroke="#7b4a1e" stroke-width="3.5" stroke-linejoin="round"/>
+      <path d="M0 -10 C-6 -14 -5 -21 0 -21 C5 -21 6 -14 0 -10 Z" fill="#ffffff" opacity="0.45"/>
+      <circle r="6.5" fill="#ffd23a" stroke="#7b4a1e" stroke-width="3"/>
+    </g>
+  </defs>
+  <g>
+    <use href="#leaf" transform="translate(45.8 60.8) rotate(150) scale(1.25)"/>
+    <use href="#leaf" transform="translate(73.2 90.9) rotate(30) scale(1.25)"/>
+    <use href="#leaf" transform="translate(108 111.8) rotate(150) scale(1.25)"/>
+    <use href="#leaf" transform="translate(148.1 111.7) rotate(30) scale(1.25)"/>
+    <use href="#leaf" transform="translate(182.9 90.8) rotate(150) scale(1.25)"/>
+    <use href="#leaf" transform="translate(210.3 60.6) rotate(30) scale(1.25)"/>
+  </g>
+  <g>
+    <use href="#flower" transform="translate(34 44) rotate(0) scale(1.4)" fill="#ff6fa8"/>
+    <use href="#flower" transform="translate(58.8 76.5) rotate(23) scale(1.4)" fill="#ffa53a"/>
+    <use href="#flower" transform="translate(89.6 103.1) rotate(46) scale(1.4)" fill="#a77cff"/>
+    <use href="#flower" transform="translate(128.1 115) rotate(69) scale(1.4)" fill="#ffffff"/>
+    <use href="#flower" transform="translate(166.5 103.1) rotate(92) scale(1.4)" fill="#a77cff"/>
+    <use href="#flower" transform="translate(197.3 76.4) rotate(115) scale(1.4)" fill="#ffa53a"/>
+    <use href="#flower" transform="translate(222 44) rotate(138) scale(1.4)" fill="#ff6fa8"/>
+  </g>
+</svg>

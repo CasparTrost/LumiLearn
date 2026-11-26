@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Lumi's wardrobe (src/lib/wardrobe.js): sunglasses. Big round dark
+       lenses with a bright reflection, an orange frame. The middle of the
+       bridge is the middle of the picture.
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-sonnenbrille.svg public/sprites/wardrobe/sonnenbrille.webp 384 -->
+  <defs>
+    <linearGradient id="lens" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4a3f66"/>
+      <stop offset="1" stop-color="#1e1830"/>
+    </linearGradient>
+  </defs>
+  <g stroke="#7b4a1e" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+    <!-- the arms, reaching back to the sides -->
+    <path d="M18 116 L4 104" stroke="#ff8a2a" stroke-width="9"/>
+    <path d="M238 116 L252 104" stroke="#ff8a2a" stroke-width="9"/>
+    <!-- the frame -->
+    <path d="M14 112 C14 96 30 90 60 90 C88 90 112 96 118 110 Q128 104 138 110 C144 96 168 90 196 90 C226 90 242 96 242 112 C242 150 222 170 192 170 C160 170 140 152 138 128 Q128 122 118 128 C116 152 96 170 64 170 C34 170 14 150 14 112 Z" fill="#ff8a2a"/>
+    <!-- lenses -->
+    <path d="M28 114 C28 104 40 102 62 102 C88 102 106 106 106 120 C106 144 90 158 64 158 C40 158 28 140 28 114 Z" fill="url(#lens)" stroke-width="3.5"/>
+    <path d="M228 114 C228 104 216 102 194 102 C168 102 150 106 150 120 C150 144 166 158 192 158 C216 158 228 140 228 114 Z" fill="url(#lens)" stroke-width="3.5"/>
+  </g>
+  <!-- reflections -->
+  <path d="M42 116 L58 108" stroke="#ffffff" stroke-width="7" stroke-linecap="round" opacity="0.85"/>
+  <path d="M46 130 L76 112" stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity="0.45"/>
+  <path d="M164 116 L180 108" stroke="#ffffff" stroke-width="7" stroke-linecap="round" opacity="0.85"/>
+  <path d="M168 130 L198 112" stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity="0.45"/>
+  <!-- light on the frame -->
+  <path d="M26 100 C40 94 70 94 100 100" stroke="#ffc48a" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M156 100 C186 94 216 94 230 100" stroke="#ffc48a" stroke-width="4" fill="none" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Lumi's wardrobe (src/lib/wardrobe/hold.js): a red balloon on a curly
+       string. The lower end of the string (the middle of the bottom edge) is
+       where Lumi's wing holds it.
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-ballon.svg public/sprites/wardrobe/ballon.webp 384 -->
+  <defs>
+    <radialGradient id="rb" cx="0.36" cy="0.3" r="0.75">
+      <stop offset="0" stop-color="#ff9a8e"/>
+      <stop offset="0.55" stop-color="#f04a44"/>
+      <stop offset="1" stop-color="#c22e30"/>
+    </radialGradient>
+  </defs>
+  <!-- the string, curling down to the wing -->
+  <path d="M128 130 C120 150 140 166 128 184 C116 202 140 216 128 250" stroke="#7b4a1e" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+  <!-- the balloon -->
+  <path d="M128 8 C164 8 186 36 186 70 C186 104 158 128 128 130 C98 128 70 104 70 70 C70 36 92 8 128 8 Z" fill="url(#rb)" stroke="#7b4a1e" stroke-width="5" stroke-linejoin="round"/>
+  <!-- the knot -->
+  <path d="M120 140 L128 128 L136 140 Z" fill="#d23a38" stroke="#7b4a1e" stroke-width="4" stroke-linejoin="round"/>
+  <!-- shine -->
+  <path d="M98 44 C104 32 114 26 124 24" stroke="#ffffff" stroke-width="8" fill="none" stroke-linecap="round" opacity="0.8"/>
+  <circle cx="94" cy="60" r="5" fill="#ffffff" opacity="0.7"/>
+</svg>

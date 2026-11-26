@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Lumi's wardrobe (src/lib/wardrobe/hold.js): a paper pinwheel, four
+       coloured blades on a wooden stick. The lower end of the stick (the
+       middle of the bottom edge) is where the wing holds it.
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-windrad.svg public/sprites/wardrobe/windrad.webp 384 -->
+  <path d="M128 250 L128 84" stroke="#7b4a1e" stroke-width="13" stroke-linecap="round"/>
+  <path d="M128 250 L128 84" stroke="#d99a5a" stroke-width="7" stroke-linecap="round"/>
+  <g stroke="#7b4a1e" stroke-width="5" stroke-linejoin="round">
+    <path d="M128 80 L128 16 C160 16 176 44 176 60 Z" fill="#ff6b5b"/>
+    <path d="M128 80 L192 80 C192 112 164 128 148 128 Z" fill="#4aa3ff"/>
+    <path d="M128 80 L128 144 C96 144 80 116 80 100 Z" fill="#ffd23a"/>
+    <path d="M128 80 L64 80 C64 48 92 32 108 32 Z" fill="#5cc45a"/>
+  </g>
+  <g fill="#ffffff" opacity="0.35">
+    <path d="M128 80 L128 16 C140 18 150 26 156 36 Z"/><path d="M128 80 L192 80 C190 92 184 100 176 108 Z"/>
+  </g>
+  <circle cx="128" cy="80" r="10" fill="#fffaf0" stroke="#7b4a1e" stroke-width="4.5"/>
+</svg>

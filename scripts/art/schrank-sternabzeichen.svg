@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Lumi's wardrobe (src/lib/wardrobe.js): the star badge. A green
+       ribbon close round the neck, two ribbon ends with notched tips
+       hanging down, and a big shiny gold star at the throat. The middle of
+       the ribbon is the neck.
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-sternabzeichen.svg public/sprites/wardrobe/sternabzeichen.webp 384 -->
+  <defs>
+    <radialGradient id="gold" cx="0.4" cy="0.35" r="0.75">
+      <stop offset="0" stop-color="#fff3a0"/>
+      <stop offset="0.5" stop-color="#ffc21e"/>
+      <stop offset="1" stop-color="#e08a10"/>
+    </radialGradient>
+    <linearGradient id="ribbon" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4fd08a"/>
+      <stop offset="1" stop-color="#22a35e"/>
+    </linearGradient>
+  </defs>
+  <g stroke="#7b4a1e" stroke-width="5" stroke-linejoin="round">
+    <!-- the two ends hanging down behind the star -->
+    <path d="M112 120 L86 206 L100 196 L110 212 L136 126 Z" fill="url(#ribbon)"/>
+    <path d="M144 120 L170 206 L156 196 L146 212 L120 126 Z" fill="#2fb86e"/>
+    <!-- the ribbon round the neck -->
+    <path d="M26 30 C70 62 186 62 230 30 L232 50 C188 84 68 84 24 50 Z" fill="url(#ribbon)"/>
+  </g>
+  <path d="M40 40 C80 64 176 64 216 40" stroke="#bff2d4" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+  <!-- the star -->
+  <path d="M128 60 L145.6 93.7 L183.2 100.1 L156.5 127.3 L162.1 164.9 L128 148 L93.9 164.9 L99.5 127.3 L72.8 100.1 L110.4 93.7 Z" fill="url(#gold)" stroke="#7b4a1e" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M128 84 L138.3 103.8 L160.3 107.5 L144.6 123.4 L148 145.5 L128 135.5 L108 145.5 L111.4 123.4 L95.7 107.5 L117.7 103.8 Z" fill="#ffe46a" stroke="#d98e14" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M104 104 L118 100 L124 88" stroke="#ffffff" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+</svg>

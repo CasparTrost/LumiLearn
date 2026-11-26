@@ -5,6 +5,7 @@ import { onNarrationChange } from '../../narrator.js'
 import { lumiArt } from '../../lib/assets.js'
 import { sfx } from '../../sfx.js'
 import { playAnimal } from '../../lib/animalSounds.js'
+import LumiFigure, { useOutfit } from '../LumiFigure.jsx'
 import './play.css'
 
 const BASE = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '')
@@ -21,6 +22,8 @@ export function artSrc(art, mood = 'idle') {
 
 /** A picture of a thing: the cartoon art for an emoji, or the emoji itself. */
 export function Art({ art, size = 64, style, alt = '', mood }) {
+  // Lumi wears what the child chose in the wardrobe (components/LumiFigure.jsx)
+  if (art === 'lumi') return <LumiFigure mood={mood} size={size} style={style} alt={alt} />
   const src = artSrc(art, mood)
   if (!src) return <span role={alt ? 'img' : undefined} aria-label={alt || undefined} style={{ fontSize: size * 0.82, lineHeight: 1, ...style }}>{art}</span>
   return <img src={src} alt={alt} draggable={false}
@@ -63,6 +66,8 @@ export default function Critter({
   const controls = useAnimationControls()
   const [tickle, setTickle] = useState(0)
   const speaking = useSpeaking(talks)
+  // a hat reaches up to the top of Lumi's square: the bubble keeps clear of it
+  const hatOn = !!useOutfit()?.head && art === 'lumi'
   const shown = mood === 'idle' && speaking ? 'talk' : mood
 
   useEffect(() => {
@@ -119,7 +124,7 @@ export default function Critter({
       </motion.button>
       {/* Lumi's sleeping picture has its own Zzz: a second one sat on top of it */}
       <MoodMark mood={art === 'lumi' && shown === 'sleep' ? 'idle' : shown} size={size} tickle={tickle} />
-      {wish && <Wish side={wishSide} size={size}>{wish}</Wish>}
+      {wish && <Wish side={wishSide} size={size} style={hatOn && wishSide === 'top' ? { marginBottom: size * 0.11 } : undefined}>{wish}</Wish>}
       {children}
     </div>
   )

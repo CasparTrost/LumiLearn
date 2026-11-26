@@ -1,6 +1,7 @@
 // Browser smoke test against a production build (npm run build; npx vite preview).
 // Fresh child on a phone through onboarding; every game opened at phone,
-// tablet and desktop size; one game played to the results; Lumi's ideas to the sticker; the app and
+// tablet and desktop size; one game played to the results; Lumi's ideas to the sticker; Lumi's
+// wardrobe and Lumi dressed in a game; the app and
 // unopened games started again without a network. Fails on page
 // errors, pictures that don't load, sideways scrolling and buttons off the
 // screen.
@@ -8,6 +9,7 @@
 //   URL=http://localhost:4173/LumiLearn/ node tests/e2e/smoke.mjs
 // CHROMIUM=/path/to/chrome uses a browser other than Playwright's own.
 import { chromium } from 'playwright'
+import { WARDROBE, SLOTS } from '../../src/lib/wardrobe.js'
 
 const URL = process.env.URL ?? 'http://localhost:4173/LumiLearn/'
 const SIZES = { phone: [360, 740], tablet: [1024, 768], desktop: [1440, 900] }
@@ -696,6 +698,79 @@ async function playShadows(page, { wrongOnce = false } = {}) {
   } catch (e) { problems.push(`first help: ${String(e).split('\n')[0]}`) }
   problems.push(...page.errors.map(e => `first help: ${e}`))
   await page.context().close()
+}
+
+// 7. Lumis Kleiderschrank. A child without stars finds the sign on the
+// button, five picture tabs, the free thing glowing on the first one, at
+// most two wrapped presents per place and a pile for the rest. A child with
+// enough stars puts on the first thing of every place (one tab after the
+// other), Lumi wears all five in the wardrobe and in a game's top bar, and
+// the plain-Lumi button takes everything off at once. The things are read
+// from the list (src/lib/wardrobe.js), so the test follows its order.
+{
+  const firstOf = slot => WARDROBE.find(t => t.slot === slot)
+  const allFive = Math.max(...SLOTS.map(s => firstOf(s).stars))
+  // stars spread over a few games, three a level
+  const progressWith = n => {
+    const ids = ['shapes-land', 'rhyme', 'listen', 'shadows', 'sort', 'clock']
+    const prog = {}
+    for (let i = 0; n > 0; i++) {
+      const id = ids[Math.floor(i / 10)], lv = (i % 10) + 1
+      prog[id] = prog[id] ?? { currentLevel: 1, levelStars: {}, plays: 1 }
+      prog[id].levelStars[lv] = Math.min(3, n); prog[id].currentLevel = Math.min(10, lv + 1)
+      n -= 3
+    }
+    return prog
+  }
+  for (const [size, stars] of [[SIZES.phone, 0], [SIZES.tablet, allFive]]) {
+    const kid = structuredClone(save)
+    kid.profiles.p1.progress = progressWith(stars)
+    const page = await newPage(size, kid)
+    const where = `wardrobe (${stars} stars)`
+    const shelf = () => page.$$eval('[data-thing]', b => b.map(x => [x.dataset.thing, x.dataset.state]))
+    const worn = () => page.$$eval('.pl-critter [data-wear]', b => b.map(x => x.dataset.wear).sort())
+    try {
+      await page.goto(URL); await page.waitForTimeout(1500)
+      if (!(await page.locator('[data-wardrobe-new]').count())) problems.push(`${where}: no sign on the wardrobe button`)
+      await page.getByRole('button', { name: /^Lumis Kleiderschrank/ }).click(); await page.waitForTimeout(1500)
+      await check(page, where)
+      if ((await page.locator('[data-tab]').count()) !== SLOTS.length) problems.push(`${where}: not ${SLOTS.length} tabs`)
+      if (stars === 0) {
+        const states = await shelf()
+        if (!states.some(([, st]) => st === 'new')) problems.push(`${where}: no free thing on the first tab`)
+        for (const slot of SLOTS) {
+          await page.locator(`[data-tab="${slot}"]`).click(); await page.waitForTimeout(500)
+          const st = (await shelf()).map(([, x]) => x)
+          if (st.filter(x => x === 'next' || x === 'locked').length > 2) problems.push(`${where}: more than two presents on ${slot}`)
+          const more = WARDROBE.filter(t => t.slot === slot && t.stars > 0).length > 2
+          if (more && !(await page.locator('[data-pile]').count())) problems.push(`${where}: no pile on ${slot}`)
+        }
+        await check(page, `${where}, last tab`)
+      } else {
+        for (const slot of SLOTS) {
+          await page.locator(`[data-tab="${slot}"]`).click(); await page.waitForTimeout(500)
+          await page.locator(`[data-thing="${firstOf(slot).id}"]`).click(); await page.waitForTimeout(1600)
+        }
+        const all = SLOTS.map(s => firstOf(s).id).sort()
+        if (String(await worn()) !== String(all)) problems.push(`${where}: Lumi wears ${await worn()}, not ${all}`)
+        await check(page, `${where}, all five on`)
+        await page.getByRole('button', { name: 'Zur Startseite' }).click(); await page.waitForTimeout(1200)
+        if (await page.locator('[data-wardrobe-new]').count()) problems.push(`${where}: the sign stayed after the visit`)
+        await page.getByRole('button', { name: /^Zahlenland(?:, Level|\. Spielen$)/ }).last().click(); await page.waitForTimeout(2000)
+        for (const id of all) {
+          if (!(await page.locator(`[data-lumi-buddy] [data-wear="${id}"]`).count())) problems.push(`${where}: Lumi in the game bar does not wear ${id}`)
+        }
+        await check(page, `${where} → game`)
+        await page.getByRole('button', { name: 'Spiel verlassen' }).click(); await page.waitForTimeout(300)
+        await page.getByRole('button', { name: /Aufhören/ }).click(); await page.waitForTimeout(1000)
+        await page.getByRole('button', { name: /^Lumis Kleiderschrank/ }).click(); await page.waitForTimeout(1500)
+        await page.locator('[data-undress]').click(); await page.waitForTimeout(1000)
+        if ((await worn()).length) problems.push(`${where}: still worn after "everything off": ${await worn()}`)
+      }
+    } catch (e) { problems.push(`${where}: ${String(e).split('\n')[0]}`) }
+    problems.push(...page.errors.map(e => `${where}: ${e}`))
+    await page.context().close()
+  }
 }
 
 await browser.close()

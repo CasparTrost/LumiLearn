@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Lumi's wardrobe (src/lib/wardrobe.js): cat ears on a hairband. Two
+       pointed grey tabby ears with pink insides and dark stripes. Lumi's
+       feather tuft stands up between them.
+       Drawn in Lumi's units: inside the group 1 = one pixel of Lumi's
+       384 picture, (0, 0) = the top of Lumi's head (the head anchor).
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-katzenohren.svg public/sprites/wardrobe/katzenohren.webp 384 -->
+  <defs>
+    <linearGradient id="fur" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#b9bccb"/>
+      <stop offset="0.55" stop-color="#9497a8"/>
+      <stop offset="1" stop-color="#717486"/>
+    </linearGradient>
+    <linearGradient id="inner" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffc6d8"/>
+      <stop offset="1" stop-color="#ff94b6"/>
+    </linearGradient>
+    <g id="ear">
+      <path d="M-80 30 C-84 -4 -82 -40 -72 -56 C-68 -62 -62 -62 -58 -58 C-42 -42 -30 -18 -22 10 Z" fill="url(#fur)" stroke="#7b4a1e" stroke-width="4.5" stroke-linejoin="round"/>
+      <path d="M-68 20 C-71 -4 -70 -30 -65 -44 C-54 -32 -44 -14 -38 8 Z" fill="url(#inner)"/>
+      <g stroke="#5b5e70" stroke-width="3.5" stroke-linecap="round">
+        <path d="M-80 -2 L-72 -4"/><path d="M-80 -20 L-73 -21"/><path d="M-42 -26 L-49 -22"/>
+      </g>
+    </g>
+  </defs>
+  <g transform="translate(128 124) scale(1.35)">
+    <use href="#ear"/>
+    <use href="#ear" transform="scale(-1 1)"/>
+    <!-- the dark hairband over the head -->
+    <path d="M-95 43 C-88 16 -54 8 0 8 C54 8 88 16 95 43" stroke="#7b4a1e" stroke-width="15" fill="none" stroke-linecap="round"/>
+    <path d="M-95 43 C-88 16 -54 8 0 8 C54 8 88 16 95 43" stroke="#5e5a74" stroke-width="7" fill="none" stroke-linecap="round"/>
+    <path d="M-86 32 C-70 18 -46 12 -20 11" stroke="#9a96b4" stroke-width="3" fill="none" stroke-linecap="round"/>
+  </g>
+</svg>

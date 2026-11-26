@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Lumi's wardrobe (src/lib/wardrobe.js): the moustache. A fluffy brown
+       moustache with curled-up ends, the kind a circus strongman wears. The
+       dip at the top middle goes under Lumi's beak (see `dy` in face.js).
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-schnurrbart.svg public/sprites/wardrobe/schnurrbart.webp 384 -->
+  <defs>
+    <linearGradient id="hair" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b06a32"/>
+      <stop offset="1" stop-color="#7a4318"/>
+    </linearGradient>
+  </defs>
+  <path d="M128 112 C140 98 162 94 182 100 C206 108 222 120 234 112 C244 106 246 94 240 86 C252 88 258 104 252 120 C244 140 222 156 196 160 C166 164 144 152 128 140 C112 152 90 164 60 160 C34 156 12 140 4 120 C-2 104 4 88 16 86 C10 94 12 106 22 112 C34 120 50 108 74 100 C94 94 116 98 128 112 Z" fill="url(#hair)" stroke="#7b4a1e" stroke-width="6" stroke-linejoin="round"/>
+  <!-- the hair: a few strokes -->
+  <g stroke="#5e3010" stroke-width="3.5" fill="none" stroke-linecap="round" opacity="0.6">
+    <path d="M112 124 C100 132 88 138 72 140"/><path d="M98 112 C86 118 72 122 56 122"/><path d="M118 136 C104 146 90 150 76 150"/>
+    <path d="M144 124 C156 132 168 138 184 140"/><path d="M158 112 C170 118 184 122 200 122"/><path d="M138 136 C152 146 166 150 180 150"/>
+  </g>
+  <path d="M80 108 C96 102 110 104 120 112" stroke="#d8955a" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M136 112 C146 104 160 102 176 108" stroke="#d8955a" stroke-width="5" fill="none" stroke-linecap="round"/>
+</svg>
