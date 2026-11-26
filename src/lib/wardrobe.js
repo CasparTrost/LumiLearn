@@ -370,6 +370,7 @@ export function itemCorners(item, pose, poses = POSES) {
 // `edge`: a thin dark outline round a thing whose colour is Lumi's own
 // (yellow trousers on a yellow chick)
 const EDGE = 'drop-shadow(0 0 0.6px #7a4a10) drop-shadow(0 0 0.6px #7a4a10)'
+const SIGN_EDGE = 'drop-shadow(0 0 1px #fff) drop-shadow(0 0 1px #fff)'
 const cutOf = (item, pose) => item.pose?.[pose]?.cut ?? item.cut ?? 1
 // `cutTop`: the picture is drawn only from this share of its height down
 // (a hood that would lie on the chest like an open bag)
@@ -568,7 +569,8 @@ export function figureLayers(pose, outfit, poses = POSES, fit = poses === POSES 
   }
   // the "?" (thinking) and the "Zzz" (asleep) painted into the picture beside
   // the head: drawn again over a head thing, a wide hat's brim never hides them
-  if (hat && P.sign) again(P.sign)
+  // (with a thin white edge: a blue "Zzz" on a blue cap)
+  if (hat && P.sign) for (const g of P.sign) layers.push({ ...clipTo(g), filter: SIGN_EDGE })
   // room in the square: the lowest scale that keeps every corner inside
   let scale = 1
   const S = POSE_SIZE, M = 2

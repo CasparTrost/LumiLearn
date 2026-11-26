@@ -40,7 +40,7 @@ export default function LumiFigure({ mood = 'idle', size = 120, outfit, shape, s
       <span style={{ position: 'absolute', inset: 0, ...(scale < 1 ? { transform: `scale(${scale})`, transformOrigin: '50% 100%' } : null) }}>
         {layers.map((l, i) => l.kind === 'pose'
           ? <img key={i} src={src} alt="" draggable={false}
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', maxWidth: 'none', objectFit: 'contain', clipPath: l.clip ?? undefined, ...maskStyle(l.mask && asset(l.mask)) }} />
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', maxWidth: 'none', objectFit: 'contain', clipPath: l.clip ?? undefined, filter: l.filter, ...maskStyle(l.mask && asset(l.mask)) }} />
           : <img key={l.id} src={asset(l.src)} alt="" draggable={false} data-wear={l.over || l.part ? undefined : l.id}
               style={{ position: 'absolute', left: l.left, top: l.top, width: l.size, height: l.h ?? l.size, maxWidth: 'none', transform: `rotate(${l.rot}deg)`, transformOrigin: l.origin, clipPath: l.clip ?? undefined, filter: l.filter }} />)}
       </span>
