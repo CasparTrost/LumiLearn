@@ -360,7 +360,10 @@ export function reducer(state, action) {
         ...freshWardrobe(),
       }
       reset.dailyMission = freshDay(todayStr(), reset)
-      return { ...state, profiles: { ...state.profiles, [id]: reset } }
+      // today's ideas planned again at once: the parent area lies over the
+      // home screen, which stays mounted, so nothing else would plan them
+      // and home showed "Alle Ideen geschafft!" until a reload
+      return { ...state, profiles: { ...state.profiles, [id]: withJourney(reset) } }
     }
 
     // Parent area: switch a game off (or on again) for one child. The last
