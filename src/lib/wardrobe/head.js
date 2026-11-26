@@ -1,23 +1,33 @@
 // Lumis Kleiderschrank: things for the head (hats, crowns, ears …).
 // One line per thing; the fields are explained in ../wardrobe.js. The stars
 // that unlock a thing come from its place in ORDER there (a thing not in
-// ORDER yet comes last). Picture: public/sprites/wardrobe/<id>.webp,
-// drawn from scripts/art/schrank-<id>.svg.
+// ORDER yet comes last).
+// Picture: public/sprites/wardrobe/<id>.webp, made with Tripo (converted with
+// scripts/art/png-to-webp.mjs); the few still drawn come from scripts/art/schrank-<id>.svg.
 export default [
-  { id: 'muetze',      name: 'Bommelmütze', slot: 'head', src: 'sprites/wardrobe/muetze.webp',      at: [0.5, 0.523], size: 1.18, box: [0.09, 0.17, 0.91, 0.84], pose: { hmm: { dy: -15 }, think: { dy: -15 } }, tuft: 'hide' },
-  { id: 'partyhut',    name: 'Partyhut',    slot: 'head', src: 'sprites/wardrobe/partyhut.webp',    at: [0.5, 0.84],  size: 0.72, box: [0.21, 0.04, 0.8, 0.9], dx: -0.2, dy: 0.08, rot: -18 },
-  { id: 'blumenkranz', name: 'Blumenkranz', slot: 'head', src: 'sprites/wardrobe/blumenkranz.webp', at: [0.5, 0.56],  size: 1.25, box: [0.04, 0.35, 0.96, 0.8], tuft: 'front' },
-  { id: 'piratenhut',  name: 'Piratenhut',  slot: 'head', src: 'sprites/wardrobe/piratenhut.webp',  at: [0.5, 0.53],  size: 1.1,  box: [0.04, 0.15, 0.99, 0.84], pose: { hmm: { dy: -13 }, think: { dy: -13 } }, tuft: 'hide' },
-  { id: 'zauberhut',   name: 'Zauberhut',   slot: 'head', src: 'sprites/wardrobe/zauberhut.webp',   at: [0.5, 0.8],   size: 1.02, box: [0.05, 0.3, 0.95, 0.9], pose: { hmm: { dy: -6, size: 0.93 }, think: { dy: -6, size: 0.93 } }, tuft: 'hide' },
-  { id: 'krone',       name: 'Krone',       slot: 'head', src: 'sprites/wardrobe/krone.webp',       at: [0.5, 0.66],  size: 0.82, box: [0.08, 0.27, 0.93, 0.8], tuft: 'front' },
-  { id: 'cowboyhut',       name: 'Cowboyhut',       slot: 'head', src: 'sprites/wardrobe/cowboyhut.webp',       at: [0.5, 0.531], size: 1.585, box: [0, 0.27, 1, 0.74], pose: { hmm: { dy: -10, size: 0.93 }, think: { dy: -10, size: 0.93 } }, tuft: 'hide' },
-  { id: 'kochmuetze',      name: 'Kochmütze',       slot: 'head', src: 'sprites/wardrobe/kochmuetze.webp',      at: [0.5, 0.555], size: 1.172, box: [0.02, 0.15, 1, 0.85], pose: { hmm: { dy: -10, size: 0.93 }, think: { dy: -10, size: 0.93 } }, tuft: 'hide' },
-  { id: 'feuerwehrhelm',   name: 'Feuerwehrhelm',   slot: 'head', src: 'sprites/wardrobe/feuerwehrhelm.webp',   at: [0.5, 0.508], size: 1.283, box: [0, 0.23, 1, 0.79], pose: { hmm: { dy: -16 }, think: { dy: -16 } }, tuft: 'hide' },
-  { id: 'matrosenmuetze',  name: 'Matrosenmütze',   slot: 'head', src: 'sprites/wardrobe/matrosenmuetze.webp',  at: [0.422, 0.422], size: 1.465, box: [0.02, 0.25, 1, 0.8], pose: { hmm: { dy: -10 }, think: { dy: -10 } }, tuft: 'hide' },
-  { id: 'basecap',         name: 'Kappe',           slot: 'head', src: 'sprites/wardrobe/basecap.webp',         at: [0.633, 0.5], size: 1.567, box: [0.03, 0.27, 0.97, 0.73], pose: { hmm: { dy: -10 }, think: { dy: -10 } }, tuft: 'hide' },
-  { id: 'zylinder',        name: 'Zylinder',        slot: 'head', src: 'sprites/wardrobe/zylinder.webp',        at: [0.5, 0.672], size: 1.036, box: [0.07, 0.19, 0.93, 0.8], tuft: 'hide' },
-  { id: 'hasenohren',      name: 'Hasenohren',      slot: 'head', src: 'sprites/wardrobe/hasenohren.webp',      at: [0.5, 0.57], size: 1.123, box: [0.01, 0.13, 1, 0.81], pose: { hmm: { dx: -12, dy: -2, rot: 6 }, think: { dx: -12, dy: -2, rot: 6 } }, tuft: 'front' },
-  { id: 'katzenohren',     name: 'Katzenohren',     slot: 'head', src: 'sprites/wardrobe/katzenohren.webp',     at: [0.5, 0.484], size: 0.998, box: [0, 0.15, 1, 0.76], pose: { hmm: { dx: -12, dy: -2, rot: 6 }, think: { dx: -12, dy: -2, rot: 6 } }, tuft: 'front' },
-  { id: 'strohhut',        name: 'Strohhut',        slot: 'head', src: 'sprites/wardrobe/strohhut.webp',        at: [0.5, 0.5], size: 1.567, box: [0.01, 0.28, 0.99, 0.72], pose: { hmm: { dy: -10 }, think: { dy: -10 } }, tuft: 'hide' },
-  { id: 'weihnachtsmuetze', name: 'Weihnachtsmütze', slot: 'head', src: 'sprites/wardrobe/weihnachtsmuetze.webp', at: [0.414, 0.508], size: 1.404, box: [0, 0.23, 1, 0.75], pose: { hmm: { dy: -10, size: 0.93 }, think: { dy: -10, size: 0.93 } }, tuft: 'hide' },
+  { id: 'muetze',      name: 'Bommelmütze', slot: 'head', src: 'sprites/wardrobe/muetze.webp',      at: [0.5, 0.616], size: 0.912, box: [0.08, 0.05, 0.92, 0.95], pose: { hmm: { dy: -6, size: 0.92 }, think: { dy: -6, size: 0.92 } }, tuft: 'hide' },
+  { id: 'partyhut',    name: 'Partyhut',    slot: 'head', src: 'sprites/wardrobe/partyhut.webp',    at: [0.5, 0.88],  size: 0.652, box: [0.15, 0.05, 0.84, 0.95], dx: -0.2, dy: 0.08, rot: -18 },
+  { id: 'blumenkranz', name: 'Blumenkranz', slot: 'head', src: 'sprites/wardrobe/blumenkranz.webp', at: [0.5, 0.485],  size: 1.278, box: [0.05, 0.28, 0.95, 0.72], tuft: 'front' },
+  { id: 'piratenhut',  name: 'Piratenhut',  slot: 'head', src: 'sprites/wardrobe/piratenhut.webp',  at: [0.5, 0.552],  size: 1.235,  box: [0.05, 0.18, 0.95, 0.82], pose: { hmm: { dy: -6, size: 0.9 }, think: { dy: -6, size: 0.9 } }, tuft: 'hide' },
+  { id: 'zauberhut',   name: 'Zauberhut',   slot: 'head', src: 'sprites/wardrobe/zauberhut.webp',   at: [0.5, 0.605],   size: 0.966, box: [0.05, 0.1, 0.95, 0.91], pose: { hmm: { dy: -6, size: 0.9 }, think: { dy: -6, size: 0.9 } }, tuft: 'hide' },
+  { id: 'krone',       name: 'Krone',       slot: 'head', src: 'sprites/wardrobe/krone.webp',       at: [0.5, 0.717],  size: 0.885, box: [0.05, 0.16, 0.95, 0.84], pose: { hmm: { size: 0.96 }, think: { size: 0.96 } }, tuft: 'front' },
+  { id: 'cowboyhut',       name: 'Cowboyhut',       slot: 'head', src: 'sprites/wardrobe/cowboyhut.webp',       at: [0.5, 0.551], size: 1.404, box: [0.05, 0.23, 0.95, 0.78], pose: { hmm: { dy: -4, size: 0.91 }, think: { dy: -4, size: 0.91 } }, tuft: 'hide' },
+  { id: 'kochmuetze',      name: 'Kochmütze',       slot: 'head', src: 'sprites/wardrobe/kochmuetze.webp',      at: [0.5, 0.615], size: 0.964, box: [0.05, 0.11, 0.95, 0.89], pose: { hmm: { dy: -4, size: 0.92 }, think: { dy: -4, size: 0.92 } }, tuft: 'hide' },
+  { id: 'feuerwehrhelm',   name: 'Feuerwehrhelm',   slot: 'head', src: 'sprites/wardrobe/feuerwehrhelm.webp',   at: [0.5, 0.559], size: 1.27, box: [0.05, 0.19, 0.95, 0.8], pose: { hmm: { dy: -6, size: 0.88 }, think: { dy: -6, size: 0.88 } }, tuft: 'hide' },
+  { id: 'matrosenmuetze',  name: 'Matrosenmütze',   slot: 'head', src: 'sprites/wardrobe/matrosenmuetze.webp',  at: [0.5, 0.56], size: 1.306, box: [0.05, 0.2, 0.95, 0.8], pose: { hmm: { dy: -4, size: 0.9 }, think: { dy: -4, size: 0.9 } }, tuft: 'hide' },
+  { id: 'basecap',         name: 'Kappe',           slot: 'head', src: 'sprites/wardrobe/basecap.webp',         at: [0.5, 0.553], size: 1.035, box: [0.05, 0.09, 0.95, 0.91], pose: { hmm: { dy: -4, size: 0.92 }, think: { dy: -4, size: 0.92 } }, tuft: 'hide' },
+  { id: 'zylinder',        name: 'Zylinder',        slot: 'head', src: 'sprites/wardrobe/zylinder.webp',        at: [0.5, 0.579], size: 1.136, box: [0.05, 0.17, 0.95, 0.83], pose: { hmm: { size: 0.97 }, think: { size: 0.97 } }, tuft: 'hide' },
+  { id: 'hasenohren',      name: 'Hasenohren',      slot: 'head', src: 'sprites/wardrobe/hasenohren.webp',      at: [0.5, 0.653], size: 0.859, box: [0.07, 0.05, 0.93, 0.95], pose: { hmm: { dx: -12, dy: -2, rot: 6 }, think: { dx: -12, dy: -2, rot: 6 } }, tuft: 'front' },
+  { id: 'katzenohren',     name: 'Katzenohren',     slot: 'head', src: 'sprites/wardrobe/katzenohren.webp',     at: [0.5, 0.415], size: 0.895, box: [0.05, 0.21, 0.95, 0.79], pose: { hmm: { dx: -12, dy: -2, rot: 6 }, think: { dx: -12, dy: -2, rot: 6 } }, tuft: 'front' },
+  { id: 'strohhut',        name: 'Strohhut',        slot: 'head', src: 'sprites/wardrobe/strohhut.webp',        at: [0.5, 0.546], size: 1.506, box: [0.05, 0.24, 0.95, 0.75], pose: { hmm: { dy: -4, size: 0.88 }, think: { dy: -4, size: 0.88 } }, tuft: 'hide' },
+  { id: 'weihnachtsmuetze', name: 'Weihnachtsmütze', slot: 'head', src: 'sprites/wardrobe/weihnachtsmuetze.webp', at: [0.5, 0.548], size: 1.241, box: [0.05, 0.17, 0.95, 0.83], pose: { hmm: { dy: -4, size: 0.91 }, think: { dy: -4, size: 0.91 } }, tuft: 'hide' },
+  { id: 'propellermuetze', name: 'Propellermütze',  slot: 'head', src: 'sprites/wardrobe/propellermuetze.webp', at: [0.5, 0.551], size: 1.114, box: [0.05, 0.12, 0.95, 0.88], pose: { hmm: { size: 0.95 }, think: { size: 0.95 } }, tuft: 'hide' },
+  { id: 'eierschale',      name: 'Eierschale',      slot: 'head', src: 'sprites/wardrobe/eierschale.webp',      at: [0.5, 0.565], size: 1.124, box: [0.05, 0.14, 0.95, 0.86], pose: { hmm: { size: 0.95 }, think: { size: 0.95 } }, tuft: 'hide' },
+  { id: 'einhornreif',     name: 'Einhorn-Haarreif', slot: 'head', src: 'sprites/wardrobe/einhornreif.webp',    at: [0.5, 0.608], size: 0.897, box: [0.14, 0.05, 0.86, 0.95], pose: { hmm: { size: 0.98 }, think: { size: 0.98 } } },
+  { id: 'tortenhut',       name: 'Tortenhut',       slot: 'head', src: 'sprites/wardrobe/tortenhut.webp',       at: [0.5, 0.684], size: 0.781, box: [0.11, 0.05, 0.89, 0.95], pose: { hmm: { size: 0.99 }, think: { size: 0.99 } }, tuft: 'hide' },
+  { id: 'fliegenpilz',     name: 'Fliegenpilz-Hut', slot: 'head', src: 'sprites/wardrobe/fliegenpilz.webp',     at: [0.5, 0.557], size: 1.163, box: [0.05, 0.18, 0.95, 0.82], tuft: 'hide' },
+  { id: 'antennen',        name: 'Antennen',        slot: 'head', src: 'sprites/wardrobe/antennen.webp',        at: [0.5, 0.52], size: 0.857, box: [0.08, 0.05, 0.92, 0.95], tuft: 'front' },
+  { id: 'diadem',          name: 'Diadem',          slot: 'head', src: 'sprites/wardrobe/diadem.webp',          at: [0.5, 0.634], size: 0.915, box: [0.05, 0.19, 0.95, 0.81] },
+  { id: 'heiligenschein',  name: 'Heiligenschein',  slot: 'head', src: 'sprites/wardrobe/heiligenschein.webp',  at: [0.5, 0.803], size: 0.899, box: [0.05, 0.32, 0.95, 0.68] },
+  { id: 'doktorhut',       name: 'Doktorhut',       slot: 'head', src: 'sprites/wardrobe/doktorhut.webp',       at: [0.5, 0.547], size: 1.242, box: [0.05, 0.17, 0.95, 0.82], pose: { hmm: { size: 0.95 }, think: { size: 0.95 } }, tuft: 'hide' },
 ]
