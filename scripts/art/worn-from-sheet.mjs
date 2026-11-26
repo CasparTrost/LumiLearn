@@ -235,9 +235,12 @@ export function cutPose(T, A, W, P, opts = { bottom: true, erase: false }) {
   for (let p = 0; p < N; p++) if (bg[p]) changed[p] = 0
   // clean: opening, the large parts only, closing, back off the ground
   let m = dilate(erode(changed, 2), 2)
-  const { comps } = components(m)
+  // (the size is that of the parts lying close together: the blue stripes of
+  // a shirt on a blue and white robot are found one by one, each small)
+  const near = erode(dilate(m, 5), 5)
+  const { lab: nlab, comps } = components(near)
   const big = new Uint8Array(N)
-  for (const c of comps.slice(1)) if (c.length >= 900) for (const p of c) big[p] = 1
+  for (let p = 0; p < N; p++) if (m[p] && nlab[p] && comps[nlab[p]].length >= 900) big[p] = 1
   m = and(erode(dilate(big, 2), 2), not(bg))
   // what is cut off by the closing at the edge comes back where it was changed
   const around = dilate(big, 3)
@@ -457,7 +460,14 @@ export function cutPose(T, A, W, P, opts = { bottom: true, erase: false }) {
   // figure lies there on Tripo's white ground is cut away (`erase`, a mask
   // for the pose picture) instead of being covered
   const gone = new Uint8Array(N)
-  if (opts.erase) { const y0 = P.neck.y * k - 10; for (let p = 0; p < N; p++) if (bg[p] && A[p] > 24 && Math.floor(p / S) > y0) gone[p] = 1 }
+  if (opts.erase) {
+    const y0 = P.neck.y * k - 10
+    for (let p = 0; p < N; p++) if (bg[p] && A[p] > 24 && Math.floor(p / S) > y0) gone[p] = 1
+    // and the old legs' outline next to it (Tripo's soft rim is no ground),
+    // not the figure's own arms and hands, nor the clothes
+    const wide = dilate(gone, 3)
+    for (let p = 0; p < N; p++) if (wide[p] && !m[p] && !own[p] && A[p] > 24 && Math.floor(p / S) > y0) gone[p] = 1
+  }
   const eligible = q => !m[q] && bg[q] && A[q] > 24 && nearOther[q] > 2 && !gone[q]
   for (let k2 = 1; k2 <= GAP && front.length; k2++) {
     const next = []
