@@ -15,8 +15,11 @@ import FACE from '../../src/lib/wardrobe/face.js'
 import NECK from '../../src/lib/wardrobe/neck.js'
 import BACK from '../../src/lib/wardrobe/back.js'
 import HOLD from '../../src/lib/wardrobe/hold.js'
+import TOP from '../../src/lib/wardrobe/top.js'
+import BOTTOM from '../../src/lib/wardrobe/bottom.js'
+import SHOES from '../../src/lib/wardrobe/shoes.js'
 
-const NONE = { head: null, face: null, neck: null, back: null, hold: null }
+const NONE = { head: null, face: null, neck: null, back: null, hold: null, top: null, bottom: null, shoes: null }
 // every star the games can give: three a level
 const MAX_STARS = Object.entries(MAX_LEVELS).filter(([id]) => hasLevels(id)).reduce((a, [, n]) => a + 3 * n, 0)
 
@@ -24,12 +27,12 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
 describe('the steps', () => {
   it('one file per place, every thing once, in its own place', () => {
-    for (const [slot, list] of [['head', HEAD], ['face', FACE], ['neck', NECK], ['back', BACK], ['hold', HOLD]]) {
+    for (const [slot, list] of [['head', HEAD], ['face', FACE], ['neck', NECK], ['back', BACK], ['hold', HOLD], ['top', TOP], ['bottom', BOTTOM], ['shoes', SHOES]]) {
       expect(list.length, slot).toBeGreaterThanOrEqual(1)
       for (const t of list) expect(t.slot, t.id).toBe(slot)
     }
     expect(new Set(WARDROBE.map(t => t.id)).size).toBe(WARDROBE.length)
-    expect(WARDROBE.length).toBe(HEAD.length + FACE.length + NECK.length + BACK.length + HOLD.length)
+    expect(WARDROBE.length).toBe(HEAD.length + FACE.length + NECK.length + BACK.length + HOLD.length + TOP.length + BOTTOM.length + SHOES.length)
     for (const id of ORDER) expect(ITEM_BY_ID[id], `ORDER names ${id}`).toBeTruthy()
     expect(new Set(ORDER).size).toBe(ORDER.length)
   })
@@ -44,14 +47,14 @@ describe('the steps', () => {
     // of its place a child gets, and for the back it is wings, not the cape)
     const first = Object.fromEntries(SLOTS.map(s => [s, WARDROBE.find(t => t.slot === s)]))
     for (const s of SLOTS) expect(first[s].stars, s).toBe(Math.min(...WARDROBE.filter(t => t.slot === s).map(t => t.stars)))
-    expect(SLOTS.map(s => first[s].id)).toEqual(['muetze', 'sonnenbrille', 'schal', 'schmetterling', 'ballon'])
+    expect(SLOTS.map(s => first[s].id)).toEqual(['muetze', 'sonnenbrille', 'schal', 'schmetterling', 'ballon', 'ringelshirt', 'jeansshorts', 'turnschuhe'])
   })
   it('two things at once from the start, in different places: the wardrobe is never empty', () => {
     const free = unlockedItems(0)
     expect(free.length).toBe(2)
     expect(new Set(free.map(t => t.slot)).size).toBe(2)
   })
-  it('the rule: quickly at first (a good game each), slower later, the last at about half of all stars', () => {
+  it('the rule: quickly at first (a good game each), slower later, the last at about two thirds of all stars', () => {
     expect(stepStars(0)).toBe(0)
     expect(stepStars(1)).toBe(0)
     expect(stepStars(2)).toBe(3)
@@ -62,10 +65,10 @@ describe('the steps', () => {
       expect(stepStars(i) - stepStars(i - 1)).toBeGreaterThanOrEqual(stepStars(i - 1) - stepStars(Math.max(1, i - 2)))
     }
     expect(MAX_STARS).toBeGreaterThan(600)
-    // the last thing of the five places needs about half of all stars
+    // the last thing of the eight places needs at most about two thirds of all stars
     const last = WARDROBE.at(-1).stars / MAX_STARS
-    expect(last).toBeGreaterThanOrEqual(0.45)
-    expect(last).toBeLessThanOrEqual(0.55)
+    expect(last).toBeGreaterThanOrEqual(0.5)
+    expect(last).toBeLessThanOrEqual(0.66)
   })
   it('the order mixes the places: never two of one place in a row, red hats apart, no place waits too long, the crown last', () => {
     for (let i = 1; i < WARDROBE.length; i++) expect(WARDROBE[i].slot === WARDROBE[i - 1].slot, WARDROBE[i].id).toBe(false)
@@ -75,10 +78,10 @@ describe('the steps', () => {
     expect(WARDROBE.filter(t => ORDER.includes(t.id)).at(-1).id).toBe('krone')
     for (const sl of SLOTS) {
       const st = WARDROBE.filter(t => ORDER.includes(t.id) && t.slot === sl).map(t => t.stars)
-      // (the back has the fewest things: late in the list it comes every 50 to 70 stars)
-      for (let i = 1; i < st.length; i++) expect(st[i] - st[i - 1], `${sl} at ${st[i]}`).toBeLessThanOrEqual(sl === 'head' ? 35 : 72)
-      // every place's first thing comes among the first six
-      expect(WARDROBE.findIndex(t => t.slot === sl), sl).toBeLessThan(6)
+      // (the back has the fewest things: late in the list it comes every 60 to 90 stars)
+      for (let i = 1; i < st.length; i++) expect(st[i] - st[i - 1], `${sl} at ${st[i]}`).toBeLessThanOrEqual(sl === 'back' ? 95 : sl === 'hold' ? 70 : 50)
+      // a child gets something of every place within the first 40 stars
+      expect(WARDROBE.find(t => t.slot === sl).stars, sl).toBeLessThanOrEqual(40)
     }
   })
   it('what a new total unlocks, the next present and where its bar starts', () => {
@@ -138,7 +141,10 @@ describe('the pictures', () => {
   it('a thing sits where it belongs: hats on the head, glasses on the eyes, the rest at the neck', () => {
     for (const p of POSE_IDS) for (const t of WARDROBE) {
       const pl = placeItem(t, p), A = POSES[p][t.slot]
-      expect(Math.hypot(pl.x - A.x, pl.y - A.y), `${t.id} on ${p}`).toBeLessThan(A.w * 0.3)
+      // (shoes: from the left foot, a step beside the middle; a shoe is
+      // placed by its sole, a little below the anchor)
+      const ax = t.slot === 'shoes' ? A.x - A.step : A.x
+      expect(Math.hypot(pl.x - ax, pl.y - A.y), `${t.id} on ${p}`).toBeLessThan(A.w * (t.slot === 'shoes' ? 0.45 : 0.3))
     }
   })
   it('wings sit on the back: below the eyes, at the sides of the body, drawn in two halves', () => {

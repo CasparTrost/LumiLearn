@@ -31,7 +31,11 @@ import { LINES, line } from '../lib/lumiLines.js'
  */
 const rec = key => (LINES[key] ? line(key) : null)
 const REACTIONS = ['schrank/anziehen-1', 'schrank/anziehen-2', 'schrank/anziehen-3', 'schrank/anziehen-4']
-const SHELF_LABEL = { head: 'Für den Kopf', face: 'Fürs Gesicht', neck: 'Für den Hals', back: 'Für den Rücken', hold: 'Zum Festhalten' }
+const SHELF_LABEL = { head: 'Für den Kopf', face: 'Fürs Gesicht', neck: 'Für den Hals', back: 'Für den Rücken', hold: 'Zum Festhalten', top: 'Für den Bauch', bottom: 'Für die Beine', shoes: 'Für die Füße' }
+// the tabs stand in lines of this many (eight places: two lines of four)
+const TABS_PER_LINE = Math.ceil(SLOTS.length / Math.ceil(SLOTS.length / 5))
+const TAB_LINES = Math.ceil(SLOTS.length / TABS_PER_LINE)
+const TAB_GAP = 6
 // presents shown per place before the pile
 const WRAPPED_SHOWN = 2
 // things that glow as new at most
@@ -89,9 +93,12 @@ export default function WardrobeScreen() {
   const stageW = wide ? Math.min(440, Math.max(220, w * 0.4), Math.max(220, h - hud - (sideTabs ? 50 : 0))) : w
   const stageH = wide ? h - hud : Math.min(290, Math.round(h * 0.31))
   const lumi = Math.round(wide ? Math.min(stageW * 0.8, stageH * 0.7, 340) : stageH * 0.76)
+  // the tabs: as big as fits, in lines of TABS_PER_LINE (two lines of four
+  // for eight places; sideways on a phone, two columns of four), never
+  // smaller than 44 px to tap
   const tabSize = sideTabs
-    ? Math.round(Math.max(48, Math.min(64, (h - hud - 24) / 5 - 10)))
-    : Math.round(Math.max(52, Math.min(76, ((wide ? w - stageW : w) - 40) / 5 - 10)))
+    ? Math.round(Math.max(44, Math.min(64, (h - hud - 24) / TABS_PER_LINE - TAB_GAP - 4)))
+    : Math.round(Math.max(44, Math.min(TAB_LINES > 1 ? 62 : 76, ((wide ? w - stageW : w) - 40) / TABS_PER_LINE - 10)))
 
   const items = WARDROBE.filter(t => t.slot === tab)
   const open = items.filter(t => isUnlocked(t, stars))
@@ -285,8 +292,12 @@ export default function WardrobeScreen() {
         {/* ── The wardrobe: five picture tabs, one place at a time ── */}
         <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: sideTabs ? 'row' : 'column', padding: sideTabs ? '8px 10px 8px 6px' : wide ? '10px clamp(10px,2vw,22px) 12px' : '8px 10px 10px' }}>
           <div role="tablist" aria-label="Wo Lumi es trägt" aria-orientation={sideTabs ? 'vertical' : 'horizontal'} style={{
-            display: 'flex', flexDirection: sideTabs ? 'column' : 'row', gap: sideTabs ? 6 : 8, justifyContent: 'center',
-            alignItems: sideTabs ? 'flex-end' : 'flex-end', [sideTabs ? 'paddingBlock' : 'paddingInline']: 6, flexShrink: 0, position: 'relative', zIndex: 2,
+            display: 'flex', flexDirection: sideTabs ? 'column' : 'row', flexWrap: 'wrap', gap: sideTabs ? `${TAB_GAP}px 4px` : `4px ${TAB_GAP + 2}px`, justifyContent: 'center',
+            alignItems: 'flex-end', alignContent: 'flex-end', [sideTabs ? 'paddingBlock' : 'paddingInline']: 6, flexShrink: 0, position: 'relative', zIndex: 2,
+            // the lines wrap at TABS_PER_LINE tabs
+            ...(sideTabs
+              ? { height: TABS_PER_LINE * (tabSize + 4) + (TABS_PER_LINE - 1) * TAB_GAP + 12, alignSelf: 'center' }
+              : { maxWidth: TABS_PER_LINE * (tabSize + 8) + (TABS_PER_LINE - 1) * (TAB_GAP + 2) + 12, alignSelf: 'center' }),
           }}>
             {SLOTS.map(slot => (
               <PlaceTab key={slot} slot={slot} size={tabSize} side={sideTabs} active={slot === tab} fresh={WARDROBE.some(t => t.slot === slot && isFresh(t))}
