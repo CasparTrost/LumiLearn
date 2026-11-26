@@ -37,6 +37,17 @@ describe('the shapes and their pictures', () => {
     expect(shapeSrc(CHICK, 'hmm')).toBe('sprites/emoji/custom/lumi-hmm.webp')
     expect(shapeSrc(null, 'idle')).toBe('sprites/emoji/custom/lumi-idle.webp')
   })
+  it('the maze has its pixel sprites for every shape (idle, happy, a 10-frame walk)', () => {
+    for (const s of SHAPES) {
+      const id = s.id === CHICK ? 'lumi' : s.id
+      for (const [k, w] of [['idle', 64], ['happy', 64], ['walk', 640]]) {
+        const f = join(ROOT, 'public/sprites/maze', `${id}_${k}.png`)
+        expect(existsSync(f), f).toBe(true)
+        const buf = readFileSync(f)
+        expect([buf.readUInt32BE(16), buf.readUInt32BE(20)], f).toEqual([w, 64])
+      }
+    }
+  })
   it('the drawing is layered like the chick\'s; clothes only on a shape with anchors (one switch)', () => {
     expect(shapeLayers('dino', 'wave')).toEqual({ layers: [{ kind: 'pose', src: 'sprites/shapes/dino-wave.webp' }], scale: 1 })
     expect(shapeLayers('dino', 'nope').layers[0].src).toBe('sprites/shapes/dino-idle.webp')
