@@ -414,9 +414,9 @@ export function figureLayers(pose, outfit, poses = POSES) {
   if (hat?.tuft === 'hide' && P.tuft) holes.push(P.tuft)
   const shoesOn = bySlot.shoes && bySlot.bottom?.feet !== false
   if (shoesOn && !P.feet && P.soles) holes.push(P.soles)
-  // a mermaid's tail has no feet: standing, they are cut away (sitting, the
-  // tail lies over them)
-  if (bySlot.bottom?.feet === false && !P.feet && P.soles) holes.push(P.soles.map(([x, y], i) => [x, i < 2 ? y - 26 : y]))
+  // a mermaid's tail has no feet: they are cut away (sitting, the tail is
+  // drawn big enough to close the gap)
+  if (bySlot.bottom?.feet === false) { if (P.feet) holes.push(...P.feet); else if (P.soles) holes.push(P.soles.map(([x, y], i) => [x, i < 2 ? y - 26 : y])) }
   layers.push({ kind: 'pose', clip: holes.length ? `polygon(evenodd, 0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ${holes.map(h => `${poly(h)}, ${poly([h[0]])}, 0% 0%`).join(', ')})` : null })
   // the clothes: trousers or a skirt over the lower body and the legs (the
   // feet Lumi sits on stay in front of them), the shoes, one on each foot

@@ -5,7 +5,7 @@
 export default [
   { id: 'jeansshorts', name: 'Jeansshorts', slot: 'bottom', src: 'sprites/wardrobe/jeansshorts.webp', at: [0.500, 0.224], size: 1.444, sy: 0.392, dy: -0.1, pose: { sleep: { dy: -12, size: 0.85 } }, box: [0.05, 0.2, 0.95, 0.8] },
   { id: 'fussballshorts', name: 'Fußballshorts', slot: 'bottom', src: 'sprites/wardrobe/fussballshorts.webp', at: [0.500, 0.168], size: 1.444, sy: 0.332, dy: -0.1, pose: { sleep: { dy: -12, size: 0.85 } }, box: [0.05, 0.14, 0.95, 0.85] },
-  { id: 'tutu', name: 'Tutu', slot: 'bottom', src: 'sprites/wardrobe/tutu.webp', at: [0.500, 0.233], size: 1.556, sy: 0.355, dy: -0.1, pose: { sleep: { dy: -12, size: 0.85 } }, box: [0.05, 0.21, 0.95, 0.79] },
+  { id: 'tutu', name: 'Tutu', slot: 'bottom', src: 'sprites/wardrobe/tutu.webp', at: [0.500, 0.233], size: 1.556, sy: 0.355, dy: -0.1, pose: { sleep: { dy: -12, size: 0.7 } }, box: [0.05, 0.21, 0.95, 0.79] },
   { id: 'entenbadehose', name: 'Badehose', slot: 'bottom', src: 'sprites/wardrobe/entenbadehose.webp', at: [0.500, 0.196], size: 1.444, sy: 0.357, dy: -0.1, pose: { sleep: { dy: -12, size: 0.85 } }, box: [0.05, 0.17, 0.95, 0.83] },
   { id: 'lederhose', name: 'Lederhose', slot: 'bottom', src: 'sprites/wardrobe/lederhose.webp', at: [0.500, 0.196], size: 1.444, sy: 0.357, dy: -0.1, pose: { sleep: { dy: -12, size: 0.85 } }, box: [0.05, 0.17, 0.95, 0.83] },
   { id: 'bastrock', name: 'Baströckchen', slot: 'bottom', src: 'sprites/wardrobe/bastrock.webp', at: [0.500, 0.178], size: 1.444, sy: 0.336, dy: -0.1, pose: { sleep: { dy: -12, size: 0.85 } }, box: [0.05, 0.15, 0.95, 0.85] },
@@ -17,5 +17,5 @@ export default [
   { id: 'regenbogenleggings', name: 'Regenbogenleggings', slot: 'bottom', src: 'sprites/wardrobe/regenbogenleggings.webp', at: [0.5, 0.086], size: 1.583, sy: 0.365, dy: -0.2, pose: { sleep: { dy: -12, size: 0.85 } }, box: [0.2, 0.05, 0.8, 0.95] },
   { id: 'clownshose', name: 'Clownshose', slot: 'bottom', src: 'sprites/wardrobe/clownshose.webp', at: [0.5, 0.24], size: 1.5, sy: 0.457, cutTop: 0.22, edge: true, dy: -0.2, pose: { sleep: { dy: -12, size: 0.85 } }, box: [0.1, 0.05, 0.9, 0.95] },
   { id: 'skihose', name: 'Skihose', slot: 'bottom', src: 'sprites/wardrobe/skihose.webp', at: [0.5, 0.086], size: 1.341, sy: 0.431, dy: -0.2, pose: { sleep: { dy: -16, size: 0.85 } }, box: [0.09, 0.05, 0.91, 0.95] },
-  { id: 'meerjungfrau', name: 'Meerjungfrauenflosse', slot: 'bottom', src: 'sprites/wardrobe/meerjungfrau.webp', at: [0.500, 0.086], size: 1.187, sy: 0.580, feet: false, dy: -0.1, pose: { sleep: { dy: -30, size: 1.2, sy: 0.42 } }, box: [0.1, 0.05, 0.9, 0.95] },
+  { id: 'meerjungfrau', name: 'Meerjungfrauenflosse', slot: 'bottom', src: 'sprites/wardrobe/meerjungfrau.webp', at: [0.500, 0.086], size: 1.187, sy: 0.580, feet: false, dy: -0.1, pose: { sleep: { dy: -26, size: 1.85, sy: 0.27 } }, box: [0.1, 0.05, 0.9, 0.95] },
 ]
