@@ -76,8 +76,13 @@ export default function ResultsScreen() {
   // the wardrobe's new thing keeps its sign on the home screen
   const newShape       = !!gameResult?.newShape && shapesOwed(profile, profileWardrobeStars(profile)) > 0
   // a new shape not chosen yet is THE moment of every results screen until
-  // it is chosen (the first time it is new, later it is still waiting)
-  const shapeNews      = shapesOwed(profile, profileWardrobeStars(profile)) > 0
+  // it is chosen (the first time it is new, later it is still waiting) --
+  // but not after a round without a star: there the one message is "try
+  // again" with one big button. A big golden present above "Gleich klappt
+  // es!" read as a reward for failing and drew the tap away from "Nochmal";
+  // the present waits on the home screen (its sign on Lumi's shape button)
+  // and comes back here after the next round with a star.
+  const shapeNews      = stars >= 1 && shapesOwed(profile, profileWardrobeStars(profile)) > 0
   // what Lumi suggests next (lib/learning.js): the next level, the same one
   // to practise, or the one before
   const suggested      = gameResult?.suggestedLevel ?? nextLevel ?? level
