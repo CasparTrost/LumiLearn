@@ -11,6 +11,9 @@
 //   debug  'debug': the anchors (red), the tuft (blue) and the parts in
 //          front of neck things (green), the holding wing tip (magenta) instead of things
 //   DPR=3 in the environment draws at three times the pixels (small sizes).
+//   FIGURE=<shape id> (lib/shapes.js) draws on another figure with its own
+//   anchors (`poses` of the shape; the chick's POSES while a shape has none).
+//   POSES=idle,sleep draws only these poses.
 import { writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -26,25 +29,30 @@ const rows = what.startsWith('combo:')
   : (what === 'all' ? W.WARDROBE : what.startsWith('slot:') ? W.WARDROBE.filter(t => t.slot === what.slice(5)) : what.split(',').map(id => W.ITEM_BY_ID[id]))
     .map(t => ({ [t.slot]: t.id }))
 const file = p => pathToFileURL(join(ROOT, 'public', p)).href
+const SH = await import(pathToFileURL(join(ROOT, 'src/lib/shapes.js')).href)
+const FIG = process.env.FIGURE || 'chick'
+const SET = SH.SHAPE_BY_ID?.[FIG]?.poses && Object.keys(SH.SHAPE_BY_ID[FIG].poses).length ? SH.SHAPE_BY_ID[FIG].poses : W.POSES
+const POSE_LIST = process.env.POSES ? process.env.POSES.split(',') : W.POSE_IDS
+const base = pose => SH.shapeSrc(FIG, pose)
 
 function figure(pose, outfit) {
-  const { layers, scale } = W.figureLayers(pose, debug ? null : outfit)
+  const { layers, scale } = W.figureLayers(pose, debug ? null : outfit, SET)
   const inner = layers.map(l => l.kind === 'pose'
-    ? `<img src="${file(`sprites/emoji/custom/lumi-${pose}.webp`)}" style="position:absolute;inset:0;width:100%;height:100%;${l.clip ? `clip-path:${l.clip};` : ''}">`
+    ? `<img src="${file(base(pose))}" style="position:absolute;inset:0;width:100%;height:100%;${l.clip ? `clip-path:${l.clip};` : ''}">`
     : `<img src="${file(l.src)}" style="position:absolute;left:${l.left};top:${l.top};width:${l.size};height:${l.h ?? l.size};transform:rotate(${l.rot}deg);transform-origin:${l.origin};${l.clip ? `clip-path:${l.clip};` : ''}${l.filter ? `filter:${l.filter};` : ''}">`).join('')
   let marks = ''
   if (debug) {
-    const P = W.POSES[pose]
+    const P = SET[pose]
     const pts = a => a.map(([x, y]) => `${x},${y}`).join(' ')
     marks = `<svg viewBox="0 0 384 384" style="position:absolute;inset:0;width:100%;height:100%">${W.SLOTS.map(s => { const a = P[s]; return `<circle cx="${a.x}" cy="${a.y}" r="4" fill="red"/><line x1="${a.x - a.w / 2}" y1="${a.y}" x2="${a.x + a.w / 2}" y2="${a.y}" stroke="red" stroke-width="2" transform="rotate(${a.rot} ${a.x} ${a.y})"/><text x="${a.x + 6}" y="${a.y - 6}" font-size="14" fill="red">${s}</text>` }).join('')}<polygon points="${pts(P.tuft)}" fill="none" stroke="blue" stroke-width="2"/>${P.front ? `<polygon points="${pts(P.front)}" fill="none" stroke="green" stroke-width="2"/>` : ''}${P.grip ? `<polygon points="${pts(P.grip)}" fill="none" stroke="magenta" stroke-width="2"/>` : ''}</svg>`
   }
   return `<div style="position:relative;width:${size}px;height:${size}px;outline:1px dashed #0002"><div style="position:absolute;inset:0;transform:scale(${scale});transform-origin:50% 100%">${inner}</div>${marks}</div>`
 }
-const html = (debug ? [{}] : rows).map(o => `<div style="display:flex;gap:6px;align-items:center"><div style="width:110px;font:12px sans-serif;overflow-wrap:anywhere">${Object.values(o).join(' + ') || 'anchors'}</div>${W.POSE_IDS.map(p => figure(p, o)).join('')}</div>`).join('')
+const html = (debug ? [{}] : rows).map(o => `<div style="display:flex;gap:6px;align-items:center"><div style="width:110px;font:12px sans-serif;overflow-wrap:anywhere">${Object.values(o).join(' + ') || 'anchors'}</div>${POSE_LIST.map(p => figure(p, o)).join('')}</div>`).join('')
 const page = join(tmpdir(), `wardrobe-fit-${process.pid}.html`)
 writeFileSync(page, `<body style="margin:0;padding:6px;background:#bfe3f5;display:flex;flex-direction:column;gap:6px">${html}</body>`)
 const browser = await chromium.launch()
-const pg = await browser.newPage({ deviceScaleFactor: +(process.env.DPR || 1), viewport: { width: 120 + 7 * (size + 6), height: 400 } })
+const pg = await browser.newPage({ deviceScaleFactor: +(process.env.DPR || 1), viewport: { width: 120 + POSE_LIST.length * (size + 6), height: 400 } })
 await pg.goto(pathToFileURL(page).href)
 await pg.waitForTimeout(500)
 await pg.screenshot({ path: out, fullPage: true })

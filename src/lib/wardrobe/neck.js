@@ -14,7 +14,7 @@ export default [
   { id: 'gloeckchen',     name: 'Glöckchen',      slot: 'neck', src: 'sprites/wardrobe/gloeckchen.webp',     at: [0.5, 0.196],  size: 0.84, pose: { sleep: { size: 0.85 } }, box: [0.05, 0.07, 0.95, 0.93] },
   { id: 'herzkette',      name: 'Herzkette',      slot: 'neck', src: 'sprites/wardrobe/herzkette.webp',      at: [0.495, 0.086], size: 0.804, pose: { sleep: { size: 0.85 } }, box: [0.15, 0.05, 0.84, 0.95] },
   { id: 'sternabzeichen', name: 'Sternabzeichen', slot: 'neck', src: 'sprites/wardrobe/sternabzeichen.webp', at: [0.5, 0.17],  size: 0.88, pose: { sleep: { size: 0.85 } }, box: [0.14, 0.05, 0.86, 0.95] },
-  { id: 'kopfhoerer',     name: 'Kopfhörer',      slot: 'neck', src: 'sprites/wardrobe/kopfhoerer.webp',     at: [0.5, 0.16], size: 1.0, pose: { sleep: { size: 0.9 } }, box: [0.05, 0.11, 0.95, 0.89] },
-  { id: 'halskrause',     name: 'Halskrause',     slot: 'neck', src: 'sprites/wardrobe/halskrause.webp',     at: [0.5, 0.24],  size: 1.15, pose: { sad: { dy: 6 } }, box: [0.05, 0.2, 0.95, 0.8] },
+  { id: 'kopfhoerer',     name: 'Kopfhörer',      slot: 'neck', src: 'sprites/wardrobe/kopfhoerer.webp',     at: [0.5, 0.3], size: 0.75, sy: 0.8, apart: 0.22, cut: 0.62, box: [0.05, 0.11, 0.95, 0.89] },
+  { id: 'halskrause',     name: 'Halskrause',     slot: 'neck', src: 'sprites/wardrobe/halskrause.webp',     at: [0.5, 0.3], size: 0.95, sy: 0.6, pose: { sad: { dy: 6 } }, box: [0.05, 0.2, 0.95, 0.8] },
   { id: 'kamera',         name: 'Kamera',         slot: 'neck', src: 'sprites/wardrobe/kamera.webp',         at: [0.5, 0.06],  size: 0.65, pose: { sleep: { size: 0.85, dy: -8 } }, box: [0.15, 0.05, 0.85, 0.95] },
 ]
