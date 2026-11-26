@@ -5,6 +5,7 @@ import HEAD from '../wardrobe/head.js'
 import SHOES from '../wardrobe/shoes.js'
 import BOTTOM from '../wardrobe/bottom.js'
 import { ownTop } from '../wardrobe/top.js'
+import POSES from './drache-poses.js'
 
 // The dragon's head stands a little higher in its square than the chick's
 // and its eyes sit high under the brow: every hat sits higher and a little
@@ -30,14 +31,32 @@ hats.doktorhut = { pose: { hmm: { ...straight, size: 0.84 }, think: { ...straigh
 const SHORTS = ['jeansshorts', 'fussballshorts', 'entenbadehose', 'lederhose']
 const shorts = Object.fromEntries(BOTTOM.filter(t => SHORTS.includes(t.id)).map(t => [t.id, { size: +(t.size * 0.85).toFixed(3), sy: +(t.sy * 0.8 / 0.85).toFixed(3) }]))
 
+// Sitting, every bottom is one garment over its hips and thighs: its drawn
+// part fills the lap from under the arms to the floor between the feet
+// (the arms and the feet lie in front of it). `sit` places a thing so its
+// drawn part (`box`) fills [x0, y0, x1, y1] on the sleeping picture.
+function sit(t, [x0, y0, x1, y1], f = {}) {
+  const A = POSES.sleep.bottom
+  const [bx0, by0, bx1, by1] = t.box ?? [0, 0, 1, 1]
+  const W = (x1 - x0) / (bx1 - bx0), H = (y1 - y0) / (by1 - by0)
+  return {
+    size: +(W / (A.w * (f.size ?? t.size))).toFixed(3), sy: +(H / W).toFixed(3),
+    dx: Math.round(x0 + (t.at[0] - bx0) * W - A.x - (t.dx ?? 0) * A.w),
+    dy: Math.round(y0 + (t.at[1] - by0) * H - A.y - (t.dy ?? 0) * A.w),
+  }
+}
+const SKIRTS = ['tutu', 'bastrock', 'schottenrock', 'prinzessinnenrock']
+const LAP = [84, 268, 298, 374], SHORT = [86, 268, 296, 360], SKIRT = [70, 266, 312, 368]
+const sitting = Object.fromEntries(BOTTOM.filter(t => t.feet !== false).map(t => {
+  const f = shorts[t.id] ?? {}
+  return [t.id, { ...f, pose: { sleep: sit(t, SKIRTS.includes(t.id) ? SKIRT : SHORTS.includes(t.id) ? SHORT : LAP, f) } }]
+}))
+
 export default {
-  ...shorts,
+  ...sitting,
   ...hats,
   // sitting, the tail lies in the lap, not spread over the floor
-  // sitting, the skirts sit higher, at the waist under its arms: the hem
-  // stands out over its thighs on both sides
-  ...Object.fromEntries(['tutu', 'bastrock', 'schottenrock', 'prinzessinnenrock'].map(id => [id, { pose: { sleep: { dy: -26, size: 0.95 } } }])),
-  meerjungfrau: { pose: { sleep: { dy: -16, size: 1.6, sy: 0.32 } } },
+  meerjungfrau: { pose: { sleep: { dy: -8, size: 1.85, sy: 0.32 } } },
   // sitting, its big soles face the front: the shoes as big as the feet, over them
   ...Object.fromEntries(SHOES.map(t => [t.id, { pose: { sleep: { size: 1.02, dy: 0 } } }])),
   ...Object.fromEntries(Object.entries(tall).map(([id, f]) => [id, { ...(hats[id] ?? {}), ...f }])),
