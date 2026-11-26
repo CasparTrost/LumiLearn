@@ -57,7 +57,10 @@ export function movesFor(seedText) {
 // (with a gentle sway, never asleep)
 export const MOVE_MOOD = { stretch: 'happy', fly: 'wave', clap: 'happy', turn: 'wave', stamp: 'idle', breath: 'idle' }
 
-function Figure({ pic, beat, box = 'min(60vw, 280px)', swing = 60 }) {
+// `room`: beside the card (a phone held sideways) the figure keeps room for
+// its swing on both sides, so flying it never reaches the screen's edge or
+// the card (the swing, and the tilt of the wings at its ends)
+function Figure({ pic, beat, box = 'min(60vw, 280px)', swing = 60, room = false }) {
   const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
   const frog = pic === 'frog'
   const anim = reduce ? {} : {
@@ -71,7 +74,7 @@ function Figure({ pic, beat, box = 'min(60vw, 280px)', swing = 60 }) {
   }[pic]
   const dur = { frog: beat / 1000, clap: beat / 1000, stamp: beat / 1000, stretch: 3, fly: 2, turn: 4, breath: 6 }[pic] ?? 2
   return (
-    <div style={{ position: 'relative', width: box, height: box, flexShrink: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+    <div style={{ position: 'relative', width: box, height: box, flexShrink: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', marginInline: room ? `calc(${swing + 10}px + ${box} * 0.06)` : undefined }}>
       {pic === 'breath' && (
         <motion.div aria-hidden="true" animate={reduce ? {} : { scale: [0.7, 1.15, 0.7], opacity: [0.35, 0.7, 0.35] }} transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
           style={{ position: 'absolute', inset: '6%', borderRadius: '50%', background: 'radial-gradient(circle, #bfe9ff 0%, rgba(191,233,255,0) 70%)' }} />
@@ -166,7 +169,7 @@ export default function MoveBreakScreen() {
         <AnimatePresence mode="wait">
           {finished ? (
             <motion.div key="done" initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} style={{ display: 'flex', ...row, alignItems: 'center' }}>
-              <Figure pic="clap" beat={700} box={box} />
+              <Figure pic="clap" beat={700} box={box} swing={sideways ? 22 : 60} room={sideways} />
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
               <div className="px-title" style={{ fontSize: 'clamp(26px,5vw,40px)' }}>Super gemacht!</div>
               {sticker && STICKER_BY_EMOJI[sticker] && (
@@ -183,7 +186,7 @@ export default function MoveBreakScreen() {
           ) : m && (
             <motion.div key={m.id} initial={{ x: 80, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -80, opacity: 0 }}
               style={{ display: 'flex', ...row, alignItems: 'center' }}>
-              <Figure pic={m.pic} beat={m.beat} box={box} swing={sideways ? 22 : 60} />
+              <Figure pic={m.pic} beat={m.beat} box={box} swing={sideways ? 22 : 60} room={sideways} />
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
               <div className="px-panel" style={{ padding: '10px 16px', maxWidth: 520, fontFamily: 'var(--font-heading)', fontSize: 'clamp(18px,3vw,24px)', fontWeight: 700, color: 'var(--px-ink)' }}>
                 {m.say.text}

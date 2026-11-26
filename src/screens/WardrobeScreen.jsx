@@ -6,7 +6,7 @@ import MusicButton from '../components/MusicControls.jsx'
 import LumiFigure from '../components/LumiFigure.jsx'
 import { Critter, Art, useMood, useBursts } from '../components/play/index.js'
 import { asset } from '../lib/assets.js'
-import { SLOTS, WARDROBE, ITEM_BY_ID, isUnlocked, cleanOutfit, tilePictures } from '../lib/wardrobe.js'
+import { SLOTS, WARDROBE, ITEM_BY_ID, isUnlocked, cleanOutfit, wearToggle, tilePictures } from '../lib/wardrobe.js'
 import { narrate, stopNarration } from '../narrator.js'
 import { sfx } from '../sfx.js'
 import { LINES, line } from '../lib/lumiLines.js'
@@ -33,10 +33,23 @@ import { LINES, line } from '../lib/lumiLines.js'
 const rec = key => (LINES[key] ? line(key) : null)
 const REACTIONS = ['schrank/anziehen-1', 'schrank/anziehen-2', 'schrank/anziehen-3', 'schrank/anziehen-4']
 const SHELF_LABEL = { head: 'Für den Kopf', face: 'Fürs Gesicht', neck: 'Für den Hals', back: 'Für den Rücken', hold: 'Zum Festhalten', outfit: 'Zum Anziehen', shoes: 'Für die Füße' }
-// the tabs stand in lines of this many (seven places: a line of four and one of three)
-const TABS_PER_LINE = Math.ceil(SLOTS.length / Math.ceil(SLOTS.length / 5))
-const TAB_LINES = Math.ceil(SLOTS.length / TABS_PER_LINE)
+// the tabs: all seven in one line above the shelf where each is at least
+// TAB_ONE_LINE wide there, else a line of four and one of three (on the
+// other side of the shelf)
+const TAB_ONE_LINE = 64
 const TAB_GAP = 6
+// the shelf's frame: its border and its corners (sideways smaller: the
+// tabs stand only on its straight edges, so an open tab always meets a
+// straight border it can open)
+const FRAME_B = 4
+const frameRadius = side => (side ? 10 : 16)
+// the wood of the frame, and the colour of the open tab's side that joins
+// it (the frame's wood where the tab meets it: one piece)
+const FRAME_WOOD = 'linear-gradient(90deg, #c27a3a 0%, #c98443 50%, #c27a3a 100%)'
+const JOIN_WOOD = { top: '#c78040', bottom: '#c78040', left: '#c27a3a', right: '#c27a3a' }
+// where on Lumi a place's things are (a share of its height from the top):
+// the stars of putting on and the puff of taking off come from there
+const SPOT = { head: 0.2, face: 0.34, neck: 0.46, back: 0.5, hold: 0.55, outfit: 0.62, shoes: 0.9 }
 // presents shown per place before the pile
 const WRAPPED_SHOWN = 2
 // things that glow as new at most
@@ -79,6 +92,10 @@ export default function WardrobeScreen() {
   const [mood, setMood] = useMood('wave')
   const [wish, setWish] = useState(null)       // the present whose missing stars Lumi shows
   const [shake, setShake] = useState(null)
+  // the tab of a thing that came off to make room for another wiggles
+  const [tabWiggle, setTabWiggle] = useState(null)
+  // one thing off and then another on (a swap): the timer between them
+  const swapping = useRef(null)
   const [bursts, burst] = useBursts()
   const lumiRef = useRef(null)
   const wishTimer = useRef(null)
@@ -97,18 +114,26 @@ export default function WardrobeScreen() {
   const stageW = wide ? Math.min(440, Math.max(220, w * 0.4), Math.max(220, h - hud - (sideTabs ? 50 : 0))) : w
   const stageH = wide ? h - hud : Math.min(290, Math.round(h * 0.31))
   const lumi = Math.round(wide ? Math.min(stageW * 0.8, stageH * 0.7, 340) : stageH * 0.76)
-  // the tabs: as big as fits, in lines of TABS_PER_LINE (four and three for
-  // seven places; sideways on a phone, two columns), never
-  // smaller than 44 px to tap
-  const tabSize = sideTabs
-    ? Math.round(Math.max(44, Math.min(64, (h - hud - 24) / TABS_PER_LINE - TAB_GAP - 4)))
-    : Math.round(Math.max(44, Math.min(TAB_LINES > 1 ? 62 : 76, ((wide ? w - stageW : w) - 40) / TABS_PER_LINE - 10)))
+  // the shelf's frame: its padding (the wood between an open tab and the
+  // shelf) and how long its straight edge is where the tabs stand
+  const padX = sideTabs ? 6 : wide ? Math.min(22, Math.max(10, w * 0.02)) : 10
+  const framePad = sideTabs ? 6 : Math.round(Math.min(12, Math.max(6, w * 0.014)))
+  const frameLong = sideTabs ? h - hud - 16 : Math.min(680, (wide ? w - stageW : w) - 2 * padX)
+  const straight = frameLong - 2 * frameRadius(sideTabs) - 2 * FRAME_B
+  // the tabs: as big as fits on that straight edge, never smaller than
+  // 44 px to tap; a tab is its picture and its frame (8 px across, 4 along a side)
+  const tabGap = sideTabs ? 4 : TAB_GAP + 2
+  const tabFrame = sideTabs ? 4 : 8
+  const fitTab = n => Math.floor((straight - (n - 1) * tabGap) / n) - tabFrame
+  const perLine = !sideTabs && fitTab(SLOTS.length) + tabFrame >= TAB_ONE_LINE ? SLOTS.length : Math.ceil(SLOTS.length / 2)
+  const tabSize = Math.max(44, Math.min(sideTabs ? 64 : perLine === SLOTS.length ? 76 : 62, fitTab(perLine)))
 
-  // the tabs never move: the first line (head to back) stands on one side
-  // of the shelf, the second (hold, outfit, shoes) on the other (above and below
-  // it, sideways on a phone left and right), so both lines touch the shelf
-  // and the open tab is always one piece with it, wherever it is
-  const tabLines = Array.from({ length: TAB_LINES }, (_, i) => SLOTS.slice(i * TABS_PER_LINE, (i + 1) * TABS_PER_LINE))
+  // the tabs never move: in one line above the shelf where all seven fit,
+  // else the first line (head to back) on one side of the shelf, the second
+  // (hold, outfit, shoes) on the other (above and below it, sideways on a
+  // phone left and right), so every line touches the shelf and the open tab
+  // is always one piece with it, wherever it is
+  const tabLines = Array.from({ length: Math.ceil(SLOTS.length / perLine) }, (_, i) => SLOTS.slice(i * perLine, (i + 1) * perLine))
   const edges = sideTabs ? ['left', 'right'] : ['top', 'bottom']
   const items = WARDROBE.filter(t => t.slot === tab)
   const open = items.filter(t => isUnlocked(t, stars))
@@ -185,7 +210,7 @@ export default function WardrobeScreen() {
     // (the explanation only until the child has tried on a few things:
     // it knows the wardrobe then, and six seconds at every visit are too many)
     const t = setTimeout(() => { if (tried.length < 3) narrate([rec('schrank/willkommen')]) }, 500)
-    return () => { clearTimeout(t); clearTimeout(wishTimer.current); stopNarration() }
+    return () => { clearTimeout(t); clearTimeout(wishTimer.current); clearTimeout(swapping.current); stopNarration() }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // anything else Lumi says ends the comment (and what waited for it)
@@ -193,9 +218,27 @@ export default function WardrobeScreen() {
 
   const home = () => { stopNarration(); dispatch({ type: 'NAVIGATE', payload: 'home' }) }
 
-  const headPoint = () => {
+  // where a place's things are on Lumi, on the screen
+  const spotOf = slot => {
     const r = lumiRef.current?.getBoundingClientRect()
-    return r ? { x: r.left + r.width / 2, y: r.top + r.height * 0.3 } : undefined
+    return r ? { x: r.left + r.width / 2, y: r.top + r.height * (SPOT[slot] ?? 0.3) } : undefined
+  }
+
+  // put on: a boing, a sparkle, stars from where it sits, Lumi hops
+  const putOnShow = item => {
+    sfx.boing()
+    setTimeout(() => sfx.sparkle(), 220)
+    // a hop on the spot (the spin of 'happy' swung Lumi out of the stage)
+    setMood('hop', 1200)
+    setTimeout(() => burst(spotOf(item.slot), 'stars', 12), 120)
+  }
+  // taken off: always a pop and a puff of cloud where it was, Lumi says
+  // "oh" with its face (and now and then in words), so it is seen and heard
+  // every time, also when Lumi says nothing
+  const takeOffShow = slot => {
+    sfx.pop()
+    setMood('wow', 900)
+    burst(spotOf(slot), 'puff', 10)
   }
 
   // still wrapped: it shakes, and Lumi shows how many stars are missing
@@ -215,39 +258,58 @@ export default function WardrobeScreen() {
     // a place said after Lumi's comment is old news once the child acts
     placeAfter.current = null
     if (!isUnlocked(item, stars)) return wrappedTap(item, item.id)
+    // (a swap under way: the next tap waits for it)
+    if (swapping.current) return
     const on = outfit[item.slot] !== item.id
-    dispatch({ type: 'WARDROBE_WEAR', payload: item.id })
-    if (on) {
-      sfx.boing()
-      setTimeout(() => sfx.sparkle(), 220)
-      // a hop on the spot (the spin of 'happy' swung Lumi out of the stage)
-      setMood('hop', 1200)
-      setTimeout(() => burst(headPoint(), 'stars', 12), 120)
-      // Lumi says something about every third thing (the first one always):
-      // a child tries on ten things in a row, and ten sentences are too many
-      if (worn.current++ % 3 === 0) {
-        reaction.current = (reaction.current + 1) % REACTIONS.length
-        const r = rec(REACTIONS[reaction.current])
-        if (r) {
-          commenting.current = Date.now()
-          placeAfter.current = null
-          narrate([r], { onEnd: () => {
-            commenting.current = 0
-            const slot = placeAfter.current
-            placeAfter.current = null
-            if (slot) narrate([rec(`schrank/platz-${slot}`)])
-          } })
-        }
+    // Two things that cannot go together (shoes and a mermaid's tail): the
+    // child asked for the new one, so it goes on, but first the other comes
+    // off with the usual take-off show (a pop, a puff where it was, its tab
+    // wiggles: that is where it went), then the new one goes on. A
+    // five-year-old sees why the tail went: the shoes came. (Refusing the
+    // shoes would need a rule it cannot read, and a way back it has to find.)
+    const off = on ? SLOTS.filter(s => s !== item.slot && outfit[s] && wearToggle(outfit, item)[s] !== outfit[s]) : []
+    if (off.length) {
+      for (const s of off) {
+        dispatch({ type: 'WARDROBE_WEAR', payload: outfit[s] })
+        takeOffShow(s)
       }
-    } else {
-      sfx.pop()
-      setMood('wow', 900)
-      if (takenOff.current++ % 3 === 0) say('schrank/ausziehen')
+      setTabWiggle({ slot: off[0], at: Date.now() })
+      swapping.current = setTimeout(() => { swapping.current = null; putOn(item) }, 520)
+      return
+    }
+    if (on) return putOn(item)
+    dispatch({ type: 'WARDROBE_WEAR', payload: item.id })
+    takeOffShow(item.slot)
+    if (takenOff.current++ % 3 === 0) say('schrank/ausziehen')
+  }
+
+  // (on: the reducer puts on what is not worn)
+  const putOn = item => {
+    dispatch({ type: 'WARDROBE_WEAR', payload: item.id })
+    putOnShow(item)
+    // Lumi says something about every third thing (the first one always):
+    // a child tries on ten things in a row, and ten sentences are too many
+    if (worn.current++ % 3 === 0) {
+      reaction.current = (reaction.current + 1) % REACTIONS.length
+      const r = rec(REACTIONS[reaction.current])
+      if (r) {
+        commenting.current = Date.now()
+        placeAfter.current = null
+        narrate([r], { onEnd: () => {
+          commenting.current = 0
+          const slot = placeAfter.current
+          placeAfter.current = null
+          if (slot) narrate([rec(`schrank/platz-${slot}`)])
+        } })
+      }
     }
   }
 
   const undress = () => {
     setWish(null)
+    // (a swap under way ends here: everything is off)
+    clearTimeout(swapping.current)
+    swapping.current = null
     dispatch({ type: 'WARDROBE_UNDRESS' })
     sfx.whoosh()
     setMood('wow', 900)
@@ -268,7 +330,7 @@ export default function WardrobeScreen() {
     const edge = edges[i], side = sideTabs
     return (
       <div role="tablist" aria-label={i === 0 ? 'Wo Lumi es trägt' : 'Wo Lumi es noch trägt'} aria-orientation={side ? 'vertical' : 'horizontal'} data-tabline={i} style={{
-        display: 'flex', flexDirection: side ? 'column' : 'row', gap: TAB_GAP + (side ? 0 : 2), justifyContent: 'center',
+        display: 'flex', flexDirection: side ? 'column' : 'row', gap: tabGap, justifyContent: 'center',
         alignItems: { top: 'flex-end', bottom: 'flex-start', left: 'flex-end', right: 'flex-start' }[edge],
         [side ? 'paddingBlock' : 'paddingInline']: 6, flexShrink: 0, position: 'relative', zIndex: 2, alignSelf: 'center',
         // as deep as an open tab, open or not: the shelf never moves
@@ -276,7 +338,7 @@ export default function WardrobeScreen() {
       }}>
         {tabLines[i].map(slot => (
           <PlaceTab key={slot} slot={slot} size={tabSize} edge={edge} active={slot === tab} fresh={WARDROBE.some(t => t.slot === slot && isFresh(t))}
-            worn={!!outfit[slot]} stars={stars} onTap={() => pickTab(slot)} />
+            worn={!!outfit[slot]} stars={stars} wiggle={tabWiggle?.slot === slot ? tabWiggle.at : null} onTap={() => pickTab(slot)} />
         ))}
       </div>
     )
@@ -337,15 +399,20 @@ export default function WardrobeScreen() {
         {/* ── The wardrobe: seven picture tabs, one place at a time ── */}
         <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: sideTabs ? 'row' : 'column', padding: sideTabs ? '8px 6px' : wide ? '10px clamp(10px,2vw,22px) 12px' : '8px 10px 10px' }}>
           {tabLine(0)}
-          <div style={{
-            flex: 1, minHeight: 0, minWidth: 0, maxWidth: 680, width: '100%', margin: sideTabs ? '0 -4px' : '-4px auto', borderRadius: 22, border: '4px solid var(--px-ink)',
-            padding: sideTabs ? 6 : 'clamp(6px,1.4vw,12px)', paddingBottom: strip ? MORE_STRIP : undefined, flexDirection: 'column',
-            background: 'linear-gradient(90deg, #a8652c 0%, #c27a3a 12%, #c98443 50%, #c27a3a 88%, #a8652c 100%)',
+          {/* (the frame overlaps the tab lines by its border: an open tab
+              covers it with the frame's wood, so tab and frame are one piece;
+              its padding is set side by side, never as a shorthand, so the
+              wood is there below the shelf too once the "more" strip goes) */}
+          <div data-frame style={{
+            flex: 1, minHeight: 0, minWidth: 0, maxWidth: 680, width: '100%', margin: sideTabs ? `0 -${FRAME_B}px` : `-${FRAME_B}px auto`,
+            borderRadius: frameRadius(sideTabs), border: `${FRAME_B}px solid var(--px-ink)`,
+            paddingTop: framePad, paddingLeft: framePad, paddingRight: framePad, paddingBottom: strip ? MORE_STRIP : framePad, flexDirection: 'column',
+            background: FRAME_WOOD,
             boxShadow: '0 6px 0 rgba(42,27,61,0.3)', display: 'flex', position: 'relative',
           }}>
             <section ref={shelfRef} role="tabpanel" aria-label={SHELF_LABEL[tab]} data-shelf={tab} data-tile={tile} style={{
               flex: 1, minHeight: 0, overflow: 'auto', borderRadius: 12, border: '3px solid var(--px-ink)',
-              background: `repeating-linear-gradient(180deg, #fbeacb 0px, #fbeacb ${tile + 2}px, #b06c32 ${tile + 2}px, #8a4f22 ${tile + gap}px)`,
+              backgroundImage: `repeating-linear-gradient(180deg, #fbeacb 0px, #fbeacb ${tile + 2}px, #b06c32 ${tile + 2}px, #8a4f22 ${tile + gap}px)`,
               backgroundPosition: `0 ${sideTabs ? 8 : 10}px`, padding: sideTabs ? '8px 8px' : '10px 10px',
             }}>
               <motion.div key={tab} initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.25 }}
@@ -374,7 +441,7 @@ export default function WardrobeScreen() {
               </motion.button>
             )}
           </div>
-          {tabLine(1)}
+          {tabLines.length > 1 && tabLine(1)}
         </div>
       </div>
       {bursts}
@@ -391,33 +458,40 @@ export default function WardrobeScreen() {
  * shown in colour that is not there; a black shadow of a pair of shoes read as two blobs). A sparkle when something there is
  * new, a green dot while Lumi wears something of it.
  */
-function PlaceTab({ slot, size, edge, active, fresh, worn, stars, onTap }) {
+function PlaceTab({ slot, size, edge, active, fresh, worn, stars, wiggle, onTap }) {
   const side = edge === 'left' || edge === 'right'
-  // the side that joins the shelf, and how far an idle tab steps back from it
+  // the side that joins the shelf: every tab stands flush on the frame's
+  // border (its line overlaps it); the open one is longer, away from the
+  // shelf, and its joining side is the frame's wood, so the frame's dark
+  // border is open where it meets it (in every line: above, below, sideways)
   const join = { top: 'Bottom', bottom: 'Top', left: 'Right', right: 'Left' }[edge]
-  const away = { top: 6, bottom: -6, left: 6, right: -6 }[edge]
+  // the light falls from the shelf side
+  const toShelf = { top: '180deg', bottom: '0deg', left: '90deg', right: '270deg' }[edge]
   // the sparkle and the green dot sit on the corners away from the shelf
   const far = edge === 'bottom' ? 'bottom' : 'top', out = edge === 'left' ? 'left' : 'right', dot = out === 'left' ? 'right' : 'left'
   const rep = WARDROBE.find(t => t.slot === slot)
   const owned = !!rep && isUnlocked(rep, stars)
   return (
     <motion.button type="button" role="tab" aria-selected={active} aria-label={`${SHELF_LABEL[slot]}${fresh ? ', etwas Neues' : ''}`} data-tab={slot}
-      onClick={onTap} whileTap={{ scale: 0.92 }} layout
+      onClick={onTap} whileTap={{ scale: 0.92 }}
       data-owned={owned ? '1' : undefined}
-      animate={side ? { x: active ? 0 : away } : { y: active ? 0 : away }}
       style={{
-        all: 'unset', boxSizing: 'border-box', cursor: 'pointer', position: 'relative',
+        all: 'unset', boxSizing: 'border-box', cursor: 'pointer', position: 'relative', flexShrink: 0,
         width: side ? size + (active ? 14 : 6) : size + 8, height: side ? size + 4 : size + (active ? 14 : 6),
         borderRadius: { top: '16px 16px 0 0', bottom: '0 0 16px 16px', left: '16px 0 0 16px', right: '0 16px 16px 0' }[edge], border: '4px solid var(--px-ink)',
-        [`border${join}`]: active ? '4px solid #c98443' : '4px solid var(--px-ink)',
-        background: active ? `linear-gradient(${edge === 'bottom' ? '0deg' : '180deg'}, #fff8e2, #f6dca8)` : 'linear-gradient(180deg, #e9c48e, #c99a60)',
+        [`border${join}Color`]: active ? JOIN_WOOD[edge] : 'var(--px-ink)',
+        background: active ? `linear-gradient(${toShelf}, #fff8e2, #f6dca8)` : 'linear-gradient(180deg, #e9c48e, #c99a60)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', [`padding${join}`]: active ? 6 : 0,
-        boxShadow: active ? `0 ${edge === 'bottom' ? 3 : -3}px 0 rgba(255,255,255,0.6) inset` : 'none',
+        boxShadow: active ? `${side ? (edge === 'left' ? -3 : 3) : 0}px ${side ? 0 : edge === 'bottom' ? 3 : -3}px 0 rgba(255,255,255,0.6) inset` : 'none',
       }}>
       {rep && (
-        <span style={{ position: 'relative', opacity: owned ? (active ? 1 : 0.8) : 0.45, filter: owned ? undefined : 'grayscale(1) contrast(0.8)' }}>
+        // (a thing that came off by itself, to make room for another, went
+        // back here: the tab's picture wiggles)
+        <motion.span key={wiggle ?? 'still'} data-wiggle={wiggle ? '1' : undefined}
+          animate={wiggle ? { rotate: [0, -12, 10, -7, 4, 0], scale: [1, 1.12, 1.12, 1.06, 1, 1] } : { rotate: 0 }} transition={{ duration: 0.7 }}
+          style={{ position: 'relative', display: 'block', opacity: owned ? (active ? 1 : 0.8) : 0.45, filter: owned ? undefined : 'grayscale(1) contrast(0.8)' }}>
           <ThingPic item={rep} size={size - 10} />
-        </span>
+        </motion.span>
       )}
       {!owned && (
         <span aria-hidden="true" style={{ position: 'absolute', right: 2, bottom: 2 }}><Art art="🎁" size={Math.round(size * 0.36)} /></span>
