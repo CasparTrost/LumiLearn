@@ -95,9 +95,21 @@ export function childFrame(shape, outfit) {
  */
 export const pictureOutfit = outfit => (outfit ? { ...outfit, face: null } : null)
 
+const childOutfit = (shape, profile) => (wearsClothes(shape) ? pictureOutfit(profile?.outfit) : null)
+/**
+ * How far (px) the drawn figure of a child's picture reaches past the
+ * picture's left edge (clipped there, but its box sticks out): a picture
+ * this close to the screen's edge is moved in by that much (the home
+ * header on a phone).
+ */
+export function childOverhang(profile, size = 56) {
+  const shape = drawnShape(profile)
+  return Math.max(0, Math.ceil(-size * childFrame(shape, childOutfit(shape, profile)).left))
+}
+
 export function ChildLumi({ profile, size = 56, style }) {
   const shape = drawnShape(profile)
-  const outfit = wearsClothes(shape) ? pictureOutfit(profile?.outfit) : null
+  const outfit = childOutfit(shape, profile)
   const f = childFrame(shape, outfit)
   return (
     <span aria-hidden="true" data-child-lumi={shape ?? 'chick'}

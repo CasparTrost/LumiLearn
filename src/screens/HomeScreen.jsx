@@ -19,7 +19,7 @@ import { lazyWithReload } from '../lib/lazyWithReload.js'
 import { journeyArt, asset } from '../lib/assets.js'
 import { unseenItems } from '../lib/wardrobe.js'
 import { shapesOwed, firstChoiceOwed, offeredFirst, offerFirstByItself } from '../lib/shapes.js'
-import { ShapesIcon, ChildLumi } from '../components/ShapeFigure.jsx'
+import { ShapesIcon, ChildLumi, childOverhang } from '../components/ShapeFigure.jsx'
 import { WORLDS, MODULE_BY_ID, recommend, sortForAge, visibleModules } from '../modules.js'
 import { prefetchGame, isGameLoaded, ensureGame } from './GameScreen.jsx'
 import { line, gameLine } from '../lib/lumiLines.js'
@@ -450,7 +450,10 @@ export default function HomeScreen() {
       {/* ── HUD ── */}
       {/* on a phone the buttons are 44 px and closer together: with Lumi's
           shapes beside the wardrobe the name had no room left */}
-      <HudBar style={{ position:'sticky', top:0, zIndex:20, ...(narrow ? { gap:5, paddingLeft:8, paddingRight:8 } : null) }}>
+      {/* (the child's picture draws its figure larger than the frame, cut
+          by it: the bar starts far enough in that the figure's box stays on
+          the screen; 4 px are the button's own edge) */}
+      <HudBar style={{ position:'sticky', top:0, zIndex:20, ...(narrow ? { gap:5, paddingLeft: Math.max(8, childOverhang(activeProfile, 36) - 4), paddingRight:8 } : null) }}>
         <button
           className="px-btn px-btn--parch"
           onClick={() => setShowSwitcher(true)}

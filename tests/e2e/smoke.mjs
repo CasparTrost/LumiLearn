@@ -647,7 +647,12 @@ async function playShadows(page, { wrongOnce = false } = {}) {
   await page.goto(URL); await page.waitForTimeout(1500)
   const saved = await page.evaluate(async () => {
     await navigator.serviceWorker?.ready
-    const pictures = (await (await fetch('media-manifest.json')).json()).length
+    // every picture; the clothes painted onto a figure only for the figures
+    // the children here have (the others come when first shown)
+    const s = JSON.parse(localStorage.getItem('lumilearn_save') ?? 'null')
+    const figures = ['chick', ...Object.values(s?.profiles ?? {}).flatMap(p => p.shapes ?? [])]
+    const pictures = (await (await fetch('media-manifest.json')).json())
+      .filter(f => { const m = /^sprites\/wardrobe\/worn\/([^/]+)\//.exec(f); return !m || figures.includes(m[1]) }).length
     for (let i = 0; i < 240; i++) {                 // the worker saves the app and every picture
       const media = (await (await caches.open('lumi-media-v1')).keys()).length
       if (media >= pictures) return media
