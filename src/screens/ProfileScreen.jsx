@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useApp } from '../AppContext.jsx'
 import { useT } from '../i18n.js'
 import { PixelLumi, PxIcon, uiSpr } from '../components/PixelUI.jsx'
-import { narrate, stopNarration } from '../narrator.js'
+import { narrate, stopNarration, afterNarration } from '../narrator.js'
 import { hearable } from '../lib/hearable.js'
 import { sayNumber } from '../tts.js'
 import { line } from '../lib/lumiLines.js'
@@ -17,7 +17,9 @@ export const AGES = [4, 5, 6, 7]
 const SAY_AGE  = line('menue/wie-alt')
 // Lumi's sentences for the choice (looked up: a missing one is left out)
 const SAY_SHAPE = LINES['gestalt/aussuchen'] ? line('gestalt/aussuchen') : null
-const SAY_SHAPE_IS = id => (LINES[`gestalt/${id}`] ? line(`gestalt/${id}`) : null)
+// a new child: the chick says it is a chick (not "again": that is for turning back)
+const firstKey = id => (id === 'chick' && LINES['gestalt/kueken-neu'] ? 'gestalt/kueken-neu' : `gestalt/${id}`)
+const SAY_SHAPE_IS = id => (LINES[firstKey(id)] ? line(firstKey(id)) : null)
 const SAY_WHO  = line('menue/wer-spielt-heute')
 // the ages as recorded numbers (public/audio/zahlen-entdecken)
 const AGE_CLIP = { 4: 'vier', 5: 'fuenf', 6: 'sechs', 7: 'sieben' }
@@ -41,8 +43,11 @@ function ShapeStart({ onChosen, onCancel }) {
     lock.current = Date.now()
     stopNarration()
     setPoof({ id, at: Date.now() })
-    setTimeout(() => narrate([SAY_SHAPE_IS(id)]), 400)
-    setTimeout(() => onChosen(id), 1300)
+    // the shape's sentence is said to its end before the next screen speaks
+    setTimeout(() => {
+      narrate([SAY_SHAPE_IS(id)])
+      afterNarration(() => onChosen(id), { minMs: 900, maxMs: 6000 })
+    }, 400)
   }
   const top = w < 521 ? 64 : 76
   return (
@@ -180,6 +185,10 @@ export default function ProfileScreen() {
   const [mode, setMode] = useState(profiles.length === 0 || state.profileCreate ? 'create' : 'select')
   // the Lumi the new child chose on the ring (then the age)
   const [newShape, setNewShape] = useState(null)
+  // a phone held sideways: the children side by side in two columns, a
+  // smaller heading, so the list fits without scrolling
+  const { w: vw, h: vh } = useViewport()
+  const flat = vh < 500 && vw > vh
 
   useEffect(() => {
     if (mode !== 'select') return
@@ -213,33 +222,35 @@ export default function ProfileScreen() {
       backgroundImage: `linear-gradient(rgba(42,27,61,0.45), rgba(42,27,61,0.45)), url(${uiSpr('landscape.png')})`,
       backgroundSize: 'cover', backgroundPosition: 'center 70%', imageRendering: 'pixelated',
       display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
-      padding:'clamp(16px,3dvh,32px) 16px', position:'relative', overflow:'hidden',
+      padding: flat ? '8px 16px' : 'clamp(16px,3dvh,32px) 16px', position:'relative', overflow:'hidden',
     }}>
-      <div style={{ position:'relative', zIndex:1, width:'100%', maxWidth:480 }}>
+      <div style={{ position:'relative', zIndex:1, width:'100%', maxWidth: flat && mode === 'select' ? 760 : 480 }}>
         <AnimatePresence mode="wait">
           {mode === 'select' ? (
             <motion.div key="select"
               initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-20 }}
-              style={{ display:'flex', flexDirection:'column', gap:14 }}
+              style={{ display:'flex', flexDirection:'column', gap: flat ? 8 : 14 }}
             >
-              <div style={{ textAlign:'center', marginBottom:4 }}>
-                <PixelLumi size={84} outfit={null} style={{ margin: '0 auto' }} />
-                <h1 className="px-title" style={{ fontSize:'clamp(24px,6vw,36px)', marginTop:10, marginBottom:6 }}>
+              <div style={{ textAlign:'center', marginBottom: flat ? 0 : 4 }}>
+                {!flat && <PixelLumi size={84} outfit={null} style={{ margin: '0 auto' }} />}
+                <h1 className="px-title" style={{ fontSize: flat ? 24 : 'clamp(24px,6vw,36px)', marginTop: flat ? 0 : 10, marginBottom: flat ? 2 : 6 }}>
                   {t('profile.who')}
                 </h1>
-                <p className="px-title" style={{ fontSize:17 }}>
+                <p className="px-title" style={{ fontSize: flat ? 15 : 17, margin: flat ? 0 : undefined }}>
                   {t('profile.tapName')}
                 </p>
               </div>
 
-              <div style={{ display:'flex', flexDirection:'column', gap:12, maxHeight:'58dvh', overflowY:'auto', padding:'2px 2px 8px' }}>
+              <div data-picker-list style={flat
+                ? { display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, maxHeight:'calc(100dvh - 124px)', overflowY:'auto', padding:'2px 2px 6px' }
+                : { display:'flex', flexDirection:'column', gap:12, maxHeight:'58dvh', overflowY:'auto', padding:'2px 2px 8px' }}>
                 {profiles.map((p, i) => (
                   <motion.button key={p.id ?? i}
                     className="px-panel"
                     initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} transition={{ delay:i*0.07 }}
                     onClick={() => selectProfile(p)}
                     {...hearable(p.name)}
-                    style={{ display:'flex', alignItems:'center', gap:16, padding:'12px 16px', cursor:'pointer', textAlign:'left', flexShrink:0 }}
+                    style={{ display:'flex', alignItems:'center', gap: flat ? 12 : 16, padding: flat ? '6px 12px' : '12px 16px', cursor:'pointer', textAlign:'left', flexShrink:0 }}
                   >
                     <div className="px-btn px-btn--gold" aria-hidden="true" style={{ width:60, height:60, padding:0, flexShrink:0, pointerEvents:'none' }}>
                       <ChildLumi profile={p} size={50} />
@@ -253,7 +264,7 @@ export default function ProfileScreen() {
                 ))}
               </div>
 
-              <button className="px-btn px-btn--parch px-btn--md" onClick={() => setMode('create')} style={{ alignSelf:'center' }}>
+              <button className="px-btn px-btn--parch px-btn--md" onClick={() => setMode('create')} style={{ alignSelf:'center', ...(flat ? { padding:'6px 16px', minHeight:44 } : null) }}>
                 ➕ {t('profile.addLearner')}
               </button>
             </motion.div>

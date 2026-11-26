@@ -6,7 +6,9 @@ import { lumiArt } from '../../lib/assets.js'
 import { sfx } from '../../sfx.js'
 import { playAnimal } from '../../lib/animalSounds.js'
 import LumiFigure from '../LumiFigure.jsx'
-import { useDrawnOutfit } from '../ShapeFigure.jsx'
+import { useDrawnOutfit, useLumiShape } from '../ShapeFigure.jsx'
+import { wornTop } from '../../lib/shapes.js'
+import { lumiPose } from '../../lib/wardrobe.js'
 import './play.css'
 
 const BASE = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '')
@@ -69,7 +71,14 @@ export default function Critter({
   const [tickle, setTickle] = useState(0)
   const speaking = useSpeaking(talks)
   // a hat reaches up to the top of Lumi's square: the bubble keeps clear of it
-  const hatOn = !!useDrawnOutfit()?.head && art === 'lumi'
+  const worn = useDrawnOutfit()
+  const hatOn = !!worn?.head && art === 'lumi'
+  // Lumi's marks go above the top of its head and what it wears there (a
+  // rain cloud on a top hat read as smoke; a unicorn's horn reaches up too):
+  // they are made for a head that ends at MARK_TOP of the square
+  const lumiShape = useLumiShape()
+  const tops = art === 'lumi' ? wornTop(lumiShape, lumiPose(mood), worn) : null
+  const raise = tops ? Math.max(0, MARK_TOP - tops.top) * size : 0
   const shown = mood === 'idle' && speaking ? 'talk' : mood
 
   useEffect(() => {
@@ -127,7 +136,9 @@ export default function Critter({
         {accessory}
       </motion.button>
       {/* Lumi's sleeping picture has its own Zzz: a second one sat on top of it */}
-      <MoodMark mood={art === 'lumi' && shown === 'sleep' ? 'idle' : shown} size={size} tickle={tickle} />
+      <div aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', transform: raise ? `translateY(${-raise}px)` : undefined }}>
+        <MoodMark mood={art === 'lumi' && shown === 'sleep' ? 'idle' : shown} size={size} tickle={tickle} />
+      </div>
       {wish && <Wish side={wishSide} size={size} style={hatOn && wishSide === 'top' ? { marginBottom: size * 0.11 } : undefined}>{wish}</Wish>}
       {children}
     </div>
@@ -157,6 +168,7 @@ function useSpeaking(on) {
 // Each says what the character feels; a miss ('oops') has none.
 // They stay inside the character's own box, never above it: a game that
 // clips its stage (Zahlen entdecken) cut off hearts above the head.
+const MARK_TOP = 0.12
 function MoodMark({ mood, size, tickle }) {
   const s = size
   return (
