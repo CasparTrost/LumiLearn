@@ -407,6 +407,8 @@ export function fitted(item, fit = {}) {
 export const wornFit = (figure, ids, fit = {}) => ({ ...fit, ...Object.fromEntries(ids.map(id => [id, { ...fit[id], worn: figure }])) })
 // the chick's own fit: only the things painted onto it
 const CHICK_FIT = wornFit('chick', CHICK_WORN)
+/** The style that masks a picture of the figure with a painted bottom's mask (`url`: the mask's address). */
+export const maskStyle = url => (url ? { WebkitMaskImage: `url("${url}")`, maskImage: `url("${url}")`, WebkitMaskSize: '100% 100%', maskSize: '100% 100%' } : null)
 export const wornSrc = (item, pose) => `sprites/wardrobe/worn/${item.worn}/${item.id}-${pose}.webp`
 
 // Asleep (the sleeping picture, wherever it is shown), Lumi takes off what
@@ -453,7 +455,8 @@ export function figureLayers(pose, outfit, poses = POSES, fit = poses === POSES 
   if (bySlot.back && spreadOf(bySlot.back, pose) && P.ownWings) holes.push(...P.ownWings)
   // a mermaid's tail has no feet: they are cut away (sitting, the tail is
   // drawn big enough to close the gap)
-  if (bySlot.bottom?.feet === false) { if (P.feet) holes.push(...P.feet); else if (P.soles) holes.push(P.soles.map(([x, y], i) => [x, i < 2 ? y - 26 : y])) }
+  // (painted: the mask below cuts away what the tail replaces)
+  if (bySlot.bottom?.feet === false && !bySlot.bottom.worn) { if (P.feet) holes.push(...P.feet); else if (P.soles) holes.push(P.soles.map(([x, y], i) => [x, i < 2 ? y - 26 : y])) }
   layers.push({ kind: 'pose', clip: holes.length ? `polygon(evenodd, 0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ${holes.map(h => `${poly(h)}, ${poly([h[0]])}, 0% 0%`).join(', ')})` : null })
   // the clothes: trousers or a skirt over the lower body and the legs (the
   // feet Lumi sits on stay in front of them), the shoes, one on each foot
@@ -543,6 +546,13 @@ export function figureLayers(pose, outfit, poses = POSES, fit = poses === POSES 
     if (y < M) scale = Math.min(scale, (S - M) / (S - y))
     if (x < M) scale = Math.min(scale, (S / 2 - M) / (S / 2 - x))
     if (x > S - M) scale = Math.min(scale, (S / 2 - M) / (x - S / 2))
+  }
+  // a painted bottom that replaces the legs (a mermaid's tail): every
+  // picture of the figure is masked where Tripo painted no legs, feet or tail
+  // (<id>-<pose>-mask.webp, opaque where the figure stays)
+  if (bySlot.bottom?.worn && bySlot.bottom.feet === false) {
+    const mask = wornSrc(bySlot.bottom, poses[pose] ? pose : 'idle').replace(/\.webp$/, '-mask.webp')
+    for (const l of layers) if (l.kind === 'pose') l.mask = mask
   }
   return { layers, scale: Math.round(scale * 1000) / 1000 }
 }

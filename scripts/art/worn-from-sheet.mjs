@@ -44,7 +44,7 @@
 // yellow changed but left out), the cut clothes on the pose picture on a
 // coloured ground, the clothes alone, and Tripo's picture beside the result
 // zoomed twice. Look at them before committing the pictures.
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { chromium } from 'playwright'
@@ -125,6 +125,23 @@ function distance(m, max) {
   return d
 }
 
+// the pixels inside any of the polygons ([[x, y], …] in pixels), even-odd
+function polygons(list) {
+  const m = new Uint8Array(N)
+  for (const pl of list) {
+    for (let y = 0; y < S; y++) {
+      const xs = []
+      for (let i = 0; i < pl.length; i++) {
+        const [x1, y1] = pl[i], [x2, y2] = pl[(i + 1) % pl.length]
+        if ((y1 <= y + 0.5) !== (y2 <= y + 0.5)) xs.push(x1 + (y + 0.5 - y1) / (y2 - y1) * (x2 - x1))
+      }
+      xs.sort((a, b) => a - b)
+      for (let i = 0; i + 1 < xs.length; i += 2) for (let x = Math.max(0, Math.ceil(xs[i] - 0.5)); x <= Math.min(S - 1, Math.floor(xs[i + 1] - 0.5)); x++) m[y * S + x] = 1
+    }
+  }
+  return m
+}
+
 // ── one pose ──
 const dist3 = (X, i, Y, j) => Math.abs(X[i] - Y[j]) + Math.abs(X[i + 1] - Y[j + 1]) + Math.abs(X[i + 2] - Y[j + 2])
 const lum = (X, i) => 0.3 * X[i] + 0.59 * X[i + 1] + 0.11 * X[i + 2]
@@ -176,26 +193,46 @@ export function register(T, A, sample, P) {
 }
 
 /** Steps 2 and 3 for one pose: { top, bottom } as RGBA 512², plus what the debug pictures show. */
-export function cutPose(T, A, W, P) {
+export function cutPose(T, A, W, P, opts = { bottom: true, erase: false }) {
   const k = S / 384
-  const white = p => { const r = W[p * 3], g = W[p * 3 + 1], b = W[p * 3 + 2]; return Math.min(r, g, b) > 228 && Math.max(r, g, b) - Math.min(r, g, b) < 20 }
-  // the ground: white reached from the border, and white where the template has no figure either
+  // Tripo's ground: the cell's border colour (the median), and what is close
+  // to it. Pale clothes (a bee's light blue wing, 235 244 250) are not ground
+  // (Tripo's white is about 254)
+  const G = [0, 1, 2].map(ch => { const v = []; for (let p = 0; p < N; p++) if (border(p)) v.push(W[p * 3 + ch]); v.sort((a, b) => a - b); return v[v.length >> 1] })
+  const white = p => Math.abs(W[p * 3] - G[0]) + Math.abs(W[p * 3 + 1] - G[1]) + Math.abs(W[p * 3 + 2] - G[2]) < 22
+  // the ground: white reached from the border
   const reach = flood(Array.from({ length: N }, (_, p) => p).filter(border), white)
-  const bg = reach.map((v, p) => v | (white(p) && A[p] < 100 ? 1 : 0))
-  // changed: no template colour within 2 px is close
-  const R = 2, THR = 50
-  const changed = new Uint8Array(N)
-  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
-    const p = y * S + x
-    if (bg[p]) continue
+  // changed: no template colour within R px is close
+  const THR = 50
+  const changedWithin = (R, p) => {
+    const x = p % S, y = (p - x) / S
     let best = 1e9
     for (let e = -R; e <= R && best > THR; e++) for (let d = -R; d <= R; d++) {
       const X = x + d, Y = y + e
       if (X < 0 || Y < 0 || X >= S || Y >= S) continue
       const v = dist3(W, p * 3, T, (Y * S + X) * 3); if (v < best) best = v
     }
-    if (best > THR) changed[p] = 1
+    return best > THR
   }
+  const changed = new Uint8Array(N)
+  // (where the template has no figure, whatever is not Tripo's ground is new:
+  // a pale wing or a white coat over the template's white)
+  for (let p = 0; p < N; p++) if (!reach[p] && (changedWithin(2, p) || (A[p] < 24 && !white(p)))) changed[p] = 1
+  // white enclosed by the figure is the ground too (a gap between an arm and
+  // the body) where the template has no figure either and what encloses it
+  // is mostly the figure's own; enclosed by clothes it is clothes (a white
+  // coat, the light inside of a bee's wing)
+  const bg = reach.slice()
+  {
+    const { comps } = components(reach.map((v, p) => (!v && white(p) ? 1 : 0)))
+    for (const c of comps.slice(1)) {
+      let a = 0, rim = 0, ch = 0
+      const inC = new Set(c)
+      for (const p of c) { a += A[p]; n4(p, q => { if (!inC.has(q) && !white(q)) { rim++; ch += changed[q] } }) }
+      if (a / c.length < 100 && ch < 0.5 * rim) for (const p of c) bg[p] = 1
+    }
+  }
+  for (let p = 0; p < N; p++) if (bg[p]) changed[p] = 0
   // clean: opening, the large parts only, closing, back off the ground
   let m = dilate(erode(changed, 2), 2)
   const { comps } = components(m)
@@ -205,19 +242,63 @@ export function cutPose(T, A, W, P) {
   // what is cut off by the closing at the edge comes back where it was changed
   const around = dilate(big, 3)
   m = m.map((v, p) => v | (changed[p] && around[p] ? 1 : 0))
-  // holes inside: small ones and white ones (stripes over the belly) are clothes;
-  // large coloured ones (a hand lying on the shirt) stay the figure's
-  const holes = components(not(m).map((v, p) => v & (bg[p] ? 0 : 1)))
-  for (const c of holes.comps.slice(1)) {
-    // (the rest of the figure, the head and the feet, reaches the ground)
-    let touchesBg = false
-    for (const p of c) n4(p, q => { if (bg[q]) touchesBg = true })
-    if (touchesBg || c.some(border)) continue
-    const whites = c.filter(white).length
-    if (c.length < 160 || whites > 0.5 * c.length) for (const p of c) m[p] = 1
-    else if (whites > 0) for (const p of c) if (white(p) && A[p] > 128) m[p] = 1
+  // thin parts of the clothes the opening took (a wing's thin outline) come
+  // back where they join the clothes and are surely new: no template colour
+  // within 4 px (Tripo's redrawn outlines of the figure are within that)
+  {
+    const sure = new Uint8Array(N)
+    for (let p = 0; p < N; p++) if (changed[p] && !m[p] && changedWithin(4, p)) sure[p] = 1
+    const st = []
+    for (let p = 0; p < N; p++) if (m[p]) st.push(p)
+    while (st.length) n4(st.pop(), q => { if (sure[q] && !m[q]) { m[q] = 1; st.push(q) } })
+  }
+  const own = dilate(polygons([...(P.wings ?? []), ...(P.feet ?? []), ...(P.tail ?? []), ...(P.front ? [P.front] : []), ...(P.grip ? [P.grip] : [])].map(pl => pl.map(([x, y]) => [x * k, y * k]))), 4)
+  // Holes inside the clothes: the parts that Tripo's strokes (every changed
+  // pixel, the thin outlines too) cut off from the ground, the head and the
+  // figure's own arms, hands and feet. They are clothes in a colour the figure
+  // has too: a white coat's sleeve on the white unicorn, a white stripe, a
+  // yellow stripe on the yellow chick. A part reaching the ground, or lying
+  // above the neck, is the figure's; a part mostly inside its own arms and
+  // hands (the polygons of its poses file) stays the figure's too, apart from
+  // the bits outside them.
+  {
+    const strokes = dilate(changed, 1), headY = P.neck.y * k - 12
+    const holes = components(m.map((v, p) => (!v && !strokes[p] && !bg[p] ? 1 : 0)))
+    for (const c of holes.comps.slice(1)) {
+      let touchesBg = false
+      for (const p of c) n4(p, q => { if (bg[q]) touchesBg = true })
+      if (touchesBg || c.some(border) || c.some(p => p < headY * S)) continue
+      const mine = c.filter(p => own[p]).length
+      if (c.length < 160 || mine < 0.3 * c.length) for (const p of c) m[p] = 1
+      else for (const p of c) if (!own[p]) m[p] = 1
+    }
   }
   m = and(m, not(bg))
+  // short runs between clothes, along a row or a column, are clothes too
+  // when they hold no ground and none of the figure's own arms, hands or
+  // feet: a stripe in the figure's own colour (the green and the cream of
+  // rainbow leggings) that reaches the garment's edge and so is no hole
+  {
+    const L = 28, add = new Uint8Array(N)
+    const scan = (len, at) => {
+      for (let i = 0; i < S; i++) {
+        let last = -1
+        for (let j = 0; j < len; j++) {
+          const p = at(i, j)
+          if (!m[p]) continue
+          if (last >= 0 && j - last > 1 && j - last <= L) {
+            let ok = true
+            for (let t = last + 1; t < j && ok; t++) { const q = at(i, t); if (bg[q] || own[q]) ok = false }
+            if (ok) for (let t = last + 1; t < j; t++) add[at(i, t)] = 1
+          }
+          last = j
+        }
+      }
+    }
+    scan(S, (y, x) => y * S + x)
+    scan(S, (x, y) => y * S + x)
+    for (let p = 0; p < N; p++) if (add[p]) m[p] = 1
+  }
   // slivers along the garment's edge that look like the figure's outline
   // (Tripo's soft edge): thin or tiny bits of "figure" touching the clothes
   // are clothes
@@ -239,7 +320,7 @@ export function cutPose(T, A, W, P) {
     if (!m[p]) continue
     const x = p % S, y = (p - x) / S
     if (y > top.y + 12 && y < top.y + 12 + 0.22 * top.w && Math.abs(x - top.x) < 0.3 * top.w) seedT.push(p)
-    if (y > bot.y + 8 && y < bot.y + 8 + 0.2 * bot.w && Math.abs(x - bot.x) < 0.3 * bot.w) seedB.push(p)
+    if (opts.bottom && y > bot.y + 8 && y < bot.y + 8 + 0.2 * bot.w && Math.abs(x - bot.x) < 0.3 * bot.w) seedB.push(p)
   }
   // a colour bin and its neighbours count (a soft histogram)
   const add = (h, p) => { const c = q(p), r = c >> 10, g = (c >> 5) & 31, b = c & 31
@@ -259,6 +340,22 @@ export function cutPose(T, A, W, P) {
     const y = Math.floor(p / S), byY = Math.min(1, Math.max(0, (bot.y - y) / Math.max(1, bot.y - top.y - 20)))
     prob[p] = a + b > 1e-4 ? (a + 0.02 * byY) / (a + b + 0.02) : byY
   }
+  // Parts in a colour neither the chest nor the hips have (a bee's wings, a
+  // hood's ears, a cape) go whole to one side: to the top when they lie above
+  // the waist, else to the bottom. Parts are grown from a pixel to the
+  // neighbours of about its colour.
+  {
+    const seen = new Uint8Array(N)
+    for (let p0 = 0; p0 < N; p0++) {
+      if (!m[p0] || seen[p0]) continue
+      const ref = p0 * 3, part = [p0]; seen[p0] = 1
+      for (let i = 0; i < part.length; i++) n4(part[i], q => { if (m[q] && !seen[q] && dist3(W, q * 3, W, ref) < 45) { seen[q] = 1; part.push(q) } })
+      if (part.length < 60) continue
+      let none = 0, cy = 0
+      for (const p of part) { if (hT[q(p)] / nT + hB[q(p)] / nB < 0.02) none++; cy += Math.floor(p / S) }
+      if (none > 0.6 * part.length) { const v = cy / part.length < bot.y ? 1 : 0; for (const p of part) prob[p] = v }
+    }
+  }
   // smoothing over the neighbourhood (inside the clothes)
   const r = 4
   for (let it = 0; it < 3; it++) {
@@ -272,6 +369,19 @@ export function cutPose(T, A, W, P) {
     prob = o
   }
   let isTop = m.map((v, p) => (v && prob[p] >= 0.5 ? 1 : 0)), isBot = m.map((v, p) => (v && prob[p] < 0.5 ? 1 : 0))
+  // the border between them smoothed (a majority over a small disc), so the
+  // hem runs smoothly, not in teeth
+  for (let it = 0; it < 3; it++) {
+    const t2 = isTop.slice()
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+      const p = y * S + x
+      if (!m[p]) continue
+      let a = 0, n = 0
+      for (let e = -3; e <= 3; e++) for (let d = -3; d <= 3; d++) { if (d * d + e * e > 10) continue; const X = x + d, Y = y + e; if (X < 0 || Y < 0 || X >= S || Y >= S) continue; const qq = Y * S + X; if (m[qq]) { a += isTop[qq]; n++ } }
+      t2[p] = 2 * a > n ? 1 : 2 * a < n ? 0 : isTop[p]
+    }
+    isTop = t2; isBot = m.map((v, p) => (v && !isTop[p] ? 1 : 0))
+  }
   // parts cut off from their side change sides (or go when tiny)
   for (let pass = 0; pass < 2; pass++) {
     for (const [mine, other, seed] of [[isTop, isBot, seedT], [isBot, isTop, seedB]]) {
@@ -288,6 +398,13 @@ export function cutPose(T, A, W, P) {
         if (c.length < 300 || sure < 0.12) for (const p of c) { mine[p] = 0; other[p] = 1 }
       }
     }
+  }
+  // a sheet with a top only (a pyjama top): only the top
+  if (!opts.bottom) {
+    // what Tripo changed below it (it redrew the legs or the feet now and
+    // then) is no thing to wear: the split is made as usual, the top kept
+    isBot = new Uint8Array(N)
+    m = m.map((v, p) => (v && isTop[p] ? 1 : 0))
   }
 
   // ── the colours and the soft edge ──
@@ -335,7 +452,13 @@ export function cutPose(T, A, W, P) {
   const srcOut = new Int32Array(N).fill(-1)
   for (const p of rimPx) srcOut[p] = p
   let front = rimPx.slice()
-  const eligible = q => !m[q] && bg[q] && A[q] > 24 && nearOther[q] > 2
+  // A bottom that replaces the legs (a mermaid's tail): Tripo painted no legs,
+  // feet or tail of the figure below the neck, so what of the template's
+  // figure lies there on Tripo's white ground is cut away (`erase`, a mask
+  // for the pose picture) instead of being covered
+  const gone = new Uint8Array(N)
+  if (opts.erase) { const y0 = P.neck.y * k - 10; for (let p = 0; p < N; p++) if (bg[p] && A[p] > 24 && Math.floor(p / S) > y0) gone[p] = 1 }
+  const eligible = q => !m[q] && bg[q] && A[q] > 24 && nearOther[q] > 2 && !gone[q]
   for (let k2 = 1; k2 <= GAP && front.length; k2++) {
     const next = []
     for (const p of front) n4(p, q => { if (srcOut[q] < 0 && eligible(q)) { srcOut[q] = srcOut[p]; next.push(q) } })
@@ -453,7 +576,19 @@ export function cutPose(T, A, W, P) {
     }
     return rim
   }
-  return { top: mk(1, seam(isTop, isBot, true)), bottom: mk(2, seam(isBot, isTop, false)), masks: { bg, changed, m, isTop, isBot, seedT, seedB } }
+  let erase = null
+  if (opts.erase) {
+    // opaque where the pose picture stays, clear where it is cut away (soft by a pixel)
+    erase = { w: S, h: S, data: new Uint8ClampedArray(N * 4) }
+    const g2 = dilate(gone, 1)
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+      const p = y * S + x
+      let c = 0
+      if (g2[p]) { let n = 0; for (let e = -1; e <= 1; e++) for (let d = -1; d <= 1; d++) { const X = x + d, Y = y + e; if (X >= 0 && Y >= 0 && X < S && Y < S) { c += gone[Y * S + X]; n++ } } c /= n }
+      erase.data[p * 4] = erase.data[p * 4 + 1] = erase.data[p * 4 + 2] = 255; erase.data[p * 4 + 3] = Math.round(255 * (1 - c))
+    }
+  }
+  return { erase, top: mk(1, seam(isTop, isBot, true)), bottom: mk(2, seam(isBot, isTop, false)), masks: { bg, changed, m, isTop, isBot, seedT, seedB } }
 }
 
 // ── the command ──
@@ -461,47 +596,68 @@ async function main() {
   const args = process.argv.slice(2)
   const di = args.indexOf('--debug')
   const debug = di >= 0 ? args.splice(di, 2)[1] : null
-  const [figure, topId, bottomId, sheetFile] = args
-  if (!sheetFile) { console.error('node scripts/art/worn-from-sheet.mjs <figure> <top> <bottom> <sheet.png> [--debug <dir>]'); process.exit(1) }
+  const usage = 'node scripts/art/worn-from-sheet.mjs <figure> <top> [<bottom>] <sheet.png> | <figure> --all <dir> [--debug <dir>]'
+  const figure = args[0]
+  // the sheets: one, or every <figure>-<top>[-<bottom>].png in a folder
+  let jobs
+  if (args[1] === '--all') {
+    jobs = readdirSync(args[2]).filter(f => f.startsWith(figure + '-') && f.endsWith('.png')).sort()
+      .map(f => { const [top, bottom = null] = f.slice(figure.length + 1, -4).split('-'); return { top, bottom, file: join(args[2], f) } })
+  } else if (args.length === 4) jobs = [{ top: args[1], bottom: args[2] === '-' ? null : args[2], file: args[3] }]
+  else if (args.length === 3) jobs = [{ top: args[1], bottom: null, file: args[2] }]
+  if (!figure || !jobs?.length) { console.error(usage); process.exit(1) }
   const chick = figure === 'chick'
   const W8 = await import(pathToFileURL(join(ROOT, 'src/lib/wardrobe.js')).href)
-  for (const [id, slot] of [[topId, 'top'], [bottomId, 'bottom']]) if (W8.ITEM_BY_ID[id]?.slot !== slot) throw new Error(`${id} is no ${slot} in the wardrobe`)
+  for (const j of jobs) for (const [id, slot] of [[j.top, 'top'], [j.bottom, 'bottom']]) if (id && W8.ITEM_BY_ID[id]?.slot !== slot) throw new Error(`${id} is no ${slot} in the wardrobe`)
   const POSES = chick ? W8.POSES : (await import(pathToFileURL(join(ROOT, `src/lib/shapes/${figure}-poses.js`)).href)).default
   const basePic = pose => join(ROOT, 'public/sprites', chick ? `emoji/custom/lumi-${pose}.webp` : `shapes/${figure}-${pose}.webp`)
   const outDir = join(ROOT, 'public/sprites/wardrobe/worn', figure)
   mkdirSync(outDir, { recursive: true })
-  if (debug) mkdirSync(debug, { recursive: true })
   const browser = await chromium.launch()
   page = await browser.newPage()
-  const sheet = await decode(sheetFile)
-  if (Math.abs(sheet.w / sheet.h - 2) > 0.01) throw new Error(`the sheet is ${sheet.w} × ${sheet.h}, not 2 : 1`)
-  const report = []
-  for (let i = 0; i < POSE_ORDER.length; i++) {
-    const pose = POSE_ORDER[i], P = POSES[pose]
+  // the figure's own pose pictures, on white (T) and their coverage (A)
+  const bases = {}
+  for (const pose of POSE_ORDER) {
     const base = await decode(basePic(pose), [S, S])
     const T = new Float32Array(N * 3), A = new Uint8Array(N)
     for (let p = 0; p < N; p++) {
       const a = base.data[p * 4 + 3] / 255; A[p] = base.data[p * 4 + 3]
       for (let ch = 0; ch < 3; ch++) T[p * 3 + ch] = base.data[p * 4 + ch] * a + 255 * (1 - a)
     }
-    const sample = sampler(sheet, i)
-    const reg = register(T, A, sample, P)
-    const W = new Float32Array(N * 3)
-    for (let p = 0; p < N; p++) { const x = p % S, y = (p - x) / S; sample(256 + reg.s * (x - 256) + reg.dx, 256 + reg.s * (y - 256) + reg.dy, W, p * 3) }
-    const cut = cutPose(T, A, W, P)
-    const kb = []
-    for (const [id, img] of [[topId, cut.top], [bottomId, cut.bottom]]) kb.push(Math.round(await encode(img, join(outDir, `${id}-${pose}.webp`)) / 1024))
-    const count = mm => mm.reduce((a, b) => a + b, 0)
-    report.push({ pose, ...reg, top: count(cut.masks.isTop), bottom: count(cut.masks.isBot), kb: kb.join('+') })
-    if (debug) await debugPictures(debug, pose, T, A, W, cut)
+    bases[pose] = { T, A }
+  }
+  const done = []
+  for (const job of jobs) {
+    const sheet = await decode(job.file)
+    if (Math.abs(sheet.w / sheet.h - 2) > 0.01) throw new Error(`${job.file} is ${sheet.w} × ${sheet.h}, not 2 : 1`)
+    const name = [figure, job.top, job.bottom].filter(Boolean).join('-')
+    const dbg = debug && join(debug, name)
+    if (dbg) mkdirSync(dbg, { recursive: true })
+    const report = []
+    const tail = !!(job.bottom && W8.ITEM_BY_ID[job.bottom].feet === false)
+    for (let i = 0; i < POSE_ORDER.length; i++) {
+      const pose = POSE_ORDER[i], P = POSES[pose], { T, A } = bases[pose]
+      const sample = sampler(sheet, i)
+      const reg = register(T, A, sample, P)
+      const W = new Float32Array(N * 3)
+      for (let p = 0; p < N; p++) { const x = p % S, y = (p - x) / S; sample(256 + reg.s * (x - 256) + reg.dx, 256 + reg.s * (y - 256) + reg.dy, W, p * 3) }
+      const cut = cutPose(T, A, W, P, { bottom: !!job.bottom, erase: tail })
+      const kb = []
+      for (const [id, img] of [[job.top, cut.top], [job.bottom, cut.bottom]]) if (id) kb.push(Math.round(await encode(img, join(outDir, `${id}-${pose}.webp`)) / 1024))
+      if (tail) kb.push(Math.round(await encode(cut.erase, join(outDir, `${job.bottom}-${pose}-mask.webp`)) / 1024))
+      const count = mm => mm.reduce((a, b) => a + b, 0)
+      report.push({ pose, s: reg.s, dx: reg.dx, dy: reg.dy, cost: reg.cost, before: reg.before, top: count(cut.masks.isTop), bottom: count(cut.masks.isBot), kb: kb.join('+') })
+      if (dbg) await debugPictures(dbg, pose, T, A, W, cut)
+    }
+    console.log(name); console.table(report)
+    done.push(job.top); if (job.bottom) done.push(job.bottom)
   }
   await browser.close()
-  console.table(report)
   // the list the fit file reads
   const listFile = join(ROOT, chick ? 'src/lib/wardrobe/chick-worn.js' : `src/lib/shapes/${figure}-worn.js`)
   let ids = []
   if (existsSync(listFile)) ids = [...readFileSync(listFile, 'utf8').matchAll(/^\s*'([^']+)',$/gm)].map(x => x[1])
-  ids = [...new Set([...ids, topId, bottomId])].sort()
+  ids = [...new Set([...ids, ...done])].sort()
   writeFileSync(listFile, `// Things ${chick ? 'the chick' : `the ${figure}`} wears as painted on it by Tripo: drawn from\n// public/sprites/wardrobe/worn/${figure}/<id>-<pose>.webp over the pose picture\n// (\`worn\`, see wornFit in ../wardrobe.js). Written by\n// scripts/art/worn-from-sheet.mjs; one line per thing.\nexport default [\n${ids.map(id => `  '${id}',`).join('\n')}\n]\n`)
   console.log('wrote', outDir, 'and', listFile)
 }
@@ -516,7 +672,8 @@ async function debugPictures(dir, pose, T, A, W, cut) {
     const g = lum(T, p * 3) * 0.7
     put(0, p, isTop[p] ? [255, g * 0.5, g * 0.5] : isBot[p] ? [g * 0.5, g * 0.5, 255] : changed[p] ? [255, 255, 0] : bg[p] ? [40, 40, 40] : [g, g, g])
     // the base with the cut clothes over it, on a coloured ground
-    let c = A[p] > 0 ? [0, 1, 2].map(ch => (T[p * 3 + ch] - 255 * (1 - A[p] / 255)) / Math.max(A[p] / 255, 1e-3) * A[p] / 255 + ground[ch] * (1 - A[p] / 255)) : ground
+    const a0 = A[p] / 255, a1 = a0 * (cut.erase ? cut.erase.data[p * 4 + 3] / 255 : 1)
+    let c = a0 > 0 ? [0, 1, 2].map(ch => (T[p * 3 + ch] - 255 * (1 - a0)) / Math.max(a0, 1e-3) * a1 + ground[ch] * (1 - a1)) : ground
     for (const L of [cut.bottom, cut.top]) { const a = L.data[p * 4 + 3] / 255; if (a) c = c.map((v, ch) => L.data[p * 4 + ch] * a + v * (1 - a)) }
     put(1, p, c)
     // the clothes alone on dark
