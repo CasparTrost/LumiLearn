@@ -7,7 +7,7 @@
 //   ownWings  its own little wings: cut away when wings are worn (the worn
 //             wings replace them); packs and the cape sit between body and wings
 //   grip      the hand that holds; front: the hand at the chin (thinking)
-//   wings     the arms, drawn again over clothes; tail: drawn again over clothes
+//   wings     the arms; tail: kept in front of a painted outfit (scripts/art/worn-from-sheet.mjs)
 //   soles     cut away under shoes standing; feet: the feet in front, sitting
 const soles = (x, y, w, step) => [[x - step - w, y + 4], [x + step + w, y + 4], [x + step + w, 384], [x - step - w, 384]]
 

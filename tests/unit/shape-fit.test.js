@@ -2,13 +2,9 @@
 // its own anchors (shapes/<id>-poses.js) and corrections per thing
 // (shapes/<id>-fit.js) going into figureLayers (lib/wardrobe.js).
 import { describe, it, expect } from 'vitest'
-import { existsSync } from 'node:fs'
-import { join, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { POSES, WARDROBE, figureLayers, fitted, placeItem, ITEM_BY_ID } from '../../src/lib/wardrobe.js'
 import { SHAPES, CHICK, posesComplete, wearsClothes, posesOf, fitOf, shapeLayers } from '../../src/lib/shapes.js'
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const items = layers => layers.filter(l => l.kind === 'item').map(l => l.id)
 
 describe('another figure wears the wardrobe', () => {
@@ -29,18 +25,18 @@ describe('another figure wears the wardrobe', () => {
     const L = figureLayers('idle', { head: 'krone' }, moved).layers.find(l => l.id === 'krone')
     expect(L.left).not.toBe(figureLayers('idle', { head: 'krone' }).layers.find(l => l.id === 'krone').left)
   })
-  it('own wings are cut away under wings worn; a tail is drawn again over clothes', () => {
+  it('own wings are cut away under wings worn; nothing is drawn again over a painted outfit', () => {
     const P = { ...POSES, idle: { ...POSES.idle, ownWings: [[[0, 0], [10, 0], [10, 10]]], tail: [[[300, 300], [320, 300], [320, 320]]] } }
     const wings = figureLayers('idle', { back: 'schmetterling' }, P).layers[2]
     expect(wings.kind).toBe('pose')
     expect(wings.clip).toMatch(/^polygon\(evenodd/)
     expect(figureLayers('idle', { back: 'pfau' }, P).layers.find(l => l.kind === 'pose').clip).toBe(null)
-    const dressed = figureLayers('idle', { bottom: 'jeansshorts' }, P).layers
-    expect(dressed.at(-1)).toMatchObject({ kind: 'pose' })
-    expect(dressed.at(-1).clip).toContain('83.333%')
-    expect(figureLayers('idle', { head: 'muetze' }, P).layers.filter(l => l.kind === 'pose' && l.clip?.includes('83.333%'))).toEqual([])
+    // (the tail and the arms are painted in front of the outfit: scripts/art/worn-from-sheet.mjs)
+    const dressed = figureLayers('idle', { outfit: 'outfit-ringelshirt' }, P, fitOf(CHICK)).layers
+    expect(dressed.filter(l => l.kind === 'pose')).toEqual([{ kind: 'pose', clip: null }])
+    expect(dressed.at(-1).id).toBe('ringelshirt')
   })
-  it('a shape wears clothes only once all seven poses have all eight anchors', () => {
+  it('a shape wears clothes only once all seven poses have all eight anchors (ANCHORS)', () => {
     expect(posesComplete(POSES)).toBe(true)
     expect(posesComplete({})).toBe(false)
     expect(posesComplete({ ...POSES, wave: { ...POSES.wave, shoes: undefined } })).toBe(false)
@@ -54,17 +50,6 @@ describe('another figure wears the wardrobe', () => {
     // without clothes: the picture alone, even with an outfit
     const bare = SHAPES.find(s => s.id !== CHICK && !wearsClothes(s.id))
     if (bare) expect(shapeLayers(bare.id, 'idle', { head: 'muetze' }).layers).toHaveLength(1)
-  })
-  it('a top painted for a figure: its own picture, every pose its own (no chick corrections carried over)', () => {
-    for (const s of SHAPES.filter(x => x.id !== CHICK)) for (const id of ['ringelshirt', 'hawaiihemd']) {
-      const t = fitted(ITEM_BY_ID[id], s.fit)
-      expect(t.src, `${s.id} ${id}`).toBe(`sprites/wardrobe/shapes/${s.id}/${id}.webp`)
-      expect(existsSync(join(ROOT, 'public', t.src)), t.src).toBe(true)
-      for (const p of Object.keys(s.poses)) {
-        expect(t.pose[p], `${s.id} ${id} ${p}`).toBeTruthy()
-        expect(t.pose[p].sy, `${s.id} ${id} ${p}`).toBeGreaterThan(0.4)
-      }
-    }
   })
   it('the dino and the dragon wear clothes (one missing anchor would silently take them all off)', () => {
     for (const id of ['dino', 'drache']) expect(wearsClothes(id), id).toBe(true)

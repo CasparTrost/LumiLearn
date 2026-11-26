@@ -4,7 +4,7 @@ import { MODULES, MODULE_BY_ID, visibleModules, sortForAge } from './modules.js'
 import { ENGLISH_ENABLED } from './i18n.js'
 import { updateSkill, nextLevel, ratioOf, journeyFor, nextStopIndex } from './lib/learning.js'
 import { stickerForDay } from './lib/stickers.js'
-import { ITEM_BY_ID, isUnlocked, unlockedBetween, unlockedItems, wardrobeStars, cleanOutfit, wearToggle } from './lib/wardrobe.js'
+import { ITEM_BY_ID, isUnlocked, unlockedBetween, unlockedItems, wardrobeStars, cleanOutfit, wearToggle, knownIds } from './lib/wardrobe.js'
 import { SHAPE_BY_ID, cleanShapes, cleanShape, drawnShape, freshShapes, shapesOwed, setCurrentShape } from './lib/shapes.js'
 
 export const AppContext = createContext(null)
@@ -156,7 +156,7 @@ export const farmPoints = profile => totalStars(profile?.progress) + (profile?.f
 // again, so the wardrobe moves on at once; it never goes down and is never
 // below the current total.
 export const profileWardrobeStars = profile => wardrobeStars(profile, totalStars(profile?.progress))
-const knownIds = list => (Array.isArray(list) ? Array.from(new Set(list.filter(id => ITEM_BY_ID[id]))) : [])
+// (knownIds: the saved lists cleaned; a top or a bottom of an old save counts as its outfit)
 // what is worn and also unlocked (a save from elsewhere may say otherwise)
 const wearable = p => {
   const o = cleanOutfit(p.outfit), stars = profileWardrobeStars(p)
@@ -406,8 +406,8 @@ export function reducer(state, action) {
       return { ...state, screen: 'game', currentGame: action.payload }
 
     // Lumis Kleiderschrank: a tap on a thing puts it on, a second tap takes
-    // it off; one thing per place (head, face, neck, back, hold). Locked
-    // things stay off.
+    // it off; one thing per place (head, face, neck, back, hold, outfit,
+    // shoes). Locked things stay off.
     case 'WARDROBE_WEAR': {
       const item = ITEM_BY_ID[action.payload]
       const p0 = state.profiles[state.activeProfileId]

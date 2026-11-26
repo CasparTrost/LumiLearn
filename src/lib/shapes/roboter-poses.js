@@ -5,7 +5,7 @@
 //
 //   head   the top of the helmet; tuft: the antenna (hidden under a
 //          covering hat, drawn again over a crown or a headband)
-//   wings  the arms and mitten hands, drawn again over clothes
+//   wings  the arms and mitten hands, kept in front of a painted outfit
 //   grip   the mitten that holds; soles: the boots cut away under shoes
 //   feet   sitting: the boots in front of the body
 const mirror = pts => pts.map(([x, y]) => [384 - x, y])

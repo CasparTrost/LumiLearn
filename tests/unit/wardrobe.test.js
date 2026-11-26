@@ -1,12 +1,12 @@
 // Lumis Kleiderschrank (src/lib/wardrobe.js): the steps that unlock things,
 // the pictures and anchors, and what the reducer keeps per child.
 import { describe, it, expect } from 'vitest'
-import { existsSync, statSync } from 'node:fs'
+import { existsSync, statSync, readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
-  WARDROBE, ITEM_BY_ID, SLOTS, ORDER, stepStars, POSES, POSE_IDS, POSE_SIZE, unlockedItems, unlockedBetween, nextLocked, stepBefore,
-  figureLayers, itemCorners, placeItem, cleanOutfit, wornItems, lumiPose, unseenItems,
+  WARDROBE, ITEM_BY_ID, SLOTS, ANCHORS, PART_BY_ID, ORDER, stepStars, POSES, POSE_IDS, POSE_SIZE, unlockedItems, unlockedBetween, nextLocked, stepBefore,
+  figureLayers, itemCorners, placeItem, cleanOutfit, wornItems, lumiPose, unseenItems, knownIds, tilePictures,
 } from '../../src/lib/wardrobe.js'
 import { reducer, migrateToV2, initialState, profileWardrobeStars, MAX_LEVELS, hasLevels } from '../../src/AppContext.jsx'
 import { LINES } from '../../src/lib/lumiLines.js'
@@ -15,11 +15,12 @@ import FACE from '../../src/lib/wardrobe/face.js'
 import NECK from '../../src/lib/wardrobe/neck.js'
 import BACK from '../../src/lib/wardrobe/back.js'
 import HOLD from '../../src/lib/wardrobe/hold.js'
+import OUTFIT from '../../src/lib/wardrobe/outfit.js'
 import TOP from '../../src/lib/wardrobe/top.js'
 import BOTTOM from '../../src/lib/wardrobe/bottom.js'
 import SHOES from '../../src/lib/wardrobe/shoes.js'
 
-const NONE = { head: null, face: null, neck: null, back: null, hold: null, top: null, bottom: null, shoes: null }
+const NONE = { head: null, face: null, neck: null, back: null, hold: null, outfit: null, shoes: null }
 // every star the games can give: three a level
 const MAX_STARS = Object.entries(MAX_LEVELS).filter(([id]) => hasLevels(id)).reduce((a, [, n]) => a + 3 * n, 0)
 
@@ -27,14 +28,36 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
 describe('the steps', () => {
   it('one file per place, every thing once, in its own place', () => {
-    for (const [slot, list] of [['head', HEAD], ['face', FACE], ['neck', NECK], ['back', BACK], ['hold', HOLD], ['top', TOP], ['bottom', BOTTOM], ['shoes', SHOES]]) {
+    for (const [slot, list] of [['head', HEAD], ['face', FACE], ['neck', NECK], ['back', BACK], ['hold', HOLD], ['outfit', OUTFIT], ['shoes', SHOES]]) {
       expect(list.length, slot).toBeGreaterThanOrEqual(1)
       for (const t of list) expect(t.slot, t.id).toBe(slot)
     }
     expect(new Set(WARDROBE.map(t => t.id)).size).toBe(WARDROBE.length)
-    expect(WARDROBE.length).toBe(HEAD.length + FACE.length + NECK.length + BACK.length + HOLD.length + TOP.length + BOTTOM.length + SHOES.length)
+    expect(WARDROBE.length).toBe(HEAD.length + FACE.length + NECK.length + BACK.length + HOLD.length + OUTFIT.length + SHOES.length)
     for (const id of ORDER) expect(ITEM_BY_ID[id], `ORDER names ${id}`).toBeTruthy()
     expect(new Set(ORDER).size).toBe(ORDER.length)
+  })
+  it('an outfit is the top and the bottom Tripo painted together on one sheet; each top and bottom in one outfit', () => {
+    // the pairs of the sheets: docs/kleiderschrank-bilder.md, "Die Paare"
+    const doc = readFileSync(join(ROOT, 'docs', 'kleiderschrank-bilder.md'), 'utf8')
+    const table = doc.slice(doc.indexOf('## Die Paare'), doc.indexOf('## Die Bilder'))
+    const pairs = [...table.matchAll(/^\| \d+ \| (\w+) \| (\w+|–) \|/gm)].map(m => [m[1], m[2] === '–' ? undefined : m[2]])
+    expect(pairs.length).toBe(16)
+    expect(OUTFIT.map(o => [o.top, o.bottom])).toEqual(pairs)
+    for (const o of OUTFIT) {
+      expect(o.id, o.id).toBe(`outfit-${o.top}`)
+      expect(o.name.length, o.id).toBeGreaterThan(3)
+      expect(PART_BY_ID[o.top]?.part, o.id).toBe('top')
+      if (o.bottom) expect(PART_BY_ID[o.bottom]?.part, o.id).toBe('bottom')
+    }
+    // every top and every bottom belongs to exactly one outfit
+    const used = OUTFIT.flatMap(o => [o.top, o.bottom]).filter(Boolean).sort()
+    expect(used).toEqual([...TOP, ...BOTTOM].map(t => t.id).sort())
+    expect(new Set(used).size).toBe(used.length)
+    // the parts are no things of their own: nobody wears a top without its bottom
+    for (const id of used) expect(ITEM_BY_ID[id], id).toBeUndefined()
+    // the mermaid's tail: its outfit has no feet
+    expect(WARDROBE.filter(t => t.feet === false).map(t => t.id)).toEqual(['outfit-skijacke'])
   })
   it('the stars come from the order: a thing not in the order yet comes last', () => {
     WARDROBE.forEach((t, i) => expect(t.stars, t.id).toBe(stepStars(i)))
@@ -47,14 +70,14 @@ describe('the steps', () => {
     // of its place a child gets, and for the back it is wings, not the cape)
     const first = Object.fromEntries(SLOTS.map(s => [s, WARDROBE.find(t => t.slot === s)]))
     for (const s of SLOTS) expect(first[s].stars, s).toBe(Math.min(...WARDROBE.filter(t => t.slot === s).map(t => t.stars)))
-    expect(SLOTS.map(s => first[s].id)).toEqual(['muetze', 'sonnenbrille', 'schal', 'schmetterling', 'ballon', 'ringelshirt', 'jeansshorts', 'turnschuhe'])
+    expect(SLOTS.map(s => first[s].id)).toEqual(['muetze', 'sonnenbrille', 'schal', 'schmetterling', 'ballon', 'outfit-ringelshirt', 'turnschuhe'])
   })
   it('two things at once from the start, in different places: the wardrobe is never empty', () => {
     const free = unlockedItems(0)
     expect(free.length).toBe(2)
     expect(new Set(free.map(t => t.slot)).size).toBe(2)
   })
-  it('the rule: quickly at first (a good game each), slower later, the last at about two thirds of all stars', () => {
+  it('the rule: quickly at first (a good game each), slower later, the last at about 60 % of all stars', () => {
     expect(stepStars(0)).toBe(0)
     expect(stepStars(1)).toBe(0)
     expect(stepStars(2)).toBe(3)
@@ -65,10 +88,10 @@ describe('the steps', () => {
       expect(stepStars(i) - stepStars(i - 1)).toBeGreaterThanOrEqual(stepStars(i - 1) - stepStars(Math.max(1, i - 2)))
     }
     expect(MAX_STARS).toBeGreaterThan(600)
-    // the last thing of the eight places needs at most about two thirds of all stars
+    // the last thing of the seven places needs 55 to 65 % of all stars
     const last = WARDROBE.at(-1).stars / MAX_STARS
-    expect(last).toBeGreaterThanOrEqual(0.5)
-    expect(last).toBeLessThanOrEqual(0.66)
+    expect(last).toBeGreaterThanOrEqual(0.55)
+    expect(last).toBeLessThanOrEqual(0.65)
   })
   it('the order mixes the places: never two of one place in a row, red hats apart, no place waits too long, the crown last', () => {
     for (let i = 1; i < WARDROBE.length; i++) expect(WARDROBE[i].slot === WARDROBE[i - 1].slot, WARDROBE[i].id).toBe(false)
@@ -83,6 +106,8 @@ describe('the steps', () => {
       // a child gets something of every place within the first 40 stars
       expect(WARDROBE.find(t => t.slot === sl).stars, sl).toBeLessThanOrEqual(40)
     }
+    // the first outfit within the first 15 stars
+    expect(WARDROBE.find(t => t.slot === 'outfit').stars).toBeLessThanOrEqual(15)
   })
   it('what a new total unlocks, the next present and where its bar starts', () => {
     const [a, b, c] = [WARDROBE[2], WARDROBE[3], WARDROBE[4]]
@@ -98,11 +123,15 @@ describe('the steps', () => {
 
 describe('the pictures', () => {
   it('every place has its recorded announcement', () => {
-    for (const slot of SLOTS) expect(LINES[`schrank/platz-${slot}`], slot).toBeTruthy()
+    for (const slot of SLOTS) {
+      expect(LINES[`schrank/platz-${slot}`], slot).toBeTruthy()
+      expect(existsSync(join(ROOT, 'public', 'audio', 'lumi', 'schrank', `platz-${slot}.mp3`)), slot).toBe(true)
+    }
+    expect(LINES['schrank/platz-outfit']).toBe('Etwas zum Anziehen!')
   })
   it('every thing has its picture: made with Tripo, or still drawn (until its Tripo picture comes)', () => {
     const drawn = ['ballon', 'umhang', 'zauberstab', 'lolli', 'engel', 'blume', 'fee', 'faehnchen', 'drache', 'windrad', 'pfau']
-    for (const t of WARDROBE) {
+    for (const t of WARDROBE.filter(x => x.slot !== 'outfit')) {
       const file = join(ROOT, 'public', t.src)
       expect(existsSync(file), t.src).toBe(true)
       // 512 px webp, small (a Tripo picture is about 15 to 45 KB)
@@ -112,11 +141,39 @@ describe('the pictures', () => {
       for (const v of [...t.at, ...t.box]) expect(v >= 0 && v <= 1, t.id).toBe(true)
     }
   })
+  it('an outfit\'s tile: its top\'s picture over its bottom\'s, together filling the tile, the top above, the hem over the waistband', () => {
+    for (const o of WARDROBE.filter(t => t.slot === 'outfit')) {
+      const pics = tilePictures(o)
+      const parts = [o.bottom, o.top].filter(Boolean).map(id => PART_BY_ID[id])
+      // drawn in that order: the top last, over the bottom
+      expect(pics.map(p => p.src), o.id).toEqual(parts.map(t => t.src))
+      for (const t of parts) {
+        expect(existsSync(join(ROOT, 'public', t.src)), t.src).toBe(true)
+        expect(statSync(join(ROOT, 'public', t.src)).size, t.src).toBeLessThan(60 * 1024)
+      }
+      // the drawn parts on the tile (0…1)
+      const drawn = pics.map((p, i) => { const [x0, y0, x1, y1] = parts[i].box; return [p.x + x0 * p.size, p.y + y0 * p.size, p.x + x1 * p.size, p.y + y1 * p.size] })
+      for (const d of drawn) for (const v of d) expect(v >= 0.05 && v <= 0.95, `${o.id} ${d}`).toBe(true)
+      const span = [Math.min(...drawn.map(d => d[0])), Math.min(...drawn.map(d => d[1])), Math.max(...drawn.map(d => d[2])), Math.max(...drawn.map(d => d[3]))]
+      expect(Math.max(span[2] - span[0], span[3] - span[1]), o.id).toBeCloseTo(0.86, 2)
+      if (drawn.length === 2) {
+        const [b, t] = drawn
+        expect(t[1], o.id).toBeLessThan(b[1])
+        expect(b[1], o.id).toBeLessThan(t[3])
+        expect(t[3], o.id).toBeLessThan(b[3])
+        // the bottom centred under the top
+        expect((b[0] + b[2]) / 2, o.id).toBeCloseTo((t[0] + t[2]) / 2, 3)
+      }
+    }
+    // a thing: one picture, its drawn part filling the tile as before
+    const [k] = tilePictures(ITEM_BY_ID.krone), kr = Math.min(1 / 0.9, 1 / 0.68, 2.4) * 0.86
+    expect(k).toEqual({ src: ITEM_BY_ID.krone.src, x: 0.5 - 0.5 * kr, y: 0.5 - 0.5 * kr, size: kr })
+  })
   it('every one of Lumi\'s seven pictures exists and has all anchors and the tuft', () => {
     expect(POSE_IDS.sort()).toEqual(['happy', 'hmm', 'idle', 'sad', 'sleep', 'think', 'wave'])
     for (const p of POSE_IDS) {
       expect(existsSync(join(ROOT, 'public', 'sprites', 'emoji', 'custom', `lumi-${p}.webp`)), p).toBe(true)
-      for (const s of SLOTS) {
+      for (const s of ANCHORS) {
         const a = POSES[p][s]
         for (const k of ['x', 'y', 'rot', 'w']) expect(Number.isFinite(a[k]), `${p}.${s}.${k}`).toBe(true)
         expect(a.x > 0 && a.x < POSE_SIZE && a.y > 0 && a.y < POSE_SIZE && a.w > 40, `${p}.${s}`).toBe(true)
@@ -132,9 +189,9 @@ describe('the pictures', () => {
     const TALL = ['zauberhut', 'zylinder', 'kochmuetze', 'partyhut', 'hasenohren', 'einhornreif']
     for (const p of POSE_IDS) for (const t of WARDROBE) {
       if (p === 'sleep' && ['face', 'hold'].includes(t.slot)) continue
-      const { scale, layers } = figureLayers(p, { [t.slot]: t.id })
-      // (clothes painted onto the chick fill its own square: tests/unit/worn.test.js)
-      if (layers.find(l => l.id === t.id)?.worn) continue
+      const { scale } = figureLayers(p, { [t.slot]: t.id })
+      // (an outfit is painted onto the chick in its own square: tests/unit/worn.test.js)
+      if (t.slot === 'outfit') { expect(scale).toBe(1); continue }
       expect(scale, `${t.id} on ${p}`).toBeGreaterThanOrEqual(TALL.includes(t.id) ? 0.82 : 0.88)
       for (const [x, y] of itemCorners(t, p)) {
         // scaled about the middle of the bottom edge
@@ -144,7 +201,7 @@ describe('the pictures', () => {
     }
   })
   it('a thing sits where it belongs: hats on the head, glasses on the eyes, the rest at the neck', () => {
-    for (const p of POSE_IDS) for (const t of WARDROBE) {
+    for (const p of POSE_IDS) for (const t of WARDROBE.filter(x => x.slot !== 'outfit')) {
       const pl = placeItem(t, p), A = POSES[p][t.slot]
       // (shoes: from the left foot, a step beside the middle; a shoe is
       // placed by its sole, a little below the anchor; sitting, on the foot in front)
@@ -172,7 +229,7 @@ describe('the pictures', () => {
     }
   })
   it('clothes: standing, the shoes under the trousers under the top; sitting, the shoes in front', () => {
-    const outfit = { top: 'ringelshirt', bottom: 'jeansshorts', shoes: 'turnschuhe' }
+    const outfit = { outfit: 'outfit-ringelshirt', shoes: 'turnschuhe' }
     const at = (layers, id) => layers.findIndex(l => l.id === id)
     const lastAt = (layers, id) => layers.map(l => l.id).lastIndexOf(id)
     for (const p of POSE_IDS.filter(p => !POSES[p].feet)) {
@@ -188,10 +245,10 @@ describe('the pictures', () => {
     expect(shoeLast).toBeGreaterThan(at(S, 'jeansshorts'))
     expect(shoeLast).toBeGreaterThan(lastAt(S, 'ringelshirt'))
     // the mermaid's tail: no shoes at all
-    expect(figureLayers('idle', { bottom: 'meerjungfrau', shoes: 'turnschuhe' }).layers.some(l => String(l.id).startsWith('turnschuhe'))).toBe(false)
+    expect(figureLayers('idle', { outfit: 'outfit-skijacke', shoes: 'turnschuhe' }).layers.some(l => String(l.id).startsWith('turnschuhe'))).toBe(false)
   })
   it('asleep, Lumi wears no glasses or masks and holds nothing; hat, neck and clothes stay', () => {
-    const all = { head: 'muetze', face: 'sonnenbrille', neck: 'schal', back: 'schmetterling', hold: 'ballon', top: 'ringelshirt', bottom: 'jeansshorts', shoes: 'turnschuhe' }
+    const all = { head: 'muetze', face: 'sonnenbrille', neck: 'schal', back: 'schmetterling', hold: 'ballon', outfit: 'outfit-ringelshirt', shoes: 'turnschuhe' }
     const ids = figureLayers('sleep', all).layers.filter(l => l.kind === 'item').map(l => l.id)
     expect(ids).not.toContain('sonnenbrille')
     expect(ids).not.toContain('ballon')
@@ -252,7 +309,7 @@ describe('wearing', () => {
     expect(me(s).outfit[free.slot]).toBe(null)
     expect(me(s).wardrobeTried).toEqual([free.id])
   })
-  it('one thing per place, five places at once, and everything off at once', () => {
+  it('one thing per place, seven places at once, and everything off at once', () => {
     const second = laterIn(free)
     let s = load(kid(Math.max(allFive, second.stars)))
     for (const sl of SLOTS) s = wear(s, firstOf(sl).id)
@@ -263,20 +320,26 @@ describe('wearing', () => {
     expect(me(s).outfit).toEqual(NONE)
     expect(reducer(s, { type: 'WARDROBE_UNDRESS' })).toBe(s)
   })
-  it('shoes and the mermaid\'s tail take each other off: nothing is worn that does not show', () => {
+  it('shoes and the mermaid outfit take each other off: nothing is worn that does not show', () => {
     let s = load(kid(1000))
     s = wear(s, 'turnschuhe')
-    s = wear(s, 'meerjungfrau')
-    expect(me(s).outfit.bottom).toBe('meerjungfrau')
+    s = wear(s, 'outfit-skijacke')
+    expect(me(s).outfit.outfit).toBe('outfit-skijacke')
     expect(me(s).outfit.shoes).toBe(null)
     s = wear(s, 'gummistiefel')
     expect(me(s).outfit.shoes).toBe('gummistiefel')
-    expect(me(s).outfit.bottom).toBe(null)
-    // other bottoms keep the shoes
-    s = wear(s, 'jeansshorts')
-    expect(me(s).outfit).toMatchObject({ bottom: 'jeansshorts', shoes: 'gummistiefel' })
-    // an old save with both keeps the tail
-    expect(cleanOutfit({ bottom: 'meerjungfrau', shoes: 'turnschuhe' })).toMatchObject({ bottom: 'meerjungfrau', shoes: null })
+    expect(me(s).outfit.outfit).toBe(null)
+    // other outfits keep the shoes
+    s = wear(s, 'outfit-ringelshirt')
+    expect(me(s).outfit).toMatchObject({ outfit: 'outfit-ringelshirt', shoes: 'gummistiefel' })
+    s = wear(s, 'outfit-heldenshirt')
+    expect(me(s).outfit).toMatchObject({ outfit: 'outfit-heldenshirt', shoes: 'gummistiefel' })
+    // a save with both keeps the tail
+    expect(cleanOutfit({ outfit: 'outfit-skijacke', shoes: 'turnschuhe' })).toMatchObject({ outfit: 'outfit-skijacke', shoes: null })
+  })
+  it('a top or a bottom alone cannot be put on: only the outfit', () => {
+    const s = load(kid(1000))
+    for (const id of ['ringelshirt', 'jeansshorts', 'tutu', 'meerjungfrau']) expect(wear(s, id), id).toBe(s)
   })
   it('a wrapped present cannot be put on, nor an unknown thing', () => {
     const s = load(kid(5))
@@ -372,6 +435,29 @@ describe('stars and saves', () => {
     expect(ITEM_BY_ID.schirm).toBeUndefined()
     // the lantern that took its place leaves Lumi almost its size
     for (const pose of POSE_IDS) expect(figureLayers(pose, { hold: 'laterne' }).scale, pose).toBeGreaterThanOrEqual(0.94)
+  })
+  it('an old save with a top and a bottom of their own: Lumi wears the outfit of the top, else of the bottom', () => {
+    expect(cleanOutfit({ top: 'heldenshirt', bottom: 'tutu', head: 'muetze' })).toEqual({ ...NONE, outfit: 'outfit-heldenshirt', head: 'muetze' })
+    expect(cleanOutfit({ top: null, bottom: 'tutu' })).toEqual({ ...NONE, outfit: 'outfit-bienenkostuem' })
+    expect(cleanOutfit({ top: 'sternenpyjama', bottom: 'pyjamahose' })).toEqual({ ...NONE, outfit: 'outfit-sternenpyjama' })
+    expect(cleanOutfit({ top: 'nope', bottom: 'jeansshorts' })).toEqual({ ...NONE, outfit: 'outfit-ringelshirt' })
+    // a part in the wrong place counts for nothing
+    expect(cleanOutfit({ top: 'jeansshorts', bottom: 'ringelshirt' })).toEqual(NONE)
+    // the mermaid's tail and shoes: the tail stays, its outfit takes the shoes off
+    expect(cleanOutfit({ bottom: 'meerjungfrau', shoes: 'turnschuhe' })).toEqual({ ...NONE, outfit: 'outfit-skijacke' })
+    expect(cleanOutfit({ top: 'smoking', bottom: 'meerjungfrau', shoes: 'turnschuhe' })).toEqual({ ...NONE, outfit: 'outfit-smoking', shoes: 'turnschuhe' })
+    // an outfit already saved wins over old fields
+    expect(cleanOutfit({ outfit: 'outfit-smoking', top: 'ringelshirt' }).outfit).toBe('outfit-smoking')
+    // the seen and tried lists: each part counts as its outfit, once
+    expect(knownIds(['ringelshirt', 'muetze', 'jeansshorts', 'tutu', 'nope', 'outfit-bienenkostuem'])).toEqual(['outfit-ringelshirt', 'muetze', 'outfit-bienenkostuem'])
+    // loaded: with all stars the outfit is worn, the lists are outfits
+    const p = me(load(kid(1000, { starsEver: 1000, outfit: { top: 'regenjacke', bottom: 'lederhose', shoes: 'gummistiefel' }, wardrobeSeen: ['regenjacke', 'lederhose', 'krone'], wardrobeTried: ['lederhose'] })))
+    expect(p.outfit).toEqual({ ...NONE, outfit: 'outfit-regenjacke', shoes: 'gummistiefel' })
+    expect(p.wardrobeSeen).toEqual(['outfit-regenjacke', 'krone'])
+    expect(p.wardrobeTried).toEqual(['outfit-regenjacke'])
+    // an outfit not unlocked yet is not worn (its stars come from the new order)
+    const few = me(load(kid(ITEM_BY_ID['outfit-regenjacke'].stars - 1, { outfit: { top: 'regenjacke', head: 'muetze' } })))
+    expect(few.outfit).toEqual({ ...NONE, head: 'muetze' })
   })
   it('what Lumi wears is saved with the rest', () => {
     const t = WARDROBE[2]

@@ -5,7 +5,7 @@
 //
 //   tuft   the horn and the ear tips: hidden under a covering hat, drawn
 //          again over a crown or a wreath
-//   wings  the forelegs drawn again over clothes; tail: the tail, over bottoms and tops
+//   wings  the forelegs; tail: the tail, both kept in front of a painted outfit
 //   grip   the hoof that holds; soles: the hooves cut away under shoes
 //   feet   sitting: the hooves in front of the body
 const POSES = {

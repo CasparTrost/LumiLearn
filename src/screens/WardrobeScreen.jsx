@@ -6,18 +6,19 @@ import MusicButton from '../components/MusicControls.jsx'
 import LumiFigure from '../components/LumiFigure.jsx'
 import { Critter, Art, useMood, useBursts } from '../components/play/index.js'
 import { asset } from '../lib/assets.js'
-import { SLOTS, WARDROBE, ITEM_BY_ID, isUnlocked, cleanOutfit } from '../lib/wardrobe.js'
+import { SLOTS, WARDROBE, ITEM_BY_ID, isUnlocked, cleanOutfit, tilePictures } from '../lib/wardrobe.js'
 import { narrate, stopNarration } from '../narrator.js'
 import { sfx } from '../sfx.js'
 import { LINES, line } from '../lib/lumiLines.js'
 
 /**
  * Lumis Kleiderschrank (lib/wardrobe.js): the stars a child collected
- * unlock things for Lumi to wear, five places combined freely: head, face,
- * neck, back and something to hold. Lumi stands large on the left (on top
- * on a phone held upright). The wardrobe shows ONE place at a time: five
- * big picture tabs above it choose the place (a five-year-old cannot scan
- * fifty things in one list). A tap on a thing puts it on with a little
+ * unlock things for Lumi to wear, seven places combined freely: head, face,
+ * neck, back, something to hold, an outfit (a top and a bottom that belong
+ * together) and shoes. Lumi stands large on the left (on top on a phone held
+ * upright). The wardrobe shows ONE place at a time: seven big picture tabs
+ * around it choose the place (a five-year-old cannot scan a hundred things
+ * in one list). A tap on a thing puts it on with a little
  * show, a second tap takes it off; the button beside Lumi (a plain Lumi)
  * takes everything off at once.
  *
@@ -31,8 +32,8 @@ import { LINES, line } from '../lib/lumiLines.js'
  */
 const rec = key => (LINES[key] ? line(key) : null)
 const REACTIONS = ['schrank/anziehen-1', 'schrank/anziehen-2', 'schrank/anziehen-3', 'schrank/anziehen-4']
-const SHELF_LABEL = { head: 'Für den Kopf', face: 'Fürs Gesicht', neck: 'Für den Hals', back: 'Für den Rücken', hold: 'Zum Festhalten', top: 'Für den Bauch', bottom: 'Für die Beine', shoes: 'Für die Füße' }
-// the tabs stand in lines of this many (eight places: two lines of four)
+const SHELF_LABEL = { head: 'Für den Kopf', face: 'Fürs Gesicht', neck: 'Für den Hals', back: 'Für den Rücken', hold: 'Zum Festhalten', outfit: 'Zum Anziehen', shoes: 'Für die Füße' }
+// the tabs stand in lines of this many (seven places: a line of four and one of three)
 const TABS_PER_LINE = Math.ceil(SLOTS.length / Math.ceil(SLOTS.length / 5))
 const TAB_LINES = Math.ceil(SLOTS.length / TABS_PER_LINE)
 const TAB_GAP = 6
@@ -96,15 +97,15 @@ export default function WardrobeScreen() {
   const stageW = wide ? Math.min(440, Math.max(220, w * 0.4), Math.max(220, h - hud - (sideTabs ? 50 : 0))) : w
   const stageH = wide ? h - hud : Math.min(290, Math.round(h * 0.31))
   const lumi = Math.round(wide ? Math.min(stageW * 0.8, stageH * 0.7, 340) : stageH * 0.76)
-  // the tabs: as big as fits, in lines of TABS_PER_LINE (two lines of four
-  // for eight places; sideways on a phone, two columns of four), never
+  // the tabs: as big as fits, in lines of TABS_PER_LINE (four and three for
+  // seven places; sideways on a phone, two columns), never
   // smaller than 44 px to tap
   const tabSize = sideTabs
     ? Math.round(Math.max(44, Math.min(64, (h - hud - 24) / TABS_PER_LINE - TAB_GAP - 4)))
     : Math.round(Math.max(44, Math.min(TAB_LINES > 1 ? 62 : 76, ((wide ? w - stageW : w) - 40) / TABS_PER_LINE - 10)))
 
   // the tabs never move: the first line (head to back) stands on one side
-  // of the shelf, the second (hold to shoes) on the other (above and below
+  // of the shelf, the second (hold, outfit, shoes) on the other (above and below
   // it, sideways on a phone left and right), so both lines touch the shelf
   // and the open tab is always one piece with it, wherever it is
   const tabLines = Array.from({ length: TAB_LINES }, (_, i) => SLOTS.slice(i * TABS_PER_LINE, (i + 1) * TABS_PER_LINE))
@@ -333,7 +334,7 @@ export default function WardrobeScreen() {
           )}
         </div>
 
-        {/* ── The wardrobe: five picture tabs, one place at a time ── */}
+        {/* ── The wardrobe: seven picture tabs, one place at a time ── */}
         <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: sideTabs ? 'row' : 'column', padding: sideTabs ? '8px 6px' : wide ? '10px clamp(10px,2vw,22px) 12px' : '8px 10px 10px' }}>
           {tabLine(0)}
           <div style={{
@@ -383,7 +384,7 @@ export default function WardrobeScreen() {
 
 /**
  * A tab for a place: always the first thing of the place (a hat, glasses,
- * a scarf, wings, a balloon), so a tab never changes its picture: the thing
+ * a scarf, wings, a balloon, the first outfit, trainers), so a tab never changes its picture: the thing
  * Lumi wears said the place badly (a clown's nose beside the balloon, a
  * cape like a skirt). A faded grey picture with a present while nothing of the
  * place is owned (the first thing is the first one owned, so nothing is
@@ -490,15 +491,14 @@ function MissingStars({ item, stars, lastStep, next }) {
   )
 }
 
-/** A thing's picture, the drawn part (item.box) filling the tile. */
+/** A thing's picture, the drawn part (item.box) filling the tile; an outfit's top over its bottom (lib/wardrobe.js tilePictures). */
 export function ThingPic({ item, size }) {
-  const [x0, y0, x1, y1] = item.box ?? [0, 0, 1, 1]
-  const k = Math.min(1 / (x1 - x0), 1 / (y1 - y0), 2.4) * 0.86
-  const S = size * k
   return (
     <span style={{ position: 'relative', display: 'block', width: size, height: size, overflow: 'hidden', pointerEvents: 'none' }}>
-      <img src={asset(item.src)} alt="" draggable={false}
-        style={{ position: 'absolute', width: S, height: S, maxWidth: 'none', left: size / 2 - (x0 + x1) / 2 * S, top: size / 2 - (y0 + y1) / 2 * S }} />
+      {tilePictures(item).map(p => (
+        <img key={p.src} src={asset(p.src)} alt="" draggable={false}
+          style={{ position: 'absolute', width: size * p.size, height: size * p.size, maxWidth: 'none', left: size * p.x, top: size * p.y }} />
+      ))}
     </span>
   )
 }

@@ -3,10 +3,7 @@
 // `hide: true`: the thing is not drawn on the dino. `worn`: see wornFit in ../wardrobe.js.
 import HEAD from '../wardrobe/head.js'
 import SHOES from '../wardrobe/shoes.js'
-import BOTTOM from '../wardrobe/bottom.js'
 import FACE from '../wardrobe/face.js'
-import { ownTop } from '../wardrobe/top.js'
-import POSES from './dino-poses.js'
 import WORN from './dino-worn.js'
 import { wornFit, offFace } from '../wardrobe.js'
 
@@ -30,42 +27,10 @@ const glasses = Object.fromEntries(FACE.filter(t => !['clownsnase', 'schnurrbart
 // Sitting, its feet are big and lie flat in front: the shoes as big as the feet.
 const shoes = Object.fromEntries(SHOES.map(t => [t.id, { pose: { sleep: { dy: 2, size: 1 } } }]))
 
-// Its legs are short: shorts and skirts as long as the chick's reached its
-// feet. They are made smaller, as wide as its hips (the chick's stuck out on
-// both sides) and as long as its thighs; skirts stand out a little. Long
-// trousers stay long.
-const SHORTS = ['jeansshorts', 'fussballshorts', 'entenbadehose', 'lederhose']
-const SKIRTS = ['tutu', 'bastrock', 'schottenrock', 'prinzessinnenrock']
-const short = Object.fromEntries(BOTTOM.filter(t => SHORTS.includes(t.id) || SKIRTS.includes(t.id)).map(t => {
-  const [w, h] = SHORTS.includes(t.id) ? [0.8, 0.8] : [0.9, 0.78]
-  return [t.id, { size: +(t.size * w).toFixed(3), sy: +(t.sy * h / w).toFixed(3) }]
-}))
-
-// Sitting, every bottom is one garment over its hips and thighs: its drawn
-// part fills the lap from under the arms to the floor between the feet
-// (the arms and the feet lie in front of it). `sit` places a thing so its
-// drawn part (`box`) fills [x0, y0, x1, y1] on the sleeping picture.
-function sit(t, [x0, y0, x1, y1], f = {}) {
-  const A = POSES.sleep.bottom
-  const [bx0, by0, bx1, by1] = t.box ?? [0, 0, 1, 1]
-  const W = (x1 - x0) / (bx1 - bx0), H = (y1 - y0) / (by1 - by0)
-  return {
-    size: +(W / (A.w * (f.size ?? t.size))).toFixed(3), sy: +(H / W).toFixed(3),
-    dx: Math.round(x0 + (t.at[0] - bx0) * W - A.x - (t.dx ?? 0) * A.w),
-    dy: Math.round(y0 + (t.at[1] - by0) * H - A.y - (t.dy ?? 0) * A.w),
-  }
-}
-const LAP = [118, 276, 312, 374], SHORT_LAP = [120, 276, 310, 360], SKIRT_LAP = [104, 272, 326, 366]
-const sitting = Object.fromEntries(BOTTOM.filter(t => t.feet !== false).map(t => {
-  const f = short[t.id] ?? {}
-  return [t.id, { ...f, pose: { sleep: sit(t, SKIRTS.includes(t.id) ? SKIRT_LAP : SHORTS.includes(t.id) ? SHORT_LAP : LAP, f) } }]
-}))
-
 const FIT = {
   ...hats,
   ...glasses,
   ...shoes,
-  ...sitting,
   // the crown and the wreath sit around the head: the big spike stands
   // behind their front, not drawn over it
   krone: { ...hats.krone, tuft: null },
@@ -73,11 +38,6 @@ const FIT = {
   // its head is big and the hand low: the balloon leans out beside the
   // head on its string, not in front of the face
   ballon: { pose: { idle: { rot: 22 }, sad: { rot: 30 }, hmm: { rot: 22 }, think: { rot: 22 }, wave: { rot: 24 } } },
-  // sitting, the tail lies in the lap, not spread over the floor
-  meerjungfrau: { pose: { sleep: { dy: -20, size: 1.75, sy: 0.3 } } },
-  // tops painted for the dino (wardrobe/top.js ownTop)
-  ringelshirt: ownTop('dino', 'ringelshirt', { at: [0.5, 0.29], size: 1.42, sy: 0.6, box: [0.05, 0.24, 0.95, 0.76] }, { sad: { size: 1.1, dy: -14 }, sleep: { size: 0.92 } }),
-  hawaiihemd: ownTop('dino', 'hawaiihemd', { at: [0.5, 0.23], size: 1.25, sy: 0.5, box: [0.05, 0.18, 0.95, 0.82] }, { sad: { size: 1.1, dy: -14 } }),
 }
 
 // Off the eyes and the mouth (offFace in ../wardrobe.js; checked by

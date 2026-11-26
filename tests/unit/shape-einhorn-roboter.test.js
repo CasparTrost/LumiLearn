@@ -2,7 +2,7 @@
 // einhorn-*.js, roboter-*.js): anchors in order, every thing inside the
 // square, the shrink limits, the sleep rule, the eyes not covered by a hat.
 import { describe, it, expect } from 'vitest'
-import { WARDROBE, POSE_IDS, POSE_SIZE, SLOTS, figureLayers, itemCorners, fitted, placeItem } from '../../src/lib/wardrobe.js'
+import { WARDROBE, POSE_IDS, POSE_SIZE, ANCHORS, PART_BY_ID, figureLayers, itemCorners, fitted, placeItem } from '../../src/lib/wardrobe.js'
 import { wearsClothes, posesOf, fitOf } from '../../src/lib/shapes.js'
 
 const TALL = ['zauberhut', 'zylinder', 'kochmuetze', 'partyhut', 'hasenohren', 'einhornreif']
@@ -13,7 +13,7 @@ describe.each(SHAPES)('%s wears the wardrobe', id => {
   const shown = t => !fitted(t, F).hide
   it('anchors in order: head above the eyes above the neck above the waist above the feet', () => {
     for (const p of POSE_IDS) {
-      for (const s of SLOTS) expect(Number.isFinite(P[p][s].x), `${p} ${s}`).toBe(true)
+      for (const s of ANCHORS) expect(Number.isFinite(P[p][s].x), `${p} ${s}`).toBe(true)
       expect(P[p].head.y).toBeLessThan(P[p].face.y)
       expect(P[p].face.y).toBeLessThan(P[p].neck.y)
       expect(P[p].neck.y).toBeLessThan(P[p].bottom.y)
@@ -21,7 +21,8 @@ describe.each(SHAPES)('%s wears the wardrobe', id => {
     }
   })
   it('every thing on every picture stays in the square (at most 12 % smaller, 18 % under a tall hat)', () => {
-    for (const p of POSE_IDS) for (const t0 of WARDROBE) {
+    // (an outfit is painted inside the square: tests/unit/worn.test.js)
+    for (const p of POSE_IDS) for (const t0 of WARDROBE.filter(x => x.slot !== 'outfit')) {
       if (!shown(t0) || (p === 'sleep' && ['face', 'hold'].includes(t0.slot))) continue
       const t = fitted(t0, F)
       const { scale } = figureLayers(p, { [t.slot]: t.id }, P, F)
@@ -44,8 +45,8 @@ describe.each(SHAPES)('%s wears the wardrobe', id => {
       expect(pl.y, `${t.id} on ${p}`).toBeLessThan(P[p].face.y)
     }
   })
-  it('the corrections name known things only', () => {
-    const ids = new Set(WARDROBE.map(t => t.id))
+  it('the corrections name known things (or the painted parts of an outfit) only', () => {
+    const ids = new Set([...WARDROBE.map(t => t.id), ...Object.keys(PART_BY_ID)])
     for (const k of Object.keys(F)) expect(ids.has(k), k).toBe(true)
   })
 })

@@ -835,7 +835,7 @@ async function main() {
   if (!figure || !jobs?.length) { console.error(usage); process.exit(1) }
   const chick = figure === 'chick'
   const W8 = await import(pathToFileURL(join(ROOT, 'src/lib/wardrobe.js')).href)
-  for (const j of jobs) for (const [id, slot] of [[j.top, 'top'], [j.bottom, 'bottom']]) if (id && W8.ITEM_BY_ID[id]?.slot !== slot) throw new Error(`${id} is no ${slot} in the wardrobe`)
+  for (const j of jobs) for (const [id, slot] of [[j.top, 'top'], [j.bottom, 'bottom']]) if (id && W8.PART_BY_ID[id]?.part !== slot) throw new Error(`${id} is no ${slot} of an outfit in the wardrobe`)
   const POSES = chick ? W8.POSES : (await import(pathToFileURL(join(ROOT, `src/lib/shapes/${figure}-poses.js`)).href)).default
   const basePic = pose => join(ROOT, 'public/sprites', chick ? `emoji/custom/lumi-${pose}.webp` : `shapes/${figure}-${pose}.webp`)
   const outDir = join(ROOT, 'public/sprites/wardrobe/worn', figure)
@@ -861,7 +861,7 @@ async function main() {
     const dbg = debug && join(debug, name)
     if (dbg) mkdirSync(dbg, { recursive: true })
     const report = []
-    const tail = !!(job.bottom && W8.ITEM_BY_ID[job.bottom].feet === false)
+    const tail = !!(job.bottom && W8.PART_BY_ID[job.bottom].feet === false)
     for (let i = 0; i < POSE_ORDER.length; i++) {
       const pose = POSE_ORDER[i], P = POSES[pose], { T, A } = bases[pose]
       const sample = sampler(sheet, i)

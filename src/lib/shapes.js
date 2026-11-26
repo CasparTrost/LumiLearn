@@ -26,7 +26,7 @@
  * … { x, y, rot, w } in pixels of the 512 square). Until then it is drawn
  * without clothes, never with them at the chick's anchors (wearsClothes).
  */
-import { POSES, SLOTS, figureLayers, fitted, itemCorners, ITEM_BY_ID, CHICK_FIT } from './wardrobe.js'
+import { POSES, ANCHORS, figureLayers, fitted, itemCorners, ITEM_BY_ID, CHICK_FIT } from './wardrobe.js'
 import DINO_POSES from './shapes/dino-poses.js'
 import DINO_FIT from './shapes/dino-fit.js'
 import EINHORN_POSES from './shapes/einhorn-poses.js'
@@ -124,10 +124,10 @@ export const SHAPE_POSE_IDS = ['idle', 'happy', 'sad', 'hmm', 'think', 'wave', '
 export const shapeSrc = (id, pose) => (!id || id === CHICK || !SHAPE_BY_ID[id] ? `sprites/emoji/custom/lumi-${pose}.webp` : `sprites/shapes/${id}-${pose}.webp`)
 /**
  * THE switch for clothes: the chick, and a shape once its poses file is
- * complete: every pose with an anchor for every place (a half-measured shape
+ * complete: every pose with every anchor (ANCHORS in lib/wardrobe.js; a half-measured shape
  * keeps wearing nothing rather than things in the wrong spots).
  */
-export const posesComplete = poses => SHAPE_POSE_IDS.every(p => SLOTS.every(sl => Number.isFinite(poses?.[p]?.[sl]?.x)) && Array.isArray(poses?.[p]?.tuft))
+export const posesComplete = poses => SHAPE_POSE_IDS.every(p => ANCHORS.every(sl => Number.isFinite(poses?.[p]?.[sl]?.x)) && Array.isArray(poses?.[p]?.tuft))
 export const wearsClothes = id => !id || id === CHICK || posesComplete(SHAPE_BY_ID[id]?.poses)
 /** The anchors and corrections of a figure (the chick: lib/wardrobe.js POSES, none). */
 export const posesOf = id => (!id || id === CHICK || !SHAPE_BY_ID[id] ? POSES : SHAPE_BY_ID[id].poses)

@@ -14,8 +14,8 @@
  * pictures (POSES, measured on the 384 × 384 pictures in
  * public/sprites/emoji/custom/lumi-*.webp) and the thing's own numbers:
  *
- *   slot   where it is worn: 'head', 'face', 'neck', 'back', 'hold', 'top',
- *          'bottom' or 'shoes' (one of each at a time, all eight combined freely)
+ *   slot   where it is worn: 'head', 'face', 'neck', 'back', 'hold', 'outfit'
+ *          or 'shoes' (one of each at a time, all seven combined freely)
  *   stars  not written: from the thing's place in ORDER (see stepStars)
  *   src    the picture, square, transparent
  *   at     the point of the picture [x, y] (0…1) that goes on the anchor:
@@ -25,9 +25,6 @@
  *            back  the middle between the shoulders (drawn behind Lumi)
  *            hold  the tip of the wing that holds it (sleeping: the floor beside
  *                  Lumi); the wing tip (`grip` of the picture) is drawn over it
- *            top   the middle of the neck line (a shirt's collar); the wings
- *                  (`wings` of the picture) are drawn again over it
- *            bottom the waist; under the top's hem
  *            shoes one foot: the middle between the feet a `step` to the side;
  *                  `at` is a point of the LEFT shoe of the pair picture, the
  *                  right shoe is the other half, mirrored about the middle
@@ -54,9 +51,12 @@
  *          hood or a space suit's collar ring cut off; the shelf shows it whole)
  *   cut    the picture is drawn down to this share of its height only (also
  *          per pose: a scarf's end over the feet when Lumi sits)
- *   sy     clothes only: the picture's height as a share of its width (a
- *          shirt squashed to Lumi's round body; also per pose)
- *   feet   bottoms only: false hides the shoes (a mermaid's tail)
+ *   sy     the picture's height as a share of its width (shoes; also per pose)
+ * An outfit (wardrobe/outfit.js) has none of these: it is a top and a bottom
+ * painted onto every figure (`top`, `bottom`: their ids in wardrobe/top.js and
+ * bottom.js), drawn from those pictures over the whole square. One with a
+ * mermaid's tail (a bottom with `feet: false`) takes the shoes off.
+ *
  *   spread back things only: a pair of wings, in degrees. The picture is cut
  *          in two at `at` and each half turned outwards and down about that
  *          point, so the wings stand out at the sides of the body, below the
@@ -70,11 +70,12 @@
 // last argument (`poses`), so another figure (lib/shapes.js) plugs in its
 // own: per pose the anchors head, face, neck, back, hold, top, bottom,
 // shoes ({ x, y, rot, w }, shoes also `step`, the distance of a foot from
-// the middle), and the polygons tuft (what pokes up above the head), grip
+// the middle; top and bottom: where scripts/art/worn-from-sheet.mjs finds the
+// chest and the hips of a dressed figure, ANCHORS), and the polygons tuft (what pokes up above the head), grip
 // (the wing tip that holds; not needed asleep), front (a wing in front of
-// the neck, optional), wings (drawn again over clothes), soles (cut away
+// the neck, optional), wings (kept in front of a painted outfit by scripts/art/worn-from-sheet.mjs), soles (cut away
 // under shoes standing) and feet (only where the feet lie in front of the
-// body, sitting); another figure may add tail (drawn again over clothes)
+// body, sitting); another figure may add tail (kept in front of an outfit like the wings)
 // and ownWings (cut away under wings worn). think and sleep have `sign`: the
 // "?" and the "Zzz" painted beside the head, one polygon per piece, drawn
 // again over what is worn (scripts/art/face-zones.mjs signs finds them).
@@ -192,8 +193,8 @@ export const POSES = {
 export const POSE_IDS = Object.keys(POSES)
 
 // ── The things ──────────────────────────────────────────────────────────────
-// One file per place (wardrobe/head.js, face.js, neck.js, back.js, hold.js),
-// one line per thing. The stars that unlock a thing are not written there:
+// One file per place (wardrobe/head.js, face.js, neck.js, back.js, hold.js,
+// outfit.js, shoes.js), one line per thing. The stars that unlock a thing are not written there:
 // they come from the thing's place in ORDER below and one rule, so the list
 // can grow and be reordered without counting stars by hand. A thing in a
 // place's file that is not in ORDER yet comes after all the others (in the
@@ -203,13 +204,18 @@ import FACE from './wardrobe/face.js'
 import NECK from './wardrobe/neck.js'
 import BACK from './wardrobe/back.js'
 import HOLD from './wardrobe/hold.js'
+import OUTFIT from './wardrobe/outfit.js'
 import TOP from './wardrobe/top.js'
 import BOTTOM from './wardrobe/bottom.js'
 import SHOES from './wardrobe/shoes.js'
 import CHICK_WORN from './wardrobe/chick-worn.js'
 import CHICK_OFF_FACE from './wardrobe/chick-off-face.js'
 
-export const SLOTS = ['head', 'face', 'neck', 'back', 'hold', 'top', 'bottom', 'shoes']
+export const SLOTS = ['head', 'face', 'neck', 'back', 'hold', 'outfit', 'shoes']
+/** The anchors measured on every pose of a figure (an outfit has none; top and bottom: where its parts were cut). */
+export const ANCHORS = ['head', 'face', 'neck', 'back', 'hold', 'top', 'bottom', 'shoes']
+/** The tops and bottoms the outfits are made of, by id. */
+export const PART_BY_ID = Object.fromEntries([...TOP, ...BOTTOM].map(t => [t.id, t]))
 
 /**
  * The order of unlocking: the first two are there from the start. The
@@ -218,40 +224,43 @@ export const SLOTS = ['head', 'face', 'neck', 'back', 'hold', 'top', 'bottom', '
  * in the wardrobe, so it has to say the place (wings for the back: a cape
  * alone read as a skirt); after them each place's things are spread evenly
  * over the rest, never two of one place in a row, the red hats far apart,
- * the crown last. The first top, trousers and shoes come within the first
- * 30 stars. A place with many things comes often (a hat about every 20
- * stars), the back with its seven things least often (every 45 to 75 stars).
+ * the crown last. The first outfit comes at 15 stars, the first shoes at 24.
+ * A place with many things comes often (a hat about every 20 stars), the back
+ * with its seven things least often (every 45 to 75 stars).
  */
 export const ORDER = [
-  'muetze', 'sonnenbrille', 'ballon', 'schal', 'partyhut', 'schmetterling', 'ringelshirt', 'herzbrille', 'jeansshorts', 'zauberstab',
-  'turnschuhe', 'katzenohren', 'fliege', 'blumenkranz', 'heldenshirt', 'fussballshorts', 'gummistiefel', 'clownsnase', 'perlenkette', 'piratenhut',
-  'lolli', 'fussballtrikot', 'tutu', 'hasenpantoffeln', 'basecap', 'umhang', 'sternbrille', 'halstuch', 'hasenohren', 'hawaiihemd',
-  'entenbadehose', 'ballettschuhe', 'propellermuetze', 'blume', 'katzenhoodie', 'heldenmaske', 'medaille', 'lederhose', 'flipflops', 'kochmuetze',
-  'engel', 'regenjacke', 'cowboyhut', 'bastrock', 'cowboystiefel', 'spiralbrille', 'kopfhoerer', 'zuckerwatte', 'einhornreif', 'bienenkostuem',
-  'pyjamahose', 'rollschuhe', 'feuerwehrhelm', 'rundbrille', 'gloeckchen', 'ritterruestung', 'eierschale', 'fee', 'faehnchen', 'piratenhose',
-  'clownsschuhe', 'zauberhut', 'rettungsweste', 'taucherbrille', 'blumenkette', 'schottenrock', 'monsterpfoten', 'antennen', 'sternenpyjama', 'eis',
-  'strohhut', 'brille3d', 'kamera', 'flickenjeans', 'holzschuhe', 'drache', 'kochjacke', 'tortenhut', 'prinzessinnenrock', 'flossen',
-  'matrosenmuetze', 'monokel', 'krawatte', 'arztkittel', 'ukulele', 'fliegenpilz', 'regenbogenleggings', 'wanderstiefel', 'astronautenjacke', 'diadem',
-  'federmaske', 'halskrause', 'rakete', 'clownshose', 'schlittschuhe', 'zylinder', 'skijacke', 'windrad', 'skibrille', 'herzkette',
-  'heiligenschein', 'skihose', 'elfenschuhe', 'smoking', 'weihnachtsmuetze', 'pfau', 'laterne', 'schnurrbart', 'sternabzeichen', 'meerjungfrau',
-  'astronautenstiefel', 'doktorhut', 'rentierpulli', 'krone',
+  'muetze', 'sonnenbrille', 'ballon', 'schal', 'partyhut', 'schmetterling', 'outfit-ringelshirt', 'herzbrille',
+  'zauberstab', 'turnschuhe', 'katzenohren', 'fliege', 'blumenkranz', 'outfit-heldenshirt', 'gummistiefel', 'clownsnase',
+  'perlenkette', 'piratenhut', 'lolli', 'outfit-fussballtrikot', 'hasenpantoffeln', 'basecap', 'umhang', 'sternbrille',
+  'halstuch', 'hasenohren', 'outfit-hawaiihemd', 'ballettschuhe', 'propellermuetze', 'blume', 'outfit-katzenhoodie', 'heldenmaske',
+  'medaille', 'flipflops', 'kochmuetze', 'engel', 'outfit-regenjacke', 'cowboyhut', 'cowboystiefel', 'spiralbrille',
+  'kopfhoerer', 'zuckerwatte', 'einhornreif', 'outfit-bienenkostuem', 'rollschuhe', 'feuerwehrhelm', 'rundbrille', 'gloeckchen',
+  'outfit-ritterruestung', 'eierschale', 'fee', 'faehnchen', 'clownsschuhe', 'zauberhut', 'outfit-rettungsweste', 'taucherbrille',
+  'blumenkette', 'monsterpfoten', 'antennen', 'outfit-sternenpyjama', 'eis', 'strohhut', 'brille3d', 'kamera',
+  'holzschuhe', 'drache', 'outfit-kochjacke', 'tortenhut', 'flossen', 'matrosenmuetze', 'monokel', 'krawatte',
+  'outfit-arztkittel', 'ukulele', 'fliegenpilz', 'wanderstiefel', 'outfit-astronautenjacke', 'diadem', 'federmaske', 'halskrause',
+  'rakete', 'schlittschuhe', 'zylinder', 'outfit-skijacke', 'windrad', 'skibrille', 'heiligenschein', 'herzkette',
+  'elfenschuhe', 'weihnachtsmuetze', 'outfit-smoking', 'pfau', 'schnurrbart', 'laterne', 'sternabzeichen', 'astronautenstiefel',
+  'doktorhut', 'outfit-rentierpulli', 'krone',
 ]
 
 /**
  * The stars for the thing at place i of the order. The first two are free
  * (the wardrobe is never empty); then the gap between two things starts at
- * three stars (one good game) and grows by one star every 42 things:
- * 42 times 3, 42 times 4, … With 114 things the last one needs 434
- * stars, about two thirds of all the stars the games give (23 games with
- * levels × 10 levels × 3 stars = 690; tests/unit/wardrobe.test.js checks it).
+ * three stars (one good game) and grows by one star every 28 things:
+ * 28 times 3, 28 times 4, … With 99 things the last one needs 414
+ * stars, 60 % of all the stars the games give (23 games with levels × 10
+ * levels × 3 stars = 690; tests/unit/wardrobe.test.js checks it).
  */
 export function stepStars(i) {
   let s = 0
-  for (let k = 0; k < i - 1; k++) s += 3 + Math.floor(k / 42)
+  for (let k = 0; k < i - 1; k++) s += 3 + Math.floor(k / 28)
   return i < 2 ? 0 : s
 }
 
-const ALL = [...HEAD, ...FACE, ...NECK, ...BACK, ...HOLD, ...TOP, ...BOTTOM, ...SHOES]
+// an outfit takes the mermaid's `feet: false` from its bottom
+const OUTFITS = OUTFIT.map(o => (PART_BY_ID[o.bottom]?.feet === false ? { ...o, feet: false } : o))
+const ALL = [...HEAD, ...FACE, ...NECK, ...BACK, ...HOLD, ...OUTFITS, ...SHOES]
 const rank = id => { const i = ORDER.indexOf(id); return i === -1 ? ORDER.length + ALL.findIndex(t => t.id === id) : i }
 /** Every thing, in the order of unlocking, with its stars. */
 export const WARDROBE = [...ALL].sort((a, b) => rank(a.id) - rank(b.id)).map((t, i) => ({ ...t, stars: stepStars(i) }))
@@ -271,30 +280,73 @@ export const stepBefore = item => Math.max(0, ...WARDROBE.filter(t => t.stars < 
 /** Things unlocked the child has not seen in the wardrobe yet (the sign on the button). */
 export const unseenItems = (profile, stars) => unlockedItems(stars).filter(t => !(profile?.wardrobeSeen ?? []).includes(t.id))
 
+// Saves from before the outfits wore a top and a bottom on their own: each
+// stands for the outfit it belongs to
+const OUTFIT_OF = Object.fromEntries(OUTFITS.flatMap(o => [o.top, o.bottom].filter(Boolean).map(id => [id, o.id])))
+const outfitOfPart = (id, part) => (PART_BY_ID[id]?.part === part ? OUTFIT_OF[id] : null)
+/**
+ * A list of things saved (seen, tried on), cleaned: known things only, each
+ * once; a top or a bottom of an old save counts as its outfit.
+ */
+export const knownIds = list => (Array.isArray(list) ? Array.from(new Set(list.map(id => OUTFIT_OF[id] ?? id).filter(id => ITEM_BY_ID[id]))) : [])
+
 /** What Lumi wears, cleaned: known things in their own slot only. */
 export function cleanOutfit(outfit) {
   const out = Object.fromEntries(SLOTS.map(s => [s, null]))
   if (outfit && typeof outfit === 'object') {
     for (const s of SLOTS) if (ITEM_BY_ID[outfit[s]]?.slot === s) out[s] = outfit[s]
+    // an old save with a top and/or a bottom: the outfit of the top, else of the bottom
+    if (!out.outfit) out.outfit = outfitOfPart(outfit.top, 'top') ?? outfitOfPart(outfit.bottom, 'bottom') ?? null
     // (an old save with shoes and a mermaid's tail: the tail stays)
-    if (out.shoes && ITEM_BY_ID[out.bottom]?.feet === false) out.shoes = null
+    if (out.shoes && ITEM_BY_ID[out.outfit]?.feet === false) out.shoes = null
   }
   return out
 }
 /**
  * Put a thing on (or take it off when it is worn): one per place. Things
- * that cannot go together take each other off: shoes and a mermaid's tail
- * (a bottom with `feet: false`), so nothing is "worn" that does not show.
+ * that cannot go together take each other off: shoes and the outfit with a
+ * mermaid's tail (`feet: false`), so nothing is "worn" that does not show.
  */
 export function wearToggle(outfit, item) {
   const o = cleanOutfit(outfit)
   if (o[item.slot] === item.id) return { ...o, [item.slot]: null }
   const next = { ...o, [item.slot]: item.id }
-  if (item.slot === 'shoes' && ITEM_BY_ID[o.bottom]?.feet === false) next.bottom = null
-  if (item.slot === 'bottom' && item.feet === false) next.shoes = null
+  if (item.slot === 'shoes' && ITEM_BY_ID[o.outfit]?.feet === false) next.outfit = null
+  if (item.slot === 'outfit' && item.feet === false) next.shoes = null
   return next
 }
-export const wornItems = outfit => (outfit ? SLOTS.map(s => ITEM_BY_ID[outfit[s]]).filter(t => t && SLOTS.includes(t.slot) && outfit[t.slot] === t.id) : [])
+/**
+ * A thing's tile on the shelf (and on its place's tab, and on the results
+ * screen): the pictures drawn on it, each { src, x, y, size } in shares of
+ * the tile's side, in the order drawn. A thing: its drawn part (`box`)
+ * filling the tile. An outfit: the top's picture over the bottom's (a
+ * little smaller, as on the figure), the top's hem over the waistband,
+ * both together filling the tile, so the pair reads as one outfit.
+ */
+const TILE_FILL = 0.86, TILE_ZOOM = 2.4, TILE_BOTTOM = 0.8, TILE_HEM = 0.1
+export function tilePictures(item) {
+  const top = item.slot === 'outfit' ? PART_BY_ID[item.top] : item
+  const bottom = item.slot === 'outfit' ? PART_BY_ID[item.bottom] : null
+  const [tx0, ty0, tx1, ty1] = top.box ?? [0, 0, 1, 1]
+  if (!bottom) {
+    const k = Math.min(1 / (tx1 - tx0), 1 / (ty1 - ty0), TILE_ZOOM) * TILE_FILL
+    return [{ src: top.src, x: 0.5 - (tx0 + tx1) / 2 * k, y: 0.5 - (ty0 + ty1) / 2 * k, size: k }]
+  }
+  // in units of the top's picture: the top at 0,0; the bottom's drawn part
+  // starts under the top's, centred under it
+  const [bx0, by0, bx1, by1] = bottom.box ?? [0, 0, 1, 1]
+  const B = TILE_BOTTOM, cx = (tx0 + tx1) / 2
+  const bTop = ty1 - TILE_HEM * (ty1 - ty0)
+  const bx = cx - (bx0 + bx1) / 2 * B, by = bTop - by0 * B
+  const x0 = Math.min(tx0, bx + bx0 * B), x1 = Math.max(tx1, bx + bx1 * B), y0 = ty0, y1 = by + by1 * B
+  const k = TILE_FILL / Math.max(x1 - x0, y1 - y0)
+  const ox = 0.5 - (x0 + x1) / 2 * k, oy = 0.5 - (y0 + y1) / 2 * k
+  return [
+    { src: bottom.src, x: ox + bx * k, y: oy + by * k, size: B * k },
+    { src: top.src, x: ox, y: oy, size: k },
+  ]
+}
+export const wornItems = outfit =>(outfit ? SLOTS.map(s => ITEM_BY_ID[outfit[s]]).filter(t => t && SLOTS.includes(t.slot) && outfit[t.slot] === t.id) : [])
 
 // ── Drawing ─────────────────────────────────────────────────────────────────
 const LUMI_POSE = {
@@ -403,13 +455,14 @@ export function fitted(item, fit = {}) {
 /**
  * Clothes painted onto a figure: Tripo dressed all seven poses of the figure
  * at once, and scripts/art/worn-from-sheet.mjs cut the top and the bottom out
- * per pose, in the frame of the pose picture. Such a thing (`worn`: the
- * figure whose pictures it has) is drawn from
+ * per pose, in the frame of the pose picture. Such a part of an outfit
+ * (`worn`: the figure whose pictures it has) is drawn from
  * public/sprites/wardrobe/worn/<figure>/<id>-<pose>.webp over the whole
  * square, not placed by anchors: its sleeves follow the arms, its legs the
- * sitting legs. The figure's arms and tail are not drawn again over it.
- * `wornFit(figure, ids, fit)` marks the things of a figure's list
- * (lib/shapes/<figure>-worn.js) in its fit.
+ * sitting legs, the arms, the tail and the feet in front of it are painted.
+ * `wornFit(figure, ids, fit)` marks the parts of a figure's list
+ * (lib/shapes/<figure>-worn.js) in its fit; a part not painted for a figure
+ * is not drawn on it (tests/unit/worn.test.js: every figure has them all).
  */
 export const wornFit = (figure, ids, fit = {}) => ({ ...fit, ...Object.fromEntries(ids.map(id => [id, { ...fit[id], worn: figure }])) })
 /**
@@ -444,12 +497,24 @@ export const wornSrc = (item, pose) => `sprites/wardrobe/worn/${item.worn}/${ite
 export const ASLEEP_OFF = ['face', 'hold']
 export const asleep = pose => pose === 'sleep'
 
+// the painted top or bottom of a worn outfit, as the figure has it (null: not painted for it)
+const partOf = (outfit, part, fit) => {
+  const t = outfit?.[part] && PART_BY_ID[outfit[part]]
+  const f = t && fitted(t, fit)
+  return f?.worn && !f.hide ? f : null
+}
+
 export function figureLayers(pose, outfit, poses = POSES, fit = poses === POSES ? CHICK_FIT : {}) {
   const P = poses[pose] ?? poses.idle
   const worn = wornItems(outfit).filter(t => !(asleep(pose) && ASLEEP_OFF.includes(t.slot)))
     .map(t => fitted(t, fit)).filter(t => !t.hide)
   const bySlot = Object.fromEntries(worn.map(t => [t.slot, t]))
   const hat = bySlot.head
+  // the outfit: its top and its bottom, each a painted picture of the figure
+  const top = partOf(bySlot.outfit, 'top', fit), bottom = partOf(bySlot.outfit, 'bottom', fit)
+  // a mermaid's tail has no feet: no shoes while it is worn
+  const tail = bottom?.feet === false
+  if (tail) delete bySlot.shoes
   const layers = []
   const item = (t, side) => {
     // painted onto the figure: its own picture over the whole square
@@ -477,58 +542,23 @@ export function figureLayers(pose, outfit, poses = POSES, fit = poses === POSES 
   // toes under shoes (standing, Lumi's orange toes peeked out under a sole)
   const holes = []
   if (hat?.tuft === 'hide' && P.tuft) holes.push(P.tuft)
-  const shoesOn = bySlot.shoes && bySlot.bottom?.feet !== false
-  if (shoesOn && !P.feet && P.soles) holes.push(P.soles)
+  if (bySlot.shoes && !P.feet && P.soles) holes.push(P.soles)
   // a figure with wings of its own (the dragon): they are cut away under wings worn
   if (bySlot.back && spreadOf(bySlot.back, pose) && P.ownWings) holes.push(...P.ownWings)
-  // a mermaid's tail has no feet: they are cut away (sitting, the tail is
-  // drawn big enough to close the gap)
-  // (painted: the mask below cuts away what the tail replaces)
-  if (bySlot.bottom?.feet === false && !bySlot.bottom.worn) { if (P.feet) holes.push(...P.feet); else if (P.soles) holes.push(P.soles.map(([x, y], i) => [x, i < 2 ? y - 26 : y])) }
   layers.push({ kind: 'pose', clip: holes.length ? `polygon(evenodd, 0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ${holes.map(h => `${poly(h)}, ${poly([h[0]])}, 0% 0%`).join(', ')})` : null })
-  // the clothes: trousers or a skirt over the lower body and the legs (the
-  // feet Lumi sits on stay in front of them), the shoes, one on each foot
-  // (the pair picture cut in two), and the top over them, its hem over the
-  // waistband; the wings lie in front of the clothes again
-  // (a mermaid's tail has no feet: shoes stay in the wardrobe while it is worn)
-  if (bySlot.shoes && bySlot.bottom?.feet === false) delete bySlot.shoes
+  // the clothes: the outfit's bottom over the lower body and the legs, the
+  // shoes, one on each foot (the pair picture cut in two), and the top over
+  // them, its hem over the waistband (standing, a trouser leg or a skirt's
+  // hem lies over the shoe's opening; sitting, the feet stick out to the
+  // front, the shoes on them in front of the bottom)
   const shoes = () => bySlot.shoes ? [
     { ...item(bySlot.shoes, 'l'), clip: 'inset(0 50% 0 0)' },
     { ...item(bySlot.shoes, 'r'), id: `${bySlot.shoes.id}-right`, part: true, clip: 'inset(0 0 0 50%)' },
   ] : []
-  // clothes painted onto the figure (`worn`, see wornFit) already have the
-  // arms, the tail and the feet in front of them: the figure's polygons are
-  // drawn again only over clothes laid on it (and below a painted top)
-  const laidTop = bySlot.top && !bySlot.top.worn, laidBottom = bySlot.bottom && !bySlot.bottom.worn
-  const again = list => { for (const w of list ?? []) layers.push(clipTo(w)) }
-  if (!P.feet) {
-    // standing: the shoes are worn under the trousers (a trouser leg or a
-    // skirt's hem lies over the shoe's opening), the top over both
-    layers.push(...shoes())
-    if (bySlot.bottom) layers.push(item(bySlot.bottom))
-  } else {
-    // sitting: the feet stick out to the front, in front of the trousers;
-    // the shoes on them, and both again in front of the top
-    if (bySlot.bottom) {
-      layers.push(item(bySlot.bottom))
-      // (a mermaid's tail: no feet in front of it)
-      if (laidBottom && bySlot.bottom.feet !== false) again(P.feet)
-    }
-    layers.push(...shoes())
-  }
-  if (bySlot.top?.worn) {
-    // a painted top over a laid bottom: the arms and the tail over the
-    // bottom first, the top's sleeves over the arms
-    if (laidBottom) { again(P.wings); again(P.tail) }
-    layers.push(item(bySlot.top))
-  } else {
-    if (bySlot.top) layers.push(item(bySlot.top))
-    if (laidTop || laidBottom) {
-      again(P.wings)
-      // a tail lies over trousers, skirts and the hem of a top
-      again(P.tail)
-    }
-  }
+  if (!P.feet) layers.push(...shoes())
+  if (bottom) layers.push(item(bottom))
+  if (P.feet) layers.push(...shoes())
+  if (top) layers.push(item(top))
   // the part of a back thing that lies in FRONT of Lumi (a cape's collar
   // and clasp): the same picture again, cut to its `over` polygon
   if (bySlot.back?.over) {
@@ -550,10 +580,10 @@ export function figureLayers(pose, outfit, poses = POSES, fit = poses === POSES 
     if (P.front) layers.push({ kind: 'pose', clip: `polygon(${poly(P.front)})` })
   }
   // sitting, the feet (and the shoes on them) lie in front of the top and
-  // of what hangs from the neck (a scarf's end ended on the shoes)
-  // (a painted top has them in front already, unless the bottom was laid on)
-  if ((bySlot.top || bySlot.neck) && P.feet && bySlot.bottom?.feet !== false) {
-    if (laidTop || bySlot.neck || (bySlot.top && laidBottom)) again(P.feet)
+  // of what hangs from the neck (a scarf's end ended on the shoes; a painted
+  // top has the feet in front already)
+  if ((top || bySlot.neck) && P.feet && !tail) {
+    if (bySlot.neck) for (const w of P.feet) layers.push(clipTo(w))
     if (bySlot.shoes) layers.push(...shoes().map(l => ({ ...l, id: `${bySlot.shoes.id}-${l.part ? 'right-' : ''}again`, part: true })))
   }
   // the held thing lies over Lumi; the tip of the holding wing is drawn
@@ -572,9 +602,10 @@ export function figureLayers(pose, outfit, poses = POSES, fit = poses === POSES 
   // (with a thin white edge: a blue "Zzz" on a blue cap)
   if (hat && P.sign) for (const g of P.sign) layers.push({ ...clipTo(g), filter: SIGN_EDGE })
   // room in the square: the lowest scale that keeps every corner inside
+  // (the outfit is painted inside the square)
   let scale = 1
   const S = POSE_SIZE, M = 2
-  for (const t of worn.filter(t => !t.worn)) for (const [x, y] of itemCorners(t, pose, poses)) {
+  for (const t of worn.filter(t => t.slot !== 'outfit')) for (const [x, y] of itemCorners(t, pose, poses)) {
     if (y < M) scale = Math.min(scale, (S - M) / (S - y))
     if (x < M) scale = Math.min(scale, (S / 2 - M) / (S / 2 - x))
     if (x > S - M) scale = Math.min(scale, (S / 2 - M) / (x - S / 2))
@@ -582,8 +613,8 @@ export function figureLayers(pose, outfit, poses = POSES, fit = poses === POSES 
   // a painted bottom that replaces the legs (a mermaid's tail): every
   // picture of the figure is masked where Tripo painted no legs, feet or tail
   // (<id>-<pose>-mask.webp, opaque where the figure stays)
-  if (bySlot.bottom?.worn && bySlot.bottom.feet === false) {
-    const mask = wornSrc(bySlot.bottom, poses[pose] ? pose : 'idle').replace(/\.webp$/, '-mask.webp')
+  if (tail) {
+    const mask = wornSrc(bottom, poses[pose] ? pose : 'idle').replace(/\.webp$/, '-mask.webp')
     for (const l of layers) if (l.kind === 'pose') l.mask = mask
   }
   return { layers, scale: Math.round(scale * 1000) / 1000 }
