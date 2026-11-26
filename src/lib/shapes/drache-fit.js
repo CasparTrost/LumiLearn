@@ -32,4 +32,7 @@ export default {
   // the crown sits around the head: horns and crest stand behind its front
   // band (drawn over it, the crest covered its jewels)
   krone: { ...hats.krone, tuft: null },
+  // the moustache right under the nostrils, above the open mouth (the
+  // chick's lowered it laughing and waving: on the dragon it hung on the chin)
+  schnurrbart: { pose: { idle: { dy: -6 }, happy: { dy: -4 }, sad: { dy: -4 }, wave: { dy: -4 } } },
 }
