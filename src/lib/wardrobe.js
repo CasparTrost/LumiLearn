@@ -145,7 +145,7 @@ export const ORDER = [
   'blumenkranz', 'clownsnase', 'perlenkette', 'schmetterling', 'lolli', 'piratenhut', 'sternbrille', 'halstuch', 'basecap', 'engel',
   'blume', 'hasenohren', 'heldenmaske', 'medaille', 'kochmuetze', 'fee', 'faehnchen', 'rundbrille', 'gloeckchen', 'cowboyhut',
   'taucherbrille', 'feuerwehrhelm', 'blumenkette', 'drache', 'eis', 'zauberhut', 'monokel', 'krawatte', 'strohhut', 'rakete',
-  'windrad', 'matrosenmuetze', 'skibrille', 'herzkette', 'zylinder', 'pfau', 'schirm', 'schnurrbart', 'weihnachtsmuetze', 'sternabzeichen',
+  'windrad', 'matrosenmuetze', 'skibrille', 'herzkette', 'zylinder', 'pfau', 'laterne', 'schnurrbart', 'weihnachtsmuetze', 'sternabzeichen',
   'krone',
 ]
 
