@@ -1259,21 +1259,20 @@ export const LINES = {
   'schrank/platz-top': 'Für den Bauch!',
   'schrank/platz-bottom': 'Für die Beine!',
   'schrank/platz-shoes': 'Für die Füße!',
-  // Lumis Freunde (screens/FriendsScreen.jsx). NOT recorded yet: the
+  // Lumi verwandelt sich (screens/ShapesScreen.jsx). NOT recorded yet: the
   // narrator skips a recording that is missing, the screens work without
   // them (tests/unit/lumiLines.test.js lets them wait under RECORD_LATER)
-  'freunde/neu': 'Juhu! Ein neuer Freund möchte bei mir einziehen. Tippe auf das Geschenk!',
-  'freunde/einzug': 'Meine Freunde sind da! Einer darf bei uns einziehen. Tippe auf einen!',
-  'freunde/sicher': 'Soll dieser Freund bei uns wohnen? Dann tippe auf den grünen Haken!',
-  'freunde/hallo-dino': 'Hallo Dino! Schön, dass du bei uns wohnst!',
-  'freunde/hallo-einhorn': 'Hallo Einhorn! Schön, dass du bei uns wohnst!',
-  'freunde/hallo-drache': 'Hallo Drache! Schön, dass du bei uns wohnst!',
-  'freunde/hallo-roboter': 'Hallo Roboter! Schön, dass du bei uns wohnst!',
-  'freunde/wer-kommt-mit': 'Wer kommt heute mit? Tippe auf einen Freund!',
+  'gestalt/neu': 'Juhu! Ich kann mich verwandeln! Tippe auf das Geschenk!',
+  'gestalt/aussuchen': 'Wie soll ich aussehen? Dreh und tippe auf den grünen Haken!',
+  'gestalt/chick': 'Ich bin wieder ein Küken!',
+  'gestalt/dino': 'Schau mal, ich bin jetzt ein Dino!',
+  'gestalt/einhorn': 'Schau mal, ich bin jetzt ein Einhorn!',
+  'gestalt/drache': 'Schau mal, ich bin jetzt ein Drache!',
+  'gestalt/roboter': 'Schau mal, ich bin jetzt ein Roboter!',
 }
 
 /** Sentences written but not recorded yet (the narrator skips them while their file is missing). */
-export const RECORD_LATER = /^freunde\//
+export const RECORD_LATER = /^gestalt\//
 
 /** The recording of a sentence, with its text for the browser voice. */
 export function line(key) {

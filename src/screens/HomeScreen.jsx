@@ -18,8 +18,8 @@ import { hearable } from '../lib/hearable.js'
 import { lazyWithReload } from '../lib/lazyWithReload.js'
 import { journeyArt, asset } from '../lib/assets.js'
 import { unseenItems } from '../lib/wardrobe.js'
-import { friendsOwed } from '../lib/friends.js'
-import { FriendCompanion, FriendsIcon, useFriendAlong } from '../components/FriendFigure.jsx'
+import { shapesOwed, firstChoiceOwed, offeredFirst } from '../lib/shapes.js'
+import { ShapesIcon, ChildLumi } from '../components/ShapeFigure.jsx'
 import { WORLDS, MODULE_BY_ID, recommend, sortForAge, visibleModules } from '../modules.js'
 import { prefetchGame, isGameLoaded, ensureGame } from './GameScreen.jsx'
 import { line, gameLine } from '../lib/lumiLines.js'
@@ -156,16 +156,16 @@ function WardrobeButton({ fresh, onClick, small }) {
   )
 }
 
-// Lumis Freunde, beside the wardrobe. A friend may move in: the same sign
-// and wiggle as the wardrobe's, until the child has chosen.
-function FriendsButton({ owed, onClick, small }) {
+// Lumi verwandelt sich, beside the wardrobe: who Lumi is. A new shape may
+// be won: the same sign and wiggle as the wardrobe's, until it is chosen.
+function ShapesButton({ owed, onClick, small }) {
   return (
-    <motion.button className="px-btn px-btn--parch px-btn--icon" onClick={onClick} data-friends-owed={owed ? '1' : undefined}
-      aria-label={owed ? 'Lumis Freunde, ein Freund möchte einziehen' : 'Lumis Freunde'} title="Lumis Freunde"
+    <motion.button className="px-btn px-btn--parch px-btn--icon" onClick={onClick} data-shapes-owed={owed ? '1' : undefined}
+      aria-label={owed ? 'Lumi verwandeln, eine neue Figur wartet' : 'Lumi verwandeln'} title="Lumi verwandeln"
       animate={owed ? { rotate: [0, 0, 0, 0, -8, 8, -5, 0] } : { rotate: 0 }}
       transition={owed ? { duration: 2.6, repeat: Infinity, delay: 1.3 } : { duration: 0.2 }}
       style={{ flexShrink:0, width: small ? 44 : 56, height: small ? 44 : 56, padding:0, position:'relative', overflow:'visible' }}>
-      <FriendsIcon size={small ? 36 : 42} />
+      <ShapesIcon size={small ? 36 : 42} />
       {owed && (
         <motion.span aria-hidden="true" animate={{ scale:[1, 1.25, 1] }} transition={{ duration:1.2, repeat:Infinity }}
           style={{ position:'absolute', right:-8, top:-8, width:26, height:26, borderRadius:'50%', background:'#ff5b8a', border:'3px solid #fff',
@@ -177,11 +177,11 @@ function FriendsButton({ owed, onClick, small }) {
   )
 }
 
-// A friend may move in: a present beside Lumi that wiggles and sparkles
-// until the child has chosen (a tap opens Lumis Freunde)
-function FriendPresent({ size, onClick }) {
+// A new shape for Lumi may be won: a present beside Lumi that wiggles and
+// sparkles until the child has chosen (a tap opens the place to choose)
+function ShapePresent({ size, onClick }) {
   return (
-    <motion.button type="button" onClick={onClick} aria-label="Ein Freund möchte einziehen" data-friend-present
+    <motion.button type="button" onClick={onClick} aria-label="Lumi kann sich verwandeln" data-shape-present
       initial={{ scale: 0 }} animate={{ scale: 1, rotate: [0, 0, -9, 9, -6, 4, 0] }}
       transition={{ scale: { type:'spring', stiffness:260, damping:14, delay:0.6 }, rotate: { duration:1.6, repeat:Infinity, repeatDelay:0.8 } }}
       whileTap={{ scale: 0.9 }}
@@ -226,7 +226,7 @@ function WorldRow({ world, mods, progress, onPlay, onLevels, offset }) {
 // game in progress, something new, another review, and a movement break in
 // the middle. It is no longer a map to walk: Lumi just has the next idea,
 // and after all of them a sticker for the album as a surprise.
-function LumiIdea({ idea, plan, tileLevel, onPlay, onAlbum, stickers, narrow, friend, friendOwed, onFriends }) {
+function LumiIdea({ idea, plan, tileLevel, onPlay, onAlbum, stickers, narrow, shapeOwed, onShapes }) {
   const allDone = !idea
   // The first idea of a day is a warm-up, one level below the game's tile, so
   // that the day starts with a success (lib/learning.js). The card says
@@ -238,17 +238,12 @@ function LumiIdea({ idea, plan, tileLevel, onPlay, onAlbum, stickers, narrow, fr
       gap:'clamp(8px,3vw,40px)', padding:'clamp(8px,2vw,20px) clamp(10px,3vw,16px) 0',
     }}>
       <div style={{ paddingTop: narrow ? 62 : 90, paddingLeft: narrow ? 4 : 0, flexShrink: 0, display:'flex', alignItems:'flex-end' }}>
-        {/* the friend that comes along stands beside Lumi (a little behind
-            it on a phone); a friend that may move in waits as a present */}
-        {friendOwed ? (
-          <div style={{ marginRight: narrow ? -10 : 4, position:'relative', zIndex:1 }}>
-            <FriendPresent size={narrow ? 56 : 104} onClick={onFriends} />
+        {/* a new shape Lumi may take waits beside Lumi as a present */}
+        {shapeOwed && (
+          <div style={{ marginRight: narrow ? -24 : 4, position:'relative', zIndex:2 }}>
+            <ShapePresent size={narrow ? 74 : 104} onClick={onShapes} />
           </div>
-        ) : friend ? (
-          <div style={{ marginRight: narrow ? -26 : -14, position:'relative', zIndex:0 }}>
-            <FriendCompanion id={friend} mood={allDone ? 'dance' : 'idle'} size={narrow ? 80 : 150} />
-          </div>
-        ) : null}
+        )}
         <div style={{ position:'relative', zIndex:1 }}>
           <Critter art="lumi" size={narrow ? 92 : 170} mood={allDone ? 'dance' : 'idle'} talks label="Lumi"
             wish={idea ? <TileArt mod={idea.mod} size={narrow ? 40 : 60} bare /> : <Art art="⭐" size={narrow ? 34 : 52} />}
@@ -348,6 +343,16 @@ export default function HomeScreen() {
   const timeUp = limitMin > 0 && todayMs(activeProfile) >= limitMin * 60000
 
   // Greeting — once per app open and child
+  // A child from before Lumi's shapes is offered the free first choice once
+  // per app open: the ring opens by itself. Leaving it keeps the chick for
+  // now; the present beside Lumi stays until the child has chosen.
+  useEffect(() => {
+    if (!activeProfile || !firstChoiceOwed(activeProfile) || offeredFirst.has(activeProfile.id) || timeUp) return
+    offeredFirst.add(activeProfile.id)
+    const id = setTimeout(() => { stopNarration(); dispatch({ type:'NAVIGATE', payload:'shapes' }) }, 700)
+    return () => clearTimeout(id)
+  }, [activeProfile?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!activeProfile || greeted.has(activeProfile.id)) return
     greeted.add(activeProfile.id)
@@ -398,10 +403,10 @@ export default function HomeScreen() {
   // Lumis Kleiderschrank: the one sign on its button when something new waits
   const newWear = activeProfile ? unseenItems(activeProfile, profileWardrobeStars(activeProfile)).length : 0
   const openWardrobe = () => { stopNarration(); dispatch({ type:'NAVIGATE', payload:'wardrobe' }) }
-  // Lumis Freunde: the friend that comes along, and one that may move in
-  const friend = useFriendAlong()
-  const friendOwed = activeProfile ? friendsOwed(activeProfile, profileWardrobeStars(activeProfile)) > 0 : false
-  const openFriends = () => { stopNarration(); dispatch({ type:'NAVIGATE', payload:'friends' }) }
+  // Lumi verwandelt sich: a new shape that may be won now
+  // (the free first choice of a child from before the shapes counts too)
+  const shapeOwed = activeProfile ? firstChoiceOwed(activeProfile) || shapesOwed(activeProfile, profileWardrobeStars(activeProfile)) > 0 : false
+  const openShapes = () => { stopNarration(); dispatch({ type:'NAVIGATE', payload:'shapes' }) }
 
   return (
     // overflow-x clip, not hidden: hidden made this div a scroll container,
@@ -414,16 +419,17 @@ export default function HomeScreen() {
       </div>
 
       {/* ── HUD ── */}
-      {/* on a phone the buttons are 44 px and closer together: with Lumis
-          Freunde beside the wardrobe the name had no room left */}
+      {/* on a phone the buttons are 44 px and closer together: with Lumi's
+          shapes beside the wardrobe the name had no room left */}
       <HudBar style={{ position:'sticky', top:0, zIndex:20, ...(narrow ? { gap:5, paddingLeft:8, paddingRight:8 } : null) }}>
         <button
           className="px-btn px-btn--parch"
           onClick={() => setShowSwitcher(true)}
-          style={{ width: narrow ? 44 : 56, height: narrow ? 44 : 56, padding:0, fontSize: narrow ? 26 : 32, lineHeight:1, flexShrink:0 }}
+          style={{ width: narrow ? 44 : 56, height: narrow ? 44 : 56, padding:0, lineHeight:1, flexShrink:0, overflow:'hidden' }}
           title="Profil wechseln"
           aria-label="Profil wechseln"
-        >{profile.avatar}</button>
+        >{/* the child's picture: its own Lumi, in its shape and clothes */}
+          <ChildLumi profile={activeProfile} size={narrow ? 36 : 46} /></button>
         <div style={{ minWidth:0, flex:1 }}>
           <div className="px-title" style={{ fontSize:'clamp(14px,2.4vw,16px)', lineHeight:1.2, letterSpacing:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', textShadow:'-1px -1px 0 var(--px-ink), 1px -1px 0 var(--px-ink), -1px 1px 0 var(--px-ink), 1px 2px 0 var(--px-ink)' }}>
             {timeGreeting(t)},
@@ -461,7 +467,7 @@ export default function HomeScreen() {
           <img src={journeyArt('album.png')} alt="" style={{ width: narrow ? 30 : 36, height: narrow ? 30 : 36, imageRendering:'pixelated' }} />
         </button>
         <WardrobeButton fresh={newWear > 0} onClick={openWardrobe} small={narrow} />
-        <FriendsButton owed={friendOwed} onClick={openFriends} small={narrow} />
+        <ShapesButton owed={shapeOwed} onClick={openShapes} small={narrow} />
         <MusicButton />
         <button
           className="px-btn px-btn--wood px-btn--icon"
@@ -484,11 +490,7 @@ export default function HomeScreen() {
         // ── Daily time is up ──
         <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
           <div className="px-panel" style={{ maxWidth:440, width:'100%', padding:'24px 20px', textAlign:'center', display:'flex', flexDirection:'column', alignItems:'center', gap:14 }}>
-            <div style={{ display:'flex', alignItems:'flex-end' }}>
-              {/* the friend that comes along sleeps too */}
-              <FriendCompanion mood="sleep" size={100} style={{ marginRight:-10 }} />
-              <LumiCharacter mood="sleepy" size={120} />
-            </div>
+            <LumiCharacter mood="sleepy" size={120} />
             <div style={{ fontFamily:'var(--font-heading)', fontSize:28, fontWeight:700, color:'var(--px-ink)' }}>
               Für heute ist Schluss!
             </div>
@@ -503,7 +505,7 @@ export default function HomeScreen() {
         </div>
       ) : (<>
         <LumiIdea idea={idea} plan={plan} tileLevel={idea ? progress[idea.mod.id]?.currentLevel ?? 1 : 1} onPlay={playIdea} onAlbum={openAlbum} stickers={stickers} narrow={narrow}
-          friend={friend} friendOwed={friendOwed} onFriends={openFriends} />
+          shapeOwed={shapeOwed} onShapes={openShapes} />
 
         {/* ── The worlds, one row each ── */}
         <div style={{

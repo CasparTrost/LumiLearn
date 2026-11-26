@@ -6,7 +6,6 @@ import { sayTask, sayRight, sayWrong } from '../lib/feedback.js'
 import { usePaused } from '../lib/pause.js'
 import { LINES, line } from '../lib/lumiLines.js'
 import { numberWord } from '../lib/words.js'
-import { useApp } from '../AppContext.jsx'
 import { Art, Critter, HintHand, useBursts, useJuice } from '../components/play/index.js'
 import { voice, KEY } from './woerter/voice.js'
 import Finale from './woerter/Finale.jsx'
@@ -309,8 +308,8 @@ export default function MemoryGame({ level = 1, onComplete }) {
   const [ui, setUi] = useState(1)
   const juice = useJuice({ hudSize: Math.round(26 * ui) })
   const { hit, miss } = juice
-  const app = useApp()
-  const avatar = app?.state?.profiles?.[app?.state?.activeProfileId]?.avatar || '😊'
+  // the child's side: a child (its picture is its Lumi now, and Lumi is the other player)
+  const avatar = '🧒'
 
   // The game itself, also readable at once from timers (G.current)
   const [game, setGame] = useState(() => ({

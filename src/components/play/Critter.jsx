@@ -5,7 +5,8 @@ import { onNarrationChange } from '../../narrator.js'
 import { lumiArt } from '../../lib/assets.js'
 import { sfx } from '../../sfx.js'
 import { playAnimal } from '../../lib/animalSounds.js'
-import LumiFigure, { useOutfit } from '../LumiFigure.jsx'
+import LumiFigure from '../LumiFigure.jsx'
+import { useDrawnOutfit } from '../ShapeFigure.jsx'
 import './play.css'
 
 const BASE = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '')
@@ -68,7 +69,7 @@ export default function Critter({
   const [tickle, setTickle] = useState(0)
   const speaking = useSpeaking(talks)
   // a hat reaches up to the top of Lumi's square: the bubble keeps clear of it
-  const hatOn = !!useOutfit()?.head && art === 'lumi'
+  const hatOn = !!useDrawnOutfit()?.head && art === 'lumi'
   const shown = mood === 'idle' && speaking ? 'talk' : mood
 
   useEffect(() => {

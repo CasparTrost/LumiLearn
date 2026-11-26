@@ -2,6 +2,7 @@ import { useContext } from 'react'
 import { AppContext } from '../AppContext.jsx'
 import { asset } from '../lib/assets.js'
 import { figureLayers, lumiPose } from '../lib/wardrobe.js'
+import { ShapeFigure, useLumiShape } from './ShapeFigure.jsx'
 
 /**
  * Lumi in one of its seven pictures, wearing what the child chose in
@@ -23,8 +24,12 @@ export function useOutfit() {
   return s?.profiles?.[s.activeProfileId]?.outfit ?? null
 }
 
-export default function LumiFigure({ mood = 'idle', size = 120, outfit, style, className, alt = '' }) {
+export default function LumiFigure({ mood = 'idle', size = 120, outfit, shape, style, className, alt = '' }) {
   const own = useOutfit()
+  // Lumi in the shape the child chose (lib/shapes.js; `shape` null: the chick)
+  const mine = useLumiShape()
+  const who = shape === undefined ? mine : shape
+  if (who && who !== 'chick') return <ShapeFigure id={who} mood={mood} size={size} style={style} className={className} alt={alt} />
   const wear = outfit === undefined ? own : outfit
   const pose = lumiPose(mood)
   const src = asset(`sprites/emoji/custom/lumi-${pose}.webp`)

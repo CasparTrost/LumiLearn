@@ -5,7 +5,7 @@ import { ENGLISH_ENABLED } from './i18n.js'
 import { updateSkill, nextLevel, ratioOf, journeyFor, nextStopIndex } from './lib/learning.js'
 import { stickerForDay } from './lib/stickers.js'
 import { ITEM_BY_ID, isUnlocked, unlockedBetween, unlockedItems, wardrobeStars, cleanOutfit } from './lib/wardrobe.js'
-import { FRIEND_BY_ID, cleanFriends, cleanAlong, freshFriends, friendsOwed } from './lib/friends.js'
+import { SHAPE_BY_ID, cleanShapes, cleanShape, drawnShape, freshShapes, shapesOwed, setCurrentShape } from './lib/shapes.js'
 
 export const AppContext = createContext(null)
 
@@ -208,9 +208,10 @@ function freshProfile(overrides = {}) {
     // Lumis Kleiderschrank: what Lumi wears, the things seen in the
     // wardrobe and tried on once, the highest total of stars
     ...freshWardrobe(),
-    // Lumis Freunde (lib/friends.js): the friends that moved in (in order),
-    // the one that comes along, and whether the next one waits for a game
-    ...freshFriends(),
+    // Lumi verwandelt sich (lib/shapes.js): the shapes owned (in order), the
+    // one Lumi is now (null: not chosen, drawn as the chick), whether the
+    // free first choice was made and whether the next waits for a game
+    ...freshShapes(),
     ...overrides,
   }
 }
@@ -307,6 +308,8 @@ export function reducer(state, action) {
         age: action.payload.age ?? null,
         avatar: action.payload.emoji || action.payload.avatar || '😊',
       })
+      // the Lumi the child chose on the ring when it was created (the free first choice)
+      if (SHAPE_BY_ID[action.payload.shape]) Object.assign(newProfile, { shapes: [action.payload.shape], shape: action.payload.shape, shapePicked: true, shapeWait: true })
       newProfile.dailyMission = freshDay(todayStr(), newProfile)
       return {
         ...state,
@@ -362,7 +365,7 @@ export function reducer(state, action) {
         stickers: [],
         helpSeen: {},
         ...freshWardrobe(),
-        ...freshFriends(),
+        ...freshShapes(),
       }
       reset.dailyMission = freshDay(todayStr(), reset)
       // today's ideas planned again at once: the parent area lies over the
@@ -439,26 +442,33 @@ export function reducer(state, action) {
       return updateActiveProfile(state, q => ({ ...q, wardrobeSeen: knownIds([...seen, ...ids]) }))
     }
 
-    // Lumis Freunde (lib/friends.js): the child chose the friend that moves
-    // in. Only while one is owed and only one still to come; it comes along
-    // at once, and the next one owed waits for the next game played.
-    case 'FRIEND_CHOOSE': {
+    // Lumi verwandelt sich (lib/shapes.js). The free first choice: any of
+    // the five, once (a new child in the set-up, a child from before the
+    // shapes on the home screen). The stars won before wait for a game.
+    case 'SHAPE_FIRST': {
       const id = action.payload
       const p = state.profiles[state.activeProfileId]
-      if (!p || !FRIEND_BY_ID[id] || cleanFriends(p.friends).includes(id)) return state
-      if (!friendsOwed(p, profileWardrobeStars(p))) return state
-      return updateActiveProfile(state, q => ({ ...q, friends: [...cleanFriends(q.friends), id], friendAlong: id, friendWait: true }))
+      if (!p || !SHAPE_BY_ID[id] || p.shapePicked) return state
+      return updateActiveProfile(state, q => ({ ...q, shapes: cleanShapes([...cleanShapes(q.shapes), id]), shape: id, shapePicked: true, shapeWait: true }))
     }
 
-    // A friend that moved in comes along (a tap in Lumis Freunde), a second
-    // tap leaves it at home; one at a time, or none (payload null)
-    case 'FRIEND_ALONG': {
-      const p = state.profiles[state.activeProfileId]
-      if (!p) return state
+    // A shape won with stars: only while one is owed and only one not owned
+    // yet; Lumi takes it at once, and the next one waits for the next game.
+    case 'SHAPE_CHOOSE': {
       const id = action.payload
-      if (id !== null && !cleanFriends(p.friends).includes(id)) return state
-      const along = id === null || cleanAlong(p.friendAlong, p.friends) === id ? null : id
-      return along === (p.friendAlong ?? null) ? state : updateActiveProfile(state, q => ({ ...q, friendAlong: along }))
+      const p = state.profiles[state.activeProfileId]
+      if (!p || !SHAPE_BY_ID[id] || cleanShapes(p.shapes).includes(id)) return state
+      if (!shapesOwed(p, profileWardrobeStars(p))) return state
+      return updateActiveProfile(state, q => ({ ...q, shapes: [...cleanShapes(q.shapes), id], shape: id, shapeWait: true }))
+    }
+
+    // Who Lumi is now: one of the shapes owned. Exactly one is always
+    // chosen; the same again changes nothing.
+    case 'SHAPE_SET': {
+      const p = state.profiles[state.activeProfileId]
+      const id = action.payload
+      if (!p || !p.shapePicked || !cleanShapes(p.shapes).includes(id) || p.shape === id) return state
+      return updateActiveProfile(state, q => ({ ...q, shape: id }))
     }
 
     // The movement break of today's journey (screens/MoveBreakScreen.jsx)
@@ -614,11 +624,11 @@ export function reducer(state, action) {
       const earned = Math.max(0, sumStars(newLevelStars) - sumStars(prevLevelStars))
       updatedProfile.starsEver = Math.max(wardrobeBefore + earned, totalStars(updatedProfile.progress))
       const newWear = unlockedBetween(wardrobeBefore, updatedProfile.starsEver).map(t => t.id)
-      // a friend may move in: a new step reached, or the next one that
-      // waited for this game (lib/friends.js friendsOwed)
-      const friendBefore = friendsOwed(profile, wardrobeBefore)
-      updatedProfile.friendWait = false
-      const newFriend = !friendBefore && friendsOwed(updatedProfile, updatedProfile.starsEver) > 0
+      // a new shape for Lumi may be won: a new step reached, or the next
+      // one that waited for this game (lib/shapes.js shapesOwed)
+      const shapeBefore = shapesOwed(profile, wardrobeBefore)
+      updatedProfile.shapeWait = false
+      const newShape = !shapeBefore && shapesOwed(updatedProfile, updatedProfile.starsEver) > 0
 
       return {
         ...state,
@@ -643,7 +653,7 @@ export function reducer(state, action) {
           streakCount: streak.count,
           streakGrew: st.lastDate !== today,
           newWear,
-          newFriend,
+          newShape,
           farmBefore: farmPoints(profile),
           farmAfter:  farmPoints(updatedProfile),
         },
@@ -708,7 +718,8 @@ function migrateProgress(rawProgress) {
 // Bewusst nur ein Entfernen von Schlüsseln — Fortschritt, Serie und alles
 // andere bleibt unangetastet. Der Lade-Pfad ist die Stelle, an der ein Fehler
 // echte Profildaten kosten würde.
-const RETIRED_FIELDS = ['coins', 'streakLastBonus']
+// (friends, friendAlong, friendWait: Lumis Freunde of a first version, now Lumi's shapes)
+const RETIRED_FIELDS = ['coins', 'streakLastBonus', 'friends', 'friendAlong', 'friendWait']
 
 // Switched-off games (parent area): known games only, and never all of them.
 // Saves from before the switch have none — every game stays visible.
@@ -743,11 +754,15 @@ export function migrateToV2(data) {
         wardrobeSeen: knownIds(p.wardrobeSeen),
         wardrobeTried: knownIds(p.wardrobeTried),
         starsEver: Number.isFinite(p.starsEver) ? Math.max(0, p.starsEver) : 0,
-        // the friends: saves from before them have none; a child with many
-        // stars is owed them one at a time (lib/friends.js friendsOwed)
-        friends: cleanFriends(p.friends),
-        friendAlong: cleanAlong(p.friendAlong, p.friends),
-        friendWait: p.friendWait === true,
+        // Lumi's shapes: a save from before them is offered the free first
+        // choice (the chick until then); after it, the shapes its stars
+        // cover come one game at a time (lib/shapes.js shapesOwed). A save
+        // of the first version (Lumis Freunde, friends beside Lumi) keeps
+        // the friends it chose as shapes owned.
+        shapes: cleanShapes(p.shapes ?? p.friends),
+        shapePicked: p.shapePicked === true,
+        shape: p.shapePicked === true ? cleanShape(p.shape, p.shapes) : null,
+        shapeWait: p.shapeWait === true,
       })
       // old saves: never below the stars the child has now
       profiles[id].starsEver = profileWardrobeStars(profiles[id])
@@ -861,6 +876,10 @@ export function AppProvider({ children }) {
     } catch { /* ignore corrupt saves */ }
     return init
   })
+
+  // Lumi's shape for code outside React (lib/assets.js lumiArt)
+  const playing = state.profiles[state.activeProfileId]
+  setCurrentShape(drawnShape(playing))
 
   // Today's missions for the child who is playing (a new day, a new child)
   useEffect(() => {

@@ -1,3 +1,4 @@
+import { currentShape, shapeSrc } from './shapes.js'
 export const BASE = import.meta.env.BASE_URL ?? '/'
 export const asset = (path) => BASE.replace(/\/$/, '') + '/' + path.replace(/^\//, '')
 export const journeyArt = f => asset('sprites/journey/' + f)
@@ -14,4 +15,5 @@ const LUMI_POSE = {
   sleep: 'sleep', sleepy: 'sleep', tired: 'sleep',
   wave: 'wave', hello: 'wave',
 }
-export const lumiArt = (mood = 'idle') => asset(`sprites/emoji/custom/lumi-${LUMI_POSE[mood] ?? 'idle'}.webp`)
+// in the shape the playing child chose for Lumi (lib/shapes.js)
+export const lumiArt = (mood = 'idle') => asset(shapeSrc(currentShape(), LUMI_POSE[mood] ?? 'idle'))

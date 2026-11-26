@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { motion, useAnimationControls } from 'framer-motion'
 import { PxStar } from './PixelUI.jsx'
 import LumiFigure from './LumiFigure.jsx'
-import { FriendCompanion, useFriendAlong } from './FriendFigure.jsx'
 
 const BASE = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '')
 
@@ -21,16 +20,7 @@ const BASE = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '')
  * Listens to 'lumi:feedback' (lib/feedback.js, sfx.js). A game that both
  * plays the sound and speaks the praise sends two signals for one answer:
  * the second within 400 ms is ignored.
- *
- * The friend that comes along (Lumis Freunde) sits beside Lumi and is glad
- * or thoughtful with it, but only where the bar has room for it: from
- * FRIEND_MIN_WIDTH on (a tablet held upright, a phone held sideways). On a
- * phone held upright the bar has about 36 px left (back, game picture,
- * Lumi, level, music, help), not enough for a friend without squeezing the
- * rest; below 768 px the friend cut the game's name in half of the games.
  */
-export const FRIEND_MIN_WIDTH = 768
-const roomForFriend = () => typeof window !== 'undefined' && window.innerWidth >= FRIEND_MIN_WIDTH
 export default function LumiBuddy({ size = 48 }) {
   const controls = useAnimationControls()
   const [mood, setMood] = useState('idle')
@@ -38,14 +28,6 @@ export default function LumiBuddy({ size = 48 }) {
   const last = useRef({ t: 0, kind: '' })
   const inRow = useRef(0)
   const timer = useRef(null)
-  const along = useFriendAlong()
-  const [room, setRoom] = useState(roomForFriend)
-  useEffect(() => {
-    const on = () => setRoom(roomForFriend())
-    window.addEventListener('resize', on)
-    return () => window.removeEventListener('resize', on)
-  }, [])
-  const friend = along && room ? along : null
 
   useEffect(() => {
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
@@ -82,20 +64,13 @@ export default function LumiBuddy({ size = 48 }) {
     return () => { window.removeEventListener('lumi:feedback', onFeedback); clearTimeout(timer.current) }
   }, [controls, size])
 
-  const buddy = (
+  return (
     <div aria-hidden="true" data-lumi-buddy={mood} style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
       {/* Lumi wears what the child chose in the wardrobe */}
       <motion.div animate={controls} style={{ width: size, height: size, filter: 'drop-shadow(0 3px 0 rgba(42,27,61,0.35))' }}>
         <LumiFigure mood={mood} size={size} style={{ display: 'block' }} />
       </motion.div>
       {bursts.map(b => <Burst key={b.id} big={b.big} size={size} onDone={() => setBursts(x => x.filter(y => y.id !== b.id))} />)}
-    </div>
-  )
-  if (!friend) return buddy
-  return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', flexShrink: 0 }}>
-      <FriendCompanion id={friend} mood={mood} size={Math.round(size * 0.95)} style={{ marginRight: -size * 0.08, filter: 'drop-shadow(0 3px 0 rgba(42,27,61,0.3))' }} />
-      {buddy}
     </div>
   )
 }

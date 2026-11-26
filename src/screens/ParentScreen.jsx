@@ -5,7 +5,8 @@ import { useApp, MAX_LEVELS, hasLevels, liveStreak, todayStr, saveData } from '.
 import { PxIcon } from '../components/PixelUI.jsx'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
 import { useMusic } from '../components/MusicControls.jsx'
-import { AVATARS, AGES, avatarName } from './ProfileScreen.jsx'
+import { AGES } from './ProfileScreen.jsx'
+import { ChildLumi } from '../components/ShapeFigure.jsx'
 import { MODULES, moduleTitle } from '../modules.js'
 import { ENGLISH_ENABLED } from '../i18n.js'
 import { readStore, removeStore } from '../hooks/safeStorage.js'
@@ -42,7 +43,6 @@ function weekMs(profile) {
 function EditProfile({ profile, onSave, onCancel }) {
   const [name, setName]     = useState(profile.name)
   const [age, setAge]       = useState(profile.age)
-  const [avatar, setAvatar] = useState(profile.avatar)
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:12, marginTop:10 }}>
       <label style={{ display:'flex', flexDirection:'column', gap:4 }}>
@@ -58,22 +58,11 @@ function EditProfile({ profile, onSave, onCancel }) {
           ))}
         </div>
       </div>
-      <div>
-        <div style={{ ...SMALL, marginBottom:4 }}>Bild</div>
-        {/* fixed tile size: six columns of aspect-ratio 1 made 225 px tiles
-            with a 22 px emoji on a desktop */}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(52px, 1fr))', gap:8, maxWidth:520 }}>
-          {AVATARS.map(a => (
-            <button key={a} className={`px-btn ${avatar === a ? 'px-btn--gold' : 'px-btn--parch'}`} onClick={() => setAvatar(a)}
-              aria-label={avatarName(a)} aria-pressed={avatar === a}
-              style={{ height:52, padding:0, fontSize:30 }}>{a}</button>
-          ))}
-        </div>
-      </div>
+      {/* (the child's picture is its Lumi: the child chooses it in the app) */}
       <div style={{ display:'flex', gap:10 }}>
         <button className="px-btn px-btn--parch px-btn--md" onClick={onCancel} style={{ flex:1 }}>Abbrechen</button>
         <button className="px-btn px-btn--green px-btn--md" disabled={!name.trim()} style={{ flex:1 }}
-          onClick={() => name.trim() && onSave({ name: name.trim(), age, avatar })}>Speichern</button>
+          onClick={() => name.trim() && onSave({ name: name.trim(), age })}>Speichern</button>
       </div>
     </div>
   )
@@ -120,7 +109,7 @@ export default function ParentScreen({ onClose }) {
   // Resetting a game took one tap on a red button next to the level select.
   const resetModule = (id) => setConfirm({
     title: `${moduleTitle(id)} zurücksetzen?`,
-    text: `Alle Sterne und Level von ${name} in diesem Spiel werden gelöscht. Lumis Sachen im Kleiderschrank und Lumis Freunde bleiben.`,
+    text: `Alle Sterne und Level von ${name} in diesem Spiel werden gelöscht. Lumis Sachen im Kleiderschrank und Lumis Figuren bleiben.`,
     yesLabel: 'Zurücksetzen',
     onYes: () => { dispatch({ type: 'RESET_MODULE', payload: { id, profileId: view.id } }); showToast(`${moduleTitle(id)} zurückgesetzt`) },
   })
@@ -152,7 +141,7 @@ export default function ParentScreen({ onClose }) {
 
   const resetProfile = () => setConfirm({
     title: `${name} komplett zurücksetzen?`,
-    text: `Alle Spielstände, Sterne, die Serie, die Sticker, Lumis Sachen im Kleiderschrank und Lumis Freunde von ${name} werden gelöscht. Andere Kinder sind nicht betroffen.`,
+    text: `Alle Spielstände, Sterne, die Serie, die Sticker, Lumis Sachen im Kleiderschrank und Lumis Figuren (Lumi wird wieder ein Küken) von ${name} werden gelöscht. Andere Kinder sind nicht betroffen.`,
     yesLabel: 'Zurücksetzen',
     onYes: () => { dispatch({ type: 'RESET_PROFILE', payload: view.id }); showToast(`${name} zurückgesetzt`) },
   })
@@ -258,7 +247,7 @@ export default function ParentScreen({ onClose }) {
             {overview.map(o => (
               <div key={o.p.id} style={{ border:'3px solid var(--px-ink)', borderRadius:10, padding:'10px 12px', background: o.p.id === viewId ? '#fff1c2' : 'var(--px-parch-light)' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                  <span style={{ fontSize:34, lineHeight:1 }}>{o.p.avatar}</span>
+                  <ChildLumi profile={o.p} size={44} />
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ fontFamily:'var(--font-heading)', fontSize:19, fontWeight:700, color:'var(--px-ink)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                       {o.p.name}{o.p.age ? `, ${o.p.age} Jahre` : ''}
@@ -480,7 +469,7 @@ export default function ParentScreen({ onClose }) {
           <div className="px-panel" style={{ ...SECTION, background:'#ffe9e4' }}>
             <div style={H2}>{name} zurücksetzen</div>
             <div style={{ ...SMALL, marginBottom:10 }}>
-              Löscht alle Spielstände, Sterne, die Serie, die Sticker, Lumis Sachen im Kleiderschrank und Lumis Freunde von {name}. Andere Kinder sind nicht betroffen.
+              Löscht alle Spielstände, Sterne, die Serie, die Sticker, Lumis Sachen im Kleiderschrank und Lumis Figuren von {name} (Lumi wird wieder ein Küken). Andere Kinder sind nicht betroffen.
             </div>
             <button className="px-btn px-btn--red px-btn--md" onClick={resetProfile}>{name} zurücksetzen</button>
           </div>

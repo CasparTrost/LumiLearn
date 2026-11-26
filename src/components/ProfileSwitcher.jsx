@@ -9,6 +9,7 @@ import { narrate } from '../narrator.js'
 import { hearable } from '../lib/hearable.js'
 import { useFocusTrap } from '../hooks/useFocusTrap.js'
 import { line } from '../lib/lumiLines.js'
+import { ChildLumi } from './ShapeFigure.jsx'
 
 // The children's switcher: tap your picture to play. Editing and deleting
 // profiles moved into the PIN-protected parent area — here a tap on 🗑️
@@ -108,8 +109,8 @@ export default function ProfileSwitcher({ onClose }) {
                   }}
                 >
                   <span className={`px-btn ${isActive ? 'px-btn--gold' : 'px-btn--parch'}`} aria-hidden="true"
-                    style={{ width: 56, height: 56, padding: 0, fontSize: 34, flexShrink: 0, pointerEvents: 'none' }}>
-                    {p.avatar}
+                    style={{ width: 56, height: 56, padding: 0, flexShrink: 0, pointerEvents: 'none' }}>
+                    <ChildLumi profile={p} size={46} />
                   </span>
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <span style={{
