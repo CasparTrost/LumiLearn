@@ -16,7 +16,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const W = await import(pathToFileURL(join(ROOT, 'src/lib/wardrobe.js')).href)
 const SH = await import(pathToFileURL(join(ROOT, 'src/lib/shapes.js')).href)
 const FIG = process.env.FIGURE || 'chick'
-const SET = SH.SHAPE_BY_ID?.[FIG]?.poses && Object.keys(SH.SHAPE_BY_ID[FIG].poses).length ? SH.SHAPE_BY_ID[FIG].poses : W.POSES
+const SET = Object.keys(SH.posesOf(FIG) ?? {}).length ? SH.posesOf(FIG) : W.POSES
 const base = pose => SH.shapeSrc(FIG, pose)
 const [slot, out, aFile] = process.argv.slice(2)
 const OV = aFile ? JSON.parse(readFileSync(aFile, 'utf8')) : {}

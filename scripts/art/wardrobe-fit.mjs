@@ -31,12 +31,14 @@ const rows = what.startsWith('combo:')
 const file = p => pathToFileURL(join(ROOT, 'public', p)).href
 const SH = await import(pathToFileURL(join(ROOT, 'src/lib/shapes.js')).href)
 const FIG = process.env.FIGURE || 'chick'
-const SET = SH.SHAPE_BY_ID?.[FIG]?.poses && Object.keys(SH.SHAPE_BY_ID[FIG].poses).length ? SH.SHAPE_BY_ID[FIG].poses : W.POSES
+// the figure's anchors (the chick's while a shape's file is empty) and corrections
+const SET = Object.keys(SH.posesOf(FIG) ?? {}).length ? SH.posesOf(FIG) : W.POSES
+const FIT = SH.fitOf(FIG)
 const POSE_LIST = process.env.POSES ? process.env.POSES.split(',') : W.POSE_IDS
 const base = pose => SH.shapeSrc(FIG, pose)
 
 function figure(pose, outfit) {
-  const { layers, scale } = W.figureLayers(pose, debug ? null : outfit, SET)
+  const { layers, scale } = W.figureLayers(pose, debug ? null : outfit, SET, FIT)
   const inner = layers.map(l => l.kind === 'pose'
     ? `<img src="${file(base(pose))}" style="position:absolute;inset:0;width:100%;height:100%;${l.clip ? `clip-path:${l.clip};` : ''}">`
     : `<img src="${file(l.src)}" style="position:absolute;left:${l.left};top:${l.top};width:${l.size};height:${l.h ?? l.size};transform:rotate(${l.rot}deg);transform-origin:${l.origin};${l.clip ? `clip-path:${l.clip};` : ''}${l.filter ? `filter:${l.filter};` : ''}">`).join('')

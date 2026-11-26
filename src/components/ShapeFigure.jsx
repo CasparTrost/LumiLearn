@@ -15,17 +15,18 @@ import LumiFigure from './LumiFigure.jsx'
  * Clothes: drawn in layers like the chick's once the shape has anchors
  * (lib/shapes.js wearsClothes); until then the shape wears nothing.
  */
-export function ShapeFigure({ id, mood = 'idle', size = 120, style, className, alt = '' }) {
+export function ShapeFigure({ id, mood = 'idle', size = 120, outfit = null, style, className, alt = '' }) {
   const pose = lumiPose(mood)
-  const { layers, scale } = shapeLayers(id, pose)
+  const { layers, scale } = shapeLayers(id, pose, outfit)
   return (
     <span className={className} role={alt ? 'img' : undefined} aria-label={alt || undefined} data-lumi-pose={pose} data-lumi-shape={id}
       style={{ position: 'relative', display: 'inline-block', width: size, height: size, flexShrink: 0, maxWidth: 'none', ...style }}>
       <span style={{ position: 'absolute', inset: 0, ...(scale < 1 ? { transform: `scale(${scale})`, transformOrigin: '50% 100%' } : null) }}>
-        {layers.map((l, i) => (
-          <img key={i} src={asset(l.src)} alt="" draggable={false}
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', maxWidth: 'none', objectFit: 'contain' }} />
-        ))}
+        {layers.map((l, i) => l.kind === 'pose'
+          ? <img key={i} src={asset(l.src)} alt="" draggable={false}
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', maxWidth: 'none', objectFit: 'contain', clipPath: l.clip ?? undefined }} />
+          : <img key={l.id} src={asset(l.src)} alt="" draggable={false} data-wear={l.over || l.part ? undefined : l.id}
+              style={{ position: 'absolute', left: l.left, top: l.top, width: l.size, height: l.h ?? l.size, maxWidth: 'none', transform: `rotate(${l.rot}deg)`, transformOrigin: l.origin, clipPath: l.clip ?? undefined, filter: l.filter }} />)}
       </span>
     </span>
   )

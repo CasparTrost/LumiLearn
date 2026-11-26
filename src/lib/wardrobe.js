@@ -74,7 +74,9 @@
 // (the wing tip that holds; not needed asleep), front (a wing in front of
 // the neck, optional), wings (drawn again over clothes), soles (cut away
 // under shoes standing) and feet (only where the feet lie in front of the
-// body, sitting). Measured on the 384 × 384 square; scripts/art/
+// body, sitting); another figure may add tail (drawn again over clothes)
+// and ownWings (cut away under wings worn). Measured on the 384 × 384
+// square; scripts/art/
 // wardrobe-anchors.mjs draws plain test shapes on them.
 // Per picture: the three anchors { x, y, rot, w } in picture pixels, the
 // feather tuft above the head (a polygon: hidden under a hat or drawn again
@@ -377,14 +379,28 @@ const spreadKeep = item => [].concat(item.spread ?? 0)[1] ?? 1
  * square. `scale`: Lumi gets smaller (standing on the same spot) when a
  * tall hat would leave the square.
  */
+/**
+ * A thing as another figure wears it: the figure's corrections (lib/shapes/
+ * <id>-fit.js) merged over the thing's own fields, per pose too; `hide`
+ * leaves it out on that figure.
+ */
+export function fitted(item, fit = {}) {
+  const f = fit[item.id]
+  if (!f) return item
+  const pose = { ...(item.pose ?? {}) }
+  for (const [k, v] of Object.entries(f.pose ?? {})) pose[k] = { ...(pose[k] ?? {}), ...v }
+  return { ...item, ...f, pose }
+}
+
 // Asleep (the sleeping picture, wherever it is shown), Lumi takes off what
 // makes no sense with closed eyes: glasses and masks, and what it holds.
 export const ASLEEP_OFF = ['face', 'hold']
 export const asleep = pose => pose === 'sleep'
 
-export function figureLayers(pose, outfit, poses = POSES) {
+export function figureLayers(pose, outfit, poses = POSES, fit = {}) {
   const P = poses[pose] ?? poses.idle
   const worn = wornItems(outfit).filter(t => !(asleep(pose) && ASLEEP_OFF.includes(t.slot)))
+    .map(t => fitted(t, fit)).filter(t => !t.hide)
   const bySlot = Object.fromEntries(worn.map(t => [t.slot, t]))
   const hat = bySlot.head
   const layers = []
@@ -414,6 +430,8 @@ export function figureLayers(pose, outfit, poses = POSES) {
   if (hat?.tuft === 'hide' && P.tuft) holes.push(P.tuft)
   const shoesOn = bySlot.shoes && bySlot.bottom?.feet !== false
   if (shoesOn && !P.feet && P.soles) holes.push(P.soles)
+  // a figure with wings of its own (the dragon): they are cut away under wings worn
+  if (bySlot.back && spreadOf(bySlot.back, pose) && P.ownWings) holes.push(...P.ownWings)
   // a mermaid's tail has no feet: they are cut away (sitting, the tail is
   // drawn big enough to close the gap)
   if (bySlot.bottom?.feet === false) { if (P.feet) holes.push(...P.feet); else if (P.soles) holes.push(P.soles.map(([x, y], i) => [x, i < 2 ? y - 26 : y])) }
@@ -445,6 +463,8 @@ export function figureLayers(pose, outfit, poses = POSES) {
   }
   if (bySlot.top) layers.push(item(bySlot.top))
   if ((bySlot.top || bySlot.bottom) && P.wings) for (const w of P.wings) layers.push(clipTo(w))
+  // a tail lies over trousers, skirts and the hem of a top
+  if ((bySlot.top || bySlot.bottom) && P.tail) for (const w of P.tail) layers.push(clipTo(w))
   // the part of a back thing that lies in FRONT of Lumi (a cape's collar
   // and clasp): the same picture again, cut to its `over` polygon
   if (bySlot.back?.over) {

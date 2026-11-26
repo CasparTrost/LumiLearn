@@ -26,17 +26,29 @@
  * … { x, y, rot, w } in pixels of the 512 square). Until then it is drawn
  * without clothes, never with them at the chick's anchors (wearsClothes).
  */
+import { POSES, SLOTS, figureLayers } from './wardrobe.js'
+import DINO_POSES from './shapes/dino-poses.js'
+import DINO_FIT from './shapes/dino-fit.js'
+import EINHORN_POSES from './shapes/einhorn-poses.js'
+import EINHORN_FIT from './shapes/einhorn-fit.js'
+import DRACHE_POSES from './shapes/drache-poses.js'
+import DRACHE_FIT from './shapes/drache-fit.js'
+import ROBOTER_POSES from './shapes/roboter-poses.js'
+import ROBOTER_FIT from './shapes/roboter-fit.js'
+
 export const SHAPE_SIZE = 512
 export const CHICK = 'chick'
 
 export const SHAPES = [
   // the chick's anchors are POSES in lib/wardrobe.js
   { id: CHICK, name: 'Küken' },
-  // `poses`: anchors per pose for the clothes, to come
-  { id: 'dino', name: 'Dino', poses: {} },
-  { id: 'einhorn', name: 'Einhorn', poses: {} },
-  { id: 'drache', name: 'Drache', poses: {} },
-  { id: 'roboter', name: 'Roboter', poses: {} },
+  // `poses`: anchors and polygons per pose for the clothes (shapes/<id>-poses.js,
+  // in the 384 units of lib/wardrobe.js POSES), `fit`: corrections per thing
+  // (shapes/<id>-fit.js). Each shape's data lives in its own two files.
+  { id: 'dino', name: 'Dino', poses: DINO_POSES, fit: DINO_FIT },
+  { id: 'einhorn', name: 'Einhorn', poses: EINHORN_POSES, fit: EINHORN_FIT },
+  { id: 'drache', name: 'Drache', poses: DRACHE_POSES, fit: DRACHE_FIT },
+  { id: 'roboter', name: 'Roboter', poses: ROBOTER_POSES, fit: ROBOTER_FIT },
 ]
 export const SHAPE_IDS = SHAPES.map(s => s.id)
 export const SHAPE_BY_ID = Object.fromEntries(SHAPES.map(s => [s.id, s]))
@@ -110,17 +122,29 @@ export const freshShapes = () => ({ shapes: [], shape: null, shapeWait: false, s
 export const SHAPE_POSE_IDS = ['idle', 'happy', 'sad', 'hmm', 'think', 'wave', 'sleep']
 /** The picture of a shape in a pose (the chick's are Lumi's own pictures). */
 export const shapeSrc = (id, pose) => (!id || id === CHICK || !SHAPE_BY_ID[id] ? `sprites/emoji/custom/lumi-${pose}.webp` : `sprites/shapes/${id}-${pose}.webp`)
-/** THE switch for clothes: the chick, and a shape once it has its anchors (part B). */
-export const wearsClothes = id => !id || id === CHICK || Object.keys(SHAPE_BY_ID[id]?.poses ?? {}).length > 0
+/**
+ * THE switch for clothes: the chick, and a shape once its poses file is
+ * complete: every pose with an anchor for every place (a half-measured shape
+ * keeps wearing nothing rather than things in the wrong spots).
+ */
+export const posesComplete = poses => SHAPE_POSE_IDS.every(p => SLOTS.every(sl => Number.isFinite(poses?.[p]?.[sl]?.x)) && Array.isArray(poses?.[p]?.tuft))
+export const wearsClothes = id => !id || id === CHICK || posesComplete(SHAPE_BY_ID[id]?.poses)
+/** The anchors and corrections of a figure (the chick: lib/wardrobe.js POSES, none). */
+export const posesOf = id => (!id || id === CHICK || !SHAPE_BY_ID[id] ? POSES : SHAPE_BY_ID[id].poses)
+export const fitOf = id => (!id || id === CHICK ? {} : SHAPE_BY_ID[id]?.fit ?? {})
 
 /**
- * Everything drawn for a shape in one pose, bottom to top (the shape of
- * figureLayers in lib/wardrobe.js). The picture only until the shape has
- * anchors; the worn things will be added here from them.
+ * Everything drawn for a shape in one pose, bottom to top: figureLayers of
+ * lib/wardrobe.js with the shape's anchors and corrections, each picture
+ * layer carrying its `src`. Only the picture while the shape's poses file is
+ * not complete.
  */
-export function shapeLayers(id, pose /* , outfit */) {
+export function shapeLayers(id, pose, outfit = null) {
   const p = SHAPE_POSE_IDS.includes(pose) ? pose : 'idle'
-  return { layers: [{ kind: 'pose', src: shapeSrc(id, p) }], scale: 1 }
+  const src = shapeSrc(id, p)
+  if (!wearsClothes(id) || !outfit) return { layers: [{ kind: 'pose', src }], scale: 1 }
+  const { layers, scale } = figureLayers(p, outfit, posesOf(id), fitOf(id))
+  return { layers: layers.map(l => (l.kind === 'pose' ? { ...l, src } : l)), scale }
 }
 
 // The shape of the child playing, for code outside React (lib/assets.js

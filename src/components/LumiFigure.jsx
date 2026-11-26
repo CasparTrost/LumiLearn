@@ -29,8 +29,8 @@ export default function LumiFigure({ mood = 'idle', size = 120, outfit, shape, s
   // Lumi in the shape the child chose (lib/shapes.js; `shape` null: the chick)
   const mine = useLumiShape()
   const who = shape === undefined ? mine : shape
-  if (who && who !== 'chick') return <ShapeFigure id={who} mood={mood} size={size} style={style} className={className} alt={alt} />
   const wear = outfit === undefined ? own : outfit
+  if (who && who !== 'chick') return <ShapeFigure id={who} mood={mood} size={size} outfit={wear} style={style} className={className} alt={alt} />
   const pose = lumiPose(mood)
   const src = asset(`sprites/emoji/custom/lumi-${pose}.webp`)
   const { layers, scale } = figureLayers(pose, wear)
