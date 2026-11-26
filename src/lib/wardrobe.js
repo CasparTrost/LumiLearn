@@ -47,6 +47,8 @@
  *          also per pose: pose: { sleep: { behind: false } })
  *   over   back things only: a polygon of the picture [[x, y], …] (0…1) that is
  *          drawn again in front of Lumi (a cape's collar and clasp)
+ *   apart  neck things: the picture cut in two at its middle and the halves
+ *          moved this share of the anchor's width apart (headphones)
  *   edge   true: a thin dark outline (a yellow thing on the yellow chick)
  *   cutTop the picture is drawn from this share of its height down only (a
  *          hood or a space suit's collar ring cut off; the shelf shows it whole)
@@ -412,6 +414,9 @@ export function figureLayers(pose, outfit, poses = POSES) {
   if (hat?.tuft === 'hide' && P.tuft) holes.push(P.tuft)
   const shoesOn = bySlot.shoes && bySlot.bottom?.feet !== false
   if (shoesOn && !P.feet && P.soles) holes.push(P.soles)
+  // a mermaid's tail has no feet: standing, they are cut away (sitting, the
+  // tail lies over them)
+  if (bySlot.bottom?.feet === false && !P.feet && P.soles) holes.push(P.soles.map(([x, y], i) => [x, i < 2 ? y - 26 : y]))
   layers.push({ kind: 'pose', clip: holes.length ? `polygon(evenodd, 0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ${holes.map(h => `${poly(h)}, ${poly([h[0]])}, 0% 0%`).join(', ')})` : null })
   // the clothes: trousers or a skirt over the lower body and the legs (the
   // feet Lumi sits on stay in front of them), the shoes, one on each foot
@@ -440,10 +445,6 @@ export function figureLayers(pose, outfit, poses = POSES) {
   }
   if (bySlot.top) layers.push(item(bySlot.top))
   if ((bySlot.top || bySlot.bottom) && P.wings) for (const w of P.wings) layers.push(clipTo(w))
-  if (bySlot.top && P.feet && bySlot.bottom?.feet !== false) {
-    for (const f of P.feet) layers.push(clipTo(f))
-    layers.push(...shoes().map(l => ({ ...l, id: `${bySlot.shoes.id}-${l.part ? 'right-' : ''}again`, part: true })))
-  }
   // the part of a back thing that lies in FRONT of Lumi (a cape's collar
   // and clasp): the same picture again, cut to its `over` polygon
   if (bySlot.back?.over) {
@@ -453,8 +454,22 @@ export function figureLayers(pose, outfit, poses = POSES) {
     if (P.front && !bySlot.neck) layers.push({ kind: 'pose', clip: `polygon(${poly(P.front)})` })
   }
   if (bySlot.neck) {
-    layers.push(item(bySlot.neck))
+    const n = bySlot.neck
+    // `apart`: the picture cut in two at its middle, the halves moved apart
+    // (headphones: a cup at each side of the neck, not two eyes on the chest)
+    if (n.apart) {
+      const tb = `${+(cutTopOf(n, pose) * 100).toFixed(2)}%`, bb = `${+((1 - cutOf(n, pose)) * 100).toFixed(2)}%`
+      const half = side => ({ ...item({ ...n, dx: (n.dx ?? 0) + side * n.apart / 2 }), clip: side < 0 ? `inset(${tb} 50% ${bb} 0)` : `inset(${tb} 0 ${bb} 50%)` })
+      layers.push(half(-1))
+      layers.push({ ...half(1), id: `${n.id}-right`, part: true })
+    } else layers.push(item(n))
     if (P.front) layers.push({ kind: 'pose', clip: `polygon(${poly(P.front)})` })
+  }
+  // sitting, the feet (and the shoes on them) lie in front of the top and
+  // of what hangs from the neck (a scarf's end ended on the shoes)
+  if ((bySlot.top || bySlot.neck) && P.feet && bySlot.bottom?.feet !== false) {
+    for (const f of P.feet) layers.push(clipTo(f))
+    if (bySlot.shoes) layers.push(...shoes().map(l => ({ ...l, id: `${bySlot.shoes.id}-${l.part ? 'right-' : ''}again`, part: true })))
   }
   // the held thing lies over Lumi; the tip of the holding wing is drawn
   // again over its stick or string, so the wing holds it
