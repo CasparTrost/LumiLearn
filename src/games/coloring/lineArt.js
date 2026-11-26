@@ -192,7 +192,8 @@ function paperLight(v, w, h, block = 16) {
 
 // How dark each pixel is against the paper around it: 255 is paper, 0 ink.
 // The darkest channel: a yellow felt pen is as much a line as a black one.
-export function evenLight(rgba, w, h) {
+// (`ignore`: a mask of what lies round the sheet and is no paper)
+export function evenLight(rgba, w, h, ignore = null) {
   const v = new Float32Array(w * h)
   for (let i = 0, p = 0; i < v.length; i++, p += 4) {
     const a = rgba[p + 3] / 255
@@ -200,9 +201,11 @@ export function evenLight(rgba, w, h) {
     v[i] = 255 - (255 - Math.min(rgba[p], rgba[p + 1], rgba[p + 2])) * a
   }
   const bg = paperLight(v, w, h)
-  softShadows(v, bg, w, h)
+  const shadow = softShadows(v, bg, w, h, rgba, ignore)
   const out = new Float32Array(w * h)
   for (let i = 0; i < v.length; i++) out[i] = Math.min(255, v[i] * 255 / Math.max(48, bg[i]))
+  // where a grey shadow lay, and how much brighter the page is without it
+  out.shadow = shadow
   return out
 }
 
@@ -213,7 +216,15 @@ export function evenLight(rgba, w, h) {
 // dark patch has such a soft edge, the paper's light is taken from the patch
 // itself, with its lines closed over, and the shadow is gone while the lines
 // in it stay. Changes `bg` in place.
-function softShadows(v, bg, w, h) {
+//
+// A patch that hangs on the picture's edge (a phone's shadow over a corner)
+// counts only when it is grey: a crayon sky reaches the edge too and fades
+// out in its hatching, and it is blue.
+//
+// Returns, for the grey shadows, by how much each pixel is brightened
+// (Float32Array, 1 outside them), or null without one: the colours under a
+// shadow are darkened like the paper (see `unshadowed`).
+function softShadows(v, bg, w, h, rgba = null, ignore = null) {
   const B = 4
   const bw = Math.ceil(w / B), bh = Math.ceil(h / B), n = bw * bh
   // the brightest in each block, then closed (lines up to some 24 pixels wide go)
@@ -247,7 +258,17 @@ function softShadows(v, bg, w, h) {
     ratio[b] = closed[b] / Math.max(48, paper)
     if (ratio[b] < 0.88) { dark[b] = 1; any = true }
   }
-  if (!any) return
+  // Where the sheet ends at a table, the shadow ends too, and sharply: that
+  // edge says nothing about the shadow (with it, a phone's shadow over the
+  // sheet's corner was no shadow).
+  let off = null
+  if (ignore) {
+    off = new Uint8Array(n)
+    for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) off[y * bw + x] = ignore[Math.min(h - 1, y * B + 2) * w + Math.min(w - 1, x * B + 2)]
+    off = dilate(off, bw, bh, 2)
+    for (let b = 0; b < n; b++) if (off[b]) dark[b] = 0
+  }
+  if (!any) return null
   const cc = components(dark, bw, bh, 1, 4)
   // each patch: how deep, and how much of that depth lies across its edge
   const deepest = new Float32Array(cc.count).fill(1)
@@ -257,26 +278,46 @@ function softShadows(v, bg, w, h) {
     const b = y * bw + x
     if (!dark[b]) continue
     if (!((x > 0 && !dark[b - 1]) || (x < bw - 1 && !dark[b + 1]) || (y > 0 && !dark[b - bw]) || (y < bh - 1 && !dark[b + bw]))) continue
-    let lo = 2, hi = 0
+    let lo = 2, hi = 0, atTable = false
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
       const yy = y + dy, xx = x + dx
       if (yy < 0 || yy >= bh || xx < 0 || xx >= bw) continue
+      if (off && off[yy * bw + xx]) atTable = true
       const r = ratio[yy * bw + xx]
       if (r < lo) lo = r
       if (r > hi) hi = r
     }
-    steps[cc.labels[b]].push(hi - lo)
+    if (!atTable) steps[cc.labels[b]].push(hi - lo)
   }
-  const soft = new Uint8Array(n)
-  let found = false
+  const greyPatch = c => {
+    if (!rgba) return false
+    const chroma = []
+    for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) {
+      if (!dark[y * bw + x] || cc.labels[y * bw + x] !== c) continue
+      const p = (Math.min(h - 1, y * B + 2) * w + Math.min(w - 1, x * B + 2)) * 4
+      chroma.push(Math.max(rgba[p], rgba[p + 1], rgba[p + 2]) - Math.min(rgba[p], rgba[p + 1], rgba[p + 2]))
+    }
+    chroma.sort((a, b) => a - b)
+    return chroma[chroma.length >> 1] < 36
+  }
+  const soft = new Uint8Array(n), grey = new Uint8Array(n)
+  let found = false, anyGrey = false
   for (let c = 0; c < cc.count; c++) {
     if (cc.areas[c] < 40 || !steps[c].length) continue
+    const isGrey = greyPatch(c)
+    if (cc.border[c] && !isGrey) continue
     const st = steps[c].sort((a, b) => a - b)
     const depth = 1 - deepest[c]
-    if (st[st.length >> 1] < 0.55 * depth) { found = true; for (let b = 0; b < n; b++) if (dark[b] && cc.labels[b] === c) soft[b] = 1 }
+    if (st[st.length >> 1] < 0.55 * depth) {
+      found = true
+      if (isGrey) anyGrey = true
+      for (let b = 0; b < n; b++) if (dark[b] && cc.labels[b] === c) { soft[b] = 1; if (isGrey) grey[b] = 1 }
+    }
   }
-  if (!found) return
+  if (!found) return null
   const wide = dilate(soft, bw, bh, 4)
+  const wideGrey = anyGrey ? dilate(grey, bw, bh, 4) : null
+  const gain = anyGrey ? new Float32Array(w * h).fill(1) : null
   const level = boxBlur(closed, bw, bh, 1)
   for (let y = 0; y < h; y++) {
     const fy = Math.min(bh - 1, Math.max(0, (y + 0.5) / B - 0.5)), y0 = fy | 0, y1 = Math.min(bh - 1, y0 + 1), ty = fy - y0
@@ -284,9 +325,26 @@ function softShadows(v, bg, w, h) {
       const fx = Math.min(bw - 1, Math.max(0, (x + 0.5) / B - 0.5)), x0 = fx | 0, x1 = Math.min(bw - 1, x0 + 1), tx = fx - x0
       if (!wide[y0 * bw + x0] && !wide[y1 * bw + x1]) continue
       const l = (level[y0 * bw + x0] * (1 - tx) + level[y0 * bw + x1] * tx) * (1 - ty) + (level[y1 * bw + x0] * (1 - tx) + level[y1 * bw + x1] * tx) * ty
-      if (l < bg[y * w + x]) bg[y * w + x] = l
+      if (l < bg[y * w + x]) {
+        if (gain && (wideGrey[y0 * bw + x0] || wideGrey[y1 * bw + x1])) gain[y * w + x] = Math.min(4, bg[y * w + x] / Math.max(48, l))
+        bg[y * w + x] = l
+      }
     }
   }
+  return gain
+}
+
+// The picture without its grey shadows: every colour as bright as it would
+// be outside (a red roof under a phone's shadow was dark enough to count as
+// black, and the shadow's edge was drawn as a line through the sky).
+function unshadowed(rgba, gain) {
+  if (!gain) return rgba
+  const out = new Uint8ClampedArray(rgba)
+  for (let i = 0, p = 0; i < gain.length; i++, p += 4) {
+    const k = gain[i]
+    if (k > 1.02) { out[p] = rgba[p] * k; out[p + 1] = rgba[p + 1] * k; out[p + 2] = rgba[p + 2] * k }
+  }
+  return out
 }
 
 // ── line art ────────────────────────────────────────────────────────────────
@@ -533,7 +591,24 @@ function inkOf(light, w, h, L, tableIsDark = false, rgba = null) {
     const filled = Array.from(cells).filter(c => c > 0).sort((a, b) => a - b)
     const typical = filled.length ? filled[filled.length >> 1] : 0
     const even = filled.filter(c => c >= 0.3 * typical).length
-    if (even >= 0.8 * G * G) for (let i = 0; i < pale.length; i++) if (pale[i]) weak[i] = strong[i] = 0
+    if (even >= 0.8 * G * G) {
+      for (let i = 0; i < pale.length; i++) if (pale[i]) weak[i] = strong[i] = 0
+    } else {
+      // Broad pale marks beside a darker drawing (a highlighter's strokes
+      // next to a pen's rocket) are no lines of it: drawn round, they were
+      // boxes that cut the rocket's nose off. A drawing in pale crayon alone
+      // keeps its broad strokes.
+      let other = 0
+      for (let i = 0; i < pale.length; i++) if (weak[i] && !pale[i]) other++
+      if (other >= 0.001 * w * h) {
+        // (with their fringe, which is too grey to count as pale; a pen's
+        // line that crosses them is dark and stays)
+        const broad = dilate(erode(pale, w, h, 8), w, h, 18)
+        for (let i = 0, q = 0; i < pale.length; i++, q += 4) {
+          if (broad[i] && weak[i] && Math.min(rgba[q], rgba[q + 1], rgba[q + 2]) > 150) weak[i] = strong[i] = 0
+        }
+      }
+    }
   }
   const wc = components(weak, w, h, 1, 8)
   const keep = new Uint8Array(wc.count)
@@ -1243,7 +1318,8 @@ function inverted(rgba) {
 // (a drawn line that runs off the paper carries nothing along) and reaches
 // the picture's edge lies around it. Returns that surround as a mask at
 // full size (with the paper's own edge, which would be drawn as a crooked
-// frame), or null where there is no such sheet.
+// frame), or null where there is no such sheet. `sides` of the mask: on how
+// many of the picture's sides the surround lies in one piece.
 export function surroundOf(rgba, w, h) {
   const st = Math.max(1, Math.round(Math.max(w, h) / 220))
   const sw = Math.ceil(w / st), sh = Math.ceil(h / st), n = sw * sh
@@ -1315,6 +1391,7 @@ export function surroundOf(rgba, w, h) {
   if (inPaper < 0.75 * (n - nAround)) return null
   const gone = dilate(around, sw, sh, 3)
   const out = new Uint8Array(w * h)
+  out.sides = sidesOf(around, sw, sh)                           // (before it is widened: stripes stay apart)
   for (let y = 0; y < h; y++) {
     const row = Math.min(sh - 1, (y / st) | 0) * sw
     for (let x = 0; x < w; x++) out[y * w + x] = gone[row + Math.min(sw - 1, (x / st) | 0)]
@@ -1322,13 +1399,117 @@ export function surroundOf(rgba, w, h) {
   return out
 }
 
+// A shadow that falls over the table AND the sheet (the phone's, over a
+// corner): its dark middle goes with the table, and what is left on the
+// sheet is its fading rim, with a sharp inner edge where the table's mask
+// ends (drawn as a sausage through the sky). From the mask inwards, as far
+// as the paper is grey and darker than paper, the page is brightened to the
+// paper's level; lines in it keep their darkness against it. Returns the
+// gain per pixel (1 elsewhere), or null.
+function shadowRim(rgba, around, w, h, paperV) {
+  const B = 4, bw = Math.ceil(w / B), bh = Math.ceil(h / B), n = bw * bh
+  const top = new Float32Array(n), tint = new Float32Array(n)
+  for (let y = 0; y < h; y++) {
+    const row = ((y / B) | 0) * bw
+    for (let x = 0; x < w; x++) {
+      const b = row + ((x / B) | 0), p = (y * w + x) * 4
+      const mn = Math.min(rgba[p], rgba[p + 1], rgba[p + 2])
+      if (mn > top[b]) { top[b] = mn; tint[b] = Math.max(rgba[p], rgba[p + 1], rgba[p + 2]) - mn }
+    }
+  }
+  const off = new Uint8Array(n)
+  for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) off[y * bw + x] = around[Math.min(h - 1, y * B + 2) * w + Math.min(w - 1, x * B + 2)]
+  // closed: lines up to some 24 pixels wide go. Without the mask (painted
+  // bright, it would close the rim next to it away).
+  const sweep = (src, pick, none) => {
+    const a = new Float32Array(n), out = new Float32Array(n)
+    for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) {
+      let m = none
+      for (let d = -3; d <= 3; d++) { const xx = x + d; if (xx >= 0 && xx < bw && !off[y * bw + xx]) m = pick(m, src[y * bw + xx]) }
+      a[y * bw + x] = m
+    }
+    for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) {
+      let m = none
+      for (let d = -3; d <= 3; d++) { const yy = y + d; if (yy >= 0 && yy < bh && !off[yy * bw + x]) m = pick(m, a[yy * bw + x]) }
+      out[y * bw + x] = m
+    }
+    return out
+  }
+  const closed = sweep(sweep(top, Math.max, 0), Math.min, 255)
+  const REACH = 40                                              // blocks: 160 pixels
+  const dist = new Int16Array(n).fill(-1)
+  let queue = []
+  for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) {
+    if (off[y * bw + x]) { dist[y * bw + x] = 0; queue.push(y * bw + x) }
+  }
+  const rim = b => closed[b] < 0.96 * paperV && closed[b] > 0.3 * paperV && tint[b] < 36
+  let found = 0
+  for (let d = 1; d <= REACH && queue.length; d++) {
+    const next = []
+    for (const b of queue) {
+      const x = b % bw
+      for (const q of [x > 0 ? b - 1 : -1, x < bw - 1 ? b + 1 : -1, b - bw, b + bw]) {
+        if (q < 0 || q >= n || dist[q] >= 0 || !rim(q)) continue
+        dist[q] = d; next.push(q); found++
+      }
+    }
+    queue = next
+  }
+  if (found < 40) return null
+  const up = new Float32Array(n).fill(1)
+  for (let b = 0; b < n; b++) if (dist[b] > 0) up[b] = Math.min(3, paperV / Math.max(48, closed[b]))
+  // (a little way into the mask too: its edge is coarser than the rim's)
+  for (let round = 0; round < 3; round++) {
+    const from = Float32Array.from(up)
+    for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) {
+      const b = y * bw + x
+      if (dist[b] !== 0) continue
+      let m = from[b]
+      if (x > 0 && from[b - 1] > m) m = from[b - 1]
+      if (x < bw - 1 && from[b + 1] > m) m = from[b + 1]
+      if (y > 0 && from[b - bw] > m) m = from[b - bw]
+      if (y < bh - 1 && from[b + bw] > m) m = from[b + bw]
+      up[b] = m
+    }
+  }
+  const gain = new Float32Array(w * h)
+  for (let y = 0; y < h; y++) {
+    const row = Math.min(bh - 1, (y / B) | 0) * bw
+    for (let x = 0; x < w; x++) {
+      const b = row + Math.min(bw - 1, (x / B) | 0), i = y * w + x
+      let k = up[b]
+      // right at the mask the rim is darkest, and darker than its closed
+      // level says: each grey pixel there goes to the paper's level itself
+      if (k > 1 && dist[b] <= 2) {
+        const p = i * 4, mn = Math.min(rgba[p], rgba[p + 1], rgba[p + 2])
+        if (mn > 0.3 * paperV && Math.max(rgba[p], rgba[p + 1], rgba[p + 2]) - mn < 36) k = Math.max(k, paperV / mn)
+      }
+      gain[i] = k
+    }
+  }
+  return gain
+}
+
 // On how many of the picture's four sides the surround lies (along half
-// the side or more)
+// the side or more), in ONE piece: a table lies round the sheet, the stripes
+// of a wallpaper each run from top to bottom on their own (taken for a table
+// they went white, and the figure in front lost its outline).
 function sidesOf(around, w, h) {
-  let top = 0, bottom = 0, left = 0, right = 0
-  for (let x = 0; x < w; x++) { top += around[x]; bottom += around[(h - 1) * w + x] }
-  for (let y = 0; y < h; y++) { left += around[y * w]; right += around[y * w + w - 1] }
-  return (top >= w / 2) + (bottom >= w / 2) + (left >= h / 2) + (right >= h / 2)
+  const cc = components(around, w, h, 1, 4)
+  const side = Array.from({ length: 4 }, () => new Float64Array(cc.count))
+  for (let x = 0; x < w; x++) {
+    if (around[x]) side[0][cc.labels[x]]++
+    if (around[(h - 1) * w + x]) side[1][cc.labels[(h - 1) * w + x]]++
+  }
+  for (let y = 0; y < h; y++) {
+    if (around[y * w]) side[2][cc.labels[y * w]]++
+    if (around[y * w + w - 1]) side[3][cc.labels[y * w + w - 1]]++
+  }
+  let best = 0
+  for (let c = 0; c < cc.count; c++) {
+    best = Math.max(best, (side[0][c] >= w / 2) + (side[1][c] >= w / 2) + (side[2][c] >= h / 2) + (side[3][c] >= h / 2))
+  }
+  return best
 }
 
 /**
@@ -1362,7 +1543,7 @@ export function toColoringPage(rgba, w, h, detail = 1) {
     if (shares(onSheet, blank).paper > 0.62 && !colouredIn(onSheet)) {
       const res = traceLines(picture, w, h, detail, darker(onSheet))
       if (res.ok) return res
-    } else if (sidesOf(around, w, h) >= 3) {
+    } else if (around.sides >= 3) {
       // A coloured-in drawing with something dark round it on three sides
       // or four: that is a table (drawn grass lies along one). The table
       // takes the paper's colour and the picture goes its way without it.
@@ -1370,16 +1551,17 @@ export function toColoringPage(rgba, w, h, detail = 1) {
       for (let i = 0; i < around.length; i += 7) if (!around[i] && light[i] > 228) { r += picture[i * 4]; g += picture[i * 4 + 1]; b += picture[i * 4 + 2]; k++ }
       if (k) {
         for (let i = 0; i < around.length; i++) if (around[i]) { blank[i * 4] = r / k; blank[i * 4 + 1] = g / k; blank[i * 4 + 2] = b / k }
-        const lt = evenLight(blank, w, h)
-        if (shares(lt, blank).paper > 0.45 && colouredIn2(lt, blank)) {
-          const res = traceMixed(blank, w, h, detail, lt)
+        const sheet = unshadowed(blank, shadowRim(blank, around, w, h, Math.min(r, g, b) / k))
+        const lt = evenLight(sheet, w, h, around)
+        if (shares(lt, sheet).paper > 0.45 && colouredIn2(lt, sheet)) {
+          const res = traceMixed(unshadowed(sheet, lt.shadow), w, h, detail, lt)
           if (res.ok) return res
         }
       }
     }
   }
   const { paper } = shares(light, picture)
-  if (paper > 0.45 && colouredIn(light)) return traceMixed(picture, w, h, detail, light)
+  if (paper > 0.45 && colouredIn(light)) return traceMixed(unshadowed(picture, light.shadow), w, h, detail, light)
   if (paper > 0.62) return traceLines(picture, w, h, detail, darker(light))
   return traceShapes(picture, w, h, detail)
 }
