@@ -44,6 +44,8 @@ const FRESH_SHOWN = 3
 const TILE_MAX = 92, TILE_MIN = 64
 const rowGap = t => Math.round(t * 0.16) + 8
 const ROW_GAP_MIN = 8
+// the strip under the shelf for the "more" arrow
+const MORE_STRIP = 56
 
 function useViewport() {
   const get = () => ({ w: window.innerWidth, h: window.innerHeight })
@@ -101,10 +103,12 @@ export default function WardrobeScreen() {
     ? Math.round(Math.max(44, Math.min(64, (h - hud - 24) / TABS_PER_LINE - TAB_GAP - 4)))
     : Math.round(Math.max(44, Math.min(TAB_LINES > 1 ? 62 : 76, ((wide ? w - stageW : w) - 40) / TABS_PER_LINE - 10)))
 
-  // the line of tabs with the open one stands next to the shelf (as with
-  // the tabs of a card index), so the open tab and its shelf are one piece
+  // the tabs never move: the first line (head to back) stands on one side
+  // of the shelf, the second (hold to shoes) on the other (above and below
+  // it, sideways on a phone left and right), so both lines touch the shelf
+  // and the open tab is always one piece with it, wherever it is
   const tabLines = Array.from({ length: TAB_LINES }, (_, i) => SLOTS.slice(i * TABS_PER_LINE, (i + 1) * TABS_PER_LINE))
-  const tabOrder = [...tabLines.filter(l => !l.includes(tab)), ...tabLines.filter(l => l.includes(tab))].flat()
+  const edges = sideTabs ? ['left', 'right'] : ['top', 'bottom']
   const items = WARDROBE.filter(t => t.slot === tab)
   const open = items.filter(t => isUnlocked(t, stars))
   const wrapped = items.filter(t => !isUnlocked(t, stars))
@@ -120,7 +124,9 @@ export default function WardrobeScreen() {
   // the shelf allows (TILE_MAX … TILE_MIN). Only where even the smallest do
   // not fit, the shelf scrolls, and a big arrow at its foot says so.
   const shelfRef = useRef(null)
-  const [room, setRoom] = useState({ w: 0, h: 0 })
+  // (whether the strip for the "more" arrow was there when the shelf was measured)
+  const stripRef = useRef(false)
+  const [room, setRoom] = useState({ w: 0, h: 0, strip: false })
   useLayoutEffect(() => {
     const el = shelfRef.current
     if (!el || typeof ResizeObserver === 'undefined') return
@@ -128,7 +134,8 @@ export default function WardrobeScreen() {
       const cs = getComputedStyle(el)
       const pw = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)
       const ph = el.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom)
-      setRoom(r => (r.w === pw && r.h === ph ? r : { w: pw, h: ph }))
+      const strip = stripRef.current
+      setRoom(r => (r.w === pw && r.h === ph && r.strip === strip ? r : { w: pw, h: ph, strip }))
     }
     measure()
     const ro = new ResizeObserver(measure)
@@ -136,11 +143,16 @@ export default function WardrobeScreen() {
     return () => ro.disconnect()
   }, [])
   const count = open.length + shown.length + (pile.length ? 1 : 0)
-  const fits = (t, gap = rowGap(t)) => {
+  const fits = (t, gap = rowGap(t), h = room.h) => {
     const cols = Math.max(1, Math.floor((room.w + 10) / (t + 10)))
     const rows = Math.ceil(count / cols)
-    return rows * t + (rows - 1) * gap <= room.h
+    return rows * t + (rows - 1) * gap <= h
   }
+  // the shelf scrolls even with the smallest tiles: a strip at the foot of
+  // its frame holds the "more" arrow, so the arrow never lies on a tile
+  // (judged on the height with the strip given back, so it stays put)
+  const strip = room.w > 0 && !fits(TILE_MIN, ROW_GAP_MIN, room.h + (room.strip ? MORE_STRIP : 0))
+  stripRef.current = strip
   let tile = TILE_MAX
   while (tile > TILE_MIN && !fits(tile)) tile -= 2
   // a few pixels too tall even at the smallest tiles: the shelves move
@@ -250,6 +262,25 @@ export default function WardrobeScreen() {
     say(`schrank/platz-${slot}`)
   }
 
+  // a line of tabs on its side of the shelf (`edge`: where it stands)
+  const tabLine = i => {
+    const edge = edges[i], side = sideTabs
+    return (
+      <div role="tablist" aria-label={i === 0 ? 'Wo Lumi es trägt' : 'Wo Lumi es noch trägt'} aria-orientation={side ? 'vertical' : 'horizontal'} data-tabline={i} style={{
+        display: 'flex', flexDirection: side ? 'column' : 'row', gap: TAB_GAP + (side ? 0 : 2), justifyContent: 'center',
+        alignItems: { top: 'flex-end', bottom: 'flex-start', left: 'flex-end', right: 'flex-start' }[edge],
+        [side ? 'paddingBlock' : 'paddingInline']: 6, flexShrink: 0, position: 'relative', zIndex: 2, alignSelf: 'center',
+        // as deep as an open tab, open or not: the shelf never moves
+        [side ? 'width' : 'height']: tabSize + 14,
+      }}>
+        {tabLines[i].map(slot => (
+          <PlaceTab key={slot} slot={slot} size={tabSize} edge={edge} active={slot === tab} fresh={WARDROBE.some(t => t.slot === slot && isFresh(t))}
+            worn={!!outfit[slot]} stars={stars} onTap={() => pickTab(slot)} />
+        ))}
+      </div>
+    )
+  }
+
   return (
     <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', background: 'var(--bg)', overflow: 'hidden' }}>
       <HudBar style={{ position: 'relative', zIndex: 10, minHeight: hud }}>
@@ -303,23 +334,11 @@ export default function WardrobeScreen() {
         </div>
 
         {/* ── The wardrobe: five picture tabs, one place at a time ── */}
-        <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: sideTabs ? 'row' : 'column', padding: sideTabs ? '8px 10px 8px 6px' : wide ? '10px clamp(10px,2vw,22px) 12px' : '8px 10px 10px' }}>
-          <div role="tablist" aria-label="Wo Lumi es trägt" aria-orientation={sideTabs ? 'vertical' : 'horizontal'} style={{
-            display: 'flex', flexDirection: sideTabs ? 'column' : 'row', flexWrap: 'wrap', gap: sideTabs ? `${TAB_GAP}px 4px` : `4px ${TAB_GAP + 2}px`, justifyContent: 'center',
-            alignItems: 'flex-end', alignContent: 'flex-end', [sideTabs ? 'paddingBlock' : 'paddingInline']: 6, flexShrink: 0, position: 'relative', zIndex: 2,
-            // the lines wrap at TABS_PER_LINE tabs
-            ...(sideTabs
-              ? { height: TABS_PER_LINE * (tabSize + 4) + (TABS_PER_LINE - 1) * TAB_GAP + 12, alignSelf: 'center' }
-              : { maxWidth: TABS_PER_LINE * (tabSize + 8) + (TABS_PER_LINE - 1) * (TAB_GAP + 2) + 12, alignSelf: 'center' }),
-          }}>
-            {tabOrder.map(slot => (
-              <PlaceTab key={slot} slot={slot} size={tabSize} side={sideTabs} active={slot === tab} fresh={WARDROBE.some(t => t.slot === slot && isFresh(t))}
-                worn={!!outfit[slot]} stars={stars} onTap={() => pickTab(slot)} />
-            ))}
-          </div>
+        <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: sideTabs ? 'row' : 'column', padding: sideTabs ? '8px 6px' : wide ? '10px clamp(10px,2vw,22px) 12px' : '8px 10px 10px' }}>
+          {tabLine(0)}
           <div style={{
-            flex: 1, minHeight: 0, minWidth: 0, maxWidth: 680, width: '100%', margin: sideTabs ? '0 auto 0 -4px' : '-4px auto 0', borderRadius: 22, border: '4px solid var(--px-ink)',
-            padding: sideTabs ? 6 : 'clamp(6px,1.4vw,12px)',
+            flex: 1, minHeight: 0, minWidth: 0, maxWidth: 680, width: '100%', margin: sideTabs ? '0 -4px' : '-4px auto', borderRadius: 22, border: '4px solid var(--px-ink)',
+            padding: sideTabs ? 6 : 'clamp(6px,1.4vw,12px)', paddingBottom: strip ? MORE_STRIP : undefined, flexDirection: 'column',
             background: 'linear-gradient(90deg, #a8652c 0%, #c27a3a 12%, #c98443 50%, #c27a3a 88%, #a8652c 100%)',
             boxShadow: '0 6px 0 rgba(42,27,61,0.3)', display: 'flex', position: 'relative',
           }}>
@@ -344,15 +363,17 @@ export default function WardrobeScreen() {
                 )}
               </motion.div>
             </section>
-            {/* more below: a big bouncing arrow that scrolls the shelf on */}
-            {more && (
+            {/* more below: a big bouncing arrow in the strip at the foot of the
+                shelf's frame (inside the shelf, on no tile) that scrolls it on */}
+            {strip && more && (
               <motion.button type="button" onClick={scrollMore} aria-label="Weiter unten gibt es mehr" data-more
-                animate={{ y: [0, 6, 0] }} transition={{ duration: 1, repeat: Infinity }}
-                style={{ position: 'absolute', left: '50%', bottom: -14, marginLeft: -30, width: 60, height: 48, borderRadius: 24, border: '4px solid var(--px-ink)', background: '#ffc93c', boxShadow: '0 4px 0 rgba(42,27,61,0.35)', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3 }}>
+                animate={{ y: [0, 2, 0] }} transition={{ duration: 1, repeat: Infinity }}
+                style={{ position: 'absolute', left: '50%', bottom: 4, marginLeft: -32, boxSizing: 'border-box', width: 64, height: 48, borderRadius: 18, border: '4px solid var(--px-ink)', background: '#ffc93c', boxShadow: '0 4px 0 rgba(42,27,61,0.35)', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3 }}>
                 <svg viewBox="0 0 24 24" width="30" height="30"><path d="M5 9 L12 16 L19 9" stroke="#2a1b3d" strokeWidth="3.6" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </motion.button>
             )}
           </div>
+          {tabLine(1)}
         </div>
       </div>
       {bursts}
@@ -369,22 +390,28 @@ export default function WardrobeScreen() {
  * shown in colour that is not there; a black shadow of a pair of shoes read as two blobs). A sparkle when something there is
  * new, a green dot while Lumi wears something of it.
  */
-function PlaceTab({ slot, size, side, active, fresh, worn, stars, onTap }) {
+function PlaceTab({ slot, size, edge, active, fresh, worn, stars, onTap }) {
+  const side = edge === 'left' || edge === 'right'
+  // the side that joins the shelf, and how far an idle tab steps back from it
+  const join = { top: 'Bottom', bottom: 'Top', left: 'Right', right: 'Left' }[edge]
+  const away = { top: 6, bottom: -6, left: 6, right: -6 }[edge]
+  // the sparkle and the green dot sit on the corners away from the shelf
+  const far = edge === 'bottom' ? 'bottom' : 'top', out = edge === 'left' ? 'left' : 'right', dot = out === 'left' ? 'right' : 'left'
   const rep = WARDROBE.find(t => t.slot === slot)
   const owned = !!rep && isUnlocked(rep, stars)
   return (
     <motion.button type="button" role="tab" aria-selected={active} aria-label={`${SHELF_LABEL[slot]}${fresh ? ', etwas Neues' : ''}`} data-tab={slot}
       onClick={onTap} whileTap={{ scale: 0.92 }} layout
       data-owned={owned ? '1' : undefined}
-      animate={side ? { x: active ? 0 : 6 } : { y: active ? 0 : 6 }}
+      animate={side ? { x: active ? 0 : away } : { y: active ? 0 : away }}
       style={{
         all: 'unset', boxSizing: 'border-box', cursor: 'pointer', position: 'relative',
         width: side ? size + (active ? 14 : 6) : size + 8, height: side ? size + 4 : size + (active ? 14 : 6),
-        borderRadius: side ? '16px 0 0 16px' : '16px 16px 0 0', border: '4px solid var(--px-ink)',
-        [side ? 'borderRight' : 'borderBottom']: active ? '4px solid #c98443' : '4px solid var(--px-ink)',
-        background: active ? 'linear-gradient(180deg, #fff8e2, #f6dca8)' : 'linear-gradient(180deg, #e9c48e, #c99a60)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', [side ? 'paddingRight' : 'paddingBottom']: active ? 6 : 0,
-        boxShadow: active ? '0 -3px 0 rgba(255,255,255,0.6) inset' : 'none',
+        borderRadius: { top: '16px 16px 0 0', bottom: '0 0 16px 16px', left: '16px 0 0 16px', right: '0 16px 16px 0' }[edge], border: '4px solid var(--px-ink)',
+        [`border${join}`]: active ? '4px solid #c98443' : '4px solid var(--px-ink)',
+        background: active ? `linear-gradient(${edge === 'bottom' ? '0deg' : '180deg'}, #fff8e2, #f6dca8)` : 'linear-gradient(180deg, #e9c48e, #c99a60)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', [`padding${join}`]: active ? 6 : 0,
+        boxShadow: active ? `0 ${edge === 'bottom' ? 3 : -3}px 0 rgba(255,255,255,0.6) inset` : 'none',
       }}>
       {rep && (
         <span style={{ position: 'relative', opacity: owned ? (active ? 1 : 0.8) : 0.45, filter: owned ? undefined : 'grayscale(1) contrast(0.8)' }}>
@@ -395,11 +422,11 @@ function PlaceTab({ slot, size, side, active, fresh, worn, stars, onTap }) {
         <span aria-hidden="true" style={{ position: 'absolute', right: 2, bottom: 2 }}><Art art="🎁" size={Math.round(size * 0.36)} /></span>
       )}
       {worn && (
-        <span aria-hidden="true" style={{ position: 'absolute', left: -6, top: -6, width: 18, height: 18, borderRadius: '50%', background: '#3aa63a', border: '3px solid #fff' }} />
+        <span aria-hidden="true" style={{ position: 'absolute', [dot]: -6, [far]: -6, width: 18, height: 18, borderRadius: '50%', background: '#3aa63a', border: '3px solid #fff' }} />
       )}
       {fresh && (
         <motion.span aria-hidden="true" animate={{ scale: [1, 1.25, 1] }} transition={{ duration: 1.2, repeat: Infinity }}
-          style={{ position: 'absolute', right: -8, top: -8, width: 24, height: 24, borderRadius: '50%', background: '#ff5b8a', border: '3px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, lineHeight: 1 }}>✨</motion.span>
+          style={{ position: 'absolute', [out]: -8, [far]: -8, width: 24, height: 24, borderRadius: '50%', background: '#ff5b8a', border: '3px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, lineHeight: 1 }}>✨</motion.span>
       )}
     </motion.button>
   )

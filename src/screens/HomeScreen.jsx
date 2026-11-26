@@ -288,8 +288,7 @@ function LumiIdea({ idea, plan, tileLevel, onPlay, onAlbum, stickers, narrow, sh
 }
 
 // A phone in portrait: Lumi and the idea stack, a little smaller
-function useNarrow() {
-  const q = '(max-width: 600px)'
+function useNarrow(q = '(max-width: 600px)') {
   const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia?.(q).matches)
   useEffect(() => {
     const m = window.matchMedia?.(q)
@@ -297,7 +296,7 @@ function useNarrow() {
     const on = () => setNarrow(m.matches)
     m.addEventListener('change', on)
     return () => m.removeEventListener('change', on)
-  }, [])
+  }, [q])
   return narrow
 }
 
@@ -312,6 +311,8 @@ export default function HomeScreen() {
   const [offline, setOffline]           = useState(false)
   const offlineRef = useFocusTrap(offline, { onEscape: () => setOffline(false) })
   const narrow = useNarrow()
+  // a phone held sideways: little height (the time-is-up card lies flat)
+  const flat = useNarrow('(max-height: 500px)')
 
   const day = dailyMission ?? {}
 
@@ -492,19 +493,22 @@ export default function HomeScreen() {
 
       {timeUp ? (
         // ── Daily time is up ──
-        <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
-          <div className="px-panel" style={{ maxWidth:440, width:'100%', padding:'24px 20px', textAlign:'center', display:'flex', flexDirection:'column', alignItems:'center', gap:14 }}>
-            <LumiCharacter mood="sleepy" size={120} />
-            <div style={{ fontFamily:'var(--font-heading)', fontSize:28, fontWeight:700, color:'var(--px-ink)' }}>
-              Für heute ist Schluss!
+        // (a phone held sideways: Lumi beside the words, so all of it fits without scrolling)
+        <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding: flat ? '8px 16px' : 24 }}>
+          <div className="px-panel" data-timeup style={{ maxWidth: flat ? 620 : 440, width:'100%', padding: flat ? '12px 18px' : '24px 20px', textAlign:'center', display:'flex', flexDirection: flat ? 'row' : 'column', alignItems:'center', gap: flat ? 18 : 14 }}>
+            <LumiCharacter mood="sleepy" size={flat ? 104 : 120} />
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap: flat ? 8 : 14 }}>
+              <div style={{ fontFamily:'var(--font-heading)', fontSize: flat ? 24 : 28, fontWeight:700, color:'var(--px-ink)' }}>
+                Für heute ist Schluss!
+              </div>
+              <div style={{ fontSize: flat ? 16 : 17, fontWeight:600, color:'var(--text-secondary)', lineHeight:1.4 }}>
+                Lumi ruht sich jetzt aus. Morgen spielen wir weiter!
+              </div>
+              <button className="px-btn px-btn--gold px-btn--md"
+                onClick={() => narrate([line('menue/spielzeit-vorbei')])}>
+                🔊 Nochmal hören
+              </button>
             </div>
-            <div style={{ fontSize:17, fontWeight:600, color:'var(--text-secondary)', lineHeight:1.45 }}>
-              Lumi ruht sich jetzt aus. Morgen spielen wir weiter!
-            </div>
-            <button className="px-btn px-btn--gold px-btn--md"
-              onClick={() => narrate([line('menue/spielzeit-vorbei')])}>
-              🔊 Nochmal hören
-            </button>
           </div>
         </div>
       ) : (<>

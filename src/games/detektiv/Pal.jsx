@@ -2,6 +2,7 @@ import { useId } from 'react'
 import { motion } from 'framer-motion'
 import { ShapeFigure, useLumiShape } from '../../components/ShapeFigure.jsx'
 import { posesOf, wearsClothes } from '../../lib/shapes.js'
+import { POSES as CHICK_POSES } from '../../lib/wardrobe.js'
 
 /**
  * The animal friends of Gefühlsdetektiv, and Lumi the detective.
@@ -305,9 +306,11 @@ function bodyMotion(feel, k) {
  */
 export default function Pal({ kind = 'hase', feel = 'neutral', strength = 1, size = 150, flip = false, arms, hold, hat = false, cover = false, still = false }) {
   const clip = useId()
-  // Lumi the detective in the shape the child chose for it (the chick stays drawn here)
+  // Lumi the detective: its own picture in the shape the child chose (the
+  // chick too), with the cap; no wardrobe clothes here (the cap is the
+  // game's costume)
   const shape = useLumiShape()
-  if (kind === 'lumi' && shape) return <ShapeDetective shape={shape} feel={feel} strength={strength} size={size} flip={flip} hold={hold} hat={hat} still={still} />
+  if (kind === 'lumi') return <ShapeDetective shape={shape ?? 'chick'} feel={feel} strength={strength} size={size} flip={flip} hold={hold} hat={hat} still={still} />
   const sp = SPECIES[kind] ?? SPECIES.hase
   const F = FACES[feel] ?? FACES.neutral
   const pose = arms ?? hold?.at ?? F.arms
@@ -401,8 +404,9 @@ const SHAPE_MOOD = {
 // brim sits (share of the square), its width, per pose a shift.
 const ANCHOR_SIZE = 384
 function capFromAnchors(shape, pose) {
-  if (!wearsClothes(shape)) return null
-  const P = posesOf(shape)?.[pose] ?? posesOf(shape)?.idle
+  const set = shape === 'chick' ? CHICK_POSES : wearsClothes(shape) ? posesOf(shape) : null
+  if (!set) return null
+  const P = set[pose] ?? set.idle
   if (!P?.head) return null
   const A = P.head
   return { x: A.x / ANCHOR_SIZE, y: A.y / ANCHOR_SIZE, w: A.w * 0.92 / ANCHOR_SIZE, rot: A.rot ?? 0, tuft: shape === 'einhorn',
