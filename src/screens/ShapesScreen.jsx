@@ -197,7 +197,9 @@ export function Ring({ w, h, start, kind, coming = {}, stars = 0, poof, onChoose
   // flatter on a phone held sideways)
   const upright = !sideways && !wide
   const front = Math.round(Math.max(110, Math.min(sideways ? stageH * 0.86 : stageH / 1.45, wide ? Math.min(w * 0.36, 380) : w * 0.64, 380)))
-  const lift = sideways ? front * 0.1 : upright ? front * 0.56 : front * 0.22
+  // (a phone held upright is tall: the ones behind rise higher, so the ring
+  // fills the screen instead of sitting low under an empty sky)
+  const lift = sideways ? front * 0.1 : upright ? Math.max(front * 0.56, Math.min(front * 0.8, (stageH - front * 0.7) * 0.42)) : front * 0.22
   // the shapes beside the one in front stand a little further out and smaller, so it clearly leads
   const R = sideways ? Math.min(w * 0.32, 320) : wide ? Math.min(w * 0.34, 420) : w * 0.33
   const step = Math.max(80, R * 0.9)    // pixels of drag for one shape
@@ -239,12 +241,12 @@ export function Ring({ w, h, start, kind, coming = {}, stars = 0, poof, onChoose
   })
 
   // dragging: the ring follows the finger and snaps to the nearest shape; a
-  // quick swipe turns it by one; a touch that hardly moves is a tap
+  // quick swipe turns it by one, never more; a touch that hardly moves is a tap
   const drag = useRef(null)
   const ringRef = useRef(null)
   const down = e => {
     if (e.button !== undefined && e.button !== 0) return
-    drag.current = { x: e.clientX, y: e.clientY, r: rot.get(), t: Date.now(), moved: false }
+    drag.current = { x: e.clientX, y: e.clientY, r: rot.get(), t: Date.now(), moved: false, trail: [{ x: e.clientX, t: Date.now() }] }
     rot.stop()
     e.currentTarget.setPointerCapture?.(e.pointerId)
   }
@@ -254,6 +256,10 @@ export function Ring({ w, h, start, kind, coming = {}, stars = 0, poof, onChoose
     const dx = e.clientX - d.x
     if (Math.abs(dx) > 8) d.moved = true
     if (d.moved) rot.set(d.r - dx / step)
+    // the last moments of the finger: how fast it was going when let go
+    const now = Date.now()
+    d.trail.push({ x: e.clientX, t: now })
+    while (d.trail.length > 2 && now - d.trail[1].t > 160) d.trail.shift()
   }
   const up = e => {
     const d = drag.current
@@ -270,8 +276,14 @@ export function Ring({ w, h, start, kind, coming = {}, stars = 0, poof, onChoose
     }
     const dx = e.clientX - d.x
     let target = Math.round(rot.get())
-    const quick = Date.now() - d.t < 350 && Math.abs(dx) > 30
-    if (quick && target === Math.round(d.r)) target = Math.round(d.r) - Math.sign(dx)
+    // a quick swipe (a fling) turns by exactly one, however far the finger
+    // flew (a hard swipe on a phone turned three shapes past); a slow drag
+    // goes where it was dragged
+    // (a fling: short, or still fast when let go; at least 0.6 px a millisecond)
+    const now = Date.now(), from = d.trail[0]
+    const speed = Math.abs(e.clientX - from.x) / Math.max(16, now - from.t)
+    const quick = Math.abs(dx) > 30 && (now - d.t < 350 || speed > 0.6)
+    if (quick) target = Math.round(d.r) - Math.sign(dx)
     turnTo(target)
   }
 
@@ -315,7 +327,7 @@ export function Ring({ w, h, start, kind, coming = {}, stars = 0, poof, onChoose
   }
   // the feet of the shape in front: the ring in the middle of its room
   const above = Math.max(front * 1.04, 2 * lift + front * 0.5), below = front * 0.16
-  const base = Math.round(Math.min(stageH - below, (stageH + above - below) / 2 + (upright ? stageH * 0.12 : 0)))
+  const base = Math.round(Math.min(stageH - below, (stageH + above - below) / 2))
   return (
     <div style={{ flex: 1, minHeight: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>
       <div ref={ringRef} data-ring={frontShape.id} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={() => { drag.current = null; turn(0) }}
@@ -390,6 +402,9 @@ function RingItem({ i, shape, rot, R, fall, lift, size, base, cx, reduce, front,
   const y = useTransform(rot, v => base - size - (1 - depth(v)) * 2 * lift)
   const scale = useTransform(rot, v => 0.36 + 0.64 * Math.pow(depth(v), fall))
   const zIndex = useTransform(rot, v => Math.round(depth(v) * 100))
+  // the tick under Lumi now stays at least 32 px wide when it stands small at the side
+  const TICK = Math.max(30, size * 0.16)
+  const tickScale = useTransform(scale, s => Math.max(1, 34 / (TICK * s)))
   const shadow = kind === 'shadow'
   const mood = front ? (kind === 'current' ? 'happy' : 'wave') : 'idle'
   // only the shape Lumi is now is dressed
@@ -422,7 +437,7 @@ function RingItem({ i, shape, rot, R, fall, lift, size, base, cx, reduce, front,
         </motion.div>
         {kind === 'current' && (
           // on the green ring at its feet, in front of it: it belongs to this shape and covers none behind
-          <span aria-hidden="true" data-current-tick style={{ position: 'absolute', left: '50%', bottom: '-9%', transform: 'translateX(-50%)', zIndex: 2, width: Math.max(30, size * 0.16), height: Math.max(30, size * 0.16), borderRadius: '50%', background: '#3aa63a', border: '3px solid #fff', color: '#fff', fontWeight: 800, fontSize: Math.max(18, size * 0.1), display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 0 rgba(42,27,61,0.35)' }}>✓</span>
+          <motion.span aria-hidden="true" data-current-tick style={{ position: 'absolute', left: '50%', bottom: '-9%', x: '-50%', scale: tickScale, transformOrigin: '50% 50%', zIndex: 2, width: TICK, height: TICK, borderRadius: '50%', background: '#3aa63a', border: '3px solid #fff', color: '#fff', fontWeight: 800, fontSize: Math.max(18, size * 0.1), display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 0 rgba(42,27,61,0.35)' }}>✓</motion.span>
         )}
         {shadow && <ShadowSign c={coming} stars={stars} size={size} />}
         {poof && <Poof key={poof} size={size} />}
