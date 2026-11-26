@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Lumi's wardrobe (src/lib/wardrobe.js): bunny ears on a pink hairband.
+       Two white ears with pink insides, the right one flopped over. Lumi's
+       feather tuft stands up between them.
+       Drawn in Lumi's units: inside the group 1 = one pixel of Lumi's
+       384 picture, (0, 0) = the top of Lumi's head (the head anchor).
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-hasenohren.svg public/sprites/wardrobe/hasenohren.webp 384 -->
+  <defs>
+    <linearGradient id="fur" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.6" stop-color="#f7f1f6"/>
+      <stop offset="1" stop-color="#e2d4e0"/>
+    </linearGradient>
+    <linearGradient id="inner" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffc6d8"/>
+      <stop offset="1" stop-color="#ff94b6"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(128 146) scale(1.2)">
+    <!-- the left ear, standing up -->
+    <path d="M-54 14 C-70 -22 -84 -68 -70 -86 C-56 -100 -38 -80 -32 -48 C-28 -28 -24 -8 -24 14 Z" fill="url(#fur)" stroke="#7b4a1e" stroke-width="4.5" stroke-linejoin="round"/>
+    <path d="M-46 6 C-58 -24 -68 -60 -63 -75 C-56 -83 -46 -66 -42 -44 C-39 -28 -36 -10 -36 6 Z" fill="url(#inner)"/>
+    <!-- the right ear, flopped over at the top -->
+    <path d="M24 14 C24 -18 28 -50 44 -66 C60 -80 88 -74 102 -52 C110 -40 104 -28 92 -32 C80 -38 72 -46 62 -42 C52 -36 50 -12 52 14 Z" fill="url(#fur)" stroke="#7b4a1e" stroke-width="4.5" stroke-linejoin="round"/>
+    <path d="M34 6 C34 -18 38 -40 48 -52 C54 -58 60 -58 62 -54 C56 -44 50 -36 46 -24 C44 -12 44 -2 44 6 Z" fill="url(#inner)"/>
+    <path d="M62 -42 C58 -50 54 -56 48 -60" stroke="#c9b6c6" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <path d="M58 -70 C72 -72 86 -66 96 -54" stroke="#ffffff" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <!-- the pink hairband over the head -->
+    <path d="M-95 43 C-88 16 -54 8 0 8 C54 8 88 16 95 43" stroke="#7b4a1e" stroke-width="15" fill="none" stroke-linecap="round"/>
+    <path d="M-95 43 C-88 16 -54 8 0 8 C54 8 88 16 95 43" stroke="#ff7fae" stroke-width="7" fill="none" stroke-linecap="round"/>
+    <path d="M-86 32 C-70 18 -46 12 -20 11" stroke="#ffc2d9" stroke-width="3" fill="none" stroke-linecap="round"/>
+  </g>
+</svg>

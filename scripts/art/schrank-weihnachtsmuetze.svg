@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Lumi's wardrobe (src/lib/wardrobe.js): the Christmas hat. Red, its
+       tip flopping over to the right with a white pompom, a thick fluffy
+       white trim round the head.
+       Drawn in Lumi's units: inside the group 1 = one pixel of Lumi's
+       384 picture, (0, 0) = the top of Lumi's head (the head anchor).
+       The fluffy parts are round shapes drawn twice: once with a double
+       outline, then again without, so only the outline round them stays.
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-weihnachtsmuetze.svg public/sprites/wardrobe/weihnachtsmuetze.webp 384 -->
+  <defs>
+    <linearGradient id="red" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff6d5e"/>
+      <stop offset="0.5" stop-color="#e3342c"/>
+      <stop offset="1" stop-color="#b0221f"/>
+    </linearGradient>
+    <linearGradient id="fluff" gradientUnits="userSpaceOnUse" x1="0" y1="-10" x2="0" y2="70">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.6" stop-color="#f7f8fc"/>
+      <stop offset="1" stop-color="#dfe5ef"/>
+    </linearGradient>
+    <clipPath id="body"><path d="M-78 20 C-84 -30 -52 -70 6 -70 C60 -70 100 -48 122 -10 C128 2 132 12 134 22 L118 24 C114 10 106 -4 92 -16 C94 0 92 12 90 22 Z"/></clipPath>
+    <g id="trim">
+      <path d="M-88 10 Q0 -6 88 10 L88 42 Q0 62 -88 42 Z"/>
+      <circle cx="-81" cy="11.7" r="11"/><circle cx="-60.7" cy="8.8" r="11"/><circle cx="-40.5" cy="6.7" r="11"/><circle cx="-20.2" cy="5.4" r="11"/>
+      <circle cx="0" cy="5" r="11"/><circle cx="20.2" cy="5.4" r="11"/><circle cx="40.5" cy="6.7" r="11"/><circle cx="60.7" cy="8.8" r="11"/><circle cx="81" cy="11.7" r="11"/>
+      <circle cx="-81" cy="40.6" r="11"/><circle cx="-60.7" cy="44.3" r="11"/><circle cx="-40.5" cy="46.9" r="11"/><circle cx="-20.2" cy="48.5" r="11"/>
+      <circle cx="0" cy="49" r="11"/><circle cx="20.2" cy="48.5" r="11"/><circle cx="40.5" cy="46.9" r="11"/><circle cx="60.7" cy="44.3" r="11"/><circle cx="81" cy="40.6" r="11"/>
+      <circle cx="-90.2" cy="26" r="15"/><circle cx="90.2" cy="26" r="15"/>
+    </g>
+    <g id="pompom">
+      <circle cx="128" cy="34" r="14"/>
+      <circle cx="128" cy="22" r="11"/><circle cx="139" cy="28" r="11"/><circle cx="139" cy="41" r="11"/>
+      <circle cx="128" cy="47" r="11"/><circle cx="117" cy="41" r="11"/><circle cx="117" cy="28" r="11"/>
+    </g>
+  </defs>
+  <g transform="translate(106 130) scale(0.96)">
+    <!-- the red hat, its tip flopped over to the right -->
+    <path d="M-78 20 C-84 -30 -52 -70 6 -70 C60 -70 100 -48 122 -10 C128 2 132 12 134 22 L118 24 C114 10 106 -4 92 -16 C94 0 92 12 90 22 Z" fill="url(#red)" stroke="#7b4a1e" stroke-width="4.5" stroke-linejoin="round"/>
+    <g clip-path="url(#body)">
+      <path d="M-64 0 C-62 -30 -40 -52 -10 -58" stroke="#ffffff" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.3"/>
+      <path d="M92 -16 C80 -26 66 -30 50 -28 C60 -10 70 10 74 30 L140 30 L140 -40 Z" fill="#6e1010" opacity="0.22"/>
+    </g>
+    <path d="M92 -16 C80 -26 66 -30 52 -28" stroke="#7b4a1e" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+    <!-- the fluffy trim -->
+    <use href="#trim" fill="url(#fluff)" stroke="#7b4a1e" stroke-width="9"/>
+    <use href="#trim" fill="url(#fluff)"/>
+    <path d="M-80 20 Q-40 10 -10 10" stroke="#ffffff" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <!-- the pompom -->
+    <use href="#pompom" fill="url(#fluff)" stroke="#7b4a1e" stroke-width="9"/>
+    <use href="#pompom" fill="url(#fluff)"/>
+    <path d="M120 26 C124 22 130 21 134 23" stroke="#ffffff" stroke-width="4" fill="none" stroke-linecap="round"/>
+  </g>
+</svg>
