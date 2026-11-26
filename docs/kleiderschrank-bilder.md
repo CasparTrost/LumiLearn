@@ -934,3 +934,157 @@ Edit this image, do not redraw it: the seven cartoon dinosaurs stay exactly the 
 
 Wenn die Probe gut aussieht, folgen pro Figur 16 Bilder (jedes Oberteil zusammen mit einer Hose), also 80 Bilder
 für alle fünf Figuren.
+
+---
+
+# Alle Oberteile und Hosen direkt auf die Figuren gemalt (79 Bilder)
+
+Probe 2 hat funktioniert: Die Kleidung lässt sich aus dem gemalten Bild sauber ausschneiden, die Ärmel folgen den
+Armen, die Hosen den Beinen. Jetzt alle übrigen Bilder **genau wie in Probe 2** (Vorlage bearbeiten, nicht neu malen,
+weißer Hintergrund, Bildgröße 2048 × 1024, gleiches Raster, Figuren unverändert an derselben Stelle).
+
+## Zusätzlich beachten (damit das Ausschneiden klappt)
+
+- Kopf, Hände, Füße, Schwanz und Flügel bleiben genau wie in der Vorlage, auch das „?" und das „Zzz".
+- Den Körper nicht schmaler malen. Die Hände schauen deutlich aus den Ärmeln heraus.
+- Das Oberteil reicht nur bis über den Bund der Hose, nicht tiefer.
+- Jedes Kleidungsstück hat eine klare, geschlossene dunklere Kontur.
+- Bei zwei Bildern ist die Figur selbst ähnlich gefärbt wie die Kleidung (Bienenkostüm und Clownshose auf dem
+  gelben Küken): dort die Kontur besonders deutlich.
+
+## Ablage
+
+`tripo-in/dressed/<figur>-<oberteil>-<hose>.png` (beim Sternenpyjama ohne Hose: `<figur>-sternenpyjama.png`), im Zweig
+`tripo-kleiderschrank`. Nach jeder Figur committen und pushen, dann sieht die Cloud-Sitzung die Bilder sofort.
+Nichts kaufen; reicht das Guthaben nicht, aufhören und dem Nutzer sagen, wie viele fehlen.
+
+## Reihenfolge
+
+Zuerst das Küken (Lumi, die meisten Kinder), dann Dino, Einhorn, Drache, Roboter. Beim Dino ist Nr. 1 schon fertig.
+
+## Prompt (für jedes Bild; `<FIGURE>`, `<TOP>` und `<BOTTOM>` aus der Liste einsetzen)
+
+```
+Edit this image, do not redraw it: the seven <FIGURE>s stay exactly the same - same size, same position in the grid, same pose, same face, same hands, feet, tail and wings, same colors and outline, keep the "?" and the "Zzz", white background, image size unchanged, do not make the bodies narrower. Only dress each of the seven in <TOP> and <BOTTOM>. In every pose the clothes follow the body: the top covers chest and belly down to just over the waistband with the collar right under the head; each sleeve lies on its arm exactly as the arm is posed (raised arm: the sleeve goes up with it; hand at the cheek: the sleeve lies along that arm), the hands stick out of the sleeves; the bottom sits on the hips and follows the legs, the feet stick out below; the sitting figure wears it on its lap. Every piece of clothing has a clear, closed, slightly darker outline. Same soft cartoon style, no ground shadow, no text.
+```
+
+Ohne Hose (Nr. 16) den Teil „and <BOTTOM>" und die Sätze über die Hose weglassen.
+
+## Die Paare
+
+| Nr. | Oberteil | Hose / Rock | `<TOP>` | `<BOTTOM>` |
+|---|---|---|---|---|
+| 1 | ringelshirt | jeansshorts | a blue-and-white striped long-sleeve sailor shirt | blue denim shorts with rolled hems |
+| 2 | heldenshirt | skihose | a red superhero T-shirt with a yellow lightning bolt | puffy pink ski trousers |
+| 3 | fussballtrikot | flickenjeans | a green football jersey with a white star | long blue jeans with colourful patches |
+| 4 | hawaiihemd | bastrock | a turquoise hawaiian shirt with red and orange hibiscus flowers | a green hula grass skirt with small pink flowers |
+| 5 | katzenhoodie | regenbogenleggings | a purple hoodie with little cat ears on the hood (hood down on the back) | rainbow-striped leggings |
+| 6 | regenjacke | lederhose | a red rain jacket with buttons | brown short leather trousers (Lederhosen) with braces |
+| 7 | bienenkostuem | tutu | a yellow-and-black striped bee costume top with tiny wings on the back | a pink ballet tutu |
+| 8 | ritterruestung | piratenhose | a silver knight breastplate with a golden star | red-and-white striped pirate trousers with a rope belt |
+| 9 | rettungsweste | entenbadehose | an orange life jacket | light blue swim shorts with little yellow ducks |
+| 10 | kochjacke | schottenrock | a white chef jacket with two rows of buttons | a red tartan kilt with a small sporran |
+| 11 | arztkittel | clownshose | a white doctor coat with a stethoscope | baggy yellow clown trousers with red dots and braces |
+| 12 | astronautenjacke | prinzessinnenrock | a white-and-grey astronaut suit top with colourful buttons | a long pink princess skirt |
+| 13 | skijacke | meerjungfrau | a pink puffy ski jacket with a fur collar | a turquoise mermaid tail with fins (instead of the legs; the feet are hidden in the tail) |
+| 14 | smoking | fussballshorts | a black tuxedo jacket with a white shirt and a red bow tie | green football shorts |
+| 15 | rentierpulli | pyjamahose | a green christmas sweater with a reindeer | dark blue pyjama trousers with yellow stars and moons |
+| 16 | sternenpyjama | – | a dark blue pyjama top with yellow stars | – |
+
+## Die Bilder
+
+### Lumi, das Küken: Vorlage `docs/tripo-vorlagen/chick-posen.png`, `<FIGURE>` = `cartoon chick`
+
+- [ ] 1. `tripo-in/dressed/chick-ringelshirt-jeansshorts.png`
+- [ ] 2. `tripo-in/dressed/chick-heldenshirt-skihose.png`
+- [ ] 3. `tripo-in/dressed/chick-fussballtrikot-flickenjeans.png`
+- [ ] 4. `tripo-in/dressed/chick-hawaiihemd-bastrock.png`
+- [ ] 5. `tripo-in/dressed/chick-katzenhoodie-regenbogenleggings.png`
+- [ ] 6. `tripo-in/dressed/chick-regenjacke-lederhose.png`
+- [ ] 7. `tripo-in/dressed/chick-bienenkostuem-tutu.png`
+- [ ] 8. `tripo-in/dressed/chick-ritterruestung-piratenhose.png`
+- [ ] 9. `tripo-in/dressed/chick-rettungsweste-entenbadehose.png`
+- [ ] 10. `tripo-in/dressed/chick-kochjacke-schottenrock.png`
+- [ ] 11. `tripo-in/dressed/chick-arztkittel-clownshose.png`
+- [ ] 12. `tripo-in/dressed/chick-astronautenjacke-prinzessinnenrock.png`
+- [ ] 13. `tripo-in/dressed/chick-skijacke-meerjungfrau.png`
+- [ ] 14. `tripo-in/dressed/chick-smoking-fussballshorts.png`
+- [ ] 15. `tripo-in/dressed/chick-rentierpulli-pyjamahose.png`
+- [ ] 16. `tripo-in/dressed/chick-sternenpyjama.png`
+
+### Dino: Vorlage `docs/tripo-vorlagen/dino-posen.png`, `<FIGURE>` = `cartoon dinosaur`
+
+- [ ] 1. `tripo-in/dressed/dino-ringelshirt-jeansshorts.png` (fertig)
+- [ ] 2. `tripo-in/dressed/dino-heldenshirt-skihose.png`
+- [ ] 3. `tripo-in/dressed/dino-fussballtrikot-flickenjeans.png`
+- [ ] 4. `tripo-in/dressed/dino-hawaiihemd-bastrock.png`
+- [ ] 5. `tripo-in/dressed/dino-katzenhoodie-regenbogenleggings.png`
+- [ ] 6. `tripo-in/dressed/dino-regenjacke-lederhose.png`
+- [ ] 7. `tripo-in/dressed/dino-bienenkostuem-tutu.png`
+- [ ] 8. `tripo-in/dressed/dino-ritterruestung-piratenhose.png`
+- [ ] 9. `tripo-in/dressed/dino-rettungsweste-entenbadehose.png`
+- [ ] 10. `tripo-in/dressed/dino-kochjacke-schottenrock.png`
+- [ ] 11. `tripo-in/dressed/dino-arztkittel-clownshose.png`
+- [ ] 12. `tripo-in/dressed/dino-astronautenjacke-prinzessinnenrock.png`
+- [ ] 13. `tripo-in/dressed/dino-skijacke-meerjungfrau.png`
+- [ ] 14. `tripo-in/dressed/dino-smoking-fussballshorts.png`
+- [ ] 15. `tripo-in/dressed/dino-rentierpulli-pyjamahose.png`
+- [ ] 16. `tripo-in/dressed/dino-sternenpyjama.png`
+
+### Einhorn: Vorlage `docs/tripo-vorlagen/einhorn-posen.png`, `<FIGURE>` = `cartoon unicorn`
+
+- [ ] 1. `tripo-in/dressed/einhorn-ringelshirt-jeansshorts.png`
+- [ ] 2. `tripo-in/dressed/einhorn-heldenshirt-skihose.png`
+- [ ] 3. `tripo-in/dressed/einhorn-fussballtrikot-flickenjeans.png`
+- [ ] 4. `tripo-in/dressed/einhorn-hawaiihemd-bastrock.png`
+- [ ] 5. `tripo-in/dressed/einhorn-katzenhoodie-regenbogenleggings.png`
+- [ ] 6. `tripo-in/dressed/einhorn-regenjacke-lederhose.png`
+- [ ] 7. `tripo-in/dressed/einhorn-bienenkostuem-tutu.png`
+- [ ] 8. `tripo-in/dressed/einhorn-ritterruestung-piratenhose.png`
+- [ ] 9. `tripo-in/dressed/einhorn-rettungsweste-entenbadehose.png`
+- [ ] 10. `tripo-in/dressed/einhorn-kochjacke-schottenrock.png`
+- [ ] 11. `tripo-in/dressed/einhorn-arztkittel-clownshose.png`
+- [ ] 12. `tripo-in/dressed/einhorn-astronautenjacke-prinzessinnenrock.png`
+- [ ] 13. `tripo-in/dressed/einhorn-skijacke-meerjungfrau.png`
+- [ ] 14. `tripo-in/dressed/einhorn-smoking-fussballshorts.png`
+- [ ] 15. `tripo-in/dressed/einhorn-rentierpulli-pyjamahose.png`
+- [ ] 16. `tripo-in/dressed/einhorn-sternenpyjama.png`
+
+### Drache: Vorlage `docs/tripo-vorlagen/drache-posen.png`, `<FIGURE>` = `cartoon dragon`
+
+- [ ] 1. `tripo-in/dressed/drache-ringelshirt-jeansshorts.png`
+- [ ] 2. `tripo-in/dressed/drache-heldenshirt-skihose.png`
+- [ ] 3. `tripo-in/dressed/drache-fussballtrikot-flickenjeans.png`
+- [ ] 4. `tripo-in/dressed/drache-hawaiihemd-bastrock.png`
+- [ ] 5. `tripo-in/dressed/drache-katzenhoodie-regenbogenleggings.png`
+- [ ] 6. `tripo-in/dressed/drache-regenjacke-lederhose.png`
+- [ ] 7. `tripo-in/dressed/drache-bienenkostuem-tutu.png`
+- [ ] 8. `tripo-in/dressed/drache-ritterruestung-piratenhose.png`
+- [ ] 9. `tripo-in/dressed/drache-rettungsweste-entenbadehose.png`
+- [ ] 10. `tripo-in/dressed/drache-kochjacke-schottenrock.png`
+- [ ] 11. `tripo-in/dressed/drache-arztkittel-clownshose.png`
+- [ ] 12. `tripo-in/dressed/drache-astronautenjacke-prinzessinnenrock.png`
+- [ ] 13. `tripo-in/dressed/drache-skijacke-meerjungfrau.png`
+- [ ] 14. `tripo-in/dressed/drache-smoking-fussballshorts.png`
+- [ ] 15. `tripo-in/dressed/drache-rentierpulli-pyjamahose.png`
+- [ ] 16. `tripo-in/dressed/drache-sternenpyjama.png`
+
+### Roboter: Vorlage `docs/tripo-vorlagen/roboter-posen.png`, `<FIGURE>` = `cartoon robot`
+
+- [ ] 1. `tripo-in/dressed/roboter-ringelshirt-jeansshorts.png`
+- [ ] 2. `tripo-in/dressed/roboter-heldenshirt-skihose.png`
+- [ ] 3. `tripo-in/dressed/roboter-fussballtrikot-flickenjeans.png`
+- [ ] 4. `tripo-in/dressed/roboter-hawaiihemd-bastrock.png`
+- [ ] 5. `tripo-in/dressed/roboter-katzenhoodie-regenbogenleggings.png`
+- [ ] 6. `tripo-in/dressed/roboter-regenjacke-lederhose.png`
+- [ ] 7. `tripo-in/dressed/roboter-bienenkostuem-tutu.png`
+- [ ] 8. `tripo-in/dressed/roboter-ritterruestung-piratenhose.png`
+- [ ] 9. `tripo-in/dressed/roboter-rettungsweste-entenbadehose.png`
+- [ ] 10. `tripo-in/dressed/roboter-kochjacke-schottenrock.png`
+- [ ] 11. `tripo-in/dressed/roboter-arztkittel-clownshose.png`
+- [ ] 12. `tripo-in/dressed/roboter-astronautenjacke-prinzessinnenrock.png`
+- [ ] 13. `tripo-in/dressed/roboter-skijacke-meerjungfrau.png`
+- [ ] 14. `tripo-in/dressed/roboter-smoking-fussballshorts.png`
+- [ ] 15. `tripo-in/dressed/roboter-rentierpulli-pyjamahose.png`
+- [ ] 16. `tripo-in/dressed/roboter-sternenpyjama.png`
+
