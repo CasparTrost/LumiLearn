@@ -1,17 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
-  <!-- Lumi's wardrobe (src/lib/wardrobe/hold.js): an open umbrella, yellow
-       and blue panels, a curved handle. The handle's crook (low in the
-       middle) is where the wing holds it.
+  <!-- Lumi's wardrobe (src/lib/wardrobe/hold.js): a rain umbrella. A round
+       canopy in yellow and blue panels with a scalloped edge on a long
+       straight shaft with a curved J handle, like a real Regenschirm (not
+       a little parasol): Lumi holds the shaft at its wing and the canopy
+       is above its head. The grip is low on the shaft.
        Render: node scripts/art/render-svg.mjs scripts/art/schrank-schirm.svg public/sprites/wardrobe/schirm.webp 384 -->
-  <path d="M128 70 L128 226 C128 246 104 246 104 230" stroke="#7b4a1e" stroke-width="13" fill="none" stroke-linecap="round"/>
-  <path d="M128 70 L128 226 C128 246 104 246 104 230" stroke="#e5483f" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <!-- the shaft and the J handle -->
+  <path d="M128 50 L128 222 C128 252 98 252 98 232" stroke="#7b4a1e" stroke-width="12" fill="none" stroke-linecap="round"/>
+  <path d="M128 50 L128 222 C128 252 98 252 98 232" stroke="#e5483f" stroke-width="6" fill="none" stroke-linecap="round"/>
   <g stroke="#7b4a1e" stroke-width="5" stroke-linejoin="round">
-    <path d="M14 112 C24 60 72 26 128 26 C184 26 232 60 242 112 Q220 98 199 112 Q178 98 156 112 Q142 100 128 112 Q114 100 100 112 Q78 98 57 112 Q36 98 14 112 Z" fill="#ffd23a"/>
+    <!-- the canopy: a big dome with a scalloped edge -->
+    <path d="M44 76 C46 34 84 10 128 10 C172 10 210 34 212 76 Q198 66 184 76 Q170 66 156 76 Q142 66 128 76 Q114 66 100 76 Q86 66 72 76 Q58 66 44 76 Z" fill="#ffd23a"/>
   </g>
   <g stroke="#7b4a1e" stroke-width="4" stroke-linejoin="round" fill="#4aa3ff">
-    <path d="M57 112 Q74 60 128 26 Q90 60 100 112 Q78 98 57 112 Z"/>
-    <path d="M156 112 Q166 60 128 26 Q182 60 199 112 Q178 98 156 112 Z"/>
+    <path d="M72 76 Q78 36 128 10 Q94 40 100 76 Q86 66 72 76 Z"/>
+    <path d="M156 76 Q162 40 128 10 Q178 36 184 76 Q170 66 156 76 Z"/>
   </g>
-  <path d="M40 84 C56 56 84 40 112 34" stroke="#ffffff" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.6"/>
-  <circle cx="128" cy="22" r="7" fill="#e5483f" stroke="#7b4a1e" stroke-width="4"/>
+  <path d="M58 56 C66 36 84 24 104 18" stroke="#ffffff" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.55"/>
+  <path d="M128 10 L128 3" stroke="#7b4a1e" stroke-width="6" stroke-linecap="round"/>
 </svg>

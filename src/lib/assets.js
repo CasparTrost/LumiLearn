@@ -8,7 +8,7 @@ export const journeyArt = f => asset('sprites/journey/' + f)
 // 'hmm' is the thinking pose without the question mark drawn next to the
 // head: Lumi's face after a miss ('oops'). The "?" stays for 'think' only.
 const LUMI_POSE = {
-  happy: 'happy', dance: 'happy', eat: 'happy', excited: 'happy', encouraging: 'happy', cheer: 'happy', proud: 'happy',
+  happy: 'happy', dance: 'happy', hop: 'happy', eat: 'happy', excited: 'happy', encouraging: 'happy', cheer: 'happy', proud: 'happy',
   sad: 'sad',
   oops: 'hmm', hmm: 'hmm', think: 'think', thinking: 'think', curious: 'think',
   sleep: 'sleep', sleepy: 'sleep', tired: 'sleep',

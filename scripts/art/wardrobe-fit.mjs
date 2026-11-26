@@ -31,7 +31,7 @@ function figure(pose, outfit) {
   const { layers, scale } = W.figureLayers(pose, debug ? null : outfit)
   const inner = layers.map(l => l.kind === 'pose'
     ? `<img src="${file(`sprites/emoji/custom/lumi-${pose}.webp`)}" style="position:absolute;inset:0;width:100%;height:100%;${l.clip ? `clip-path:${l.clip};` : ''}">`
-    : `<img src="${file(l.src)}" style="position:absolute;left:${l.left};top:${l.top};width:${l.size};height:${l.size};transform:rotate(${l.rot}deg);transform-origin:${l.origin}">`).join('')
+    : `<img src="${file(l.src)}" style="position:absolute;left:${l.left};top:${l.top};width:${l.size};height:${l.size};transform:rotate(${l.rot}deg);transform-origin:${l.origin};${l.clip ? `clip-path:${l.clip};` : ''}">`).join('')
   let marks = ''
   if (debug) {
     const P = W.POSES[pose]

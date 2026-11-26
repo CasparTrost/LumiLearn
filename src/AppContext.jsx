@@ -149,9 +149,11 @@ export function totalStars(progress) {
 export const farmPoints = profile => totalStars(profile?.progress) + (profile?.farmBonus ?? 0)
 
 // ── Lumis Kleiderschrank (lib/wardrobe.js) ───────────────────────────────────
-// The stars unlock things for Lumi to wear. Nothing is spent: the total
-// counts, and the highest total ever reached (`starsEver`), so a game the
-// parents start over again (RESET_MODULE) takes no hat away.
+// The stars unlock things for Lumi to wear. Nothing is spent: what counts
+// are the stars ever EARNED (`starsEver`): every star a result adds is
+// added, also in a game the parents started over (RESET_MODULE) and played
+// again, so the wardrobe moves on at once; it never goes down and is never
+// below the current total.
 export const profileWardrobeStars = profile => wardrobeStars(profile, totalStars(profile?.progress))
 const knownIds = list => (Array.isArray(list) ? Array.from(new Set(list.filter(id => ITEM_BY_ID[id]))) : [])
 // what is worn and also unlocked (a save from elsewhere may say otherwise)
@@ -387,7 +389,7 @@ export function reducer(state, action) {
     }
 
     case 'NAVIGATE':
-      return { ...state, screen: action.payload, ...(action.create ? { profileCreate: true } : { profileCreate: false }) }
+      return { ...state, screen: action.payload, ...(action.create ? { profileCreate: true } : { profileCreate: false }), wardrobeFocus: action.focus ?? null }
 
     case 'START_GAME':
       return { ...state, screen: 'game', currentGame: action.payload }
@@ -578,7 +580,9 @@ export function reducer(state, action) {
 
       // the new total may unlock things in Lumi's wardrobe
       const wardrobeBefore = profileWardrobeStars(profile)
-      updatedProfile.starsEver = profileWardrobeStars(updatedProfile)
+      const sumStars = ls => Object.values(ls ?? {}).reduce((a, b) => a + (b ?? 0), 0)
+      const earned = Math.max(0, sumStars(newLevelStars) - sumStars(prevLevelStars))
+      updatedProfile.starsEver = Math.max(wardrobeBefore + earned, totalStars(updatedProfile.progress))
       const newWear = unlockedBetween(wardrobeBefore, updatedProfile.starsEver).map(t => t.id)
 
       return {
@@ -704,6 +708,8 @@ export function migrateToV2(data) {
         wardrobeTried: knownIds(p.wardrobeTried),
         starsEver: Number.isFinite(p.starsEver) ? Math.max(0, p.starsEver) : 0,
       })
+      // old saves: never below the stars the child has now
+      profiles[id].starsEver = profileWardrobeStars(profiles[id])
       profiles[id].outfit = wearable(profiles[id])
     }
     return {

@@ -120,7 +120,7 @@ export default function ParentScreen({ onClose }) {
   // Resetting a game took one tap on a red button next to the level select.
   const resetModule = (id) => setConfirm({
     title: `${moduleTitle(id)} zurücksetzen?`,
-    text: `Alle Sterne und Level von ${name} in diesem Spiel werden gelöscht.`,
+    text: `Alle Sterne und Level von ${name} in diesem Spiel werden gelöscht. Lumis Sachen im Kleiderschrank bleiben.`,
     yesLabel: 'Zurücksetzen',
     onYes: () => { dispatch({ type: 'RESET_MODULE', payload: { id, profileId: view.id } }); showToast(`${moduleTitle(id)} zurückgesetzt`) },
   })
@@ -152,7 +152,7 @@ export default function ParentScreen({ onClose }) {
 
   const resetProfile = () => setConfirm({
     title: `${name} komplett zurücksetzen?`,
-    text: `Alle Spielstände, Sterne, die Serie und die Sticker von ${name} werden gelöscht. Andere Kinder sind nicht betroffen.`,
+    text: `Alle Spielstände, Sterne, die Serie, die Sticker und Lumis Sachen im Kleiderschrank von ${name} werden gelöscht. Andere Kinder sind nicht betroffen.`,
     yesLabel: 'Zurücksetzen',
     onYes: () => { dispatch({ type: 'RESET_PROFILE', payload: view.id }); showToast(`${name} zurückgesetzt`) },
   })

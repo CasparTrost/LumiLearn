@@ -208,7 +208,13 @@ export default function ResultsScreen() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const lumiMood = stars >= 2 || newWear.length ? 'dance' : stars >= 1 ? 'happy' : 'idle'
-  const lumiSize = Math.min(150, Math.round((typeof window !== 'undefined' ? window.innerHeight : 800) * 0.16))
+  // A phone held sideways: the party stands beside the card, and Lumi (in
+  // what it wears from the wardrobe) can be big there; above the card it
+  // was about 45 px tall
+  const vw = typeof window !== 'undefined' ? window.innerWidth : 1024
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 800
+  const sideways = vw > vh && vh < 500
+  const lumiSize = sideways ? Math.min(170, Math.round(vh * 0.42), Math.round((vw - 520) * 0.6)) : Math.min(150, Math.round(vh * 0.16))
 
   // A phone held sideways is lower than the party and the card together:
   // they shrink to fit instead of scrolling (the buttons were below the
@@ -243,11 +249,11 @@ export default function ResultsScreen() {
       {(stars >= 2 || sticker) && <Confetti count={stars === 3 || sticker ? 60 : 28} yFrom="-5vh" yTo="110vh" />}
 
       <div ref={fitRef} style={{
-        position: 'relative', zIndex: 1, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center',
+        position: 'relative', zIndex: 1, width: '100%', display: 'flex', flexDirection: sideways ? 'row' : 'column', alignItems: 'center', justifyContent: 'center', gap: sideways ? 8 : 0,
         ...(fit.scale < 1 ? { transform: `scale(${fit.scale})`, marginBlock: -Math.ceil(fit.need * (1 - fit.scale) / 2) } : null),
       }}>
       {/* the party: Lumi and friends dance; the friends are smaller than Lumi on every screen */}
-      <div aria-hidden="true" style={{ display: 'flex', alignItems: 'flex-end', gap: 'clamp(4px,2vw,20px)', marginBottom: -12, zIndex: 2 }}>
+      <div aria-hidden="true" style={{ display: 'flex', alignItems: 'flex-end', gap: 'clamp(4px,2vw,20px)', marginBottom: sideways ? 0 : -12, zIndex: 2, flexShrink: 0 }}>
         {friends[0] && <PartyFriend art={friends[0]} delay={0.5} size={Math.round(lumiSize * 0.6)} />}
         <Critter art="lumi" size={lumiSize} mood={lumiMood} />
         {friends[1] && <PartyFriend art={friends[1]} delay={0.8} size={Math.round(lumiSize * 0.6)} flip />}
@@ -291,7 +297,7 @@ export default function ResultsScreen() {
         </AnimatePresence>
 
         {newWear.length > 0 && (
-          <WearSurprise items={newWear} ready={showButtons} onOpen={() => { stopNarration(); dispatch({ type: 'NAVIGATE', payload: 'wardrobe' }) }} />
+          <WearSurprise items={newWear} ready={showButtons} onOpen={() => { stopNarration(); dispatch({ type: 'NAVIGATE', payload: 'wardrobe', focus: newWear[newWear.length - 1].id }) }} />
         )}
 
         {/* Buttons — there from the start (the card stood empty for two

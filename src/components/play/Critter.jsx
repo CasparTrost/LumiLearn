@@ -21,9 +21,10 @@ export function artSrc(art, mood = 'idle') {
 }
 
 /** A picture of a thing: the cartoon art for an emoji, or the emoji itself. */
-export function Art({ art, size = 64, style, alt = '', mood }) {
+export function Art({ art, size = 64, style, alt = '', mood, plain = false }) {
   // Lumi wears what the child chose in the wardrobe (components/LumiFigure.jsx)
-  if (art === 'lumi') return <LumiFigure mood={mood} size={size} style={style} alt={alt} />
+  // (`plain`: Lumi in bed or in the bath wears nothing of it)
+  if (art === 'lumi') return <LumiFigure mood={mood} size={size} style={style} alt={alt} outfit={plain ? null : undefined} />
   const src = artSrc(art, mood)
   if (!src) return <span role={alt ? 'img' : undefined} aria-label={alt || undefined} style={{ fontSize: size * 0.82, lineHeight: 1, ...style }}>{art}</span>
   return <img src={src} alt={alt} draggable={false}
@@ -79,6 +80,8 @@ export default function Critter({
       hungry: { y: -s * 0.04, scale: 1.12, rotate: flip ? 6 : -6, transition: { type: 'spring', stiffness: 300, damping: 12 } },
       eat:    { scaleY: [1, 0.82, 1.1, 0.86, 1.06, 1], scaleX: [1, 1.12, 0.94, 1.1, 0.97, 1], y: 0, rotate: 0, transition: { duration: 0.8 } },
       happy:  { y: [0, -s * 0.22, 0, -s * 0.08, 0], rotate: [0, 0, 360, 360, 360], scale: 1, transition: { duration: 1.1, ease: 'easeOut' } },
+      // a small glad hop on the spot (Lumis Kleiderschrank: stays in its stage)
+      hop:    { y: [0, -s * 0.09, 0, -s * 0.03, 0], scaleY: [1, 0.92, 1.05, 0.97, 1], scaleX: [1, 1.06, 0.97, 1.02, 1], rotate: 0, scale: 1, transition: { duration: 0.75, ease: 'easeOut' } },
       dance:  { rotate: [0, -12, 12, -12, 12, 0], y: [0, -s * 0.1, 0, -s * 0.1, 0, 0], scale: 1, transition: { duration: 1.2, repeat: 2 } },
       sad:    { y: s * 0.03, scaleY: 0.93, rotate: [0, -4, 4, -3, 0], transition: { duration: 1.4 } },
       oops:   { rotate: [0, -14, 10, -6, 0], y: 0, scale: 1, transition: { duration: 0.8 } },
@@ -157,7 +160,7 @@ function MoodMark({ mood, size, tickle }) {
   const s = size
   return (
     <AnimatePresence>
-      {mood === 'happy' || mood === 'dance' ? (
+      {mood === 'happy' || mood === 'dance' || mood === 'hop' ? (
         <motion.div key={`h${tickle}`} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} exit={{ opacity: 0 }}>
           {[-0.3, 0, 0.3].map((dx, i) => (
             <motion.svg key={i} viewBox="-2 -2.5 24 22" width={s * 0.18} height={s * 0.16}

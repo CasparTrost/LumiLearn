@@ -11,7 +11,7 @@ export default [
   { id: 'blume',      name: 'Sonnenblume', slot: 'hold', src: 'sprites/wardrobe/blume.webp',     at: [0.5, 0.9],  size: 1.5,  box: [0.25, 0.05, 0.76, 0.98] },
   { id: 'lolli',      name: 'Lolli',      slot: 'hold', src: 'sprites/wardrobe/lolli.webp',      at: [0.5, 0.9],  size: 1.4,  box: [0.23, 0.06, 0.77, 0.98] },
   { id: 'faehnchen',  name: 'Fähnchen',   slot: 'hold', src: 'sprites/wardrobe/faehnchen.webp',  at: [0.5, 0.9],  size: 1.35, box: [0.45, 0.05, 0.94, 0.98] },
-  { id: 'schirm',     name: 'Regenschirm', slot: 'hold', src: 'sprites/wardrobe/schirm.webp',    at: [0.45, 0.9], size: 1.35, box: [0.04, 0.06, 0.96, 0.96] },
+  { id: 'schirm',     name: 'Regenschirm', slot: 'hold', src: 'sprites/wardrobe/schirm.webp',    at: [0.5, 0.84], size: 2.4,  rot: -10, dy: -0.12, box: [0.16, 0.01, 0.84, 0.99], pose: { hmm: { rot: 22, size: 0.95 }, think: { rot: 22, size: 0.95 }, happy: { rot: -4, size: 0.8, dy: 26 }, sleep: { rot: -8, size: 0.75, dx: -14, dy: -6 } } },
   { id: 'eis',        name: 'Eis',        slot: 'hold', src: 'sprites/wardrobe/eis.webp',        at: [0.5, 0.8],  size: 1.7,  box: [0.28, 0.07, 0.72, 0.97], pose: { sleep: { size: 0.9 } } },
   { id: 'windrad',    name: 'Windrad',    slot: 'hold', src: 'sprites/wardrobe/windrad.webp',    at: [0.5, 0.9],  size: 1.5,  box: [0.24, 0.05, 0.77, 0.98] },
 ]

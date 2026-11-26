@@ -36,8 +36,8 @@ export default function LumiFigure({ mood = 'idle', size = 120, outfit, style, c
         {layers.map((l, i) => l.kind === 'pose'
           ? <img key={i} src={src} alt="" draggable={false}
               style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', maxWidth: 'none', objectFit: 'contain', clipPath: l.clip ?? undefined }} />
-          : <img key={l.id} src={asset(l.src)} alt="" draggable={false} data-wear={l.id}
-              style={{ position: 'absolute', left: l.left, top: l.top, width: l.size, height: l.size, maxWidth: 'none', transform: `rotate(${l.rot}deg)`, transformOrigin: l.origin }} />)}
+          : <img key={l.id} src={asset(l.src)} alt="" draggable={false} data-wear={l.over ? undefined : l.id}
+              style={{ position: 'absolute', left: l.left, top: l.top, width: l.size, height: l.size, maxWidth: 'none', transform: `rotate(${l.rot}deg)`, transformOrigin: l.origin, clipPath: l.clip ?? undefined }} />)}
       </span>
     </span>
   )
