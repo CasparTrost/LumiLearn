@@ -47,6 +47,11 @@
  *          also per pose: pose: { sleep: { behind: false } })
  *   over   back things only: a polygon of the picture [[x, y], …] (0…1) that is
  *          drawn again in front of Lumi (a cape's collar and clasp)
+ *   edge   true: a thin dark outline (a yellow thing on the yellow chick)
+ *   cutTop the picture is drawn from this share of its height down only (a
+ *          hood or a space suit's collar ring cut off; the shelf shows it whole)
+ *   cut    the picture is drawn down to this share of its height only (also
+ *          per pose: a scarf's end over the feet when Lumi sits)
  *   sy     clothes only: the picture's height as a share of its width (a
  *          shirt squashed to Lumi's round body; also per pose)
  *   feet   bottoms only: false hides the shoes (a mermaid's tail)
@@ -68,52 +73,56 @@ export const POSES = {
   idle: {
     head: { x: 192, y: 57, rot: 0, w: 190 },
     face: { x: 191, y: 153, rot: 0, w: 100 },
-    neck: { x: 192, y: 214, rot: 0, w: 180 },
+    neck: { x: 192, y: 212, rot: 0, w: 176 },
     back: { x: 192, y: 210, rot: 0, w: 210 },
     hold: { x: 308, y: 280, rot: 12, w: 105 },
     grip: [[290, 246], [306, 250], [320, 270], [330, 294], [324, 308], [306, 304], [292, 286], [286, 264]],
     top: { x: 192, y: 216, rot: 0, w: 175 },
     bottom: { x: 192, y: 295, rot: 0, w: 172 },
     shoes: { x: 191, y: 357, rot: 0, w: 55, step: 44 },
+    soles: [[92, 359], [290, 359], [290, 384], [92, 384]],
     tuft: [[140, 0], [262, 0], [262, 58], [230, 57], [192, 53], [154, 57], [140, 60]],
     wings: [[[106, 216], [82, 238], [62, 268], [60, 284], [72, 298], [98, 302], [118, 290], [124, 262], [120, 232]], [[279, 216], [302, 238], [322, 268], [324, 284], [312, 298], [286, 302], [266, 290], [262, 262], [266, 232]]],
   },
   happy: {
     head: { x: 192, y: 62, rot: 2, w: 190 },
-    face: { x: 193, y: 137, rot: 3, w: 104 },
-    neck: { x: 196, y: 212, rot: 0, w: 180 },
-    back: { x: 196, y: 208, rot: 0, w: 200 },
+    face: { x: 193, y: 136, rot: 6, w: 104 },
+    neck: { x: 193, y: 210, rot: 0, w: 180 },
+    back: { x: 193, y: 208, rot: 0, w: 200 },
     hold: { x: 332, y: 194, rot: 2, w: 95 },
     grip: [[318, 160], [336, 146], [352, 150], [358, 170], [346, 200], [328, 214], [314, 206], [312, 184]],
     top: { x: 192, y: 214, rot: 0, w: 185 },
     bottom: { x: 190, y: 292, rot: 0, w: 185 },
     shoes: { x: 189, y: 356, rot: 0, w: 60, step: 57 },
+    soles: [[72, 358], [306, 358], [306, 384], [72, 384]],
     tuft: [[150, 0], [270, 0], [270, 60], [235, 62], [196, 60], [160, 66], [150, 70]],
     wings: [[[118, 212], [100, 200], [80, 172], [58, 152], [34, 148], [30, 172], [42, 200], [60, 218], [90, 226], [112, 226]], [[266, 212], [285, 190], [300, 160], [322, 140], [345, 150], [352, 175], [340, 205], [315, 228], [290, 235], [270, 230]]],
   },
   sad: {
     head: { x: 192, y: 66, rot: 2, w: 186 },
     face: { x: 189, y: 181, rot: 4, w: 98 },
-    neck: { x: 190, y: 238, rot: 0, w: 170 },
-    back: { x: 190, y: 234, rot: 0, w: 190 },
+    neck: { x: 190, y: 230, rot: 0, w: 166 },
+    back: { x: 190, y: 228, rot: 0, w: 190 },
     hold: { x: 272, y: 300, rot: 24, w: 100 },
     grip: [[244, 264], [262, 258], [280, 270], [288, 292], [282, 314], [264, 316], [250, 300], [242, 282]],
     top: { x: 190, y: 242, rot: 0, w: 170 },
     bottom: { x: 190, y: 298, rot: 0, w: 172 },
     shoes: { x: 190, y: 355, rot: 0, w: 50, step: 38 },
+    soles: [[102, 357], [278, 357], [278, 384], [102, 384]],
     tuft: [[150, 0], [260, 0], [260, 66], [230, 64], [192, 64], [160, 70], [150, 74]],
     wings: [[[104, 256], [115, 246], [142, 250], [165, 264], [178, 290], [174, 306], [148, 306], [118, 296], [104, 280]], [[276, 256], [265, 246], [238, 250], [215, 264], [202, 290], [206, 306], [232, 306], [262, 296], [276, 280]]],
   },
   hmm: {
     head: { x: 184, y: 60, rot: -5, w: 180 },
     face: { x: 190, y: 138, rot: -16, w: 92 },
-    neck: { x: 180, y: 228, rot: -4, w: 160 },
-    back: { x: 182, y: 224, rot: 0, w: 190 },
+    neck: { x: 186, y: 224, rot: -3, w: 164 },
+    back: { x: 186, y: 222, rot: 0, w: 190 },
     hold: { x: 88, y: 286, rot: -20, w: 100 },
     grip: [[104, 250], [88, 254], [72, 276], [66, 300], [74, 314], [92, 310], [104, 292], [108, 270]],
     top: { x: 188, y: 226, rot: -4, w: 165 },
     bottom: { x: 190, y: 296, rot: 0, w: 170 },
     shoes: { x: 188, y: 355, rot: 0, w: 60, step: 43 },
+    soles: [[85, 357], [291, 357], [291, 384], [85, 384]],
     tuft: [[135, 0], [245, 0], [245, 58], [215, 60], [190, 58], [160, 66], [135, 70]],
     wings: [[[112, 226], [96, 234], [82, 252], [80, 272], [88, 288], [108, 298], [124, 294], [128, 262], [124, 236]], [[205, 196], [222, 186], [246, 196], [276, 232], [292, 262], [300, 300], [262, 306], [228, 268], [214, 236]]],
     front: [[205, 196], [222, 186], [246, 196], [276, 232], [292, 262], [300, 300], [262, 306], [228, 268], [214, 236]],
@@ -121,13 +130,14 @@ export const POSES = {
   think: {
     head: { x: 184, y: 60, rot: -5, w: 180 },
     face: { x: 190, y: 138, rot: -16, w: 92 },
-    neck: { x: 180, y: 228, rot: -4, w: 160 },
-    back: { x: 182, y: 224, rot: 0, w: 190 },
+    neck: { x: 186, y: 224, rot: -3, w: 164 },
+    back: { x: 186, y: 222, rot: 0, w: 190 },
     hold: { x: 88, y: 286, rot: -20, w: 100 },
     grip: [[104, 250], [88, 254], [72, 276], [66, 300], [74, 314], [92, 310], [104, 292], [108, 270]],
     top: { x: 188, y: 226, rot: -4, w: 165 },
     bottom: { x: 190, y: 296, rot: 0, w: 170 },
     shoes: { x: 188, y: 355, rot: 0, w: 60, step: 43 },
+    soles: [[85, 357], [291, 357], [291, 384], [85, 384]],
     tuft: [[135, 0], [245, 0], [245, 58], [215, 60], [190, 58], [160, 66], [135, 70]],
     wings: [[[112, 226], [96, 234], [82, 252], [80, 272], [88, 288], [108, 298], [124, 294], [128, 262], [124, 236]], [[205, 196], [222, 186], [246, 196], [276, 232], [292, 262], [300, 300], [262, 306], [228, 268], [214, 236]]],
     front: [[205, 196], [222, 186], [246, 196], [276, 232], [292, 262], [300, 300], [262, 306], [228, 268], [214, 236]],
@@ -135,10 +145,10 @@ export const POSES = {
   sleep: {
     head: { x: 182, y: 82, rot: -3, w: 210 },
     face: { x: 180, y: 190, rot: -12, w: 112 },
-    neck: { x: 192, y: 252, rot: 0, w: 200 },
-    back: { x: 192, y: 232, rot: 0, w: 200 },
+    neck: { x: 184, y: 236, rot: -3, w: 186 },
+    back: { x: 186, y: 232, rot: 0, w: 200 },
     hold: { x: 338, y: 360, rot: 0, w: 84 },
-    top: { x: 184, y: 250, rot: 0, w: 220 },
+    top: { x: 184, y: 240, rot: 0, w: 220 },
     bottom: { x: 184, y: 315, rot: 0, w: 225 },
     shoes: { x: 182, y: 338, rot: 0, w: 65, step: 79 },
     tuft: [[140, 0], [255, 0], [255, 78], [220, 80], [188, 78], [158, 84], [140, 88]],
@@ -148,13 +158,14 @@ export const POSES = {
   wave: {
     head: { x: 208, y: 58, rot: 5, w: 185 },
     face: { x: 206, y: 145, rot: 6, w: 95 },
-    neck: { x: 215, y: 220, rot: 3, w: 170 },
-    back: { x: 215, y: 216, rot: 0, w: 190 },
+    neck: { x: 210, y: 218, rot: 3, w: 170 },
+    back: { x: 210, y: 216, rot: 0, w: 190 },
     hold: { x: 314, y: 290, rot: 12, w: 100 },
     grip: [[300, 254], [316, 260], [330, 282], [334, 304], [326, 318], [308, 312], [296, 292], [292, 270]],
     top: { x: 205, y: 222, rot: 3, w: 170 },
     bottom: { x: 205, y: 295, rot: 0, w: 165 },
     shoes: { x: 210, y: 352, rot: 0, w: 58, step: 47 },
+    soles: [[105, 354], [315, 354], [315, 384], [105, 384]],
     tuft: [[175, 0], [275, 0], [275, 60], [245, 60], [212, 56], [185, 64], [175, 70]],
     wings: [[[125, 252], [110, 245], [85, 225], [65, 200], [58, 170], [62, 150], [78, 125], [100, 130], [118, 165], [135, 205], [138, 240]], [[262, 212], [280, 215], [305, 240], [325, 265], [328, 295], [312, 300], [290, 290], [268, 270], [260, 240]]],
   },
@@ -299,7 +310,8 @@ export function placeItem(item, pose, side = 'l') {
  * (a pair of wings spread apart: the corners of both halves).
  */
 export function itemCorners(item, pose) {
-  const [x0, y0, x1, y1] = item.box ?? [0, 0, 1, 1]
+  const [x0, yt, x1, yb] = item.box ?? [0, 0, 1, 1]
+  const y0 = Math.max(yt, cutTopOf(item, pose)), y1 = Math.min(yb, cutOf(item, pose))
   const turnAt = (p, pts, deg) => {
     const r = deg * Math.PI / 180, c = Math.cos(r), s = Math.sin(r)
     return pts.map(([u, v]) => {
@@ -318,6 +330,15 @@ export function itemCorners(item, pose) {
   const m = p.ax, y2 = Math.min(y1, spreadKeep(item))
   return [...turn([[x0, y0], [m, y0], [m, y2], [x0, y2]], p.rot - sp), ...turn([[m, y0], [x1, y0], [x1, y2], [m, y2]], p.rot + sp)]
 }
+// `cut`: the picture is drawn only down to this share of its height (a
+// scarf's long end would hang over the feet Lumi sits on)
+// `edge`: a thin dark outline round a thing whose colour is Lumi's own
+// (yellow trousers on a yellow chick)
+const EDGE = 'drop-shadow(0 0 0.6px #7a4a10) drop-shadow(0 0 0.6px #7a4a10)'
+const cutOf = (item, pose) => item.pose?.[pose]?.cut ?? item.cut ?? 1
+// `cutTop`: the picture is drawn only from this share of its height down
+// (a hood that would lie on the chest like an open bag)
+const cutTopOf = (item, pose) => item.pose?.[pose]?.cutTop ?? item.cutTop ?? 0
 const spreadOf = (item, pose) => [].concat(item.pose?.[pose]?.spread ?? item.spread ?? 0)[0]
 // how far down the spread halves are drawn (share of the picture)
 const spreadKeep = item => [].concat(item.spread ?? 0)[1] ?? 1
@@ -330,15 +351,21 @@ const spreadKeep = item => [].concat(item.spread ?? 0)[1] ?? 1
  * square. `scale`: Lumi gets smaller (standing on the same spot) when a
  * tall hat would leave the square.
  */
+// Asleep (the sleeping picture, wherever it is shown), Lumi takes off what
+// makes no sense with closed eyes: glasses and masks, and what it holds.
+export const ASLEEP_OFF = ['face', 'hold']
+export const asleep = pose => pose === 'sleep'
+
 export function figureLayers(pose, outfit) {
   const P = POSES[pose] ?? POSES.idle
-  const worn = wornItems(outfit)
+  const worn = wornItems(outfit).filter(t => !(asleep(pose) && ASLEEP_OFF.includes(t.slot)))
   const bySlot = Object.fromEntries(worn.map(t => [t.slot, t]))
   const hat = bySlot.head
   const layers = []
   const item = (t, side) => {
     const p = placeItem(t, pose, side)
-    return { kind: 'item', id: t.id, src: t.src, left: pct(p.left), top: pct(p.top), size: pct(p.size), h: pct(p.h), rot: p.rot, origin: `${+(p.ax * 100).toFixed(2)}% ${+(p.ay * 100).toFixed(2)}%` }
+    const cut = cutOf(t, pose), top = cutTopOf(t, pose)
+    return { kind: 'item', id: t.id, src: t.src, left: pct(p.left), top: pct(p.top), size: pct(p.size), h: pct(p.h), rot: p.rot, origin: `${+(p.ax * 100).toFixed(2)}% ${+(p.ay * 100).toFixed(2)}%`, ...(cut < 1 || top > 0 ? { clip: `inset(${+(top * 100).toFixed(2)}% 0 ${+((1 - cut) * 100).toFixed(2)}% 0)` } : null), ...(t.edge ? { filter: EDGE } : null) }
   }
   const clipTo = pts => ({ kind: 'pose', clip: `polygon(${poly(pts)})` })
   // the back thing lies behind Lumi, and a held thing that leans behind
@@ -355,7 +382,13 @@ export function figureLayers(pose, outfit) {
     layers.push({ ...b, id: `${b.id}-right`, part: true, rot: r + sp, clip: `inset(0 0 ${low}% ${cut}%)` })
   } else if (bySlot.back) layers.push(item(bySlot.back))
   if (behindHold) layers.push(item(bySlot.hold))
-  layers.push({ kind: 'pose', clip: hat?.tuft === 'hide' && P.tuft ? `polygon(evenodd, 0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ${poly(P.tuft)}, ${poly([P.tuft[0]])}, 0% 0%)` : null })
+  // holes cut into Lumi's picture: the tuft under a covering hat, and the
+  // toes under shoes (standing, Lumi's orange toes peeked out under a sole)
+  const holes = []
+  if (hat?.tuft === 'hide' && P.tuft) holes.push(P.tuft)
+  const shoesOn = bySlot.shoes && bySlot.bottom?.feet !== false
+  if (shoesOn && !P.feet && P.soles) holes.push(P.soles)
+  layers.push({ kind: 'pose', clip: holes.length ? `polygon(evenodd, 0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ${holes.map(h => `${poly(h)}, ${poly([h[0]])}, 0% 0%`).join(', ')})` : null })
   // the clothes: trousers or a skirt over the lower body and the legs (the
   // feet Lumi sits on stay in front of them), the shoes, one on each foot
   // (the pair picture cut in two), and the top over them, its hem over the

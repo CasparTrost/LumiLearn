@@ -16,5 +16,5 @@ export default [
   { id: 'windrad',    name: 'Windrad',    slot: 'hold', src: 'sprites/wardrobe/windrad.webp',    at: [0.5, 0.9],  size: 1.5,  box: [0.24, 0.05, 0.77, 0.98] },
   { id: 'laterne',    name: 'Laterne',    slot: 'hold', src: 'sprites/wardrobe/laterne.webp',    at: [0.84, 0.2], size: 1.3, pose: { wave: { size: 0.97 }, sad: { size: 0.85, dy: -8 }, sleep: { dy: -24, size: 0.55 }, hmm: { size: 0.85, dy: -16 }, think: { size: 0.85, dy: -16 } }, box: [0.14, 0.05, 0.86, 0.95] },
   { id: 'zuckerwatte', name: 'Zuckerwatte', slot: 'hold', src: 'sprites/wardrobe/zuckerwatte.webp', at: [0.5, 0.86], size: 1.6, box: [0.21, 0.05, 0.79, 0.95] },
-  { id: 'ukulele',     name: 'Ukulele',     slot: 'hold', src: 'sprites/wardrobe/ukulele.webp',     at: [0.5, 0.32], size: 1.5, pose: { sleep: { dy: -25, size: 0.55 }, sad: { size: 0.85 }, wave: { size: 0.94 }, hmm: { size: 0.85 }, think: { size: 0.85 } }, box: [0.3, 0.05, 0.7, 0.95] },
+  { id: 'ukulele',     name: 'Ukulele',     slot: 'hold', src: 'sprites/wardrobe/ukulele.webp',     at: [0.5, 0.5], size: 2.0, rot: -25, pose: { hmm: { rot: 50 }, think: { rot: 50 }, sad: { size: 0.85 }, wave: { size: 0.95 } }, box: [0.3, 0.05, 0.7, 0.95] },
 ]

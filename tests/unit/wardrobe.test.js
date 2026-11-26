@@ -131,6 +131,7 @@ describe('the pictures', () => {
     // (a tall hat worn at its true size: a doll's hat perched on the head looked wrong)
     const TALL = ['zauberhut', 'zylinder', 'kochmuetze', 'partyhut', 'hasenohren', 'einhornreif']
     for (const p of POSE_IDS) for (const t of WARDROBE) {
+      if (p === 'sleep' && ['face', 'hold'].includes(t.slot)) continue
       const { scale } = figureLayers(p, { [t.slot]: t.id })
       expect(scale, `${t.id} on ${p}`).toBeGreaterThanOrEqual(TALL.includes(t.id) ? 0.82 : 0.88)
       for (const [x, y] of itemCorners(t, p)) {
@@ -150,7 +151,8 @@ describe('the pictures', () => {
     }
   })
   it('wings sit on the back: below the eyes, at the sides of the body, drawn in two halves', () => {
-    const wings = WARDROBE.filter(t => t.slot === 'back' && t.spread)
+    // (the rocket pack is spread a little too, but stands up beside the head)
+    const wings = WARDROBE.filter(t => t.slot === 'back' && t.spread && t.id !== 'rakete')
     expect(wings.map(t => t.id).sort()).toEqual(['drache', 'engel', 'fee', 'schmetterling'])
     for (const p of POSE_IDS) for (const t of wings) {
       // the outer top corners of the two turned halves (the inner ones lie
@@ -185,6 +187,16 @@ describe('the pictures', () => {
     expect(shoeLast).toBeGreaterThan(lastAt(S, 'ringelshirt'))
     // the mermaid's tail: no shoes at all
     expect(figureLayers('idle', { bottom: 'meerjungfrau', shoes: 'turnschuhe' }).layers.some(l => String(l.id).startsWith('turnschuhe'))).toBe(false)
+  })
+  it('asleep, Lumi wears no glasses or masks and holds nothing; hat, neck and clothes stay', () => {
+    const all = { head: 'muetze', face: 'sonnenbrille', neck: 'schal', back: 'schmetterling', hold: 'ballon', top: 'ringelshirt', bottom: 'jeansshorts', shoes: 'turnschuhe' }
+    const ids = figureLayers('sleep', all).layers.filter(l => l.kind === 'item').map(l => l.id)
+    expect(ids).not.toContain('sonnenbrille')
+    expect(ids).not.toContain('ballon')
+    for (const id of ['muetze', 'schal', 'schmetterling', 'ringelshirt', 'jeansshorts', 'turnschuhe']) expect(ids, id).toContain(id)
+    const awake = figureLayers('idle', all).layers.map(l => l.id)
+    expect(awake).toContain('sonnenbrille')
+    expect(awake).toContain('ballon')
   })
   it('the layers: a covering hat cuts the tuft out, a crown draws it again on top', () => {
     const hat = figureLayers('idle', { head: 'muetze' }).layers
