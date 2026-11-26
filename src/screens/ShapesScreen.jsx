@@ -6,12 +6,12 @@ import MusicButton from '../components/MusicControls.jsx'
 import LumiFigure from '../components/LumiFigure.jsx'
 import { ShapeFigure } from '../components/ShapeFigure.jsx'
 import { Art, useBursts } from '../components/play/index.js'
-import { SHAPES, CHICK, cleanShapes, cleanShape, comingSteps, firstChoiceOwed, shapesOwed, offeredFirst, shapeSrc } from '../lib/shapes.js'
+import { SHAPES, CHICK, shapeLayers, cleanShapes, cleanShape, comingSteps, firstChoiceOwed, shapesOwed, offeredFirst, shapeSrc } from '../lib/shapes.js'
 import { asset } from '../lib/assets.js'
 import { narrate, stopNarration, afterNarration } from '../narrator.js'
 import { sfx } from '../sfx.js'
 import { LINES, line } from '../lib/lumiLines.js'
-import { lumiPose } from '../lib/wardrobe.js'
+import { lumiPose, figureLayers } from '../lib/wardrobe.js'
 
 /**
  * Lumi verwandelt sich (lib/shapes.js): who Lumi is. All five shapes stand
@@ -198,7 +198,8 @@ export function Ring({ w, h, start, kind, coming = {}, stars = 0, poof, onChoose
   const upright = !sideways && !wide
   const front = Math.round(Math.max(110, Math.min(sideways ? stageH * 0.86 : stageH / 1.45, wide ? Math.min(w * 0.36, 380) : w * 0.64, 380)))
   const lift = sideways ? front * 0.1 : upright ? front * 0.56 : front * 0.22
-  const R = sideways ? Math.min(w * 0.3, 300)   : wide ? Math.min(w * 0.32, 400) : w * 0.31
+  // the shapes beside the one in front stand a little further out and smaller, so it clearly leads
+  const R = sideways ? Math.min(w * 0.32, 320) : wide ? Math.min(w * 0.34, 420) : w * 0.33
   const step = Math.max(80, R * 0.9)    // pixels of drag for one shape
 
   // the pictures a shape shows when it comes to the front, loaded at once
@@ -328,7 +329,7 @@ export function Ring({ w, h, start, kind, coming = {}, stars = 0, poof, onChoose
         {/* the light on the one in front */}
         <div aria-hidden="true" style={{ position: 'absolute', left: '50%', top: base - front * 0.12, width: front * 0.9, height: front * 0.22, transform: 'translateX(-50%)', borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(255,240,170,0.95) 0%, rgba(255,240,170,0) 72%)' }} />
         {SHAPES.map((s, i) => (
-          <RingItem key={s.id} i={i} shape={s} rot={rot} R={R} fall={upright ? 2 : 1.3} lift={lift} size={front} base={base} cx={w / 2} reduce={reduce}
+          <RingItem key={s.id} i={i} shape={s} rot={rot} R={R} fall={upright ? 3 : 2.2} lift={lift} size={front} base={base} cx={w / 2} reduce={reduce}
             front={i === frontIdx} kind={kind(s.id)} coming={coming[s.id]} stars={stars} shake={shake?.startsWith(s.id) ? shake : null}
             poof={poof?.id === s.id ? poof.at : null} innerRef={i === frontIdx ? frontRef : null} outfit={outfit} />
         ))}
@@ -387,12 +388,16 @@ function RingItem({ i, shape, rot, R, fall, lift, size, base, cx, reduce, front,
   const depth = v => (Math.cos(ang(v)) + 1) / 2              // 1 in front, 0 at the back
   const x = useTransform(rot, v => cx + Math.sin(ang(v)) * R - size / 2)
   const y = useTransform(rot, v => base - size - (1 - depth(v)) * 2 * lift)
-  const scale = useTransform(rot, v => 0.42 + 0.58 * Math.pow(depth(v), fall))
+  const scale = useTransform(rot, v => 0.36 + 0.64 * Math.pow(depth(v), fall))
   const zIndex = useTransform(rot, v => Math.round(depth(v) * 100))
   const shadow = kind === 'shadow'
   const mood = front ? (kind === 'current' ? 'happy' : 'wave') : 'idle'
   // only the shape Lumi is now is dressed
   const wear = kind === 'current' ? outfit ?? null : null
+  // a tall hat makes the figure smaller in its square; here the body keeps
+  // its full size (the one in front leads), the hat reaches higher instead
+  const shrink = wear ? Math.min(1, (shape.id === CHICK ? figureLayers(lumiPose(mood), wear) : shapeLayers(shape.id, lumiPose(mood), wear)).scale) : 1
+  const S = size / shrink
   return (
     <motion.div data-ring-item={i} data-shape={shape.id} data-kind={kind} data-front={front ? '1' : undefined} ref={innerRef}
       data-src={shapeSrc(shape.id === CHICK ? null : shape.id, lumiPose(mood))}
@@ -412,8 +417,8 @@ function RingItem({ i, shape, rot, R, fall, lift, size, base, cx, reduce, front,
             // a shape to come: a light grey shadow, smaller than the shapes owned
             ? <ShapeFigure id={shape.id} size={size} style={{ display: 'block', filter: 'brightness(0) invert(0.86)', transform: 'scale(0.84)', transformOrigin: '50% 100%' }} />
             : shape.id === CHICK
-              ? <LumiFigure shape={null} outfit={wear} mood={mood} size={size} style={{ display: 'block' }} />
-              : <ShapeFigure id={shape.id} mood={mood} size={size} outfit={wear} style={{ display: 'block' }} />}
+              ? <LumiFigure shape={null} outfit={wear} mood={mood} size={S} style={{ display: 'block', marginLeft: (size - S) / 2, marginTop: size - S }} />
+              : <ShapeFigure id={shape.id} mood={mood} size={S} outfit={wear} style={{ display: 'block', marginLeft: (size - S) / 2, marginTop: size - S }} />}
         </motion.div>
         {kind === 'current' && (
           // on the green ring at its feet, in front of it: it belongs to this shape and covers none behind
