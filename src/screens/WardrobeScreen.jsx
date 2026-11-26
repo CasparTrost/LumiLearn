@@ -60,6 +60,10 @@ const rowGap = t => Math.round(t * 0.16) + 8
 const ROW_GAP_MIN = 8
 // the strip under the shelf for the "more" arrow
 const MORE_STRIP = 56
+// a shelf fitted to its things (a tablet with few stars) has at least this many rows
+const SHELF_ROWS_MIN = 2
+// the shelf's padding (each side) and border, above and below its things (not sideways)
+const SHELF_PAD = 10, SHELF_B = 3
 
 function useViewport() {
   const get = () => ({ w: window.innerWidth, h: window.innerHeight })
@@ -149,23 +153,33 @@ export default function WardrobeScreen() {
   // Every thing of a place on the shelf at once: the tiles are as big as
   // the shelf allows (TILE_MAX … TILE_MIN). Only where even the smallest do
   // not fit, the shelf scrolls, and a big arrow at its foot says so.
-  const shelfRef = useRef(null)
+  const shelfRef = useRef(null), frameRef = useRef(null), panelRef = useRef(null)
   // (whether the strip for the "more" arrow was there when the shelf was measured)
   const stripRef = useRef(false)
+  // room: the shelf's inside as wide as it is and as high as it may grow
+  // (the whole height between the tabs, also while it is lower: see `fitH`)
   const [room, setRoom] = useState({ w: 0, h: 0, strip: false })
   useLayoutEffect(() => {
-    const el = shelfRef.current
-    if (!el || typeof ResizeObserver === 'undefined') return
+    const el = shelfRef.current, frame = frameRef.current, panel = panelRef.current
+    if (!el || !frame || !panel || typeof ResizeObserver === 'undefined') return
     const measure = () => {
-      const cs = getComputedStyle(el)
+      const cs = getComputedStyle(el), pcs = getComputedStyle(panel)
       const pw = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)
       const ph = el.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom)
+      // the frame around the shelf's inside: its wood, borders and padding
+      const chrome = frame.offsetHeight - ph
+      // the height the frame may take: beside side tabs all of it, else the
+      // panel's less the tab lines (which the frame overlaps by its border)
+      const lines = [...panel.querySelectorAll(':scope > [data-tabline]')].reduce((a, l) => a + l.offsetHeight, 0)
+      const avail = pcs.flexDirection === 'row' ? frame.offsetHeight
+        : panel.clientHeight - parseFloat(pcs.paddingTop) - parseFloat(pcs.paddingBottom) - lines + 2 * FRAME_B
+      const h = Math.max(0, avail - chrome)
       const strip = stripRef.current
-      setRoom(r => (r.w === pw && r.h === ph && r.strip === strip ? r : { w: pw, h: ph, strip }))
+      setRoom(r => (r.w === pw && r.h === h && r.strip === strip ? r : { w: pw, h, strip }))
     }
     measure()
     const ro = new ResizeObserver(measure)
-    ro.observe(el)
+    ro.observe(el); ro.observe(panel)
     return () => ro.disconnect()
   }, [])
   const count = open.length + shown.length + (pile.length ? 1 : 0)
@@ -184,6 +198,24 @@ export default function WardrobeScreen() {
   // a few pixels too tall even at the smallest tiles: the shelves move
   // closer together rather than hide a sliver behind the "more" arrow
   const gap = fits(tile) || !fits(tile, ROW_GAP_MIN) ? rowGap(tile) : ROW_GAP_MIN
+  // A tablet with few stars: one short row of tiles stood above a tall
+  // empty shelf. There the shelf is as high as the place with the most
+  // things needs (never lower than SHELF_ROWS_MIN shelves, each with its
+  // plank), the same for every tab, so nothing moves when the tab changes;
+  // the tabs and the shelf stand together in the middle. Only where even
+  // that place fits with the biggest tiles; else the shelf takes all the
+  // height as before. (A phone: its shelf is small anyway; sideways the
+  // tabs at its sides need the whole height.)
+  const countOf = slot => {
+    const all = WARDROBE.filter(t => t.slot === slot), w = all.filter(t => !isUnlocked(t, stars)).length
+    const presents = w === WRAPPED_SHOWN + 1 ? w : Math.min(w, WRAPPED_SHOWN) + (w > WRAPPED_SHOWN ? 1 : 0)
+    return all.length - w + presents
+  }
+  const fitCols = Math.max(1, Math.floor((room.w + 10) / (TILE_MAX + 10)))
+  const fitRows = Math.max(SHELF_ROWS_MIN, ...SLOTS.map(s => Math.ceil(countOf(s) / fitCols)))
+  // (the inside of the shelf down to the plank under its last row)
+  const fitInside = fitRows * (TILE_MAX + rowGap(TILE_MAX)) - SHELF_PAD
+  const fitH = wide && !sideTabs && room.w > 0 && fitInside < room.h ? fitInside : null
   const [more, setMore] = useState(false)
   useEffect(() => {
     const el = shelfRef.current
@@ -397,23 +429,24 @@ export default function WardrobeScreen() {
         </div>
 
         {/* ── The wardrobe: seven picture tabs, one place at a time ── */}
-        <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: sideTabs ? 'row' : 'column', padding: sideTabs ? '8px 6px' : wide ? '10px clamp(10px,2vw,22px) 12px' : '8px 10px 10px' }}>
+        <div ref={panelRef} style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: sideTabs ? 'row' : 'column', justifyContent: 'center', padding: sideTabs ? '8px 6px' : wide ? '10px clamp(10px,2vw,22px) 12px' : '8px 10px 10px' }}>
           {tabLine(0)}
           {/* (the frame overlaps the tab lines by its border: an open tab
               covers it with the frame's wood, so tab and frame are one piece;
               its padding is set side by side, never as a shorthand, so the
               wood is there below the shelf too once the "more" strip goes) */}
-          <div data-frame style={{
-            flex: 1, minHeight: 0, minWidth: 0, maxWidth: 680, width: '100%', margin: sideTabs ? `0 -${FRAME_B}px` : `-${FRAME_B}px auto`,
+          <div ref={frameRef} data-frame style={{
+            flex: fitH != null ? 'none' : 1, minHeight: 0, minWidth: 0, maxWidth: 680, width: '100%', margin: sideTabs ? `0 -${FRAME_B}px` : `-${FRAME_B}px auto`,
             borderRadius: frameRadius(sideTabs), border: `${FRAME_B}px solid var(--px-ink)`,
             paddingTop: framePad, paddingLeft: framePad, paddingRight: framePad, paddingBottom: strip ? MORE_STRIP : framePad, flexDirection: 'column',
             background: FRAME_WOOD,
             boxShadow: '0 6px 0 rgba(42,27,61,0.3)', display: 'flex', position: 'relative',
           }}>
             <section ref={shelfRef} role="tabpanel" aria-label={SHELF_LABEL[tab]} data-shelf={tab} data-tile={tile} style={{
-              flex: 1, minHeight: 0, overflow: 'auto', borderRadius: 12, border: '3px solid var(--px-ink)',
+              ...(fitH != null ? { flex: 'none', height: fitH + 2 * SHELF_PAD + 2 * SHELF_B } : { flex: 1 }),
+              minHeight: 0, overflow: 'auto', borderRadius: 12, border: `${SHELF_B}px solid var(--px-ink)`,
               backgroundImage: `repeating-linear-gradient(180deg, #fbeacb 0px, #fbeacb ${tile + 2}px, #b06c32 ${tile + 2}px, #8a4f22 ${tile + gap}px)`,
-              backgroundPosition: `0 ${sideTabs ? 8 : 10}px`, padding: sideTabs ? '8px 8px' : '10px 10px',
+              backgroundPosition: `0 ${sideTabs ? 8 : SHELF_PAD}px`, padding: sideTabs ? '8px 8px' : `${SHELF_PAD}px 10px`,
             }}>
               <motion.div key={tab} initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.25 }}
                 style={{ display: 'flex', flexWrap: 'wrap', gap: `${gap}px 10px`, justifyContent: 'flex-start' }}>
