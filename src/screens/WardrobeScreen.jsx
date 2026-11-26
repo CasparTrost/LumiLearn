@@ -96,7 +96,10 @@ export default function WardrobeScreen() {
   const items = WARDROBE.filter(t => t.slot === tab)
   const open = items.filter(t => isUnlocked(t, stars))
   const wrapped = items.filter(t => !isUnlocked(t, stars))
-  const pile = wrapped.slice(WRAPPED_SHOWN)
+  // the next presents, and a pile for the rest (one left over is no pile:
+  // it is shown as a present of its own, with its tag)
+  const shown = wrapped.length === WRAPPED_SHOWN + 1 ? wrapped : wrapped.slice(0, WRAPPED_SHOWN)
+  const pile = wrapped.slice(shown.length)
   const anyWorn = SLOTS.some(s => outfit[s])
   // the last step passed: the next present fills from there
   const lastStep = Math.max(0, ...WARDROBE.filter(t => t.stars <= stars).map(t => t.stars))
@@ -120,7 +123,7 @@ export default function WardrobeScreen() {
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
-  const count = open.length + Math.min(WRAPPED_SHOWN, wrapped.length) + (pile.length ? 1 : 0)
+  const count = open.length + shown.length + (pile.length ? 1 : 0)
   const fits = t => {
     const cols = Math.max(1, Math.floor((room.w + 10) / (t + 10)))
     const rows = Math.ceil(count / cols)
@@ -176,6 +179,8 @@ export default function WardrobeScreen() {
 
   const tap = item => {
     setWish(null)
+    // a place said after Lumi's comment is old news once the child acts
+    placeAfter.current = null
     if (!isUnlocked(item, stars)) return wrappedTap(item, item.id)
     const on = outfit[item.slot] !== item.id
     dispatch({ type: 'WARDROBE_WEAR', payload: item.id })
@@ -257,7 +262,7 @@ export default function WardrobeScreen() {
                 <div style={{ position: 'absolute', left: '50%', bottom: -lumi * 0.08, transform: 'translateX(-50%)', zIndex: 5 }}>
                   <motion.div key={wish.id} data-wish={wish.stars - stars} initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 380, damping: 18 }}
                     style={{ position: 'relative', transformOrigin: '50% 0%', background: '#fffdf7', border: '3px solid var(--px-ink)', borderRadius: 16, padding: '6px 10px', boxShadow: '0 4px 0 rgba(42,27,61,0.3)' }}>
-                    <MissingStars item={wish} stars={stars} lastStep={lastStep} />
+                    <MissingStars item={wish} stars={stars} lastStep={lastStep} next={wish.id === wrapped[0]?.id} />
                     <span aria-hidden="true" style={{ position: 'absolute', top: -13, left: '50%', marginLeft: -9, width: 0, height: 0, borderStyle: 'solid', borderWidth: '0 9px 13px 9px', borderColor: 'transparent transparent #2a1b3d transparent' }} />
                   </motion.div>
                 </div>
@@ -305,9 +310,10 @@ export default function WardrobeScreen() {
                   <Thing key={item.id} item={item} size={tile} stars={stars}
                     worn={outfit[tab] === item.id} fresh={isFresh(item)} shake={null} onTap={() => tap(item)} />
                 ))}
-                {wrapped.slice(0, WRAPPED_SHOWN).map((item, i) => (
+                {shown.map((item, i) => (
+                  // (a tap on the pile shows this place's next present: it shakes along)
                   <Thing key={item.id} item={item} size={tile} stars={stars} next={i === 0} lastStep={lastStep}
-                    shake={shake?.startsWith(item.id) ? shake : null} onTap={() => tap(item)} />
+                    shake={shake?.startsWith(item.id) || (i === 0 && shake?.startsWith('pile')) ? shake : null} onTap={() => tap(item)} />
                 ))}
                 {pile.length > 0 && (
                   <Pile n={pile.length} size={tile} shake={shake?.startsWith('pile') ? shake : null} onTap={() => { setWish(null); wrappedTap(wrapped[0], 'pile') }} />
@@ -396,18 +402,30 @@ function Pile({ n, size, shake, onTap }) {
 }
 
 /**
- * The stars still missing for a present: up to five as star outlines to
- * count. More: how far the child is, as a bar, up to the number on the
- * present's tag (a star with a number means one thing everywhere in the
- * wardrobe: the stars a present needs. The number still missing stood
- * here once, beside a tag with another number.)
+ * How far the child is towards a present, the same on its tile and in
+ * Lumi's bubble: the next present of a place fills from the last step
+ * passed; up to five stars to go are star outlines that fill (`slots`),
+ * more are a bar with the real share. A present further back shows only
+ * the stars on its tag (in the bubble: the bar, which is empty or nearly).
  */
-function MissingStars({ item, stars, lastStep }) {
+export function progressOf(item, stars, lastStep, next) {
+  const span = Math.max(1, item.stars - lastStep)
+  const got = Math.max(0, Math.min(span, stars - lastStep))
+  return { span, got, share: next ? got / span : 0, slots: !!next && span <= 5 }
+}
+
+/**
+ * The stars still missing for a present, in Lumi's bubble, by the tile's
+ * rule (progressOf): where the tile shows filled and empty stars, the
+ * bubble shows the same stars; where it shows a bar or only its tag, the
+ * bubble shows the bar and the number on the tag (a star with a number
+ * means one thing everywhere in the wardrobe: the stars a present needs).
+ */
+function MissingStars({ item, stars, lastStep, next }) {
   const n = item.stars - stars
-  // the same share as the bar on the next present: from the last step passed
-  const share = Math.max(0, Math.min(1, (stars - lastStep) / Math.max(1, item.stars - lastStep)))
-  if (n > 5) return (
-    <span role="img" aria-label={`Noch ${n} Sterne`} style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 20, lineHeight: '24px', color: 'var(--px-ink)', whiteSpace: 'nowrap' }}>
+  const { span, got, share, slots } = progressOf(item, stars, lastStep, next)
+  if (!slots) return (
+    <span role="img" aria-label={`Noch ${n} Sterne`} data-bubble="bar" style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 20, lineHeight: '24px', color: 'var(--px-ink)', whiteSpace: 'nowrap' }}>
       <span style={{ display: 'block', width: 64, height: 12, borderRadius: 6, background: '#fff', overflow: 'hidden', border: '2px solid var(--px-ink)' }}>
         <span style={{ display: 'block', height: '100%', width: `${share * 100}%`, background: 'linear-gradient(90deg, #ffe680, #ffc93c)' }} />
       </span>
@@ -415,8 +433,8 @@ function MissingStars({ item, stars, lastStep }) {
     </span>
   )
   return (
-    <span role="img" aria-label={`Noch ${n} Sterne`} style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-      {Array.from({ length: n }, (_, i) => <StarOutline key={i} size={24} />)}
+    <span role="img" aria-label={`Noch ${n} Sterne`} data-bubble={`${got}/${span}`} style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+      {Array.from({ length: span }, (_, i) => i < got ? <PxStar key={i} size={24} /> : <StarOutline key={i} size={24} />)}
     </span>
   )
 }
@@ -443,10 +461,7 @@ function Thing({ item, size, stars, worn, fresh, next, lastStep = 0, shake, onTa
   const open = isUnlocked(item, stars)
   // almost there, from the last step passed: up to five stars as outlines
   // that fill, more as a bar with the real share (empty is empty)
-  const span = Math.max(1, item.stars - lastStep)
-  const got = Math.max(0, Math.min(span, stars - lastStep))
-  const share = next ? got / span : 0
-  const slots = next && span <= 5
+  const { span, got, share, slots } = progressOf(item, stars, lastStep, next)
   return (
     <motion.button type="button" onClick={onTap}
       aria-label={open ? `${item.name}${worn ? ', trägt Lumi' : ''}${fresh ? ', neu' : ''}` : `Geschenk, ${item.stars} Sterne`}

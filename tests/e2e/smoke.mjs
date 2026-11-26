@@ -742,9 +742,19 @@ async function playShadows(page, { wrongOnce = false } = {}) {
         for (const slot of SLOTS) {
           await page.locator(`[data-tab="${slot}"]`).click(); await page.waitForTimeout(500)
           const st = (await shelf()).map(([, x]) => x)
-          if (st.filter(x => x === 'next' || x === 'locked').length > 2) problems.push(`${where}: more than two presents on ${slot}`)
-          const more = WARDROBE.filter(t => t.slot === slot && t.stars > 0).length > 2
-          if (more && !(await page.locator('[data-pile]').count())) problems.push(`${where}: no pile on ${slot}`)
+          // two presents and a pile; one left over is a present of its own, not a pile of one
+          const left = WARDROBE.filter(t => t.slot === slot && t.stars > 0).length
+          if (st.filter(x => x === 'next' || x === 'locked').length !== Math.min(left, left === 3 ? 3 : 2)) problems.push(`${where}: not two presents on ${slot}`)
+          if (left > 3 && !(await page.locator('[data-pile]').count())) problems.push(`${where}: no pile on ${slot}`)
+          // a tap on the pile: the next present shakes with it, the bubble shows what its tile shows
+          if (left > 3) {
+            await page.locator('[data-pile]').click(); await page.waitForTimeout(150)
+            const next = await page.locator('[data-state="next"] [data-progress]').getAttribute('data-progress')
+            const bubble = await page.locator('[data-wish] [role="img"]').getAttribute('data-bubble')
+            const span = +next.split('/')[1]
+            if (bubble !== (span <= 5 ? next : 'bar')) problems.push(`${where}: the bubble (${bubble}) is not the tile (${next}) on ${slot}`)
+            await page.waitForTimeout(2700)
+          }
         }
         await check(page, `${where}, last tab`)
       } else {
@@ -767,6 +777,42 @@ async function playShadows(page, { wrongOnce = false } = {}) {
         await page.getByRole('button', { name: /^Lumis Kleiderschrank/ }).click(); await page.waitForTimeout(1500)
         await page.locator('[data-undress]').click(); await page.waitForTimeout(1000)
         if ((await worn()).length) problems.push(`${where}: still worn after "everything off": ${await worn()}`)
+      }
+    } catch (e) { problems.push(`${where}: ${String(e).split('\n')[0]}`) }
+    problems.push(...page.errors.map(e => `${where}: ${e}`))
+    await page.context().close()
+  }
+}
+
+// 7b. All stars (690): every place's shelf at a tablet, a phone upright and
+// a phone sideways. Tiles never smaller than 64 px; what does not fit is
+// below a clear "more below" arrow, and scrolling shows the last thing.
+{
+  const kid = structuredClone(save)
+  // (the stars ever earned count for the wardrobe)
+  kid.profiles.p1.starsEver = 690
+  kid.profiles.p1.progress = { 'shapes-land': { currentLevel: 10, levelStars: Object.fromEntries(Array.from({ length: 10 }, (_, i) => [i + 1, 3])), plays: 1 } }
+  for (const size of [[1024, 768], [390, 844], [844, 390]]) {
+    const page = await newPage(size, kid)
+    const where = `wardrobe full (${size.join('×')})`
+    try {
+      await page.goto(URL); await page.waitForTimeout(1200)
+      await page.getByRole('button', { name: /^Lumis Kleiderschrank/ }).click(); await page.waitForTimeout(1500)
+      for (const slot of SLOTS) {
+        await page.locator(`[data-tab="${slot}"]`).click(); await page.waitForTimeout(600)
+        const r = await page.$eval('[data-shelf]', el => ({ tile: +el.dataset.tile, over: el.scrollHeight - el.clientHeight, n: el.querySelectorAll('[data-thing]').length }))
+        const want = WARDROBE.filter(t => t.slot === slot).length
+        if (r.n !== want) problems.push(`${where}: ${r.n} of ${want} things on ${slot}`)
+        if (r.tile < 64) problems.push(`${where}: tiles of ${r.tile} px on ${slot}`)
+        const arrow = await page.locator('[data-more]').count()
+        if (r.over > 6 && !arrow) problems.push(`${where}: things hidden below without the arrow on ${slot}`)
+        if (r.over > 6) {
+          for (let k = 0; k < 12 && await page.locator('[data-more]').count(); k++) { await page.locator('[data-more]').click({ force: true }); await page.waitForTimeout(450) }
+          const lastId = WARDROBE.filter(t => t.slot === slot).at(-1).id
+          const seen = await page.$eval(`[data-thing="${lastId}"]`, el => { const a = el.getBoundingClientRect(), b = el.closest('[data-shelf]').getBoundingClientRect(); return a.bottom <= b.bottom + 2 && a.top >= b.top - 2 })
+          if (!seen) problems.push(`${where}: the last thing on ${slot} cannot be reached with the arrow`)
+        }
+        await check(page, `${where}, ${slot}`)
       }
     } catch (e) { problems.push(`${where}: ${String(e).split('\n')[0]}`) }
     problems.push(...page.errors.map(e => `${where}: ${e}`))
