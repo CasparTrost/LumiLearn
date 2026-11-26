@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Lumi's wardrobe (src/lib/wardrobe.js): the superhero mask. A blue
+       eye mask with pointed corners flicking up at the sides and two big
+       eye holes, so Lumi's eyes look out of it; a dip in the middle keeps
+       the beak free. The middle between the eyes is the middle of the
+       picture.
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-heldenmaske.svg public/sprites/wardrobe/heldenmaske.webp 384 -->
+  <defs>
+    <linearGradient id="cloth" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5b8cff"/>
+      <stop offset="1" stop-color="#2f56cc"/>
+    </linearGradient>
+  </defs>
+  <!-- the mask, with the two eye holes cut out -->
+  <path fill-rule="evenodd" fill="url(#cloth)" stroke="#7b4a1e" stroke-width="5" stroke-linejoin="round"
+    d="M2 78 C22 92 40 82 64 80 C90 78 110 86 128 92 C146 86 166 78 192 80 C216 82 234 92 254 78 C252 112 244 160 214 176 C190 188 162 182 146 164 Q128 148 110 164 C94 182 66 188 42 176 C12 160 4 112 2 78 Z
+       M64 92 C86 92 98 108 98 128 C98 150 84 164 64 164 C44 164 30 150 30 128 C30 108 42 92 64 92 Z
+       M192 92 C214 92 226 108 226 128 C226 150 212 164 192 164 C172 164 158 150 158 128 C158 108 170 92 192 92 Z"/>
+  <!-- light along the top edge and a seam round the holes -->
+  <path d="M14 92 C30 98 44 92 64 90" stroke="#a9c2ff" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M146 90 C166 86 180 86 194 88" stroke="#a9c2ff" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M110 140 C110 106 90 86 64 86 M146 140 C146 106 166 86 192 86" stroke="#1f3f9e" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.5"/>
+</svg>

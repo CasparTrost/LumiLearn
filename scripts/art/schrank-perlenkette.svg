@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Lumi's wardrobe (src/lib/wardrobe.js): the pearl necklace. A string
+       of shiny white pearls hanging in a soft curve, a bigger rosy pearl in
+       the middle. The middle between the two upper ends is the neck.
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-perlenkette.svg public/sprites/wardrobe/perlenkette.webp 384 -->
+  <defs>
+    <radialGradient id="shine" cx="0.35" cy="0.3" r="0.75">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.55" stop-color="#f6f0ff"/>
+      <stop offset="1" stop-color="#cdbde6"/>
+    </radialGradient>
+    <radialGradient id="rose" cx="0.35" cy="0.3" r="0.75">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.5" stop-color="#ffd9e8"/>
+      <stop offset="1" stop-color="#f09abd"/>
+    </radialGradient>
+    <g id="pearl">
+      <circle r="12.5" fill="url(#shine)" stroke="#7b4a1e" stroke-width="4.5"/>
+      <circle cx="-4" cy="-4.5" r="3.5" fill="#ffffff"/>
+    </g>
+  </defs>
+  <!-- the string -->
+  <path d="M38 30 Q128 176 218 30" fill="none" stroke="#7b4a1e" stroke-width="3"/>
+  <g>
+    <use href="#pearl" x="38" y="30"/>
+    <use href="#pearl" x="51.4" y="50.1"/>
+    <use href="#pearl" x="66.5" y="68.9"/>
+    <use href="#pearl" x="84" y="85.5"/>
+    <use href="#pearl" x="104.6" y="98.1"/>
+    <use href="#pearl" x="151.5" y="98"/>
+    <use href="#pearl" x="172.1" y="85.5"/>
+    <use href="#pearl" x="189.6" y="68.8"/>
+    <use href="#pearl" x="204.7" y="50"/>
+    <use href="#pearl" x="218" y="30"/>
+  </g>
+  <!-- the big pearl in the middle -->
+  <circle cx="128" cy="109" r="18" fill="url(#rose)" stroke="#7b4a1e" stroke-width="5"/>
+  <circle cx="122" cy="103" r="5" fill="#ffffff"/>
+</svg>
