@@ -15,5 +15,7 @@ const hats = Object.fromEntries(HEAD.filter(t => t.pose?.hmm || t.pose?.think).m
 
 export default {
   ...hats,
+  // sitting, the tail lies in the lap, not spread over the floor
+  meerjungfrau: { pose: { sleep: { dy: -10, size: 1.2, sy: 0.4 } } },
   ...Object.fromEntries(Object.entries(tall).map(([id, f]) => [id, { ...(hats[id] ?? {}), ...f }])),
 }
