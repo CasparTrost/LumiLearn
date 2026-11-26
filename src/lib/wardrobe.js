@@ -202,6 +202,7 @@ import TOP from './wardrobe/top.js'
 import BOTTOM from './wardrobe/bottom.js'
 import SHOES from './wardrobe/shoes.js'
 import CHICK_WORN from './wardrobe/chick-worn.js'
+import CHICK_OFF_FACE from './wardrobe/chick-off-face.js'
 
 export const SLOTS = ['head', 'face', 'neck', 'back', 'hold', 'top', 'bottom', 'shoes']
 
@@ -405,8 +406,29 @@ export function fitted(item, fit = {}) {
  * (lib/shapes/<figure>-worn.js) in its fit.
  */
 export const wornFit = (figure, ids, fit = {}) => ({ ...fit, ...Object.fromEntries(ids.map(id => [id, { ...fit[id], worn: figure }])) })
-// the chick's own fit: only the things painted onto it
-const CHICK_FIT = wornFit('chick', CHICK_WORN)
+/**
+ * A figure's corrections that keep things off its eyes and its mouth
+ * (tests/unit/wardrobe-eyes.test.js checks every figure, pose and thing):
+ * per thing and pose the pixels a hat goes up (along the head's tilt, on top
+ * of what the pose already does), or fields merged into the pose's correction
+ * (a held thing turned outward: { rot }; a hat a little smaller, so that it
+ * stays in the square: { up, size }).
+ */
+export function offFace(fit, table) {
+  const out = { ...fit }
+  for (const [id, poses] of Object.entries(table)) {
+    const pose = { ...(out[id]?.pose ?? {}) }
+    for (const [p, v] of Object.entries(poses)) {
+      const now = { ...(ITEM_BY_ID[id]?.pose?.[p] ?? {}), ...(pose[p] ?? {}) }
+      const { up = 0, ...set } = typeof v === 'number' ? { up: v } : v
+      pose[p] = { ...pose[p], ...set, ...(up ? { dy: (now.dy ?? 0) - up } : null) }
+    }
+    out[id] = { ...out[id], pose }
+  }
+  return out
+}
+// the chick's own fit: the things painted onto it, and what keeps things off its eyes
+export const CHICK_FIT = wornFit('chick', CHICK_WORN, offFace({}, CHICK_OFF_FACE))
 /** The style that masks a picture of the figure with a painted bottom's mask (`url`: the mask's address). */
 export const maskStyle = url => (url ? { WebkitMaskImage: `url("${url}")`, maskImage: `url("${url}")`, WebkitMaskSize: '100% 100%', maskSize: '100% 100%' } : null)
 export const wornSrc = (item, pose) => `sprites/wardrobe/worn/${item.worn}/${item.id}-${pose}.webp`
