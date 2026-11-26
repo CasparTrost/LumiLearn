@@ -461,7 +461,7 @@ function Thing({ item, size, stars, worn, fresh, next, lastStep = 0, shake, onTa
         )}
         {next && slots && (
           <span aria-hidden="true" data-progress={`${got}/${span}`} style={{ position: 'absolute', left: 0, right: 0, bottom: 2, display: 'flex', justifyContent: 'center', gap: 1 }}>
-            {Array.from({ length: span }, (_, i) => <PxStar key={i} size={Math.min(15, Math.floor((size - 12) / span) - 1)} off={i >= got} />)}
+            {Array.from({ length: span }, (_, i) => <PxStar key={i} size={Math.min(19, Math.floor((size - 10) / span) - 1)} off={i >= got} />)}
           </span>
         )}
         {next && !slots && (
