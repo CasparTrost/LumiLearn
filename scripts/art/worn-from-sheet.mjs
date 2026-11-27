@@ -706,6 +706,8 @@ export function cutPose(T, A, W, P, opts = { bottom: true, erase: false }) {
   // there in its own outline colour (a hem), and the pose picture's feet, or
   // the shoes, show whole
   const feet = new Uint8Array(N)
+  // (sitting: whether Tripo dressed the legs, see below)
+  let legsDressed = false
   if (opts.bottom && !opts.erase) {
     // (sitting, the polygons are loose: the foot as the pose picture draws
     // it, inside its own dark outline, grown from the polygon's middle; not
@@ -714,22 +716,30 @@ export function cutPose(T, A, W, P, opts = { bottom: true, erase: false }) {
       const poly = dilate(polygons(P.feet.map(pl => pl.map(([x, y]) => [x * k, y * k]))), 3)
       const inner = erode(poly, 10)
       const grown = flood(Array.from({ length: N }, (_, p) => p).filter(p => inner[p]), p => poly[p] && A[p] > 24 && lum(T, p * 3) > 110)
-      // Where Tripo dressed the legs (the trousers painted over them, up to
-      // the soles), the trousers cover them as painted: only what Tripo shows
-      // bare stays the figure's (the soles, the paws); the shoes are drawn
-      // over the bottom sitting, so they show whole all the same
-      const cloth = isBot.map((v, p) => (v && hB[q(p)] / nB > 0.002 ? 1 : 0))
-      const dressed = and(erode(dilate(cloth, 3), 3), isBot)
-      let nIn = 0, nCloth = 0
-      for (let p = 0; p < N; p++) if (grown[p]) { nIn++; if (dressed[p]) nCloth++ }
+      // On the legs, what was taken for the top in none of the top's own
+      // colours is the bottom's (the pale rainbow of leggings, given whole
+      // to the top by its height)
+      const topLike = p => hT[q(p)] / nT > 0.003 && hT[q(p)] / nT > hB[q(p)] / nB
+      for (let p = 0; p < N; p++) if (grown[p] && isTop[p] && !inFront[p] && !topLike(p)) { isTop[p] = 0; isBot[p] = 1 }
+      let nIn = 0, nBot = 0
+      for (let p = 0; p < N; p++) if (grown[p]) { nIn++; if (isBot[p]) nBot++ }
       feet.set(dilate(grown, 4))
-      if (nCloth > 0.1 * nIn) {
-        const bare = grown.map((v, p) => (v && !dressed[p] ? 1 : 0))
+      // Where Tripo dressed the legs (the trousers painted over them, round
+      // the soles: more than a few per cent of the legs is the bottom), the
+      // trousers cover them as painted: what Tripo changed on the legs (off
+      // the hands resting on them and the top) is the bottom's, and only
+      // what Tripo shows bare stays the figure's (the soles, the paws); the
+      // shoes are drawn over the bottom sitting, so they show whole all the
+      // same
+      if (nBot > 0.03 * nIn) {
+        legsDressed = true
+        for (let p = 0; p < N; p++) if (grown[p] && changed[p] && !arms[p] && !isTop[p] && !inFront[p] && !bg[p]) { isBot[p] = 1; m[p] = 1 }
+        const bare = grown.map((v, p) => (v && !isBot[p] ? 1 : 0))
         // (the largest bare parts only: the soles, not crumbs between stripes)
         const { comps } = components(bare)
         const keep = new Uint8Array(N)
         for (const c of comps.slice(1)) if (c.length >= 150) for (const p of c) keep[p] = 1
-        feet.fill(0); feet.set(dilate(keep, 3))
+        feet.fill(0); feet.set(dilate(keep, 2))
       }
     }
     else if (P.soles) {
@@ -742,15 +752,19 @@ export function cutPose(T, A, W, P, opts = { bottom: true, erase: false }) {
   }
 
   // Sitting, at the feet only the bottom's solid body stays (Tripo's
-  // patches and hems around the feet left thin slivers over them)
+  // patches and hems around the feet left thin slivers over them). On legs
+  // Tripo dressed, the cloth between a sole and a hand is a narrow band as
+  // painted, and its patches are the trousers' own (patched jeans): there
+  // only the thinnest slivers go
   const nearFeetBits = new Uint8Array(N)
   if (opts.bottom && !opts.erase && P.feet) {
-    const zoneF = dilate(feet, 14), solidB = dilate(erode(isBot.map((v, p) => (v && !feet[p] ? 1 : 0)), 6), 6)
+    const RB = legsDressed ? 2 : 6
+    const zoneF = dilate(feet, 14), solidB = dilate(erode(isBot.map((v, p) => (v && !feet[p] ? 1 : 0)), RB), RB)
     for (let p = 0; p < N; p++) if (isBot[p] && zoneF[p] && !feet[p] && !solidB[p]) nearFeetBits[p] = 1
     // (and close round the feet, what is in none of the bottom's own colours:
     // Tripo's patches on the knees, cut in half by the feet)
     const ring = dilate(feet, 12)
-    for (let p = 0; p < N; p++) if (isBot[p] && ring[p] && !feet[p] && hB[q(p)] / nB < 0.004) nearFeetBits[p] = 1
+    if (!legsDressed) for (let p = 0; p < N; p++) if (isBot[p] && ring[p] && !feet[p] && hB[q(p)] / nB < 0.004) nearFeetBits[p] = 1
   }
   // A mermaid's fin: Tripo's white ground caught in a notch of the fin
   // (beside the body, where the old tail was) is ground, not cloth: it is
@@ -1142,7 +1156,9 @@ export function cutPose(T, A, W, P, opts = { bottom: true, erase: false }) {
   }
   // Sitting, what of the bottom the feet (and the arms resting beside them)
   // cut off from the trousers is jagged bits round the feet (a patch on the
-  // knee, a sliver of the hem): gone; the figure's own leg shows there
+  // knee, a sliver of the hem): gone; the figure's own leg shows there (on
+  // legs Tripo dressed only crumbs: a trouser leg cut off from the rest by
+  // a hand resting on it is cloth as painted)
   if (opts.bottom && !opts.erase && P.feet) {
     const solid = new Uint8Array(N)
     for (let p = 0; p < N; p++) if (botPic.data[p * 4 + 3] > 100 && !inFront[p]) solid[p] = 1
@@ -1150,7 +1166,7 @@ export function cutPose(T, A, W, P, opts = { bottom: true, erase: false }) {
     let big = 0
     for (let i = 1; i < comps.length; i++) if (!big || comps[i].length > comps[big].length) big = i
     const zone = dilate(feet, 16), gone = new Uint8Array(N)
-    for (let i = 1; i < comps.length; i++) if (i !== big && comps[i].length < 2500 && comps[i].filter(p => zone[p]).length > 0.5 * comps[i].length) for (const p of comps[i]) gone[p] = 1
+    for (let i = 1; i < comps.length; i++) if (i !== big && comps[i].length < (legsDressed ? 300 : 2500) && comps[i].filter(p => zone[p]).length > 0.5 * comps[i].length) for (const p of comps[i]) gone[p] = 1
     const rim = dilate(gone, 2), keep = dilate(solid.map((v, p) => (v && !gone[p] ? 1 : 0)), 1)
     for (let p = 0; p < N; p++) if (!inFront[p] && (gone[p] || (rim[p] && !keep[p]))) botPic.data[p * 4 + 3] = 0
     // (and such bits the top took, under the arms resting on the legs: apart
