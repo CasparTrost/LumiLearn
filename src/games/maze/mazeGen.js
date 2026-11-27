@@ -80,7 +80,7 @@ export function genMaze(cols, rows, seed = Date.now(), patrolLen = 5) {
   // patrols in later levels, and a centre that moves, so the gap has to be
   // read afresh each time instead of recognised.
   const half    = Math.floor((patrolLen - 1) / 2)
-  const centre  = 0.38 + Math.random() * 0.18
+  const centre  = 0.38 + rand() * 0.18   // seeded: the same seed gives the same maze
   const mid     = Math.floor(mainPath.length * centre)
   const wpStart = Math.max(Math.floor(mainPath.length * 0.20), mid - half)
   const wpEnd   = Math.min(Math.floor(mainPath.length * 0.75), wpStart + patrolLen - 1)

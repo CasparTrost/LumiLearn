@@ -1,0 +1,37 @@
+// Things the chick wears as painted on it by Tripo: drawn from
+// public/sprites/wardrobe/worn/chick/<id>-<pose>.webp over the pose picture
+// (`worn`, see wornFit in ../wardrobe.js). Written by
+// scripts/art/worn-from-sheet.mjs; one line per thing.
+export default [
+  'arztkittel',
+  'astronautenjacke',
+  'bastrock',
+  'bienenkostuem',
+  'clownshose',
+  'entenbadehose',
+  'flickenjeans',
+  'fussballshorts',
+  'fussballtrikot',
+  'hawaiihemd',
+  'heldenshirt',
+  'jeansshorts',
+  'katzenhoodie',
+  'kochjacke',
+  'lederhose',
+  'meerjungfrau',
+  'piratenhose',
+  'prinzessinnenrock',
+  'pyjamahose',
+  'regenbogenleggings',
+  'regenjacke',
+  'rentierpulli',
+  'rettungsweste',
+  'ringelshirt',
+  'ritterruestung',
+  'schottenrock',
+  'skihose',
+  'skijacke',
+  'smoking',
+  'sternenpyjama',
+  'tutu',
+]

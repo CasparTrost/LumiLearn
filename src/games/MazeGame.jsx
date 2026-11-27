@@ -13,6 +13,7 @@ import { sayRight } from '../lib/feedback.js'
 import { usePaused } from '../lib/pause.js'
 import { PxIcon } from '../components/PixelUI.jsx'
 import { Art, HintHand, useBursts, useJuice } from '../components/play/index.js'
+import { useLumiShape } from '../components/ShapeFigure.jsx'
 
 // ──────────────────────────────────────────────────────────────────
 // ASSET HELPER
@@ -135,6 +136,9 @@ function lightSources(maze, theme) {
 // Animated sprites are horizontal strips of square frames, played by
 // stepping background-position (mz-strip in maze.css).
 const LUMI_WALK   = { src: 'lumi_walk.png',   frames: 10, fps: 12 }
+// Lumi in the shape the child chose (lib/shapes.js): <shape>_idle/happy/walk.png,
+// made from the shapes' pictures by scripts/art/maze-shapes.mjs (no clothes: pixel art)
+const lumiSprite = (shape, kind) => `${shape ?? 'lumi'}_${kind}.png`
 const DRAGON_WALK = { src: 'dragon_walk.png', frames: 8,  fps: 9 }
 const PORTAL_GLOW = { src: 'portal_glow.png', frames: 8,  fps: 8 }
 const TORCH_FIRE  = { src: 'torch_fire.png',  frames: 8,  fps: 10 }
@@ -788,6 +792,8 @@ function FlyingCoin({ from, to, size, onLand }) {
 // MAIN COMPONENT
 // ──────────────────────────────────────────────────────────────────
 export default function MazeGame({ level = 1, onComplete }) {
+  const shape = useLumiShape()
+  const lumiWalk = useMemo(() => ({ ...LUMI_WALK, src: lumiSprite(shape, 'walk') }), [shape])
   const cfg      = LEVEL_CONFIG(level)
   const wide     = useWide()
   const narrow   = useNarrow()
@@ -1569,10 +1575,10 @@ export default function MazeGame({ level = 1, onComplete }) {
                   }}
                 >
                   {st.moving ? (
-                    <SpriteStrip sprite={LUMI_WALK} size={lumiSize} />
+                    <SpriteStrip sprite={lumiWalk} size={lumiSize} />
                   ) : (
                     <img
-                      src={spr('lumi_idle.png')}
+                      src={spr(lumiSprite(shape, 'idle'))}
                       alt="Lumi"
                       draggable={false}
                       style={{ display: 'block', width: lumiSize, height: lumiSize, imageRendering: 'pixelated' }}
@@ -1731,7 +1737,7 @@ export default function MazeGame({ level = 1, onComplete }) {
                     {rich && <ChestOpening size={winS} chestRef={chestRef} />}
                     <div style={{ position: 'relative', width: 'min(128px, 24vh)', aspectRatio: '1' }}>
                       <img
-                        src={spr('lumi_happy.png')}
+                        src={spr(lumiSprite(shape, 'happy'))}
                         alt=""
                         className="mz-coin"
                         style={{ width: '100%', height: '100%', imageRendering: 'pixelated', display: 'block' }}

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Lumi's wardrobe (src/lib/wardrobe/back.js): the superhero cape. Red
+       outside, yellow lining, flaring wide from the shoulders to the floor;
+       a red collar with a gold star clasp round the neck. The collar band
+       (the item's `over` polygon) is drawn again IN FRONT of Lumi, the rest
+       hangs behind, so the cape is tied on at the shoulders. The clasp is
+       where the neck is.
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-umhang.svg public/sprites/wardrobe/umhang.webp 384 -->
+  <defs>
+    <linearGradient id="red" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#c9312c"/>
+      <stop offset="0.25" stop-color="#ef4b40"/>
+      <stop offset="0.75" stop-color="#ef4b40"/>
+      <stop offset="1" stop-color="#b52a26"/>
+    </linearGradient>
+    <linearGradient id="col" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff6a5c"/>
+      <stop offset="1" stop-color="#c9312c"/>
+    </linearGradient>
+  </defs>
+  <g stroke="#7b4a1e" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+    <!-- the cape: broad at the shoulders, flaring wide, a wavy hem -->
+    <path d="M40 74 Q128 60 216 74 C236 120 248 170 252 212 Q232 224 208 214 Q186 226 164 216 Q146 226 128 218 Q110 226 92 216 Q70 226 48 214 Q24 224 4 212 C8 170 20 120 40 74 Z" fill="url(#red)"/>
+    <!-- the yellow lining turning out at both edges -->
+    <path d="M40 74 C22 118 10 168 6 208 Q18 216 30 212 C32 168 40 120 54 80 Z" fill="#ffd23a"/>
+    <path d="M216 74 C234 118 246 168 250 208 Q238 216 226 212 C224 168 216 120 202 80 Z" fill="#ffd23a"/>
+  </g>
+  <g stroke="#a82420" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.5">
+    <path d="M70 96 C60 140 52 180 48 210"/><path d="M186 96 C196 140 204 180 208 210"/><path d="M128 100 L128 214"/>
+  </g>
+  <!-- the collar band round the neck and over the shoulders (drawn in front of Lumi) -->
+  <path d="M40 66 Q128 88 216 66 L222 84 Q128 112 34 84 Z" fill="url(#col)" stroke="#7b4a1e" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M52 74 Q128 92 204 74" stroke="#ff9a8a" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.8"/>
+  <!-- the star clasp -->
+  <path d="M128 70 l7 14 15.5 2.3 -11.2 10.9 2.6 15.4 -13.9 -7.3 -13.9 7.3 2.6 -15.4 -11.2 -10.9 15.5 -2.3 z" fill="#ffd23a" stroke="#7b4a1e" stroke-width="4" stroke-linejoin="round"/>
+</svg>

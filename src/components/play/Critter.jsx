@@ -5,6 +5,10 @@ import { onNarrationChange } from '../../narrator.js'
 import { lumiArt } from '../../lib/assets.js'
 import { sfx } from '../../sfx.js'
 import { playAnimal } from '../../lib/animalSounds.js'
+import LumiFigure from '../LumiFigure.jsx'
+import { useDrawnOutfit, useLumiShape } from '../ShapeFigure.jsx'
+import { wornTop } from '../../lib/shapes.js'
+import { lumiPose } from '../../lib/wardrobe.js'
 import './play.css'
 
 const BASE = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '')
@@ -20,7 +24,10 @@ export function artSrc(art, mood = 'idle') {
 }
 
 /** A picture of a thing: the cartoon art for an emoji, or the emoji itself. */
-export function Art({ art, size = 64, style, alt = '', mood }) {
+export function Art({ art, size = 64, style, alt = '', mood, plain = false }) {
+  // Lumi wears what the child chose in the wardrobe (components/LumiFigure.jsx)
+  // (`plain`: Lumi in bed or in the bath wears nothing of it)
+  if (art === 'lumi') return <LumiFigure mood={mood} size={size} style={style} alt={alt} outfit={plain ? null : undefined} />
   const src = artSrc(art, mood)
   if (!src) return <span role={alt ? 'img' : undefined} aria-label={alt || undefined} style={{ fontSize: size * 0.82, lineHeight: 1, ...style }}>{art}</span>
   return <img src={src} alt={alt} draggable={false}
@@ -63,6 +70,15 @@ export default function Critter({
   const controls = useAnimationControls()
   const [tickle, setTickle] = useState(0)
   const speaking = useSpeaking(talks)
+  // a hat reaches up to the top of Lumi's square: the bubble keeps clear of it
+  const worn = useDrawnOutfit()
+  const hatOn = !!worn?.head && art === 'lumi'
+  // Lumi's marks go above the top of its head and what it wears there (a
+  // rain cloud on a top hat read as smoke; a unicorn's horn reaches up too):
+  // they are made for a head that ends at MARK_TOP of the square
+  const lumiShape = useLumiShape()
+  const tops = art === 'lumi' ? wornTop(lumiShape, lumiPose(mood), worn) : null
+  const raise = tops ? Math.max(0, MARK_TOP - tops.top) * size : 0
   const shown = mood === 'idle' && speaking ? 'talk' : mood
 
   useEffect(() => {
@@ -74,6 +90,8 @@ export default function Critter({
       hungry: { y: -s * 0.04, scale: 1.12, rotate: flip ? 6 : -6, transition: { type: 'spring', stiffness: 300, damping: 12 } },
       eat:    { scaleY: [1, 0.82, 1.1, 0.86, 1.06, 1], scaleX: [1, 1.12, 0.94, 1.1, 0.97, 1], y: 0, rotate: 0, transition: { duration: 0.8 } },
       happy:  { y: [0, -s * 0.22, 0, -s * 0.08, 0], rotate: [0, 0, 360, 360, 360], scale: 1, transition: { duration: 1.1, ease: 'easeOut' } },
+      // a small glad hop on the spot (Lumis Kleiderschrank: stays in its stage)
+      hop:    { y: [0, -s * 0.09, 0, -s * 0.03, 0], scaleY: [1, 0.92, 1.05, 0.97, 1], scaleX: [1, 1.06, 0.97, 1.02, 1], rotate: 0, scale: 1, transition: { duration: 0.75, ease: 'easeOut' } },
       dance:  { rotate: [0, -12, 12, -12, 12, 0], y: [0, -s * 0.1, 0, -s * 0.1, 0, 0], scale: 1, transition: { duration: 1.2, repeat: 2 } },
       sad:    { y: s * 0.03, scaleY: 0.93, rotate: [0, -4, 4, -3, 0], transition: { duration: 1.4 } },
       oops:   { rotate: [0, -14, 10, -6, 0], y: 0, scale: 1, transition: { duration: 0.8 } },
@@ -118,8 +136,10 @@ export default function Critter({
         {accessory}
       </motion.button>
       {/* Lumi's sleeping picture has its own Zzz: a second one sat on top of it */}
-      <MoodMark mood={art === 'lumi' && shown === 'sleep' ? 'idle' : shown} size={size} tickle={tickle} />
-      {wish && <Wish side={wishSide} size={size}>{wish}</Wish>}
+      <div aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', transform: raise ? `translateY(${-raise}px)` : undefined }}>
+        <MoodMark mood={art === 'lumi' && shown === 'sleep' ? 'idle' : shown} size={size} tickle={tickle} hat={hatOn} />
+      </div>
+      {wish && <Wish side={wishSide} size={size} style={hatOn && wishSide === 'top' ? { marginBottom: size * 0.11 } : undefined}>{wish}</Wish>}
       {children}
     </div>
   )
@@ -148,16 +168,19 @@ function useSpeaking(on) {
 // Each says what the character feels; a miss ('oops') has none.
 // They stay inside the character's own box, never above it: a game that
 // clips its stage (Zahlen entdecken) cut off hearts above the head.
-function MoodMark({ mood, size, tickle }) {
+const MARK_TOP = 0.12
+// `hat`: Lumi wears something on its head. The hearts rise above it, not
+// through it (they started at the head and crossed a top hat's front).
+function MoodMark({ mood, size, tickle, hat = false }) {
   const s = size
   return (
     <AnimatePresence>
-      {mood === 'happy' || mood === 'dance' ? (
+      {mood === 'happy' || mood === 'dance' || mood === 'hop' ? (
         <motion.div key={`h${tickle}`} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} exit={{ opacity: 0 }}>
           {[-0.3, 0, 0.3].map((dx, i) => (
             <motion.svg key={i} viewBox="-2 -2.5 24 22" width={s * 0.18} height={s * 0.16}
-              initial={{ x: s * 0.41 + dx * s, y: s * 0.3, opacity: 0, scale: 0.5 }}
-              animate={{ y: s * (0.1 - i * 0.035), opacity: [0, 1, 0], scale: 1 }}
+              initial={{ x: s * 0.41 + dx * s, y: s * (hat ? -0.05 : 0.3), opacity: 0, scale: 0.5 }}
+              animate={{ y: s * ((hat ? -0.13 : 0.1) - i * 0.035), opacity: [0, 1, 0], scale: 1 }}
               transition={{ duration: 1.2, delay: i * 0.12 }}
               style={{ position: 'absolute', left: 0, top: 0 }}>
               <path d="M10 17 C2 11 0 7 0 4.5 A4.5 4.5 0 0 1 10 3 A4.5 4.5 0 0 1 20 4.5 C20 7 18 11 10 17Z" fill="#ff5b8a" stroke="#2a1b3d" strokeWidth="1.5" />

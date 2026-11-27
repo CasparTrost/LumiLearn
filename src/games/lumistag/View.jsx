@@ -165,7 +165,9 @@ function Lumi({ scene, at, px, gx, sx, reduce }) {
     pos = at(80, FLOOR - 46, 52); mood = 'sleep'
     act = reduce ? {} : { scaleY: [1, 1.04, 1], transition: { duration: 2.4, repeat: Infinity } }
   } else if (id === 'baden') {
-    pos = at(96, FLOOR - 26, 56); mood = 'happy'
+    // sitting up in the tub: head and shoulders above the rim (lower,
+    // only the tip of the tuft showed)
+    pos = at(98, FLOOR - 58, 64); mood = 'happy'
     act = reduce ? {} : { rotate: [-5, 5, -5], transition: { duration: 1.2, repeat: Infinity } }
   } else if (id === 'kindergarten') {
     pos = at(sx - 4, 194, 46); mood = 'wave'
@@ -187,7 +189,8 @@ function Lumi({ scene, at, px, gx, sx, reduce }) {
       transition={{ type: 'spring', stiffness: 320, damping: 16 }}
       style={{ ...pos, pointerEvents: 'none' }}>
       <motion.div animate={act} style={{ transformOrigin: origin, position: 'relative', width: '100%', height: '100%' }}>
-        <Art art="lumi" mood={mood} size={pos.width} />
+        {/* in bed and in the bath without hat, glasses or a balloon (Lumis Kleiderschrank) */}
+        <Art art="lumi" mood={mood} size={pos.width} plain={id === 'wake' || id === 'schlafen' || id === 'baden'} />
         {id === 'kindergarten' && (
           <div style={{ position: 'absolute', right: -px(12), bottom: px(4) }}><Art art="🎒" size={px(24)} /></div>
         )}

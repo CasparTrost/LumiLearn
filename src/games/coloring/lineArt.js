@@ -1389,14 +1389,60 @@ export function surroundOf(rgba, w, h) {
   let inPaper = 0
   for (let i = 0; i < n; i++) if (!around[i] && bright[i]) inPaper++
   if (inPaper < 0.75 * (n - nAround)) return null
+  // A sheet has no dents. Where the surround bites into it (inside the
+  // sheet's hull), that is a shadow lying across table and sheet: it is not
+  // taken away with the table (the house under it went too) but lit up
+  // again (`shade`, see shadowRim).
+  const shade = dentsOf(around, sw, sh)
+  if (shade) for (let i = 0; i < n; i++) if (shade[i]) around[i] = 0
   const gone = dilate(around, sw, sh, 3)
   const out = new Uint8Array(w * h)
   out.sides = sidesOf(around, sw, sh)                           // (before it is widened: stripes stay apart)
+  // (widened like the surround itself: together they cover what the surround covered alone)
+  const shadeWide = shade ? dilate(shade, sw, sh, 3) : null
+  if (shade) out.shade = new Uint8Array(w * h)
   for (let y = 0; y < h; y++) {
     const row = Math.min(sh - 1, (y / st) | 0) * sw
-    for (let x = 0; x < w; x++) out[y * w + x] = gone[row + Math.min(sw - 1, (x / st) | 0)]
+    for (let x = 0; x < w; x++) {
+      const c = row + Math.min(sw - 1, (x / st) | 0)
+      out[y * w + x] = gone[c]
+      if (shade && shadeWide[c] && !gone[c]) out.shade[y * w + x] = 1
+    }
   }
   return out
+}
+
+// The parts of the surround that lie inside the convex hull of the sheet
+// (what is not surround), where they are more than a sliver. Null if none.
+function dentsOf(around, w, h) {
+  const pts = []
+  for (let y = 0; y < h; y++) {
+    let lo = -1, hi = -1
+    for (let x = 0; x < w; x++) if (!around[y * w + x]) { if (lo < 0) lo = x; hi = x }
+    if (lo >= 0) { pts.push([lo, y]); if (hi !== lo) pts.push([hi, y]) }
+  }
+  if (pts.length < 3) return null
+  pts.sort((a, b) => a[0] - b[0] || a[1] - b[1])
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+  const lower = [], upper = []
+  for (const p of pts) { while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop(); lower.push(p) }
+  for (let i = pts.length - 1; i >= 0; i--) { const p = pts[i]; while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop(); upper.push(p) }
+  const hull = lower.slice(0, -1).concat(upper.slice(0, -1))
+  if (hull.length < 3) return null
+  const inside = (x, y) => {
+    for (let i = 0; i < hull.length; i++) if (cross(hull[i], hull[(i + 1) % hull.length], [x, y]) < 0) return false
+    return true
+  }
+  let dent = new Uint8Array(w * h)
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (around[y * w + x] && inside(x, y)) dent[y * w + x] = 1
+  // slivers along a slightly crooked edge are no dent
+  const core = erode(dent, w, h, 2)
+  let big = 0
+  for (let i = 0; i < core.length; i++) big += core[i]
+  if (big < 0.004 * w * h) return null
+  const wide = dilate(core, w, h, 3)
+  for (let i = 0; i < dent.length; i++) dent[i] = dent[i] && wide[i] ? 1 : 0
+  return dent
 }
 
 // A shadow that falls over the table AND the sheet (the phone's, over a
@@ -1406,7 +1452,7 @@ export function surroundOf(rgba, w, h) {
 // as the paper is grey and darker than paper, the page is brightened to the
 // paper's level; lines in it keep their darkness against it. Returns the
 // gain per pixel (1 elsewhere), or null.
-function shadowRim(rgba, around, w, h, paperV) {
+function shadowRim(rgba, around, w, h, paperV, shade = null) {
   const B = 4, bw = Math.ceil(w / B), bh = Math.ceil(h / B), n = bw * bh
   const top = new Float32Array(n), tint = new Float32Array(n)
   for (let y = 0; y < h; y++) {
@@ -1454,6 +1500,26 @@ function shadowRim(rgba, around, w, h, paperV) {
       }
     }
     queue = next
+  }
+  // the shadow's middle, where it was left on the sheet (a dent in the
+  // surround): lit up as well, wherever paper shows in it, and on from there
+  if (shade) {
+    let front = []
+    for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) {
+      const b = y * bw + x
+      if (dist[b] < 0 && shade[Math.min(h - 1, y * B + 2) * w + Math.min(w - 1, x * B + 2)] && rim(b)) { dist[b] = 99; front.push(b); found++ }
+    }
+    for (let d = 0; d < REACH && front.length; d++) {
+      const next = []
+      for (const b of front) {
+        const x = b % bw
+        for (const q of [x > 0 ? b - 1 : -1, x < bw - 1 ? b + 1 : -1, b - bw, b + bw]) {
+          if (q < 0 || q >= n || dist[q] >= 0 || !rim(q)) continue
+          dist[q] = 99; next.push(q); found++
+        }
+      }
+      front = next
+    }
   }
   if (found < 40) return null
   const up = new Float32Array(n).fill(1)
@@ -1539,7 +1605,9 @@ export function toColoringPage(rgba, w, h, detail = 1) {
   if (around) {
     const onSheet = Float32Array.from(light)
     const blank = new Uint8ClampedArray(picture)
-    for (let i = 0; i < around.length; i++) if (around[i]) { onSheet[i] = 255; blank[i * 4] = blank[i * 4 + 1] = blank[i * 4 + 2] = 255 }
+    // (for a line drawing a shadow across table and sheet goes with the table, as before)
+    const shade = around.shade
+    for (let i = 0; i < around.length; i++) if (around[i] || (shade && shade[i])) { onSheet[i] = 255; blank[i * 4] = blank[i * 4 + 1] = blank[i * 4 + 2] = 255 }
     if (shares(onSheet, blank).paper > 0.62 && !colouredIn(onSheet)) {
       const res = traceLines(picture, w, h, detail, darker(onSheet))
       if (res.ok) return res
@@ -1550,8 +1618,11 @@ export function toColoringPage(rgba, w, h, detail = 1) {
       let r = 0, g = 0, b = 0, k = 0
       for (let i = 0; i < around.length; i += 7) if (!around[i] && light[i] > 228) { r += picture[i * 4]; g += picture[i * 4 + 1]; b += picture[i * 4 + 2]; k++ }
       if (k) {
-        for (let i = 0; i < around.length; i++) if (around[i]) { blank[i * 4] = r / k; blank[i * 4 + 1] = g / k; blank[i * 4 + 2] = b / k }
-        const sheet = unshadowed(blank, shadowRim(blank, around, w, h, Math.min(r, g, b) / k))
+        for (let i = 0; i < around.length; i++) {
+          if (around[i]) { blank[i * 4] = r / k; blank[i * 4 + 1] = g / k; blank[i * 4 + 2] = b / k }
+          else if (shade && shade[i]) { blank[i * 4] = picture[i * 4]; blank[i * 4 + 1] = picture[i * 4 + 1]; blank[i * 4 + 2] = picture[i * 4 + 2] }
+        }
+        const sheet = unshadowed(blank, shadowRim(blank, around, w, h, Math.min(r, g, b) / k, shade))
         const lt = evenLight(sheet, w, h, around)
         if (shares(lt, sheet).paper > 0.45 && colouredIn2(lt, sheet)) {
           const res = traceMixed(unshadowed(sheet, lt.shadow), w, h, detail, lt)

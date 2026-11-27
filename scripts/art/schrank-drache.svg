@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Lumi's wardrobe (src/lib/wardrobe/back.js): little dragon wings. A
+       friendly green, round scallops at the bottom edge, a light belly
+       colour between the ribs, no claws or spikes. Drawn behind Lumi; the
+       middle of the picture is between the shoulders.
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-drache.svg public/sprites/wardrobe/drache.webp 384 -->
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7ee07a"/><stop offset="1" stop-color="#3fae52"/></linearGradient>
+    <g id="wing">
+      <path d="M0 0 C-14 -36 -50 -78 -104 -90 C-100 -62 -110 -40 -116 -18 C-104 -20 -94 -12 -92 0 C-80 -6 -68 -2 -64 10 C-52 4 -40 8 -36 20 C-24 14 -10 12 0 18 Z" fill="url(#g)"/>
+      <path d="M-4 4 C-20 -26 -50 -60 -96 -80" fill="none"/>
+      <path d="M-8 8 C-40 -10 -70 -20 -110 -22" fill="none"/>
+      <path d="M-10 12 C-34 2 -50 0 -66 6" fill="none"/>
+    </g>
+  </defs>
+  <g stroke="#7b4a1e" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+    <use href="#wing" transform="translate(122 136)"/>
+    <use href="#wing" transform="translate(134 136) scale(-1 1)"/>
+  </g>
+  <path d="M30 64 C50 66 74 76 96 96" stroke="#c8f5b8" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.8"/>
+  <path d="M226 64 C206 66 182 76 160 96" stroke="#c8f5b8" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.8"/>
+</svg>

@@ -1,3 +1,4 @@
+import { currentShape, shapeSrc } from './shapes.js'
 export const BASE = import.meta.env.BASE_URL ?? '/'
 export const asset = (path) => BASE.replace(/\/$/, '') + '/' + path.replace(/^\//, '')
 export const journeyArt = f => asset('sprites/journey/' + f)
@@ -8,10 +9,11 @@ export const journeyArt = f => asset('sprites/journey/' + f)
 // 'hmm' is the thinking pose without the question mark drawn next to the
 // head: Lumi's face after a miss ('oops'). The "?" stays for 'think' only.
 const LUMI_POSE = {
-  happy: 'happy', dance: 'happy', eat: 'happy', excited: 'happy', encouraging: 'happy', cheer: 'happy', proud: 'happy',
+  happy: 'happy', dance: 'happy', hop: 'happy', eat: 'happy', excited: 'happy', encouraging: 'happy', cheer: 'happy', proud: 'happy',
   sad: 'sad',
   oops: 'hmm', hmm: 'hmm', think: 'think', thinking: 'think', curious: 'think',
   sleep: 'sleep', sleepy: 'sleep', tired: 'sleep',
   wave: 'wave', hello: 'wave',
 }
-export const lumiArt = (mood = 'idle') => asset(`sprites/emoji/custom/lumi-${LUMI_POSE[mood] ?? 'idle'}.webp`)
+// in the shape the playing child chose for Lumi (lib/shapes.js)
+export const lumiArt = (mood = 'idle') => asset(shapeSrc(currentShape(), LUMI_POSE[mood] ?? 'idle'))

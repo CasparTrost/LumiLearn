@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo, Suspense } from 'react'
+import { useState, useEffect, useLayoutEffect, useMemo, useRef, Suspense } from 'react'
 import { motion } from 'framer-motion'
-import { useApp, MAX_LEVELS, hasLevels, todayMs } from '../AppContext.jsx'
+import { useApp, MAX_LEVELS, hasLevels, todayMs, profileWardrobeStars } from '../AppContext.jsx'
 import { useT } from '../i18n.js'
 import { PxStar, PxIcon, HudBar } from '../components/PixelUI.jsx'
 import TileArt from '../components/TileArt.jsx'
@@ -16,7 +16,10 @@ import { useFocusTrap } from '../hooks/useFocusTrap.js'
 import { narrate, stopNarration } from '../narrator.js'
 import { hearable } from '../lib/hearable.js'
 import { lazyWithReload } from '../lib/lazyWithReload.js'
-import { journeyArt } from '../lib/assets.js'
+import { journeyArt, asset } from '../lib/assets.js'
+import { unseenItems } from '../lib/wardrobe.js'
+import { shapesOwed, firstChoiceOwed, offeredFirst, offerFirstByItself } from '../lib/shapes.js'
+import { ShapesIcon, ChildLumi, childOverhang } from '../components/ShapeFigure.jsx'
 import { WORLDS, MODULE_BY_ID, recommend, sortForAge, visibleModules } from '../modules.js'
 import { prefetchGame, isGameLoaded, ensureGame } from './GameScreen.jsx'
 import { line, gameLine } from '../lib/lumiLines.js'
@@ -132,6 +135,65 @@ function GameTile({ mod, p, index, onPlay, onLevels }) {
   )
 }
 
+// Lumis Kleiderschrank, next to the album. Something new in it: a sparkle
+// on the button and a little wiggle now and then — nothing more.
+function WardrobeButton({ fresh, onClick, small }) {
+  return (
+    <motion.button className="px-btn px-btn--parch px-btn--icon" onClick={onClick} data-wardrobe-new={fresh ? '1' : undefined}
+      aria-label={fresh ? 'Lumis Kleiderschrank, etwas Neues' : 'Lumis Kleiderschrank'} title="Lumis Kleiderschrank"
+      animate={fresh ? { rotate: [0, 0, 0, 0, -8, 8, -5, 0] } : { rotate: 0 }}
+      transition={fresh ? { duration: 2.6, repeat: Infinity } : { duration: 0.2 }}
+      style={{ flexShrink:0, width: small ? 44 : 56, height: small ? 44 : 56, padding:0, position:'relative', overflow:'visible' }}>
+      <img src={asset('sprites/emoji/custom/kleiderschrank.webp')} alt="" style={{ width: small ? 34 : 42, height: small ? 34 : 42 }} />
+      {fresh && (
+        <motion.span aria-hidden="true" animate={{ scale:[1, 1.25, 1] }} transition={{ duration:1.2, repeat:Infinity }}
+          style={{ position:'absolute', right:-8, top:-8, width:26, height:26, borderRadius:'50%', background:'#ff5b8a', border:'3px solid #fff',
+            boxShadow:'0 2px 0 rgba(42,27,61,0.4)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, lineHeight:1 }}>
+          ✨
+        </motion.span>
+      )}
+    </motion.button>
+  )
+}
+
+// Lumi verwandelt sich, beside the wardrobe: who Lumi is. A new shape may
+// be won: the same sign and wiggle as the wardrobe's, until it is chosen.
+function ShapesButton({ owed, onClick, small }) {
+  return (
+    <motion.button className="px-btn px-btn--parch px-btn--icon" onClick={onClick} data-shapes-owed={owed ? '1' : undefined}
+      aria-label={owed ? 'Lumi verwandeln, eine neue Figur wartet' : 'Lumi verwandeln'} title="Lumi verwandeln"
+      animate={owed ? { rotate: [0, 0, 0, 0, -8, 8, -5, 0] } : { rotate: 0 }}
+      transition={owed ? { duration: 2.6, repeat: Infinity, delay: 1.3 } : { duration: 0.2 }}
+      style={{ flexShrink:0, width: small ? 44 : 56, height: small ? 44 : 56, padding:0, position:'relative', overflow:'visible' }}>
+      <ShapesIcon size={small ? 36 : 42} />
+      {owed && (
+        <motion.span aria-hidden="true" animate={{ scale:[1, 1.25, 1] }} transition={{ duration:1.2, repeat:Infinity }}
+          style={{ position:'absolute', right:-8, top:-8, width:26, height:26, borderRadius:'50%', background:'#ff5b8a', border:'3px solid #fff',
+            boxShadow:'0 2px 0 rgba(42,27,61,0.4)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, lineHeight:1 }}>
+          ✨
+        </motion.span>
+      )}
+    </motion.button>
+  )
+}
+
+// A new shape for Lumi may be won: a present beside Lumi that wiggles and
+// sparkles until the child has chosen (a tap opens the place to choose)
+function ShapePresent({ size, onClick }) {
+  return (
+    <motion.button type="button" onClick={onClick} aria-label="Lumi kann sich verwandeln" data-shape-present
+      initial={{ scale: 0 }} animate={{ scale: 1, rotate: [0, 0, -9, 9, -6, 4, 0] }}
+      transition={{ scale: { type:'spring', stiffness:260, damping:14, delay:0.6 }, rotate: { duration:1.6, repeat:Infinity, repeatDelay:0.8 } }}
+      whileTap={{ scale: 0.9 }}
+      style={{ all:'unset', cursor:'pointer', position:'relative', width:size, height:size, flexShrink:0, display:'flex', alignItems:'flex-end', justifyContent:'center', transformOrigin:'50% 100%' }}>
+      <span aria-hidden="true" style={{ position:'absolute', inset:'8% 4% 0', borderRadius:'50%', background:'radial-gradient(circle, rgba(255,226,120,0.85) 0%, rgba(255,226,120,0) 70%)' }} />
+      <Art art="🎁" size={Math.round(size * 0.78)} style={{ position:'relative' }} />
+      <motion.span aria-hidden="true" animate={{ scale:[0.8, 1.2, 0.8], opacity:[0.6, 1, 0.6] }} transition={{ duration:1.2, repeat:Infinity }}
+        style={{ position:'absolute', right:0, top:'4%', fontSize: Math.round(size * 0.26), lineHeight:1 }}>✨</motion.span>
+    </motion.button>
+  )
+}
+
 // The counters under the name on a narrow phone
 const SMALL_CHIP = { minHeight:26, fontSize:15, gap:3, padding:'1px 6px 1px 4px' }
 
@@ -164,7 +226,7 @@ function WorldRow({ world, mods, progress, onPlay, onLevels, offset }) {
 // game in progress, something new, another review, and a movement break in
 // the middle. It is no longer a map to walk: Lumi just has the next idea,
 // and after all of them a sticker for the album as a surprise.
-function LumiIdea({ idea, plan, tileLevel, onPlay, onAlbum, stickers, narrow }) {
+function LumiIdea({ idea, plan, tileLevel, onPlay, onAlbum, stickers, narrow, shapeOwed, onShapes }) {
   const allDone = !idea
   // The first idea of a day is a warm-up, one level below the game's tile, so
   // that the day starts with a success (lib/learning.js). The card says
@@ -175,10 +237,18 @@ function LumiIdea({ idea, plan, tileLevel, onPlay, onAlbum, stickers, narrow }) 
       display:'flex', alignItems:'center', justifyContent: narrow ? 'flex-start' : 'center', flexWrap: narrow ? 'nowrap' : 'wrap',
       gap:'clamp(8px,3vw,40px)', padding:'clamp(8px,2vw,20px) clamp(10px,3vw,16px) 0',
     }}>
-      <div style={{ paddingTop: narrow ? 62 : 90, paddingLeft: narrow ? 12 : 0, flexShrink: 0 }}>
-        <Critter art="lumi" size={narrow ? 92 : 170} mood={allDone ? 'dance' : 'idle'} talks label="Lumi"
-          wish={idea ? <TileArt mod={idea.mod} size={narrow ? 40 : 60} bare /> : <Art art="⭐" size={narrow ? 34 : 52} />}
-          wishSide="top" />
+      <div style={{ paddingTop: narrow ? 62 : 90, paddingLeft: narrow ? 4 : 0, flexShrink: 0, display:'flex', alignItems:'flex-end' }}>
+        {/* a new shape Lumi may take waits beside Lumi as a present */}
+        {shapeOwed && (
+          <div style={{ marginRight: narrow ? -24 : 4, position:'relative', zIndex:2 }}>
+            <ShapePresent size={narrow ? 74 : 104} onClick={onShapes} />
+          </div>
+        )}
+        <div style={{ position:'relative', zIndex:1 }}>
+          <Critter art="lumi" size={narrow ? 92 : 170} mood={allDone ? 'dance' : 'idle'} talks label="Lumi"
+            wish={idea ? <TileArt mod={idea.mod} size={narrow ? 40 : 60} bare /> : <Art art="⭐" size={narrow ? 34 : 52} />}
+            wishSide="top" />
+        </div>
       </div>
       <motion.div initial={{ scale:0.8, opacity:0 }} animate={{ scale:1, opacity:1 }} transition={{ type:'spring', stiffness:260, damping:18, delay:0.2 }}
         className="px-panel" style={{ padding: narrow ? '10px 12px' : '14px 18px', display:'flex', flexDirection:'column', alignItems:'center', gap:10, minWidth: narrow ? 0 : 280, flex: narrow ? '1 1 0' : undefined }}>
@@ -217,9 +287,32 @@ function LumiIdea({ idea, plan, tileLevel, onPlay, onAlbum, stickers, narrow }) 
   )
 }
 
+// The child's name in the bar: whole, a little smaller where a long name
+// would be cut ("Ch…" on a small phone); only below 11 px does it end in "…"
+function FitName({ name }) {
+  const ref = useRef(null)
+  const [w, setW] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1024))
+  useEffect(() => {
+    const on = () => setW(window.innerWidth)
+    window.addEventListener('resize', on)
+    return () => window.removeEventListener('resize', on)
+  }, [])
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    let f = Math.min(26, Math.max(18, w * 0.036))
+    el.style.fontSize = `${f}px`
+    while (el.scrollWidth > el.clientWidth + 1 && f > 11) { f -= 1; el.style.fontSize = `${f}px` }
+  }, [name, w])
+  return (
+    <div ref={ref} className="px-title" style={{ fontSize:'clamp(18px,3.6vw,26px)', lineHeight:1.1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+      {name}!
+    </div>
+  )
+}
+
 // A phone in portrait: Lumi and the idea stack, a little smaller
-function useNarrow() {
-  const q = '(max-width: 600px)'
+function useNarrow(q = '(max-width: 600px)') {
   const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia?.(q).matches)
   useEffect(() => {
     const m = window.matchMedia?.(q)
@@ -227,7 +320,7 @@ function useNarrow() {
     const on = () => setNarrow(m.matches)
     m.addEventListener('change', on)
     return () => m.removeEventListener('change', on)
-  }, [])
+  }, [q])
   return narrow
 }
 
@@ -242,6 +335,8 @@ export default function HomeScreen() {
   const [offline, setOffline]           = useState(false)
   const offlineRef = useFocusTrap(offline, { onEscape: () => setOffline(false) })
   const narrow = useNarrow()
+  // a phone held sideways: little height (the time-is-up card lies flat)
+  const flat = useNarrow('(max-height: 500px)')
 
   const day = dailyMission ?? {}
 
@@ -273,6 +368,20 @@ export default function HomeScreen() {
   const timeUp = limitMin > 0 && todayMs(activeProfile) >= limitMin * 60000
 
   // Greeting — once per app open and child
+  // A child from before Lumi's shapes is offered the free first choice once
+  // per app open: after the home screen was there for a moment, the ring
+  // opens by itself. Leaving it keeps the chick for now and the present
+  // beside Lumi stays; closed twice, it no longer opens by itself.
+  useEffect(() => {
+    if (!activeProfile || !offerFirstByItself(activeProfile) || offeredFirst.has(activeProfile.id) || timeUp) return
+    const id = setTimeout(() => {
+      offeredFirst.add(activeProfile.id)
+      stopNarration()
+      dispatch({ type:'NAVIGATE', payload:'shapes' })
+    }, 1500)
+    return () => clearTimeout(id)
+  }, [activeProfile?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!activeProfile || greeted.has(activeProfile.id)) return
     greeted.add(activeProfile.id)
@@ -320,6 +429,13 @@ export default function HomeScreen() {
   const playIdea = () => idea && startModule(idea.mod, idea.stop.level, idea.idx)
   const openAlbum = () => { stopNarration(); dispatch({ type:'NAVIGATE', payload:'album' }) }
   const stickers = (activeProfile?.stickers ?? []).length
+  // Lumis Kleiderschrank: the one sign on its button when something new waits
+  const newWear = activeProfile ? unseenItems(activeProfile, profileWardrobeStars(activeProfile)).length : 0
+  const openWardrobe = () => { stopNarration(); dispatch({ type:'NAVIGATE', payload:'wardrobe' }) }
+  // Lumi verwandelt sich: a new shape that may be won now
+  // (the free first choice of a child from before the shapes counts too)
+  const shapeOwed = activeProfile ? firstChoiceOwed(activeProfile) || shapesOwed(activeProfile, profileWardrobeStars(activeProfile)) > 0 : false
+  const openShapes = () => { stopNarration(); dispatch({ type:'NAVIGATE', payload:'shapes' }) }
 
   return (
     // overflow-x clip, not hidden: hidden made this div a scroll container,
@@ -332,21 +448,27 @@ export default function HomeScreen() {
       </div>
 
       {/* ── HUD ── */}
-      <HudBar style={{ position:'sticky', top:0, zIndex:20 }}>
+      {/* on a phone the buttons are 44 px and closer together: with Lumi's
+          shapes beside the wardrobe the name had no room left */}
+      {/* (the child's picture draws its figure larger than the frame, cut
+          by it: the bar starts far enough in that the figure's box stays on
+          the screen; 4 px are the button's own edge) */}
+      <HudBar style={{ position:'sticky', top:0, zIndex:20, ...(narrow ? { gap:5, paddingLeft: Math.max(8, childOverhang(activeProfile, 36) - 4), paddingRight:8 } : null) }}>
         <button
           className="px-btn px-btn--parch"
           onClick={() => setShowSwitcher(true)}
-          style={{ width:56, height:56, padding:0, fontSize:32, lineHeight:1, flexShrink:0 }}
+          style={{ width: narrow ? 44 : 56, height: narrow ? 44 : 56, padding:0, lineHeight:1, flexShrink:0, overflow:'hidden' }}
           title="Profil wechseln"
           aria-label="Profil wechseln"
-        >{profile.avatar}</button>
+        >{/* the child's picture: its own Lumi, in its shape and clothes */}
+          <ChildLumi profile={activeProfile} size={narrow ? 36 : 46} /></button>
         <div style={{ minWidth:0, flex:1 }}>
-          <div className="px-title" style={{ fontSize:'clamp(14px,2.4vw,16px)', lineHeight:1.2, letterSpacing:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', textShadow:'-1px -1px 0 var(--px-ink), 1px -1px 0 var(--px-ink), -1px 1px 0 var(--px-ink), 1px 2px 0 var(--px-ink)' }}>
+          {/* the greeting only where it fits whole (on a phone it was cut to
+              "Guten Na…"; a child who cannot read needs only its name) */}
+          <div className="px-title hud-hide-sm" style={{ fontSize:'clamp(14px,2.4vw,16px)', lineHeight:1.2, letterSpacing:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', textShadow:'-1px -1px 0 var(--px-ink), 1px -1px 0 var(--px-ink), -1px 1px 0 var(--px-ink), 1px 2px 0 var(--px-ink)' }}>
             {timeGreeting(t)},
           </div>
-          <div className="px-title" style={{ fontSize:'clamp(18px,3.6vw,26px)', lineHeight:1.1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-            {profile.name}!
-          </div>
+          <FitName name={profile.name} />
           {/* A narrow phone has no room for the counters beside the name
               (the greeting and the stars were simply left out there): they
               sit under it, a little smaller. */}
@@ -373,9 +495,11 @@ export default function HomeScreen() {
           </div>
         )}
         <button className="px-btn px-btn--parch px-btn--icon" onClick={openAlbum}
-          aria-label={`Mein Album, ${stickers} Sticker`} title="Mein Album" style={{ flexShrink:0, width:56, height:56, padding:0 }}>
-          <img src={journeyArt('album.png')} alt="" style={{ width:36, height:36, imageRendering:'pixelated' }} />
+          aria-label={`Mein Album, ${stickers} Sticker`} title="Mein Album" style={{ flexShrink:0, width: narrow ? 44 : 56, height: narrow ? 44 : 56, padding:0 }}>
+          <img src={journeyArt('album.png')} alt="" style={{ width: narrow ? 30 : 36, height: narrow ? 30 : 36, imageRendering:'pixelated' }} />
         </button>
+        <WardrobeButton fresh={newWear > 0} onClick={openWardrobe} small={narrow} />
+        <ShapesButton owed={shapeOwed} onClick={openShapes} small={narrow} />
         <MusicButton />
         <button
           className="px-btn px-btn--wood px-btn--icon"
@@ -396,23 +520,27 @@ export default function HomeScreen() {
 
       {timeUp ? (
         // ── Daily time is up ──
-        <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
-          <div className="px-panel" style={{ maxWidth:440, width:'100%', padding:'24px 20px', textAlign:'center', display:'flex', flexDirection:'column', alignItems:'center', gap:14 }}>
-            <LumiCharacter mood="sleepy" size={120} />
-            <div style={{ fontFamily:'var(--font-heading)', fontSize:28, fontWeight:700, color:'var(--px-ink)' }}>
-              Für heute ist Schluss!
+        // (a phone held sideways: Lumi beside the words, so all of it fits without scrolling)
+        <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding: flat ? '8px 16px' : 24 }}>
+          <div className="px-panel" data-timeup style={{ maxWidth: flat ? 620 : 440, width:'100%', padding: flat ? '12px 18px' : '24px 20px', textAlign:'center', display:'flex', flexDirection: flat ? 'row' : 'column', alignItems:'center', gap: flat ? 18 : 14 }}>
+            <LumiCharacter mood="sleepy" size={flat ? 104 : 120} />
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap: flat ? 8 : 14 }}>
+              <div style={{ fontFamily:'var(--font-heading)', fontSize: flat ? 24 : 28, fontWeight:700, color:'var(--px-ink)' }}>
+                Für heute ist Schluss!
+              </div>
+              <div style={{ fontSize: flat ? 16 : 17, fontWeight:600, color:'var(--text-secondary)', lineHeight:1.4 }}>
+                Lumi ruht sich jetzt aus. Morgen spielen wir weiter!
+              </div>
+              <button className="px-btn px-btn--gold px-btn--md"
+                onClick={() => narrate([line('menue/spielzeit-vorbei')])}>
+                🔊 Nochmal hören
+              </button>
             </div>
-            <div style={{ fontSize:17, fontWeight:600, color:'var(--text-secondary)', lineHeight:1.45 }}>
-              Lumi ruht sich jetzt aus. Morgen spielen wir weiter!
-            </div>
-            <button className="px-btn px-btn--gold px-btn--md"
-              onClick={() => narrate([line('menue/spielzeit-vorbei')])}>
-              🔊 Nochmal hören
-            </button>
           </div>
         </div>
       ) : (<>
-        <LumiIdea idea={idea} plan={plan} tileLevel={idea ? progress[idea.mod.id]?.currentLevel ?? 1 : 1} onPlay={playIdea} onAlbum={openAlbum} stickers={stickers} narrow={narrow} />
+        <LumiIdea idea={idea} plan={plan} tileLevel={idea ? progress[idea.mod.id]?.currentLevel ?? 1 : 1} onPlay={playIdea} onAlbum={openAlbum} stickers={stickers} narrow={narrow}
+          shapeOwed={shapeOwed} onShapes={openShapes} />
 
         {/* ── The worlds, one row each ── */}
         <div style={{

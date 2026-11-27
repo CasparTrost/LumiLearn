@@ -10,6 +10,8 @@ import GameScreen from './screens/GameScreen.jsx'
 import ResultsScreen from './screens/ResultsScreen.jsx'
 import MoveBreakScreen from './screens/MoveBreakScreen.jsx'
 import AlbumScreen from './screens/AlbumScreen.jsx'
+import WardrobeScreen from './screens/WardrobeScreen.jsx'
+import ShapesScreen from './screens/ShapesScreen.jsx'
 
 const slideVariants = {
   initial: { opacity: 0, y: 40, scale: 0.97 },
@@ -21,9 +23,9 @@ const slideVariants = {
 // leave the whole app (the app never added a history entry); now it leads
 // back to the home screen, and in a game it first asks (GameScreen listens
 // for "lumi:back").
-const DEEP = new Set(['game', 'results', 'move', 'album'])
+const DEEP = new Set(['game', 'results', 'move', 'album', 'wardrobe', 'shapes'])
 // Screens with a HUD bar carry the music switch in it
-const HAS_HUD = new Set(['home', 'game', 'move', 'album'])
+const HAS_HUD = new Set(['home', 'game', 'move', 'album', 'wardrobe', 'shapes'])
 
 function useBackButton() {
   const { state, dispatch } = useApp()
@@ -72,6 +74,8 @@ function Router() {
     results:  <ResultsScreen />,
     move:     <MoveBreakScreen />,
     album:    <AlbumScreen />,
+    wardrobe: <WardrobeScreen />,
+    shapes:   <ShapesScreen />,
   }
 
   return (

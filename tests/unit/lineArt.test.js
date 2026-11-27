@@ -379,6 +379,34 @@ describe('what is not the drawing', () => {
   })
 })
 
+describe('a shadow over the drawing itself', () => {
+  it('a shadow across table and sheet does not take the house under it away', () => {
+    const px = sheet(W, H, () => 0)
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const on = x >= 50 && x < 550 && y >= 60 && y < 740
+      put(px, W, x, y, on ? [246, 245, 240] : [118 + (y % 9 === 0 ? -20 : 0), 78, 44])
+    }
+    disc(px, W, 150, 200, 60, [250, 205, 40])                    // a sun, coloured in
+    ring(px, W, 150, 200, 60, 5, 0, [25, 25, 25])
+    rect(px, W, 300, 480, 480, 640, [250, 235, 150])             // a yellow house near the lower right corner
+    for (const [x0, y0, x1, y1] of [[296, 476, 484, 482], [296, 638, 484, 644], [296, 476, 302, 644], [478, 476, 484, 644]]) rect(px, W, x0, y0, x1, y1, [25, 25, 25])
+    // the shadow: from the lower right corner, over table, sheet and half the house
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const d = Math.hypot(x - 560, y - 740) - 190
+      const k = d <= 0 ? 0.45 : d >= 60 ? 1 : 0.45 + 0.55 * (d / 60)
+      const p = (y * W + x) * 4
+      px[p] *= k; px[p + 1] *= k; px[p + 2] *= k
+    }
+    const res = toColoringPage(px, W, H)
+    expect(res.kind).toBe('mixed')
+    expect(area(res, 340, 520)).not.toBe(area(res, 300, 300))    // the house is an area of its own
+    for (let y = 500; y < 630; y += 10) expect(inkAt(res, 299, y) || inkAt(res, 297, y) || inkAt(res, 301, y)).toBe(true)   // its left wall
+    let wall = 0
+    for (let y = 500; y < 630; y++) if ([478, 480, 482].some(x => inkAt(res, x, y))) wall++
+    expect(wall).toBeGreaterThan(60)                             // most of its right wall, under the shadow
+  })
+})
+
 describe('joining line ends', () => {
   it('joins an end to the line it points at, not to itself', () => {
     const w = 120, h = 80, m = new Uint8Array(w * h)

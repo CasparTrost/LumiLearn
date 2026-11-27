@@ -10,7 +10,9 @@
 //     (asset-manifest.json, written by the build);
 //   • pictures and recordings come from the cache at once and are refreshed
 //     in the background; all pictures are saved once after the first visit
-//     (media-manifest.json), unless the device asks to save data;
+//     (media-manifest.json), unless the device asks to save data (the
+//     clothes painted onto a figure only for the figures the children on
+//     the device have, the others when first shown);
 //   • range requests (how Safari fetches audio) pass through untouched:
 //     Safari plays nothing from a cached full response.
 const SHELL = 'lumi-shell-v1'
@@ -39,10 +41,10 @@ self.addEventListener('activate', event => {
 // The page asks once per start (online): save every program file of this
 // version, so any game opens offline later, and drop the old ones.
 self.addEventListener('message', event => {
-  if (event.data?.type === 'cache-app') event.waitUntil(cacheApp())
+  if (event.data?.type === 'cache-app') event.waitUntil(cacheApp(event.data.figures))
 })
 
-async function cacheApp() {
+async function cacheApp(figures) {
   let manifest
   try {
     const res = await fetch(SCOPE + 'asset-manifest.json', { cache: 'no-store' })
@@ -69,7 +71,7 @@ async function cacheApp() {
     if (url.origin === location.origin && url.pathname.startsWith(SCOPE + 'assets/') && !files.has(url.pathname)) await cache.delete(req)
   }
   await fill(cache, [...files].filter(f => f !== INDEX))
-  if (!navigator.connection?.saveData) await cacheMedia()
+  if (!navigator.connection?.saveData) await cacheMedia(figures)
 }
 
 // The Google Fonts stylesheet the page links to and the font files it
@@ -88,14 +90,20 @@ async function cacheFonts(cache, html) {
   }
 }
 
-async function cacheMedia() {
+// The clothes painted onto a figure (sprites/wardrobe/worn/<figure>/, half
+// of all pictures) only for the figures the page names (those its children
+// have); the others are saved when first shown (fetch below). Without names
+// (activated before the page spoke) none of them.
+const WORN = /^sprites\/wardrobe\/worn\/([^/]+)\//
+async function cacheMedia(figures = []) {
   let list
   try {
     const res = await fetch(SCOPE + 'media-manifest.json', { cache: 'no-store' })
     if (!res.ok) return
     list = await res.json()
   } catch { return }
-  await fill(await caches.open(MEDIA), list.map(f => SCOPE + f))
+  const wanted = f => { const m = WORN.exec(f); return !m || figures.includes(m[1]) }
+  await fill(await caches.open(MEDIA), list.filter(wanted).map(f => SCOPE + f))
 }
 
 // what is not saved yet, a few at a time so the game being played still loads

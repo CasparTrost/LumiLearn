@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Lumi's wardrobe (src/lib/wardrobe/back.js): a peacock's fan. Nine
+       long green-blue feathers spread like a wheel, each with a round eye
+       at its tip. Drawn behind Lumi, so the feathers show round its head
+       and shoulders; the middle of the fan sits behind Lumi's body.
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-pfau.svg public/sprites/wardrobe/pfau.webp 384 -->
+  <defs>
+    <linearGradient id="f" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#2f9a6a"/><stop offset="1" stop-color="#5cd2a0"/></linearGradient>
+    <g id="feather">
+      <path d="M0 0 C-8 -40 -16 -80 -14 -104 C-12 -122 12 -122 14 -104 C16 -80 8 -40 0 0 Z" fill="url(#f)" stroke="#7b4a1e" stroke-width="4" stroke-linejoin="round"/>
+      <ellipse cx="0" cy="-104" rx="11" ry="13" fill="#ffd23a" stroke="#7b4a1e" stroke-width="3"/>
+      <ellipse cx="0" cy="-103" rx="7" ry="8.5" fill="#3f8ee8"/>
+      <ellipse cx="0" cy="-102" rx="3.5" ry="4.5" fill="#2a2a6a"/>
+      <path d="M0 -6 L0 -88" stroke="#1f7a52" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+  </defs>
+  <g transform="translate(128 156)">
+    <use href="#feather" transform="rotate(-80)"/>
+    <use href="#feather" transform="rotate(80)"/>
+    <use href="#feather" transform="rotate(-60)"/>
+    <use href="#feather" transform="rotate(60)"/>
+    <use href="#feather" transform="rotate(-40)"/>
+    <use href="#feather" transform="rotate(40)"/>
+    <use href="#feather" transform="rotate(-20)"/>
+    <use href="#feather" transform="rotate(20)"/>
+    <use href="#feather"/>
+  </g>
+</svg>

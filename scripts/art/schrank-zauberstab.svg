@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Lumi's wardrobe (src/lib/wardrobe/hold.js): a magic wand. A purple
+       stick with a gold star on top and three sparkles. The lower end of the
+       stick (the middle of the bottom edge) is where the wing holds it.
+       Render: node scripts/art/render-svg.mjs scripts/art/schrank-zauberstab.svg public/sprites/wardrobe/zauberstab.webp 384 -->
+  <defs>
+    <radialGradient id="s" cx="0.4" cy="0.35" r="0.7"><stop offset="0" stop-color="#fff6b0"/><stop offset="0.6" stop-color="#ffd23a"/><stop offset="1" stop-color="#f0a818"/></radialGradient>
+  </defs>
+  <path d="M128 250 L128 96" stroke="#7b4a1e" stroke-width="16" stroke-linecap="round"/>
+  <path d="M128 250 L128 96" stroke="#8e6cf0" stroke-width="9" stroke-linecap="round"/>
+  <path d="M124 236 L124 110" stroke="#c4b0ff" stroke-width="3" stroke-linecap="round"/>
+  <path d="M128 16 l17 34 37 5 -27 26 7 37 -34 -18 -34 18 7 -37 -27 -26 37 -5 z" fill="url(#s)" stroke="#7b4a1e" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M116 52 L124 36" stroke="#ffffff" stroke-width="5" stroke-linecap="round" opacity="0.85"/>
+  <g fill="#ffe680" stroke="#7b4a1e" stroke-width="2.5" stroke-linejoin="round">
+    <path d="M200 24 l4 9 9 4 -9 4 -4 9 -4 -9 -9 -4 9 -4 z"/>
+    <path d="M60 50 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3 z"/>
+    <path d="M206 112 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3 z"/>
+  </g>
+</svg>

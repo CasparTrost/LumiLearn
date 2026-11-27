@@ -1,19 +1,20 @@
 // Small building blocks of the Pixel-Abenteuer look (styles/pixel.css).
-import { lumiArt } from '../lib/assets.js'
+import LumiFigure from './LumiFigure.jsx'
 
 const BASE = import.meta.env.BASE_URL ?? '/'
 export const uiSpr  = f => BASE.replace(/\/$/, '') + '/sprites/ui/' + f
 
-/** Lumi (lib/assets.js lumiArt); `happy` shows the cheering pose. */
-export function PixelLumi({ size = 96, happy = false, bob = true, style }) {
+/**
+ * Lumi (components/LumiFigure.jsx); `happy` shows the cheering pose. Lumi
+ * wears what the playing child chose in the wardrobe, in the shape it
+ * chose; `outfit={null}` where no child is meant (choosing who plays): the
+ * chick, plain.
+ */
+export function PixelLumi({ size = 96, happy = false, bob = true, style, outfit }) {
   return (
-    <img
-      src={lumiArt(happy ? 'happy' : 'idle')}
-      alt="Lumi"
-      draggable={false}
+    <LumiFigure mood={happy ? 'happy' : 'idle'} size={size} outfit={outfit} shape={outfit === null ? null : undefined} alt="Lumi"
       className={bob ? 'px-bob' : undefined}
-      style={{ width: size, height: size, display: 'block', filter: 'drop-shadow(0 4px 0 rgba(42,27,61,0.35))', ...style }}
-    />
+      style={{ display: 'block', filter: 'drop-shadow(0 4px 0 rgba(42,27,61,0.35))', ...style }} />
   )
 }
 
@@ -73,6 +74,17 @@ const ICONS = {
     'XXXXX..',
     'XXX....',
     'X......',
+  ],
+  // skip ahead: two arrows to a bar (a parent's button: Überspringen)
+  skip: [
+    'X...X...XX',
+    'XX..XX..XX',
+    'XXX.XXX.XX',
+    'XXXXXXXXXX',
+    'XXXXXXXXXX',
+    'XXX.XXX.XX',
+    'XX..XX..XX',
+    'X...X...XX',
   ],
   back: [
     '...X....',

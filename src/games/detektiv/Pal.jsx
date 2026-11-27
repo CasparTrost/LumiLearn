@@ -1,5 +1,8 @@
 import { useId } from 'react'
 import { motion } from 'framer-motion'
+import { ShapeFigure, useLumiShape } from '../../components/ShapeFigure.jsx'
+import { posesOf, wearsClothes } from '../../lib/shapes.js'
+import { POSES as CHICK_POSES } from '../../lib/wardrobe.js'
 
 /**
  * The animal friends of Gefühlsdetektiv, and Lumi the detective.
@@ -303,6 +306,11 @@ function bodyMotion(feel, k) {
  */
 export default function Pal({ kind = 'hase', feel = 'neutral', strength = 1, size = 150, flip = false, arms, hold, hat = false, cover = false, still = false }) {
   const clip = useId()
+  // Lumi the detective: its own picture in the shape the child chose (the
+  // chick too), with the cap; no wardrobe clothes here (the cap is the
+  // game's costume)
+  const shape = useLumiShape()
+  if (kind === 'lumi') return <ShapeDetective shape={shape ?? 'chick'} feel={feel} strength={strength} size={size} flip={flip} hold={hold} hat={hat} still={still} />
   const sp = SPECIES[kind] ?? SPECIES.hase
   const F = FACES[feel] ?? FACES.neutral
   const pose = arms ?? hold?.at ?? F.arms
@@ -373,6 +381,95 @@ export default function Pal({ kind = 'hase', feel = 'neutral', strength = 1, siz
       </svg>
       {hold?.node && (
         <div style={{ position: 'absolute', left: ((flip ? 120 - hand[0] : hand[0]) / 120) * size, top: (hand[1] / 130) * h, width: 0, height: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+          <div style={{ flexShrink: 0, transform: 'translateY(-50%)' }}>{hold.node}</div>
+        </div>
+      )}
+    </motion.div>
+  )
+}
+
+// ── Lumi the detective as one of its shapes (lib/shapes.js) ─────────────────
+// The shape's picture for the feeling, with the detective cap placed by hand
+// per shape (later it comes from the shape's head anchors, like the
+// wardrobe's hats). The unicorn's horn is drawn again over the cap.
+const SHAPE_MOOD = {
+  happy: 'happy', excited: 'happy', laugh: 'happy', proud: 'happy', content: 'idle', kind: 'idle', calm: 'idle',
+  sad: 'sad', oops: 'hmm', scared: 'hmm', surprised: 'hmm', shy: 'hmm', curious: 'think', bored: 'idle', angry: 'sad',
+  tired: 'sleep', asleep: 'sleep', scold: 'idle', neutral: 'idle',
+}
+// the cap: from the shape's head anchor (lib/shapes/<id>-poses.js) once its
+// anchors are measured, like the wardrobe's hats: brim on the anchor, as wide
+// as the head, turned with it; the horn or antenna (`tuft`) pokes out where
+// it is taller than the cap. Until a shape is measured, by hand: where the
+// brim sits (share of the square), its width, per pose a shift.
+const ANCHOR_SIZE = 384
+function capFromAnchors(shape, pose) {
+  const set = shape === 'chick' ? CHICK_POSES : wearsClothes(shape) ? posesOf(shape) : null
+  if (!set) return null
+  const P = set[pose] ?? set.idle
+  if (!P?.head) return null
+  const A = P.head
+  return { x: A.x / ANCHOR_SIZE, y: A.y / ANCHOR_SIZE, w: A.w * 0.92 / ANCHOR_SIZE, rot: A.rot ?? 0, tuft: shape === 'einhorn',
+    hand: P.hold ? [P.hold.x / ANCHOR_SIZE, P.hold.y / ANCHOR_SIZE] : null }
+}
+const CAP = {
+  dino:    { y: 0.2, w: 0.5, pose: { sleep: { dy: 0.08, dx: 0.05 } } },
+  einhorn: { y: 0.21, w: 0.5, horn: [0.43, 0.57, 0.17], pose: { sad: { dy: -0.02 }, sleep: { dy: 0.095 } } },
+  drache:  { y: 0.2, w: 0.5, pose: { sleep: { dy: 0.13 } } },
+  roboter: { y: 0.2, w: 0.5, pose: { sleep: { dy: 0.11 } } },
+}
+const SHAPE_HAND = { holdR: [0.82, 0.6], holdL: [0.18, 0.6], holdUp: [0.5, 0.2] }
+
+function DetectiveCap() {
+  return (
+    <svg viewBox="14 4 92 42" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible' }} aria-hidden="true">
+      <path d="M26 36 C24 8 96 8 94 36 Z" fill="#b7814a" stroke={OUT} strokeWidth="3" strokeLinejoin="round" />
+      <path d="M44 14 L50 35 M60 11 V35 M76 14 L70 35" stroke="#8a5a2c" strokeWidth="2.4" />
+      <path d="M17 37 Q60 27 103 37 Q104 43 60 41 Q16 43 17 37 Z" fill="#8a5a2c" stroke={OUT} strokeWidth="3" strokeLinejoin="round" />
+      <circle cx="60" cy="10" r="4" fill="#8a5a2c" stroke={OUT} strokeWidth="2.4" />
+    </svg>
+  )
+}
+
+function ShapeDetective({ shape, feel, strength, size, flip, hold, hat, still }) {
+  const quiet = still || reduceMotion()
+  const m = quiet ? { animate: {}, transition: {} } : bodyMotion(feel, strength >= 2 ? 1.4 : 1)
+  const mood = SHAPE_MOOD[feel] ?? 'idle'
+  const pose = mood === 'happy' ? 'happy' : mood
+  const h = size * 1.08
+  // the picture a little bigger than the box, feet on its floor: the
+  // shapes' pictures have more room around them than the drawn chick
+  const F = h * 1.22
+  const A = capFromAnchors(shape, pose)
+  const c = CAP[shape] ?? CAP.dino
+  const t = c.pose?.[pose] ?? {}
+  const capW = F * (A ? A.w : c.w), capH = capW * 42 / 92
+  const capX = A ? A.x * F : F / 2 + (t.dx ?? 0) * F
+  const capY = A ? A.y * F : (c.y + (t.dy ?? 0)) * F
+  // the held thing: in the hand of the shape's picture (its hold anchor) where measured
+  const hand = (hold?.at === 'holdR' || !hold?.at) && A?.hand ? A.hand : SHAPE_HAND[hold?.at] ?? SHAPE_HAND.holdR
+  return (
+    <motion.div key={feel} {...m} data-detective={shape} style={{ position: 'relative', width: size, height: h, transformOrigin: '50% 100%' }}>
+      <div style={{ position: 'absolute', left: (size - F) / 2, top: h - F * 0.985, width: F, height: F, transform: flip ? 'scaleX(-1)' : undefined }}>
+        <ShapeFigure id={shape} mood={mood} size={F} style={{ display: 'block' }} />
+        {hat && (<>
+          <div data-cap style={{ position: 'absolute', left: capX - capW / 2, top: capY - capH * 0.86, width: capW, height: capH, transform: A?.rot ? `rotate(${A.rot}deg)` : undefined, transformOrigin: '50% 86%' }}>
+            <DetectiveCap />
+          </div>
+          {A?.tuft && (
+            // the horn pokes out of the cap
+            <ShapeFigure id={shape} mood={mood} size={F}
+              style={{ position: 'absolute', inset: 0, clipPath: `inset(0 ${+((1 - A.x - 0.065) * 100).toFixed(2)}% ${+((1 - A.y + 0.03) * 100).toFixed(2)}% ${+((A.x - 0.065) * 100).toFixed(2)}%)` }} />
+          )}
+          {!A && c.horn && (
+            // the horn pokes out of the cap
+            <ShapeFigure id={shape} mood={mood} size={F}
+              style={{ position: 'absolute', inset: 0, clipPath: `polygon(${c.horn[0] * 100}% 0%, ${c.horn[1] * 100}% 0%, ${c.horn[1] * 100}% ${(c.horn[2] + (t.dy ?? 0)) * 100}%, ${c.horn[0] * 100}% ${(c.horn[2] + (t.dy ?? 0)) * 100}%)` }} />
+          )}
+        </>)}
+      </div>
+      {hold?.node && (
+        <div style={{ position: 'absolute', left: (size - F) / 2 + (flip ? 1 - hand[0] : hand[0]) * F, top: h - F + hand[1] * F, width: 0, height: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
           <div style={{ flexShrink: 0, transform: 'translateY(-50%)' }}>{hold.node}</div>
         </div>
       )}

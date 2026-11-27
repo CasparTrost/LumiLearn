@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useApp, todayStr } from '../AppContext.jsx'
 import { HudBar, PxIcon } from '../components/PixelUI.jsx'
 import Confetti from '../components/Confetti.jsx'
-import { journeyArt, lumiArt } from '../lib/assets.js'
+import { journeyArt } from '../lib/assets.js'
+import LumiFigure from '../components/LumiFigure.jsx'
 import { narrate, stopNarration } from '../narrator.js'
 import { sayNumber } from '../tts.js'
 import { sfx } from '../sfx.js'
@@ -24,7 +25,6 @@ import { Art } from '../components/play/index.js'
  * Nothing is checked or scored — it is a break.
  */
 const BASE = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '')
-const LUMI = lumiArt('happy')
 
 // kind: how the picture moves; count: spoken numbers, one per move
 // say: the recording (lib/lumiLines.js); its text is shown too
@@ -52,28 +52,44 @@ export function movesFor(seedText) {
   return [...out, BREATH]
 }
 
-function Figure({ pic, beat }) {
+// Lumi's picture for each move: arms up to stretch tall and to clap, one wing
+// up to fly and wave, standing as usual to turn and stamp, and to breathe
+// (with a gentle sway, never asleep)
+export const MOVE_MOOD = { stretch: 'happy', fly: 'wave', clap: 'happy', turn: 'wave', stamp: 'idle', breath: 'idle' }
+
+// `room`: beside the card (a phone held sideways) the figure keeps room for
+// its swing on both sides, so flying it never reaches the screen's edge or
+// the card (the swing, and the tilt of the wings at its ends)
+function Figure({ pic, beat, box = 'min(60vw, 280px)', swing = 60, room = false }) {
   const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
   const frog = pic === 'frog'
   const anim = reduce ? {} : {
     frog:    { y: [0, -90, 0], scaleY: [1, 1.1, 0.9, 1] },
     stretch: { scaleY: [1, 1.35, 1.35, 1], y: [0, -20, -20, 0] },
-    fly:     { x: [-60, 60, -60], rotate: [-12, 12, -12] },
+    fly:     { x: [-swing, swing, -swing], rotate: [-12, 12, -12] },
     clap:    { scale: [1, 1.18, 1] },
     turn:    { rotateY: [0, 360] },
     stamp:   { y: [0, -24, 6, 0], rotate: [-4, 4, -4] },
-    breath:  { scale: [1, 1.25, 1] },
+    breath:  { scale: [1, 1.12, 1], rotate: [0, -3, 0, 3, 0] },
   }[pic]
   const dur = { frog: beat / 1000, clap: beat / 1000, stamp: beat / 1000, stretch: 3, fly: 2, turn: 4, breath: 6 }[pic] ?? 2
   return (
-    <div style={{ position: 'relative', width: 'min(60vw, 280px)', height: 'min(60vw, 280px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+    <div style={{ position: 'relative', width: box, height: box, flexShrink: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', marginInline: room ? `calc(${swing + 10}px + ${box} * 0.06)` : undefined }}>
       {pic === 'breath' && (
         <motion.div aria-hidden="true" animate={reduce ? {} : { scale: [0.7, 1.15, 0.7], opacity: [0.35, 0.7, 0.35] }} transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
           style={{ position: 'absolute', inset: '6%', borderRadius: '50%', background: 'radial-gradient(circle, #bfe9ff 0%, rgba(191,233,255,0) 70%)' }} />
       )}
-      <motion.img src={frog ? journeyArt('move.png') : LUMI} alt="" draggable={false}
-        animate={anim} transition={{ duration: dur, repeat: Infinity, ease: 'easeInOut' }}
-        style={{ width: '78%', height: '78%', imageRendering: frog ? 'pixelated' : undefined, filter: 'drop-shadow(0 6px 0 rgba(42,27,61,0.3))', transformOrigin: '50% 100%' }} />
+      {frog ? (
+        <motion.img src={journeyArt('move.png')} alt="" draggable={false}
+          animate={anim} transition={{ duration: dur, repeat: Infinity, ease: 'easeInOut' }}
+          style={{ width: '78%', height: '78%', imageRendering: 'pixelated', filter: 'drop-shadow(0 6px 0 rgba(42,27,61,0.3))', transformOrigin: '50% 100%' }} />
+      ) : (
+        // Lumi does the moves along, in what the child chose in the wardrobe
+        <motion.div animate={anim} transition={{ duration: dur, repeat: Infinity, ease: 'easeInOut' }}
+          style={{ width: '78%', height: '78%', filter: 'drop-shadow(0 6px 0 rgba(42,27,61,0.3))', transformOrigin: '50% 100%' }}>
+          <LumiFigure mood={MOVE_MOOD[pic] ?? 'happy'} size="100%" style={{ display: 'block', height: '100%' }} />
+        </motion.div>
+      )}
       <div aria-hidden="true" style={{ position: 'absolute', bottom: -6, width: '50%', height: 14, borderRadius: '50%', background: 'rgba(42,27,61,0.18)' }} />
     </div>
   )
@@ -136,19 +152,28 @@ export default function MoveBreakScreen() {
   }
 
   const m = moves[step]
+  // A phone held sideways: Lumi beside the card (above it, the card was
+  // below the edge of the screen)
+  const sideways = typeof window !== 'undefined' && window.innerWidth > window.innerHeight && window.innerHeight < 500
+  const narrow = typeof window !== 'undefined' && window.innerWidth < 420
+  const row = sideways ? { flexDirection: 'row', gap: 20 } : { flexDirection: 'column', gap: 16 }
+  const box = sideways ? 'min(40vw, 62vh, 280px)' : undefined
   return (
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: 'linear-gradient(180deg, #bfe9ff 0%, #e6f8d8 70%, #c7ec9f 100%)', overflow: 'hidden' }}>
       <HudBar>
-        <button className="px-btn px-btn--wood px-btn--icon" onClick={home} aria-label="Zur Startseite"><PxIcon name="back" size={20} color="#fff" /></button>
-        <span className="px-title" style={{ flex: 1, fontSize: 'clamp(18px,3vw,28px)' }}>Bewegungspause</span>
-        {!finished && <button className="px-btn px-btn--parch px-btn--sm" onClick={skip}>Überspringen</button>}
+        <button className="px-btn px-btn--wood px-btn--icon" onClick={home} aria-label="Zur Startseite" style={{ flexShrink: 0 }}><PxIcon name="back" size={20} color="#fff" /></button>
+        <span className="px-title" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 'clamp(18px,3vw,28px)' }}>Bewegungspause</span>
+        {/* a narrow phone: the skip arrows alone (the word did not fit beside the title) */}
+        {!finished && <button className="px-btn px-btn--parch px-btn--sm" onClick={skip} aria-label="Überspringen" title="Überspringen"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}><PxIcon name="skip" size={16} />{!narrow && ' Überspringen'}</button>}
       </HudBar>
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, padding: 16, textAlign: 'center' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: sideways ? 8 : 18, padding: sideways ? '8px 16px' : 16, textAlign: 'center' }}>
         {finished && <Confetti count={40} yFrom="-5vh" yTo="110vh" />}
         <AnimatePresence mode="wait">
           {finished ? (
-            <motion.div key="done" initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-              <Figure pic="clap" beat={700} />
+            <motion.div key="done" initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} style={{ display: 'flex', ...row, alignItems: 'center' }}>
+              <Figure pic="clap" beat={700} box={box} swing={sideways ? 22 : 60} room={sideways} />
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
               <div className="px-title" style={{ fontSize: 'clamp(26px,5vw,40px)' }}>Super gemacht!</div>
               {sticker && STICKER_BY_EMOJI[sticker] && (
                 <motion.div initial={{ scale: 0, rotate: -20 }} animate={{ scale: 1, rotate: 0 }} transition={{ delay: 0.5, type: 'spring', stiffness: 260, damping: 12 }}
@@ -159,11 +184,13 @@ export default function MoveBreakScreen() {
                 </motion.div>
               )}
               <button className="px-btn px-btn--green px-btn--lg" onClick={goOn}><PxIcon name="play" size={22} /> Weiter spielen</button>
+              </div>
             </motion.div>
           ) : m && (
             <motion.div key={m.id} initial={{ x: 80, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -80, opacity: 0 }}
-              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-              <Figure pic={m.pic} beat={m.beat} />
+              style={{ display: 'flex', ...row, alignItems: 'center' }}>
+              <Figure pic={m.pic} beat={m.beat} box={box} swing={sideways ? 22 : 60} room={sideways} />
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
               <div className="px-panel" style={{ padding: '10px 16px', maxWidth: 520, fontFamily: 'var(--font-heading)', fontSize: 'clamp(18px,3vw,24px)', fontWeight: 700, color: 'var(--px-ink)' }}>
                 {m.say.text}
               </div>
@@ -175,6 +202,7 @@ export default function MoveBreakScreen() {
                   ))}
                 </div>
               )}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

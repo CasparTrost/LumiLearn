@@ -117,3 +117,19 @@ describe('the help box the first time a game is played', () => {
     expect(needsHelpFirst(s.profiles.p1, 'numbers')).toBe(true)
   })
 })
+
+describe('resetting a child', () => {
+  it('plans today\'s ideas again at once (home said "Alle Ideen geschafft!" until a reload)', () => {
+    let s = { ...initialState, ...migrateToV2(v2({ p1: kid('p1', { numbers: { currentLevel: 4, levelStars: { 1: 3, 2: 2, 3: 1 }, plays: 5 } }) })), screen: 'home' }
+    s = reducer(s, { type: 'ENSURE_DAILY_MISSION' })
+    const j0 = s.profiles.p1.journey
+    s = { ...s, profiles: { ...s.profiles, p1: { ...s.profiles.p1, journey: { ...j0, done: j0.stops.map((_, i) => i), chest: 'none' } } } }
+    s = reducer(s, { type: 'RESET_PROFILE', payload: 'p1' })
+    const j = s.profiles.p1.journey
+    expect(j).toBeTruthy()
+    expect(j.stops.length).toBeGreaterThan(0)
+    expect(j.done).toEqual([])
+    expect(j.chest).toBe(null)
+    expect(j.stops.some(st => st.moduleId)).toBe(true)
+  })
+})

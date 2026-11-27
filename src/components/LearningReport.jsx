@@ -32,7 +32,7 @@ export const PRINCIPLES = [
   ['Anstrengung loben, nicht Talent',
     'Lumi lobt, was das Kind getan hat („Gut überlegt!“, „Du hast nicht aufgegeben!“), nie, wie klug es ist. Prozess-Lob lässt Kinder nach Fehlern weitermachen; Lob für Klugheit macht sie vorsichtig (Mueller & Dweck 1998; Gunderson et al. 2013).'],
   ['Lumi als Begleiter',
-    'Lumi reagiert in jedem Spiel auf jede Antwort. Kinder lernen mehr von Figuren, zu denen sie eine Beziehung aufbauen (Calvert et al. 2014).'],
+    'Lumi reagiert in jedem Spiel auf jede Antwort. Kinder lernen mehr von Figuren, zu denen sie eine Beziehung aufbauen (Calvert et al. 2014). Ihr Kind sucht sich aus, wie sein Lumi aussieht; mit den Sternen kommen weitere Figuren und Sachen für Lumis Kleiderschrank dazu. Diese Belohnungen kosten nichts und gehen nie verloren.'],
   ['Bewegung zwischendurch',
     'Kurze Bewegungspausen verbessern danach die Aufmerksamkeit (Mahar et al. 2006). Die Atemübung am Ende beruhigt wieder.'],
   ['Buchstaben mit dem Finger schreiben',

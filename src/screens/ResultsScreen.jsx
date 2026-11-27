@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useApp, todayMs } from '../AppContext.jsx'
+import { useApp, todayMs, profileWardrobeStars } from '../AppContext.jsx'
 import { PxStar, PxIcon } from '../components/PixelUI.jsx'
 import Confetti from '../components/Confetti.jsx'
 import TileArt from '../components/TileArt.jsx'
@@ -14,7 +14,12 @@ import { startStop } from '../lib/journeyNav.js'
 import { nextStopIndex } from '../lib/learning.js'
 import { STICKER_BY_EMOJI } from '../lib/stickers.js'
 import { MODULE_BY_ID } from '../modules.js'
-import { line } from '../lib/lumiLines.js'
+import { LINES, line } from '../lib/lumiLines.js'
+import { ITEM_BY_ID } from '../lib/wardrobe.js'
+import { asset } from '../lib/assets.js'
+import { ThingPic } from './WardrobeScreen.jsx'
+import { shapesOwed, shapesToCome } from '../lib/shapes.js'
+import { ShapeFigure } from '../components/ShapeFigure.jsx'
 
 // One star means the level is done — the texts say so. Whether the next
 // level is announced is decided below (`opened`).
@@ -26,6 +31,8 @@ const MESSAGES = {
 }
 // Lumi's recorded praise (lib/lumiLines.js); after a round without a star
 // the encouragement below says enough
+// a sentence not recorded yet is left out (Lumi's wardrobe)
+const optional = key => (LINES[key] ? line(key) : null)
 const praise = s => (s >= 1 ? line(`rueckmeldung/richtig-${1 + Math.floor(Math.random() * 9)}`) : null)
 // A level's end is praised once. Some games praise the last answer or the
 // win themselves ("Klasse!"), and a few seconds later this screen said
@@ -63,6 +70,19 @@ export default function ResultsScreen() {
   const masteredWell   = gameResult?.masteredWell   ?? false
   const isFirstPass    = gameResult?.isFirstPass    ?? false
   const streakCount    = gameResult?.streakCount ?? 0
+  // this round's stars unlocked something in Lumi's wardrobe (lib/wardrobe.js)
+  const newWear        = (gameResult?.newWear ?? []).map(id => ITEM_BY_ID[id]).filter(Boolean)
+  // a new shape for Lumi may be won now (lib/shapes.js): it comes first,
+  // the wardrobe's new thing keeps its sign on the home screen
+  const newShape       = !!gameResult?.newShape && shapesOwed(profile, profileWardrobeStars(profile)) > 0
+  // a new shape not chosen yet is THE moment of every results screen until
+  // it is chosen (the first time it is new, later it is still waiting) --
+  // but not after a round without a star: there the one message is "try
+  // again" with one big button. A big golden present above "Gleich klappt
+  // es!" read as a reward for failing and drew the tap away from "Nochmal";
+  // the present waits on the home screen (its sign on Lumi's shape button)
+  // and comes back here after the next round with a star.
+  const shapeNews      = stars >= 1 && shapesOwed(profile, profileWardrobeStars(profile)) > 0
   // what Lumi suggests next (lib/learning.js): the next level, the same one
   // to practise, or the one before
   const suggested      = gameResult?.suggestedLevel ?? nextLevel ?? level
@@ -134,6 +154,8 @@ export default function ResultsScreen() {
     return list[Math.floor(Math.random() * list.length)]
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const friends = useMemo(() => {
+    // (none beside a new shape for Lumi: animals there looked like more to choose)
+    if (shapeNews) return []
     const pool = [...FRIENDS].sort(() => Math.random() - 0.5)
     return pool.slice(0, stars >= 3 ? 2 : stars >= 2 ? 1 : 0)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -185,6 +207,13 @@ export default function ResultsScreen() {
       } else if (proposal === 'easier') news.push(line('ergebnis/leichter'))
       else if (proposal === 'practise') news.push(line('ergebnis/ueben'))
     }
+    // not recorded yet: skipped while missing
+    // a new shape first (also one still waiting), the wardrobe's new thing
+    // after it: both are on the screen, so Lumi says both, one after the other
+    const shapeLine = shapeNews ? optional('gestalt/neu') : null
+    if (shapeLine) news.push(shapeLine)
+    const wearNews = newWear.length ? optional('schrank/neu') : null
+    if (wearNews) news.push(wearNews)
     if (freshSticker) news.push(line('ergebnis/sticker-tag'))
     else if (main === moveBtn) news.push(line('ergebnis/bewegen'))
     else if (main === ideaBtn) news.push(line('ergebnis/noch-eine-idee'))
@@ -197,8 +226,14 @@ export default function ResultsScreen() {
     return () => { clearTimeout(tm); stop(); stopNarration() }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const lumiMood = stars >= 2 ? 'dance' : stars >= 1 ? 'happy' : 'idle'
-  const lumiSize = Math.min(150, Math.round((typeof window !== 'undefined' ? window.innerHeight : 800) * 0.16))
+  const lumiMood = stars >= 2 || newWear.length || shapeNews ? 'dance' : stars >= 1 ? 'happy' : 'idle'
+  // A phone held sideways: the party stands beside the card, and Lumi (in
+  // what it wears from the wardrobe) can be big there; above the card it
+  // was about 45 px tall
+  const vw = typeof window !== 'undefined' ? window.innerWidth : 1024
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 800
+  const sideways = vw > vh && vh < 500
+  const lumiSize = sideways ? Math.min(170, Math.round(vh * 0.42), Math.round((vw - 520) * 0.6)) : Math.min(150, Math.round(vh * 0.16))
 
   // A phone held sideways is lower than the party and the card together:
   // they shrink to fit instead of scrolling (the buttons were below the
@@ -233,14 +268,20 @@ export default function ResultsScreen() {
       {(stars >= 2 || sticker) && <Confetti count={stars === 3 || sticker ? 60 : 28} yFrom="-5vh" yTo="110vh" />}
 
       <div ref={fitRef} style={{
-        position: 'relative', zIndex: 1, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center',
+        position: 'relative', zIndex: 1, width: '100%', display: 'flex', flexDirection: sideways ? 'row' : 'column', alignItems: 'center', justifyContent: 'center', gap: sideways ? 8 : 0,
         ...(fit.scale < 1 ? { transform: `scale(${fit.scale})`, marginBlock: -Math.ceil(fit.need * (1 - fit.scale) / 2) } : null),
       }}>
       {/* the party: Lumi and friends dance; the friends are smaller than Lumi on every screen */}
-      <div aria-hidden="true" style={{ display: 'flex', alignItems: 'flex-end', gap: 'clamp(4px,2vw,20px)', marginBottom: -12, zIndex: 2 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, zIndex: 2, flexShrink: 0, width: sideways && shapeNews ? Math.min(330, vw - 520) : undefined }}>
+      <div aria-hidden="true" style={{ display: 'flex', alignItems: 'flex-end', gap: 'clamp(4px,2vw,20px)', marginBottom: sideways ? 0 : -12, zIndex: 2, flexShrink: 0 }}>
         {friends[0] && <PartyFriend art={friends[0]} delay={0.5} size={Math.round(lumiSize * 0.6)} />}
-        <Critter art="lumi" size={lumiSize} mood={lumiMood} />
+        <Critter art="lumi" size={sideways && shapeNews ? Math.round(lumiSize * 0.7) : lumiSize} mood={lumiMood} />
         {friends[1] && <PartyFriend art={friends[1]} delay={0.8} size={Math.round(lumiSize * 0.6)} flip />}
+      </div>
+      {/* a phone held sideways: the new shape beside the card, under Lumi */}
+      {shapeNews && sideways && (
+        <ShapeSurprise shapes={shapesToCome(profile)} fresh={newShape} ready={showButtons} wide onOpen={() => { stopNarration(); dispatch({ type: 'NAVIGATE', payload: 'shapes' }) }} />
+      )}
       </div>
 
       <motion.div
@@ -250,7 +291,11 @@ export default function ResultsScreen() {
         className="px-panel"
         style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'clamp(8px,1.6dvh,14px)', zIndex: 1, width: '100%', maxWidth: 500, padding: 'clamp(14px,2.4dvh,26px) clamp(14px,4vw,28px)' }}
       >
-        <div style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(26px, 6vw, 38px)', fontWeight: 700, color: 'var(--px-ink)', textAlign: 'center', lineHeight: 1.15 }}>
+        {/* a new shape for Lumi: the big thing of this screen, first */}
+        {shapeNews && !sideways && (
+          <ShapeSurprise shapes={shapesToCome(profile)} fresh={newShape} ready={showButtons} onOpen={() => { stopNarration(); dispatch({ type: 'NAVIGATE', payload: 'shapes' }) }} />
+        )}
+        <div style={{ fontFamily: 'var(--font-heading)', fontSize: shapeNews ? 'clamp(22px, 5vw, 30px)' : 'clamp(26px, 6vw, 38px)', fontWeight: 700, color: 'var(--px-ink)', textAlign: 'center', lineHeight: 1.15 }}>
           {msg}
         </div>
 
@@ -280,18 +325,23 @@ export default function ResultsScreen() {
           {sticker && <StickerSurprise emoji={sticker} />}
         </AnimatePresence>
 
+        {newWear.length > 0 && (
+          <WearSurprise items={newWear} ready={showButtons} onOpen={() => { stopNarration(); dispatch({ type: 'NAVIGATE', payload: 'wardrobe', focus: newWear[newWear.length - 1].id }) }} />
+        )}
+
         {/* Buttons — there from the start (the card stood empty for two
             seconds), but only tappable after a moment, so a tap meant for
             the game's last task doesn't land on one */}
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: showButtons ? 1 : 0.4, y: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 22 }}
           aria-hidden={!showButtons}
           style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', alignItems: 'center', pointerEvents: showButtons ? 'auto' : 'none' }}>
-          <button className="px-btn px-btn--green px-btn--lg" onClick={main.onClick} style={{ width: '100%', whiteSpace: 'normal' }}>
+          {/* beside a new shape the way on is a smaller, second button */}
+          <button className={`px-btn ${shapeNews ? 'px-btn--parch px-btn--md' : 'px-btn--green px-btn--lg'}`} onClick={main.onClick} data-main style={{ width: shapeNews ? 'auto' : '100%', whiteSpace: 'normal' }}>
             {main.art ? <TileArt mod={main.art} size={36} bare /> : main.play ? <PxIcon name="play" size={22} /> : main.icon} {main.label}
           </button>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
             {secondary.map(b => (
-              <button key={b.label} className="px-btn px-btn--gold px-btn--md" onClick={b.onClick}>
+              <button key={b.label} className={`px-btn ${shapeNews ? 'px-btn--parch' : 'px-btn--gold'} px-btn--md`} onClick={b.onClick}>
                 {b.art ? <TileArt mod={b.art} size={28} bare /> : b.icon} {b.label}
               </button>
             ))}
@@ -313,6 +363,78 @@ function PartyFriend({ art, delay, flip, size }) {
     <motion.div initial={{ x: flip ? size : -size, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay, type: 'spring', stiffness: 200, damping: 14 }}>
       <Critter art={art} size={size} mood="dance" flip={flip} />
     </motion.div>
+  )
+}
+
+// A present for Lumi: it pops open and the new thing jumps out. One tap on
+// it (or on the wardrobe button) leads to the wardrobe to try it on.
+function WearSurprise({ items, ready, onOpen }) {
+  const item = items[items.length - 1]
+  useEffect(() => { const t = setTimeout(() => sfx.sparkle(), 900); return () => clearTimeout(t) }, [])
+  return (
+    <motion.button type="button" onClick={onOpen} disabled={!ready} data-wear-surprise={items.map(t => t.id).join(' ')}
+      aria-label={`Ein Geschenk für Lumi: ${items.map(t => t.name).join(', ')}. Zum Kleiderschrank`}
+      initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.5, type: 'spring', stiffness: 260, damping: 14 }}
+      whileTap={{ scale: 0.95 }}
+      style={{
+        all: 'unset', boxSizing: 'border-box', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px 6px 8px',
+        borderRadius: 16, background: '#ffe6f0', border: '3px solid var(--px-ink)', boxShadow: '0 4px 0 rgba(42,27,61,0.3)', minHeight: 72,
+      }}>
+      <div style={{ position: 'relative', width: 64, height: 64, flexShrink: 0 }}>
+        {/* the present, then what was in it */}
+        <motion.div initial={{ scale: 1, opacity: 1 }} animate={{ scale: [1, 1.15, 0], opacity: [1, 1, 0], rotate: [0, -10, 10, 0] }} transition={{ delay: 0.7, duration: 0.6 }}
+          style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Art art="🎁" size={56} />
+        </motion.div>
+        <motion.div initial={{ scale: 0, y: 10 }} animate={{ scale: [0, 1.25, 1], y: [10, -6, 0] }} transition={{ delay: 1.15, duration: 0.6 }}
+          style={{ position: 'absolute', inset: 0, borderRadius: 14, background: 'radial-gradient(circle, #fffdf5 0%, #fff1d0 100%)', border: '3px solid #ffc93c' }}>
+          <ThingPic item={item} size={58} />
+        </motion.div>
+      </div>
+      <span className="px-btn px-btn--gold px-btn--md" aria-hidden="true" style={{ pointerEvents: 'none', gap: 6, padding: '0 12px' }}>
+        <img src={asset('sprites/emoji/custom/kleiderschrank.webp')} alt="" style={{ width: 34, height: 34 }} /> Anziehen!
+      </span>
+    </motion.button>
+  )
+}
+
+// Lumi may take a new shape: a present pops open and the shapes still to
+// come peek out and wave. One tap on it leads to the place to choose.
+function ShapeSurprise({ shapes, fresh, ready, wide, onOpen }) {
+  useEffect(() => { const t = setTimeout(() => sfx.sparkle(), 900); return () => clearTimeout(t) }, [])
+  const shown = shapes.slice(0, 5)
+  const fig = wide ? 70 : Math.min(96, Math.round(330 / Math.max(3, shown.length)))
+  return (
+    <motion.button type="button" onClick={onOpen} disabled={!ready} data-shape-surprise={shown.map(f => f.id).join(' ')}
+      aria-label="Lumi kann sich verwandeln. Aussuchen"
+      initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: fresh ? 0.4 : 0.2, type: 'spring', stiffness: 260, damping: 14 }}
+      whileTap={{ scale: 0.96 }}
+      style={{
+        all: 'unset', boxSizing: 'border-box', cursor: 'pointer', position: 'relative', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '8px 10px 12px',
+        borderRadius: 20, background: 'radial-gradient(ellipse at 50% 40%, #fff9dc 0%, #ffe48a 70%, #ffd25a 100%)', border: '4px solid var(--px-ink)', boxShadow: '0 0 0 4px #fff, 0 6px 0 rgba(42,27,61,0.35), 0 0 30px 8px rgba(255,214,90,0.8)',
+      }}>
+      {/* the present pops open and the shapes Lumi could take jump out and wave */}
+      <div style={{ position: 'relative', height: fig + 6, width: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+        <motion.div initial={{ scale: 1, opacity: 1 }} animate={{ scale: [1, 1.2, 0], opacity: [1, 1, 0], rotate: [0, -12, 12, 0] }} transition={{ delay: 0.8, duration: 0.7 }}
+          style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Art art="🎁" size={Math.round(fig * 0.95)} />
+        </motion.div>
+        {shown.map((f, i) => (
+          <motion.div key={f.id} initial={{ scale: 0, y: fig * 0.3 }} animate={{ scale: [0, 1.2, 1], y: [fig * 0.3, -fig * 0.12, 0] }} transition={{ delay: 1.3 + i * 0.12, duration: 0.55 }}
+            style={{ marginLeft: i ? -fig * 0.12 : 0 }}>
+            <motion.div animate={{ y: [0, -fig * 0.06, 0] }} transition={{ duration: 1.1, repeat: Infinity, delay: 2 + i * 0.2 }}>
+              <ShapeFigure id={f.id} mood="wave" size={fig} />
+            </motion.div>
+          </motion.div>
+        ))}
+      </div>
+      {/* the obvious thing to tap: a big green button with Lumi's present and a tick */}
+      <motion.span className="px-btn px-btn--green px-btn--lg" aria-hidden="true" animate={{ scale: [1, 1.05, 1] }} transition={{ duration: 1.2, repeat: Infinity, delay: 2 }}
+        style={{ pointerEvents: 'none', gap: 8, width: '100%', justifyContent: 'center' }}>
+        <Art art="🎁" size={34} />
+        <svg viewBox="0 0 24 24" width="30" height="30"><path d="M8 4 L16 12 L8 20" stroke="#fff" strokeWidth="3.6" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
+      </motion.span>
+    </motion.button>
   )
 }
 

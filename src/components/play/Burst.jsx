@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 
 /**
- * One-shot bursts of stars, hearts or confetti from a point on screen —
+ * One-shot bursts of stars, hearts, confetti or little clouds (`puff`) from a point on screen —
  * the "it worked!" sparkle, where the child's finger just was.
  *
  *   const [bursts, burst] = useBursts()
@@ -30,16 +30,19 @@ export function useBursts() {
 }
 
 function BurstAt({ x, y, kind, n }) {
+  // a puff: soft little clouds that swell and fade near the spot (something
+  // taken off goes "poof")
+  const puff = kind === 'puff'
   return (
-    <div aria-hidden="true" style={{ position: 'fixed', left: x, top: y, width: 0, height: 0, zIndex: 9998, pointerEvents: 'none' }}>
+    <div aria-hidden="true" data-burst={kind} style={{ position: 'fixed', left: x, top: y, width: 0, height: 0, zIndex: 9998, pointerEvents: 'none' }}>
       {Array.from({ length: n }, (_, i) => {
         const a = (i / n) * Math.PI * 2 + Math.random() * 0.5
-        const d = 60 + Math.random() * 70
-        const s = kind === 'confetti' ? 10 : 22 + Math.random() * 10
+        const d = puff ? 34 + Math.random() * 40 : 60 + Math.random() * 70
+        const s = kind === 'confetti' ? 10 : puff ? 40 + Math.random() * 20 : 22 + Math.random() * 10
         return (
-          <motion.div key={i} initial={{ x: 0, y: 0, scale: 0.3, opacity: 1, rotate: 0 }}
-            animate={{ x: Math.cos(a) * d, y: Math.sin(a) * d + (kind === 'confetti' ? 40 : 0), scale: 1, opacity: 0, rotate: kind === 'hearts' ? 0 : 200 }}
-            transition={{ duration: 0.9 + Math.random() * 0.3, ease: 'easeOut' }}
+          <motion.div key={i} initial={{ x: 0, y: 0, scale: puff ? 0.7 : 0.3, opacity: 1, rotate: 0 }}
+            animate={{ x: Math.cos(a) * d, y: Math.sin(a) * d + (kind === 'confetti' ? 40 : puff ? -12 : 0), scale: puff ? 1.4 : 1, opacity: 0, rotate: kind === 'hearts' || puff ? 0 : 200 }}
+            transition={{ duration: (puff ? 0.7 : 0.9) + Math.random() * 0.3, ease: 'easeOut' }}
             style={{ position: 'absolute', left: -s / 2, top: -s / 2 }}>
             <Piece kind={kind} s={s} color={COLORS[i % COLORS.length]} />
           </motion.div>
@@ -51,6 +54,11 @@ function BurstAt({ x, y, kind, n }) {
 
 function Piece({ kind, s, color }) {
   if (kind === 'confetti') return <div style={{ width: s, height: s * 0.6, background: color, borderRadius: 2 }} />
+  if (kind === 'puff') return (
+    <svg viewBox="0 0 24 24" width={s} height={s}>
+      <path d="M7 18 A4.5 4.5 0 0 1 6.5 9.2 A5.5 5.5 0 0 1 17 8.4 A4.8 4.8 0 0 1 17.5 18 Z" fill="#f3f0fb" stroke="#6f6585" strokeWidth="1.6" strokeLinejoin="round" />
+    </svg>
+  )
   if (kind === 'hearts') return (
     <svg viewBox="-2 -2.5 24 22" width={s} height={s * 0.9}>
       <path d="M10 17 C2 11 0 7 0 4.5 A4.5 4.5 0 0 1 10 3 A4.5 4.5 0 0 1 20 4.5 C20 7 18 11 10 17Z" fill="#ff5b8a" stroke="#2a1b3d" strokeWidth="1.5" />

@@ -1242,7 +1242,40 @@ export const LINES = {
   'atelier/zeichnet': 'Ich zeichne die Linien. Einen Moment!',
   'atelier/eigenes-da': 'Fertig! Jetzt kannst du dein Bild ausmalen.',
   'atelier/geht-nicht': 'Aus diesem Bild kann ich leider kein Malbild machen. Probier ein anderes!',
+  'schrank/willkommen': 'Das ist mein Kleiderschrank! Tippe auf ein Ding, dann ziehe ich es an. Tippst du noch einmal, ziehe ich es wieder aus.',
+  'schrank/neu': 'Juhu, ein Geschenk für mich! Tippe auf den Kleiderschrank, dann probieren wir es an!',
+  'schrank/anziehen-1': 'Wie sehe ich aus?',
+  'schrank/anziehen-2': 'Oh, das gefällt mir!',
+  'schrank/anziehen-3': 'Schick, oder?',
+  'schrank/anziehen-4': 'Das passt genau!',
+  'schrank/ausziehen': 'Und wieder aus!',
+  'schrank/alles-aus': 'Alles aus! Jetzt bin ich wieder ganz ich.',
+  'schrank/eingepackt': 'Das ist noch eingepackt. Sammle Sterne in den Spielen, dann packen wir es aus!',
+  'schrank/platz-head': 'Für den Kopf!',
+  'schrank/platz-face': 'Fürs Gesicht!',
+  'schrank/platz-neck': 'Für den Hals!',
+  'schrank/platz-back': 'Für den Rücken!',
+  'schrank/platz-hold': 'Zum Festhalten!',
+  'schrank/platz-top': 'Für den Bauch!',
+  'schrank/platz-bottom': 'Für die Beine!',
+  'schrank/platz-shoes': 'Für die Füße!',
+  'schrank/platz-outfit': 'Etwas zum Anziehen!',
+  // Lumi verwandelt sich (screens/ShapesScreen.jsx)
+  'gestalt/neu': 'Juhu! Ich kann mich verwandeln! Tippe auf das Geschenk!',
+  'gestalt/aussuchen': 'Wie soll ich aussehen? Dreh und tippe auf den grünen Haken!',
+  'gestalt/chick': 'Ich bin wieder ein Küken!',
+  'gestalt/kueken-neu': 'Juhu, ich bin ein Küken!',
+  'gestalt/dino': 'Schau mal, ich bin jetzt ein Dino!',
+  'gestalt/einhorn': 'Schau mal, ich bin jetzt ein Einhorn!',
+  'gestalt/drache': 'Schau mal, ich bin jetzt ein Drache!',
+  'gestalt/roboter': 'Schau mal, ich bin jetzt ein Roboter!',
 }
+
+/**
+ * Sentences written but not recorded yet (the narrator skips them while
+ * their file is missing; tests/unit/lumiLines.test.js lets them wait). None now.
+ */
+export const RECORD_LATER = /(?!)/
 
 /** The recording of a sentence, with its text for the browser voice. */
 export function line(key) {
