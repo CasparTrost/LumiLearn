@@ -9,6 +9,8 @@ const FIT = {
   // looked broken)
   diadem: { tuft: 'hide' },
   krone: { tuft: 'hide' },
+  // the cat ears' band rests on the helmet, not above it
+  katzenohren: { dy: 0.07 },
   // white things on the white robot: a thin dark outline
   schlittschuhe: { edge: true },
   astronautenstiefel: { edge: true },
