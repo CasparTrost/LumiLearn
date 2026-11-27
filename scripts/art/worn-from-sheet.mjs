@@ -75,7 +75,8 @@
 //     skirt's own outline colour; the unicorn's left flap ends in a round
 //     hem round its hoof, Tripo's boot bits under the robot's right boot
 //     go, and no faint specks stay), and leggings Tripo painted pale are
-//     painted again in even stripes of its standing poses, with a clean
+//     painted again in even stripes of its standing poses, in their order
+//     and colours, shaded softly like the figure's own legs, with a clean
 //     outline (BRIGHT_LEGS, RAINBOW).
 //
 // Proof pictures: --debug shows per pose the masks (red top, blue bottom,
@@ -124,8 +125,10 @@ const LAP_Y = 400
 // they are painted in the stripes of Tripo's standing poses (see brightLegs)
 const BRIGHT_LEGS = { einhorn: ['regenbogenleggings'] }
 // the rainbow leggings' stripes as Tripo painted them standing (the
-// unicorn's idle pose): pink, yellow, green, blue
-const RAINBOW = [[245, 132, 157], [250, 230, 145], [160, 222, 181], [110, 195, 238]]
+// unicorn's idle, happy and wave pictures as cut, a touch more saturated,
+// so that shaded they come out as those; the purple that of Tripo's own
+// cuff above the hoof, a little brighter): pink, yellow, green, blue, purple
+const RAINBOW = [[240, 130, 155], [250, 233, 150], [166, 231, 188], [128, 200, 242], [156, 120, 236]]
 const FEET_UP = { chick: 16, dino: 16, drache: 18, einhorn: 0, roboter: 10 }
 
 // ── pixels in and out (Chromium's canvas: no image library is installed) ──
@@ -1645,8 +1648,9 @@ export function cutPose(T, A, W, P, opts = { bottom: true, erase: false }) {
   // the bright band between the legs, blotchy where they met): they are
   // painted again in the stripes of the standing poses (RAINBOW), even,
   // across the leggings as they run from the middle between the legs round
-  // each hoof (blue in the middle, then green, yellow, pink and back), with
-  // Tripo's shading softened; then a clean outline in their own outline
+  // each hoof (pink in the middle, then yellow, green, blue, purple and
+  // pink again, as they run down a standing leg), shaded softly like the
+  // figure's own legs; then a clean outline in their own outline
   // colour where nothing lies beyond them. The top's colour (a hoodie's
   // lavender) on them and the hands stay
   if (opts.brightLegs && opts.bottom && !opts.erase && P.feet) {
@@ -1704,26 +1708,76 @@ export function cutPose(T, A, W, P, opts = { bottom: true, erase: false }) {
       const x = p % S, y = (p - x) / S
       for (const [dx, dy, w] of NB) { const X = x + dx, Y = y + dy; if (X >= 0 && Y >= 0 && X < S && Y < S && cloth[Y * S + X]) reach(Y * S + X, far[p] + w) }
     }
-    // (stripes of STRIPE px along that, blended over a pixel and a half)
-    const STRIPE = 14, ORDER = [3, 2, 1, 0, 1, 2]
+    // (stripes of STRIPE px along that, in the order of the standing
+    // poses (ORDER: pink in the middle, then yellow, green, blue, purple and
+    // pink again), blended over a pixel and a half at each change)
+    const STRIPE = 14, ORDER = [0, 1, 2, 3, 4]
+    const band = i => RAINBOW[ORDER[((i % ORDER.length) + ORDER.length) % ORDER.length]]
+    const mix = (c0, c1, m) => c0.map((v, ch) => v * (1 - m) + c1[ch] * m)
     const stripe = u => {
-      const f = u / STRIPE, i = Math.floor(f), t = (f - i) * STRIPE, c0 = RAINBOW[ORDER[i % 6]], c1 = RAINBOW[ORDER[(i + 1) % 6]]
-      const m = Math.max(0, Math.min(1, (t - (STRIPE - 0.75)) / 1.5))
-      return c0.map((v, ch) => v * (1 - m) + c1[ch] * m)
+      const f = u / STRIPE + 0.5, i = Math.floor(f), t = (f - i) * STRIPE
+      if (t > STRIPE - 0.75) return mix(band(i), band(i + 1), (t - (STRIPE - 0.75)) / 1.5)
+      if (t < 0.75) return mix(band(i), band(i - 1), (0.75 - t) / 1.5)
+      return band(i)
     }
-    // (Tripo's shading: its lightness over 9 × 9 against the median, mildly)
-    const L0 = new Float32Array(N), ls = []
-    for (let p = 0; p < N; p++) if (cloth[p] && !darkPx[p]) { L0[p] = lum(D, p * 4); ls.push(L0[p]) }
-    ls.sort((u, v) => u - v)
-    const med = ls[ls.length >> 1] || 1
-    const paint = new Float32Array(N * 3)
+    // (the shading, gently, as the figure's own legs have it: (1) the
+    // pose picture's (T) lightness of the legs under them, its light,
+    // unsaturated pixels over 7 × 7 against their median (SH.k: soft grey
+    // in the folds and towards the outline); (2) across each leg from top
+    // to bottom (where a pixel lies between the cloth's upper and lower
+    // edge, above and below it): a soft highlight on the upper part (up to
+    // SH.hi towards white, round SH.hv), darker towards the lower edge (by
+    // SH.lo) and a little right under the hoodie (SH.top); (3) darker
+    // within SH.edge px of the ground beyond them (by SH.ed) and round the
+    // hooves' cut, the cuff's fold (SH.fold px, by SH.fd); all of it
+    // softened over 5 × 5)
+    const SH = { k: 1, hi: 0.2, hv: 0.3, lo: 0.15, top: 0.06, edge: 6, ed: 0.1, fold: 5, fd: 0.07 }
+    const tl = new Float32Array(N), tok = new Uint8Array(N)
     for (let p = 0; p < N; p++) {
-      if (!cloth[p] || darkPx[p] || far[p] === Infinity) continue
+      if (A[p] < 200) continue
+      const r = T[p * 3], g = T[p * 3 + 1], b = T[p * 3 + 2], l = lum(T, p * 3)
+      if (l > 150 && Math.max(r, g, b) - Math.min(r, g, b) < 50) { tok[p] = 1; tl[p] = l }
+    }
+    const paintable = p => cloth[p] && !darkPx[p] && far[p] !== Infinity
+    const st = new Float32Array(N), sts = []
+    for (let p = 0; p < N; p++) {
+      if (!paintable(p)) continue
       const x = p % S, y = (p - x) / S
       let sum = 0, c = 0
-      for (let e = -4; e <= 4; e++) for (let d = -4; d <= 4; d++) { const X = x + d, Y = y + e; if (X >= 0 && Y >= 0 && X < S && Y < S && cloth[Y * S + X] && !darkPx[Y * S + X]) { sum += L0[Y * S + X]; c++ } }
-      const f = Math.max(0.88, Math.min(1.03, sum / c / med)), col = stripe(far[p])
-      for (let ch = 0; ch < 3; ch++) paint[p * 3 + ch] = Math.min(255, col[ch] * f)
+      for (let e = -3; e <= 3; e++) for (let d = -3; d <= 3; d++) { const X = x + d, Y = y + e; if (X >= 0 && Y >= 0 && X < S && Y < S && tok[Y * S + X]) { sum += tl[Y * S + X]; c++ } }
+      if (c) { st[p] = sum / c; sts.push(st[p]) }
+    }
+    sts.sort((u, v) => u - v)
+    const ref = sts[sts.length >> 1] || 1
+    const ground = new Uint8Array(N), cuffM = new Uint8Array(N)
+    for (let p = 0; p < N; p++) { if (D[p * 4 + 3] < 24 && A[p] < 24 && TD[p * 4 + 3] < 24) ground[p] = 1; if (feet[p] && D[p * 4 + 3] < 24) cuffM[p] = 1 }
+    const dG = distance(ground, SH.edge + 1), dH = distance(cuffM, SH.fold + 1)
+    const ramp = (d, w) => Math.max(0, Math.min(1, (w - d) / (w - 1)))
+    const sstep = (a, b, v) => { const t = Math.max(0, Math.min(1, (v - a) / (b - a))); return t * t * (3 - 2 * t) }
+    const mul = new Float32Array(N), add = new Float32Array(N)
+    for (let x = 0; x < S; x++) for (let y = 0; y < S; y++) {
+      const p = y * S + x
+      if (!paintable(p) || (y > 0 && paintable(p - S))) continue
+      let y1 = y
+      while (y1 + 1 < S && paintable((y1 + 1) * S + x)) y1++
+      const len = y1 - y + 1
+      for (let yy = y; yy <= y1; yy++) {
+        const q = yy * S + x, v = len < 3 ? 0.5 : (yy - y + 0.5) / len, w = Math.min(1, len / 10)
+        const t = st[q] ? st[q] / ref : 1
+        mul[q] = (1 + SH.k * (t - 1)) * (1 - w * SH.lo * sstep(0.5, 1, v)) * (1 - w * SH.top * (1 - sstep(0, 0.15, v)))
+          * (1 - SH.ed * ramp(dG[q], SH.edge)) * (1 - SH.fd * ramp(dH[q], SH.fold))
+        add[q] = w * SH.hi * Math.exp(-(((v - SH.hv) / 0.16) ** 2))
+      }
+    }
+    const paint = new Float32Array(N * 3)
+    for (let p = 0; p < N; p++) {
+      if (!paintable(p)) continue
+      const x = p % S, y = (p - x) / S
+      let m = 0, a = 0, c = 0
+      for (let e = -2; e <= 2; e++) for (let d = -2; d <= 2; d++) { const X = x + d, Y = y + e; if (X >= 0 && Y >= 0 && X < S && Y < S && paintable(Y * S + X)) { m += mul[Y * S + X]; a += add[Y * S + X]; c++ } }
+      m /= c; a /= c
+      const col = stripe(far[p])
+      for (let ch = 0; ch < 3; ch++) { const v = col[ch] * m; paint[p * 3 + ch] = Math.max(0, Math.min(255, v + (255 - v) * a)) }
     }
     for (let p = 0; p < N; p++) if (cloth[p] && !darkPx[p] && far[p] !== Infinity) for (let ch = 0; ch < 3; ch++) D[p * 4 + ch] = paint[p * 3 + ch]
     // (specks of them apart from them, a pixel or two beside the thigh)
