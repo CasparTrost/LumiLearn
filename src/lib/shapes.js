@@ -181,7 +181,7 @@ export const offeredFirst = new Set()
 /**
  * The free first choice opens by itself on the home screen (once per app
  * open), until the child has closed it twice without choosing; after that
- * only the present beside Lumi offers it.
+ * only the sparkling shapes button in the bar offers it.
  */
 export const OFFER_CLOSED_MAX = 2
 export const offerFirstByItself = profile => firstChoiceOwed(profile) && (profile.shapeOffersClosed ?? 0) < OFFER_CLOSED_MAX

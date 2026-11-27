@@ -899,7 +899,8 @@ async function playShadows(page, { wrongOnce = false } = {}) {
       if ((await page.getAttribute('[data-shapes-screen]', 'data-shapes-screen').catch(() => null)) !== 'first') problems.push(`${where}: the free first choice did not open`)
       await page.getByRole('button', { name: 'Zur Startseite' }).click(); await page.waitForTimeout(1500)
       if (await page.locator('.pl-critter [data-lumi-shape]').count()) problems.push(`${where}: Lumi is not the chick after leaving`)
-      if (!(await page.locator('[data-shape-present]').count())) problems.push(`${where}: no present beside Lumi while the choice waits`)
+      if (!(await page.locator('[data-shapes-owed]').count())) problems.push(`${where}: no sign on the shapes button while the choice waits`)
+      if (await page.locator('[data-shape-present]').count()) problems.push(`${where}: a present beside Lumi (the sign in the bar is enough)`)
       await check(page, `${where}, home`)
     } catch (e) { problems.push(`${where}: ${String(e).split('\n')[0]}`) }
     problems.push(...page.errors.map(e => `${where}: ${e}`))
@@ -911,8 +912,8 @@ async function playShadows(page, { wrongOnce = false } = {}) {
     const page = await newPage(SIZES.tablet, kidWith(STEPS[0] + 2, { shapePicked: true, shapes: ['dino'], shape: 'dino' }))
     try {
       await page.goto(URL); await page.waitForTimeout(1500)
-      if (!(await page.locator('[data-shapes-owed], [data-shape-present]').count())) problems.push(`${where}: no sign on the home screen`)
-      await page.locator('[data-shape-present]').click(); await page.waitForTimeout(1500)
+      if (!(await page.locator('[data-shapes-owed]').count())) problems.push(`${where}: no sign on the home screen`)
+      await page.locator('[data-shapes-owed]').click(); await page.waitForTimeout(1500)
       if ((await page.getAttribute('[data-shapes-screen]', 'data-shapes-screen')) !== 'choose') problems.push(`${where}: the ring is not in choosing`)
       await check(page, where)
       let f = await front(page)
