@@ -14,6 +14,9 @@ const FIT = {
   // and the horn stands in front of the band
   katzenohren: { tuft: null, size: 1.2, dy: 0.06 },
   hasenohren: { tuft: null, size: 1.4, dy: 0.04 },
+  // the antennae's band over the mane, its ends on the head, not hanging
+  // beside the face (narrower and higher; the horn stands in front)
+  antennen: { size: 1.3, dy: -0.06 },
   // a diadem lets the horn come through, like a crown
   diadem: { tuft: 'front' },
   // white things on the white unicorn: a thin dark outline

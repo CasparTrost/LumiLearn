@@ -147,8 +147,8 @@ function WardrobeButton({ fresh, onClick, small }) {
       <img src={asset('sprites/emoji/custom/kleiderschrank.webp')} alt="" style={{ width: small ? 34 : 42, height: small ? 34 : 42 }} />
       {fresh && (
         <motion.span aria-hidden="true" animate={{ scale:[1, 1.25, 1] }} transition={{ duration:1.2, repeat:Infinity }}
-          style={{ position:'absolute', right:-8, top:-8, width:26, height:26, borderRadius:'50%', background:'#ff5b8a', border:'3px solid #fff',
-            boxShadow:'0 2px 0 rgba(42,27,61,0.4)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, lineHeight:1 }}>
+          style={{ position:'absolute', right: small ? -4 : -8, top: small ? -7 : -8, width: small ? 22 : 26, height: small ? 22 : 26, borderRadius:'50%', background:'#ff5b8a', border: small ? '2px solid #fff' : '3px solid #fff',
+            boxShadow:'0 2px 0 rgba(42,27,61,0.4)', display:'flex', alignItems:'center', justifyContent:'center', fontSize: small ? 12 : 14, lineHeight:1 }}>
           ✨
         </motion.span>
       )}
@@ -168,8 +168,8 @@ function ShapesButton({ owed, onClick, small }) {
       <ShapesIcon size={small ? 36 : 42} />
       {owed && (
         <motion.span aria-hidden="true" animate={{ scale:[1, 1.25, 1] }} transition={{ duration:1.2, repeat:Infinity }}
-          style={{ position:'absolute', right:-8, top:-8, width:26, height:26, borderRadius:'50%', background:'#ff5b8a', border:'3px solid #fff',
-            boxShadow:'0 2px 0 rgba(42,27,61,0.4)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, lineHeight:1 }}>
+          style={{ position:'absolute', right: small ? -4 : -8, top: small ? -7 : -8, width: small ? 22 : 26, height: small ? 22 : 26, borderRadius:'50%', background:'#ff5b8a', border: small ? '2px solid #fff' : '3px solid #fff',
+            boxShadow:'0 2px 0 rgba(42,27,61,0.4)', display:'flex', alignItems:'center', justifyContent:'center', fontSize: small ? 12 : 14, lineHeight:1 }}>
           ✨
         </motion.span>
       )}
