@@ -34,6 +34,8 @@ const FIT = {
   // the crown and the wreath sit around the head: the big spike stands
   // behind their front, not drawn over it
   krone: { ...hats.krone, tuft: null },
+  // the cat ears' band rests on its head behind the crest, not above it
+  katzenohren: { ...hats.katzenohren, dy: 0.09 },
   blumenkranz: { ...hats.blumenkranz, tuft: null },
   // its head is big and the hand low: the balloon leans out beside the
   // head on its string, not in front of the face

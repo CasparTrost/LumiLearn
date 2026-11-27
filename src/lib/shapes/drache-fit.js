@@ -32,6 +32,8 @@ const FIT = {
   // the crown sits around the head: horns and crest stand behind its front
   // band (drawn over it, the crest covered its jewels)
   krone: { ...hats.krone, tuft: null },
+  // the cat ears' band rests on its head between the horns, not above them
+  katzenohren: { ...hats.katzenohren, size: 1.05, dy: 0.075 },
   // its paw closes over the cone with the arm raised or hanging: the cone
   // held near its tip, so no loose tip sticks out under the paw
   eis: { pose: { happy: { dy: -20 }, sad: { dy: -20 } } },
