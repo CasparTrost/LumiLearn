@@ -177,23 +177,6 @@ function ShapesButton({ owed, onClick, small }) {
   )
 }
 
-// A new shape for Lumi may be won: a present beside Lumi that wiggles and
-// sparkles until the child has chosen (a tap opens the place to choose)
-function ShapePresent({ size, onClick }) {
-  return (
-    <motion.button type="button" onClick={onClick} aria-label="Lumi kann sich verwandeln" data-shape-present
-      initial={{ scale: 0 }} animate={{ scale: 1, rotate: [0, 0, -9, 9, -6, 4, 0] }}
-      transition={{ scale: { type:'spring', stiffness:260, damping:14, delay:0.6 }, rotate: { duration:1.6, repeat:Infinity, repeatDelay:0.8 } }}
-      whileTap={{ scale: 0.9 }}
-      style={{ all:'unset', cursor:'pointer', position:'relative', width:size, height:size, flexShrink:0, display:'flex', alignItems:'flex-end', justifyContent:'center', transformOrigin:'50% 100%' }}>
-      <span aria-hidden="true" style={{ position:'absolute', inset:'8% 4% 0', borderRadius:'50%', background:'radial-gradient(circle, rgba(255,226,120,0.85) 0%, rgba(255,226,120,0) 70%)' }} />
-      <Art art="🎁" size={Math.round(size * 0.78)} style={{ position:'relative' }} />
-      <motion.span aria-hidden="true" animate={{ scale:[0.8, 1.2, 0.8], opacity:[0.6, 1, 0.6] }} transition={{ duration:1.2, repeat:Infinity }}
-        style={{ position:'absolute', right:0, top:'4%', fontSize: Math.round(size * 0.26), lineHeight:1 }}>✨</motion.span>
-    </motion.button>
-  )
-}
-
 // The counters under the name on a narrow phone
 const SMALL_CHIP = { minHeight:26, fontSize:15, gap:3, padding:'1px 6px 1px 4px' }
 
@@ -226,7 +209,7 @@ function WorldRow({ world, mods, progress, onPlay, onLevels, offset }) {
 // game in progress, something new, another review, and a movement break in
 // the middle. It is no longer a map to walk: Lumi just has the next idea,
 // and after all of them a sticker for the album as a surprise.
-function LumiIdea({ idea, plan, tileLevel, onPlay, onAlbum, stickers, narrow, shapeOwed, onShapes }) {
+function LumiIdea({ idea, plan, tileLevel, onPlay, onAlbum, stickers, narrow }) {
   const allDone = !idea
   // The first idea of a day is a warm-up, one level below the game's tile, so
   // that the day starts with a success (lib/learning.js). The card says
@@ -238,12 +221,6 @@ function LumiIdea({ idea, plan, tileLevel, onPlay, onAlbum, stickers, narrow, sh
       gap:'clamp(8px,3vw,40px)', padding:'clamp(8px,2vw,20px) clamp(10px,3vw,16px) 0',
     }}>
       <div style={{ paddingTop: narrow ? 62 : 90, paddingLeft: narrow ? 4 : 0, flexShrink: 0, display:'flex', alignItems:'flex-end' }}>
-        {/* a new shape Lumi may take waits beside Lumi as a present */}
-        {shapeOwed && (
-          <div style={{ marginRight: narrow ? -24 : 4, position:'relative', zIndex:2 }}>
-            <ShapePresent size={narrow ? 74 : 104} onClick={onShapes} />
-          </div>
-        )}
         <div style={{ position:'relative', zIndex:1 }}>
           <Critter art="lumi" size={narrow ? 92 : 170} mood={allDone ? 'dance' : 'idle'} talks label="Lumi"
             wish={idea ? <TileArt mod={idea.mod} size={narrow ? 40 : 60} bare /> : <Art art="⭐" size={narrow ? 34 : 52} />}
@@ -370,8 +347,8 @@ export default function HomeScreen() {
   // Greeting — once per app open and child
   // A child from before Lumi's shapes is offered the free first choice once
   // per app open: after the home screen was there for a moment, the ring
-  // opens by itself. Leaving it keeps the chick for now and the present
-  // beside Lumi stays; closed twice, it no longer opens by itself.
+  // opens by itself. Leaving it keeps the chick for now and the sign on
+  // the shapes button in the bar stays; closed twice, it no longer opens by itself.
   useEffect(() => {
     if (!activeProfile || !offerFirstByItself(activeProfile) || offeredFirst.has(activeProfile.id) || timeUp) return
     const id = setTimeout(() => {
@@ -539,8 +516,7 @@ export default function HomeScreen() {
           </div>
         </div>
       ) : (<>
-        <LumiIdea idea={idea} plan={plan} tileLevel={idea ? progress[idea.mod.id]?.currentLevel ?? 1 : 1} onPlay={playIdea} onAlbum={openAlbum} stickers={stickers} narrow={narrow}
-          shapeOwed={shapeOwed} onShapes={openShapes} />
+        <LumiIdea idea={idea} plan={plan} tileLevel={idea ? progress[idea.mod.id]?.currentLevel ?? 1 : 1} onPlay={playIdea} onAlbum={openAlbum} stickers={stickers} narrow={narrow} />
 
         {/* ── The worlds, one row each ── */}
         <div style={{
