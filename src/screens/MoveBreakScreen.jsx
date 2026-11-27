@@ -155,14 +155,17 @@ export default function MoveBreakScreen() {
   // A phone held sideways: Lumi beside the card (above it, the card was
   // below the edge of the screen)
   const sideways = typeof window !== 'undefined' && window.innerWidth > window.innerHeight && window.innerHeight < 500
+  const narrow = typeof window !== 'undefined' && window.innerWidth < 420
   const row = sideways ? { flexDirection: 'row', gap: 20 } : { flexDirection: 'column', gap: 16 }
   const box = sideways ? 'min(40vw, 62vh, 280px)' : undefined
   return (
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: 'linear-gradient(180deg, #bfe9ff 0%, #e6f8d8 70%, #c7ec9f 100%)', overflow: 'hidden' }}>
       <HudBar>
-        <button className="px-btn px-btn--wood px-btn--icon" onClick={home} aria-label="Zur Startseite"><PxIcon name="back" size={20} color="#fff" /></button>
-        <span className="px-title" style={{ flex: 1, fontSize: 'clamp(18px,3vw,28px)' }}>Bewegungspause</span>
-        {!finished && <button className="px-btn px-btn--parch px-btn--sm" onClick={skip} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><PxIcon name="skip" size={16} /> Überspringen</button>}
+        <button className="px-btn px-btn--wood px-btn--icon" onClick={home} aria-label="Zur Startseite" style={{ flexShrink: 0 }}><PxIcon name="back" size={20} color="#fff" /></button>
+        <span className="px-title" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 'clamp(18px,3vw,28px)' }}>Bewegungspause</span>
+        {/* a narrow phone: the skip arrows alone (the word did not fit beside the title) */}
+        {!finished && <button className="px-btn px-btn--parch px-btn--sm" onClick={skip} aria-label="Überspringen" title="Überspringen"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}><PxIcon name="skip" size={16} />{!narrow && ' Überspringen'}</button>}
       </HudBar>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: sideways ? 8 : 18, padding: sideways ? '8px 16px' : 16, textAlign: 'center' }}>
         {finished && <Confetti count={40} yFrom="-5vh" yTo="110vh" />}
