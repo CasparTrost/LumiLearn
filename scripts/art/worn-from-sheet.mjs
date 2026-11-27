@@ -72,8 +72,11 @@
 //  6. Two sitting pictures as a child should read them: a skirt Tripo
 //     spread wide round the legs lies on the lap (LAP_SKIRT: the flaps
 //     beyond the legs cut back to a short flare, the cut closed in the
-//     skirt's own outline colour), and leggings Tripo painted pale take
-//     the bright stripes of its standing poses (BRIGHT_LEGS, RAINBOW).
+//     skirt's own outline colour; the unicorn's left flap ends in a round
+//     hem round its hoof, Tripo's boot bits under the robot's right boot
+//     go, and no faint specks stay), and leggings Tripo painted pale are
+//     painted again in even stripes of its standing poses, with a clean
+//     outline (BRIGHT_LEGS, RAINBOW).
 //
 // Proof pictures: --debug shows per pose the masks (red top, blue bottom,
 // yellow changed but left out), the cut clothes on the pose picture on a
@@ -106,10 +109,19 @@ const SIT_BITS = ['chick']
 // bottom's id): Tripo spread them wide round the unicorn's and the robot's
 // legs, and at the app's size the flaps beyond the legs read as stray
 // shapes, not a skirt (see lapSkirt in cutPose)
-const LAP_SKIRT = { einhorn: ['prinzessinnenrock'], roboter: ['prinzessinnenrock'] }
+// (`left`: that skirt's flap on the left, beside the unicorn's hoof, ends
+// in a round hem instead; `underFoot`: Tripo's boot bits under that foot
+// go (0 left, 1 right); `q`: the sitting picture is written at that webp
+// quality, the one it had before those two came in (the size loop would
+// pick a higher one for the smaller file, and that changes every pixel a
+// little, the waistband too): see lapSkirt)
+const LAP_SKIRT = { einhorn: { prinzessinnenrock: { left: { flare: 10, close: 14, round: 10 } } }, roboter: { prinzessinnenrock: { underFoot: 1, q: 0.7 } } }
+// (the row of the 512 px working picture above which the lap skirt's
+// clean-up of specks touches nothing: the waistband)
+const LAP_Y = 400
 // the leggings that, sitting, Tripo painted pale on the thighs and shins
 // (the unicorn's rainbow leggings, nearly white round its hooves): there
-// they take the bright stripes of Tripo's standing poses (see brightLegs)
+// they are painted in the stripes of Tripo's standing poses (see brightLegs)
 const BRIGHT_LEGS = { einhorn: ['regenbogenleggings'] }
 // the rainbow leggings' stripes as Tripo painted them standing (the
 // unicorn's idle pose): pink, yellow, green, blue
@@ -181,6 +193,20 @@ function components(m) {
     comps.push(px)
   }
   return { lab, comps }
+}
+// the pieces of a picture (alpha over 0, 8 neighbours) in a zone that are
+// smaller than min px go: specks, faint as they may be (the last check,
+// cleanPair, only sees what is over 100)
+function dropBits(D, zone, min) {
+  const lab = new Uint8Array(N)
+  for (let p = 0; p < N; p++) if (zone[p] && D[p * 4 + 3] && !lab[p]) {
+    const px = [p]; lab[p] = 1
+    for (let i = 0; i < px.length; i++) {
+      const q = px[i], x = q % S
+      for (const d of [-S - 1, -S, -S + 1, -1, 1, S - 1, S, S + 1]) { const r = q + d; if (r >= 0 && r < N && Math.abs((r % S) - x) <= 1 && D[r * 4 + 3] && !lab[r]) { lab[r] = 1; px.push(r) } }
+    }
+    if (px.length < min) for (const q of px) D[q * 4 + 3] = 0
+  }
 }
 const border = p => { const x = p % S; return x === 0 || x === S - 1 || p < S || p >= N - S }
 // distance (in steps, up to max) from a mask
@@ -1498,22 +1524,23 @@ export function cutPose(T, A, W, P, opts = { bottom: true, erase: false }) {
   // goes, softly; the cut edge is closed in the skirt's own outline colour,
   // so it ends in a hem, not in a cut
   if (opts.lapSkirt && opts.bottom && !opts.erase && P.feet) {
-    const FLARE = 8, CLOSE = 24, RIM = 4, R = FLARE + 2
+    const FLARE = 8, CLOSE = 24, RIM = 4, R = FLARE + 2, LEFT = opts.lapSkirt.left
     const sc = pl => pl.map(([x, y]) => [x * k, y * k])
     const feetP = polygons(P.feet.map(sc)), tailP = polygons((P.tail ?? []).map(sc))
-    const lap = erode(dilate(A.map((a, p) => (a > 24 && !(tailP[p] && !feetP[p]) ? 1 : 0)), CLOSE), CLOSE)
+    const lap = erode(dilate(A.map((a, p) => (a > 24 && !(tailP[p] && !feetP[p]) ? 1 : 0)), CLOSE), CLOSE), closed = lap.slice()
     // (with the space between the feet, down to their soles: the skirt's
     // front hanging between the legs is on the lap)
     const each = P.feet.map(pl => polygons([sc(pl)]))
+    const between = y => each.map(m => { let lo = S, hi = -1; for (let x = 0; x < S; x++) if (m[y * S + x]) { lo = Math.min(lo, x); hi = x } return [lo, hi] }).filter(([, hi]) => hi >= 0)
     for (let y = 0; y < S; y++) {
-      const xs = each.map(m => { let lo = S, hi = -1; for (let x = 0; x < S; x++) if (m[y * S + x]) { lo = Math.min(lo, x); hi = x } return [lo, hi] }).filter(([, hi]) => hi >= 0)
+      const xs = between(y)
       if (xs.length < 2) continue
       for (let x = Math.min(...xs.map(r => r[0])); x <= Math.max(...xs.map(r => r[1])); x++) lap[y * S + x] = 1
     }
     // (below the top of the feet, less a little: the lap, not the arms)
     let y0 = 0
     for (let p = 0; p < N; p++) if (feetP[p]) { y0 = Math.max(0, Math.floor(p / S) - 20); break }
-    const D = botPic.data, cutM = new Uint8Array(N)
+    const D = botPic.data, cutM = new Uint8Array(N), D0 = D.filter((_, i) => (i & 3) === 3)
     for (let p = y0 * S; p < N; p++) {
       if (!D[p * 4 + 3] || lap[p] || inFront[p]) continue
       const x = p % S, y = (p - x) / S
@@ -1529,6 +1556,74 @@ export function cutPose(T, A, W, P, opts = { bottom: true, erase: false }) {
       const opened = dilate(erode(kept, 6), 6), nearCut = dilate(cutM, 10)
       for (let p = 0; p < N; p++) if (D[p * 4 + 3] && !inFront[p] && !opened[p] && nearCut[p]) { cutM[p] = 1; D[p * 4 + 3] = 0 }
     }
+    // (`left`: the flap left of the feet's middle, below the cut's top,
+    // cut again. The left foot's loose outline reaches out beyond the
+    // unicorn's hoof, and the flap cut along it ended square, with a notch
+    // where it met the skirt's top. Here the space between the feet starts
+    // at the left foot's inner side, so the flap is a band of `flare` px
+    // round the hoof itself (which the opening above would take whole);
+    // then the skirt over the figure, the jacket and the figure together are
+    // closed (`close` px: the notch filled with Tripo's skirt again) and
+    // opened (`round` px: no corner), and the flap beyond the figure keeps
+    // what lies in that, softly: its hem runs in one curve round the hoof)
+    if (LEFT) {
+      let sx = 0, n = 0
+      for (let p = 0; p < N; p++) if (feetP[p]) { sx += p % S; n++ }
+      const mid = sx / n, lapL = closed.slice(), F = LEFT.flare, RL = F + 2, r = LEFT.round, TD = topPic.data
+      for (let y = 0; y < S; y++) {
+        const xs = between(y)
+        if (xs.length < 2) continue
+        for (let x = xs.reduce((u, v) => (v[0] < u[0] ? v : u))[1]; x <= Math.max(...xs.map(r2 => r2[1])); x++) lapL[y * S + x] = 1
+      }
+      const mine = p => p >= y0 * S && p % S < mid && D0[p] && !inFront[p]
+      for (let p = 0; p < N; p++) {
+        if (!mine(p)) continue
+        const x = p % S, y = (p - x) / S
+        let best = 0
+        if (!lapL[p]) {
+          best = RL + 1
+          for (let e = -RL; e <= RL; e++) for (let d = -RL; d <= RL; d++) { const X = x + d, Y = y + e; if (X >= 0 && Y >= 0 && X < S && Y < S && lapL[Y * S + X]) best = Math.min(best, Math.hypot(d, e)) }
+        }
+        const a = Math.max(0, Math.min(1, F + 0.5 - best))
+        D[p * 4 + 3] = D0[p] * a; cutM[p] = a < 0.5 ? 1 : 0
+      }
+      let solid = new Uint8Array(N)
+      for (let p = 0; p < N; p++) if ((D[p * 4 + 3] > 24 && !inFront[p]) || A[p] > 24 || TD[p * 4 + 3] > 24) solid[p] = 1
+      // (closing also shuts the crack where the skirt's cut-out round the
+      // hoof meets the hoof's soft edge)
+      solid = erode(dilate(solid, LEFT.close), LEFT.close)
+      const core = not(dilate(not(solid), r)), zone = dilate(cutM, r + LEFT.close)
+      for (let p = 0; p < N; p++) {
+        if (!zone[p] || !mine(p) || A[p] > 24) continue
+        const x = p % S, y = (p - x) / S
+        let best = r + 2
+        for (let e = -r - 1; e <= r + 1; e++) for (let d = -r - 1; d <= r + 1; d++) { const X = x + d, Y = y + e; if (X >= 0 && Y >= 0 && X < S && Y < S && core[Y * S + X]) best = Math.min(best, Math.hypot(d, e)) }
+        const o = Math.max(0, Math.min(1, r + 0.5 - best))
+        D[p * 4 + 3] = D0[p] * o; cutM[p] = o < 0.5 ? 1 : 0
+      }
+    }
+    // (`underFoot`: under that foot (0 left, 1 right), Tripo's own boot
+    // drawn a little larger than the pose picture's stayed as light blue
+    // and dark jagged bits beside the foot's outline (the robot's right
+    // boot): close round the foot's lower half, what of the skirt there is
+    // no skirt colour (pink or its white) goes where the figure lies under
+    // it (the pose picture's boot shows), and so do the faint remnants
+    // beside it)
+    if (opts.lapSkirt.underFoot !== undefined) {
+      const foot = each.map(m => { let sx = 0, n = 0; for (let p = 0; p < N; p++) if (m[p]) { sx += p % S; n++ } return { m, x: sx / n } }).sort((u, v) => u.x - v.x)[opts.lapSkirt.underFoot]
+      const own = and(feet, dilate(foot.m, 12)), ring = and(dilate(own, 10), not(own))
+      let sy = 0, n = 0
+      for (let p = 0; p < N; p++) if (own[p]) { sy += Math.floor(p / S); n++ }
+      const cy = sy / n
+      for (let p = Math.ceil(cy) * S; p < N; p++) {
+        if (!ring[p] || !D[p * 4 + 3] || inFront[p]) continue
+        const r0 = D[p * 4] / 255, g0 = D[p * 4 + 1] / 255, b0 = D[p * 4 + 2] / 255, mx = Math.max(r0, g0, b0), mn = Math.min(r0, g0, b0), l = (mx + mn) / 2
+        const sat = mx === mn ? 0 : (mx - mn) / (l > 0.5 ? 2 - mx - mn : mx + mn)
+        const pink = r0 === mx && r0 > b0 && sat > 0.15 && l > 0.35, pale = sat <= 0.15 && l > 0.75
+        if (pink || pale) continue
+        if (A[p] > 128 || D[p * 4 + 3] < 160) D[p * 4 + 3] = 0
+      }
+    }
     const dark = outline(isBot)
     if (dark && cutM.some(v => v)) {
       const near = dilate(cutM, RIM + 1)
@@ -1541,14 +1636,19 @@ export function cutPose(T, A, W, P, opts = { bottom: true, erase: false }) {
         for (let ch = 0; ch < 3; ch++) D[p * 4 + ch] = D[p * 4 + ch] * (1 - w) + dark[ch] * w
       }
     }
+    // (what the cuts left as faint specks beside the flaps and the feet;
+    // below LAP_Y only, so the waistband above stays exactly as it was)
+    dropBits(D, new Uint8Array(N).fill(1, Math.max(y0, LAP_Y) * S), 40)
   }
   // Leggings Tripo painted pale sitting (BRIGHT_LEGS: the unicorn's
   // rainbow leggings round its hooves, nearly white on the thighs beside
-  // the bright band of the shins): on the legs each light pixel of them
-  // takes the stripe of the standing poses (RAINBOW) nearest to Tripo's
-  // hue there, with Tripo's shading; the white and grey ones (no hue, the
-  // speckled rim on the thigh's top) the stripe next to them. The
-  // outlines and the top's colour (a hoodie's lavender) stay
+  // the bright band between the legs, blotchy where they met): they are
+  // painted again in the stripes of the standing poses (RAINBOW), even,
+  // across the leggings as they run from the middle between the legs round
+  // each hoof (blue in the middle, then green, yellow, pink and back), with
+  // Tripo's shading softened; then a clean outline in their own outline
+  // colour where nothing lies beyond them. The top's colour (a hoodie's
+  // lavender) on them and the hands stay
   if (opts.brightLegs && opts.bottom && !opts.erase && P.feet) {
     const D = botPic.data, TD = topPic.data
     const feetP = polygons(P.feet.map(pl => pl.map(([x, y]) => [x * k, y * k]))), zone = dilate(feetP, 24)
@@ -1565,13 +1665,9 @@ export function cutPose(T, A, W, P, opts = { bottom: true, erase: false }) {
       return [h * 60, s, l]
     }
     const hslAt = p => hsl(D[p * 4], D[p * 4 + 1], D[p * 4 + 2])
-    const hues = RAINBOW.map(c => hsl(...c)[0])
-    const hueGap = (a, b) => { const d = Math.abs(a - b) % 360; return Math.min(d, 360 - d) }
-    // what takes a new colour: 1 a pale pixel of the leggings, with a hue;
-    // 2 one without (white, a grey speck), in the colour beside it
-    const kind = new Uint8Array(N)
     // (the thin bits of Tripo's white highlight the top took on the thigh's
     // top, a broken line over the leggings: the leggings')
+    const moved = new Uint8Array(N)
     {
       const solid = new Uint8Array(N)
       for (let p = 0; p < N; p++) if (TD[p * 4 + 3] > 24 && !hands[p]) solid[p] = 1
@@ -1579,71 +1675,92 @@ export function cutPose(T, A, W, P, opts = { bottom: true, erase: false }) {
       for (let p = (fy - 12) * S; p < N; p++) {
         if (!zone[p] || !solid[p] || opened[p] || hands[p]) continue
         if (TD[p * 4 + 3] >= D[p * 4 + 3]) for (let ch = 0; ch < 4; ch++) D[p * 4 + ch] = TD[p * 4 + ch]
-        TD[p * 4 + 3] = 0; kind[p] = 2
+        TD[p * 4 + 3] = 0; moved[p] = 1
       }
     }
-    const darkPx = new Uint8Array(N)
-    for (let p = 0; p < N; p++) if (!kind[p] && D[p * 4 + 3] > 100 && hslAt(p)[2] < 0.45) darkPx[p] = 1
-    const nearDark = dilate(darkPx, 1)
-    // (and Tripo's own hoof outline left beside the pose picture's, where
-    // the feet are cut out: a second, broken line of dark specks; the
-    // leggings run on to the pose picture's outline)
-    const hole = new Uint8Array(N), feetZ = dilate(feetP, 4)
-    for (let p = 0; p < N; p++) if (feetZ[p] && D[p * 4 + 3] < 24 && A[p] > 200) hole[p] = 1
-    const nearHole = dilate(hole, 6)
-    // (the bright band Tripo painted stays as it is, and lends its colours)
-    const band = new Uint8Array(N)
+    // the hooves: the two largest pieces cut out of the bottom for the feet
+    // there; the leggings round them and between them
+    const hooves = components(feet.map((v, p) => (v && zone[p] ? 1 : 0))).comps.slice(1).sort((u, v) => v.length - u.length).slice(0, 2)
+      .map(c => { let lo = S, hi = 0; for (const p of c) { const x = p % S; lo = Math.min(lo, x); hi = Math.max(hi, x) } return { lo, hi } }).sort((u, v) => u.lo - v.lo)
+    const mid = (hooves[0].hi + hooves[1].lo) / 2, legs = zone.slice()
+    for (let p = fy * S; p < N; p++) { const x = p % S; if (x > hooves[0].lo && x < hooves[1].hi) legs[p] = 1 }
+    // (the cloth: not the top's lavender, not a hand; of it the outline)
+    const cloth = new Uint8Array(N), darkPx = new Uint8Array(N)
     for (let p = 0; p < N; p++) {
-      if (kind[p] || !zone[p] || !D[p * 4 + 3] || hands[p]) continue
+      if (!legs[p] || !D[p * 4 + 3] || hands[p]) continue
       const [h, s, l] = hslAt(p)
-      if (h >= 250 && h <= 320 && s > 0.15 && l < 0.85) continue
-      if (darkPx[p] || nearDark[p]) { if (nearHole[p]) kind[p] = 2; continue }
-      if (s < 0.25 || l > 0.95) kind[p] = 2
-      else if (l > 0.8) kind[p] = 1
-      else if (l > 0.6 && D[p * 4 + 3] > 200) band[p] = 1
+      if (!moved[p] && h >= 250 && h <= 320 && s > 0.15 && l < 0.85) continue
+      cloth[p] = 1
+      if (!moved[p] && l < 0.45 && D[p * 4 + 3] > 100) darkPx[p] = 1
     }
-    const NC = new Float32Array(N * 3), known = new Uint8Array(N)
-    for (let p = 0; p < N; p++) if (band[p]) { known[p] = 1; for (let ch = 0; ch < 3; ch++) NC[p * 3 + ch] = D[p * 4 + ch] }
-    // (the pale ones: the stripes nearest to Tripo's hue, mixed where it lies
-    // between two, with Tripo's shading; the palest wholly, the rest the more
-    // the paler, so they meet the band without a seam)
-    const ls = []
-    for (let p = 0; p < N; p++) if (kind[p] === 1) ls.push(lum(D, p * 4))
+    // (how far each pixel lies from the middle, through the cloth: 8
+    // neighbours, Dijkstra in buckets of a tenth of a pixel)
+    const far = new Float32Array(N).fill(Infinity), Q = []
+    const reach = (p, d) => { if (d < far[p]) { far[p] = d; (Q[Math.round(d * 10)] ??= []).push(p) } }
+    for (let y = 0; y < S; y++) { const p = y * S + Math.round(mid); if (cloth[p]) reach(p, Math.abs(Math.round(mid) - mid)) }
+    const NB = [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, Math.SQRT2], [1, -1, Math.SQRT2], [-1, 1, Math.SQRT2], [-1, -1, Math.SQRT2]]
+    for (let b = 0; b < Q.length; b++) for (const p of Q[b] ?? []) {
+      if (Math.round(far[p] * 10) !== b) continue
+      const x = p % S, y = (p - x) / S
+      for (const [dx, dy, w] of NB) { const X = x + dx, Y = y + dy; if (X >= 0 && Y >= 0 && X < S && Y < S && cloth[Y * S + X]) reach(Y * S + X, far[p] + w) }
+    }
+    // (stripes of STRIPE px along that, blended over a pixel and a half)
+    const STRIPE = 14, ORDER = [3, 2, 1, 0, 1, 2]
+    const stripe = u => {
+      const f = u / STRIPE, i = Math.floor(f), t = (f - i) * STRIPE, c0 = RAINBOW[ORDER[i % 6]], c1 = RAINBOW[ORDER[(i + 1) % 6]]
+      const m = Math.max(0, Math.min(1, (t - (STRIPE - 0.75)) / 1.5))
+      return c0.map((v, ch) => v * (1 - m) + c1[ch] * m)
+    }
+    // (Tripo's shading: its lightness over 9 × 9 against the median, mildly)
+    const L0 = new Float32Array(N), ls = []
+    for (let p = 0; p < N; p++) if (cloth[p] && !darkPx[p]) { L0[p] = lum(D, p * 4); ls.push(L0[p]) }
     ls.sort((u, v) => u - v)
-    const ref = ls[ls.length >> 1] || 1
+    const med = ls[ls.length >> 1] || 1
+    const paint = new Float32Array(N * 3)
     for (let p = 0; p < N; p++) {
-      if (kind[p] !== 1) continue
-      const [h, , l] = hslAt(p)
-      const w = hues.map(hu => Math.exp(-((hueGap(h, hu) / 20) ** 2))), sw = w.reduce((u, v) => u + v, 0) || 1
-      const f = Math.max(0.85, Math.min(1.05, lum(D, p * 4) / ref)), a = Math.max(0, Math.min(1, (l - 0.8) / 0.06))
-      for (let ch = 0; ch < 3; ch++) NC[p * 3 + ch] = a * f * RAINBOW.reduce((u, c, i) => u + c[ch] * w[i], 0) / sw + (1 - a) * D[p * 4 + ch]
-      known[p] = 1
+      if (!cloth[p] || darkPx[p] || far[p] === Infinity) continue
+      const x = p % S, y = (p - x) / S
+      let sum = 0, c = 0
+      for (let e = -4; e <= 4; e++) for (let d = -4; d <= 4; d++) { const X = x + d, Y = y + e; if (X >= 0 && Y >= 0 && X < S && Y < S && cloth[Y * S + X] && !darkPx[Y * S + X]) { sum += L0[Y * S + X]; c++ } }
+      const f = Math.max(0.88, Math.min(1.03, sum / c / med)), col = stripe(far[p])
+      for (let ch = 0; ch < 3; ch++) paint[p * 3 + ch] = Math.min(255, col[ch] * f)
     }
-    // (the ones without a hue: from their neighbours, inwards)
-    let todo = []
-    for (let p = 0; p < N; p++) if (kind[p] === 2) todo.push(p)
-    for (let it = 0; it < 60 && todo.length; it++) {
-      const now = []
-      for (const p of todo) {
-        let r = 0, g = 0, b = 0, c = 0
-        n4(p, q2 => { if (known[q2]) { r += NC[q2 * 3]; g += NC[q2 * 3 + 1]; b += NC[q2 * 3 + 2]; c++ } })
-        if (c) { NC[p * 3] = r / c; NC[p * 3 + 1] = g / c; NC[p * 3 + 2] = b / c; now.push(p) }
-      }
-      for (const p of now) known[p] = 1
-      todo = todo.filter(p => !known[p])
-    }
-    // (softened twice over 3 × 3: no blotches)
-    for (let pass = 0; pass < 2; pass++) {
-      const C0 = NC.slice()
+    for (let p = 0; p < N; p++) if (cloth[p] && !darkPx[p] && far[p] !== Infinity) for (let ch = 0; ch < 3; ch++) D[p * 4 + ch] = paint[p * 3 + ch]
+    // (specks of them apart from them, a pixel or two beside the thigh)
+    dropBits(D, legs, 40)
+    // (the outline: where nothing lies beyond them, not the hoof, not the
+    // top, the leggings' edge is drawn again OW px wide in their outline
+    // colour (the median of their dark pixels there); first over the
+    // figure's own lighter rim just beyond them, that showed under the
+    // outline as a smear)
+    const OW = 2.5, RR = 4, out = new Uint8Array(N)
+    for (let p = 0; p < N; p++) if (D[p * 4 + 3] < 24 && A[p] < 128 && TD[p * 4 + 3] < 24) out[p] = 1
+    const inks = [], nearOut3 = dilate(out, 3)
+    for (let p = 0; p < N; p++) if (darkPx[p] && nearOut3[p] && D[p * 4 + 3] > 200) inks.push(p)
+    if (inks.length) {
+      inks.sort((u, v) => lum(D, u * 4) - lum(D, v * 4))
+      const q0 = inks[inks.length >> 1], ink = [D[q0 * 4], D[q0 * 4 + 1], D[q0 * 4 + 2]]
+      const solidL = new Uint8Array(N), bare = new Uint8Array(N)
+      for (let p = 0; p < N; p++) { if (cloth[p] && D[p * 4 + 3] > 200) solidL[p] = 1; if (A[p] < 24) bare[p] = 1 }
+      const nearL = dilate(solidL, 4), nearBare = dilate(bare, 3), hoof = dilate(feet.map((v, p) => (v && D[p * 4 + 3] < 24 ? 1 : 0)), 1)
       for (let p = 0; p < N; p++) {
-        if (!kind[p] || !known[p]) continue
+        if (!legs[p] || !nearL[p] || !nearBare[p] || A[p] <= 24 || D[p * 4 + 3] >= 200 || TD[p * 4 + 3] >= 24 || hoof[p] || hands[p]) continue
+        const a = Math.max(D[p * 4 + 3], A[p])
+        for (let ch = 0; ch < 3; ch++) D[p * 4 + ch] = ink[ch]
+        D[p * 4 + 3] = a; cloth[p] = 1
+      }
+      out.fill(0)
+      for (let p = 0; p < N; p++) if (D[p * 4 + 3] < 24 && A[p] < 24 && TD[p * 4 + 3] < 24) out[p] = 1
+      const nearOut = dilate(out, RR)
+      for (let p = 0; p < N; p++) {
+        if (!cloth[p] || !nearOut[p] || !D[p * 4 + 3]) continue
         const x = p % S, y = (p - x) / S
-        let r = 0, g = 0, b = 0, c = 0
-        for (let e = -1; e <= 1; e++) for (let d = -1; d <= 1; d++) { const X = x + d, Y = y + e; if (X < 0 || Y < 0 || X >= S || Y >= S) continue; const q2 = Y * S + X; if (known[q2]) { r += C0[q2 * 3]; g += C0[q2 * 3 + 1]; b += C0[q2 * 3 + 2]; c++ } }
-        NC[p * 3] = r / c; NC[p * 3 + 1] = g / c; NC[p * 3 + 2] = b / c
+        let best = RR + 1
+        for (let e = -RR; e <= RR; e++) for (let d = -RR; d <= RR; d++) { const X = x + d, Y = y + e; if (X >= 0 && Y >= 0 && X < S && Y < S && out[Y * S + X]) best = Math.min(best, Math.hypot(d, e)) }
+        const w = Math.max(0, Math.min(1, OW + 0.5 - best))
+        for (let ch = 0; ch < 3; ch++) D[p * 4 + ch] = D[p * 4 + ch] * (1 - w) + ink[ch] * w
       }
     }
-    for (let p = 0; p < N; p++) if (kind[p] && known[p]) for (let ch = 0; ch < 3; ch++) D[p * 4 + ch] = Math.min(255, NC[p * 3 + ch])
   }
   // (on legs Tripo dressed, the trousers seen between the feet and the
   // hands lie on the feet's loose polygons and are cloth, not the feet)
@@ -1747,12 +1864,13 @@ async function main() {
       const reg = register(T, A, sample, P)
       const W = new Float32Array(N * 3)
       for (let p = 0; p < N; p++) { const x = p % S, y = (p - x) / S; sample(256 + reg.s * (x - 256) + reg.dx, 256 + reg.s * (y - 256) + reg.dy, W, p * 3) }
+      const lap = LAP_SKIRT[figure]?.[job.bottom]
       const cut = cutPose(T, A, W, P, {
         bottom: !!job.bottom, erase: tail, figure, pose, zones: ZONES,
-        lapSkirt: !!LAP_SKIRT[figure]?.includes(job.bottom), brightLegs: !!BRIGHT_LEGS[figure]?.includes(job.bottom),
+        lapSkirt: lap, brightLegs: !!BRIGHT_LEGS[figure]?.includes(job.bottom),
       })
       const kb = []
-      for (const [id, img] of [[job.top, cut.top], [job.bottom, cut.bottom]]) if (id) kb.push(Math.round(await encode(img, join(outDir, `${id}-${pose}.webp`), OUT.kb, OUT) / 1024))
+      for (const [id, img] of [[job.top, cut.top], [job.bottom, cut.bottom]]) if (id) kb.push(Math.round(await encode(img, join(outDir, `${id}-${pose}.webp`), OUT.kb, id === job.bottom && P.feet && lap?.q ? { ...OUT, q0: lap.q, qMin: lap.q } : OUT) / 1024))
       if (tail) kb.push(Math.round(await encode(cut.erase, join(outDir, `${job.bottom}-${pose}-mask.webp`), OUT.kb, OUT) / 1024))
       await cleanPair([job.top, job.bottom].filter(Boolean).map(id => join(outDir, `${id}-${pose}.webp`)))
       const count = mm => mm.reduce((a, b) => a + b, 0)
